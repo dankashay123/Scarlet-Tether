@@ -138,9 +138,14 @@ export class RunScene extends Phaser.Scene implements World {
       if (!fall) {
         sfx(this, 'footstep_wet', { volume: 0.6, rate: 0.5 });
         this.fx.smoke(x, y, 2, '#4a403a');
-      } else if (Math.random() < 0.5) {
-        this.fx.rubble(x, y, 4);
-        sfx(this, 'door_open', { volume: 0.4, rate: 1.4 });
+      } else {
+        // The tile is gone: whatever lay on it falls with it
+        this.gore.unsettle(x - 8, y - 12, 16, 12);
+        for (const e of this.enemies) if (Math.abs(e.x - x) < 40 && Math.abs(e.y - (y - 8)) < 24) e.wake();
+        if (Math.random() < 0.5) {
+          this.fx.rubble(x, y, 4);
+          sfx(this, 'door_open', { volume: 0.4, rate: 1.4 });
+        }
       }
     };
     this.gore = new Gore(this, this.level);

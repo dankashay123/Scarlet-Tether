@@ -23,6 +23,11 @@ type EState = 'spawn' | 'idle' | 'wander' | 'hunt' | 'windup' | 'attack' | 'reco
 
 /** Shared behaviour for every creature of the Under-Naves. */
 export abstract class Enemy {
+  /** The ground moved: a settled body must fall again. */
+  wake() {
+    this.restT = 0;
+  }
+
   /** Set when the body becomes a corpse the player can devour. */
   corpse: Corpse | null = null;
   private restT = 0;

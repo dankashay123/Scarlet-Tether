@@ -28,13 +28,13 @@ interface Swing {
 }
 
 const COMBO: Swing[] = [
-  { key: 'a1', windup: 0.13, active: 0.1, recover: 0.22, from: -110, to: 35, reach: 42, dmg: 12, poise: 12, stam: 12, lunge: 50 },
-  { key: 'a2', windup: 0.12, active: 0.1, recover: 0.24, from: 45, to: -80, reach: 42, dmg: 14, poise: 12, stam: 12, lunge: 50 },
-  { key: 'a3', windup: 0.26, active: 0.16, recover: 0.4, from: -165, to: 70, reach: 50, dmg: 24, poise: 30, stam: 20, lunge: 90 },
+  { key: 'a1', windup: 0.13, active: 0.1, recover: 0.22, from: -110, to: 35, reach: 74, dmg: 12, poise: 12, stam: 12, lunge: 50 },
+  { key: 'a2', windup: 0.12, active: 0.1, recover: 0.24, from: 45, to: -80, reach: 74, dmg: 14, poise: 12, stam: 12, lunge: 50 },
+  { key: 'a3', windup: 0.26, active: 0.16, recover: 0.4, from: -165, to: 70, reach: 84, dmg: 24, poise: 30, stam: 20, lunge: 90 },
 ];
-const UP: Swing = { key: 'up', windup: 0.12, active: 0.12, recover: 0.26, from: 10, to: -190, reach: 44, dmg: 14, poise: 14, stam: 14 };
-const AIR: Swing = { key: 'a3', windup: 0.08, active: 0.14, recover: 0.2, from: -60, to: 120, reach: 42, dmg: 14, poise: 16, stam: 12 };
-const HEAVY: Swing = { key: 'a3', windup: 0.08, active: 0.18, recover: 0.42, from: -175, to: 80, reach: 58, dmg: 40, poise: 50, stam: 28, heavy: true, lunge: 120 };
+const UP: Swing = { key: 'up', windup: 0.12, active: 0.12, recover: 0.26, from: 10, to: -190, reach: 72, dmg: 14, poise: 14, stam: 14 };
+const AIR: Swing = { key: 'a3', windup: 0.08, active: 0.14, recover: 0.2, from: -60, to: 120, reach: 70, dmg: 14, poise: 16, stam: 12 };
+const HEAVY: Swing = { key: 'a3', windup: 0.08, active: 0.18, recover: 0.42, from: -175, to: 80, reach: 100, dmg: 40, poise: 50, stam: 28, heavy: true, lunge: 120 };
 
 export const DODGE_TIME = 0.34;
 export const DODGE_IFRAMES = 0.26;
@@ -44,7 +44,7 @@ const RUN = 128;
 const SNEAK = 52;
 const JUMP_V = 440; // apex ~5.25 tiles: one-way ledges 5 rows up; stone ledges higher via ledge grab
 const CLIMB_SPEED = 92;
-const LINKS = 11;
+const LINKS = 18; // enough links that a full-length lash never shows gaps
 export const EXECUTE_RANGE = 44;
 export const TEAR_COST = 6;
 export const DEVOUR_RANGE = 34;
@@ -265,6 +265,8 @@ export class Player {
       if (a < lo - 0.1) a += Math.PI * 2;
       if (a > hi + 0.1) a -= Math.PI * 2;
       const close = d < e.hurtR + 10;
+      // The chain can't lash through stone
+      if (!close && !w.level.lineClear(px, py, e.x, e.cy)) continue;
       if ((a >= lo && a <= hi) || close) {
         this.hitThisSwing.add(e);
         const { dmg, crit } = this.damageFor(s);
@@ -547,6 +549,9 @@ export class Player {
       if (my < 0 && !L.climbablePx(b.x, b.y - 2) && !L.climbablePx(b.x, b.cy)) {
         b.y = Math.ceil((b.y - 2) / 16) * 16;
         b.vy = 0;
+        b.dropThrough = 0; // we were passing through ledges while climbing; now stand on the top rung
+        // A ledge right above the top rung: step up onto it rather than standing inside it
+        if (L.oneWayAt(Math.floor(b.x / 16), b.y / 16 - 1) && !L.solidAt(Math.floor(b.x / 16), b.y / 16 - 4)) b.y -= 16;
         this.sprite.anims.timeScale = 1;
         this.setState('move');
       } else if (my > 0 && (b.onGround || !L.climbablePx(b.x, b.cy))) {

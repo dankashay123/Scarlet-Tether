@@ -95,6 +95,7 @@ export class Gore {
   private drops: Drop[] = [];
   private entrails: Entrail[] = [];
   private pending: Splat[] = [];
+  private eraser: Phaser.GameObjects.Graphics | null = null;
   private gibList: Gib[] = [];
   private chunks = new Map<string, Phaser.GameObjects.RenderTexture>();
   private stamp: Phaser.GameObjects.Image;
@@ -371,6 +372,24 @@ export class Gore {
     }
   }
 
+  /**
+   * The ground under (x, y, w, h) has fallen away: wipe the blood painted
+   * there and let any meat resting on it drop.
+   */
+  unsettle(x: number, y: number, w: number, h: number) {
+    this.flush();
+    if (!this.eraser) this.eraser = this.scene.make.graphics({}, false);
+    this.eraser.clear().fillStyle(0xffffff, 1);
+    for (const rt of this.chunks.values()) {
+      if (x + w < rt.x || x > rt.x + CHUNK || y + h < rt.y || y > rt.y + CHUNK) continue;
+      this.eraser.clear().fillStyle(0xffffff, 1).fillRect(x - rt.x, y - rt.y, w, h);
+      rt.erase(this.eraser);
+    }
+    const inside = (px: number, py: number) => px >= x - 4 && px <= x + w + 4 && py >= y - 8 && py <= y + h + 4;
+    for (const g of this.gibList) if (g.rest && inside(g.x, g.y)) ((g.rest = false), (g.vy = 0));
+    for (const e of this.entrails) if (e.rest && Array.from(e.px).some((px, i) => inside(px, e.py[i]))) ((e.rest = false), (e.t = 0.5));
+  }
+
   pool(x: number, floorY: number, width = 1) {
     for (let i = 0; i < 4; i++) this.splat(x + (Math.random() - 0.5) * 18 * width, floorY - 1, 0.8 + width * 0.5, i % 2 ? P.blood2 : P.blood3);
   }
@@ -468,5 +487,6 @@ export class Gore {
     this.entrails.forEach((e) => e.g.destroy());
     this.chunks.forEach((c) => c.destroy());
     this.stamp.destroy();
+    this.eraser?.destroy();
   }
 }
