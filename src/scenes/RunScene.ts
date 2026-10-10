@@ -13,7 +13,10 @@ import { LucidityFx } from '../game/lucidity';
 import { controls, hudState } from '../game/controls';
 import { currentRun, hasSacrament, meta, newRun, save } from '../game/state';
 import { loop, sfx, stopLoop } from '../game/audio';
-import { EMBLEM, plan, ROOM_TITLES, type RoomNode, type RoomType } from '../game/run';
+import { descent, ROLE_TITLES } from '../game/run';
+import { BOSS_LAYOUT } from '../game/layouts';
+import { CH, CW } from '../game/rooms';
+import type { PlacedRoom } from '../game/mapgen';
 import { BOSS_LINES, GRATE_WHISPERS, ROOM_CLEAR_LINES, SACRAMENTS, STIGMA_TEXT } from '../game/lore';
 import { hud } from './HudScene';
 import { pauseMenu } from '../ui/menus';
@@ -28,9 +31,6 @@ interface Door {
   x: number;
   y: number;
   sprite: Phaser.GameObjects.Sprite;
-  emblem: Phaser.GameObjects.Image | null;
-  dest: RoomType;
-  open: boolean;
 }
 
 interface Interactable {
@@ -61,7 +61,10 @@ export class RunScene extends Phaser.Scene implements World {
   enemies: Enemy[] = [];
   corpses: Corpse[] = [];
   enemyTimeScale = 1;
-  private node!: RoomNode;
+  private stage: 'map' | 'boss' = 'map';
+  private rooms: PlacedRoom[] = [];
+  private roomEnemies = new Map<number, Enemy[]>();
+  private curRoom = -1;
   private backdrop!: Backdrop;
   private projectiles: Projectile[] = [];
   private hazards: Hazard[] = [];
@@ -74,8 +77,6 @@ export class RunScene extends Phaser.Scene implements World {
   private hitstopT = 0;
   private slowT = 0;
   private slowScale = 1;
-  private waves: (() => void)[] = [];
-  private cleared = false;
   private leaving = false;
   private dying = false;
   private grateT = 0;
@@ -104,8 +105,8 @@ export class RunScene extends Phaser.Scene implements World {
     this.interactables = [];
     this.pickups = [];
     this.swaps = [];
-    this.waves = [];
-    this.cleared = false;
+    this.roomEnemies = new Map();
+    this.curRoom = -1;
     this.leaving = false;
     this.dying = false;
     this.boss = null;
@@ -114,20 +115,22 @@ export class RunScene extends Phaser.Scene implements World {
     this.enemyTimeScale = 1;
     this.busyInteract = false;
     this.pausing = false;
-    if (data.fresh || data.debug || !plan.current) {
+    if (data.fresh || data.debug || !descent.active) {
       newRun();
-      plan.start();
-      if (data.boss) plan.current = plan.make('boss', 9);
+      descent.start();
     }
-    this.node = plan.current!;
+    if (data.boss) descent.stage = 'boss';
+    this.stage = descent.stage;
   }
 
   create() {
     if (!this.scene.isActive('Hud')) this.scene.launch('Hud');
     this.scene.bringToTop('Hud');
-    const node = this.node;
     this.backdrop = new Backdrop(this, 'marble');
-    this.level = new Level(this, node.layout, 'marble');
+    const map = descent.map!;
+    this.rooms = this.stage === 'map' ? map.rooms : [];
+    const layout = this.stage === 'map' ? { name: 'The Sunken Confessionals', kind: 'combat' as const, rows: map.rows } : BOSS_LAYOUT;
+    this.level = new Level(this, layout, 'marble');
     this.gore = new Gore(this, this.level);
     this.fx = new Fx(this);
     const spawn = this.level.find('S')[0];
@@ -144,8 +147,7 @@ export class RunScene extends Phaser.Scene implements World {
 
     hudState.inRun = true;
     hudState.bossVisible = false;
-    hudState.depth = node.type === 'boss' ? 9 : node.type === 'ante' ? 8 : Math.min(node.depth, 7);
-    hudState.totalDepth = 10;
+    hudState.depth = -1;
     const onHidden = () => {
       if (!this.pausing && !hud(this).modal && !this.dying && !this.leaving) {
         this.pausing = true;
@@ -156,23 +158,18 @@ export class RunScene extends Phaser.Scene implements World {
     this.events.once('shutdown', () => this.game.events.off(Phaser.Core.Events.HIDDEN, onHidden));
 
     loop(this, 'amb_drip', 'amb');
-    if (node.type !== 'boss') stopLoop(this, 'music');
-
-    const title = node.type === 'combat' || node.type === 'elite' ? node.layout.name : ROOM_TITLES[node.type];
-    if (node.depth === 0) hud(this).banner('The Sunken Confessionals', `${meta().citizen.name} descends`);
-    else hud(this).banner(title, node.type === 'elite' ? 'A heavier sin awaits' : '');
-
+    if (this.stage === 'map') {
+      stopLoop(this, 'music');
+      hud(this).banner('The Sunken Confessionals', `${meta().citizen.name} descends`);
+      if (!meta().flags.tutorialSide) this.tutorial();
+    } else this.time.delayedCall(700, () => this.bossIntro());
     this.cameras.main.fadeIn(500, 11, 5, 7);
-    if (node.type === 'combat' || node.type === 'elite') this.prepareWaves();
-    else if (node.type === 'boss') this.time.delayedCall(700, () => this.bossIntro());
-    else this.clearRoom(true);
-
-    if (node.depth === 0 && !meta().flags.tutorialSide) this.tutorial();
     this.events.once('shutdown', () => this.cleanup());
     this.events.once('abandon', () => {
       this.dying = true;
       hudState.inRun = false;
       this.cameras.main.fadeOut(600, 11, 5, 7);
+      descent.reset();
       this.time.delayedCall(620, () => this.scene.start('Succession', { cause: 'retreat, abandoning the descent' }));
     });
   }
@@ -232,7 +229,7 @@ export class RunScene extends Phaser.Scene implements World {
           this.addDoor(m.x, m.y);
           break;
         case 'X':
-          this.buildFeature(m.x, m.y);
+          this.buildFeature(m.x, m.y, this.roomAtTile(m.tx, m.ty)?.role ?? 'cache');
           break;
         case 'V':
           this.buildVotive(m.x, m.y);
@@ -244,22 +241,25 @@ export class RunScene extends Phaser.Scene implements World {
           break;
       }
     }
-    const dests = plan.choices(this.doors.length);
-    this.doors.forEach((d, i) => {
-      d.dest = dests[i];
-      d.emblem = this.add.image(d.x, d.y - 80, `emblem-${EMBLEM[d.dest]}`).setDepth(DEPTH.props + 2).setAlpha(0.35);
-    });
+    for (const d of this.doors) {
+      const e = this.add.image(d.x, d.y - 80, 'emblem-boss').setDepth(DEPTH.props + 2);
+      this.tweens.add({ targets: e, y: e.y - 3, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    }
     this.scatterDecor();
   }
 
   private addDoor(x: number, y: number) {
     const sprite = this.add.sprite(x, y, 'door').setOrigin(0.5, 1).setDepth(DEPTH.props + 1);
-    sprite.play('door:closed');
-    this.doors.push({ x, y, sprite, emblem: null, dest: 'combat', open: false });
+    sprite.play('door:open');
+    this.doors.push({ x, y, sprite });
   }
 
-  private buildFeature(x: number, y: number) {
-    const type = this.node.type;
+  private roomAtTile(tx: number, ty: number): PlacedRoom | null {
+    for (const r of this.rooms) if (tx >= r.x0 && tx <= r.x1 && ty >= r.y0 && ty <= r.y1) return r;
+    return null;
+  }
+
+  private buildFeature(x: number, y: number, type: string) {
     if (type === 'confessional') {
       const b = this.swap(this.add.image(x, y, 'prop-booth').setOrigin(0.5, 1).setDepth(DEPTH.props + 2), 'prop-booth', 'prop-booth-rot');
       this.addLight(x, y - 40, 'light-lg', P.blood0, 0.25);
@@ -313,7 +313,7 @@ export class RunScene extends Phaser.Scene implements World {
   /** Bones and blood already in the room before you arrive. */
   private scatterDecor() {
     const L = this.level;
-    const rnd = new Phaser.Math.RandomDataGenerator([String(this.node.seed)]);
+    const rnd = new Phaser.Math.RandomDataGenerator([String(descent.seed)]);
     for (let tx = 1; tx < L.w - 1; tx++) {
       for (let ty = 1; ty < L.h - 1; ty++) {
         const floor = L.ch(tx, ty) === '#' && L.ch(tx, ty - 1) !== '#' && L.ch(tx, ty - 1) !== '~';
@@ -341,7 +341,8 @@ export class RunScene extends Phaser.Scene implements World {
       },
     });
     // Dust and incense ash drifting through the candlelight
-    for (let i = 0; i < 30; i++) {
+    const motes = Math.min(220, Math.round(((L.pxW * L.pxH) / (640 * 360)) * 18));
+    for (let i = 0; i < motes; i++) {
       const m = this.add
         .image(Phaser.Math.Between(16, L.pxW - 16), Phaser.Math.Between(40, L.pxH - 40), 'px1')
         .setTint(hexNum(P.gold0))
@@ -353,66 +354,84 @@ export class RunScene extends Phaser.Scene implements World {
   }
 
   // -------------------------------------------------------------------------
-  // Waves
+  // Rooms wake when entered
   // -------------------------------------------------------------------------
 
-  private prepareWaves() {
-    const d = this.node.depth;
-    const elite = this.node.type === 'elite';
-    const ground = this.level.find('e').map((m) => ({ x: m.x, y: m.y }));
-    const air = this.level.find('f').map((m) => ({ x: m.x, y: m.y }));
-    const eliteSpots = this.level.find('E').map((m) => ({ x: m.x, y: m.y }));
-    const budget = 2.8 + d * 0.9;
-    const nWaves = budget > 5 ? 2 : 1;
-    const waves: string[][] = [];
-    for (let w = 0; w < nWaves; w++) {
-      const list: string[] = [];
-      let b = budget / nWaves;
-      if (elite && w === nWaves - 1) {
-        list.push('penitent');
-        b -= 2.4;
-      }
-      while (b > 0.5) {
-        const r = Math.random();
-        let k = 'blind';
-        if (d >= 1 && r < 0.32) k = 'gossip';
-        else if (d >= 2 && r < 0.5 && air.length) k = 'cherub';
-        if (d >= 5 && r > 0.86) k = 'blind+';
-        if (d >= 6 && r > 0.94) k = 'gossip+';
-        list.push(k);
-        b -= k.endsWith('+') ? 1.8 : k === 'gossip' ? 1.2 : 1;
-      }
-      waves.push(list);
+  private wakeRoom(r: PlacedRoom) {
+    if (this.roomEnemies.has(r.id)) return;
+    const list: Enemy[] = [];
+    this.roomEnemies.set(r.id, list);
+    if (r.role === 'start' || r.role === 'ante' || ['confessional', 'votive', 'cache'].includes(r.role)) return;
+    const depth = r.depth;
+    const spots = this.level.markers.filter((m) => (m.ch === 'e' || m.ch === 'f' || m.ch === 'E') && m.tx >= r.x0 && m.tx <= r.x1 && m.ty >= r.y0 && m.ty <= r.y1);
+    // Deeper rooms fill more of their spawn points
+    const fill = Math.min(1, 0.55 + depth * 0.07);
+    Phaser.Utils.Array.Shuffle(spots);
+    const n = Math.max(1, Math.round(spots.length * fill));
+    for (const m of spots.slice(0, n)) {
+      let kind = 'blind';
+      const roll = Math.random();
+      if (m.ch === 'E' && r.role === 'elite') kind = 'penitent';
+      else if (m.ch === 'f') kind = depth >= 1 ? 'cherub' : 'blind';
+      else if (depth >= 1 && roll < 0.35) kind = 'gossip';
+      if (kind === 'blind' && depth >= 6 && roll > 0.8) kind = 'blind+';
+      if (kind === 'gossip' && depth >= 7 && roll < 0.08) kind = 'gossip+';
+      if (kind === 'blind' && m.ch === 'f') {
+        // flyer spot early on: put a Blind on the floor beneath instead
+        const fy = this.level.floorY(m.x, m.y);
+        if (fy === null) continue;
+        this.spawnEnemy(kind, m.x, fy);
+      } else this.spawnEnemy(kind, m.x, m.y);
+      list.push(this.enemies[this.enemies.length - 1]);
     }
-    this.waves = waves.map((list) => () => {
-      const usedG = new Set<number>();
-      const usedA = new Set<number>();
-      for (const k of list) {
-        const pool = k === 'cherub' ? air : k === 'penitent' && eliteSpots.length ? eliteSpots : ground;
-        const used = k === 'cherub' ? usedA : usedG;
-        let pos: { x: number; y: number } | null = null;
-        const order = Phaser.Utils.Array.Shuffle([...pool.keys()]);
-        for (const i of order) {
-          if (used.has(i)) continue;
-          if (Math.abs(pool[i].x - this.player.x) > 90) {
-            used.add(i);
-            pos = pool[i];
-            break;
-          }
-        }
-        pos ??= pool[order[0]] ?? { x: this.level.pxW * 0.6, y: this.player.y };
-        this.spawnEnemy(k, pos.x + (Math.random() - 0.5) * 20, pos.y);
-      }
-    });
-    this.time.delayedCall(900, () => this.nextWave());
+    if (list.length) sfx(this, 'bell_distant', { volume: 0.35, rate: 0.9 });
   }
 
-  private nextWave() {
-    const w = this.waves.shift();
-    if (w) {
-      w();
-      sfx(this, 'bell_distant', { volume: 0.4, rate: 0.9 });
+  private enterRoom(r: PlacedRoom) {
+    this.curRoom = r.id;
+    const first = !descent.explored.has(r.id);
+    descent.explored.add(r.id);
+    this.wakeRoom(r);
+    if (first) {
+      const title = r.role === 'combat' ? r.tpl.name : ROLE_TITLES[r.role] ?? r.tpl.name;
+      if (r.role !== 'start') hud(this).banner(title, r.role === 'elite' ? 'A heavier sin awaits' : '');
     }
+  }
+
+  /** When every foe in a room is dead: a small mercy. */
+  private checkRoomCleared() {
+    for (const [id, list] of this.roomEnemies) {
+      if (descent.cleared.has(id) || !list.length) continue;
+      if (list.every((e) => e.dead)) {
+        descent.cleared.add(id);
+        currentRun().room++;
+        this.changeLucidity(6);
+        hud(this).toast(Phaser.Utils.Array.GetRandom(ROOM_CLEAR_LINES), P.bone1);
+      }
+    }
+  }
+
+  private publishMap() {
+    const p = this.player;
+    const m = descent.map;
+    if (!m || this.stage !== 'map') return;
+    hudState.map = {
+      gw: m.gw,
+      gh: m.gh,
+      current: this.curRoom,
+      px: p.x / 16 / CW,
+      py: (p.y - 20) / 16 / CH,
+      rooms: this.rooms.map((r) => ({
+        x: r.gx,
+        y: r.gy,
+        w: r.tpl.cw,
+        h: r.tpl.ch,
+        role: r.role,
+        explored: descent.explored.has(r.id),
+        seen: descent.explored.has(r.id) || r.links.some((l) => descent.explored.has(l.to)),
+        links: r.links.map((l) => [l.exit.cx, l.exit.cy, l.exit.dir] as [number, number, string]),
+      })),
+    };
   }
 
   private spawnEnemy(kind: string, x: number, y: number) {
@@ -623,6 +642,7 @@ export class RunScene extends Phaser.Scene implements World {
         P.flesh0,
       );
     }
+    descent.reset();
     this.cameras.main.fadeOut(900, 11, 5, 7);
     this.time.delayedCall(950, () => {
       hudState.inRun = false;
@@ -634,37 +654,16 @@ export class RunScene extends Phaser.Scene implements World {
   // Flow
   // -------------------------------------------------------------------------
 
-  private clearRoom(silent = false) {
-    if (this.cleared) return;
-    this.cleared = true;
-    const run = currentRun();
-    if (!silent) {
-      run.room++;
-      this.changeLucidity(6);
-      hud(this).toast(Phaser.Utils.Array.GetRandom(ROOM_CLEAR_LINES), P.bone1);
-      this.spawnTears(this.player.x, this.player.y - 40, 3 + this.node.depth);
-    }
-    this.time.delayedCall(silent ? 200 : 700, () => {
-      for (const d of this.doors) {
-        d.open = true;
-        d.sprite.play('door:open');
-        d.emblem?.setAlpha(1);
-        this.tweens.add({ targets: d.emblem, y: d.emblem!.y - 3, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-      }
-      if (this.doors.length) sfx(this, 'door_open', { volume: 0.7 });
-    });
-  }
-
-  private leave(d: Door) {
+  private enterBoss() {
     if (this.leaving) return;
     this.leaving = true;
     this.player.lock(true);
     for (const p of this.pickups) this.collect(p);
     this.pickups = [];
-    plan.advance(d.dest);
-    sfx(this, 'door_open', { volume: 0.5, rate: 0.8 });
-    this.cameras.main.fadeOut(400, 11, 5, 7);
-    this.time.delayedCall(420, () => this.scene.restart({}));
+    descent.stage = 'boss';
+    sfx(this, 'door_open', { volume: 0.6, rate: 0.7 });
+    this.cameras.main.fadeOut(600, 11, 5, 7);
+    this.time.delayedCall(620, () => this.scene.restart({ boss: true }));
   }
 
   private onPlayerDeath() {
@@ -677,7 +676,9 @@ export class RunScene extends Phaser.Scene implements World {
       this.cameras.main.fadeOut(900, 40, 0, 0);
       this.time.delayedCall(950, () => {
         hudState.inRun = false;
-        const cause = this.node.type === 'boss' ? 'the Grand Confessional' : this.node.type === 'combat' || this.node.type === 'elite' ? this.node.layout.name : ROOM_TITLES[this.node.type];
+        const r = this.rooms.find((x) => x.id === this.curRoom);
+        const cause = this.stage === 'boss' ? 'the Grand Confessional' : r ? (r.role === 'combat' || r.role === 'elite' ? r.tpl.name : ROLE_TITLES[r.role] ?? r.tpl.name) : 'the Under-Naves';
+        descent.reset();
         this.scene.start('Succession', { cause });
       });
     });
@@ -746,13 +747,20 @@ export class RunScene extends Phaser.Scene implements World {
     this.lucid.update(dt);
     this.updateTiles(dt);
 
-    const living = this.enemies.filter((e) => !e.dead);
-    if (!this.cleared && (this.node.type === 'combat' || this.node.type === 'elite') && living.length === 0 && this.enemies.length > 0) {
-      if (this.waves.length) {
-        this.enemies = [];
-        this.time.delayedCall(700, () => this.nextWave());
-      } else this.clearRoom();
+    // Which room are we in?
+    const p = this.player;
+    if (this.stage === 'map') {
+      const r = this.roomAtTile(Math.floor(p.x / 16), Math.floor((p.y - 20) / 16));
+      if (r && r.id !== this.curRoom) this.enterRoom(r);
+      // Wake neighbours just before they scroll into view
+      for (const l of r?.links ?? []) {
+        const n = this.rooms[l.to];
+        if (n && !this.roomEnemies.has(n.id) && Math.abs(p.x / 16 - (n.x0 + n.x1) / 2) < (n.x1 - n.x0) / 2 + 28 && Math.abs(p.y / 16 - (n.y0 + n.y1) / 2) < (n.y1 - n.y0) / 2 + 14) this.wakeRoom(n);
+      }
+      this.checkRoomCleared();
+      this.publishMap();
     }
+    const living = this.enemies.filter((e) => !e.dead);
     if (living.length === 0) {
       this.regenT += dt;
       if (this.regenT > 1 && run.lucidity < run.maxLucidity * 0.5) {
@@ -761,19 +769,18 @@ export class RunScene extends Phaser.Scene implements World {
       }
     }
 
-    // Contextual interaction: doors and shrines
-    const p = this.player;
+    // Contextual interaction: the boss door and shrines
     hudState.canExecute = p.canExecute();
     let label = '';
     let action: (() => void) | null = null;
     for (const d of this.doors) {
-      if (d.open && Math.abs(p.x - d.x) < 22 && Math.abs(p.y - d.y) < 20) {
-        label = `Enter: ${ROOM_TITLES[d.dest] || 'the next nave'}`;
-        action = () => this.leave(d);
+      if (Math.abs(p.x - d.x) < 22 && Math.abs(p.y - d.y) < 20) {
+        label = 'Enter: The Grand Confessional';
+        action = () => this.enterBoss();
       }
     }
     const near = this.interactables.find((i) => !i.used && Math.abs(i.x - p.x) < 34 && Math.abs(i.y - p.y) < 30);
-    if (near && this.cleared && living.length === 0) {
+    if (near) {
       label = near.label;
       action = () => {
         near.used = true;
@@ -891,5 +898,6 @@ export class RunScene extends Phaser.Scene implements World {
     this.tweens.killAll();
     hudState.canExecute = false;
     hudState.interact = '';
+    hudState.map = null;
   }
 }

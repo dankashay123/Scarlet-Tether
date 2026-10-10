@@ -35,6 +35,7 @@ export class Level {
   private base: Phaser.Tilemaps.TilemapLayer;
   private rot: Phaser.Tilemaps.TilemapLayer | null = null;
   private rotThreshold: Float32Array;
+  private climbables: Phaser.GameObjects.Image[] = [];
   private lastRot = -1;
 
   constructor(
@@ -75,6 +76,12 @@ export class Level {
     const map = scene.make.tilemap({ data, tileWidth: TILE, tileHeight: TILE });
     const ts = map.addTilesetImage(key, key, TILE, TILE, 0, 0)!;
     this.base = map.createLayer(0, ts, 0, 0)!.setDepth(DEPTH.tiles);
+    // Ladders and hanging chains are drawn as sprites over the stone
+    for (let y = 0; y < this.h; y++)
+      for (let x = 0; x < this.w; x++) {
+        const c = this.ch(x, y);
+        if (c === '|' || c === '!') this.climbables.push(scene.add.image(x * TILE + 8, y * TILE + 8, c === '|' ? 'ladder' : 'hang-chain').setDepth(DEPTH.tiles + 2));
+      }
     if (set === 'marble') {
       const map2 = scene.make.tilemap({ data, tileWidth: TILE, tileHeight: TILE });
       const ts2 = map2.addTilesetImage('env-rot', 'env-rot', TILE, TILE, 0, 0)!;
@@ -146,8 +153,21 @@ export class Level {
     return this.solidAt(Math.floor(px / TILE), Math.floor(py / TILE));
   }
 
+  /** Ledges, and the top rung of a ladder, can be stood on from above. */
   oneWayAt(tx: number, ty: number) {
-    return this.ch(tx, ty) === '=';
+    const c = this.ch(tx, ty);
+    if (c === '=') return true;
+    return c === '|' && this.ch(tx, ty - 1) !== '|' && !this.isSolidCh(this.ch(tx, ty - 1));
+  }
+
+  /** Ladders ('|') and hanging chains ('!') can be climbed. */
+  climbableAt(tx: number, ty: number) {
+    const c = this.ch(tx, ty);
+    return c === '|' || c === '!';
+  }
+
+  climbablePx(px: number, py: number) {
+    return this.climbableAt(Math.floor(px / TILE), Math.floor(py / TILE));
   }
 
   inLiquid(px: number, py: number) {
@@ -200,5 +220,6 @@ export class Level {
   destroy() {
     this.base.destroy();
     this.rot?.destroy();
+    this.climbables.forEach((c) => c.destroy());
   }
 }

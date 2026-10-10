@@ -28,11 +28,11 @@ interface Gib {
 
 const MAX_DROPS = 420;
 const MAX_GIBS = 60;
+const CHUNK = 512;
 const BLOODS = [P.blood0, P.blood1, P.blood1, P.blood2, P.blood2, P.blood3];
 
 function ensureStamps(scene: Phaser.Scene) {
   if (scene.textures.exists('splat-0')) return;
-  // Irregular splats painted onto stone where blood lands
   for (let k = 0; k < 4; k++) {
     const s = 10 + k * 3;
     const pc = new PixelCanvas(s, s);
@@ -53,12 +53,13 @@ function ensureStamps(scene: Phaser.Scene) {
 
 /**
  * The world remembers violence: blood arcs, splashes and stays on the
- * stone; bodies come apart into pieces that bounce and settle.
+ * stone; bodies come apart into pieces that bounce and settle. Blood is
+ * painted into 512px chunks created on demand, so huge maps stay cheap.
  */
 export class Gore {
   private drops: Drop[] = [];
   private gibList: Gib[] = [];
-  private paint: Phaser.GameObjects.RenderTexture;
+  private chunks = new Map<string, Phaser.GameObjects.RenderTexture>();
   private stamp: Phaser.GameObjects.Image;
 
   constructor(
@@ -66,8 +67,19 @@ export class Gore {
     private level: Level,
   ) {
     ensureStamps(scene);
-    this.paint = scene.add.renderTexture(0, 0, level.pxW, level.pxH).setOrigin(0).setDepth(DEPTH.gore);
     this.stamp = scene.make.image({ key: 'splat-0', add: false });
+  }
+
+  private chunk(x: number, y: number) {
+    const cx = Math.floor(x / CHUNK);
+    const cy = Math.floor(y / CHUNK);
+    const k = `${cx},${cy}`;
+    let rt = this.chunks.get(k);
+    if (!rt) {
+      rt = this.scene.add.renderTexture(cx * CHUNK, cy * CHUNK, CHUNK, CHUNK).setOrigin(0).setDepth(DEPTH.gore);
+      this.chunks.set(k, rt);
+    }
+    return rt;
   }
 
   private drop(x: number, y: number, vx: number, vy: number, big: boolean, color?: string) {
@@ -79,7 +91,6 @@ export class Gore {
     this.drops.push({ img, x, y, vx, vy, life: 3, big });
   }
 
-  /** Arterial spray in a direction (radians), e.g. away from a blow. */
   spray(x: number, y: number, angle: number, n: number, force = 1, spread = 0.7) {
     for (let i = 0; i < n; i++) {
       const a = angle + (Math.random() - 0.5) * spread;
@@ -96,14 +107,8 @@ export class Gore {
     }
   }
 
-  /** A fountain from a severed neck, lasting a while. */
   fountain(x: number, y: number, ms = 900, dir = -Math.PI / 2) {
-    const ev = this.scene.time.addEvent({
-      delay: 30,
-      repeat: Math.floor(ms / 30),
-      callback: () => this.spray(x, y, dir, 3, 0.9, 0.5),
-    });
-    return ev;
+    return this.scene.time.addEvent({ delay: 30, repeat: Math.floor(ms / 30), callback: () => this.spray(x, y, dir, 3, 0.9, 0.5) });
   }
 
   bile(x: number, y: number, n: number) {
@@ -116,23 +121,19 @@ export class Gore {
 
   gibs(x: number, y: number, n: number, pushX = 0) {
     for (let i = 0; i < n; i++) {
-      if (this.gibList.length >= MAX_GIBS) {
-        const old = this.gibList.shift()!;
-        old.img.destroy();
-      }
-      const frame = (Math.random() * 10) | 0;
-      const img = this.scene.add.image(x, y, 'gib', frame).setDepth(DEPTH.corpse + 1);
+      if (this.gibList.length >= MAX_GIBS) this.gibList.shift()!.img.destroy();
+      const img = this.scene.add.image(x, y, 'gib', (Math.random() * 10) | 0).setDepth(DEPTH.corpse + 1);
       const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
       const sp = 120 + Math.random() * 220;
       this.gibList.push({ img, x, y, vx: Math.cos(a) * sp + pushX, vy: Math.sin(a) * sp, spin: (Math.random() - 0.5) * 20, rest: false, trail: 0 });
     }
   }
 
-  /** Paint a pool or smear directly. */
   splat(x: number, y: number, scale = 1, color: string = P.blood2) {
     const k = (Math.random() * 4) | 0;
-    this.stamp.setTexture(`splat-${k}`).setTint(hexNum(color)).setScale(scale, scale * (0.5 + Math.random() * 0.5)).setRotation(0).setAlpha(0.95);
-    this.paint.draw(this.stamp, Math.round(x - (5 + k * 1.5) * scale), Math.round(y - (5 + k * 1.5) * scale * 0.5));
+    const rt = this.chunk(x, y);
+    this.stamp.setTexture(`splat-${k}`).setTint(hexNum(color)).setScale(scale, scale * (0.5 + Math.random() * 0.5)).setAlpha(0.95);
+    rt.draw(this.stamp, Math.round(x - rt.x - (5 + k * 1.5) * scale), Math.round(y - rt.y - (5 + k * 1.5) * scale * 0.5));
   }
 
   pool(x: number, floorY: number, width = 1) {
@@ -150,18 +151,14 @@ export class Gore {
       let hit = false;
       if (L.solidPx(nx, ny)) {
         hit = true;
-        // Paint where it struck: on a floor, a wall, or a ceiling
         const tx = Math.floor(nx / TILE);
         const ty = Math.floor(ny / TILE);
-        const fromAbove = !L.solidPx(d.x, ny) && L.solidPx(d.x, ny);
         let px = nx;
         let py = ny;
-        if (!L.solidPx(d.x, d.y + 0.01) && Math.floor(d.y / TILE) < ty) py = ty * TILE + 1;
+        if (Math.floor(d.y / TILE) < ty && !L.solidPx(d.x, d.y)) py = ty * TILE + 1;
         else if (d.vx > 0) px = tx * TILE + 1;
         else if (d.vx < 0) px = (tx + 1) * TILE - 1;
-        void fromAbove;
-        this.splat(px, py, d.big ? 0.45 : 0.25, d.img.tintTopLeft === hexNum(P.blood0) ? P.blood1 : P.blood2);
-        // Walls weep: a slow drip down from where it struck
+        this.splat(px, py, d.big ? 0.45 : 0.25, P.blood2);
         if (d.big && Math.abs(d.vx) > Math.abs(d.vy) && Math.random() < 0.35) this.wallDrip(px, py);
       }
       if (hit || d.life <= 0 || ny > L.pxH) {
@@ -193,9 +190,7 @@ export class Gore {
             g.rest = true;
             this.splat(nx, ny + 3, 0.6);
           }
-        } else {
-          g.vy = 0;
-        }
+        } else g.vy = 0;
       }
       g.trail -= dt;
       if (g.trail <= 0 && !g.rest) {
@@ -210,19 +205,13 @@ export class Gore {
 
   private wallDrip(x: number, y: number) {
     const d = this.scene.add.image(x, y, 'drip').setTint(hexNum(P.blood2)).setDepth(DEPTH.gore + 1).setOrigin(0.5, 0);
-    this.scene.tweens.add({
-      targets: d,
-      y: y + 6 + Math.random() * 14,
-      scaleY: 2 + Math.random() * 2,
-      duration: 2500 + Math.random() * 2500,
-      ease: 'Sine.Out',
-    });
+    this.scene.tweens.add({ targets: d, y: y + 6 + Math.random() * 14, scaleY: 2 + Math.random() * 2, duration: 2500 + Math.random() * 2500, ease: 'Sine.Out' });
   }
 
   destroy() {
     this.drops.forEach((d) => d.img.destroy());
     this.gibList.forEach((g) => g.img.destroy());
-    this.paint.destroy();
+    this.chunks.forEach((c) => c.destroy());
     this.stamp.destroy();
   }
 }

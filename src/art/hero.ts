@@ -347,6 +347,16 @@ export function buildHeroSheet(scene: Phaser.Scene, look: CitizenLook, key = 'pl
   add('kneel', [KNEEL], 1, 0);
   add('raise', [{ ...STAND, lean: -0.15, head: -0.3, armF: { a: -2.8, b: 0 }, armB: { a: -2.5, b: 0.1 }, t: 0.1 }], 1, 0);
   add('die', [0, 1, 2, 3].map(deathPose), 7, 0, true);
+  add(
+    'climb',
+    [0, 1, 2, 3].map((i) => {
+      const s = Math.sin((i / 4) * Math.PI * 2);
+      return { ...STAND, lean: -0.05, head: -0.2, armF: { a: -2.6 + s * 0.35, b: -0.2 }, armB: { a: -2.6 - s * 0.35, b: -0.2 }, legF: { a: 0.35 + s * 0.3, b: 0.7 + s * 0.4 }, legB: { a: 0.35 - s * 0.3, b: 0.7 - s * 0.4 }, t: i / 4 };
+    }),
+    7,
+  );
+  add('hang', [{ ...STAND, lean: -0.1, head: -0.35, armF: { a: -3.0, b: 0 }, armB: { a: -2.9, b: 0 }, legF: { a: 0.15, b: 0.15 }, legB: { a: -0.1, b: 0.25 }, t: 0.4 }], 1, 0);
+  add('mantle', [{ ...STAND, y: HY + 6, lean: 0.7, head: 0.3, armF: { a: 0.6, b: 1.0 }, armB: { a: 0.4, b: 1.2 }, legF: { a: 1.2, b: 1.6 }, legB: { a: -0.2, b: 1.4 }, t: 0.6 }], 1, 0);
   add('air-attack', [mixPose(jumpPose('fall', 0), ATTACK_POSES.a3[1], 0.6)], 1, 0);
   sb.build(scene);
   heroMeta.hands = hands;

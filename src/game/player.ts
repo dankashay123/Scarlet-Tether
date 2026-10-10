@@ -10,7 +10,7 @@ import type { Enemy } from './enemies';
 import type { World } from './world';
 import { CRIME_VISIONS, DEVOUR_VISIONS } from './lore';
 
-type PState = 'move' | 'windup' | 'active' | 'recover' | 'charge' | 'dodge' | 'execute' | 'devour' | 'weep' | 'hurt' | 'dead' | 'locked';
+type PState = 'move' | 'windup' | 'active' | 'recover' | 'charge' | 'dodge' | 'execute' | 'devour' | 'weep' | 'hurt' | 'dead' | 'locked' | 'climb' | 'hang' | 'mantle';
 
 interface Swing {
   key: 'a1' | 'a2' | 'a3' | 'up';
@@ -42,7 +42,8 @@ export const PERFECT_WINDOW = 0.15;
 const CHARGE_MS = 380;
 const RUN = 128;
 const SNEAK = 52;
-const JUMP_V = 372;
+const JUMP_V = 440; // apex ~5.25 tiles: one-way ledges 5 rows up; stone ledges higher via ledge grab
+const CLIMB_SPEED = 92;
 const LINKS = 11;
 export const EXECUTE_RANGE = 44;
 export const TEAR_COST = 6;
@@ -79,6 +80,9 @@ export class Player {
   private target: Enemy | null = null;
   private lambUsed = false;
   private landT = 0;
+  private ledgeCd = 0;
+  private mantleFrom = { x: 0, y: 0 };
+  private mantleTo = { x: 0, y: 0 };
 
   constructor(
     private world: World,
@@ -465,6 +469,110 @@ export class Player {
   }
 
   // -------------------------------------------------------------------------
+  // Climbing: ladders, chains, ledges
+  // -------------------------------------------------------------------------
+
+  private startClimb() {
+    const L = this.world.level;
+    this.setState('climb');
+    this.body.vx = 0;
+    this.body.vy = 0;
+    this.body.x = Math.floor(this.x / 16) * 16 + 8;
+    if (L.climbablePx(this.x, this.y + 4) && !L.climbablePx(this.x, this.y - 4)) this.body.y += 4; // stepping down onto the top rung
+  }
+
+  /** Grab a ledge corner near the hands while airborne. */
+  private tryLedge(): boolean {
+    const b = this.body;
+    const L = this.world.level;
+    if (b.onGround || b.vy < -60 || this.ledgeCd > 0) return false;
+    const dir = Math.abs(controls.moveX) > 0.3 ? Math.sign(controls.moveX) : this.face;
+    const tx = Math.floor((b.x + dir * (b.w / 2 + 3)) / 16);
+    const hands = b.top + 4;
+    for (let ty = Math.floor((hands - 10) / 16); ty <= Math.floor((hands + 14) / 16); ty++) {
+      const cornerY = ty * 16;
+      if (cornerY < hands - 10 || cornerY > hands + 14) continue;
+      if (!L.solidAt(tx, ty) || L.solidAt(tx, ty - 1) || L.solidAt(tx, ty - 2) || L.solidAt(tx, ty - 3)) continue;
+      // Our own column must be open beside the ledge
+      const bx = Math.floor(b.x / 16);
+      if (L.solidAt(bx, ty - 1) || L.solidAt(bx, ty)) continue;
+      this.face = dir;
+      b.x = dir > 0 ? tx * 16 - b.w / 2 - 0.5 : (tx + 1) * 16 + b.w / 2 + 0.5;
+      b.y = cornerY + b.h - 8;
+      b.vx = 0;
+      b.vy = 0;
+      this.mantleTo = { x: tx * 16 + 8, y: cornerY };
+      this.setState('hang');
+      this.play('hang');
+      sfx(this.world.sc, 'footstep_wet', { volume: 0.5, rate: 1.3 });
+      return true;
+    }
+    return false;
+  }
+
+  private updateClimb(dt: number): boolean {
+    const b = this.body;
+    const L = this.world.level;
+    if (this.state === 'climb') {
+      if (controls.take('jump')) {
+        this.setState('move');
+        b.vy = -JUMP_V * 0.6;
+        b.vx = Math.abs(controls.moveX) > 0.3 ? Math.sign(controls.moveX) * 110 : 0;
+        if (b.vx) this.face = Math.sign(b.vx);
+        this.ledgeCd = 0.25;
+        return false;
+      }
+      const my = Math.abs(controls.moveY) > 0.25 ? Math.sign(controls.moveY) : 0;
+      b.vx = 0;
+      b.vy = my * CLIMB_SPEED;
+      b.dropThrough = 0.1;
+      b.x += (Math.floor(b.x / 16) * 16 + 8 - b.x) * Math.min(1, dt * 12);
+      if (my) this.play('climb');
+      this.sprite.anims.timeScale = my ? 1 : 0;
+      b.step(L, dt, true);
+      // Off the top: step onto the ledge or the ladder's top rung
+      if (my < 0 && !L.climbablePx(b.x, b.y - 2) && !L.climbablePx(b.x, b.cy)) {
+        b.y = Math.ceil((b.y - 2) / 16) * 16;
+        b.vy = 0;
+        this.sprite.anims.timeScale = 1;
+        this.setState('move');
+      } else if (my > 0 && (b.onGround || !L.climbablePx(b.x, b.cy))) {
+        this.sprite.anims.timeScale = 1;
+        this.setState('move');
+      }
+      this.syncVisuals(dt);
+      return true;
+    }
+    if (this.state === 'hang') {
+      b.vx = 0;
+      b.vy = 0;
+      if (controls.take('jump') || controls.moveY < -0.5 || (Math.abs(controls.moveX) > 0.5 && Math.sign(controls.moveX) === this.face && this.stateT > 0.18)) {
+        this.mantleFrom = { x: b.x, y: b.y };
+        this.setState('mantle');
+        this.play('mantle');
+      } else if (controls.moveY > 0.6 || (Math.abs(controls.moveX) > 0.5 && Math.sign(controls.moveX) === -this.face)) {
+        this.ledgeCd = 0.35;
+        this.setState('move');
+      }
+      this.syncVisuals(dt);
+      return true;
+    }
+    if (this.state === 'mantle') {
+      const k = Math.min(1, this.stateT / 0.24);
+      const e = k * k * (3 - 2 * k);
+      // Up first, then over
+      b.x = Phaser.Math.Linear(this.mantleFrom.x, this.mantleTo.x, Math.max(0, (e - 0.4) / 0.6));
+      b.y = Phaser.Math.Linear(this.mantleFrom.y, this.mantleTo.y, Math.min(1, e / 0.7));
+      if (k >= 1) {
+        b.vy = 0;
+        b.onGround = true;
+        this.setState('move');
+      }
+      this.syncVisuals(dt);
+      return true;
+    }
+    return false;
+  }
 
   update(dt: number) {
     const run = currentRun();
@@ -492,6 +600,9 @@ export class Player {
       this.coyote = 0.1;
       this.airDashed = false;
     } else this.coyote -= dt;
+
+    this.ledgeCd = Math.max(0, this.ledgeCd - dt);
+    if (this.updateClimb(dt)) return;
 
     const wet = w.level.inLiquid(this.x, this.y);
     const speedMul = (wet ? 0.55 : 1) * (this.choking ? 0.5 : 1);
@@ -527,6 +638,16 @@ export class Player {
         if (controls.take('tear')) {
           this.startWeep();
           if ((this.state as PState) === 'weep') break;
+        }
+        // Ladders and chains
+        {
+          const L = w.level;
+          const up = controls.moveY < -0.55 && (L.climbablePx(this.x, this.body.cy) || L.climbablePx(this.x, this.body.top + 6));
+          const down = controls.moveY > 0.55 && b.onGround && L.climbablePx(this.x, this.y + 4);
+          if (up || down) {
+            this.startClimb();
+            break;
+          }
         }
         if (controls.take('attack')) {
           if (!b.onGround) this.startSwing(AIR);
@@ -705,6 +826,7 @@ export class Player {
       w.fx.smoke(this.x, this.y - 2, 3, P.smoke1);
     }
     this.landT -= dt;
+    if (this.state === 'move' && !b.onGround) this.tryLedge();
     this.syncVisuals(dt);
   }
 

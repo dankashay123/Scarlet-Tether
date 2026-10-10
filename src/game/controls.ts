@@ -81,4 +81,13 @@ export const hudState = {
   bossVisible: false,
   depth: -1,
   totalDepth: 10,
+  /** The descent map for the minimap and map screen (cells). */
+  map: null as null | {
+    gw: number;
+    gh: number;
+    rooms: { x: number; y: number; w: number; h: number; role: string; explored: boolean; seen: boolean; links: [number, number, string][] }[];
+    current: number;
+    px: number;
+    py: number;
+  },
 };

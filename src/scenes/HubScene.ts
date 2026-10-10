@@ -15,7 +15,7 @@ import { meta, maxHp, maxLucidity, maxStamina, save, startingLucidity, STIGMA_LU
 import { loop, sfx, stopLoop } from '../game/audio';
 import { HUB_LAYOUT } from '../game/layouts';
 import { NPC, STIGMA_TEXT, UPGRADE_TEXT } from '../game/lore';
-import { plan } from '../game/run';
+import { descent } from '../game/run';
 import { hud } from './HudScene';
 import { pauseMenu } from '../ui/menus';
 import type { Corpse, HitResult, World } from '../game/world';
@@ -360,7 +360,7 @@ export class HubScene extends Phaser.Scene implements World {
     m.runs++;
     save();
     sfx(this, 'door_open');
-    plan.current = null;
+    descent.reset();
     this.player.lock(true);
     this.cameras.main.fadeOut(700, 11, 5, 7);
     this.time.delayedCall(720, () => this.scene.start('Run', { fresh: true }));

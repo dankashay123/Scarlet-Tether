@@ -47,6 +47,10 @@ export class HudScene extends Phaser.Scene {
 
   private runLayer!: Phaser.GameObjects.Container;
   private bars!: Phaser.GameObjects.Graphics;
+  private mini!: Phaser.GameObjects.Graphics;
+  private miniFrame!: Phaser.GameObjects.Graphics;
+  private miniMask!: Phaser.GameObjects.Graphics;
+  private miniRect = new Phaser.Geom.Rectangle(0, 0, 0, 0);
   private reliq!: Phaser.GameObjects.Image;
   private cracks!: Phaser.GameObjects.Image;
   private tearsText!: Phaser.GameObjects.BitmapText;
@@ -136,10 +140,11 @@ export class HudScene extends Phaser.Scene {
     // container space, so subtract that shift back out.
     const off = L - 8;
     this.runLayer.setX(off);
-    (this.runLayer.getByName('icon-tear') as Phaser.GameObjects.Image).setPosition(R - 46 - off, 14);
-    (this.runLayer.getByName('icon-vert') as Phaser.GameObjects.Image).setPosition(R - 48 - off, 30);
-    this.tearsText.setPosition(R - 38 - off, 14);
-    this.vertText.setPosition(R - 38 - off, 30);
+    // Beneath the minimap
+    (this.runLayer.getByName('icon-tear') as Phaser.GameObjects.Image).setPosition(R - 80 - off, 44);
+    (this.runLayer.getByName('icon-vert') as Phaser.GameObjects.Image).setPosition(R - 44 - off, 44);
+    this.tearsText.setPosition(R - 72 - off, 44);
+    this.vertText.setPosition(R - 34 - off, 44);
     this.bossName.setPosition(this.W / 2 - off, 34);
     this.interactLabel.setPosition(lefty ? L + 100 * k : R - 100 * k, B - 128 * k);
   }
@@ -151,6 +156,10 @@ export class HudScene extends Phaser.Scene {
   private buildRunHud() {
     this.runLayer = this.add.container(0, 0).setDepth(10);
     this.bars = this.add.graphics();
+    this.mini = this.add.graphics().setDepth(11);
+    this.miniFrame = this.add.graphics().setDepth(12);
+    this.miniMask = this.make.graphics({}, false);
+    this.mini.setMask(this.miniMask.createGeometryMask());
     this.reliq = this.add.image(10, 8, 'reliquary').setOrigin(0);
     this.cracks = this.add.image(10, 8, 'reliquary-cracks').setOrigin(0).setAlpha(0);
     const censerIcon = this.add.image(12, 26, 'icon-censer').setOrigin(0);
@@ -279,6 +288,112 @@ export class HudScene extends Phaser.Scene {
   }
 
   // -------------------------------------------------------------------------
+  // Minimap & map screen
+  // -------------------------------------------------------------------------
+
+  private static ROLE_COLORS: Record<string, string> = {
+    confessional: P.blood0,
+    votive: P.gold1,
+    cache: P.tear1,
+    ante: P.flesh1,
+    elite: P.bile0,
+  };
+
+  /** Draw rooms of the descent map into a graphics object, cell size cw x ch. */
+  private drawMapRooms(g: Phaser.GameObjects.Graphics, ox: number, oy: number, cw: number, ch: number, clip?: Phaser.Geom.Rectangle) {
+    const m = hudState.map!;
+    const t = this.time.now;
+    m.rooms.forEach((r, i) => {
+      if (!r.seen) return;
+      const x = ox + r.x * cw;
+      const y = oy + r.y * ch;
+      const w = r.w * cw;
+      const h = r.h * ch;
+      if (clip && (x + w < clip.x || y + h < clip.y || x > clip.right || y > clip.bottom)) return;
+      const cur = i === m.current;
+      if (r.explored) {
+        g.fillStyle(hexNum(cur ? (Math.floor(t / 500) % 2 ? P.blood1 : P.blood2) : '#6a5a40'), 1).fillRect(x + 1, y + 1, w - 2, h - 2);
+        g.lineStyle(1, hexNum(P.gold2), 1).strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      } else {
+        // Glimpsed through a doorway: a dotted outline
+        g.fillStyle(hexNum(P.bone3), 1);
+        for (let k = 0; k < w; k += 2) {
+          g.fillRect(x + k, y, 1, 1);
+          g.fillRect(x + k, y + h - 1, 1, 1);
+        }
+        for (let k = 0; k < h; k += 2) {
+          g.fillRect(x, y + k, 1, 1);
+          g.fillRect(x + w - 1, y + k, 1, 1);
+        }
+      }
+      // Doorways: notches in the walls
+      for (const [cx, cy, d] of r.links) {
+        g.fillStyle(hexNum(r.explored ? '#d8c6a0' : P.bone3), 1);
+        if (d === 'E') g.fillRect(x + (cx + 1) * cw - 1, y + cy * ch + ch - 3, 2, 2);
+        if (d === 'W') g.fillRect(x + cx * cw - 1, y + cy * ch + ch - 3, 2, 2);
+        if (d === 'N') g.fillRect(x + cx * cw + cw / 2 - 1, y - 1, 2, 2);
+        if (d === 'S') g.fillRect(x + cx * cw + cw / 2 - 1, y + (cy + 1) * ch - 1, 2, 2);
+      }
+      const ic = HudScene.ROLE_COLORS[r.role];
+      if (ic && (r.explored || r.role === 'ante')) {
+        g.fillStyle(hexNum(P.ink), 1).fillRect(x + w / 2 - 2, y + h / 2 - 2, 4, 4);
+        g.fillStyle(hexNum(ic), 1).fillRect(x + w / 2 - 1, y + h / 2 - 1, 2, 2);
+      }
+    });
+  }
+
+  private drawMinimap() {
+    const g = this.mini;
+    const fr = this.miniFrame;
+    g.clear();
+    fr.clear();
+    const m = hudState.map;
+    if (!m || !hudState.inRun || this.modal) return;
+    const cw = 12;
+    const ch = 7;
+    const vw = 5 * cw;
+    const vh = 3 * ch;
+    const R = this.W - Math.max(8, this.inset.right);
+    const x0 = R - vw - 26;
+    const y0 = 8;
+    this.miniRect.setTo(x0 - 4, y0 - 4, vw + 8, vh + 8);
+    this.miniMask.clear().fillStyle(0xffffff).fillRect(x0, y0, vw, vh);
+    g.fillStyle(hexNum(P.ink), 0.8).fillRect(x0, y0, vw, vh);
+    this.drawMapRooms(g, x0 + vw / 2 - m.px * cw, y0 + vh / 2 - m.py * ch, cw, ch);
+    fr.lineStyle(1, hexNum(P.gold2), 0.9).strokeRect(x0 - 1.5, y0 - 1.5, vw + 3, vh + 3);
+    fr.fillStyle(hexNum(P.white), 1).fillRect(x0 + vw / 2 - 1, y0 + vh / 2 - 1, 2, 2);
+  }
+
+  /** The full map of this descent, on scorched parchment. */
+  showMap() {
+    const m = hudState.map;
+    if (!m || this.modal) return;
+    sfx(this, 'page_turn');
+    const layer = this.openModal();
+    const pw = Math.min(this.W - 30, 600);
+    const ph = this.H - 30;
+    const px = (this.W - pw) / 2;
+    const py = 15;
+    const shade = this.add.rectangle(0, 0, this.W, this.H, 0x000000, 0.7).setOrigin(0);
+    const panel = this.add.image(px, py, makePanel(this, `panel-${pw}x${ph}`, pw, ph)).setOrigin(0);
+    const title = this.add.bitmapText(this.W / 2, py + 12, FONT_OUTLINE, 'The Sunken Confessionals').setOrigin(0.5, 0).setTint(hexNum(P.gold1));
+    const g = this.add.graphics();
+    const cw = Math.max(6, Math.min(28, Math.floor((pw - 40) / m.gw)));
+    const ch = Math.max(4, Math.min(16, Math.floor(cw * 0.6), Math.floor((ph - 70) / m.gh)));
+    const ox = Math.round(this.W / 2 - (m.gw * cw) / 2);
+    const oy = Math.round(py + 34 + (ph - 70 - m.gh * ch) / 2);
+    g.fillStyle(hexNum('#1e1410'), 1).fillRect(ox - 6, oy - 6, m.gw * cw + 12, m.gh * ch + 12);
+    this.drawMapRooms(g, ox, oy, cw, ch);
+    g.fillStyle(hexNum(P.white), 1).fillCircle(ox + m.px * cw, oy + m.py * ch, 2);
+    const legend = this.add
+      .bitmapText(px + 16, py + ph - 18, FONT, 'red: confessional   gold: votive   blue: cache   pink: the Ear   tap to close')
+      .setTint(hexNum(P.bone2));
+    layer.add([shade, panel, title, g, legend]);
+    this.modalTap = () => this.closeModal();
+    this.modalKey = () => this.closeModal();
+  }
+
+  // -------------------------------------------------------------------------
   // Touch controls
   // -------------------------------------------------------------------------
 
@@ -316,6 +431,10 @@ export class HudScene extends Phaser.Scene {
       return;
     }
     if (!this.controlsVisible) return;
+    if (hudState.map && hudState.inRun && this.miniRect.contains(p.x, p.y)) {
+      this.showMap();
+      return;
+    }
     for (const b of this.btns) {
       if (!b.visible) continue;
       const d = Phaser.Math.Distance.Between(p.x, p.y, b.img.x, b.img.y);
@@ -445,6 +564,7 @@ export class HudScene extends Phaser.Scene {
   update() {
     this.pollKeyboard();
     this.runLayer.setVisible(hudState.inRun);
+    this.drawMinimap();
     if (hudState.inRun) {
       this.drawBars();
       this.updateLies();

@@ -132,7 +132,31 @@ function light(r: number): PixelCanvas {
   return pc;
 }
 
+function ladder(): PixelCanvas {
+  // Rough mahogany rails and rungs, nailed together, bloodied by many hands
+  const f = new Figure(16, 16);
+  const wood = { ramp: ['#1a0c08', '#341510', '#56251a', '#7d3b25', '#a8583a'], tex: grain(1.5, 0.12, 4) };
+  f.capsule(3, -1, 3, 17, 1.6, 1.6, wood, 1);
+  f.capsule(12, -1, 12, 17, 1.6, 1.6, wood, 1);
+  f.capsule(3, 4, 12, 4, 1.1, 1.1, wood, 2);
+  f.capsule(3, 12, 12, 12, 1.1, 1.1, wood, 2);
+  f.stain((x, y) => hash2(x | 0, y | 0, 5) < 0.08, BLOOD);
+  return f.render(KEY_LIGHT);
+}
+
+function hangingChain(): PixelCanvas {
+  const f = new Figure(16, 16);
+  for (let i = 0; i < 4; i++) {
+    const y = i * 4 + 2;
+    if (i % 2) f.ellipse(8, y, 1.4, 2.6, IRON, 1);
+    else f.ellipse(8, y, 2.6, 2.2, IRON, 1);
+  }
+  return f.render(KEY_LIGHT);
+}
+
 export function buildProps(scene: Phaser.Scene) {
+  registerImage(scene, 'ladder', ladder());
+  registerImage(scene, 'hang-chain', hangingChain());
   new SheetBuilder('tear').add('spin', [tearPickup(0), tearPickup(1)], 3).build(scene);
   registerImage(scene, 'vertebra', vertebra());
   registerImage(scene, 'proj-bile', projectile('bile'));
