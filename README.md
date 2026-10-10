@@ -30,7 +30,7 @@ use **Share → Add to Home Screen**.
 ```sh
 npm install
 npm run dev        # http://localhost:5173
-npm run build      # outputs dist/
+npm run build      # type-checks and writes the game to play/ (commit it)
 ```
 
 Debug URLs: `?run` (jump into a descent), `?boss` (Bartholomew),
@@ -38,6 +38,9 @@ Debug URLs: `?run` (jump into a descent), `?boss` (Bartholomew),
 
 ## Deploy
 
-Pushing to `master` runs `.github/workflows/deploy.yml`, which builds and
-publishes to GitHub Pages. One-time setup: repo **Settings → Pages →
-Build and deployment → Source: GitHub Actions**.
+The page source is `web/index.html`; `npm run build` writes the playable game
+to `play/`, which is committed. The root `index.html` forwards to `play/`.
+GitHub Pages therefore serves a working game whether it is set to *Deploy from
+a branch* (master, root) or to *GitHub Actions* (`.github/workflows/deploy.yml`,
+which also warns if `play/` is stale). Always run `npm run build` before
+committing.

@@ -1,5 +1,8 @@
 name: Deploy to GitHub Pages
 
+# The built game is committed in play/ (run `npm run build` before pushing),
+# so this workflow publishes the repository as-is. That keeps it identical to
+# what GitHub's "deploy from branch" mode would serve.
 on:
   push:
     branches: [master, main]
@@ -15,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,17 +27,23 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
+      - run: npm run typecheck
+      - name: Committed build is up to date
+        run: |
+          npm run build
+          git status --porcelain play
+          test -z "$(git status --porcelain play)" || echo "::warning::play/ differs from a fresh build; run npm run build and commit"
   deploy:
-    needs: build
+    needs: check
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
       - id: deployment
         uses: actions/deploy-pages@v4

@@ -24,7 +24,6 @@ export class TitleScene extends Phaser.Scene {
     const art = this.add.image(W / 2, 0, 'sanctum').setOrigin(0.5, 0);
     art.setScale(Math.max(W / art.width, H / art.height) * 1.0001);
     this.tweens.add({ targets: art, y: -12, duration: 14000, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-    this.add.rectangle(0, H * 0.52, W, H * 0.48, 0x0b0507, 0.35).setOrigin(0);
 
     const title1 = this.add.bitmapText(W / 2, H * 0.6, FONT_OUTLINE, 'THE SCARLET').setOrigin(0.5).setScale(3).setTint(hexNum(P.bone0));
     const title2 = this.add.bitmapText(W / 2, H * 0.6 + 30, FONT_OUTLINE, 'TETHER').setOrigin(0.5).setScale(4).setTint(hexNum(P.blood1));

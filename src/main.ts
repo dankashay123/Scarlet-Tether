@@ -11,6 +11,8 @@ import { GalleryScene } from './scenes/GalleryScene';
 import { VIEW_H, viewWidth } from './game/config';
 import { controls } from './game/controls';
 
+(window as unknown as { __booted: boolean }).__booted = true;
+
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
