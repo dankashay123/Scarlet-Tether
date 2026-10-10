@@ -15,6 +15,7 @@ interface Btn {
   r: number;
   visible: boolean;
   pointer: number | null;
+  scale?: number;
 }
 
 export interface MenuOption {
@@ -96,25 +97,36 @@ export class HudScene extends Phaser.Scene {
     return this.scale.height;
   }
 
-  private layout() {
+  layout() {
     this.inset = safeInsets(this.W);
+    const st = meta().settings;
+    const k = st.bigButtons ? 1.25 : 1;
+    const lefty = st.leftHanded;
     const R = this.W - Math.max(8, this.inset.right);
     const B = this.H - Math.max(6, this.inset.bottom);
+    const L = Math.max(10, this.inset.left);
+    // Offsets from the bottom corner of the button cluster.
     const place: Record<string, [number, number]> = {
-      attack: [R - 40, B - 46],
-      dodge: [R - 96, B - 26],
-      execute: [R - 40, B - 108],
-      speak: [R - 40, B - 108],
-      stigma: [R - 94, B - 84],
-      tear: [R - 146, B - 30],
-      pause: [R - 10, 16],
+      attack: [40, 46],
+      dodge: [96, 26],
+      execute: [40, 108],
+      speak: [40, 108],
+      stigma: [94, 84],
+      tear: [146, 30],
     };
     for (const b of this.btns) {
-      const [x, y] = place[b.action];
-      b.img.setPosition(x, y);
+      if (b.action === 'pause') {
+        b.img.setPosition(R - 10, 16);
+        continue;
+      }
+      const [ox, oy] = place[b.action];
+      const x = lefty ? L + ox * k : R - ox * k;
+      b.img.setPosition(x, B - oy * k).setScale(k);
+      b.scale = k;
     }
-    const L = Math.max(10, this.inset.left);
-    this.stickHome.set(L + 58, B - 52);
+    this.stickHome.set(lefty ? R - 58 : L + 58, B - 52);
+    this.stickBase.setScale(k);
+    this.stickKnob.setScale(k);
     if (this.stickPointer === null) {
       this.stickBase.setPosition(this.stickHome.x, this.stickHome.y);
       this.stickKnob.setPosition(this.stickHome.x, this.stickHome.y);
@@ -173,6 +185,32 @@ export class HudScene extends Phaser.Scene {
     g.clear();
     const run = currentRun();
     const t = this.time.now;
+    // The descent as a rosary: one bead per room, the last an ear.
+    if (hudState.depth >= 0 && !hudState.bossVisible) {
+      const n = hudState.totalDepth;
+      const sp = 9;
+      const bx = Math.round(this.W / 2 - ((n - 1) * sp) / 2) - (this.runLayer.x || 0);
+      g.fillStyle(hexNum(P.bone3), 1).fillRect(bx, 9, (n - 1) * sp, 1);
+      for (let i = 0; i < n; i++) {
+        const x = bx + i * sp;
+        const boss = i === n - 1;
+        const col = i < hudState.depth ? P.bone1 : i === hudState.depth ? P.blood0 : P.shadow2;
+        const r = boss ? 3 : 2;
+        g.fillStyle(hexNum(P.ink), 1).fillRect(x - r - 1, 9 - r - 1, r * 2 + 3, r * 2 + 3);
+        g.fillStyle(hexNum(boss && i > hudState.depth ? P.flesh3 : col), 1).fillRect(x - r, 9 - r, r * 2 + 1, r * 2 + 1);
+        if (i === hudState.depth && Math.floor(t / 400) % 2) g.fillStyle(hexNum(P.blood1), 1).fillRect(x - r, 9 - r, r * 2 + 1, r * 2 + 1);
+      }
+    }
+    // The body failing: a red pulse at the edges of sight
+    const frac = run.hp / run.maxHp;
+    if (frac < 0.3 && run.hp > 0) {
+      const a = (0.25 + 0.2 * Math.sin(t / 160)) * (1 - frac / 0.3);
+      const ox = -(this.runLayer.x || 0);
+      g.fillStyle(hexNum(P.blood2), a);
+      g.fillRect(ox, 0, this.W, 6).fillRect(ox, this.H - 6, this.W, 6).fillRect(ox, 0, 6, this.H).fillRect(ox + this.W - 6, 0, 6, this.H);
+      g.fillStyle(hexNum(P.blood3), a * 0.6);
+      g.fillRect(ox + 6, 6, this.W - 12, 4).fillRect(ox + 6, this.H - 10, this.W - 12, 4).fillRect(ox + 6, 6, 4, this.H - 12).fillRect(ox + this.W - 10, 6, 4, this.H - 12);
+    }
     // --- Reliquary (health) ---
     const target = Phaser.Math.Clamp(run.hp / run.maxHp, 0, 1);
     this.shownHp = Phaser.Math.Linear(this.shownHp, target, 0.35);
@@ -279,14 +317,15 @@ export class HudScene extends Phaser.Scene {
     for (const b of this.btns) {
       if (!b.visible) continue;
       const d = Phaser.Math.Distance.Between(p.x, p.y, b.img.x, b.img.y);
-      if (d <= b.r + 7) {
+      if (d <= b.r * (b.scale ?? 1) + 7) {
         b.pointer = p.id;
         b.img.setTexture(`btn-${b.key}-down`);
         controls.press(b.action);
         return;
       }
     }
-    if (p.x < this.W * 0.5 && this.stickPointer === null) {
+    const stickSide = meta().settings.leftHanded ? p.x > this.W * 0.5 : p.x < this.W * 0.5;
+    if (stickSide && this.stickPointer === null) {
       this.stickPointer = p.id;
       this.stickOrigin.set(p.x, p.y);
       this.stickBase.setPosition(p.x, p.y).setAlpha(0.75);
@@ -298,7 +337,7 @@ export class HudScene extends Phaser.Scene {
     if (p.id !== this.stickPointer) return;
     const dx = p.x - this.stickOrigin.x;
     const dy = p.y - this.stickOrigin.y;
-    const max = 28;
+    const max = 28 * (meta().settings.bigButtons ? 1.25 : 1);
     const len = Math.hypot(dx, dy);
     const k = len > max ? max / len : 1;
     // Drag the base along if the thumb wanders far, so it never "runs out".

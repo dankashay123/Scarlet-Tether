@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
 
 // The page source lives in web/; the built game is written to play/ and
 // committed, so GitHub Pages serves a working game whether it deploys from
@@ -9,6 +10,8 @@ export default defineConfig({
   base: './',
   publicDir: '../public',
   server: { fs: { allow: ['..'] } },
+  // web/index.html loads /src/main.ts; map that onto the real src/ folder.
+  resolve: { alias: { '/src': fileURLToPath(new URL('./src', import.meta.url)) } },
   build: {
     outDir: '../play',
     emptyOutDir: true,

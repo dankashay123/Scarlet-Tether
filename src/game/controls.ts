@@ -82,4 +82,6 @@ export const hudState = {
   bossName: '',
   bossHp: 0,
   bossVisible: false,
+  depth: -1,
+  totalDepth: 10,
 };

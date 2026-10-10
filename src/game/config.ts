@@ -1,9 +1,16 @@
 export const VIEW_H = 360;
 
-/** Logical width tracks the device aspect so wide phones see more, never less. */
+/**
+ * Logical width matches the device's landscape shape so wide phones see more,
+ * never less. It is chosen once at boot from the window if already landscape,
+ * otherwise from the physical screen, so rotating never reflows the game.
+ */
 export function viewWidth(): number {
-  const aspect = window.innerWidth / Math.max(1, window.innerHeight);
-  if (aspect < 1) return 640;
+  const ww = window.innerWidth;
+  const wh = Math.max(1, window.innerHeight);
+  const sw = Math.max(screen.width, screen.height);
+  const sh = Math.max(1, Math.min(screen.width, screen.height));
+  const aspect = ww > wh ? ww / wh : sw / sh;
   const w = Math.round(VIEW_H * aspect);
   return Math.max(640, Math.min(820, w - (w % 2)));
 }

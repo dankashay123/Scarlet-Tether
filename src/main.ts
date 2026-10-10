@@ -50,11 +50,9 @@ const game = new Phaser.Game({
   ],
 });
 
-// Keep the logical width matched to the device's aspect ratio so wide
-// iPhones see more of the room instead of black bars.
+// The logical size is fixed at boot; on rotation or browser-bar changes we
+// only rescale the canvas to fit.
 function fit() {
-  const w = viewWidth();
-  if (game.scale.width !== w) game.scale.setGameSize(w, VIEW_H);
   game.scale.refresh();
 }
 window.addEventListener('resize', () => setTimeout(fit, 50));

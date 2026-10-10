@@ -3,7 +3,8 @@ import { FONT_OUTLINE } from '../art/font';
 import { P, hexNum } from '../art/palette';
 import { DEPTH } from './config';
 import { sfx } from './audio';
-import { hasSacrament } from './state';
+import { currentRun, hasSacrament } from './state';
+import { rotLevel } from './lucidity';
 import type { World } from './world';
 
 export type EnemyKind = 'blind' | 'gossip' | 'penitent' | 'boss' | 'ear';
@@ -33,6 +34,11 @@ export abstract class Enemy {
   sprite: Phaser.GameObjects.Sprite;
   protected shadow: Phaser.GameObjects.Image;
   protected mark: Phaser.GameObjects.BitmapText;
+  private alert: Phaser.GameObjects.BitmapText;
+  private warnT = 0;
+  /** [lie, truth]: how Sanctum wants it seen, and what it is. */
+  protected skins: [string, string] | null = null;
+  protected skin: string;
   protected vx = 0;
   protected vy = 0;
   protected face = 1;
@@ -64,6 +70,8 @@ export abstract class Enemy {
     this.shadow = s.add.image(x, y, shadowKey).setDepth(DEPTH.shadow).setAlpha(0.5);
     this.sprite = s.add.sprite(x, y, tex).setOrigin(0.5, 0.9);
     this.sprite.play(`${tex}:idle`);
+    this.skin = tex;
+    this.alert = s.add.bitmapText(x, y, FONT_OUTLINE, '!').setOrigin(0.5).setTint(hexNum(P.blood0)).setScale(2).setVisible(false).setDepth(DEPTH.overlay - 2);
     this.mark = s.add.bitmapText(x, y, FONT_OUTLINE, '✞').setOrigin(0.5).setTint(hexNum(P.blood0)).setVisible(false).setDepth(DEPTH.overlay - 2);
     // Rise from a pool of blood
     this.sprite.setAlpha(0);
@@ -98,8 +106,25 @@ export abstract class Enemy {
   }
 
   protected play(name: string) {
-    const k = `${this.sprite.texture.key}:${name}`;
+    const k = `${this.skin}:${name}`;
     if (this.sprite.anims.currentAnim?.key !== k) this.sprite.play(k, true);
+  }
+
+  /** A clear warning that a blow is coming: fairness on a small screen. */
+  protected telegraph(ms = 450) {
+    this.warnT = ms / 1000;
+    this.alert.setVisible(true).setScale(2.6);
+    this.world.sc.tweens.add({ targets: this.alert, scale: 2, duration: 140 });
+  }
+
+  /** Swap between the saintly lie and the truth as Lucidity changes. */
+  private updateSkin() {
+    if (!this.skins) return;
+    const want = rotLevel(currentRun().lucidity) < 0.3 ? this.skins[0] : this.skins[1];
+    if (want === this.skin) return;
+    const cur = this.sprite.anims.currentAnim?.key.split(':')[1] ?? 'idle';
+    this.skin = want;
+    this.sprite.play(`${want}:${cur}`, true);
   }
 
   breakPoise(frac: number) {
@@ -205,6 +230,15 @@ export abstract class Enemy {
 
   update(dt: number) {
     this.stateT += dt;
+    if (this.warnT > 0) {
+      this.warnT -= dt;
+      this.alert.setPosition(Math.round(this.x), Math.round(this.y - this.sprite.displayHeight - 4));
+      if (this.warnT <= 0 || this.state === 'stagger' || this.state === 'dead') {
+        this.alert.setVisible(false);
+        this.warnT = 0;
+      }
+    }
+    this.updateSkin();
     if (this.state === 'dead') return;
     // Damage over time
     if (this.toxinT > 0 || this.bleedT > 0) {
@@ -272,6 +306,7 @@ export abstract class Enemy {
     this.sprite.destroy();
     this.shadow.destroy();
     this.mark.destroy();
+    this.alert.destroy();
   }
 }
 
@@ -289,6 +324,7 @@ export class Blind extends Enemy {
 
   constructor(world: World, x: number, y: number, elite = false) {
     super(world, x, y, 'blind', elite ? 70 : 42, elite ? 40 : 26);
+    this.skins = ['blind-saint', 'blind'];
     this.elite = elite;
     this.tearValue = elite ? 6 : 3;
     if (elite) this.sprite.setTint((this.baseTint = hexNum('#ffb8b8')));
@@ -323,6 +359,7 @@ export class Blind extends Enemy {
             this.faceTo(this.px);
             this.setState('windup');
             this.play('windup');
+          this.telegraph();
             sfx(this.world.sc, 'whisper', { volume: 0.4, rate: 1.3 });
             break;
           }
@@ -425,6 +462,7 @@ export class Gossip extends Enemy {
         if (this.cooldown <= 0 && sight && d < 190) {
           this.setState('windup');
           this.play('windup');
+          this.telegraph();
         }
         break;
       }
@@ -511,6 +549,7 @@ export class Penitent extends Enemy {
           this.ty = this.y + Math.sin(a) * Math.min(d, 34);
           this.setState('windup');
           this.play('windup');
+          this.telegraph();
         }
         break;
       }

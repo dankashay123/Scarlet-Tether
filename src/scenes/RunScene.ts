@@ -144,6 +144,17 @@ export class RunScene extends Phaser.Scene implements World {
 
     hudState.inRun = true;
     hudState.bossVisible = false;
+    hudState.depth = node.type === 'boss' ? 9 : node.type === 'ante' ? 8 : Math.min(node.depth, 7);
+    hudState.totalDepth = 10;
+    // Leaving the app mid-fight pauses the descent.
+    const onHidden = () => {
+      if (!this.pausing && !hud(this).modal && !this.dying && !this.leaving) {
+        this.pausing = true;
+        pauseMenu(this, true).then(() => (this.pausing = false));
+      }
+    };
+    this.game.events.on(Phaser.Core.Events.HIDDEN, onHidden);
+    this.events.once('shutdown', () => this.game.events.off(Phaser.Core.Events.HIDDEN, onHidden));
     loop(this, 'amb_drip', 'amb');
     if (node.type !== 'boss') stopLoop(this, 'music');
 
@@ -223,12 +234,73 @@ export class RunScene extends Phaser.Scene implements World {
           break;
       }
     }
+    this.scatterDecor();
     // Choose destinations for the doors now so emblems show from the start.
     const dests = plan.choices(this.doors.length);
     this.doors.forEach((d, i) => {
       d.dest = dests[i];
       d.emblem = this.add.image(d.x, d.y - 46, `emblem-${EMBLEM[d.dest]}`).setDepth(DEPTH.actorBase + d.y + 1).setAlpha(0.35);
     });
+  }
+
+  /** Bones, rosaries, confession slips; drips from the booths; drifting dust. */
+  private scatterDecor() {
+    const r = this.room;
+    const rand = Phaser.Math.RND;
+    rand.sow([String(this.node.seed)]);
+    const spawn = r.find('S')[0];
+    const kinds = ['decor-bones', 'decor-skull', 'decor-rosary', 'decor-scraps', 'decor-candles', 'blood'];
+    for (let ty = 2; ty < r.h - 1; ty++) {
+      for (let tx = 1; tx < r.w - 1; tx++) {
+        const c = r.ch(tx, ty);
+        if (c !== '.' && c !== ',' && c !== 'x') continue;
+        if (r.solidAt(tx, ty)) continue;
+        const nearWall = r.ch(tx - 1, ty) === '#' || r.ch(tx + 1, ty) === '#' || r.ch(tx, ty - 1) === '#';
+        if (rand.frac() > (nearWall ? 0.12 : 0.025)) continue;
+        const x = tx * 16 + rand.between(2, 14);
+        const y = ty * 16 + rand.between(4, 14);
+        if (Phaser.Math.Distance.Between(x, y, spawn.x, spawn.y) < 40) continue;
+        const k = rand.pick(kinds);
+        if (k === 'blood') {
+          this.fx.decal(x, y, 0.6 + rand.frac() * 0.6);
+          continue;
+        }
+        this.add.image(x, y, k).setDepth(DEPTH.decal + 1).setFlipX(rand.frac() < 0.5);
+        if (k === 'decor-candles') this.addLight(x, y - 6, 'light-sm', P.candle, 0.35);
+      }
+    }
+    // Blood weeping down the booth walls
+    const faces: { x: number; y: number }[] = [];
+    for (let tx = 1; tx < r.w - 1; tx++) for (let ty = 1; ty < r.h - 1; ty++) if (r.ch(tx, ty) === '#' && r.ch(tx, ty + 1) !== '#' && r.ch(tx, ty + 1) !== ' ') faces.push({ x: tx * 16, y: ty * 16 });
+    this.time.addEvent({
+      delay: 260,
+      loop: true,
+      callback: () => {
+        if (!faces.length || Math.random() > 0.6) return;
+        const f = Phaser.Utils.Array.GetRandom(faces);
+        const d = this.add.image(f.x + Phaser.Math.Between(2, 14), f.y + 4, 'px1').setTint(hexNum(P.blood1)).setDepth(DEPTH.decal + 2);
+        this.tweens.add({ targets: d, y: f.y + 15 + Math.random() * 3, duration: 900 + Math.random() * 600, ease: 'Quad.In', onComplete: () => d.destroy() });
+      },
+    });
+    // Dust and ash drifting through the candlelight
+    for (let i = 0; i < 26; i++) {
+      const m = this.add
+        .image(Phaser.Math.Between(16, r.pxW - 16), Phaser.Math.Between(24, r.pxH - 16), 'px1')
+        .setTint(hexNum(P.gold0))
+        .setAlpha(0)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setDepth(DEPTH.light);
+      this.tweens.add({
+        targets: m,
+        alpha: { from: 0, to: 0.55 },
+        x: m.x + Phaser.Math.Between(-24, 24),
+        y: m.y - Phaser.Math.Between(10, 40),
+        duration: Phaser.Math.Between(3000, 6000),
+        delay: Phaser.Math.Between(0, 4000),
+        yoyo: true,
+        repeat: -1,
+      });
+    }
   }
 
   private addLight(x: number, y: number, key: string, color: string, alpha: number) {

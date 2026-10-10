@@ -387,7 +387,55 @@ function drawBlindCorpse(): PixelCanvas {
   return pc;
 }
 
+/**
+ * The Blind as Sanctum would have thee see them: serene saints in white,
+ * eyes peacefully closed, haloed in gold.
+ */
+function sainted(src: PixelCanvas): PixelCanvas {
+  const swap: Record<string, string> = {
+    '#d8cdbb': P.marble0,
+    '#a99a86': P.marble1,
+    '#76695a': P.marble2,
+    [P.cloth2]: P.marble0,
+    [P.blood1]: P.marble1,
+    [P.blood2]: P.marble1,
+    [P.blood3]: P.marble2,
+    [P.bone0]: P.gold1,
+  };
+  const out = new PixelCanvas(src.w, src.h);
+  out.blit(src, 0, 0);
+  out.map((_x, _y, r, g, b) => {
+    const hex = '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
+    return swap[hex] ?? null;
+  });
+  // Find the head (topmost opaque pixel) and crown it with a halo
+  let top = -1;
+  let hx = 16;
+  for (let y = 0; y < out.h && top < 0; y++)
+    for (let x = 0; x < out.w; x++)
+      if (out.alphaAt(x, y) && out.data[(y * out.w + x) * 4] > 30) {
+        top = y;
+        hx = x;
+        break;
+      }
+  if (top >= 2) {
+    for (let a = 0; a < 16; a++) {
+      const ang = (a / 16) * Math.PI * 2;
+      out.px(hx + 1 + Math.round(Math.cos(ang) * 5), top - 1 + Math.round(Math.sin(ang) * 2), P.gold1);
+    }
+  }
+  return out;
+}
+
 export function buildBlindSheet(scene: Phaser.Scene) {
+  new SheetBuilder('blind-saint')
+    .add('idle', [sainted(drawBlind('idle', 0)), sainted(drawBlind('idle', 1))], 2)
+    .add('walk', [0, 1, 2, 3].map((t) => sainted(drawBlind('walk', t))), 8)
+    .add('windup', [sainted(drawBlind('windup', 0))], 1, 0)
+    .add('attack', [sainted(drawBlind('lunge', 0))], 1, 0)
+    .add('stagger', [sainted(drawBlind('stagger', 0))], 1, 0)
+    .add('dead', [sainted(drawBlindCorpse())], 1, 0)
+    .build(scene);
   new SheetBuilder('blind')
     .add('idle', [drawBlind('idle', 0), drawBlind('idle', 1)], 2)
     .add('walk', [0, 1, 2, 3].map((t) => drawBlind('walk', t)), 8)

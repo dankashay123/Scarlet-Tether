@@ -449,7 +449,91 @@ function lectern(): PixelCanvas {
   return pc;
 }
 
+function decorBones(): PixelCanvas {
+  const pc = new PixelCanvas(16, 10);
+  pc.line(2, 7, 11, 4, P.bone1);
+  pc.line(2, 8, 11, 5, P.bone2);
+  pc.ellipse(2, 7, 1, 1, P.bone0);
+  pc.ellipse(11, 4, 1, 1, P.bone0);
+  pc.line(6, 8, 13, 8, P.bone1);
+  pc.ellipse(13, 7, 2, 2, P.bone0);
+  pc.px(12, 7, P.ink);
+  pc.outline(P.ink);
+  return pc;
+}
+
+function decorSkull(): PixelCanvas {
+  const pc = new PixelCanvas(10, 9);
+  pc.ellipse(5, 4, 3, 3, P.bone0);
+  pc.rect(3, 6, 5, 2, P.bone1);
+  pc.px(4, 4, P.ink);
+  pc.px(6, 4, P.ink);
+  pc.px(5, 7, P.ink);
+  pc.outline(P.ink);
+  return pc;
+}
+
+function decorRosary(): PixelCanvas {
+  const pc = new PixelCanvas(16, 10);
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 1.7;
+    pc.px(8 + Math.round(Math.cos(a) * 6), 4 + Math.round(Math.sin(a) * 3), i % 4 ? P.bone1 : P.blood1);
+  }
+  pc.line(14, 5, 14, 9, P.gold2);
+  pc.line(13, 7, 15, 7, P.gold2);
+  return pc;
+}
+
+function decorScraps(): PixelCanvas {
+  // Torn confession slips
+  const pc = new PixelCanvas(16, 10);
+  pc.poly(
+    [
+      [1, 3],
+      [7, 1],
+      [8, 6],
+      [2, 8],
+    ],
+    '#e8dccb',
+  );
+  pc.poly(
+    [
+      [8, 5],
+      [14, 4],
+      [15, 9],
+      [9, 9],
+    ],
+    '#d8cbb4',
+  );
+  pc.line(3, 4, 6, 3, P.marble3);
+  pc.line(3, 6, 6, 5, P.marble3);
+  pc.line(10, 6, 13, 6, P.marble3);
+  pc.px(12, 8, P.blood2);
+  pc.outline(P.ink);
+  return pc;
+}
+
+function decorCandles(): PixelCanvas {
+  const pc = new PixelCanvas(14, 12);
+  for (const [x, h] of [
+    [2, 6],
+    [6, 8],
+    [10, 5],
+  ]) {
+    pc.rect(x, 11 - h, 2, h, P.bone0);
+    pc.px(x, 11 - h - 1, P.candle);
+  }
+  pc.rect(1, 10, 12, 2, P.bone1);
+  pc.outline(P.ink);
+  return pc;
+}
+
 export function buildProps(scene: Phaser.Scene) {
+  registerImage(scene, 'decor-bones', decorBones());
+  registerImage(scene, 'decor-skull', decorSkull());
+  registerImage(scene, 'decor-rosary', decorRosary());
+  registerImage(scene, 'decor-scraps', decorScraps());
+  registerImage(scene, 'decor-candles', decorCandles());
   registerImage(scene, 'lectern', lectern());
   registerImage(scene, 'booth', confessionalBooth(false, false));
   registerImage(scene, 'booth-open', confessionalBooth(false, true));

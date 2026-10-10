@@ -25,7 +25,7 @@ export interface MetaState {
   runs: number;
   bestRoom: number;
   flags: Record<string, boolean>;
-  settings: { sfx: number; music: number; shake: boolean };
+  settings: { sfx: number; music: number; shake: boolean; leftHanded: boolean; bigButtons: boolean };
 }
 
 const KEY = 'scarlet-tether-save-v1';
@@ -49,7 +49,7 @@ function fresh(): MetaState {
     runs: 0,
     bestRoom: 0,
     flags: {},
-    settings: { sfx: 1, music: 1, shake: true },
+    settings: { sfx: 1, music: 1, shake: true, leftHanded: false, bigButtons: false },
   };
 }
 
