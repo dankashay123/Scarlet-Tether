@@ -16,6 +16,8 @@ import { controls } from './game/controls';
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
+  // Text is real DOM text over the canvas so serif letters stay crisp (see ui/text.ts)
+  dom: { createContainer: true },
   backgroundColor: '#0b0507',
   pixelArt: true,
   roundPixels: true,

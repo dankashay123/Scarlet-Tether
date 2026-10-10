@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import { FONT_OUTLINE } from '../art/font';
 import { P, hexNum } from '../art/palette';
 import { DEPTH } from './config';
 import { meta } from './state';
+import { txt } from '../ui/text';
 
 /** Smoke, sparks, floating words, rings and screen shake. Blood lives in Gore. */
 export class Fx {
@@ -56,13 +56,13 @@ export class Fx {
   }
 
   text(x: number, y: number, s: string, color: string = P.bone0, rise = 18, ms = 900) {
-    const t = this.scene.add.bitmapText(x, y, FONT_OUTLINE, s).setOrigin(0.5).setTint(hexNum(color)).setDepth(DEPTH.overlay - 1);
+    const t = txt(this.scene, x, y, s, 'label', 12).setOrigin(0.5).setTint(hexNum(color)).setDepth(DEPTH.overlay - 1);
     this.scene.tweens.add({ targets: t, y: y - rise, alpha: { from: 1, to: 0 }, duration: ms, ease: 'Cubic.Out', onComplete: () => t.destroy() });
     return t;
   }
 
   whisper(x: number, y: number, s: string, color: string = P.lucid0) {
-    const t = this.scene.add.bitmapText(x, y, FONT_OUTLINE, s).setOrigin(0.5).setTint(hexNum(color)).setDepth(DEPTH.overlay - 1).setAlpha(0);
+    const t = txt(this.scene, x, y, s, 'label', 12).setItalic().setOrigin(0.5).setTint(hexNum(color)).setDepth(DEPTH.overlay - 1).setAlpha(0);
     this.scene.tweens.add({ targets: t, alpha: 0.85, duration: 600, yoyo: true, hold: 1600, onComplete: () => t.destroy() });
     this.scene.tweens.add({ targets: t, x: x + (Math.random() - 0.5) * 30, y: y - 12, duration: 2800 });
   }

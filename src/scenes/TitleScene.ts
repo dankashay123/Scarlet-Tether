@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { FONT, FONT_OUTLINE } from '../art/font';
 import { P, hexNum } from '../art/palette';
 import { registerImage } from '../art/pixel';
 import { drawSaint } from '../art/environment/props';
@@ -12,6 +11,7 @@ import { Gore } from '../game/gore';
 import { hud } from './HudScene';
 import { buildHeroSheet } from '../art/hero';
 import { lookFromSeed } from '../art/look';
+import { txt } from '../ui/text';
 
 const FLOOR_ROW = 17;
 
@@ -122,23 +122,27 @@ export class TitleScene extends Phaser.Scene {
     const ty = Math.round(H * 0.17);
     const ux = W / 2; // screen-space centre for the UI
     const frame = this.add.graphics().setDepth(DEPTH.overlay).setScrollFactor(0);
-    const fw = 250;
-    const gold = hexNum('#c9a45c');
+        const gold = hexNum('#c9a45c');
     const dark = hexNum('#5a4020');
-    frame.fillStyle(0x0b0507, 0.55).fillRect(ux - fw / 2, ty - 26, fw, 74);
-    frame.lineStyle(1, dark, 1).strokeRect(ux - fw / 2 - 2, ty - 28, fw + 4, 78);
-    frame.lineStyle(1, gold, 1).strokeRect(ux - fw / 2, ty - 26, fw, 74);
-    // Corner flourishes and a crowning cross
-    for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-      const x = ux + (sx * fw) / 2;
-      const y = sy < 0 ? ty - 26 : ty + 48;
-      frame.fillStyle(gold, 1).fillRect(x - 2, y - 2, 5, 5);
-      frame.fillStyle(hexNum(P.blood1), 1).fillRect(x - 1, y - 1, 3, 3);
+    // A crowning cross and a gilded rule with blood-red diamonds between the words
+    frame.fillStyle(gold, 1).fillRect(ux - 1, ty - 46, 3, 15).fillRect(ux - 5, ty - 42, 11, 3);
+    frame.fillStyle(dark, 1).fillRect(ux - 96, ty + 4, 192, 3);
+    frame.fillStyle(gold, 1).fillRect(ux - 95, ty + 5, 190, 1);
+    for (const sx of [-1, 1]) {
+      const x = ux + sx * 99;
+      frame.fillStyle(gold, 1).fillTriangle(x - 4, ty + 5.5, x, ty + 1.5, x + 4, ty + 5.5).fillTriangle(x - 4, ty + 5.5, x, ty + 9.5, x + 4, ty + 5.5);
+      frame.fillStyle(hexNum(P.blood1), 1).fillTriangle(x - 2, ty + 5.5, x, ty + 3.5, x + 2, ty + 5.5).fillTriangle(x - 2, ty + 5.5, x, ty + 7.5, x + 2, ty + 5.5);
     }
-    frame.fillStyle(gold, 1).fillRect(ux - 1, ty - 40, 3, 14).fillRect(ux - 5, ty - 36, 11, 3);
-    frame.fillStyle(gold, 1).fillRect(ux - 70, ty + 7, 140, 1);
-    const title1 = this.add.bitmapText(ux, ty - 8, FONT_OUTLINE, 'THE SCARLET').setOrigin(0.5).setScale(2).setTint(hexNum(P.bone0)).setDepth(DEPTH.overlay + 1).setScrollFactor(0);
-    const title2 = this.add.bitmapText(ux, ty + 30, FONT_OUTLINE, 'TETHER').setOrigin(0.5).setScale(3).setTint(hexNum(P.blood1)).setDepth(DEPTH.overlay + 1).setScrollFactor(0);
+    const title1 = txt(this, ux, ty - 12, 'The Scarlet', 'title', 19)
+      .setOrigin(0.5)
+      .setGradient('#fbf3dc', '#b8a27a', 'rgba(255,220,160,0.35)')
+      .setDepth(DEPTH.overlay + 1)
+      .setScrollFactor(0);
+    const title2 = txt(this, ux, ty + 30, 'Tether', 'title', 40)
+      .setOrigin(0.5)
+      .setGradient('#ff5a4a', '#6e0a18', 'rgba(220,20,40,0.6)')
+      .setDepth(DEPTH.overlay + 1)
+      .setScrollFactor(0);
     for (const o of [frame, title1, title2]) o.setAlpha(0);
     this.tweens.add({ targets: [frame, title1, title2], alpha: 1, duration: 1800, delay: 400 });
     // Blood seeps from the title, now and then
@@ -147,17 +151,17 @@ export class TitleScene extends Phaser.Scene {
     const m = meta();
     if (new URLSearchParams(location.search).has('splash')) return; // capture mode for the loading splash
     const label = m.seenIntro ? `touch to descend as ${m.citizen.name}` : 'touch to begin';
-    const hint = this.add.bitmapText(ux, H - 40, FONT_OUTLINE, label).setOrigin(0.5).setTint(hexNum(P.bone1)).setDepth(DEPTH.overlay + 1).setScrollFactor(0);
+    const hint = txt(this, ux, H - 40, label, 'label', 13).setItalic().setOrigin(0.5).setTint(hexNum(P.bone1)).setDepth(DEPTH.overlay + 1).setScrollFactor(0);
     this.tweens.add({ targets: hint, alpha: 0.3, duration: 900, yoyo: true, repeat: -1 });
     const standalone =
       (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
       window.matchMedia('(display-mode: fullscreen)').matches ||
       window.matchMedia('(display-mode: standalone)').matches;
     if (!standalone && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
-      this.add.bitmapText(ux, H - 20, FONT, 'For fullscreen: Share > Add to Home Screen').setOrigin(0.5).setTint(hexNum(P.marble3)).setDepth(DEPTH.overlay + 1).setScrollFactor(0);
+      txt(this, ux, H - 20, 'For fullscreen: Share › Add to Home Screen', 'body', 10).setOrigin(0.5).setTint(hexNum(P.marble3)).setDepth(DEPTH.overlay + 1).setScrollFactor(0);
     }
     if (m.seenIntro) {
-      const wipe = this.add.bitmapText(W - 10, 10, FONT, 'forget everything').setOrigin(1, 0).setTint(hexNum(P.marble4)).setDepth(DEPTH.overlay + 1).setScrollFactor(0).setInteractive({ useHandCursor: true });
+      const wipe = txt(this, W - 10, 8, 'forget everything', 'body', 10).setItalic().setOrigin(1, 0).setTint(hexNum(P.marble4)).setDepth(DEPTH.overlay + 1).setScrollFactor(0).setInteractive({ useHandCursor: true });
       wipe.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
         ev.stopPropagation();
         this.started = true;

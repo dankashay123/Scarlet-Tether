@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { FONT, FONT_OUTLINE } from '../art/font';
 import { P, hexNum } from '../art/palette';
 import { makePanel } from '../art/ui';
 import { controls, hudState, type Action } from '../game/controls';
@@ -7,6 +6,7 @@ import { currentRun, hasSacrament, meta } from '../game/state';
 import { sfx } from '../game/audio';
 import { safeInsets } from '../ui/safearea';
 import { FAKE_ACHIEVEMENTS, UI_LIES } from '../game/lore';
+import { GameText, txt, type Face } from '../ui/text';
 
 interface Btn {
   action: Action;
@@ -55,10 +55,10 @@ export class HudScene extends Phaser.Scene {
   private miniRect = new Phaser.Geom.Rectangle(0, 0, 0, 0);
   private reliq!: Phaser.GameObjects.Image;
   private cracks!: Phaser.GameObjects.Image;
-  private tearsText!: Phaser.GameObjects.BitmapText;
-  private vertText!: Phaser.GameObjects.BitmapText;
-  private lieText!: Phaser.GameObjects.BitmapText;
-  private bossName!: Phaser.GameObjects.BitmapText;
+  private tearsText!: GameText;
+  private vertText!: GameText;
+  private lieText!: GameText;
+  private bossName!: GameText;
   private shownHp = 1;
   private trailHp = 1;
   private lieUntil = 0;
@@ -70,7 +70,7 @@ export class HudScene extends Phaser.Scene {
   private modalTap: ((p: Phaser.Input.Pointer) => void) | null = null;
   private modalKey: ((k: string) => void) | null = null;
   private inset = { left: 0, right: 0, top: 0, bottom: 0 };
-  private interactLabel!: Phaser.GameObjects.BitmapText;
+  private interactLabel!: GameText;
   private controlsVisible = true;
 
   constructor() {
@@ -170,10 +170,10 @@ export class HudScene extends Phaser.Scene {
     const lucidBar = this.add.image(28, 42, 'bar-lucid').setOrigin(0);
     const tearIcon = this.add.image(0, 0, 'icon-tear').setName('icon-tear');
     const vertIcon = this.add.image(0, 0, 'icon-vertebra').setName('icon-vert');
-    this.tearsText = this.add.bitmapText(0, 0, FONT_OUTLINE, '0').setOrigin(0, 0.5);
-    this.vertText = this.add.bitmapText(0, 0, FONT_OUTLINE, '0').setOrigin(0, 0.5);
-    this.lieText = this.add.bitmapText(12, 56, FONT_OUTLINE, '').setTint(hexNum(P.blood0)).setAlpha(0);
-    this.bossName = this.add.bitmapText(0, 0, FONT_OUTLINE, '').setOrigin(0.5, 0.5).setTint(hexNum(P.bone0));
+    this.tearsText = txt(this, 0, 0, '0', 'head', 11).setOrigin(0, 0.5);
+    this.vertText = txt(this, 0, 0, '0', 'head', 11).setOrigin(0, 0.5);
+    this.lieText = txt(this, 12, 56, '', 'label', 11).setItalic().setTint(hexNum(P.blood0)).setAlpha(0);
+    this.bossName = txt(this, 0, 0, '', 'head', 12).setOrigin(0.5, 0.5).setTint(hexNum(P.bone0));
     this.runLayer.add([
       this.reliq,
       censerIcon,
@@ -378,7 +378,7 @@ export class HudScene extends Phaser.Scene {
     const py = 15;
     const shade = this.add.rectangle(0, 0, this.W, this.H, 0x000000, 0.7).setOrigin(0);
     const panel = this.add.image(px, py, makePanel(this, `panel-${pw}x${ph}`, pw, ph)).setOrigin(0);
-    const title = this.add.bitmapText(this.W / 2, py + 12, FONT_OUTLINE, 'The Sunken Confessionals').setOrigin(0.5, 0).setTint(hexNum(P.gold1));
+    const title = txt(this, this.W / 2, py + 9, 'The Sunken Confessionals', 'head', 13).setOrigin(0.5, 0).setTint(hexNum(P.gold1));
     const g = this.add.graphics();
     const cw = Math.max(6, Math.min(28, Math.floor((pw - 40) / m.gw)));
     const ch = Math.max(4, Math.min(16, Math.floor(cw * 0.6), Math.floor((ph - 70) / m.gh)));
@@ -387,8 +387,7 @@ export class HudScene extends Phaser.Scene {
     g.fillStyle(hexNum('#1e1410'), 1).fillRect(ox - 6, oy - 6, m.gw * cw + 12, m.gh * ch + 12);
     this.drawMapRooms(g, ox, oy, cw, ch);
     g.fillStyle(hexNum(P.white), 1).fillCircle(ox + m.px * cw, oy + m.py * ch, 2);
-    const legend = this.add
-      .bitmapText(px + 16, py + ph - 18, FONT, 'red: confessional   gold: votive   blue: cache   pink: the Ear   tap to close')
+    const legend = txt(this, px + 16, py + ph - 20, 'red: confessional   gold: votive   blue: cache   pink: the Ear   tap to close', 'body', 10).setItalic()
       .setTint(hexNum(P.bone2));
     layer.add([shade, panel, title, g, legend]);
     this.modalTap = () => this.closeModal();
@@ -414,7 +413,7 @@ export class HudScene extends Phaser.Scene {
     mk('stigma', 'maw', 18);
     mk('tear', 'tear', 18);
     mk('pause', 'pause', 10);
-    this.interactLabel = this.add.bitmapText(0, 0, FONT_OUTLINE, '').setOrigin(0.5, 1).setDepth(22).setTint(hexNum(P.gold0));
+    this.interactLabel = txt(this, 0, 0, '', 'label', 12).setOrigin(0.5, 1).setDepth(22).setTint(hexNum(P.gold0));
   }
 
   private btn(a: Action) {
@@ -592,8 +591,7 @@ export class HudScene extends Phaser.Scene {
   // -------------------------------------------------------------------------
 
   toast(text: string, color: string = P.bone0) {
-    const t = this.add
-      .bitmapText(this.W / 2, -10, FONT_OUTLINE, text)
+    const t = txt(this, this.W / 2, -16, text, 'label', 12)
       .setOrigin(0.5, 0)
       .setTint(hexNum(color))
       .setDepth(50);
@@ -609,11 +607,12 @@ export class HudScene extends Phaser.Scene {
   }
 
   banner(title: string, sub = '') {
-    const c = this.add.container(this.W / 2, this.H * 0.28).setDepth(40).setAlpha(0);
-    const a = this.add.bitmapText(0, 0, FONT_OUTLINE, title).setOrigin(0.5).setScale(2).setTint(hexNum(P.gold1));
-    const b = this.add.bitmapText(0, 16, FONT_OUTLINE, sub).setOrigin(0.5).setTint(hexNum(P.bone1));
-    c.add([a, b]);
-    this.tweens.add({ targets: c, alpha: 1, duration: 600, yoyo: true, hold: 1600, onComplete: () => c.destroy() });
+    // (DOM text is positioned directly, not inside an offset container)
+    const cx = this.W / 2;
+    const cy = this.H * 0.28;
+    const a = txt(this, cx, cy, title, 'head', 22).setOrigin(0.5).setTint(hexNum(P.gold1)).setGlow('rgba(200,16,42,0.55)', 8).setDepth(40).setAlpha(0);
+    const b = txt(this, cx, cy + 20, sub, 'label', 12).setOrigin(0.5).setItalic().setTint(hexNum(P.bone1)).setDepth(40).setAlpha(0);
+    this.tweens.add({ targets: [a, b], alpha: 1, duration: 600, yoyo: true, hold: 1600, onComplete: () => (a.destroy(), b.destroy()) });
   }
 
   // -------------------------------------------------------------------------
@@ -626,8 +625,16 @@ export class HudScene extends Phaser.Scene {
     if (!this.modal) this.controlsBeforeModal = this.controlsVisible;
     this.modal = true;
     this.setControlsVisible(false);
-    this.modalLayer = this.add.container(0, 0).setDepth(DEPTH_MODAL);
-    return this.modalLayer;
+    const layer = this.add.container(0, 0).setDepth(DEPTH_MODAL);
+    // DOM text always sits above the canvas: hide everything but the dialog's own words
+    this.game.domContainer?.classList.add('st-modal');
+    const add = layer.add.bind(layer);
+    layer.add = ((c: Phaser.GameObjects.GameObject | Phaser.GameObjects.GameObject[]) => {
+      for (const o of Array.isArray(c) ? c : [c]) if (o instanceof GameText) (o.node as HTMLElement).dataset.layer = 'modal';
+      return add(c);
+    }) as typeof layer.add;
+    this.modalLayer = layer;
+    return layer;
   }
 
   private closeModal() {
@@ -636,6 +643,7 @@ export class HudScene extends Phaser.Scene {
     this.modalTap = null;
     this.modalKey = null;
     this.modal = false;
+    this.game.domContainer?.classList.remove('st-modal');
     this.setControlsVisible(this.controlsBeforeModal);
     controls.clear();
     // Keys used to answer the dialog must not also act in the game
@@ -655,9 +663,9 @@ export class HudScene extends Phaser.Scene {
       const x = Math.round((this.W - w) / 2);
       const y = this.H - h - 10;
       const panel = this.add.image(x, y, makePanel(this, `panel-${w}x${h}`, w, h)).setOrigin(0);
-      const name = this.add.bitmapText(x + 14, y + 12, FONT_OUTLINE, speaker).setTint(hexNum(P.gold1));
-      const body = this.add.bitmapText(x + 14, y + 28, FONT, '').setMaxWidth(w - 28).setTint(hexNum(P.bone0));
-      const more = this.add.bitmapText(x + w - 14, y + h - 10, FONT, '✞').setOrigin(1).setTint(hexNum(P.blood1));
+      const name = txt(this, x + 14, y + 9, speaker, 'head', 11).setTint(hexNum(P.gold1));
+      const body = txt(this, x + 14, y + 25, '', 'body', 12).setMaxWidth(w - 28).setTint(hexNum(P.bone0));
+      const more = txt(this, x + w - 12, y + h - 6, '✞', 'label', 12).setOrigin(1).setTint(hexNum(P.blood1));
       layer.add([panel, name, body, more]);
       let i = 0;
       let shown = 0;
@@ -707,32 +715,32 @@ export class HudScene extends Phaser.Scene {
       const opts = [...spec.options];
       if (spec.cancel) opts.push({ label: spec.cancel });
       const w = Math.min(this.W - 40, spec.width ?? 380);
-      const rowH = (o: MenuOption) => (o.desc ? 24 : 14);
-      const bodyLines = spec.body ? this.measureLines(spec.body, w - 28) : 0;
-      const h = Math.min(this.H - 16, 34 + bodyLines * 10 + opts.reduce((a, o) => a + rowH(o) + 3, 0) + 10);
+      const descH = (o: MenuOption) => (o.desc ? this.measure(o.desc, 'body', 10, w - 40) : 0);
+      const rowH = (o: MenuOption) => 14 + (o.desc ? descH(o) + 1 : 0);
+      const bodyH = spec.body ? this.measure(spec.body, 'body', 11, w - 28) : 0;
+      const h = Math.min(this.H - 16, 34 + (bodyH ? bodyH + 6 : 0) + opts.reduce((a, o) => a + rowH(o) + 3, 0) + 10);
       const x = Math.round((this.W - w) / 2);
       const y = Math.round((this.H - h) / 2);
       const shade = this.add.rectangle(0, 0, this.W, this.H, 0x000000, 0.55).setOrigin(0);
       const panel = this.add.image(x, y, makePanel(this, `panel-${w}x${h}`, w, h)).setOrigin(0);
-      const title = this.add.bitmapText(x + w / 2, y + 12, FONT_OUTLINE, spec.title).setOrigin(0.5, 0).setTint(hexNum(P.gold1));
+      const title = txt(this, x + w / 2, y + 9, spec.title, 'head', 13).setOrigin(0.5, 0).setTint(hexNum(P.gold1));
       layer.add([shade, panel, title]);
       let cy = y + 28;
       if (spec.body) {
-        const b = this.add.bitmapText(x + 14, cy, FONT, spec.body).setMaxWidth(w - 28).setTint(hexNum(P.bone1));
+        const b = txt(this, x + 14, cy, spec.body, 'body', 11).setMaxWidth(w - 28).setTint(hexNum(P.bone1));
         layer.add(b);
-        cy += bodyLines * 10 + 6;
+        cy += bodyH + 6;
       }
       const rows: { y: number; h: number; o: MenuOption; bg: Phaser.GameObjects.Rectangle }[] = [];
       opts.forEach((o) => {
         const rh = rowH(o);
         const bg = this.add.rectangle(x + 10, cy - 2, w - 20, rh + 2, hexNum(P.shadow2), 0.0).setOrigin(0);
-        const lab = this.add
-          .bitmapText(x + 16, cy, FONT_OUTLINE, o.label)
+        const lab = txt(this, x + 16, cy - 1, o.label, 'label', 12)
           .setTint(o.disabled ? hexNum(P.marble4) : o.tint ?? hexNum(P.bone0));
         layer.add([bg, lab]);
         if (o.desc) {
-          const d = this.add
-            .bitmapText(x + 22, cy + 11, FONT, o.desc)
+          const d = txt(this, x + 22, cy + 13, o.desc, 'body', 10)
+            .setItalic()
             .setMaxWidth(w - 40)
             .setTint(o.disabled ? hexNum(P.marble4) : hexNum(P.bone2));
           layer.add(d);
@@ -778,18 +786,19 @@ export class HudScene extends Phaser.Scene {
     });
   }
 
-  private measureLines(text: string, maxW: number) {
-    const t = this.add.bitmapText(-999, -999, FONT, text).setMaxWidth(maxW);
-    const n = Math.max(1, Math.round(t.height / 10));
+  /** Height of wrapped text in game pixels. */
+  private measure(text: string, face: Face, size: number, maxW: number) {
+    const t = txt(this, -999, -999, text, face, size).setMaxWidth(maxW);
+    const h = t.height;
     t.destroy();
-    return n;
+    return h;
   }
 
   /** A crime seen in a Tear: red text over the world, play continues. */
   visionFlash(text: string) {
     const bg = this.add.rectangle(0, 0, this.W, this.H, 0x2a0008, 0).setOrigin(0).setDepth(45);
-    const t = this.add
-      .bitmapText(this.W / 2, this.H * 0.38, FONT_OUTLINE, text)
+    const t = txt(this, this.W / 2, this.H * 0.38, text, 'label', 15)
+      .setItalic()
       .setOrigin(0.5)
       .setMaxWidth(Math.min(420, this.W - 80))
       .setCenterAlign()
@@ -805,13 +814,13 @@ export class HudScene extends Phaser.Scene {
     return new Promise((resolve) => {
       const layer = this.openModal();
       const bg = this.add.rectangle(0, 0, this.W, this.H, 0x0b0507, 1).setOrigin(0).setAlpha(0);
-      const text = this.add
-        .bitmapText(this.W / 2, this.H / 2, FONT_OUTLINE, '')
+      const text = txt(this, this.W / 2, this.H / 2, '', 'body', 15)
+        .setItalic()
         .setOrigin(0.5)
         .setMaxWidth(Math.min(460, this.W - 60))
         .setCenterAlign()
         .setTint(hexNum(color));
-      const hint = this.add.bitmapText(this.W / 2, this.H - 18, FONT, 'touch to continue').setOrigin(0.5).setTint(hexNum(P.marble4)).setAlpha(0);
+      const hint = txt(this, this.W / 2, this.H - 18, 'touch to continue', 'body', 10).setItalic().setOrigin(0.5).setTint(hexNum(P.marble4)).setAlpha(0);
       layer.add([bg, text, hint]);
       this.tweens.add({ targets: bg, alpha: 1, duration: 400 });
       let i = 0;

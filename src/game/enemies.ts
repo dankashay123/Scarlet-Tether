@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { FONT_OUTLINE } from '../art/font';
 import { P, hexNum } from '../art/palette';
 import { BLIND, CHERUB, GOSSIP, PENITENT } from '../art/creatures';
 import { DEPTH } from './config';
@@ -8,6 +7,7 @@ import { currentRun, hasSacrament } from './state';
 import { rotLevel } from './lucidity';
 import { Body } from './physics';
 import type { Corpse, World } from './world';
+import { txt, type GameText } from '../ui/text';
 
 export type EnemyKind = 'blind' | 'gossip' | 'penitent' | 'cherub' | 'boss' | 'ear';
 
@@ -36,8 +36,8 @@ export abstract class Enemy {
   state: EState = 'spawn';
   stateT = 0;
   sprite: Phaser.GameObjects.Sprite;
-  protected mark: Phaser.GameObjects.BitmapText;
-  private alert: Phaser.GameObjects.BitmapText;
+  protected mark: GameText;
+  private alert: GameText;
   private warnT = 0;
   protected skins: [string, string] | null = null;
   protected skin: string;
@@ -75,8 +75,8 @@ export abstract class Enemy {
     this.footY = size.footY ?? size.h / 2;
     this.sprite = s.add.sprite(x, y, tex).setOrigin(0.5, this.footY / size.h).setDepth(DEPTH.enemy);
     this.sprite.play(`${tex}:${tex === 'cherub' ? 'fly' : 'idle'}`);
-    this.mark = s.add.bitmapText(x, y, FONT_OUTLINE, '✞').setOrigin(0.5).setTint(hexNum(P.blood0)).setScale(1.5).setVisible(false).setDepth(DEPTH.overlay - 2);
-    this.alert = s.add.bitmapText(x, y, FONT_OUTLINE, '!').setOrigin(0.5).setTint(hexNum(P.blood0)).setScale(2).setVisible(false).setDepth(DEPTH.overlay - 2);
+    this.mark = txt(s, x, y, '✞', 'label', 16).setOrigin(0.5).setTint(hexNum(P.blood0)).setVisible(false).setDepth(DEPTH.overlay - 2);
+    this.alert = txt(s, x, y, '!', 'title', 20).setOrigin(0.5).setTint(hexNum(P.blood0)).setVisible(false).setDepth(DEPTH.overlay - 2);
     // Rise out of a welling of blood
     this.sprite.setAlpha(0);
     s.tweens.add({ targets: this.sprite, alpha: 1, duration: 600 });

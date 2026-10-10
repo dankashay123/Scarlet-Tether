@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
-import { FONT, FONT_OUTLINE } from '../art/font';
 import { P, hexNum } from '../art/palette';
 import { SLICE_ENDING } from '../game/lore';
 import { meta } from '../game/state';
 import { sfx } from '../game/audio';
 import { hud } from './HudScene';
+import { txt } from '../ui/text';
 
 /** The end of the Sunken Confessionals (and of this vertical slice). */
 export class EndingScene extends Phaser.Scene {
@@ -21,17 +21,15 @@ export class EndingScene extends Phaser.Scene {
     sfx(this, 'bell_distant', { volume: 0.8, rate: 0.85 });
     await hud(this).vision(SLICE_ENDING, P.bone0);
     const m = meta();
-    this.add.bitmapText(W / 2, H * 0.4, FONT_OUTLINE, 'THE SUNKEN CONFESSIONALS').setOrigin(0.5).setScale(2).setTint(hexNum(P.gold1));
-    this.add.bitmapText(W / 2, H * 0.4 + 22, FONT_OUTLINE, 'are silenced.').setOrigin(0.5).setTint(hexNum(P.bone1));
-    this.add
-      .bitmapText(W / 2, H * 0.62, FONT, `${m.citizen.name} absolved Bartholomew. Lives spent: ${m.deaths + 1}.`)
+    txt(this, W / 2, H * 0.4, 'The Sunken Confessionals', 'title', 22).setOrigin(0.5).setGradient('#fff0c0', '#b8862a', 'rgba(255,200,90,0.4)');
+    txt(this, W / 2, H * 0.4 + 24, 'are silenced.', 'label', 14).setItalic().setOrigin(0.5).setTint(hexNum(P.bone1));
+    txt(this, W / 2, H * 0.62, `${m.citizen.name} absolved Bartholomew. Lives spent: ${m.deaths + 1}.`, 'body', 12)
       .setOrigin(0.5)
       .setTint(hexNum(P.bone2));
-    this.add
-      .bitmapText(W / 2, H * 0.62 + 14, FONT, 'End of the vertical slice. The Crimson Chancel is yet to be built.')
+    txt(this, W / 2, H * 0.62 + 16, 'End of the vertical slice. The Crimson Chancel is yet to be built.', 'body', 11).setItalic()
       .setOrigin(0.5)
       .setTint(hexNum(P.marble3));
-    const hint = this.add.bitmapText(W / 2, H - 20, FONT_OUTLINE, 'touch to return to the Drain').setOrigin(0.5).setTint(hexNum(P.bone1));
+    const hint = txt(this, W / 2, H - 20, 'touch to return to the Drain', 'label', 12).setItalic().setOrigin(0.5).setTint(hexNum(P.bone1));
     this.tweens.add({ targets: hint, alpha: 0.3, duration: 900, yoyo: true, repeat: -1 });
     this.time.delayedCall(800, () =>
       this.input.once('pointerdown', () => {

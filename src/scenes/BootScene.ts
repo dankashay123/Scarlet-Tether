@@ -9,6 +9,7 @@ import { buildUi } from '../art/ui';
 import { buildVignettes } from '../art/vignettes';
 import { SFX_KEYS } from '../game/audio';
 import { meta } from '../game/state';
+import { loadFonts } from '../ui/text';
 
 function setLoading(label: string, v: number) {
   const t = document.getElementById('loading-text');
@@ -43,8 +44,12 @@ export class BootScene extends Phaser.Scene {
       ['Choosing a citizen\u2026', () => buildHeroSheet(this, lookFromSeed(m.citizen.seed, { maw: m.equipped.includes('maw'), helix: m.equipped.includes('helix') }))],
     ];
     let i = 0;
+    const fonts = loadFonts();
     const next = () => {
-      if (i >= steps.length) return this.finish();
+      if (i >= steps.length) {
+        fonts.then(() => this.finish());
+        return;
+      }
       const [label, fn] = steps[i];
       setLoading(label, 0.3 + (i / steps.length) * 0.7);
       i++;

@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { P, hexNum } from '../art/palette';
-import { FONT_OUTLINE } from '../art/font';
 import { DEPTH } from '../game/config';
 import { Level } from '../game/level';
 import { Gore } from '../game/gore';
@@ -20,6 +19,7 @@ import { hud } from './HudScene';
 import { pauseMenu } from '../ui/menus';
 import type { Corpse, HitResult, World } from '../game/world';
 import type { Enemy } from '../game/enemies';
+import { txt } from '../ui/text';
 
 interface Station {
   x: number;
@@ -155,7 +155,7 @@ export class HubScene extends Phaser.Scene implements World {
           break;
         }
         case 'H':
-          this.add.bitmapText(m.x + 30, m.y + 6, FONT_OUTLINE, 'The Echoing Chute').setOrigin(0, 0.5).setTint(hexNum(P.bone2)).setDepth(DEPTH.overlay - 5).setAlpha(0.7);
+          txt(this, m.x + 30, m.y + 6, 'The Echoing Chute', 'head', 10).setOrigin(0, 0.5).setTint(hexNum(P.bone2)).setDepth(DEPTH.overlay - 5).setAlpha(0.7);
           this.light(m.x, m.y + 10, 'light-lg', P.blood0, 0.2);
           break;
       }

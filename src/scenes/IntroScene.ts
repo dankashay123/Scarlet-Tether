@@ -1,16 +1,16 @@
 import Phaser from 'phaser';
-import { FONT_OUTLINE } from '../art/font';
 import { P, hexNum } from '../art/palette';
 import { INTRO_SCRIPT } from '../game/lore';
 import { meta, save } from '../game/state';
 import { sfx } from '../game/audio';
 import { hud } from './HudScene';
+import { txt, type GameText } from '../ui/text';
 
 /** The tether snaps; the citizen falls. */
 export class IntroScene extends Phaser.Scene {
   private i = 0;
   private ready = false;
-  private text!: Phaser.GameObjects.BitmapText;
+  private text!: GameText;
   private art!: Phaser.GameObjects.Image;
   private tether!: Phaser.GameObjects.Graphics;
   private stage = '';
@@ -29,13 +29,13 @@ export class IntroScene extends Phaser.Scene {
     this.art = this.add.image(W / 2, 0, 'sanctum').setOrigin(0.5, 0);
     this.art.setScale(Math.max(W / this.art.width, H / this.art.height));
     this.tether = this.add.graphics();
-    this.text = this.add
-      .bitmapText(W / 2, H - 46, FONT_OUTLINE, '')
+    this.text = txt(this, W / 2, H - 46, '', 'label', 14)
+      .setItalic()
       .setOrigin(0.5)
       .setMaxWidth(W - 80)
       .setCenterAlign()
       .setTint(hexNum(P.bone0));
-    this.add.bitmapText(W - 8, H - 8, FONT_OUTLINE, 'skip').setOrigin(1).setTint(hexNum(P.marble4)).setInteractive().on('pointerdown', (_p: unknown, _x: unknown, _y: unknown, ev: Phaser.Types.Input.EventData) => {
+    txt(this, W - 8, H - 6, 'skip', 'label', 11).setItalic().setOrigin(1).setTint(hexNum(P.marble4)).setInteractive().on('pointerdown', (_p: unknown, _x: unknown, _y: unknown, ev: Phaser.Types.Input.EventData) => {
       ev.stopPropagation();
       this.finish();
     });
