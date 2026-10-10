@@ -1,5 +1,5 @@
 import { BLOOD, IRON, OLD_BLOOD, RUST } from '../hero';
-import { PixelCanvas, hash2, valueNoise } from '../pixel';
+import { PixelCanvas, bayer, hash2, valueNoise } from '../pixel';
 import { Figure, KEY_LIGHT, folds, grain, type Light, type Material } from '../render';
 import { inGothic } from './paint';
 
@@ -35,7 +35,7 @@ export const STONE: Material = {
 export const WAX: Material = { ramp: ['#3a2a1a', '#8a7458', '#cdb889', '#efe3bf', '#fff8e8'], round: 0.9, spec: 0.3 };
 export const VOID: Material = { ramp: ['#050203', '#0b0507', '#140a0c'], round: 0.2 };
 export const RUBY: Material = { ramp: ['#2a0208', '#6a0a18', '#b0182a', '#ff4a4a', '#ffd0c0'], spec: 1, round: 1 };
-export const DRIED: Material = { ramp: ['#120a08', '#2a1c14', '#46321f', '#6a4e32', '#8a6c48', '#a8906a'], tex: grain(1.2, 0.15, 14), round: 0.8 };
+export const DRIED: Material = { ramp: ['#1a100c', '#3a2a1e', '#5a4430', '#7e6446', '#a08660', '#c4ac84'], tex: grain(1.2, 0.15, 14), round: 0.8 };
 export const PAGE: Material = { ramp: ['#3a2e20', '#8a7a5a', '#c8b88e', '#e8dcb8'], round: 0.2, tex: (x, y) => (y % 2 === 0 && hash2(x, y, 2) > 0.5 ? -0.18 : 0) };
 export { BLOOD, OLD_BLOOD, IRON, RUST };
 
@@ -391,8 +391,8 @@ export function drawDoorFrames(): PixelCanvas[] {
     for (let y = 0; y < 72; y++)
       for (let x = 0; x < 48; x++) {
         if (!DOOR_IN(x + 0.5, y + 0.5)) continue;
-        const g = Math.max(0, (y - 30) / 42) * 0.5;
-        pc.px(x, y, g > 0.3 ? '#2a0a0e' : g > 0.15 ? '#1a0609' : '#0b0507');
+        const g = Math.max(0, (y - 26) / 46) * 2 + bayer(x, y) * 0.999;
+        pc.px(x, y, ['#0b0507', '#1a0609', '#2a0a0e'][Math.min(2, Math.floor(g))]);
       }
     const dy = -Math.round(lift * 64);
     for (let y = 0; y < 72; y++)
@@ -531,10 +531,11 @@ export function drawLectern(): PixelCanvas {
   s.capsule(16, 21, 5, 16, 1.4, 1, BONE, 2.2);
   s.capsule(16, 21, 27, 14, 1.4, 1, BONE, 2.2);
   // Book: skin covers, pale pages, a blood ribbon
-  s.poly([[2, 16.5], [29, 9], [31, 12.5], [4, 20]], FLESH, 3);
-  s.poly([[4.5, 15], [16, 11.5], [16.5, 14.5], [5, 18]], PAGE, 3.3);
-  s.poly([[16, 11.5], [28.5, 8], [29.5, 11], [16.5, 14.5]], PAGE, 3.3);
-  s.capsule(17, 13.5, 18.5, 24, 0.7, 0.6, BLOOD, 3.5);
+  s.poly([[1, 15], [16, 12], [31, 9], [31, 13.5], [16, 17], [2, 20]], FLESH, 3);
+  s.ellipse(9.5, 12.6, 7.2, 3.4, PAGE, 3.3, -0.2);
+  s.ellipse(22.5, 10, 7.2, 3.4, PAGE, 3.3, -0.2);
+  s.stain((x, y) => Math.abs(x - 16 - (y - 12) * 0.2) < 0.6 && y > 8 && y < 16, { ramp: ['#3a2e20', '#5f4e35'] }, [PAGE]);
+  s.capsule(16.5, 14, 18, 25, 0.7, 0.6, BLOOD, 3.5);
   s.stain((x, y) => Math.abs(valueNoise(x, y, 2, 5) - 0.5) < 0.05, { ramp: ['#24080d', '#4d1f2b'] }, [FLESH]);
   s.stain((x, y) => y > 42 && valueNoise(x, y, 2, 9) > 0.5, OLD_BLOOD, [BONE]);
   return s.render({ ...KEY_LIGHT, ambient: 0.16 });
@@ -558,7 +559,7 @@ export function drawLightShaft(): PixelCanvas {
       const along = Math.min(1, y / 12) * Math.pow(1 - y / 200, 1.2);
       const dust = 0.85 + valueNoise(x, y * 0.5, 6, 3) * 0.3;
       let a = f * bars * along * dust * 0.6;
-      let c = y < 60 ? '#fff1c0' : '#ffd890';
+      let c = '#ffd890';
       if (hash2(x, y, 7) > 0.993 && f > 0.2) {
         a = Math.min(1, a + 0.5);
         c = '#fff8dc';

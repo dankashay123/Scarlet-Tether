@@ -264,18 +264,18 @@ export class Paint {
         let al = this.a[k];
         if (al < 0.03) continue;
         const t = bayer(i, j);
-        const qz = (v: number) => {
-          const f = v / q;
-          let n = Math.floor(f);
-          if (f - n > t) n++;
-          return Math.max(0, Math.min(255, Math.round(n * q)));
-        };
-        const R = qz(this.r[k]);
-        const G = qz(this.g[k]);
-        const B = qz(this.b[k]);
+        let f = this.r[k] / q;
+        let n = Math.floor(f);
+        const R = Math.min(255, Math.round((f - n > t ? n + 1 : n) * q));
+        f = this.g[k] / q;
+        n = Math.floor(f);
+        const G = Math.min(255, Math.round((f - n > t ? n + 1 : n) * q));
+        f = this.b[k] / q;
+        n = Math.floor(f);
+        const B = Math.min(255, Math.round((f - n > t ? n + 1 : n) * q));
         if (ditherAlpha) {
-          const f = al * 4;
-          let n = Math.floor(f);
+          f = al * 4;
+          n = Math.floor(f);
           if (f - n > t) n++;
           al = n / 4;
           if (al <= 0) continue;

@@ -148,7 +148,8 @@ function drawBlind(o: BlindOpts) {
 
   if (saint) {
     // serene closed eye, faint smile, a veil of hair and the gilt halo
-    f.stain(lineMask([loc(sock, th, -1.4, 0.2), loc(sock, th, 0, -0.5), loc(sock, th, 1.4, 0.1)], 0.45), back(skin, 0.5), [skin]);
+    f.stain(lineMask([loc(sock, th, -1.6, 0.3), loc(sock, th, 0, -0.6), loc(sock, th, 1.6, 0.2)], 0.6), back(skin, 0.7), [skin]);
+    f.stain(lineMask([loc(sock, th, -1.2, 1.6), loc(sock, th, 1.4, 1.9)], 0.45), back(skin, 0.45), [skin]);
     f.stain(lineMask([loc(hc, th, 3.6, -4.3), loc(hc, th, 5.3, -4.6)], 0.4), back(skin, 0.4), [skin]);
     const hood = clothMat('#ddd5c4', p.t, 11);
     f.ellipse(...loc(hc, th, -1.5, 1.6), 6.6, 6.4, { ...hood, ramp: rag.ramp }, 7.4, th);
@@ -269,7 +270,7 @@ function walk(i: number): Pose {
 
 const WINDUP: Pose[] = [
   ground({ ...STAND, x: 36, lean: 0.25, head: -0.3, armF: { a: 2.4, b: -0.6 }, armB: { a: 2.1, b: -0.4 }, legF: { a: 0.7, b: 1.1 }, legB: { a: -0.1, b: 0.9 }, t: 0.2 }, BLIND.footY),
-  ground({ ...STAND, x: 34, lean: -0.1, head: -0.5, armF: { a: 2.7, b: -0.55 }, armB: { a: 2.45, b: -0.4 }, legF: { a: 0.8, b: 1.3 }, legB: { a: -0.2, b: 1.0 }, t: 0.4 }, BLIND.footY),
+  ground({ ...STAND, x: 34, lean: -0.1, head: -0.5, armF: { a: 2.5, b: -0.45 }, armB: { a: 2.3, b: -0.35 }, legF: { a: 0.8, b: 1.3 }, legB: { a: -0.2, b: 1.0 }, t: 0.4 }, BLIND.footY),
 ];
 const ATTACK: Pose[] = [
   { ...STAND, x: 40, y: 44, lean: 1.25, head: -0.2, armF: { a: 1.75, b: -0.1 }, armB: { a: 1.55, b: 0.0 }, legF: { a: 0.4, b: 1.2 }, legB: { a: -0.9, b: 0.4 }, t: 0.6 },

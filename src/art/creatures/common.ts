@@ -171,6 +171,11 @@ export function pool(f: Figure, cx: number, y: number, rx: number, m: Material =
   );
 }
 
+/** Axis-aligned ellipse with a tight bounding box (cheaper than Figure.ellipse for wide shapes). */
+export function ellT(f: Figure, cx: number, cy: number, rx: number, ry: number, m: Material, layer: number) {
+  f.add((x, y) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1, m, layer, [cx - rx, cy - ry, cx + rx, cy + ry]);
+}
+
 /** Annulus (rings, halos). */
 export function ring(f: Figure, cx: number, cy: number, rx: number, ry: number, w: number, m: Material, layer: number, rot = 0) {
   const c = Math.cos(-rot);
@@ -210,6 +215,20 @@ export function stitches(f: Figure, a: V2, b: V2, n: number, h: number, layer: n
 export const blotch = (scale: number, thr: number, seed: number) => (x: number, y: number) => valueNoise(x, y, scale, seed) > thr;
 /** Thin branching veins: the zero-crossing ridge of a noise field. */
 export const veins = (scale: number, w: number, seed: number) => (x: number, y: number) => Math.abs(valueNoise(x, y, scale, seed) - 0.5) < w;
+
+const fieldCache = new Map<string, Float32Array>();
+/** valueNoise sampled once into a cached grid: cheap for big repeated stains. */
+export function noiseField(w: number, h: number, scale: number, seed: number) {
+  const key = `${w}x${h}:${scale}:${seed}`;
+  let a = fieldCache.get(key);
+  if (!a) {
+    a = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) a[y * w + x] = valueNoise(x + 0.5, y + 0.5, scale, seed);
+    fieldCache.set(key, a);
+  }
+  const arr = a;
+  return (x: number, y: number) => arr[Math.min(h - 1, Math.max(0, y | 0)) * w + Math.min(w - 1, Math.max(0, x | 0))];
+}
 
 export function frame(w: number, h: number) {
   return new Figure(w, h);

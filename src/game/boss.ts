@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { P, hexNum } from '../art/palette';
-import { BART, EAR } from '../art/creatures';
+import { BART, EAR, ensureBossSheet } from '../art/creatures';
 import { TILE } from '../art/environment';
 import { DEPTH } from './config';
 import { sfx } from './audio';
@@ -31,6 +31,7 @@ export class Bartholomew extends Enemy {
   onDefeat?: () => void;
 
   constructor(world: World, x: number, y: number) {
+    ensureBossSheet(world.sc);
     super(world, x, y, 'bart', BART, 90, 190, 560, 170);
     this.hurtR = 44;
     this.tearValue = 60;
