@@ -1,5 +1,5 @@
 import { mulberry32 } from '../art/pixel';
-import { CH, CW, FLOOR_ROW, SHAFT_COL, SIDE_ROWS, TEMPLATES, type RoomKind, type Template } from './rooms';
+import { CH, CW, FLOOR_ROW, SHAFT_COL, SIDE_ROWS, TEMPLATES, type RoomKind, type RoomTheme, type Template } from './rooms';
 
 export type Dir = 'W' | 'E' | 'N' | 'S';
 const OPP: Record<Dir, Dir> = { W: 'E', E: 'W', N: 'S', S: 'N' };
@@ -21,6 +21,7 @@ export interface PlacedRoom {
   gy: number;
   role: RoomRole;
   depth: number; // rooms from the start along the path
+  theme: RoomTheme;
   links: { exit: Exit; to: number }[];
   /** Tile-space bounds in the assembled level. */
   x0: number;
@@ -93,7 +94,7 @@ function tryGenerate(seed: number, mainLength: number): GeneratedMap | null {
 
   const place = (t: Template, gx: number, gy: number, role: RoomRole, depth: number) => {
     const id = rooms.length;
-    rooms.push({ id, tpl: t, gx, gy, role, depth, links: [], x0: 0, y0: 0, x1: 0, y1: 0 });
+    rooms.push({ id, tpl: t, gx, gy, role, depth, theme: 'marble', links: [], x0: 0, y0: 0, x1: 0, y1: 0 });
     for (let y = 0; y < t.ch; y++) for (let x = 0; x < t.cw; x++) occ.set(key(gx + x, gy + y), id);
     return rooms[id];
   };
@@ -236,6 +237,10 @@ function assemble(rooms: PlacedRoom[]): GeneratedMap {
       }
     }
   }
+  // Areas: the cathedral at the Chute's level, the crypt below it, and any
+  // room with its own theme (the bridge outside)
+  const startGy = rooms[0].gy;
+  for (const r of rooms) r.theme = r.tpl.theme ?? (r.role === 'ante' || r.role === 'start' ? 'marble' : r.gy > startGy ? 'crypt' : 'marble');
   // Doorways between neighbouring rooms: clear the two-tile-thick join
   for (const r of rooms) {
     for (const l of r.links) {

@@ -17,9 +17,13 @@ export const SHAFT_COL = 19;
 
 export type RoomKind = 'start' | 'combat' | 'special' | 'ante' | 'pit' | 'loft';
 
+/** Which backdrop a room wears. Unset: chosen by depth (deep rooms are crypt). */
+export type RoomTheme = 'marble' | 'crypt' | 'bridge';
+
 export interface Template {
   name: string;
   kind: RoomKind;
+  theme?: RoomTheme;
   cw: number;
   ch: number;
   rows: string[];
@@ -120,8 +124,8 @@ class Grid {
 
 const F = FLOOR_ROW - 1; // the air row just above the floor of a cell
 
-function t(name: string, kind: RoomKind, g: Grid, weight = 1): Template {
-  return { name, kind, cw: g.cw, ch: g.ch, rows: g.rows(), weight };
+function t(name: string, kind: RoomKind, g: Grid, weight = 1, theme?: RoomTheme): Template {
+  return { name, kind, cw: g.cw, ch: g.ch, rows: g.rows(), weight, theme };
 }
 
 export const TEMPLATES: Template[] = [
@@ -542,6 +546,30 @@ export const TEMPLATES: Template[] = [
       .mark(20, 14, 'f')
       .mark(10, 30, 'f'),
     0.9,
+  ),
+
+  // --- Outside, for a moment ---------------------------------------------------
+  t(
+    'The Pilgrims’ Bridge',
+    'combat',
+    // Open to the sunset sky over Sanctum: no vault, just the deck and the drop
+    new Grid(2, 1)
+      .carve()
+      .fill(1, 0, 78, 1, '.')
+      .west()
+      .east()
+      .ledge(14, 22, 15)
+      .ledge(36, 44, 12)
+      .ledge(58, 66, 15)
+      .crumble(26, 33, 16)
+      .crumble(47, 54, 16)
+      .mark(20, F, 'e')
+      .mark(40, 11, 'e')
+      .mark(60, F, 'E')
+      .mark(30, 6, 'f')
+      .mark(52, 6, 'f'),
+    0.9,
+    'bridge',
   ),
 
   // --- Special rooms (dead ends) -----------------------------------------------

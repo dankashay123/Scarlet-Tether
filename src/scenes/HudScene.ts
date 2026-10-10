@@ -80,6 +80,7 @@ export class HudScene extends Phaser.Scene {
   create() {
     this.input.addPointer(3);
     this.inset = safeInsets(this.scale.width);
+    this.buildInkFrame();
     this.buildRunHud();
     this.buildControls();
     this.buildKeyboard();
@@ -562,8 +563,25 @@ export class HudScene extends Phaser.Scene {
   // Frame
   // -------------------------------------------------------------------------
 
+  /** Torn black ink-brush edges framing the play, as in Blasphemous's art. */
+  private ink: Phaser.GameObjects.GameObject[] = [];
+  private buildInkFrame() {
+    const W = this.W;
+    const H = this.H;
+    const t = this.textures;
+    if (t.exists('ink-top')) this.ink.push(this.add.tileSprite(0, 0, W, 28, 'ink-top').setOrigin(0).setScale(1, 0.8));
+    if (t.exists('ink-bottom')) this.ink.push(this.add.tileSprite(0, H, W, 28, 'ink-bottom').setOrigin(0, 1).setScale(1, 0.8));
+    if (t.exists('ink-side')) {
+      this.ink.push(this.add.image(0, 0, 'ink-side').setOrigin(0).setScale(0.7, H / 360));
+      this.ink.push(this.add.image(W, 0, 'ink-side').setOrigin(0).setScale(-0.7, H / 360));
+    }
+    for (const o of this.ink) (o as Phaser.GameObjects.Image).setDepth(1).setAlpha(0.92);
+  }
+
   update() {
     this.pollKeyboard();
+    const framed = this.scene.isActive('Run') || this.scene.isActive('Hub');
+    for (const o of this.ink) (o as Phaser.GameObjects.Image).setVisible(framed);
     this.runLayer.setVisible(hudState.inRun);
     this.drawMinimap();
     if (hudState.inRun) {

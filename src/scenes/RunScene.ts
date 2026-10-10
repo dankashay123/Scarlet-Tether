@@ -5,6 +5,7 @@ import { Level } from '../game/level';
 import { Fx } from '../game/fx';
 import { Gore } from '../game/gore';
 import { Backdrop } from '../game/backdrop';
+import { Dressing } from '../game/dressing';
 import { Player, PERFECT_WINDOW, TEAR_COST } from '../game/player';
 import { Blind, Cherub, Enemy, Gossip, Penitent } from '../game/enemies';
 import { Bartholomew } from '../game/boss';
@@ -66,6 +67,7 @@ export class RunScene extends Phaser.Scene implements World {
   private roomEnemies = new Map<number, Enemy[]>();
   private curRoom = -1;
   private backdrop!: Backdrop;
+  private dressing: Dressing | null = null;
   private projectiles: Projectile[] = [];
   private hazards: Hazard[] = [];
   private smokes: SmokeCloud[] = [];
@@ -126,9 +128,10 @@ export class RunScene extends Phaser.Scene implements World {
   create() {
     if (!this.scene.isActive('Hud')) this.scene.launch('Hud');
     this.scene.bringToTop('Hud');
-    this.backdrop = new Backdrop(this, 'marble');
     const map = descent.map!;
     this.rooms = this.stage === 'map' ? map.rooms : [];
+    const themes = [...new Set(this.rooms.map((r) => r.theme))];
+    this.backdrop = new Backdrop(this, 'marble', themes);
     const layout = this.stage === 'map' ? { name: 'The Sunken Confessionals', kind: 'combat' as const, rows: map.rows } : BOSS_LAYOUT;
     this.level = new Level(this, layout, 'marble');
     this.level.onCrumble = (x, y, fall) => {
@@ -260,6 +263,22 @@ export class RunScene extends Phaser.Scene implements World {
       this.tweens.add({ targets: e, y: e.y - 3, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     }
     this.scatterDecor();
+    this.dressing = new Dressing(
+      this,
+      L,
+      this.stage === 'map' ? this.rooms.map((r) => ({ x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1, theme: r.theme })) : [{ x0: 0, y0: 0, x1: L.w - 1, y1: L.h - 1, theme: 'marble' }],
+      descent.seed,
+      {
+        swap: (img, lie, truth) => this.swap(img, lie, truth),
+        light: (x, y) => this.addLight(x, y, 'light-sm', P.candle, 0.35),
+        blocked: (() => {
+          // Keep the floor clear around doors, shrines, booths and features
+          const busy = new Set<number>();
+          for (const m of L.markers) if ('DXVKBCsSb'.includes(m.ch)) for (let dx = -3; dx <= 3; dx++) busy.add(m.ty * L.w + m.tx + dx);
+          return (tx: number, ty: number) => busy.has(ty * L.w + tx) || busy.has((ty - 1) * L.w + tx) || busy.has((ty + 1) * L.w + tx);
+        })(),
+      },
+    );
   }
 
   private addDoor(x: number, y: number) {
@@ -403,6 +422,7 @@ export class RunScene extends Phaser.Scene implements World {
 
   private enterRoom(r: PlacedRoom) {
     this.curRoom = r.id;
+    this.backdrop.setTheme(r.theme);
     const first = !descent.explored.has(r.id);
     descent.explored.add(r.id);
     this.wakeRoom(r);
@@ -747,6 +767,7 @@ export class RunScene extends Phaser.Scene implements World {
   update(_t: number, deltaMs: number) {
     const h = hud(this);
     this.backdrop.update();
+    this.dressing?.update();
     if (!h || h.modal) return;
     const dt = Math.min(deltaMs, 50) / 1000;
     if (controls.take('pause') && !this.pausing) {
@@ -928,6 +949,8 @@ export class RunScene extends Phaser.Scene implements World {
     for (const h of this.hazards) h.destroy();
     this.level?.destroy();
     this.backdrop?.destroy();
+    this.dressing?.destroy();
+    this.dressing = null;
     this.player?.destroy();
     this.tweens.killAll();
     hudState.canExecute = false;

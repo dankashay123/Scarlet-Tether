@@ -4,6 +4,7 @@ import { DEPTH } from '../game/config';
 import { Level } from '../game/level';
 import { Gore } from '../game/gore';
 import { Backdrop } from '../game/backdrop';
+import { Dressing } from '../game/dressing';
 import { NPC_SIZES } from '../art/creatures';
 import { Fx } from '../game/fx';
 import { Player } from '../game/player';
@@ -44,6 +45,7 @@ export class HubScene extends Phaser.Scene implements World {
   fx!: Fx;
   gore!: Gore;
   private backdrop!: Backdrop;
+  private dressing!: Dressing;
   private leaving = false;
   player!: Player;
   enemies: Enemy[] = [];
@@ -77,6 +79,9 @@ export class HubScene extends Phaser.Scene implements World {
     hudState.depth = -1;
     this.backdrop = new Backdrop(this, 'cistern');
     this.level = new Level(this, HUB_LAYOUT, 'cistern');
+    this.dressing = new Dressing(this, this.level, [{ x0: 0, y0: 0, x1: this.level.w - 1, y1: this.level.h - 1, theme: 'cistern' }], 7, {
+      blocked: (tx, ty) => this.level.markers.some((m) => Math.abs(m.tx - tx) <= 3 && Math.abs(m.ty - ty) <= 1 && 'HMOLWc'.includes(m.ch)),
+    });
     this.gore = new Gore(this, this.level);
     this.fx = new Fx(this);
     const chute = this.level.find('H')[0];
@@ -372,6 +377,7 @@ export class HubScene extends Phaser.Scene implements World {
   update(_t: number, deltaMs: number) {
     const h = hud(this);
     this.backdrop.update();
+    this.dressing.update();
     if (!h || h.modal) return;
     const dt = Math.min(deltaMs, 50) / 1000;
     if (controls.take('pause')) {
