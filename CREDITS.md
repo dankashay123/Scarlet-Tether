@@ -29,3 +29,10 @@ All audio in `public/audio/` is built from sources released under **CC0 1.0 Univ
 | Dark Cavern Ambient | Paul Wortmann | https://opengameart.org/content/dark-cavern-ambient | CC0 | amb_drip, amb_hub |
 | Crowd Shouting/Speaking Ambience | StarNinjas | https://opengameart.org/content/crowd-shoutingspeaking-ambience | CC0 | amb_hub |
 | Dark Castle - Part I | Umplix | https://opengameart.org/content/dark-castle-part-i | CC0 | music_boss |
+
+## Fonts
+
+All fonts are under the SIL Open Font License 1.1 and are bundled in `public/fonts/`.
+
+- **Cinzel Decorative** and **Cinzel** by Natanael Gama: title, names and headings.
+- **EB Garamond** by Georg Duffner and Octavio Pardo: in-game text.
