@@ -77,14 +77,67 @@
       #loading {
         position: fixed;
         inset: 0;
+        z-index: 5;
         display: flex;
+        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        color: #7a6a5a;
+        justify-content: flex-end;
+        padding-bottom: 9vh;
+        box-sizing: border-box;
+        background: #0b0507 url('./splash.jpg') center / cover no-repeat;
+        image-rendering: pixelated;
+        color: #c9a45c;
         font-family: Georgia, 'Times New Roman', serif;
-        font-size: 16px;
-        letter-spacing: 0.08em;
+        font-size: 15px;
+        letter-spacing: 0.1em;
         pointer-events: none;
+        transition: opacity 0.6s ease;
+      }
+      #loading::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at 50% 45%, rgba(11, 5, 7, 0) 40%, rgba(11, 5, 7, 0.85) 100%),
+          linear-gradient(to bottom, rgba(11, 5, 7, 0) 60%, rgba(11, 5, 7, 0.9) 100%);
+      }
+      #loading.done {
+        opacity: 0;
+      }
+      #loading-text {
+        position: relative;
+        margin-bottom: 10px;
+        text-shadow: 0 1px 0 #000, 0 0 8px #000;
+        font-style: italic;
+      }
+      #loading-bar {
+        position: relative;
+        width: min(46vw, 320px);
+        height: 8px;
+        padding: 2px;
+        border: 1px solid #c9a45c;
+        outline: 1px solid #3a2810;
+        outline-offset: 2px;
+        background: #120808;
+      }
+      #loading-bar::before,
+      #loading-bar::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        width: 6px;
+        height: 6px;
+        margin-top: -3px;
+        background: #8a1020;
+        border: 1px solid #c9a45c;
+        transform: rotate(45deg);
+      }
+      #loading-bar::before { left: -10px; }
+      #loading-bar::after { right: -10px; }
+      #loading-fill {
+        width: 2%;
+        height: 100%;
+        background: linear-gradient(to bottom, #ff3b3b, #8a1020 60%, #4e0815);
+        transition: width 0.25s ease;
       }
       #crash {
         display: none;
@@ -136,11 +189,14 @@
         }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-ujfB495n.js"></script>
+    <script type="module" crossorigin src="./assets/index-4Wt9kur2.js"></script>
   </head>
   <body>
     <div id="game"></div>
-    <div id="loading">The tether frays&hellip;</div>
+    <div id="loading">
+      <div id="loading-text">The tether frays&hellip;</div>
+      <div id="loading-bar"><div id="loading-fill"></div></div>
+    </div>
     <div id="rotate">
       <div class="phone"><div class="screen">&#10014;</div></div>
       <p>Turn thy vessel upon its side.</p>

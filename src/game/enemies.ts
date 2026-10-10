@@ -7,7 +7,7 @@ import { sfx } from './audio';
 import { currentRun, hasSacrament } from './state';
 import { rotLevel } from './lucidity';
 import { Body } from './physics';
-import type { World } from './world';
+import type { Corpse, World } from './world';
 
 export type EnemyKind = 'blind' | 'gossip' | 'penitent' | 'cherub' | 'boss' | 'ear';
 
@@ -23,6 +23,9 @@ type EState = 'spawn' | 'idle' | 'wander' | 'hunt' | 'windup' | 'attack' | 'reco
 
 /** Shared behaviour for every creature of the Under-Naves. */
 export abstract class Enemy {
+  /** Set when the body becomes a corpse the player can devour. */
+  corpse: Corpse | null = null;
+  private restT = 0;
   abstract readonly kind: EnemyKind;
   body: Body;
   hurtR = 12;
@@ -109,6 +112,7 @@ export abstract class Enemy {
   }
 
   protected setState(s: EState) {
+    if (this.state === 'windup' && s !== 'windup') this.sprite.setScale(1); // windup throbs the sprite
     this.state = s;
     this.stateT = 0;
     this.attackHit = false;
@@ -260,10 +264,17 @@ export abstract class Enemy {
         this.warnT = 0;
       }
     }
+    if (!this.sprite.active) return; // eaten
     this.updateSkin();
     if (this.state === 'dead') {
+      if (this.restT > 1) return; // settled: nothing left to simulate
       if (!this.flying || this.body.onGround) this.body.vx *= 0.85;
       this.body.step(this.world.level, dt);
+      this.restT = this.body.onGround && Math.abs(this.body.vx) < 2 && this.world.level.solidPx(this.x, this.y + 2) ? this.restT + dt : 0;
+      if (this.corpse) {
+        this.corpse.x = this.x;
+        this.corpse.y = this.y;
+      }
       this.syncVisuals();
       return;
     }
@@ -618,6 +629,9 @@ export class Cherub extends Enemy {
     this.tearValue = 3;
     this.hurtR = 14;
     this.body.y = y + 13;
+    // Never start with feet buried in a floor below the marker
+    const fy = world.level.floorY(x, y);
+    if (fy !== null && this.body.y > fy) this.body.y = fy;
   }
 
   protected think(dt: number) {
@@ -677,5 +691,7 @@ export class Cherub extends Enemy {
     this.flying = false;
     this.body.gravity = 1;
     super.kill(executed, heavy);
+    // The dead frame lies at the bottom of the canvas, its pool on the floor line
+    this.sprite.setOrigin(0.5, 62 / 64);
   }
 }

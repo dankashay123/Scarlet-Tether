@@ -277,6 +277,19 @@ export class Player {
         sfx(w.sc, Math.random() < 0.5 ? 'hit_flesh' : 'hit_flesh2');
       }
     }
+    // The chain also finds the hollow places in the walls
+    const aw = this.angleAt(prog);
+    for (const k of [0.55, 0.8, 1]) {
+      const broken = w.level.strike(px + Math.cos(aw) * reach * k, py + Math.sin(aw) * reach * k, 6);
+      if (!broken.length) continue;
+      for (const [bx, by] of broken) w.fx.rubble(bx, by, 6);
+      w.fx.shake(220, 0.01);
+      w.hitstop(80);
+      sfx(w.sc, 'door_open', { volume: 0.9, rate: 0.7 });
+      sfx(w.sc, 'hit_flesh2', { volume: 0.6, rate: 0.5 });
+      w.fx.text(broken[0][0], broken[0][1] - 20, 'A hollow wall', P.bone1, 16, 1400);
+      break;
+    }
   }
 
   private canDodge() {
@@ -454,7 +467,7 @@ export class Player {
     this.play('kneel');
     sfx(this.world.sc, 'devour');
     const w = this.world;
-    w.sc.tweens.add({ targets: c.sprite, alpha: 0, scaleY: 0.4, duration: 800, onComplete: () => c.sprite.destroy() });
+    w.sc.tweens.add({ targets: c.sprite, alpha: 0, scaleY: 0.4, duration: 800, onComplete: () => c.sprite.setVisible(false).setActive(false) });
     for (let i = 0; i < 6; i++) w.sc.time.delayedCall(i * 140, () => w.gore.spray(c.x, c.y - 6, -Math.PI / 2, 5, 0.6, 1.2));
   }
 
@@ -826,6 +839,7 @@ export class Player {
       w.fx.smoke(this.x, this.y - 2, 3, P.smoke1);
     }
     this.landT -= dt;
+    if (b.onGround) w.level.standOn(this.x, this.y + 2);
     if (this.state === 'move' && !b.onGround) this.tryLedge();
     this.syncVisuals(dt);
   }

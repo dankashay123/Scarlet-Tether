@@ -30,6 +30,8 @@ export interface MenuSpec {
   body?: string;
   options: MenuOption[];
   cancel?: string; // adds a final "leave" option returning -1
+  /** Option chosen by Escape when there is no cancel option. */
+  escape?: number;
   width?: number;
 }
 
@@ -618,7 +620,10 @@ export class HudScene extends Phaser.Scene {
   // Modal dialog & menus
   // -------------------------------------------------------------------------
 
+  private controlsBeforeModal = true;
+
   private openModal() {
+    if (!this.modal) this.controlsBeforeModal = this.controlsVisible;
     this.modal = true;
     this.setControlsVisible(false);
     this.modalLayer = this.add.container(0, 0).setDepth(DEPTH_MODAL);
@@ -631,8 +636,14 @@ export class HudScene extends Phaser.Scene {
     this.modalTap = null;
     this.modalKey = null;
     this.modal = false;
-    this.setControlsVisible(true);
+    this.setControlsVisible(this.controlsBeforeModal);
     controls.clear();
+    // Keys used to answer the dialog must not also act in the game
+    if (this.keys) {
+      const k = this.keys;
+      const groups: [string[], string][] = [[['J', 'Z'], 'attack'], [['SPACE'], 'jump'], [['K', 'X'], 'dodge'], [['L', 'C'], 'execute'], [['I', 'V'], 'stigma'], [['H'], 'tear'], [['E', 'ENTER'], 'speak'], [['ESC'], 'pause']];
+      for (const [ks, a] of groups) this.keyWasDown[a] = ks.some((n) => k[n].isDown);
+    }
   }
 
   /** Paged dialogue with a speaker. Tap to reveal / advance. */
@@ -762,6 +773,7 @@ export class HudScene extends Phaser.Scene {
           highlight();
         } else if (k === 'Enter' || k === 'e' || k === 'j' || k === ' ') choose(sel);
         else if (k === 'Escape' && spec.cancel) choose(opts.length - 1);
+        else if (k === 'Escape' && spec.escape !== undefined) choose(spec.escape);
       };
     });
   }

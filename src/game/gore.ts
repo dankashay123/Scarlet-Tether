@@ -307,6 +307,18 @@ export class Gore {
         e.py[i + 1] -= dy * off;
       }
     }
+    // Relaxing the rope can drag nodes into stone: lift them back out
+    for (let i = 0; i < n; i++) {
+      if (!L.solidPx(e.px[i], e.py[i])) continue;
+      const top = Math.floor(e.py[i] / TILE) * TILE - 0.5;
+      if (!L.solidPx(e.px[i], top)) {
+        e.py[i] = top;
+        e.oy[i] = top;
+      } else {
+        e.px[i] = e.ox[i];
+        e.py[i] = e.oy[i];
+      }
+    }
     e.t += dt;
     if (e.t > 0.15 && Math.random() < 0.3) this.drop(e.px[n - 1], e.py[n - 1], 0, 10, false);
     if ((e.t > 1 && motion < n * 0.08) || e.t > 6) e.rest = true;
@@ -385,6 +397,10 @@ export class Gore {
         this.splat(px, py, d.img.texture.key === 'clot' ? 0.8 : d.big ? 0.45 : 0.25, P.blood2);
         if (d.big && Math.abs(d.vx) > Math.abs(d.vy) && Math.random() < 0.35) this.wallDrip(px, py);
       }
+      if (!hit && d.vy > 0 && Math.floor(ny / TILE) > Math.floor(d.y / TILE) && L.oneWayAt(Math.floor(nx / TILE), Math.floor(ny / TILE))) {
+        hit = true;
+        this.splat(nx, Math.floor(ny / TILE) * TILE + 1, d.big ? 0.4 : 0.22, P.blood2);
+      }
       if (hit || d.life <= 0 || ny > L.pxH) {
         d.img.destroy();
         this.drops.splice(i, 1);
@@ -414,7 +430,20 @@ export class Gore {
             g.rest = true;
             this.splat(nx, ny + 3, 0.6);
           }
-        } else g.vy = 0;
+        } else {
+          // Struck a ceiling: stay out of the stone
+          ny = g.y;
+          g.vy = 0;
+        }
+      } else if (g.vy > 0 && L.oneWayAt(Math.floor(nx / TILE), Math.floor((ny + 3) / TILE)) && !L.oneWayAt(Math.floor(g.x / TILE), Math.floor((g.y + 3) / TILE))) {
+        // Landed on a ledge
+        ny = Math.floor((ny + 3) / TILE) * TILE - 3;
+        g.vy *= -0.3;
+        g.vx *= 0.6;
+        if (Math.abs(g.vy) < 30) {
+          g.rest = true;
+          this.splat(nx, ny + 3, 0.6);
+        }
       }
       g.trail -= dt;
       if (g.trail <= 0 && !g.rest) {

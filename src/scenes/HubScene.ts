@@ -44,6 +44,7 @@ export class HubScene extends Phaser.Scene implements World {
   fx!: Fx;
   gore!: Gore;
   private backdrop!: Backdrop;
+  private leaving = false;
   player!: Player;
   enemies: Enemy[] = [];
   corpses: Corpse[] = [];
@@ -68,6 +69,7 @@ export class HubScene extends Phaser.Scene implements World {
   }
 
   create() {
+    this.leaving = false;
     if (!this.scene.isActive('Hud')) this.scene.launch('Hud');
     this.scene.bringToTop('Hud');
     hudState.inRun = false;
@@ -356,7 +358,8 @@ export class HubScene extends Phaser.Scene implements World {
       cancel: 'Not yet',
       width: 420,
     });
-    if (i !== 0) return;
+    if (i !== 0 || this.leaving) return;
+    this.leaving = true;
     m.runs++;
     save();
     sfx(this, 'door_open');
@@ -386,7 +389,7 @@ export class HubScene extends Phaser.Scene implements World {
     const near = this.stations.find((s) => Math.abs(s.x - this.player.x) < 34 && Math.abs(s.y - this.player.y) < 30);
     hudState.interact = near && !this.busy ? near.label : '';
     hudState.canExecute = false;
-    if (near && !this.busy && controls.take('speak')) {
+    if (near && !this.busy && !this.leaving && controls.take('speak')) {
       this.busy = true;
       near.act().finally(() => (this.busy = false));
     }

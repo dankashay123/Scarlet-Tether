@@ -89,6 +89,22 @@ class Grid {
     for (let y = y0; y <= y1; y++) this.set(x, y, '!');
     return this;
   }
+  /** A ledge that crumbles a moment after it is stood on, then reforms. */
+  crumble(x0: number, x1: number, y: number) {
+    return this.ledge(x0, x1, y, '%');
+  }
+  /**
+   * A walled-up niche: a block of masonry hanging from (x0..x1, top) with a
+   * hollow inside holding a reliquary, sealed by a cracked false wall on
+   * `side`. Stand level with its floor (row top + 6) to smash it open.
+   */
+  niche(x0: number, x1: number, top: number, side: 'L' | 'R' = 'L') {
+    this.block(x0, top, x1, top + 7);
+    this.fill(x0 + 1, top + 3, x1 - 1, top + 6, '.');
+    const fx = side === 'L' ? x0 : x1;
+    this.fill(fx, top + 3, fx, top + 6, 'w');
+    return this.put(Math.round((x0 + x1) / 2), top + 6, 'K');
+  }
   put(x: number, y: number, c: string) {
     this.set(x, y, c);
     return this;
@@ -390,12 +406,156 @@ export const TEMPLATES: Template[] = [
     0.8,
   ),
 
+  // --- Bigger halls with traps and secrets -------------------------------------
+  t(
+    'The Processional',
+    'combat',
+    new Grid(3, 1)
+      .carve()
+      .west()
+      .east()
+      .ledge(12, 18, 15)
+      .fill(22, F, 33, F, '^')
+      .crumble(23, 32, 16)
+      .block(36, 16, 44, 19)
+      .put(52, 2, 'P')
+      .put(68, 2, 'P')
+      .ledge(48, 56, 15)
+      .ledge(60, 70, 11)
+      .ledge(73, 80, 15)
+      .fill(84, F, 95, F, '^')
+      .crumble(85, 94, 16)
+      .ledge(98, 104, 14)
+      .niche(105, 115, 7, 'L')
+      .mark(6, F, 'c')
+      .mark(40, 15, 's')
+      .mark(46, F, 'B')
+      .mark(58, F, 'c')
+      .mark(82, F, 'c')
+      .mark(112, F, 'B')
+      .put(20, 3, 'k')
+      .put(64, 3, 'k')
+      .put(98, 3, 'k')
+      .mark(14, F, 'e')
+      .mark(42, 15, 'e')
+      .mark(64, 10, 'e')
+      .mark(76, F, 'E')
+      .mark(101, F, 'e')
+      .mark(30, 8, 'f')
+      .mark(90, 8, 'f'),
+    1.3,
+  ),
+  t(
+    'The Great Ossuary',
+    'combat',
+    new Grid(2, 2)
+      .carve()
+      .west(0)
+      .east(0)
+      .east(1)
+      .block(1, 20, 10, 21)
+      .block(69, 20, 78, 21)
+      // Tiers of bone ledges climbing both walls, four rows apart
+      .ledge(14, 22, 39)
+      .ledge(25, 33, 35)
+      .ledge(14, 22, 31)
+      .ledge(25, 33, 27)
+      .ledge(12, 20, 23)
+      .ledge(57, 65, 39)
+      .ledge(46, 54, 35)
+      .ledge(57, 65, 31)
+      .ledge(46, 54, 27)
+      .ledge(59, 67, 23)
+      .crumble(34, 45, 27)
+      .chain(39, 2, 18)
+      .fill(34, CH + F, 45, CH + F, '^')
+      .niche(1, 9, 36, 'R')
+      .mark(12, CH + F, 'c')
+      .mark(67, CH + F, 'c')
+      .mark(28, CH + F, 's')
+      .mark(52, CH + F, 's')
+      .mark(5, F, 'B')
+      .mark(74, F, 'B')
+      .put(20, 3, 'k')
+      .put(60, 3, 'k')
+      .mark(20, CH + F, 'e')
+      .mark(62, CH + F, 'e')
+      .mark(29, 34, 'e')
+      .mark(50, 34, 'e')
+      .mark(40, 12, 'f')
+      .mark(18, 16, 'f'),
+    1.1,
+  ),
+  t(
+    'The Collapsed Gallery',
+    'combat',
+    new Grid(2, 1)
+      .carve()
+      .west()
+      .east()
+      .fill(10, 20, 69, 21, '~')
+      .block(26, 16, 29, 21)
+      .block(50, 16, 53, 21)
+      .ladder(25, 16, 21)
+      .ladder(54, 16, 21)
+      .crumble(11, 24, 15)
+      .crumble(30, 49, 15)
+      .crumble(55, 68, 15)
+      .ledge(36, 42, 11)
+      .niche(43, 52, 4, 'L')
+      .mark(4, F, 'c')
+      .mark(76, F, 's')
+      .mark(6, F, 'e')
+      .mark(74, F, 'e')
+      .mark(28, 15, 'e')
+      .mark(30, 6, 'f')
+      .mark(62, 6, 'f')
+      .put(18, 3, 'k')
+      .put(62, 3, 'k'),
+  ),
+  t(
+    'The Cage Spire',
+    'combat',
+    new Grid(1, 2)
+      .carve()
+      .north(0, 8)
+      .west(1)
+      .east(1)
+      .ledge(15, 24, 9)
+      .ladder(19, 9, 18)
+      .crumble(4, 12, 39)
+      .ledge(14, 22, 35)
+      .crumble(26, 34, 31)
+      .ledge(14, 22, 27)
+      .ledge(4, 12, 23)
+      .ledge(14, 24, 19)
+      .chain(36, 12, 30)
+      .chain(2, 14, 34)
+      .put(8, 3, 'k')
+      .put(30, 3, 'k')
+      .put(26, 12, 'k')
+      .mark(6, CH + F, 'c')
+      .mark(33, CH + F, 'c')
+      .mark(8, 22, 's')
+      .mark(30, 30, 'e')
+      .mark(20, CH + F, 'e')
+      .mark(20, 14, 'f')
+      .mark(10, 30, 'f'),
+    0.9,
+  ),
+
   // --- Special rooms (dead ends) -----------------------------------------------
   t(
     'A Side Chapel',
     'special',
     new Grid(1, 1).carve().west().east().mark(20, F, 'X').mark(8, F, 'c').mark(31, F, 'c').mark(13, F, 's').mark(27, F, 's').put(20, 3, 'k').ledge(15, 25, 15),
     1,
+  ),
+  t(
+    'A Walled-Up Chapel',
+    'special',
+    new Grid(1, 1).carve().west().east().mark(14, F, 'X').mark(6, F, 'c').mark(20, F, 's').ledge(22, 28, 14).niche(29, 37, 7, 'L').put(10, 3, 'k'),
+    0.8,
   ),
   t(
     'A Sunken Chapel',

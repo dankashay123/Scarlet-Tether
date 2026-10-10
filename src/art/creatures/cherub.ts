@@ -6,7 +6,8 @@ import {
   type AnimDef, type Material, type V2,
 } from './common';
 
-export const CHERUB = { w: 64, h: 64 };
+// footY puts the sprite centre on the body's centre (13px above its feet)
+export const CHERUB = { w: 64, h: 64, footY: 45 };
 
 const SKIN = '#cfa898';
 const LIP: Material = { ramp: ['#1a0608', '#4a1418', '#7a2a34', '#a24a54', '#c87878'], spec: 0.5 };

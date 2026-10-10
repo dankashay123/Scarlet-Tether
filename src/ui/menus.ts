@@ -21,6 +21,7 @@ export async function pauseMenu(scene: Phaser.Scene, inRun: boolean): Promise<vo
       title: 'The Book of Skin',
       body: inRun ? (sac ? `Sacraments carried:\n${sac}` : 'No Sacraments carried yet.') : undefined,
       width: inRun ? 440 : 300,
+      escape: 0,
       options: [
         { label: 'Return to the dark' },
         ...(inRun && hudState.map ? [{ label: 'The map' }] : []),

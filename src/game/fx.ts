@@ -27,6 +27,25 @@ export class Fx {
     }
   }
 
+  /** Chips of stone and a puff of grit: masonry giving way. */
+  rubble(x: number, y: number, n = 10) {
+    const stones = ['#5a4e48', '#7a6e66', '#3a302c', '#a89a8a'];
+    for (let i = 0; i < n; i++) {
+      const img = this.scene.add.image(x + (Math.random() - 0.5) * 12, y + (Math.random() - 0.5) * 12, Math.random() < 0.5 ? 'px' : 'clot').setTint(hexNum(stones[i % stones.length])).setDepth(DEPTH.fx);
+      const dx = (Math.random() - 0.5) * 70;
+      this.scene.tweens.add({ targets: img, x: img.x + dx, duration: 600 + Math.random() * 300, ease: 'Linear' });
+      this.scene.tweens.add({
+        targets: img,
+        y: img.y + 30 + Math.random() * 40,
+        angle: (Math.random() - 0.5) * 360,
+        duration: 600 + Math.random() * 300,
+        ease: 'Back.In',
+        onComplete: () => img.destroy(),
+      });
+    }
+    this.smoke(x, y, Math.ceil(n / 4), '#4a403a');
+  }
+
   sparks(x: number, y: number, n: number, color: string = P.candle) {
     for (let i = 0; i < n; i++) {
       const img = this.scene.add.image(x, y, 'px1').setTint(hexNum(color)).setDepth(DEPTH.fx);

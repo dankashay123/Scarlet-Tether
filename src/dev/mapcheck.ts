@@ -1,3 +1,5 @@
+// ('w' false walls count as open: the chain smashes them. '%' crumbling
+// ledges hold long enough to jump from, so they count as ledges.)
 // Reachability check for generated maps: can the player get from the spawn
 // to every exit, doorway, shrine and feature using the real movement rules?
 // Run with: npm run mapcheck
@@ -21,7 +23,7 @@ export function checkMap(m: GeneratedMap, seed = 0): Report {
   const ch = (x: number, y: number) => (x < 0 || y < 0 || x >= W || y >= H ? '#' : rows[y][x]);
   const solid = (x: number, y: number) => ch(x, y) === '#' || ch(x, y) === 'g';
   const ladder = (x: number, y: number) => ch(x, y) === '|' || ch(x, y) === '!';
-  const oneWay = (x: number, y: number) => ch(x, y) === '=' || (ch(x, y) === '|' && !ladder(x, y - 1) && !solid(x, y - 1));
+  const oneWay = (x: number, y: number) => ch(x, y) === '=' || ch(x, y) === '%' || (ch(x, y) === '|' && !ladder(x, y - 1) && !solid(x, y - 1));
   const open = (x: number, y: number) => !solid(x, y);
   const roomy = (x: number, y: number) => open(x, y) && open(x, y - 1) && open(x, y - 2);
   // Standing at cell (x,y) means feet rest on top of row y+1

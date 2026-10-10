@@ -131,6 +131,15 @@ export class RunScene extends Phaser.Scene implements World {
     this.rooms = this.stage === 'map' ? map.rooms : [];
     const layout = this.stage === 'map' ? { name: 'The Sunken Confessionals', kind: 'combat' as const, rows: map.rows } : BOSS_LAYOUT;
     this.level = new Level(this, layout, 'marble');
+    this.level.onCrumble = (x, y, fall) => {
+      if (!fall) {
+        sfx(this, 'footstep_wet', { volume: 0.6, rate: 0.5 });
+        this.fx.smoke(x, y, 2, '#4a403a');
+      } else if (Math.random() < 0.5) {
+        this.fx.rubble(x, y, 4);
+        sfx(this, 'door_open', { volume: 0.4, rate: 1.4 });
+      }
+    };
     this.gore = new Gore(this, this.level);
     this.fx = new Fx(this);
     const spawn = this.level.find('S')[0];
@@ -165,6 +174,7 @@ export class RunScene extends Phaser.Scene implements World {
     } else this.time.delayedCall(700, () => this.bossIntro());
     this.cameras.main.fadeIn(500, 11, 5, 7);
     this.events.once('shutdown', () => this.cleanup());
+    this.events.off('abandon');
     this.events.once('abandon', () => {
       this.dying = true;
       hudState.inRun = false;
@@ -233,6 +243,10 @@ export class RunScene extends Phaser.Scene implements World {
           break;
         case 'V':
           this.buildVotive(m.x, m.y);
+          break;
+        case 'K':
+          // A reliquary hidden behind a false wall
+          this.buildFeature(m.x, m.y, 'cache');
           break;
         case 'b':
           this.boss = new Bartholomew(this, m.x, m.y);
@@ -496,7 +510,8 @@ export class RunScene extends Phaser.Scene implements World {
         this.spawnVertebra(e.x, e.cy);
         if (Math.random() < 0.5) this.spawnVertebra(e.x + 6, e.cy);
       } else if (e.elite && Math.random() < 0.35) this.spawnVertebra(e.x, e.cy);
-      this.corpses.push({ x: e.x, y: e.y, sprite: e.sprite, eaten: false });
+      e.corpse = { x: e.x, y: e.y, sprite: e.sprite, eaten: false };
+      this.corpses.push(e.corpse);
     }
     if (executed) this.fx.text(e.x, e.y - 70, 'Absolved', P.blood0, 16, 1100);
   }
@@ -618,7 +633,24 @@ export class RunScene extends Phaser.Scene implements World {
     if (n === 3) hud(this).toast('Destroy the Ear before its heartbeat empties thy mind', P.blood0);
   }
 
+  /**
+   * Phone framing: feet sit low (about 64% down) so the thumbs never cover
+   * the fight, the view leads the way the penitent faces, and it drops to
+   * show the landing during a long fall.
+   */
+  private frameCamera(dt: number) {
+    if (this.stage !== 'map') return;
+    const cam = this.cameras.main;
+    const p = this.player;
+    const k = Math.min(1, dt * 2.5);
+    const lookX = -p.face * 48;
+    const lookY = p.body.vy > 300 ? 6 : 52;
+    cam.followOffset.x += (lookX - cam.followOffset.x) * k;
+    cam.followOffset.y += (lookY - cam.followOffset.y) * Math.min(1, dt * (p.body.vy > 300 ? 4 : 2));
+  }
+
   private async bossDefeated() {
+    if (this.dying) return;
     const m = meta();
     const run = currentRun();
     hudState.bossVisible = false;
@@ -735,8 +767,10 @@ export class RunScene extends Phaser.Scene implements World {
     const run = currentRun();
 
     this.player.update(dt);
+    this.frameCamera(dt);
     for (const e of this.enemies) e.update(edt);
     for (const hz of this.hazards) hz.update(dt, run.lucidity);
+    this.level.update(dt);
     for (let i = this.smokes.length - 1; i >= 0; i--) {
       this.smokes[i].update(dt);
       if (this.smokes[i].done) this.smokes.splice(i, 1);
