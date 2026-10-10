@@ -1,32 +1,29 @@
 // Unified input state written by the HUD (touch + keyboard) and read by
 // gameplay scenes. Presses are buffered briefly so taps never get lost.
 
-export type Action = 'attack' | 'dodge' | 'execute' | 'stigma' | 'tear' | 'speak' | 'pause';
+export type Action = 'attack' | 'jump' | 'dodge' | 'execute' | 'stigma' | 'tear' | 'speak' | 'pause';
 
 const BUFFER_MS = 160;
 
 class Controls {
   moveX = 0;
   moveY = 0;
-  /** 0..1 joystick deflection; under ~0.55 counts as sneaking. */
+  /** 0..1 joystick deflection; a light push counts as sneaking. */
   mag = 0;
-  attackHeld = false;
-  attackHeldSince = 0;
   invert = false;
   private presses = new Map<Action, number>();
   private releases = new Map<Action, number>();
+  private held = new Map<Action, number>();
 
   press(a: Action) {
-    this.presses.set(a, performance.now());
-    if (a === 'attack') {
-      this.attackHeld = true;
-      this.attackHeldSince = performance.now();
-    }
+    const now = performance.now();
+    this.presses.set(a, now);
+    this.held.set(a, now);
   }
 
   release(a: Action) {
     this.releases.set(a, performance.now());
-    if (a === 'attack') this.attackHeld = false;
+    this.held.delete(a);
   }
 
   /** True once per press, if pressed within the buffer window. */
@@ -42,20 +39,21 @@ class Controls {
     return t !== undefined && performance.now() - t < BUFFER_MS;
   }
 
-  takeRelease(a: Action): boolean {
-    const t = this.releases.get(a);
-    if (t === undefined) return false;
-    this.releases.delete(a);
-    return performance.now() - t < BUFFER_MS;
+  isHeld(a: Action): boolean {
+    return this.held.has(a);
   }
 
-  heldMs(): number {
-    return this.attackHeld ? performance.now() - this.attackHeldSince : 0;
+  heldMs(a: Action = 'attack'): number {
+    const t = this.held.get(a);
+    return t === undefined ? 0 : performance.now() - t;
+  }
+
+  get attackHeld() {
+    return this.held.has('attack');
   }
 
   setMove(x: number, y: number) {
-    const m = Math.min(1, Math.hypot(x, y));
-    this.mag = m;
+    this.mag = Math.min(1, Math.hypot(x, y));
     const s = this.invert ? -1 : 1;
     this.moveX = x * s;
     this.moveY = y * s;
@@ -64,7 +62,7 @@ class Controls {
   clear() {
     this.presses.clear();
     this.releases.clear();
-    this.attackHeld = false;
+    this.held.clear();
     this.setMove(0, 0);
   }
 }
@@ -75,7 +73,6 @@ export const controls = new Controls();
 export const hudState = {
   canExecute: false,
   interact: '' as string,
-  stigma: '' as '' | 'maw',
   stigmaReady: false,
   tearReady: false,
   inRun: false,

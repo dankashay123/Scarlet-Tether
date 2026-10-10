@@ -83,7 +83,7 @@ export class IntroScene extends Phaser.Scene {
     const H = this.scale.height;
     this.tether.clear();
     this.tweens.add({ targets: this.art, y: -this.art.displayHeight, duration: 2600, ease: 'Quad.In' });
-    const body = this.add.sprite(W / 2, -20, 'player').play('player:roll').setScale(2);
+    const body = this.add.sprite(W / 2, -20, 'player').play('player:fall').setScale(2).setAngle(160);
     this.tweens.add({ targets: body, y: H * 0.45, duration: 2200, ease: 'Quad.In' });
     const streaks = this.add.graphics();
     this.time.addEvent({

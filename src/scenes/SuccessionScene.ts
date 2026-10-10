@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { FONT, FONT_OUTLINE } from '../art/font';
 import { P, hexNum } from '../art/palette';
-import { buildPlayerSheet, lookFromSeed } from '../art/characters';
+import { buildHeroSheet } from '../art/hero';
+import { lookFromSeed } from '../art/look';
 import { buildPortraits } from '../art/vignettes';
 import { currentRun, meta, save, startingLucidity } from '../game/state';
 import { makeCitizen } from '../game/citizens';
@@ -49,7 +50,7 @@ export class SuccessionScene extends Phaser.Scene {
 
     const look = lookFromSeed(next.seed, { maw: m.equipped.includes('maw'), helix: m.equipped.includes('helix') });
     buildPortraits(this, look.skin, look.hair);
-    buildPlayerSheet(this, look);
+    buildHeroSheet(this, look);
 
     this.cameras.main.setBackgroundColor('#0b0507');
     const t = (y: number, s: string, c: string = P.bone0, font = FONT_OUTLINE) =>

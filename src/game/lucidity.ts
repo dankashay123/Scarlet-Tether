@@ -66,7 +66,7 @@ export class LucidityFx {
     const q = Math.round(rot * 40);
     if (q !== this.lastQ) {
       this.lastQ = q;
-      w.room.setRot(rot);
+      w.level.setRot(rot);
       this.onRot?.(rot);
       if (this.cm) {
         this.cm.reset();
@@ -89,7 +89,7 @@ export class LucidityFx {
     this.hole.setVisible(narrow);
     if (narrow) {
       const cam = w.sc.cameras.main;
-      this.hole.setPosition(w.player.x, w.player.y - 10);
+      this.hole.setPosition(w.player.x, w.player.cy);
       const s = blind ? (L < 15 ? 3.4 : 4) : 5.2;
       this.hole.setScale(s / cam.zoom);
     }
@@ -100,7 +100,7 @@ export class LucidityFx {
       if (this.whisperT <= 0) {
         this.whisperT = 5 + Math.random() * 7 * (L / 50 + 0.3);
         const a = Math.random() * Math.PI * 2;
-        w.fx.whisper(w.player.x + Math.cos(a) * 50, w.player.y - 20 + Math.sin(a) * 30, Phaser.Utils.Array.GetRandom(DREAD_WHISPERS));
+        w.fx.whisper(w.player.x + Math.cos(a) * 60, w.player.y - 60 + Math.sin(a) * 30, Phaser.Utils.Array.GetRandom(DREAD_WHISPERS));
         sfx(w.sc, 'whisper', { volume: 0.5 + (50 - L) / 100 });
       }
     }
@@ -126,12 +126,10 @@ export class LucidityFx {
       const g = this.ghosts[i];
       g.life -= dt;
       const p = w.player;
-      const d = Phaser.Math.Distance.Between(g.s.x, g.s.y, p.x, p.y);
-      const a = Math.atan2(p.y - g.s.y, p.x - g.s.x);
-      g.s.x += Math.cos(a) * 55 * dt;
-      g.s.y += Math.sin(a) * 55 * dt;
-      g.s.setFlipX(Math.cos(a) < 0).setDepth(DEPTH.actorBase + g.s.y);
-      if (d < 26 || g.life <= 0) {
+      const dir = Math.sign(p.x - g.s.x) || 1;
+      g.s.x += dir * 60 * dt;
+      g.s.setFlipX(dir < 0);
+      if (Math.abs(g.s.x - p.x) < 26 || g.life <= 0) {
         w.sc.tweens.add({ targets: g.s, alpha: 0, duration: 200, onComplete: () => g.s.destroy() });
         this.ghosts.splice(i, 1);
       }
@@ -151,12 +149,11 @@ export class LucidityFx {
 
   private spawnGhost() {
     const w = this.world;
-    const cam = w.sc.cameras.main;
-    const v = cam.worldView;
-    const side = Math.floor(Math.random() * 4);
-    const x = side === 0 ? v.x + 8 : side === 1 ? v.right - 8 : v.x + Math.random() * v.width;
-    const y = side === 2 ? v.y + 20 : side === 3 ? v.bottom - 8 : v.y + Math.random() * v.height;
-    const s = w.sc.add.sprite(x, y, 'blind').setOrigin(0.5, 0.9).setTintFill(hexNum(P.ink)).setAlpha(0);
+    const v = w.sc.cameras.main.worldView;
+    const p = w.player;
+    const x = Math.random() < 0.5 ? v.x + 12 : v.right - 12;
+    const fy = w.level.floorY(x, p.y - 30) ?? p.y;
+    const s = w.sc.add.sprite(x, fy, 'blind').setOrigin(0.5, 74 / 80).setTintFill(hexNum(P.ink)).setAlpha(0).setDepth(DEPTH.enemy - 1);
     s.play('blind:walk');
     w.sc.tweens.add({ targets: s, alpha: 0.7, duration: 500 });
     this.ghosts.push({ s, life: 4 });

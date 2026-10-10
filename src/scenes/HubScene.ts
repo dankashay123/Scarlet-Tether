@@ -2,10 +2,14 @@ import Phaser from 'phaser';
 import { P, hexNum } from '../art/palette';
 import { FONT_OUTLINE } from '../art/font';
 import { DEPTH } from '../game/config';
-import { Room } from '../game/room';
+import { Level } from '../game/level';
+import { Gore } from '../game/gore';
+import { Backdrop } from '../game/backdrop';
+import { NPC_SIZES } from '../art/creatures';
 import { Fx } from '../game/fx';
 import { Player } from '../game/player';
-import { buildPlayerSheet, lookFromSeed } from '../art/characters';
+import { buildHeroSheet } from '../art/hero';
+import { lookFromSeed } from '../art/look';
 import { controls, hudState } from '../game/controls';
 import { meta, maxHp, maxLucidity, maxStamina, save, startingLucidity, STIGMA_LUCIDITY_TOLL, type StigmaId } from '../game/state';
 import { loop, sfx, stopLoop } from '../game/audio';
@@ -36,8 +40,10 @@ export function upgradeCost(lvl: number) {
 
 /** The Drain of Absolution: a cistern just beneath the golden streets. */
 export class HubScene extends Phaser.Scene implements World {
-  room!: Room;
+  level!: Level;
   fx!: Fx;
+  gore!: Gore;
+  private backdrop!: Backdrop;
   player!: Player;
   enemies: Enemy[] = [];
   corpses: Corpse[] = [];
@@ -66,18 +72,22 @@ export class HubScene extends Phaser.Scene implements World {
     this.scene.bringToTop('Hud');
     hudState.inRun = false;
     hudState.bossVisible = false;
-    this.room = new Room(this, HUB_LAYOUT, 'cistern');
+    hudState.depth = -1;
+    this.backdrop = new Backdrop(this, 'cistern');
+    this.level = new Level(this, HUB_LAYOUT, 'cistern');
+    this.gore = new Gore(this, this.level);
     this.fx = new Fx(this);
-    const chute = this.room.find('H')[0];
-    const door = this.room.find('D')[0];
-    const start = this.arrival === 'chute' ? { x: chute.x + 40, y: chute.y + 40 } : { x: door.x, y: door.y + 30 };
+    const chute = this.level.find('H')[0];
+    const door = this.level.find('D')[0];
+    const start = this.arrival === 'chute' ? { x: chute.x, y: chute.y } : { x: door.x - 30, y: door.y };
     this.player = new Player(this, start.x, start.y);
 
     const cam = this.cameras.main;
-    const bw = Math.max(this.room.pxW, this.scale.width);
-    const bh = Math.max(this.room.pxH, this.scale.height);
-    cam.setBounds((this.room.pxW - bw) / 2, (this.room.pxH - bh) / 2, bw, bh);
-    cam.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 12);
+    const bw = Math.max(this.level.pxW, this.scale.width);
+    const bh = Math.max(this.level.pxH, this.scale.height);
+    cam.setBounds((this.level.pxW - bw) / 2, (this.level.pxH - bh) / 2, bw, bh);
+    cam.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 40);
+    cam.setDeadzone(40, 30);
     cam.setBackgroundColor('#0b0507');
     cam.fadeIn(700, 11, 5, 7);
     if (cam.postFX) cam.postFX.addVignette(0.5, 0.5, 0.85, 0.35);
@@ -86,102 +96,88 @@ export class HubScene extends Phaser.Scene implements World {
     loop(this, 'amb_hub', 'amb');
     stopLoop(this, 'music');
 
-    if (this.arrival === 'chute') this.fallIn(chute.x, chute.y);
+    if (this.arrival === 'chute') this.fallIn();
     this.events.once('shutdown', () => {
       this.player.destroy();
-      this.fx.destroy();
-      this.room.destroy();
+      this.gore.destroy();
+      this.level.destroy();
+      this.backdrop.destroy();
       hudState.interact = '';
     });
   }
 
+  private light(x: number, y: number, key: string, color: string, alpha: number) {
+    return this.add.image(x, y, key).setBlendMode(Phaser.BlendModes.ADD).setTint(hexNum(color)).setAlpha(alpha).setDepth(DEPTH.light);
+  }
+
   private buildScene() {
-    const r = this.room;
-    // Golden light falls through the street grates above
-    for (let i = 0; i < 5; i++) {
-      const x = 90 + i * 130 + (i % 2) * 30;
-      const l = this.add.image(x, 30, 'grate-light').setOrigin(0.5, 0).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.light).setAlpha(0.55);
-      this.tweens.add({ targets: l, alpha: 0.35, duration: 2200 + i * 300, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    const L = this.level;
+    // Golden light falls through the street grates above, with the
+    // muffled joy of Sanctum.
+    for (let x = 140; x < L.pxW - 60; x += 190) {
+      const l = this.add.image(x, 16, 'prop-grate-light').setOrigin(0.5, 0).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.light).setAlpha(0.7);
+      this.tweens.add({ targets: l, alpha: 0.4, duration: 2400 + x, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     }
-    for (const m of r.markers) {
+    for (const m of L.markers) {
       switch (m.ch) {
-        case 'M': {
-          this.add.sprite(m.x, m.y + 10, 'magdalene').setOrigin(0.5, 1).play('magdalene:idle').setDepth(DEPTH.actorBase + m.y);
-          this.block(m.tx, m.ty, 2);
-          this.add.image(m.x, m.y - 20, 'light-lg').setBlendMode(Phaser.BlendModes.ADD).setTint(hexNum(P.blood1)).setAlpha(0.25).setDepth(DEPTH.light);
-          this.stations.push({ x: m.x, y: m.y + 22, label: 'Speak with the Weaver', act: () => this.magdalene() });
+        case 'M':
+          this.add.sprite(m.x, m.y, 'magdalene').setOrigin(0.5, NPC_SIZES.magdalene.footY / NPC_SIZES.magdalene.h).play('magdalene:idle').setDepth(DEPTH.props + 3);
+          this.light(m.x, m.y - 60, 'light-lg', P.blood1, 0.3);
+          this.stations.push({ x: m.x, y: m.y, label: 'Speak with the Weaver', act: () => this.magdalene() });
           break;
-        }
-        case 'O': {
-          this.add.sprite(m.x, m.y + 8, 'vivisect').setOrigin(0.5, 1).play('vivisect:idle').setDepth(DEPTH.actorBase + m.y);
-          this.block(m.tx, m.ty, 0);
-          this.add.sprite(m.x - 22, m.y + 6, 'candle').setOrigin(0.5, 1).play('candle:flicker').setDepth(DEPTH.actorBase + m.y);
-          this.add.image(m.x - 22, m.y - 4, 'light-sm').setBlendMode(Phaser.BlendModes.ADD).setTint(hexNum(P.candle)).setAlpha(0.5).setDepth(DEPTH.light);
-          this.stations.push({ x: m.x, y: m.y + 18, label: 'Speak with the Deacon', act: () => this.vivisect() });
+        case 'O':
+          this.add.sprite(m.x, m.y, 'vivisect').setOrigin(0.5, NPC_SIZES.vivisect.footY / NPC_SIZES.vivisect.h).play('vivisect:idle').setDepth(DEPTH.props + 3).setFlipX(true);
+          this.add.sprite(m.x - 34, m.y, 'candelabra').setOrigin(0.5, 1).play('candelabra:flicker').setDepth(DEPTH.props + 2);
+          this.light(m.x - 34, m.y - 40, 'light-lg', P.candle, 0.4);
+          this.stations.push({ x: m.x, y: m.y, label: 'Speak with the Deacon', act: () => this.vivisect() });
           break;
-        }
-        case 'L': {
-          this.add.sprite(m.x, m.y + 8, 'hollow').setOrigin(0.5, 1).play('hollow:idle').setDepth(DEPTH.actorBase + m.y);
-          this.block(m.tx, m.ty, 0);
-          this.add.image(m.x, m.y - 10, 'light-sm').setBlendMode(Phaser.BlendModes.ADD).setTint(hexNum(P.tear1)).setAlpha(0.35).setDepth(DEPTH.light);
-          this.stations.push({ x: m.x, y: m.y + 18, label: 'Trade with Brother Hollow', act: () => this.hollow() });
+        case 'L':
+          this.add.sprite(m.x, m.y, 'hollow').setOrigin(0.5, NPC_SIZES.hollow.footY / NPC_SIZES.hollow.h).play('hollow:idle').setDepth(DEPTH.props + 3);
+          this.light(m.x, m.y - 40, 'light-sm', P.tear1, 0.4);
+          this.stations.push({ x: m.x, y: m.y, label: 'Trade with Brother Hollow', act: () => this.hollow() });
           break;
-        }
-        case 'W': {
-          this.add.image(m.x, m.y + 8, 'lectern').setOrigin(0.5, 1).setDepth(DEPTH.actorBase + m.y);
-          this.block(m.tx, m.ty, 0);
-          this.stations.push({ x: m.x, y: m.y + 16, label: 'Read the Lineage', act: () => this.lineage() });
+        case 'W':
+          this.add.image(m.x, m.y, 'prop-lectern').setOrigin(0.5, 1).setDepth(DEPTH.props + 3);
+          this.light(m.x, m.y - 30, 'light-sm', P.candle, 0.3);
+          this.stations.push({ x: m.x, y: m.y, label: 'Read the Lineage', act: () => this.lineage() });
           break;
-        }
+        case 'c':
+          this.add.sprite(m.x, m.y, 'candelabra').setOrigin(0.5, 1).play('candelabra:flicker').setDepth(DEPTH.props + 2);
+          this.light(m.x, m.y - 40, 'light-lg', P.candle, 0.4);
+          break;
         case 'D': {
-          const s = this.add.sprite(m.x, m.y + 8, 'door').setOrigin(0.5, 1).setDepth(DEPTH.actorBase + m.y);
+          const s = this.add.sprite(m.x, m.y, 'door').setOrigin(0.5, 1).setDepth(DEPTH.props + 2);
           s.play('door:open');
-          this.add.image(m.x, m.y - 38, 'emblem-combat').setDepth(DEPTH.actorBase + m.y + 1);
-          this.room.setSolid(m.tx, m.ty, false);
-          this.stations.push({ x: m.x, y: m.y + 20, label: 'The Descent', act: () => this.descend() });
+          this.add.image(m.x, m.y - 80, 'emblem-combat').setDepth(DEPTH.props + 3);
+          this.stations.push({ x: m.x, y: m.y, label: 'The Descent', act: () => this.descend() });
           break;
         }
-        case 'H': {
-          this.add.bitmapText(m.x, m.y - 14, FONT_OUTLINE, 'The Echoing Chute').setOrigin(0.5).setTint(hexNum(P.bone2)).setDepth(DEPTH.overlay - 5).setAlpha(0.7);
+        case 'H':
+          this.add.bitmapText(m.x + 30, m.y + 6, FONT_OUTLINE, 'The Echoing Chute').setOrigin(0, 0.5).setTint(hexNum(P.bone2)).setDepth(DEPTH.overlay - 5).setAlpha(0.7);
+          this.light(m.x, m.y + 10, 'light-lg', P.blood0, 0.2);
           break;
-        }
       }
     }
   }
 
-  private block(tx: number, ty: number, half: number) {
-    for (let dx = -half; dx <= half; dx++) this.room.setSolid(tx + dx, ty, true);
-  }
-
-  private fallIn(x: number, y: number) {
+  /** Newly severed citizens plummet down the Chute into the bloody water. */
+  private fallIn() {
     const p = this.player;
     p.lock(true);
-    p.x = x;
-    p.y = y;
-    const s = p.sprite;
-    s.play('player:roll');
-    const fall = { z: 260 };
-    this.tweens.add({
-      targets: fall,
-      z: 0,
-      duration: 900,
-      ease: 'Quad.In',
-      onUpdate: () => s.setY(p.y - fall.z),
-      onComplete: () => {
+    p.body.vy = 80;
+    const check = this.time.addEvent({
+      delay: 16,
+      loop: true,
+      callback: () => {
+        if (!p.grounded) return;
+        check.remove();
         sfx(this, 'hit_flesh', { rate: 0.6 });
         sfx(this, 'footstep_wet', { volume: 1.5, rate: 0.7 });
-        this.fx.blood(x, y, 30, 0, 0, 1.2);
-        this.fx.shake(250, 0.01);
-        // Wade out of the pool
-        this.tweens.add({
-          targets: p,
-          x: x + 40,
-          y: y + 40,
-          duration: 900,
-          onComplete: () => {
-            p.lock(false);
-            this.greet();
-          },
+        this.gore.burst(p.x, p.y - 6, 40, 1.1);
+        this.fx.shake(250, 0.012);
+        this.time.delayedCall(700, () => {
+          p.lock(false);
+          this.greet();
         });
       },
     });
@@ -255,10 +251,10 @@ export class HubScene extends Phaser.Scene implements World {
     const x = this.player.x;
     const y = this.player.y;
     this.player.destroy();
-    buildPlayerSheet(this, lookFromSeed(m.citizen.seed, { maw: m.equipped.includes('maw'), helix: m.equipped.includes('helix') }));
+    buildHeroSheet(this, lookFromSeed(m.citizen.seed, { maw: m.equipped.includes('maw'), helix: m.equipped.includes('helix') }));
     this.player = new Player(this, x, y);
-    this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 12);
-    this.fx.blood(x, y - 12, 14);
+    this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 40);
+    this.gore.burst(x, y - 30, 20);
   }
 
   private async vivisect() {
@@ -295,7 +291,7 @@ export class HubScene extends Phaser.Scene implements World {
       m.weapon[k]++;
       save();
       sfx(this, 'execute', { volume: 0.6 });
-      this.fx.blood(this.player.x, this.player.y - 10, 10);
+      this.gore.spray(this.player.x, this.player.y - 30, -Math.PI / 2, 12, 0.8);
       await hud(this).dialog(NPC.vivisect.name, [Phaser.Utils.Array.GetRandom(NPC.vivisect.idle)]);
     }
   }
@@ -372,6 +368,7 @@ export class HubScene extends Phaser.Scene implements World {
 
   update(_t: number, deltaMs: number) {
     const h = hud(this);
+    this.backdrop.update();
     if (!h || h.modal) return;
     const dt = Math.min(deltaMs, 50) / 1000;
     if (controls.take('pause')) {
@@ -379,14 +376,14 @@ export class HubScene extends Phaser.Scene implements World {
       return;
     }
     this.player.update(dt);
-    this.fx.update(dt);
+    this.gore.update(dt);
     // Muffled joy from the street above
     this.laughT -= dt;
     if (this.laughT <= 0) {
       this.laughT = 9 + Math.random() * 10;
       sfx(this, 'bell_distant', { volume: 0.35, rate: 0.8 + Math.random() * 0.3 });
     }
-    const near = this.stations.find((s) => Phaser.Math.Distance.Between(s.x, s.y, this.player.x, this.player.y) < 34);
+    const near = this.stations.find((s) => Math.abs(s.x - this.player.x) < 34 && Math.abs(s.y - this.player.y) < 30);
     hudState.interact = near && !this.busy ? near.label : '';
     hudState.canExecute = false;
     if (near && !this.busy && controls.take('speak')) {

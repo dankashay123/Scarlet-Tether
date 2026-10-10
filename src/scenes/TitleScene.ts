@@ -4,7 +4,8 @@ import { P, hexNum } from '../art/palette';
 import { meta, wipeSave } from '../game/state';
 import { loop, sfx } from '../game/audio';
 import { hud } from './HudScene';
-import { buildPlayerSheet, lookFromSeed } from '../art/characters';
+import { buildHeroSheet } from '../art/hero';
+import { lookFromSeed } from '../art/look';
 
 export class TitleScene extends Phaser.Scene {
   private started = false;
@@ -53,7 +54,7 @@ export class TitleScene extends Phaser.Scene {
             if (i === 0) {
               wipeSave();
               const n = meta();
-              buildPlayerSheet(this, lookFromSeed(n.citizen.seed, { maw: false, helix: false }));
+              buildHeroSheet(this, lookFromSeed(n.citizen.seed, { maw: false, helix: false }));
               this.scene.restart();
             } else this.started = false;
           });

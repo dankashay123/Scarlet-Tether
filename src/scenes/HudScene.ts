@@ -107,12 +107,13 @@ export class HudScene extends Phaser.Scene {
     const L = Math.max(10, this.inset.left);
     // Offsets from the bottom corner of the button cluster.
     const place: Record<string, [number, number]> = {
-      attack: [40, 46],
-      dodge: [96, 26],
-      execute: [40, 108],
-      speak: [40, 108],
-      stigma: [94, 84],
-      tear: [146, 30],
+      jump: [36, 34],
+      attack: [92, 46],
+      dodge: [44, 92],
+      execute: [100, 106],
+      speak: [100, 106],
+      stigma: [152, 98],
+      tear: [152, 38],
     };
     for (const b of this.btns) {
       if (b.action === 'pause') {
@@ -140,7 +141,7 @@ export class HudScene extends Phaser.Scene {
     this.tearsText.setPosition(R - 38 - off, 14);
     this.vertText.setPosition(R - 38 - off, 30);
     this.bossName.setPosition(this.W / 2 - off, 34);
-    this.interactLabel.setPosition(R - 40, B - 132);
+    this.interactLabel.setPosition(lefty ? L + 100 * k : R - 100 * k, B - 128 * k);
   }
 
   // -------------------------------------------------------------------------
@@ -289,6 +290,7 @@ export class HudScene extends Phaser.Scene {
       this.btns.push({ action, img, key, r, visible: true, pointer: null });
     };
     mk('attack', 'attack', 24);
+    mk('jump', 'jump', 22);
     mk('dodge', 'dodge', 18);
     mk('execute', 'execute', 18);
     mk('speak', 'speak', 18);
@@ -401,7 +403,8 @@ export class HudScene extends Phaser.Scene {
     const k = this.keys;
     const map: [string[], Action][] = [
       [['J', 'Z'], 'attack'],
-      [['K', 'X', 'SPACE'], 'dodge'],
+      [['SPACE'], 'jump'],
+      [['K', 'X'], 'dodge'],
       [['L', 'C'], 'execute'],
       [['I', 'V'], 'stigma'],
       [['H'], 'tear'],
@@ -458,6 +461,7 @@ export class HudScene extends Phaser.Scene {
     this.setBtnVisible('tear', hudState.inRun);
     this.btn('tear').img.setAlpha(hudState.tearReady ? 0.9 : 0.35);
     this.setBtnVisible('attack', true);
+    this.setBtnVisible('jump', true);
     this.setBtnVisible('dodge', true);
   }
 

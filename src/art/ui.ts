@@ -31,6 +31,28 @@ function button(r: number, rim: string, icon: (pc: PixelCanvas, c: number) => vo
 }
 
 const ICONS: Record<string, (pc: PixelCanvas, c: number) => void> = {
+  jump: (pc, c) => {
+    // A pair of plucked wings lifting a red tether
+    pc.poly(
+      [
+        [c - 10, c + 2],
+        [c - 2, c - 8],
+        [c - 1, c + 4],
+      ],
+      P.bone1,
+    );
+    pc.poly(
+      [
+        [c + 10, c + 2],
+        [c + 2, c - 8],
+        [c + 1, c + 4],
+      ],
+      P.bone1,
+    );
+    for (let i = -8; i <= 8; i += 3) pc.px(c + i, c + 1 - Math.abs(i) * 0.6, P.bone2);
+    pc.line(c, c - 6, c, c + 9, P.blood1);
+    pc.px(c, c - 7, P.blood0);
+  },
   attack: (pc, c) => {
     // Chain swinging to a shackle
     for (let i = 0; i < 5; i++) pc.rect(c - 8 + i * 3, c + 6 - i * 3, 2, 2, i % 2 ? P.iron0 : P.iron1);
@@ -256,6 +278,7 @@ export function buildUi(scene: Phaser.Scene) {
 
   const rims: Record<string, string> = {
     attack: P.iron0,
+    jump: P.bone2,
     dodge: P.smoke1,
     execute: P.blood1,
     maw: P.flesh2,
@@ -265,7 +288,7 @@ export function buildUi(scene: Phaser.Scene) {
     pause: P.bone2,
   };
   for (const [k, icon] of Object.entries(ICONS)) {
-    const r = k === 'attack' ? 24 : k === 'pause' ? 10 : 18;
+    const r = k === 'attack' ? 24 : k === 'jump' ? 22 : k === 'pause' ? 10 : 18;
     registerImage(scene, `btn-${k}`, button(r, rims[k], icon));
     registerImage(scene, `btn-${k}-down`, button(r, rims[k], icon, true));
   }

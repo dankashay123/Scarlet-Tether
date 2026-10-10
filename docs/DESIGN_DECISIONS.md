@@ -12,21 +12,30 @@ iPhone game. Where the two disagree, this file wins.
 - **Play-testing:** GitHub Pages, auto-deployed from the repo by a GitHub Actions workflow.
 
 ## Visual style
-- **16-bit HD pixel art.** Native render **640×360**, integer-scaled. On wider
-  iPhones the view extends horizontally (more of the room is visible) instead of
-  letterboxing.
-- **Perspective:** Top-down / 3/4 view, room-based roguelike (Hades-like structure).
-- **Art source:** Original pixel art generated in code (sprite/tile data + scripts).
+- **16-bit HD pixel art, Blasphemous-like.** Native render **640×360**. On wider
+  iPhones the view extends horizontally instead of letterboxing.
+- **Perspective (changed):** **side-scrolling** 2D action-platformer, still a
+  room-based roguelike (handmade rooms in random order).
+- **Art source:** generated in code by a volumetric pixel renderer
+  (`src/art/render.ts`): body parts are inflated into lit, dithered, outlined
+  forms, so sprites read as painted/shaded rather than flat. Characters are
+  ~70px tall (about double the first build). Grittier and much gorier: blood
+  arcs and paints permanently onto the stone; bodies burst into gibs;
+  executions decapitate.
+- **Backgrounds:** parallax cathedral layers (far/mid/near + dark foreground),
+  each with a marble and a rot twin.
 - **Lucidity rendering:** Every tile/sprite has a *marble* and a *rot* variant.
   As Lucidity falls, rot spreads through the room in patches, palette shifts toward
   desaturated red, hidden hazards fade in. Below 30% the UI starts lying.
 
 ## Controls (touch)
-- Floating virtual joystick (left thumb).
-- Right-side buttons: **Attack** (tap = combo, hold = charged heavy swing),
-  **Dodge**, **Execute** (Rite of Absolution, shows on staggered enemies),
-  **Stigma** ability.
-- Soft-lock aim onto the nearest enemy in the facing direction.
+- Floating virtual joystick (left thumb): run, creep (light push), up = strike
+  upward / enter doors, down + jump = drop through ledges.
+- Right-side buttons: **Jump**, **Attack** (tap = combo, hold = charged heavy
+  swing; in the air = downward strike), **Dodge** (ground slide / one air dash),
+  contextual **Execute** and **Speak**, **Tear** (heal), **Stigma**.
+- Attacks turn to face the nearest foe in reach.
+- Options: left-handed layout, large buttons.
 - Keyboard fallback for desktop development only.
 
 ## Combat changes vs. the Bible

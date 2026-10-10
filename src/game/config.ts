@@ -15,15 +15,21 @@ export function viewWidth(): number {
   return Math.max(640, Math.min(820, w - (w % 2)));
 }
 
+/** Draw order for the side-view world, back to front. */
 export const DEPTH = {
-  floor: 0,
-  rot: 1,
-  decal: 2,
-  hazard: 3,
-  shadow: 4,
-  // Actors are y-sorted between these.
-  actorBase: 10,
-  fx: 5000,
-  light: 6000,
-  overlay: 7000,
+  bgFar: -300,
+  bgMid: -290,
+  bgNear: -280,
+  props: -100, // booths, statues, candelabras behind the play layer
+  tiles: 0,
+  gore: 5, // blood painted onto the stone
+  hazard: 8,
+  corpse: 9,
+  enemy: 20,
+  player: 30,
+  projectile: 40,
+  fx: 50,
+  light: 60,
+  fg: 80,
+  overlay: 90,
 };

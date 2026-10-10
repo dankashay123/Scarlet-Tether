@@ -1,17 +1,11 @@
 import Phaser from 'phaser';
 import { buildFonts } from '../art/font';
-import { buildTilesets } from '../art/tiles';
-import {
-  buildBlindSheet,
-  buildGossipSheet,
-  buildNpcSheets,
-  buildPenitentSheet,
-  buildPlayerSheet,
-  lookFromSeed,
-} from '../art/characters';
+import { buildHeroSheet } from '../art/hero';
+import { lookFromSeed } from '../art/look';
+import { buildCreatures } from '../art/creatures';
+import { buildEnvironment } from '../art/environment';
 import { buildProps } from '../art/props';
 import { buildUi } from '../art/ui';
-import { buildBossSheet } from '../art/boss';
 import { buildVignettes } from '../art/vignettes';
 import { SFX_KEYS } from '../game/audio';
 import { meta } from '../game/state';
@@ -32,20 +26,23 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    document.getElementById('loading')?.remove();
+    const label = document.getElementById('loading');
+    if (label) label.textContent = 'Shaping the flesh\u2026';
+    // Yield one frame so the label paints before the (blocking) art generation.
+    this.time.delayedCall(30, () => this.generate());
+  }
+
+  private generate() {
     buildFonts(this);
-    buildTilesets(this);
-    buildBlindSheet(this);
-    buildGossipSheet(this);
-    buildPenitentSheet(this);
-    buildNpcSheets(this);
     buildProps(this);
+    buildEnvironment(this);
+    buildCreatures(this);
     buildUi(this);
-    buildBossSheet(this);
     buildVignettes(this);
     const m = meta();
-    buildPlayerSheet(this, lookFromSeed(m.citizen.seed, { maw: m.equipped.includes('maw'), helix: m.equipped.includes('helix') }));
+    buildHeroSheet(this, lookFromSeed(m.citizen.seed, { maw: m.equipped.includes('maw'), helix: m.equipped.includes('helix') }));
 
+    document.getElementById('loading')?.remove();
     // The HUD runs above every scene; start it first so it is ready.
     this.scene.launch('Hud');
     const params = new URLSearchParams(location.search);
