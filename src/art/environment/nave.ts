@@ -19,7 +19,7 @@ const W = 640;
 const H = 360;
 
 // --- Materials ------------------------------------------------------------------
-const M = {
+export const M = {
   WALL: 1,
   TRIM: 2,
   DEEP: 3,
@@ -135,7 +135,7 @@ export function ashlar(x: number, y: number, bw: number, bh: number, seed: numbe
 }
 
 /** Eight-point-star lattice ("girih"). 0 field, 1 ridge, 2 centre boss. u,v in cells. */
-function star(u: number, v: number, w = 0.06): number {
+export function star(u: number, v: number, w = 0.06): number {
   const px = frac(u) - 0.5;
   const py = frac(v) - 0.5;
   const ax = Math.abs(px);
@@ -246,7 +246,7 @@ function muqFrieze(x: number, y: number, y0: number, hgt: number, cell: number, 
 }
 
 /** A slender column: capital (abacus + carved bell), shaft with astragal, torus base and plinth. */
-function column(R: Relief, cx: number, top: number, bot: number, hw: number, z: number, opt: { shaft?: number; capH?: number } = {}) {
+export function column(R: Relief, cx: number, top: number, bot: number, hw: number, z: number, opt: { shaft?: number; capH?: number } = {}) {
   const capH = opt.capH ?? Math.round(hw * 2.6);
   const baseH = Math.round(hw * 2.2);
   const shaft = opt.shaft ?? M.SHAFT;
@@ -427,7 +427,7 @@ function swag(R: Relief, x0: number, x1: number, y: number, sag: number, depth: 
 }
 
 /** Turned balusters between rails, a full balustrade y0..y1 across x0..x1. */
-function balustrade(R: Relief, x0: number, x1: number, y0: number, y1: number, period: number, z: number) {
+export function balustrade(R: Relief, x0: number, x1: number, y0: number, y1: number, period: number, z: number) {
   const rail = Math.max(3, Math.round((y1 - y0) * 0.14));
   const plinth = Math.max(3, Math.round((y1 - y0) * 0.12));
   R.box(x0, y0, x1, y1, (x, y, i) => {
@@ -459,7 +459,7 @@ function balustrade(R: Relief, x0: number, x1: number, y0: number, y1: number, p
 
 // --- Rot overgrowth --------------------------------------------------------------
 
-interface RotSpec {
+export interface RotSpec {
   seed: number;
   bias: (x: number, y: number, m: number) => number;
   sinews?: [number, number, number, number, number, number][]; // ax, ay, bx, by, sag, radius
@@ -469,7 +469,7 @@ interface RotSpec {
   z?: number;
 }
 
-function catenary(R: Relief, ax: number, ay: number, bx: number, by: number, sag: number, r: number, z: number) {
+export function catenary(R: Relief, ax: number, ay: number, bx: number, by: number, sag: number, r: number, z: number) {
   const n = Math.max(4, Math.ceil(Math.abs(bx - ax) / 6));
   let px = ax;
   let py = ay;
@@ -483,7 +483,7 @@ function catenary(R: Relief, ax: number, ay: number, bx: number, by: number, sag
   }
 }
 
-function rotify(R: Relief, s: RotSpec) {
+export function rotify(R: Relief, s: RotSpec) {
   const z = s.z ?? 6;
   R.box(0, 0, W - 1, H - 1, (x, y, i) => {
     const m = R.mat[i];

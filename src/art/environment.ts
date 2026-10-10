@@ -15,6 +15,9 @@ import {
   drawSaint,
   drawVotive,
 } from './environment/props';
+import { buildDressing } from './environment/dressing';
+import { drawCrypt } from './environment/crypt';
+import { drawBridge } from './environment/bridge';
 
 /**
  * Side-view environment art for the Under-Naves: autotiled tilesets,
@@ -62,4 +65,15 @@ export function buildEnvironment(scene: Phaser.Scene) {
   registerImage(scene, 'prop-lectern', drawLectern());
   registerImage(scene, 'prop-grate-light', drawLightShaft());
   for (const k of ['combat', 'elite', 'confessional', 'votive', 'cache', 'boss']) registerImage(scene, `emblem-${k}`, drawEmblem(k));
+  // Area themes: the crypt below the naves, and the bridge outside under Sanctum
+  for (const [name, draw] of [['crypt', drawCrypt], ['bridge', drawBridge]] as const) {
+    const { plain, rot } = draw();
+    for (const l of ['far', 'mid', 'near'] as const) {
+      registerImage(scene, `bg-${name}-${l}`, plain[l]);
+      registerImage(scene, `bg-${name}-rot-${l}`, rot[l]);
+    }
+    registerImage(scene, `fg-${name}`, plain.fg);
+    registerImage(scene, `fg-${name}-rot`, rot.fg);
+  }
+  buildDressing(scene);
 }

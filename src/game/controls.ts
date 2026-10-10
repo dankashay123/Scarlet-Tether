@@ -85,7 +85,7 @@ export const hudState = {
   map: null as null | {
     gw: number;
     gh: number;
-    rooms: { x: number; y: number; w: number; h: number; role: string; explored: boolean; seen: boolean; links: [number, number, string][] }[];
+    rooms: { x: number; y: number; w: number; h: number; role: string; theme?: string; explored: boolean; seen: boolean; links: [number, number, string][] }[];
     current: number;
     px: number;
     py: number;

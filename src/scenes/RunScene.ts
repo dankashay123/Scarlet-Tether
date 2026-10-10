@@ -461,6 +461,7 @@ export class RunScene extends Phaser.Scene implements World {
         w: r.tpl.cw,
         h: r.tpl.ch,
         role: r.role,
+        theme: r.theme,
         explored: descent.explored.has(r.id),
         seen: descent.explored.has(r.id) || r.links.some((l) => descent.explored.has(l.to)),
         links: r.links.map((l) => [l.exit.cx, l.exit.cy, l.exit.dir] as [number, number, string]),

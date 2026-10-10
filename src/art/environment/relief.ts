@@ -175,12 +175,14 @@ export class Relief {
       const row = y * W;
       let s = 0;
       for (let x = -R; x <= R; x++) s += src[row + (this.wrap ? ((x % W) + W) % W : Math.max(0, Math.min(W - 1, x)))];
+      // (R < W, so a single +-W folds the window ends; same sums as a modulo)
+      const wrap = this.wrap;
       for (let x = 0; x < W; x++) {
         tmp[row + x] = s * k;
         const xa = x - R;
         const xb = x + R + 1;
-        s -= src[row + (this.wrap ? ((xa % W) + W) % W : Math.max(0, xa))];
-        s += src[row + (this.wrap ? xb % W : Math.min(W - 1, xb))];
+        s -= src[row + (xa >= 0 ? xa : wrap ? xa + W : 0)];
+        s += src[row + (xb < W ? xb : wrap ? xb - W : W - 1)];
       }
     }
     for (let x = 0; x < W; x++) {
