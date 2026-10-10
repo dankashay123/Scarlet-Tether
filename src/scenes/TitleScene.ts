@@ -9,6 +9,14 @@ import { Level } from '../game/level';
 import { Backdrop } from '../game/backdrop';
 import { Gore } from '../game/gore';
 import { hud } from './HudScene';
+import { pauseMenu } from '../ui/menus';
+
+const CREDITS_LINES = [
+  'THE SCARLET TETHER\n\nA vertical slice, made with Claude.',
+  'Art, gore and every pixel generated in code.\nType: Cinzel and EB Garamond (SIL Open Font License).',
+  'Sounds: Creative Commons Zero libraries. See CREDITS.md.',
+  'In memory of every citizen who fell down the Chute.',
+];
 import { buildHeroSheet } from '../art/hero';
 import { lookFromSeed } from '../art/look';
 import { txt } from '../ui/text';
@@ -150,9 +158,47 @@ export class TitleScene extends Phaser.Scene {
 
     const m = meta();
     if (new URLSearchParams(location.search).has('splash')) return; // capture mode for the loading splash
-    const label = m.seenIntro ? `touch to descend as ${m.citizen.name}` : 'touch to begin';
-    const hint = txt(this, ux, H - 40, label, 'label', 13).setItalic().setOrigin(0.5).setTint(hexNum(P.bone1)).setDepth(DEPTH.overlay + 1).setScrollFactor(0);
-    this.tweens.add({ targets: hint, alpha: 0.3, duration: 900, yoyo: true, repeat: -1 });
+    // --- The main menu, right-aligned as in Blasphemous ---------------------------
+    const items: { label: string; sub?: string; act: () => void }[] = [
+      { label: m.seenIntro ? 'Descend' : 'Begin the Penance', sub: m.seenIntro ? `as ${m.citizen.name}` : undefined, act: () => this.begin() },
+      { label: 'Options', act: () => this.options() },
+      { label: 'Credits', act: () => this.credits() },
+      ...(m.seenIntro ? [{ label: 'Forget Everything', act: () => this.forget() }] : []),
+    ];
+    const rx = W - Math.max(24, Math.round(W * 0.06));
+    const top = Math.round(H * 0.52);
+    const menuRows = items.map((it, i) => {
+      const y = top + i * 24 + (i > 0 && items[0].sub ? 10 : 0);
+      const t = txt(this, rx, y, it.label, 'head', 14).setOrigin(1, 0.5).setDepth(DEPTH.overlay + 1).setScrollFactor(0).setInteractive({ useHandCursor: true });
+      const sub = it.sub ? txt(this, rx, y + 13, it.sub, 'body', 10).setItalic().setOrigin(1, 0.5).setTint(hexNum(P.bone2)).setDepth(DEPTH.overlay + 1).setScrollFactor(0) : null;
+      t.on('pointerover', () => select(i));
+      t.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
+        ev.stopPropagation();
+        select(i);
+        choose();
+      });
+      return { t, sub, y };
+    });
+    const cursor = txt(this, 0, 0, '✞', 'label', 13).setOrigin(0.5).setTint(hexNum(P.blood0)).setDepth(DEPTH.overlay + 1).setScrollFactor(0).setGlow('rgba(255,40,40,0.6)', 5);
+    this.tweens.add({ targets: cursor, alpha: 0.55, duration: 700, yoyo: true, repeat: -1 });
+    let sel = 0;
+    const select = (i: number) => {
+      if (i !== sel) sfx(this, 'ui_select', { volume: 0.5 });
+      sel = i;
+      menuRows.forEach((r, j) => r.t.setTint(hexNum(j === sel ? '#ffd36a' : P.bone1)).setGlow(j === sel ? 'rgba(255,190,80,0.55)' : 'rgba(0,0,0,0)', 6));
+      const r = menuRows[sel];
+      cursor.setPosition(rx - r.t.width - 12, r.y);
+    };
+    const choose = () => {
+      if (this.started || hud(this).modal) return;
+      sfx(this, 'ui_confirm');
+      items[sel].act();
+    };
+    select(0);
+    for (const o of [...menuRows.flatMap((r) => [r.t, r.sub]), cursor]) o?.setAlpha(0);
+    this.tweens.add({ targets: [...menuRows.flatMap((r) => (r.sub ? [r.t, r.sub] : [r.t]))], alpha: 1, duration: 1200, delay: 1400 });
+    this.tweens.add({ targets: cursor, alpha: 1, duration: 600, delay: 1800 });
+
     const standalone =
       (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
       window.matchMedia('(display-mode: fullscreen)').matches ||
@@ -160,26 +206,13 @@ export class TitleScene extends Phaser.Scene {
     if (!standalone && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
       txt(this, ux, H - 20, 'For fullscreen: Share › Add to Home Screen', 'body', 10).setOrigin(0.5).setTint(hexNum(P.marble3)).setDepth(DEPTH.overlay + 1).setScrollFactor(0);
     }
-    if (m.seenIntro) {
-      const wipe = txt(this, W - 10, 8, 'forget everything', 'body', 10).setItalic().setOrigin(1, 0).setTint(hexNum(P.marble4)).setDepth(DEPTH.overlay + 1).setScrollFactor(0).setInteractive({ useHandCursor: true });
-      wipe.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
-        ev.stopPropagation();
-        this.started = true;
-        hud(this)
-          .menu({ title: 'Forget everything?', body: 'Every life, Stigma and upgrade will be lost. The Lineage will be burned.', options: [{ label: 'Burn it' }], cancel: 'Keep it' })
-          .then((i) => {
-            if (i === 0) {
-              wipeSave();
-              const n = meta();
-              buildHeroSheet(this, lookFromSeed(n.citizen.seed, { maw: false, helix: false }));
-              this.scene.restart();
-            } else this.started = false;
-          });
-      });
-    }
 
-    this.input.on('pointerdown', () => this.begin());
-    this.input.keyboard?.on('keydown', () => this.begin());
+    this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
+      if (this.started || hud(this).modal) return;
+      if (ev.key === 'ArrowDown' || ev.key === 's') select((sel + 1) % menuRows.length);
+      else if (ev.key === 'ArrowUp' || ev.key === 'w') select((sel + menuRows.length - 1) % menuRows.length);
+      else if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'e' || ev.key === 'j') choose();
+    });
     this.events.once('shutdown', () => this.gore.destroy());
   }
 
@@ -191,6 +224,26 @@ export class TitleScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.scrollX = 18 + Math.sin(this.drift * 0.12) * 18;
     this.backdrop.update();
+  }
+
+  private options() {
+    void pauseMenu(this, false);
+  }
+
+  private credits() {
+    void hud(this).vision(CREDITS_LINES, P.bone0);
+  }
+
+  private forget() {
+    hud(this)
+      .menu({ title: 'Forget everything?', body: 'Every life, Stigma and upgrade will be lost. The Lineage will be burned.', options: [{ label: 'Burn it' }], cancel: 'Keep it' })
+      .then((i) => {
+        if (i !== 0) return;
+        wipeSave();
+        const n = meta();
+        buildHeroSheet(this, lookFromSeed(n.citizen.seed, { maw: false, helix: false }));
+        this.scene.restart();
+      });
   }
 
   private begin() {
