@@ -120,17 +120,19 @@ export function drawHero(o: HeroOpts): { pc: PixelCanvas; hand: [number, number]
   f.capsule(sx, sy, j.elbowB[0], j.elbowB[1], 3.2, 2.7, robeBack, 1);
   f.capsule(j.elbowB[0], j.elbowB[1], j.handB[0], j.handB[1], 2.4, 2.0, skinBack, 1);
   f.ellipse(j.handB[0], j.handB[1], 2.7, 2.9, skinBack, 1);
-  f.capsule(hx, hy, j.kneeB[0], j.kneeB[1], 4.4, 3.4, skinBack, 2);
-  f.capsule(j.kneeB[0], j.kneeB[1], j.footB[0], j.footB[1], 3.2, 2.3, skinBack, 2);
+  // Legs live under the robe: only shins below the hem, wrapped ankles and feet show
+  const lowB: [number, number] = [j.kneeB[0] + (j.footB[0] - j.kneeB[0]) * 0.35, j.kneeB[1] + (j.footB[1] - j.kneeB[1]) * 0.35];
+  f.capsule(lowB[0], lowB[1], j.footB[0], j.footB[1], 3.0, 2.3, skinBack, 2);
   f.capsule(j.footB[0] - 1, j.footB[1], j.footB[0] + 5, j.footB[1] + 0.5, 2.1, 1.7, skinBack, 2);
-  f.capsule(j.kneeB[0] + (j.footB[0] - j.kneeB[0]) * 0.55, j.kneeB[1] + (j.footB[1] - j.kneeB[1]) * 0.55, j.footB[0], j.footB[1] - 1, 3.0, 2.6, { ...WRAP, ramp: WRAP.ramp.map((c) => shade(c, -0.3)) }, 2.1);
+  f.capsule(lowB[0], lowB[1], j.footB[0], j.footB[1] - 1, 3.0, 2.6, { ...WRAP, ramp: WRAP.ramp.map((c) => shade(c, -0.3)) }, 2.1);
 
   // --- Robe -------------------------------------------------------------------
   const kneeMidX = (j.kneeF[0] + j.kneeB[0]) / 2;
-  const hemY = Math.max(j.kneeF[1], j.kneeB[1]) + 7;
+  const kneeY = Math.max(j.kneeF[1], j.kneeB[1]);
+  const hemY = Math.max(kneeY + 6, Math.min(kneeY + 13, Math.max(j.footF[1], j.footB[1]) - 6));
   const sway = wave * 2;
-  const front = Math.max(j.kneeF[0], j.kneeB[0]) + 5;
-  const back = Math.min(j.kneeF[0], j.kneeB[0]) - 6 + sway;
+  const front = Math.max(j.kneeF[0], j.kneeB[0]) + 6;
+  const back = Math.min(j.kneeF[0], j.kneeB[0], j.kneeB[0] + (j.footB[0] - j.kneeB[0]) * 0.4) - 7 + sway;
   const hem: [number, number][] = [];
   const teeth = 9;
   for (let i = 0; i <= teeth; i++) {
@@ -167,10 +169,11 @@ export function drawHero(o: HeroOpts): { pc: PixelCanvas; hand: [number, number]
     for (let i = 0; i < 5; i++) f.ellipse(cx - 2.6 + i * 1.3, cy - 3.6 + (i % 2) * 7.2, 0.6, 0.9, { ramp: ['#5f4e35', '#cdb889', '#efe3bf'] }, 4.85);
   }
 
-  // --- Front leg ----------------------------------------------------------------
-  f.capsule(j.kneeF[0], j.kneeF[1], j.footF[0], j.footF[1], 3.4, 2.4, skin, 5);
-  f.capsule(j.footF[0] - 1, j.footF[1], j.footF[0] + 5.5, j.footF[1] + 0.5, 2.2, 1.8, skin, 5);
-  f.capsule(j.kneeF[0] + (j.footF[0] - j.kneeF[0]) * 0.55, j.kneeF[1] + (j.footF[1] - j.kneeF[1]) * 0.55, j.footF[0], j.footF[1] - 1, 3.2, 2.8, WRAP, 5.1);
+  // --- Front leg (drawn behind the robe; only the part below the hem shows) ---
+  const lowF: [number, number] = [j.kneeF[0] + (j.footF[0] - j.kneeF[0]) * 0.35, j.kneeF[1] + (j.footF[1] - j.kneeF[1]) * 0.35];
+  f.capsule(lowF[0], lowF[1], j.footF[0], j.footF[1], 3.2, 2.4, skin, 3);
+  f.capsule(j.footF[0] - 1, j.footF[1], j.footF[0] + 5.5, j.footF[1] + 0.5, 2.2, 1.8, skin, 3);
+  f.capsule(lowF[0], lowF[1], j.footF[0], j.footF[1] - 1, 3.2, 2.8, WRAP, 3.1);
 
   // --- Head -------------------------------------------------------------------------
   const [nx, ny] = j.neck;

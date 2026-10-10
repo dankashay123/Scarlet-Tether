@@ -67,7 +67,10 @@ export class Bartholomew extends Enemy {
     this.beingExecuted = false;
     this.hp -= this.maxHp * 0.12;
     w.gore.gibs(this.x - 30, this.cy, 6, -80);
-    w.gore.spray(this.x - 30, this.cy, Math.PI + 0.3, 50, 1.5);
+    w.gore.spray(this.x - 30, this.cy, Math.PI + 0.3, 80, 1.6);
+    w.gore.entrail(this.x - 30, this.cy, 1.4);
+    w.gore.entrail(this.x - 30, this.cy, 1.4);
+    w.gore.mist(this.x - 30, this.cy, 1.2);
     w.fx.text(this.x, this.y - 200, 'Absolved', P.blood0, 20, 1200);
     this.poise = this.maxPoise;
     this.setState('recover');
@@ -113,7 +116,7 @@ export class Bartholomew extends Enemy {
     } else {
       this.play('earless');
       w.gore.fountain(this.x, this.y - 190, 2200, -Math.PI / 2 - 0.3);
-      w.gore.burst(this.x, this.y - 180, 70, 1.5);
+      w.gore.explode(this.x - 20, this.y - 180, 1.8, -1);
       w.sc.time.delayedCall(500, () => {
         this.ear = new Ear(w, this.x - 30, this.y - 170, this);
         w.enemies.push(this.ear);
@@ -132,8 +135,9 @@ export class Bartholomew extends Enemy {
     this.pools = [];
     w.sc.time.delayedCall(900, () => {
       super.kill(false, true);
-      w.gore.gibs(this.x, this.y - 100, 14);
-      w.gore.burst(this.x, this.y - 100, 90, 1.6);
+      // He comes apart in stages: belly, chest, the mouth that confessed it all
+      for (let i = 0; i < 4; i++)
+        w.sc.time.delayedCall(i * 260, () => w.gore.explode(this.x + (Math.random() - 0.5) * 60, this.y - 60 - i * 40, 2.4, i % 2 ? 1 : -1));
       this.play('dead');
       this.onDefeat?.();
     });

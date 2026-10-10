@@ -360,8 +360,8 @@ export class Player {
     this.play('die');
     this.head.setVisible(false);
     this.links.forEach((l) => l.setVisible(false));
-    this.world.gore.burst(this.x, this.cy, 50, 1.2);
-    this.world.gore.fountain(this.x, this.y - 30, 1400);
+    this.world.gore.explode(this.x, this.cy, 0.9, -this.face);
+    this.world.gore.fountain(this.x, this.y - 30, 1800);
     this.world.gore.pool(this.x, this.y, 2);
     sfx(this.world.sc, 'death_player');
   }

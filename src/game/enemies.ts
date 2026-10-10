@@ -159,8 +159,9 @@ export abstract class Enemy {
     if (!this.flying) this.body.vy = Math.min(this.body.vy, -k * 0.35);
     // Arterial spray away from the blow
     const a = Math.atan2(this.cy - fromY, (this.x - fromX) || dir);
-    w.gore.spray(this.x, this.cy, a, o.crit || o.heavy ? 28 : 14, o.heavy ? 1.3 : 1);
-    if (o.heavy && Math.random() < 0.6) w.gore.gibs(this.x, this.cy, 1, dir * 60);
+    w.gore.spray(this.x, this.cy, a, o.crit || o.heavy ? 50 : 26, o.heavy ? 1.4 : 1.1);
+    if (o.heavy || o.crit || Math.random() < 0.3) w.gore.gibs(this.x, this.cy, o.heavy ? 2 : 1, dir * 60);
+    if (o.heavy && Math.random() < 0.4) w.gore.entrail(this.x, this.cy, 0.7);
     w.fx.text(this.x, this.body.top - 4, o.crit ? `${Math.round(dmg * mult)}!` : `${Math.round(dmg * mult)}`, o.crit ? P.gold0 : P.bone0);
     this.sprite.setTintFill(0xffffff);
     w.sc.time.delayedCall(60, () => !this.dead && this.restoreTint());
@@ -194,10 +195,9 @@ export abstract class Enemy {
   executed() {
     const w = this.world;
     const top = this.body.top + 6;
-    w.gore.gibs(this.x, top, 7, this.face * -40);
-    w.gore.fountain(this.x, top + 4, 1100);
-    w.gore.burst(this.x, this.cy, 60, 1.4);
-    w.gore.pool(this.x, this.y, 2.5);
+    w.gore.explode(this.x, this.cy, 1.6, -this.face);
+    w.gore.gibs(this.x, top, 6, this.face * -40);
+    w.gore.fountain(this.x, top + 4, 1800);
     this.kill(true, true);
   }
 
@@ -211,9 +211,7 @@ export abstract class Enemy {
     this.play('dead');
     this.sprite.clearTint().setAlpha(1).setDepth(DEPTH.corpse);
     sfx(w.sc, 'death_enemy', { volume: 0.7 });
-    w.gore.burst(this.x, this.cy, 26, 1);
-    if (heavy || Math.random() < 0.35) w.gore.gibs(this.x, this.cy, 3 + ((Math.random() * 3) | 0));
-    w.gore.pool(this.x, this.y, 1.5);
+    if (!executed) w.gore.explode(this.x, this.cy, heavy ? 1.3 : 1, Math.sign(this.x - w.player.x) || 1);
     w.onEnemyKilled(this, executed);
   }
 
