@@ -284,7 +284,12 @@ export class Gore {
       e.oy[i] = e.py[i];
       let nx = e.px[i] + vx;
       let ny = e.py[i] + vy + g;
-      if (L.solidPx(nx, ny)) {
+      if (vy > 0 && !L.solidPx(nx, ny) && Math.floor(ny / TILE) > Math.floor(e.py[i] / TILE) && L.oneWayAt(Math.floor(nx / TILE), Math.floor(ny / TILE))) {
+        // Guts drape over ledges too
+        ny = Math.floor(ny / TILE) * TILE - 0.5;
+        e.ox[i] = nx - vx * 0.3;
+        e.oy[i] = ny;
+      } else if (L.solidPx(nx, ny)) {
         if (!L.solidPx(e.px[i], ny)) nx = e.px[i];
         else if (!L.solidPx(nx, e.py[i])) ny = e.py[i];
         else ((nx = e.px[i]), (ny = e.py[i]));

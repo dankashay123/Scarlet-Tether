@@ -208,7 +208,7 @@ export class TitleScene extends Phaser.Scene {
     }
 
     this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
-      if (this.started || hud(this).modal) return;
+      if (this.started || hud(this).modal || performance.now() - hud(this).modalClosedAt < 250) return;
       if (ev.key === 'ArrowDown' || ev.key === 's') select((sel + 1) % menuRows.length);
       else if (ev.key === 'ArrowUp' || ev.key === 'w') select((sel + menuRows.length - 1) % menuRows.length);
       else if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'e' || ev.key === 'j') choose();

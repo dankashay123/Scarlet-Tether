@@ -264,7 +264,8 @@ export class Player {
       // Bring into the swing's range (-pi..pi with wrap for overhead arcs)
       if (a < lo - 0.1) a += Math.PI * 2;
       if (a > hi + 0.1) a -= Math.PI * 2;
-      const close = d < e.hurtR + 10;
+      // Point-blank always connects (the up-swing's arc passes above a foe in front)
+      const close = d < e.hurtR + (s.key === 'up' ? 24 : 10);
       // The chain can't lash through stone
       if (!close && !w.level.lineClear(px, py, e.x, e.cy)) continue;
       if ((a >= lo && a <= hi) || close) {
@@ -281,7 +282,7 @@ export class Player {
     }
     // The chain also finds the hollow places in the walls
     const aw = this.angleAt(prog);
-    for (const k of [0.55, 0.8, 1]) {
+    for (const k of [0.15, 0.3, 0.55, 0.8, 1]) {
       const broken = w.level.strike(px + Math.cos(aw) * reach * k, py + Math.sin(aw) * reach * k, 6);
       if (!broken.length) continue;
       for (const [bx, by] of broken) w.fx.rubble(bx, by, 6);
@@ -494,6 +495,7 @@ export class Player {
     this.body.vy = 0;
     this.body.x = Math.floor(this.x / 16) * 16 + 8;
     if (L.climbablePx(this.x, this.y + 4) && !L.climbablePx(this.x, this.y - 4)) this.body.y += 4; // stepping down onto the top rung
+    else if (!L.climbablePx(this.x, this.y + 4) && L.climbablePx(this.x, this.y + 20)) this.body.y += 20; // down through a ledge onto the ladder beneath it
   }
 
   /** Grab a ledge corner near the hands while airborne. */
@@ -547,14 +549,26 @@ export class Player {
       b.step(L, dt, true);
       // Off the top: step onto the ledge or the ladder's top rung
       if (my < 0 && !L.climbablePx(b.x, b.y - 2) && !L.climbablePx(b.x, b.cy)) {
-        b.y = Math.ceil((b.y - 2) / 16) * 16;
+        const top = Math.ceil((b.y - 2) / 16) * 16;
+        const tx = Math.floor(b.x / 16);
+        if (!L.oneWayAt(tx, top / 16) && !L.solidAt(tx, top / 16) && !L.oneWayAt(tx, top / 16 - 1)) {
+          // A chain hanging in open air: nothing to stand on, so hold at the top
+          b.y = Math.max(b.y, top + 6);
+          b.vy = 0;
+          this.sprite.anims.timeScale = 0;
+          this.syncVisuals(dt);
+          return true;
+        }
+        b.y = top;
         b.vy = 0;
         b.dropThrough = 0; // we were passing through ledges while climbing; now stand on the top rung
         // A ledge right above the top rung: step up onto it rather than standing inside it
         if (L.oneWayAt(Math.floor(b.x / 16), b.y / 16 - 1) && !L.solidAt(Math.floor(b.x / 16), b.y / 16 - 4)) b.y -= 16;
         this.sprite.anims.timeScale = 1;
         this.setState('move');
-      } else if (my > 0 && (b.onGround || !L.climbablePx(b.x, b.cy))) {
+      } else if (my > 0 && (b.onGround || !L.climbablePx(b.x, b.y - 4))) {
+        // Down past the last rung (by the feet, not the waist: starting down
+        // from the top the waist is still above the ladder)
         this.sprite.anims.timeScale = 1;
         this.setState('move');
       }
@@ -661,7 +675,8 @@ export class Player {
         {
           const L = w.level;
           const up = controls.moveY < -0.55 && (L.climbablePx(this.x, this.body.cy) || L.climbablePx(this.x, this.body.top + 6));
-          const down = controls.moveY > 0.55 && b.onGround && L.climbablePx(this.x, this.y + 4);
+          const below = L.climbablePx(this.x, this.y + 4) || (L.oneWayAt(Math.floor(this.x / 16), Math.floor((this.y + 4) / 16)) && L.climbablePx(this.x, this.y + 20));
+          const down = controls.moveY > 0.55 && ((b.onGround && below) || (!b.onGround && L.climbablePx(this.x, this.body.cy)));
           if (up || down) {
             this.startClimb();
             break;
@@ -748,7 +763,9 @@ export class Player {
         if (this.stateT >= this.swing.active) {
           this.setState('recover');
           this.queued = false;
-          this.play(`${this.swing.key}-2`);
+          // (the up-swing has only two poses)
+          const rec = `${this.swing.key}-2`;
+          this.play(this.sprite.scene.anims.exists(`player:${rec}`) ? rec : `${this.swing.key}-1`);
         }
         break;
       case 'recover':

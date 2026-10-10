@@ -887,6 +887,8 @@ export class HudScene extends Phaser.Scene {
   // -------------------------------------------------------------------------
 
   private controlsBeforeModal = true;
+  /** When the last dialog closed: the key that closed it must not also act on the scene below. */
+  modalClosedAt = 0;
 
   private openModal() {
     if (!this.modal) this.controlsBeforeModal = this.controlsVisible;
@@ -910,6 +912,7 @@ export class HudScene extends Phaser.Scene {
     this.modalTap = null;
     this.modalKey = null;
     this.modal = false;
+    this.modalClosedAt = performance.now();
     this.game.domContainer?.classList.remove('st-modal');
     this.setControlsVisible(this.controlsBeforeModal);
     controls.clear();

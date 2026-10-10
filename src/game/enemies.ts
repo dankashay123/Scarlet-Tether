@@ -215,8 +215,10 @@ export abstract class Enemy {
     const w = this.world;
     this.setState('dead');
     this.beingExecuted = false;
-    this.mark.setVisible(false);
-    this.alert.setVisible(false);
+    // The dead need no marks: free their DOM text now rather than at scene end
+    this.warnT = 0;
+    this.mark.destroy();
+    this.alert.destroy();
     this.play('dead');
     this.sprite.clearTint().setAlpha(1).setDepth(DEPTH.corpse);
     sfx(w.sc, 'death_enemy', { volume: 0.7 });

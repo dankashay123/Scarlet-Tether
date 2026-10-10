@@ -362,7 +362,9 @@ export class Level {
     const c = this.ch(tx, ty);
     if (c === '=') return true;
     if (c === '%') return this.crumbles.get(ty * this.w + tx)?.state !== 'gone';
-    return c === '|' && this.ch(tx, ty - 1) !== '|' && !this.isSolidCh(this.ch(tx, ty - 1));
+    if (c !== '|') return false;
+    // The top rung, or a ladder passing through a floor (walk over the gap)
+    return (this.ch(tx, ty - 1) !== '|' && !this.isSolidCh(this.ch(tx, ty - 1))) || (this.isSolidCh(this.ch(tx - 1, ty)) && this.isSolidCh(this.ch(tx + 1, ty)));
   }
 
   /** Ladders ('|') and hanging chains ('!') can be climbed. */

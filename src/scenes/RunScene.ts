@@ -141,6 +141,7 @@ export class RunScene extends Phaser.Scene implements World {
       } else {
         // The tile is gone: whatever lay on it falls with it
         this.gore.unsettle(x - 8, y - 12, 16, 12);
+        for (const p of this.pickups) if (p.rest && Math.abs(p.x - x) < 12 && p.y >= y - 20 && p.y <= y) ((p.rest = false), (p.vy = 0));
         for (const e of this.enemies) if (Math.abs(e.x - x) < 40 && Math.abs(e.y - (y - 8)) < 24) e.wake();
         if (Math.random() < 0.5) {
           this.fx.rubble(x, y, 4);

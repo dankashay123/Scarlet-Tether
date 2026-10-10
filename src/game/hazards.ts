@@ -31,6 +31,12 @@ export class Pendulum implements Hazard {
     this.t = Math.random() * period;
     const floor = world.level.floorY(ax, ay + 8) ?? ay + 200;
     this.len = Math.max(40, floor - ay - 34);
+    // Never swing through the walls: fit the arc to the open space at the bob's height
+    const L = world.level;
+    const by = ay + this.len * 0.75;
+    let free = 0;
+    while (free < this.len && !L.solidPx(ax - free - 14, by) && !L.solidPx(ax + free + 14, by)) free += 4;
+    this.amp = Math.min(this.amp, Math.asin(Math.min(0.99, free / this.len)));
     this.chain = s.add.graphics().setDepth(DEPTH.hazard);
     this.censer = s.add.image(ax, ay, 'prop-censer').setDepth(DEPTH.hazard + 1);
     this.glow = s.add.image(ax, ay, 'light-sm').setBlendMode(Phaser.BlendModes.ADD).setTint(hexNum(P.candle)).setAlpha(0.45).setDepth(DEPTH.light);
