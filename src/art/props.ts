@@ -32,6 +32,32 @@ function vertebra(): PixelCanvas {
   return f.render(KEY_LIGHT);
 }
 
+/** A Reliquary Shard: a gilded fragment of a heart-shaped reliquary, a garnet set in it. */
+function relicShard(): PixelCanvas {
+  const f = new Figure(16, 18);
+  const gold = { ramp: ['#2a1a06', '#5e3e10', '#9a6a1e', '#d0a040', '#f4d886', '#fff6d0'], spec: 1, tex: grain(1.2, 0.08, 4) };
+  const gem = { ramp: ['#1a0206', '#4e0814', '#8e1020', '#d0283a', '#ff8a8a'], spec: 1 };
+  // Half a heart, broken along a jagged seam
+  f.poly([[8, 16], [2, 9], [2, 5], [5, 2], [8, 4], [10, 2], [13, 4], [11, 7], [12, 10], [9, 12], [10, 14]], gold, 1);
+  f.ellipse(6.5, 7.5, 2.4, 2.6, gem, 2);
+  f.capsule(4, 12, 6, 14, 0.6, 0.6, gold, 2);
+  return f.render(KEY_LIGHT);
+}
+
+/** A Mark of Contrition: a crimson wax seal pressed with a thorned cross, a gilt rim. */
+function markSeal(): PixelCanvas {
+  const f = new Figure(16, 16);
+  const wax = { ramp: ['#1e0206', '#4a0812', '#7e1020', '#b0202e', '#e05050'], spec: 0.7 };
+  const gold = { ramp: ['#2a1a06', '#6a4812', '#b08030', '#e8c060', '#fff0b0'], spec: 1 };
+  f.ellipse(8, 8, 6.6, 6.6, gold, 1);
+  f.ellipse(8, 8, 5.4, 5.4, wax, 2);
+  f.capsule(8, 4.5, 8, 11.5, 0.9, 0.9, wax, 3);
+  f.capsule(5.5, 7, 10.5, 7, 0.9, 0.9, wax, 3);
+  // A drip of wax escaping the rim
+  f.capsule(11, 12, 12, 15, 1.1, 0.8, wax, 2.5);
+  return f.render(KEY_LIGHT);
+}
+
 function projectile(kind: 'bile' | 'sludge'): PixelCanvas {
   const s = kind === 'sludge' ? 14 : 10;
   const f = new Figure(s, s);
@@ -159,6 +185,8 @@ export function buildProps(scene: Phaser.Scene) {
   registerImage(scene, 'hang-chain', hangingChain());
   new SheetBuilder('tear').add('spin', [tearPickup(0), tearPickup(1)], 3).build(scene);
   registerImage(scene, 'vertebra', vertebra());
+  registerImage(scene, 'relic-shard', relicShard());
+  registerImage(scene, 'mark-seal', markSeal());
   registerImage(scene, 'proj-bile', projectile('bile'));
   registerImage(scene, 'proj-sludge', projectile('sludge'));
   new SheetBuilder('wave').add('roll', [sludgeWave(0), sludgeWave(1)], 8).build(scene);

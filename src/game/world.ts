@@ -58,4 +58,6 @@ export interface World {
   changeLucidity(delta: number, reason?: string): void;
   addSmoke(x: number, y: number, r: number, ms: number): void;
   vision(text: string): void;
+  /** A blow lands at (x, y) on something breakable that isn't a foe (cherub cages). */
+  strikeAt?(x: number, y: number): boolean;
 }

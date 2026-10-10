@@ -3,7 +3,7 @@ import { P, hexNum } from '../art/palette';
 import { FOOT_Y, FW, heroMeta } from '../art/hero';
 import { DEPTH } from './config';
 import { controls } from './controls';
-import { currentRun, hasSacrament, meta } from './state';
+import { currentRun, hasSacrament, meta, rite } from './state';
 import { sfx } from './audio';
 import { Body } from './physics';
 import type { Enemy } from './enemies';
@@ -36,8 +36,8 @@ const UP: Swing = { key: 'up', windup: 0.12, active: 0.12, recover: 0.26, from: 
 const AIR: Swing = { key: 'a3', windup: 0.08, active: 0.14, recover: 0.2, from: -60, to: 120, reach: 70, dmg: 14, poise: 16, stam: 12 };
 const HEAVY: Swing = { key: 'a3', windup: 0.08, active: 0.18, recover: 0.42, from: -175, to: 80, reach: 100, dmg: 40, poise: 50, stam: 28, heavy: true, lunge: 120 };
 
-export const DODGE_TIME = 0.34;
-export const DODGE_IFRAMES = 0.26;
+export const DODGE_TIME = 0.42;
+export const DODGE_IFRAMES = 0.3;
 export const PERFECT_WINDOW = 0.15;
 const CHARGE_MS = 380;
 const RUN = 128;
@@ -69,6 +69,7 @@ export class Player {
   private hitThisSwing = new Set<Enemy>();
   private queued = false;
   private strikes = 0;
+  private ghostT = 0;
   private perfectUsed = false;
   private airDashed = false;
   dodgeAge = 99;
@@ -219,13 +220,14 @@ export class Player {
   }
 
   private reach() {
-    return this.swing.reach + meta().weapon.length * 6;
+    return this.swing.reach + meta().weapon.length * 6 + rite('lash') * 12;
   }
 
   private damageFor(s: Swing): { dmg: number; crit: boolean } {
     let dmg = s.dmg * (1 + meta().weapon.weight * 0.15);
     if (hasSacrament('debt')) dmg *= 1.25;
     if (hasSacrament('knife')) dmg *= s.heavy ? 1.6 : 0.8;
+    if (s.key === 'a3' && !s.heavy) dmg *= 1 + rite('finisher') * 0.3;
     const crit = Math.random() < (hasSacrament('blindeye') ? 0.35 : 0.05);
     if (crit) dmg *= 2;
     return { dmg: Math.round(dmg), crit };
@@ -283,7 +285,10 @@ export class Player {
     // The chain also finds the hollow places in the walls
     const aw = this.angleAt(prog);
     for (const k of [0.15, 0.3, 0.55, 0.8, 1]) {
-      const broken = w.level.strike(px + Math.cos(aw) * reach * k, py + Math.sin(aw) * reach * k, 6);
+      const sx = px + Math.cos(aw) * reach * k;
+      const sy = py + Math.sin(aw) * reach * k;
+      if (w.strikeAt?.(sx, sy)) break;
+      const broken = w.level.strike(sx, sy, 6);
       if (!broken.length) continue;
       for (const [bx, by] of broken) w.fx.rubble(bx, by, 6);
       w.fx.shake(220, 0.01);
@@ -307,6 +312,9 @@ export class Player {
     this.perfectUsed = false;
     this.setState('dodge');
     this.play('slide');
+    this.ghostT = 0;
+    // Kick off: a burst of grit where the lunge starts
+    if (this.grounded) this.world.fx.smoke(this.x - this.face * 6, this.y - 2, 4, P.smoke1);
     sfx(this.world.sc, 'dodge', { volume: 0.8 });
     this.world.noise(this.x, this.y, 110, 'combat');
   }
@@ -344,6 +352,7 @@ export class Player {
   hurt(dmg: number, fromX: number, _fromY: number, choke: boolean): boolean {
     const w = this.world;
     const run = currentRun();
+    dmg *= 1 - rite('iron') * 0.15;
     if (hasSacrament('lamb') && !this.lambUsed) {
       this.lambUsed = true;
       w.fx.text(this.x, this.y - 64, 'Forgiven', P.holy);
@@ -435,7 +444,7 @@ export class Player {
     w.hitstop(240);
     w.fx.shake(300, 0.016);
     e.executed();
-    const heal = Math.round(run.maxHp * 0.3 * (hasSacrament('glutton') ? 2 : 1));
+    const heal = Math.round(run.maxHp * (0.3 + rite('bloodrite') * 0.1) * (hasSacrament('glutton') ? 2 : 1));
     run.hp = Math.min(run.maxHp, run.hp + heal);
     run.executions++;
     run.sin++;
@@ -498,31 +507,58 @@ export class Player {
     else if (!L.climbablePx(this.x, this.y + 4) && L.climbablePx(this.x, this.y + 20)) this.body.y += 20; // down through a ledge onto the ladder beneath it
   }
 
-  /** Grab a ledge corner near the hands while airborne. */
+  /** Grab a ledge corner near the hands while airborne (stone corners and the ends of ledges). */
   private tryLedge(): boolean {
     const b = this.body;
     const L = this.world.level;
-    if (b.onGround || b.vy < -60 || this.ledgeCd > 0) return false;
+    if (b.onGround || b.vy < -220 || this.ledgeCd > 0) return false;
     const dir = Math.abs(controls.moveX) > 0.3 ? Math.sign(controls.moveX) : this.face;
-    const tx = Math.floor((b.x + dir * (b.w / 2 + 3)) / 16);
     const hands = b.top + 4;
-    for (let ty = Math.floor((hands - 10) / 16); ty <= Math.floor((hands + 14) / 16); ty++) {
-      const cornerY = ty * 16;
-      if (cornerY < hands - 10 || cornerY > hands + 14) continue;
-      if (!L.solidAt(tx, ty) || L.solidAt(tx, ty - 1) || L.solidAt(tx, ty - 2) || L.solidAt(tx, ty - 3)) continue;
-      // Our own column must be open beside the ledge
-      const bx = Math.floor(b.x / 16);
-      if (L.solidAt(bx, ty - 1) || L.solidAt(bx, ty)) continue;
-      this.face = dir;
-      b.x = dir > 0 ? tx * 16 - b.w / 2 - 0.5 : (tx + 1) * 16 + b.w / 2 + 0.5;
-      b.y = cornerY + b.h - 8;
-      b.vx = 0;
-      b.vy = 0;
-      this.mantleTo = { x: tx * 16 + 8, y: cornerY };
-      this.setState('hang');
-      this.play('hang');
-      sfx(this.world.sc, 'footstep_wet', { volume: 0.5, rate: 1.3 });
-      return true;
+    const bx = Math.floor(b.x / 16);
+    // Ledge assist: rising through (or hovering just under) a one-way ledge with the
+    // feet a little short of its top: haul up onto it instead of falling back
+    if (b.vy > -160 && controls.moveY < 0.5) {
+      const ty = Math.floor((b.y - 1) / 16);
+      const topY = ty * 16;
+      if (b.y - topY > 2 && b.y - topY <= 22) {
+        for (const ox of [0, -4, 4]) {
+          const tx = Math.floor((b.x + ox) / 16);
+          if (L.ch(tx, ty) !== '=' && L.ch(tx, ty) !== '%') continue;
+          if (L.solidAt(tx, ty - 1) || L.solidAt(tx, ty - 2) || L.solidAt(bx, ty - 3)) continue;
+          this.mantleFrom = { x: b.x, y: b.y };
+          this.mantleTo = { x: b.x, y: topY };
+          b.vx = 0;
+          b.vy = 0;
+          this.setState('mantle');
+          this.play('mantle');
+          return true;
+        }
+      }
+    }
+    // Reach a little: the stick on a phone rarely holds you flush to the wall
+    for (const reach of [3, 9]) {
+      const tx = Math.floor((b.x + dir * (b.w / 2 + reach)) / 16);
+      if (tx === bx) continue;
+      for (let ty = Math.floor((hands - 14) / 16); ty <= Math.floor((hands + 22) / 16); ty++) {
+        const cornerY = ty * 16;
+        if (cornerY < hands - 14 || cornerY > hands + 22) continue;
+        const stone = L.solidAt(tx, ty);
+        const ledgeEnd = !stone && L.ch(tx, ty) === '=' && !L.oneWayAt(tx - dir, ty) && !L.solidAt(tx - dir, ty);
+        if (!stone && !ledgeEnd) continue;
+        if (L.solidAt(tx, ty - 1) || L.solidAt(tx, ty - 2) || L.solidAt(tx, ty - 3)) continue;
+        // Our own column must be open beside the ledge
+        if (L.solidAt(bx, ty - 1) || L.solidAt(bx, ty)) continue;
+        this.face = dir;
+        b.x = dir > 0 ? tx * 16 - b.w / 2 - 0.5 : (tx + 1) * 16 + b.w / 2 + 0.5;
+        b.y = cornerY + b.h - 8;
+        b.vx = 0;
+        b.vy = 0;
+        this.mantleTo = { x: tx * 16 + 8, y: cornerY };
+        this.setState('hang');
+        this.play('hang');
+        sfx(this.world.sc, 'footstep_wet', { volume: 0.5, rate: 1.3 });
+        return true;
+      }
     }
     return false;
   }
@@ -800,14 +836,30 @@ export class Player {
         accel = 900;
         break;
       case 'dodge': {
-        const k = 1 - this.stateT / DODGE_TIME;
-        targetVx = this.face * 320 * Math.max(0.2, k) * (wet ? 0.7 : 1);
-        accel = 5000;
+        // A long lunge: full speed for most of it, then a skidding ease-out (~145px)
+        const t = this.stateT / DODGE_TIME;
+        const k = t < 0.6 ? 1 : Math.max(0.15, 1 - (t - 0.6) / 0.4);
+        targetVx = this.face * 430 * (1 + rite('lunge') * 0.15) * k * (wet ? 0.7 : 1);
+        accel = 9000;
+        // Crimson afterimages streaming behind
+        this.ghostT -= dt;
+        if (this.ghostT <= 0 && t < 0.8) {
+          this.ghostT = 0.035;
+          const g = w.sc.add
+            .image(this.sprite.x, this.sprite.y, this.sprite.texture.key, this.sprite.frame.name)
+            .setOrigin(this.sprite.originX, this.sprite.originY)
+            .setFlipX(this.sprite.flipX)
+            .setTint(hexNum(P.blood1))
+            .setAlpha(0.55)
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setDepth(DEPTH.player - 1);
+          w.sc.tweens.add({ targets: g, alpha: 0, duration: 260, onComplete: () => g.destroy() });
+        }
+        if (t > 0.75 && b.onGround && Math.random() < 0.6) w.fx.smoke(this.x + this.face * 6, this.y - 2, 1, P.smoke1);
         if (!b.onGround && this.stateT < 0.22) {
           gravityOn = false;
           b.vy = 0;
         }
-        if (Math.random() < 0.5) w.fx.smoke(this.x - this.face * 8, this.y - 4, 1, P.smoke1);
         if (this.stateT >= DODGE_TIME) this.setState('move');
         break;
       }

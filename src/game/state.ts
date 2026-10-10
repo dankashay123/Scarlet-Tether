@@ -25,6 +25,12 @@ export interface MetaState {
   runs: number;
   bestRoom: number;
   flags: Record<string, boolean>;
+  /** Collectibles: Reliquary Shards (3 = +max HP), freed Caged Cherubs (3 = +max Lucidity), Marks of Contrition (upgrade tokens). */
+  shards: number;
+  cherubs: number;
+  marks: number;
+  /** Rites bought from Deacon Vivisect with Marks. */
+  rites: Record<string, number>;
   settings: { sfx: number; music: number; shake: boolean; leftHanded: boolean; bigButtons: boolean };
 }
 
@@ -49,6 +55,10 @@ function fresh(): MetaState {
     runs: 0,
     bestRoom: 0,
     flags: {},
+    shards: 0,
+    cherubs: 0,
+    marks: 0,
+    rites: {},
     settings: { sfx: 1, music: 1, shake: true, leftHanded: false, bigButtons: false },
   };
 }
@@ -68,6 +78,13 @@ export function meta(): MetaState {
   state = loaded && loaded.version === VERSION ? { ...base, ...loaded, settings: { ...base.settings, ...loaded.settings } } : base;
   return state;
 }
+
+/** Level of a Rite bought with Marks of Contrition (0 if never). */
+export function rite(k: RiteId): number {
+  return meta().rites?.[k] ?? 0;
+}
+
+export type RiteId = 'lash' | 'lunge' | 'finisher' | 'bloodrite' | 'iron';
 
 export function save() {
   try {
@@ -94,13 +111,13 @@ export const STIGMA_LUCIDITY_TOLL = 15;
 export const SIN_LUCIDITY_TOLL = 3;
 
 export function maxHp(m = meta()) {
-  return 100 + m.upgrades.vigor * 12;
+  return 100 + m.upgrades.vigor * 12 + Math.floor((m.shards ?? 0) / 3) * 15;
 }
 export function maxStamina(m = meta()) {
   return 100 + m.upgrades.censer * 12;
 }
 export function maxLucidity(m = meta()) {
-  return 100 + m.upgrades.lucidity * 10;
+  return 100 + m.upgrades.lucidity * 10 + Math.floor((m.cherubs ?? 0) / 3) * 10;
 }
 /** Lucidity a new descent begins with: stigmas and inherited sin weigh on the mind. */
 export function startingLucidity(m = meta()) {

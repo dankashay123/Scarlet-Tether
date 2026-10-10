@@ -11,7 +11,7 @@ import { Player } from '../game/player';
 import { buildHeroSheet } from '../art/hero';
 import { lookFromSeed } from '../art/look';
 import { controls, hudState } from '../game/controls';
-import { meta, maxHp, maxLucidity, maxStamina, save, startingLucidity, STIGMA_LUCIDITY_TOLL, type StigmaId } from '../game/state';
+import { meta, maxHp, maxLucidity, maxStamina, save, startingLucidity, STIGMA_LUCIDITY_TOLL, type StigmaId, rite, type RiteId } from '../game/state';
 import { loop, sfx, stopLoop } from '../game/audio';
 import { HUB_LAYOUT } from '../game/layouts';
 import { NPC, STIGMA_TEXT, UPGRADE_TEXT } from '../game/lore';
@@ -271,6 +271,56 @@ export class HubScene extends Phaser.Scene implements World {
       await hud(this).dialog(NPC.vivisect.name, NPC.vivisect.first);
     }
     for (;;) {
+      const top = await hud(this).menu({
+        title: 'Deacon Vivisect',
+        body: `Vertebrae: ${m.vertebrae}   Tears: ${m.tears}   Marks of Contrition: ${m.marks ?? 0}`,
+        options: [
+          { label: 'Graft the chain', desc: 'Lengthen, weight or hollow the Tether, paid in Vertebrae and Tears.' },
+          { label: 'Rites of Contrition', desc: 'Old techniques cut into thy flesh, paid in Marks of Contrition.' },
+        ],
+        cancel: 'Leave',
+        width: 420,
+      });
+      if (top < 0) return;
+      if (top === 1) await this.rites();
+      else await this.grafts();
+    }
+  }
+
+  private async rites() {
+    const m = meta();
+    const RITES: { id: RiteId; name: string; desc: string }[] = [
+      { id: 'lash', name: 'The Long Lash', desc: 'The Tether reaches 12 further.' },
+      { id: 'lunge', name: 'The Penitent’s Lunge', desc: 'Thy dash runs 15% further and faster.' },
+      { id: 'finisher', name: 'The Third Wound', desc: 'The last blow of a combo strikes 30% harder.' },
+      { id: 'bloodrite', name: 'Blood Rite', desc: 'An execution heals a further 10% of thy Health.' },
+      { id: 'iron', name: 'Iron Penance', desc: 'Every wound bites 15% less.' },
+    ];
+    for (;;) {
+      const opts = RITES.map((r) => {
+        const lvl = rite(r.id);
+        const cost = lvl + 1;
+        const maxed = lvl >= 2;
+        return {
+          label: `${r.name}  ${'✞'.repeat(lvl)}${'·'.repeat(2 - lvl)}`,
+          desc: maxed ? 'Cut as deep as flesh allows.' : `${r.desc} Cost: ${cost} Mark${cost > 1 ? 's' : ''}.`,
+          disabled: maxed || (m.marks ?? 0) < cost,
+        };
+      });
+      const i = await hud(this).menu({ title: 'Rites of Contrition', body: `Thou bearest ${m.marks ?? 0} Marks of Contrition.`, options: opts, cancel: 'Enough', width: 440 });
+      if (i < 0) return;
+      const r = RITES[i];
+      m.marks -= rite(r.id) + 1;
+      m.rites = { ...(m.rites ?? {}), [r.id]: rite(r.id) + 1 };
+      save();
+      sfx(this, 'execute', { volume: 0.6 });
+      this.gore.spray(this.player.x, this.player.y - 30, -Math.PI / 2, 16, 0.9);
+    }
+  }
+
+  private async grafts() {
+    const m = meta();
+    for (;;) {
       const keys = ['length', 'weight', 'marrow'] as const;
       const opts = keys.map((k) => {
         const lvl = m.weapon[k];
@@ -290,7 +340,7 @@ export class HubScene extends Phaser.Scene implements World {
         cancel: 'Leave the chain as it is',
         width: 420,
       });
-      if (i < 0) break;
+      if (i < 0) return;
       const k = keys[i];
       const c = graftCost(m.weapon[k]);
       m.vertebrae -= c.vertebrae;

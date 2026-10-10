@@ -54,6 +54,9 @@ export class GameText extends Phaser.GameObjects.DOMElement {
       'user-select: none',
       '-webkit-user-select: none',
       'font-kerning: normal',
+      // iOS would otherwise "autosize" wrapped paragraphs to several times their size
+      '-webkit-text-size-adjust: 100%',
+      'text-size-adjust: 100%',
       // Cinzel Decorative's TH and other ligatures garble the name
       'font-variant-ligatures: none',
       "font-feature-settings: 'liga' 0, 'dlig' 0, 'clig' 0",

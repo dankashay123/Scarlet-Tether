@@ -45,7 +45,7 @@ interface Interactable {
 
 interface Pickup {
   img: Phaser.GameObjects.Sprite | Phaser.GameObjects.Image;
-  kind: 'tear' | 'vertebra';
+  kind: 'tear' | 'vertebra' | 'shard' | 'mark';
   x: number;
   y: number;
   vx: number;
@@ -81,6 +81,7 @@ export class RunScene extends Phaser.Scene implements World {
   private slowScale = 1;
   private leaving = false;
   private dying = false;
+  private cherubCage: { x: number; y: number; cage: Phaser.GameObjects.Image; inmate: Phaser.GameObjects.Sprite; freed: boolean } | null = null;
   private grateT = 0;
   private regenT = 0;
   private boss: Bartholomew | null = null;
@@ -111,6 +112,7 @@ export class RunScene extends Phaser.Scene implements World {
     this.curRoom = -1;
     this.leaving = false;
     this.dying = false;
+    this.cherubCage = null;
     this.boss = null;
     this.hitstopT = 0;
     this.slowT = 0;
@@ -223,6 +225,8 @@ export class RunScene extends Phaser.Scene implements World {
 
   private buildProps() {
     const L = this.level;
+    const cages: { x: number; y: number; img: Phaser.GameObjects.Image; room: PlacedRoom | null }[] = [];
+    let niche = 0;
     for (const m of L.markers) {
       switch (m.ch) {
         case 'B':
@@ -236,7 +240,7 @@ export class RunScene extends Phaser.Scene implements World {
           this.addLight(m.x, m.y - 40, 'light-lg', P.candle, 0.4);
           break;
         case 'k':
-          this.add.image(m.x, m.y, 'prop-cage').setOrigin(0.5, 0).setDepth(DEPTH.props);
+          cages.push({ x: m.x, y: m.y, img: this.add.image(m.x, m.y, 'prop-cage').setOrigin(0.5, 0).setDepth(DEPTH.props), room: this.roomAtTile(m.tx, m.ty) });
           break;
         case 'P':
           this.hazards.push(new Pendulum(this, m.x, m.y));
@@ -254,8 +258,11 @@ export class RunScene extends Phaser.Scene implements World {
           this.buildVotive(m.x, m.y);
           break;
         case 'K':
-          // A reliquary hidden behind a false wall
-          this.buildFeature(m.x, m.y, 'cache');
+          // Secrets behind false walls: the first holds a Reliquary Shard, the next a Mark
+          if (niche === 0) this.placeRelic(m.x, m.y - 8, 'shard');
+          else if (niche === 1) this.placeRelic(m.x, m.y - 8, 'mark');
+          else this.buildFeature(m.x, m.y, 'cache');
+          niche++;
           break;
         case 'b':
           this.boss = new Bartholomew(this, m.x, m.y);
@@ -268,6 +275,7 @@ export class RunScene extends Phaser.Scene implements World {
       const e = this.add.image(d.x, d.y - 80, 'emblem-boss').setDepth(DEPTH.props + 2);
       this.tweens.add({ targets: e, y: e.y - 3, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     }
+    if (this.stage === 'map') this.placeCherub(cages);
     this.scatterDecor();
     this.dressing = new Dressing(
       this,
@@ -523,6 +531,66 @@ export class RunScene extends Phaser.Scene implements World {
     }
   }
 
+  /** A collectible waiting in a secret: bobbing, glowing, picked up by walking into it. */
+  private placeRelic(x: number, y: number, kind: 'shard' | 'mark') {
+    const img = this.add.image(x, y, kind === 'shard' ? 'relic-shard' : 'mark-seal').setDepth(DEPTH.fx - 2);
+    this.tweens.add({ targets: img, y: y - 4, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    this.addLight(x, y, 'light-sm', kind === 'shard' ? P.gold1 : P.blood0, 0.5);
+    this.pickups.push({ img, kind, x, y, vx: 0, vy: 0, age: 1, rest: true });
+  }
+
+  spawnMark(x: number, y: number) {
+    const img = this.add.image(x, y, 'mark-seal').setDepth(DEPTH.fx - 2);
+    this.pickups.push({ img, kind: 'mark', x, y, vx: (Math.random() - 0.5) * 60, vy: -200, age: 0, rest: false });
+  }
+
+  /** One cage per descent holds a living cherub. Smash it with the chain to free it. */
+  private placeCherub(cages: { x: number; y: number; img: Phaser.GameObjects.Image; room: PlacedRoom | null }[]) {
+    const rnd = new Phaser.Math.RandomDataGenerator([`cherub-${descent.seed}`]);
+    const far = cages.filter((c) => c.room && c.room.role !== 'start' && c.room.depth >= 3);
+    const pick = far.length ? rnd.pick(far) : cages.length ? rnd.pick(cages) : null;
+    if (!pick) return;
+    // Lower it on a long chain so the Tether can reach it from the floor below
+    const fy = this.level.floorY(pick.x, pick.y + 70);
+    if (fy !== null) {
+      const top = Math.max(pick.y, fy - 122);
+      if (top > pick.y + 8) {
+        this.add.tileSprite(pick.x, pick.y, 16, top - pick.y, 'hang-chain').setOrigin(0.5, 0).setDepth(DEPTH.props - 1);
+        pick.img.setY(top);
+        pick.y = top;
+      }
+    }
+    const inmate = this.add.sprite(pick.x, pick.y + 38, 'cherub').play('cherub:fly').setScale(0.5).setDepth(DEPTH.props - 1);
+    this.tweens.add({ targets: inmate, y: inmate.y - 3, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    this.addLight(pick.x, pick.y + 38, 'light-sm', P.holy, 0.35);
+    this.cherubCage = { x: pick.x, y: pick.y, cage: pick.img, inmate, freed: false };
+  }
+
+  strikeAt(x: number, y: number) {
+    const c = this.cherubCage;
+    if (!c || c.freed || Math.abs(x - c.x) > 16 || y < c.y + 8 || y > c.y + 64) return false;
+    c.freed = true;
+    const m = meta();
+    m.cherubs = (m.cherubs ?? 0) + 1;
+    save();
+    sfx(this, 'door_open', { rate: 1.5 });
+    sfx(this, 'bell_distant', { volume: 0.8, rate: 1.3 });
+    this.fx.rubble(c.x, c.y + 36, 10);
+    this.fx.ring(c.x, c.y + 38, 40, P.holy, 500);
+    this.hitstop(90);
+    c.cage.destroy();
+    this.tweens.add({ targets: c.inmate, y: c.y - 120, alpha: 0, angle: 360, duration: 1400, ease: 'Cubic.In', onComplete: () => c.inmate.destroy() });
+    const n = m.cherubs;
+    const next = 3 - (n % 3);
+    hud(this).banner('A Caged Cherub is freed', n % 3 === 0 ? `${n} freed. The Choir grants thee +10 Lucidity, forever.` : `${n} freed. ${next} more and the Choir will sing for thee.`);
+    if (n % 3 === 0) {
+      const run = currentRun();
+      run.maxLucidity += 10;
+      this.changeLucidity(10);
+    }
+    return true;
+  }
+
   private spawnVertebra(x: number, y: number) {
     const img = this.add.image(x, y, 'vertebra').setDepth(DEPTH.fx - 2);
     this.pickups.push({ img, kind: 'vertebra', x, y, vx: (Math.random() - 0.5) * 80, vy: -160, age: 0, rest: false });
@@ -537,6 +605,8 @@ export class RunScene extends Phaser.Scene implements World {
         this.spawnVertebra(e.x, e.cy);
         if (Math.random() < 0.5) this.spawnVertebra(e.x + 6, e.cy);
       } else if (e.elite && Math.random() < 0.35) this.spawnVertebra(e.x, e.cy);
+      // A heavier sin, a heavier reward: elites always leave a Mark of Contrition
+      if (e.elite) this.spawnMark(e.x, e.cy);
       e.corpse = { x: e.x, y: e.y, sprite: e.sprite, eaten: false };
       this.corpses.push(e.corpse);
     }
@@ -685,6 +755,8 @@ export class RunScene extends Phaser.Scene implements World {
     this.player.lock(true);
     this.spawnTears(this.boss!.x - 40, this.boss!.y - 60, 40);
     for (let i = 0; i < 4; i++) this.spawnVertebra(this.boss!.x - 60 + i * 12, this.boss!.y - 60);
+    this.spawnMark(this.boss!.x - 30, this.boss!.y - 60);
+    this.spawnMark(this.boss!.x - 50, this.boss!.y - 60);
     await new Promise((r) => this.time.delayedCall(2000, r));
     for (const p of this.pickups) this.collect(p);
     this.pickups = [];
@@ -746,7 +818,25 @@ export class RunScene extends Phaser.Scene implements World {
   private collect(p: Pickup) {
     const run = currentRun();
     if (p.kind === 'tear') run.tears++;
-    else {
+    else if (p.kind === 'shard') {
+      // Permanent, like the reliquary it was broken from
+      const m = meta();
+      m.shards = (m.shards ?? 0) + 1;
+      save();
+      sfx(this, 'heal', { volume: 0.8 });
+      const n = m.shards;
+      if (n % 3 === 0) {
+        run.maxHp += 15;
+        run.hp = Math.min(run.maxHp, run.hp + 15);
+      }
+      hud(this).banner('A Reliquary Shard', n % 3 === 0 ? `The reliquary is whole again: +15 Health, forever. (${n} shards)` : `${3 - (n % 3)} more to make it whole. (${n} shards)`);
+    } else if (p.kind === 'mark') {
+      const m = meta();
+      m.marks = (m.marks ?? 0) + 1;
+      save();
+      sfx(this, 'execute', { volume: 0.5, rate: 1.4 });
+      this.fx.text(p.x, p.y - 12, 'Mark of Contrition', P.blood0, 18, 1400);
+    } else {
       run.vertebrae++;
       this.fx.text(p.x, p.y - 10, 'Vertebra', P.bone0);
     }

@@ -17,9 +17,11 @@ export async function pauseMenu(scene: Phaser.Scene, inRun: boolean): Promise<vo
           .map((x) => `${x.name}: ${x.boon} ${x.toll}`)
           .join('\n')
       : '';
+    const mm = meta();
+    const relics = `Reliquary Shards ${mm.shards ?? 0}  ·  Cherubs freed ${mm.cherubs ?? 0}  ·  Marks of Contrition ${mm.marks ?? 0}`;
     const i = await h.menu({
       title: 'The Book of Skin',
-      body: inRun ? (sac ? `Sacraments carried:\n${sac}` : 'No Sacraments carried yet.') : undefined,
+      body: inRun ? `${relics}\n${sac ? `Sacraments carried:\n${sac}` : 'No Sacraments carried yet.'}` : relics,
       width: inRun ? 440 : 300,
       escape: 0,
       options: [
