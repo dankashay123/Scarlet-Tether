@@ -25,7 +25,7 @@ export interface MetaState {
   runs: number;
   bestRoom: number;
   flags: Record<string, boolean>;
-  /** Collectibles: Reliquary Shards (3 = +max HP), freed Caged Cherubs (3 = +max Lucidity), Marks of Contrition (upgrade tokens). */
+  /** Collectibles: Reliquary Shards (3 = +max HP), freed Captive Hymns (3 = +max Lucidity), Iron Brands (upgrade tokens). */
   shards: number;
   cherubs: number;
   marks: number;
@@ -79,7 +79,7 @@ export function meta(): MetaState {
   return state;
 }
 
-/** Level of a Rite bought with Marks of Contrition (0 if never). */
+/** Level of a Rite bought with Iron Brands (0 if never). */
 export function rite(k: RiteId): number {
   return meta().rites?.[k] ?? 0;
 }

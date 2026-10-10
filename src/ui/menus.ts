@@ -18,7 +18,7 @@ export async function pauseMenu(scene: Phaser.Scene, inRun: boolean): Promise<vo
           .join('\n')
       : '';
     const mm = meta();
-    const relics = `Reliquary Shards ${mm.shards ?? 0}  ·  Cherubs freed ${mm.cherubs ?? 0}  ·  Marks of Contrition ${mm.marks ?? 0}`;
+    const relics = `Reliquary Shards ${mm.shards ?? 0}  ·  Hymns freed ${mm.cherubs ?? 0}  ·  Iron Brands ${mm.marks ?? 0}`;
     const i = await h.menu({
       title: 'The Book of Skin',
       body: inRun ? `${relics}\n${sac ? `Sacraments carried:\n${sac}` : 'No Sacraments carried yet.'}` : relics,

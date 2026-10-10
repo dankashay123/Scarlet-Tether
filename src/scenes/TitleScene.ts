@@ -160,7 +160,7 @@ export class TitleScene extends Phaser.Scene {
     if (new URLSearchParams(location.search).has('splash')) return; // capture mode for the loading splash
     // --- The main menu, right-aligned as in Blasphemous ---------------------------
     const items: { label: string; sub?: string; act: () => void }[] = [
-      { label: m.seenIntro ? 'Descend' : 'Begin the Penance', sub: m.seenIntro ? `as ${m.citizen.name}` : undefined, act: () => this.begin() },
+      { label: m.seenIntro ? 'Descend' : 'Begin the Descent', sub: m.seenIntro ? `as ${m.citizen.name}` : undefined, act: () => this.begin() },
       { label: 'Options', act: () => this.options() },
       { label: 'Credits', act: () => this.credits() },
       ...(m.seenIntro ? [{ label: 'Forget Everything', act: () => this.forget() }] : []),

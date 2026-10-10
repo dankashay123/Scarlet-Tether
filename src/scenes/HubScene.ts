@@ -273,10 +273,10 @@ export class HubScene extends Phaser.Scene implements World {
     for (;;) {
       const top = await hud(this).menu({
         title: 'Deacon Vivisect',
-        body: `Vertebrae: ${m.vertebrae}   Tears: ${m.tears}   Marks of Contrition: ${m.marks ?? 0}`,
+        body: `Vertebrae: ${m.vertebrae}   Tears: ${m.tears}   Iron Brands: ${m.marks ?? 0}`,
         options: [
           { label: 'Graft the chain', desc: 'Lengthen, weight or hollow the Tether, paid in Vertebrae and Tears.' },
-          { label: 'Rites of Contrition', desc: 'Old techniques cut into thy flesh, paid in Marks of Contrition.' },
+          { label: 'Rites of the Tether', desc: 'Old techniques cut into thy flesh, paid in Iron Brands.' },
         ],
         cancel: 'Leave',
         width: 420,
@@ -291,10 +291,10 @@ export class HubScene extends Phaser.Scene implements World {
     const m = meta();
     const RITES: { id: RiteId; name: string; desc: string }[] = [
       { id: 'lash', name: 'The Long Lash', desc: 'The Tether reaches 12 further.' },
-      { id: 'lunge', name: 'The Penitent’s Lunge', desc: 'Thy dash runs 15% further and faster.' },
+      { id: 'lunge', name: 'The Severed Lunge', desc: 'Thy dash runs 15% further and faster.' },
       { id: 'finisher', name: 'The Third Wound', desc: 'The last blow of a combo strikes 30% harder.' },
       { id: 'bloodrite', name: 'Blood Rite', desc: 'An execution heals a further 10% of thy Health.' },
-      { id: 'iron', name: 'Iron Penance', desc: 'Every wound bites 15% less.' },
+      { id: 'iron', name: 'Iron Skin', desc: 'Every wound bites 15% less.' },
     ];
     for (;;) {
       const opts = RITES.map((r) => {
@@ -303,11 +303,11 @@ export class HubScene extends Phaser.Scene implements World {
         const maxed = lvl >= 2;
         return {
           label: `${r.name}  ${'✞'.repeat(lvl)}${'·'.repeat(2 - lvl)}`,
-          desc: maxed ? 'Cut as deep as flesh allows.' : `${r.desc} Cost: ${cost} Mark${cost > 1 ? 's' : ''}.`,
+          desc: maxed ? 'Cut as deep as flesh allows.' : `${r.desc} Cost: ${cost} Brand${cost > 1 ? 's' : ''}.`,
           disabled: maxed || (m.marks ?? 0) < cost,
         };
       });
-      const i = await hud(this).menu({ title: 'Rites of Contrition', body: `Thou bearest ${m.marks ?? 0} Marks of Contrition.`, options: opts, cancel: 'Enough', width: 440 });
+      const i = await hud(this).menu({ title: 'Rites of the Tether', body: `Thou bearest ${m.marks ?? 0} Iron Brands.`, options: opts, cancel: 'Enough', width: 440 });
       if (i < 0) return;
       const r = RITES[i];
       m.marks -= rite(r.id) + 1;

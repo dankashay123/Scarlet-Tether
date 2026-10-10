@@ -582,7 +582,7 @@ export class RunScene extends Phaser.Scene implements World {
     this.tweens.add({ targets: c.inmate, y: c.y - 120, alpha: 0, angle: 360, duration: 1400, ease: 'Cubic.In', onComplete: () => c.inmate.destroy() });
     const n = m.cherubs;
     const next = 3 - (n % 3);
-    hud(this).banner('A Caged Cherub is freed', n % 3 === 0 ? `${n} freed. The Choir grants thee +10 Lucidity, forever.` : `${n} freed. ${next} more and the Choir will sing for thee.`);
+    hud(this).banner('A Captive Hymn is freed', n % 3 === 0 ? `${n} Hymns freed. Their song grants thee +10 Lucidity, forever.` : `${n} Hymns freed. ${next} more and they will sing for thee.`);
     if (n % 3 === 0) {
       const run = currentRun();
       run.maxLucidity += 10;
@@ -605,7 +605,7 @@ export class RunScene extends Phaser.Scene implements World {
         this.spawnVertebra(e.x, e.cy);
         if (Math.random() < 0.5) this.spawnVertebra(e.x + 6, e.cy);
       } else if (e.elite && Math.random() < 0.35) this.spawnVertebra(e.x, e.cy);
-      // A heavier sin, a heavier reward: elites always leave a Mark of Contrition
+      // A heavier sin, a heavier reward: elites always leave an Iron Brand
       if (e.elite) this.spawnMark(e.x, e.cy);
       e.corpse = { x: e.x, y: e.y, sprite: e.sprite, eaten: false };
       this.corpses.push(e.corpse);
@@ -835,7 +835,7 @@ export class RunScene extends Phaser.Scene implements World {
       m.marks = (m.marks ?? 0) + 1;
       save();
       sfx(this, 'execute', { volume: 0.5, rate: 1.4 });
-      this.fx.text(p.x, p.y - 12, 'Mark of Contrition', P.blood0, 18, 1400);
+      this.fx.text(p.x, p.y - 12, 'Iron Brand', P.blood0, 18, 1400);
     } else {
       run.vertebrae++;
       this.fx.text(p.x, p.y - 10, 'Vertebra', P.bone0);
