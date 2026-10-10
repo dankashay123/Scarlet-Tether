@@ -389,7 +389,7 @@ function midNave(t: NaveTheme): PixelCanvas {
         const ly = (y - ABACUS) % 8;
         const lobe = Math.sin(dx * 0.42 + row * 1.7);
         v = 0.24 - dx / 110 + (lobe > 0.2 ? 0.16 : -0.06) + (ly === 0 ? -0.16 : ly === 1 ? 0.1 : 0);
-        if (!t.rot && lobe > 0.8 && ly >= 1 && ly < 4) {
+        if (!t.rot && ((lobe > 0.45 && ly >= 1 && ly < 3) || (row === 2 && ly === 7))) {
           p.putI(i, mixc(pk(p, t.accent, 0.75 - dx / 90 - ly * 0.1, x, y), t.fog, fogMix), 1);
           return;
         }
@@ -1032,4 +1032,3 @@ export function drawBackdrops(set: BackdropSet): { far: PixelCanvas; mid: PixelC
   const t = set === 'rot' ? ROT_T : MARBLE_T;
   return { far: farNave(t), mid: midNave(t), near: nearNave(t), fg: fgNave(t) };
 }
-export const _debug = { farNave, midNave, nearNave, fgNave, farCistern, midCistern, nearCistern, fgCistern, MARBLE_T, ROT_T };

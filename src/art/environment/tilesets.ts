@@ -126,13 +126,14 @@ const cisternSolid: SolidFn = (x, y, f, mask) => {
     if (f.W && x === 0) return y === 0 ? null : INK;
     if (f.E && x === 15) return y === 0 ? null : INK;
     if (y === 4) return INK;
-    const moss = tnoise(x, 0, 4, 21 + (mask & 3)) > 0.62;
+    const moss = tnoise(x, 0, 4, 21 + (mask & 3)) > 0.56;
     if (moss && y <= 1) return y === 0 ? '#5a6a2e' : '#33401a';
     if ((x === 6 && y >= 2) || (x === 13 && y === 3)) return '#8a1020';
-    if (y === 0) return hash2(x, mask, 3) > 0.72 ? '#d0aa84' : WETSTONE[4];
+    if (y === 0) return hash2(x, mask, 3) > 0.7 ? '#e8c8a0' : WETSTONE[5];
     const joint = (x + 4) % 8 === 0;
     if (joint && y > 0) return WETSTONE[0];
-    return pick(WETSTONE, 0.62 - y * 0.1 + (tnoise(x, y, 8, 6) - 0.5) * 0.25, x, y);
+    if (y === 3) return WETSTONE[1];
+    return pick(WETSTONE, 0.78 - y * 0.12 + (tnoise(x, y, 8, 6) - 0.5) * 0.25, x, y);
   }
   if (f.W && x <= 2) return [INK, WETSTONE[2], BRICK[0]][x];
   if (f.E && x >= 13) return [BRICK[0], WETSTONE[1], INK][x - 13];

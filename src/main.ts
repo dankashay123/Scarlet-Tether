@@ -36,7 +36,8 @@ const game = new Phaser.Game({
   audio: {
     disableWebAudio: false,
   },
-  fps: { target: 60 },
+  // Real frame time, so a slow device drops frames instead of slowing the game.
+  fps: { target: 60, smoothStep: false },
   scene: [
     BootScene,
     TitleScene,

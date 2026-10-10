@@ -188,7 +188,7 @@ export class RunScene extends Phaser.Scene implements World {
     const bw = Math.max(this.level.pxW, W);
     const bh = Math.max(this.level.pxH, H);
     cam.setBounds((this.level.pxW - bw) / 2, (this.level.pxH - bh) / 2, bw, bh);
-    cam.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 40);
+    cam.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 30);
     cam.setDeadzone(40, 30);
     cam.setRoundPixels(true);
     cam.setBackgroundColor('#0b0507');
@@ -584,7 +584,7 @@ export class RunScene extends Phaser.Scene implements World {
     this.fx.shake(900, 0.012);
     await new Promise((r) => this.time.delayedCall(1200, r));
     await hud(this).dialog('Bartholomew, The Swollen Ear', [BOSS_LINES.intro]);
-    cam.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 40);
+    cam.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 30);
     loop(this, 'music_boss', 'music');
     hudState.bossVisible = true;
     hudState.bossName = 'Bartholomew, The Swollen Ear';

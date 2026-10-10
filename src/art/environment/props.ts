@@ -558,8 +558,8 @@ export function drawLightShaft(): PixelCanvas {
       const bars = 0.6 + 0.4 * Math.abs(Math.cos(dx * Math.PI * 2.5));
       const along = Math.min(1, y / 12) * Math.pow(1 - y / 200, 1.2);
       const dust = 0.85 + valueNoise(x, y * 0.5, 6, 3) * 0.3;
-      let a = f * bars * along * dust * 0.6;
-      let c = '#ffd890';
+      let a = f * bars * along * dust * 0.8;
+      let c = y < 40 ? '#ffe2a0' : '#ffc860';
       if (hash2(x, y, 7) > 0.993 && f > 0.2) {
         a = Math.min(1, a + 0.5);
         c = '#fff8dc';

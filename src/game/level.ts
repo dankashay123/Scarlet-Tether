@@ -44,12 +44,12 @@ export class Level {
   ) {
     const l = normalise(layout);
     // Pad with stone so the level always fills the 360px-tall view.
+    // Deep ground beneath, so the camera can frame the floor high enough to
+    // keep the action clear of the thumbs; stone above to fill the view.
     const rows = [...l.rows];
     const wide = rows[0].length;
-    while (rows.length * TILE < 368) {
-      rows.push('#'.repeat(wide));
-      if (rows.length * TILE < 368) rows.unshift('#'.repeat(wide));
-    }
+    for (let i = 0; i < 6; i++) rows.push('#'.repeat(wide));
+    while (rows.length * TILE < 368) rows.unshift('#'.repeat(wide));
     this.rows = rows;
     this.h = rows.length;
     this.w = wide;

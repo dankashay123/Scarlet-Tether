@@ -86,7 +86,7 @@ export class HubScene extends Phaser.Scene implements World {
     const bw = Math.max(this.level.pxW, this.scale.width);
     const bh = Math.max(this.level.pxH, this.scale.height);
     cam.setBounds((this.level.pxW - bw) / 2, (this.level.pxH - bh) / 2, bw, bh);
-    cam.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 40);
+    cam.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 30);
     cam.setDeadzone(40, 30);
     cam.setBackgroundColor('#0b0507');
     cam.fadeIn(700, 11, 5, 7);
@@ -253,7 +253,7 @@ export class HubScene extends Phaser.Scene implements World {
     this.player.destroy();
     buildHeroSheet(this, lookFromSeed(m.citizen.seed, { maw: m.equipped.includes('maw'), helix: m.equipped.includes('helix') }));
     this.player = new Player(this, x, y);
-    this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 40);
+    this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 30);
     this.gore.burst(x, y - 30, 20);
   }
 

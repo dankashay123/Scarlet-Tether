@@ -38,6 +38,11 @@ const scene = {
 const t0 = performance.now();
 buildEnvironment(scene);
 const genMs = performance.now() - t0;
+if (location.search.includes('timing')) {
+  const t1 = performance.now();
+  buildEnvironment(scene);
+  console.log('warm rebuild ms', (performance.now() - t1).toFixed(0));
+}
 
 const params = new URLSearchParams(location.search);
 const view = params.get('view') || 'scene';
@@ -169,8 +174,14 @@ if (view === 'scene') {
     ctx.fillStyle = (i % 2 ? '#3a5a3a' : '#2a3a5a');
     ctx.fillRect(0, i * 360, 1280, 360);
     const key = l === 'fg' ? `fg-${set}` : `bg-${set}-${l}`;
-    ctx.drawImage(img(key), 0, i * 360);
-    ctx.drawImage(img(key), 640, i * 360);
+    if (params.has('zoom')) {
+      const zx = Number(params.get('zoom'));
+      ctx.drawImage(img(key), zx, 0, 320, 180, 0, i * 360, 640, 360);
+      ctx.drawImage(img(key), zx, 180, 320, 180, 640, i * 360, 640, 360);
+    } else {
+      ctx.drawImage(img(key), 0, i * 360);
+      ctx.drawImage(img(key), 640, i * 360);
+    }
   });
 } else if (view === 'strips') {
   const s = 4;
