@@ -1,7 +1,7 @@
 // The three who still speak: Mother Magdalene, Deacon Vivisect, Brother Hollow.
 import {
   BLOOD, OLD_BLOOD, IRON, RUST, GOLD, BONE, VOID, RAW, NAIL, GLASS, TEAR, THREAD, TEETH,
-  anim, back, bez, clothMat, drip, loc, pool, renderFig, skinMat, stitches, tube, valueNoise, hash2, woodMat, frame, ramp, grain,
+  anim, back, bez, clothMat, drip, ridge, loc, pool, renderFig, skinMat, stitches, tube, vn, hash2, woodMat, frame, ramp, grain,
   type AnimDef, type Material, type V2,
 } from './common';
 
@@ -13,7 +13,7 @@ export const NPC_SIZES = {
 
 type F = ReturnType<typeof frame>;
 const HAIR: Material = { ramp: ['#060304', '#140b0c', '#24161a', '#382428', '#4e3438'], tex: (x) => Math.sin(x * 2.4) * 0.12, round: 0.4 };
-const VEIL: Material = { ramp: ramp(['#08040a', '#160c1a', '#24162a', '#3a2a3a', '#544458', '#6e5e70'], 7), tex: (x, y) => Math.sin(y * 0.9 + Math.sin(x * 0.3) * 2) * 0.08 + (valueNoise(x, y, 2, 4) - 0.5) * 0.1, round: 0.6 };
+const VEIL: Material = { ramp: ramp(['#08040a', '#160c1a', '#24162a', '#3a2a3a', '#544458', '#6e5e70'], 7), tex: (x, y) => Math.sin(y * 0.9 + Math.sin(x * 0.3) * 2) * 0.08 + (vn(x, y, 2, 4) - 0.5) * 0.1, round: 0.6 };
 
 // ---------------------------------------------------------------------------
 // Mother Magdalene, the Weaver
@@ -64,8 +64,11 @@ function drawMagdalene(i: number) {
   ];
   const armTo = (s: V2, hd: V2, m: Material, layer: number, k: number) => {
     const mid: V2 = [(s[0] + hd[0]) / 2 - 2, (s[1] + hd[1]) / 2 + 6 - k * 2];
-    f.capsule(s[0], s[1], mid[0], mid[1], 2.4, 1.9, m, layer);
-    f.capsule(mid[0], mid[1], hd[0], hd[1], 1.9, 1.5, m, layer);
+    f.capsule(s[0], s[1], mid[0], mid[1], 2.4, 1.7, m, layer);
+    f.ellipse(mid[0], mid[1], 1.9, 1.9, m, layer + 0.02); // knobbed elbow
+    f.capsule(mid[0], mid[1], hd[0], hd[1], 1.8, 1.2, m, layer);
+    ridge(f, [[mid[0] + 1, mid[1] - 1], [hd[0] - 1, hd[1] - 1]], 0.7, 1.0, [m]); // a tendon drawn taut
+    ridge(f, [[s[0] + 1, s[1]], [mid[0], mid[1] - 1.5]], 0.8, -0.9, [m]);
     f.ellipse(hd[0], hd[1], 2, 2.2, m, layer + 0.05);
     for (let q = 0; q < 3; q++) f.capsule(hd[0], hd[1], hd[0] + 4, hd[1] - 2 + q * 1.8, 0.6, 0.4, m, layer + 0.06);
     f.ellipse(hd[0] + 4.3, hd[1] - 2, 0.6, 0.6, NAIL, layer + 0.07);
@@ -108,7 +111,7 @@ function drawMagdalene(i: number) {
   stitches(f, [48, 40], [50, 62], 6, 2, 6.3);
   // a bone shuttle in the middle hand
   f.capsule(reach[1][0] + 1, reach[1][1] + 2, reach[1][0] + 7, reach[1][1] - 1, 1.2, 0.8, BONE, 6.4);
-  f.stain((x, y) => valueNoise(x, y, 2, 31) > 0.74, OLD_BLOOD, [robe]);
+  f.stain((x, y) => vn(x, y, 2, 31) > 0.74, OLD_BLOOD, [robe]);
   void pool;
   return renderFig(f);
 }
@@ -140,10 +143,11 @@ function drawVivisect(i: number) {
   const f = frame(w, h);
   const skin = skinMat('#b8a89a', 0.35);
   const skinB = back(skin, 0.32);
-  const smock = clothMat('#c4bca6', i * 0.5, 7);
+  const smock = clothMat('#c4bca6', i * 0.25, 7);
   const smockB = back(smock, 0.3);
   const trousers = clothMat('#3a3236', 0, 3);
-  const b = i;
+  // breathing: a slow sub-pixel rise and fall over four frames
+  const b = (1 - Math.cos((i / 4) * Math.PI * 2)) / 2;
   // legs
   f.capsule(34, 58, 31, 74, 4, 3.5, back(trousers, 0.3), 1);
   f.capsule(31, 74, 30, footY - 2, 3.4, 3, back(trousers, 0.3), 1);
@@ -196,16 +200,16 @@ function drawVivisect(i: number) {
     const y = 54 + t * 18;
     f.poly([[x, y], [x - 1.6, y + 0.8], [x - 0.4, y + 2]], IRON, 6.55);
   }
-  f.stain((x, y) => y > 58 && valueNoise(x, y, 1.6, 3) > 0.45, BLOOD, [IRON]);
-  drip(f, 71, 73, 3 + b * 3, BLOOD, 6.6, 0.6);
-  drip(f, 66, 68, 2 + (1 - b) * 2, BLOOD, 6.6, 0.5);
+  f.stain((x, y) => y > 58 && vn(x, y, 1.6, 3) > 0.45, BLOOD, [IRON]);
+  drip(f, 71, 73, 2 + ((i * 1.5) % 4), BLOOD, 6.6, 0.6);
+  drip(f, 66, 68, 2 + (((i + 2) * 1.3) % 3), BLOOD, 6.6, 0.5);
   pool(f, 66, footY - 0.5, 8, BLOOD, 3, 0.2);
   // the smock: the record of every patient
-  f.stain((x, y) => y > 62 + valueNoise(x, 0, 3, 5) * 10, OLD_BLOOD, [smock, smockB]);
-  f.stain((x, y) => valueNoise(x, y, 2.5, 12) > 0.74, OLD_BLOOD, [smock, smockB]);
-  f.stain((x, y) => valueNoise(x, y, 1.8, 13) > 0.8, BLOOD, [smock, smockB]);
-  f.stain((x, y) => Math.abs(((x * 1.2 + 200) % 7) - 3.5) < 0.5 && y > 46 && y < 66 + valueNoise(x, 1, 2, 3) * 10 && valueNoise(x, 0, 2, 3) > 0.5, BLOOD, [smock]);
-  f.stain((x, y) => valueNoise(x, y, 1.5, 21) > 0.7, RUST, [IRON]);
+  f.stain((x, y) => y > 62 + vn(x, 0, 3, 5) * 10, OLD_BLOOD, [smock, smockB]);
+  f.stain((x, y) => vn(x, y, 2.5, 12) > 0.74, OLD_BLOOD, [smock, smockB]);
+  f.stain((x, y) => vn(x, y, 1.8, 13) > 0.8, BLOOD, [smock, smockB]);
+  f.stain((x, y) => Math.abs(((x * 1.2 + 200) % 7) - 3.5) < 0.5 && y > 46 && y < 66 + vn(x, 1, 2, 3) * 10 && vn(x, 0, 2, 3) > 0.5, BLOOD, [smock]);
+  f.stain((x, y) => vn(x, y, 1.5, 21) > 0.7, RUST, [IRON]);
   return renderFig(f);
 }
 
@@ -215,10 +219,10 @@ function drawVivisect(i: number) {
 function drawHollow(i: number) {
   const { w, h, footY } = NPC_SIZES.hollow;
   const f = frame(w, h);
-  const robe = clothMat('#4a3a2c', i * 0.5, 9);
+  const robe = clothMat('#4a3a2c', i * 0.25, 9);
   const robeB = back(robe, 0.3);
   const wood = woodMat('#5a3a22', 7);
-  const s = i ? 1 : 0;
+  const s = (1 - Math.cos((i / 4) * Math.PI * 2)) / 2;
   // the crook: a tall staff with a shepherd's hook
   f.capsule(56, 20, 58, footY - 1, 1.6, 1.8, wood, 1);
   tube(f, bez([56, 20], [56, 6], [64, 8], 5), 1.6, 1.4, wood, 1);
@@ -226,7 +230,7 @@ function drawHollow(i: number) {
   // vials of tears on strings
   const vials: [number, number, number][] = [[66, 18, 7], [60, 24, 11], [53, 30, 6], [60, 36, 9]];
   vials.forEach(([x, y, len], k) => {
-    const sw = Math.sin(i * 2 + k) * 1.5;
+    const sw = Math.sin((i / 4) * Math.PI * 2 + k * 1.3) * 1.3;
     const bx = x + sw;
     const by = y + len;
     f.capsule(x, y, bx, by, 0.3, 0.3, THREAD, 1.1);
@@ -264,8 +268,8 @@ function drawHollow(i: number) {
   // rope belt with a reliquary
   f.capsule(34, 56, 51, 56, 1.1, 1.1, clothMat('#7a5a38', 0, 2), 3.7);
   f.ellipse(50, 61, 1.6, 2.2, GOLD, 3.8);
-  f.stain((x, y) => y > footY - 10 + valueNoise(x, 0, 2, 4) * 5, OLD_BLOOD, [robe, robeB]);
-  f.stain((x, y) => valueNoise(x, y, 2.5, 8) > 0.75, back(robe, 0.3), [robe]);
+  f.stain((x, y) => y > footY - 10 + vn(x, 0, 2, 4) * 5, OLD_BLOOD, [robe, robeB]);
+  f.stain((x, y) => vn(x, y, 2.5, 8) > 0.75, back(robe, 0.3), [robe]);
   void RUST;
   return renderFig(f);
 }
@@ -273,8 +277,8 @@ function drawHollow(i: number) {
 export function npcAnims() {
   return {
     magdalene: [anim('idle', [0, 1, 2, 3].map(drawMagdalene), 5)] as AnimDef[],
-    vivisect: [anim('idle', [0, 1].map(drawVivisect), 2)] as AnimDef[],
-    hollow: [anim('idle', [0, 1].map(drawHollow), 2)] as AnimDef[],
+    vivisect: [anim('idle', [0, 1, 2, 3].map(drawVivisect), 4)] as AnimDef[],
+    hollow: [anim('idle', [0, 1, 2, 3].map(drawHollow), 4)] as AnimDef[],
   };
 }
 

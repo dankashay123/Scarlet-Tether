@@ -1,10 +1,18 @@
 // Shared materials and drawing helpers for the generated creature sprites.
-import { Figure, KEY_LIGHT, folds, grain, ramp, type Light, type Material } from '../render';
+import { KEY_LIGHT, folds, grain, ramp, type Light } from '../render';
+import { Figure, type Material } from './fig';
 import { PixelCanvas, hash2, valueNoise } from '../pixel';
-import { BLOOD, OLD_BLOOD, IRON, RUST, shade } from '../hero';
+import { mix } from '../palette';
+import { BLOOD as BLOOD0, OLD_BLOOD as OLD_BLOOD0, IRON as IRON0, RUST as RUST0, shade } from '../hero';
 import { SheetBuilder } from '../sheet';
 
-export { BLOOD, OLD_BLOOD, IRON, RUST, shade, hash2, valueNoise, Figure, folds, grain, ramp };
+export { shade, hash2, valueNoise, Figure, folds, grain, ramp, mix };
+
+// Wet and polished materials get a crisp specular glint in the creature renderer.
+export const BLOOD: Material = { ...BLOOD0, ramp: ['#1c0105', '#3a0410', '#5e0818', '#860e22', '#a8162a', '#cc2832', '#ee5046'], glint: '#ffb4a0', shine: 30, dither: 0.3, wrap: 0 };
+export const OLD_BLOOD: Material = { ...OLD_BLOOD0, dither: 0.35 };
+export const IRON: Material = { ...IRON0, tex: fgrain(1.5, 0.12, 7), glint: '#e4e2ea', shine: 40, dither: 0.25, wrap: 0 };
+export const RUST: Material = { ...RUST0, tex: fgrain(1.5, 0.15, 9), dither: 0.45 };
 export type { Material };
 
 export type V2 = [number, number];
@@ -24,21 +32,74 @@ export function registerAnims(scene: Phaser.Scene, key: string, anims: AnimDef[]
   sb.build(scene);
 }
 
-export const LIGHT: Light = { ...KEY_LIGHT, ambient: 0.12, rim: 0.7 };
+export const LIGHT: Light = { ...KEY_LIGHT, z: 0.42, ambient: 0.1, rim: 0.6 };
 export const renderFig = (f: Figure) => f.render(LIGHT);
 
 // ---------------------------------------------------------------------------
 // Materials
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Cached noise: every sprite samples the same few noise fields thousands of
+// times per frame, so they are baked once into grids.
+// ---------------------------------------------------------------------------
+const VN_W = 128;
+const VN_H = 112;
+const vnCache = new Map<number, Float32Array>();
+function vnField(scale: number, seed: number) {
+  const key = scale * 100003 + seed;
+  let a = vnCache.get(key);
+  if (!a) {
+    a = new Float32Array(VN_W * VN_H);
+    for (let yy = 0; yy < VN_H; yy++) for (let xx = 0; xx < VN_W; xx++) a[yy * VN_W + xx] = valueNoise(xx + 0.5, yy + 0.5, scale, seed);
+    vnCache.set(key, a);
+  }
+  return a;
+}
+let lastKey = NaN;
+let lastField: Float32Array | null = null;
+/** valueNoise(x, y, scale, seed), looked up from a baked grid when in range. */
+export function vn(x: number, y: number, scale: number, seed: number) {
+  const xi = x | 0;
+  const yi = y | 0;
+  if (xi < 0 || yi < 0 || xi >= VN_W || yi >= VN_H) return valueNoise(x, y, scale, seed);
+  const key = scale * 100003 + seed;
+  if (key !== lastKey) {
+    lastKey = key;
+    lastField = vnField(scale, seed);
+  }
+  return lastField![yi * VN_W + xi];
+}
+/** A baked noise lookup bound to one field (fastest for per-pixel textures). */
+export function vnOf(scale: number, seed: number) {
+  let a: Float32Array | null = null;
+  return (x: number, y: number) => {
+    const xi = x | 0;
+    const yi = y | 0;
+    if (xi < 0 || yi < 0 || xi >= VN_W || yi >= VN_H) return valueNoise(x, y, scale, seed);
+    if (!a) a = vnField(scale, seed);
+    return a[yi * VN_W + xi];
+  };
+}
+/** Fast grain texture (value offset) from a baked noise field. */
+export function fgrain(scale = 2, amount = 0.15, seed = 0) {
+  const n = vnOf(scale, seed);
+  return (x: number, y: number) => (n(x, y) - 0.5) * amount * 2;
+}
+
 const skinCache = new Map<string, string[]>();
-export function skinMat(base: string, spec = 0.3, tex = grain(1.5, 0.06, 3)): Material {
+/** Hue-shifted flesh ramp: shadows sink into bruise-crimson, lights warm to ivory. */
+export function fleshRamp(base: string, n = 9) {
+  return ramp(['#0d0408', mix(base, '#1e0610', 0.84), mix(base, '#34101c', 0.64), mix(base, '#4c1a26', 0.44), mix(base, '#623038', 0.24), base, mix(base, '#ffe2bc', 0.2), mix(base, '#fff4e0', 0.42)], n);
+}
+const pores = fgrain(1.2, 0.05, 3);
+export function skinMat(base: string, spec = 0.3, tex = pores): Material {
   let r = skinCache.get(base);
   if (!r) {
-    r = ramp(['#140709', shade(base, -0.62), shade(base, -0.38), shade(base, -0.15), base, shade(base, 0.22)], 7);
+    r = fleshRamp(base);
     skinCache.set(base, r);
   }
-  return { ramp: r, spec, tex };
+  return { ramp: r, spec, tex, wrap: 0.25, dither: 0.45, shine: 40, glint: spec >= 0.45 ? mix(base, '#fff8ee', 0.7) : undefined };
 }
 
 /** A darker, deeper copy of a material (for limbs on the far side). */
@@ -47,10 +108,15 @@ export function back(m: Material, t = 0.3): Material {
 }
 
 export function clothMat(base: string, phase = 0, seed = 4): Material {
+  const ph = phase * Math.PI * 2;
   return {
-    ramp: ramp(['#120b0c', shade(base, -0.66), shade(base, -0.45), shade(base, -0.26), shade(base, -0.1), base, shade(base, 0.2)], 8),
-    tex: folds(2.4, 0.22, seed, phase * Math.PI * 2),
+    ramp: ramp(['#0c0708', shade(base, -0.7), shade(base, -0.5), shade(base, -0.3), shade(base, -0.12), base, shade(base, 0.16)], 9),
+    tex: (x, y) => (vn(x, y, 2.2, seed + 3) - 0.5) * 0.1 + (hash2(x | 0, y | 0, seed) > 0.94 ? -0.08 : 0),
+    // hanging folds: sinuous vertical ridges that sway with the phase
+    bump: (x, y) => Math.sin((x + Math.sin(y * 0.13 + ph) * 2.2) / 1.9 + seed) * 0.9 + (vn(x, y, 3, seed + 7) - 0.5) * 0.8,
     round: 0.7,
+    wrap: 0.25,
+    dither: 0.45,
   };
 }
 
@@ -59,30 +125,36 @@ export function flat(colors: string[], round = 0): Material {
 }
 
 export const VOID: Material = { ramp: ['#050203', '#0f0507', '#1e0a0d'], round: -0.6 };
-export const MOUTH: Material = { ramp: ['#0a0204', '#2a0609', '#5a0f18', '#8a2030', '#b04050'], round: -1, spec: 0.6 };
-export const TEETH: Material = { ramp: ['#3a2c1c', '#7a6844', '#b8a476', '#ddd0a8', '#f4ecd0'], spec: 0.6, round: 0.6 };
-export const NAIL: Material = { ramp: ['#1a120a', '#4a3a22', '#7e6a44', '#a8946a', '#d4c49a'], spec: 0.7 };
-export const BONE: Material = { ramp: ['#1e160e', '#4a3c28', '#7c6a4a', '#a8946c', '#cfbd92', '#efe3bf'], spec: 0.25, tex: grain(1.5, 0.08, 17) };
+export const MOUTH: Material = { ramp: ['#0a0204', '#2a0609', '#5a0f18', '#8a2030', '#b04050'], round: -1, spec: 0.6, glint: '#e88890', dither: 0.3 };
+export const TEETH: Material = { ramp: ['#2e2216', '#5e4e34', '#8e7c58', '#b8a67c', '#d8cca4', '#f2ead0'], spec: 0.6, round: 0.6, glint: '#fffaf0', dither: 0.2, wrap: 0.1 };
+export const NAIL: Material = { ramp: ['#1a120a', '#3e2e1c', '#64523a', '#8e7a56', '#b4a07a', '#dccca2'], spec: 0.7, glint: '#fff4d8', dither: 0.25, shine: 30 };
+export const BONE: Material = { ramp: ['#1e160e', '#3e3222', '#5e4e36', '#7e6c4e', '#a08c68', '#c4b08a', '#e2d4ae', '#f6eed4'], spec: 0.25, tex: fgrain(1.5, 0.06, 17), dither: 0.35 };
+/** Waxed gut thread: reads as stitching, not as a hole, at sprite scale. */
+export const CATGUT: Material = { ramp: ['#1a0c08', '#38200f', '#5a3a1e', '#7e5a34'], round: 0.4, spec: 0.4, dither: 0 };
 export const THREAD: Material = { ramp: ['#020102', '#0e0a0c', '#262024'], round: 0.2 };
-export const GOLD: Material = { ramp: ['#2a1a06', '#5a3c10', '#8a6220', '#b98a2e', '#e8c25a', '#fff1a8'], spec: 1, round: 0.5 };
-export const BRASS: Material = { ramp: ['#1e1206', '#3e2810', '#6a4a1e', '#a87a35', '#d0a050', '#f4d890'], spec: 1, tex: grain(1.5, 0.1, 23), round: 0.9 };
-export const BILE: Material = { ramp: ['#1e1c06', '#3a380e', '#5e5a18', '#8d8a2e', '#b6b244', '#d8d66a', '#f4f4a8'], spec: 0.9, round: 0.5 };
+export const GOLD: Material = { ramp: ['#1e1004', '#42280a', '#6c4614', '#946a22', '#bb8e30', '#e0b84e', '#fbe08a'], spec: 1, round: 0.5, glint: '#fffbe0', dither: 0.2, wrap: 0, shine: 30 };
+export const BRASS: Material = { ramp: ['#160d05', '#34210c', '#563a16', '#7e5824', '#a87a35', '#cc9c4c', '#ecca7c'], spec: 1, tex: fgrain(1.5, 0.08, 23), round: 0.9, glint: '#fff6d0', dither: 0.25, wrap: 0, shine: 32 };
+export const BILE: Material = { ramp: ['#161404', '#2e2c0a', '#4c4812', '#6e6a20', '#948e30', '#b8b244', '#d6d264', '#eeec9c'], spec: 0.9, round: 0.5, glint: '#fcffd8', dither: 0.3, shine: 28 };
 export const MALICE: Material = { ramp: ['#0e1a06', '#22360c', '#3e5814', '#62801e', '#8eaa30', '#bcd456', '#e8f49a'], spec: 0.9, round: 0.6 };
 export const GLOW: Material = { ramp: ['#c25a10', '#ff9a30', '#ffd060', '#fff0b0'], round: 0.2 };
-export const SMOKE: Material = { ramp: ['#2e2a28', '#4a4440', '#6e6660', '#948a7e', '#bdb3a4', '#d8d0c2'], round: 0.9, tex: grain(2.5, 0.12, 31) };
-export const MARBLE: Material = { ramp: ['#3a3630', '#6e665a', '#9a9284', '#c2baa8', '#ddd5c4', '#efe9dc', '#fbf8f0'], spec: 0.35, tex: (x, y) => (Math.abs(valueNoise(x, y, 6, 77) - 0.5) < 0.03 ? -0.12 : 0) };
+export const SMOKE: Material = { ramp: ['#2e2a28', '#4a4440', '#6e6660', '#948a7e', '#bdb3a4', '#d8d0c2'], round: 0.9, tex: fgrain(2.5, 0.12, 31) };
+export const MARBLE: Material = { ramp: ['#3a3630', '#6e665a', '#9a9284', '#c2baa8', '#ddd5c4', '#efe9dc', '#fbf8f0'], spec: 0.35, tex: (x, y) => (Math.abs(vn(x, y, 6, 77) - 0.5) < 0.03 ? -0.12 : 0) };
 export const HOLY: Material = { ramp: ['#8a6220', '#e8c25a', '#fff1a8', '#fffbe0'], round: 0.3, spec: 1 };
 export const VEIN: Material = { ramp: ['#1a0a1e', '#36163a', '#58284e', '#7a3a5e'], round: 0.3 };
-export const RAW: Material = { ramp: ['#2a0610', '#5a1020', '#8a2030', '#b8404a', '#d86a6a', '#f4a0a0'], spec: 0.8, tex: grain(1.2, 0.1, 41) };
+export const RAW: Material = { ramp: ['#1e040b', '#3e0a16', '#621222', '#88202e', '#ac3a42', '#cc5c5a', '#e8867c'], spec: 0.8, tex: fgrain(1.2, 0.08, 41), bump: (x, y) => (vn(x, y, 1.6, 43) - 0.5) * 1.6, glint: '#ffd0c0', dither: 0.35, shine: 26 };
 export const GLASS: Material = { ramp: ['#1a2a34', '#2f4a5a', '#4e7486', '#7aa4b4', '#b4d8e4', '#effcff'], spec: 1, round: 0.8 };
 export const TEAR: Material = { ramp: ['#1c3a5e', '#336b9e', '#6fb3e0', '#bfe6ff'], spec: 1, round: 0.6 };
 
 export function woodMat(base = '#6e2e1c', seed = 5): Material {
   return {
-    ramp: ramp(['#120705', shade(base, -0.65), shade(base, -0.42), shade(base, -0.2), base, shade(base, 0.18), shade(base, 0.36)], 7),
-    spec: 0.35,
+    ramp: ramp(['#0e0504', shade(base, -0.68), shade(base, -0.46), shade(base, -0.24), base, shade(base, 0.16), shade(base, 0.34)], 9),
+    spec: 0.4,
+    shine: 30,
     round: 0.35,
-    tex: (x, y) => Math.sin(x * 1.3 + valueNoise(x, y, 5, seed) * 6) * 0.07 + (hash2(x, y >> 2, seed) > 0.92 ? -0.12 : 0),
+    wrap: 0,
+    dither: 0.3,
+    tex: (x, y) => Math.sin(x * 1.3 + vn(x, y, 5, seed) * 6) * 0.06 + (hash2(x, y >> 2, seed) > 0.93 ? -0.1 : 0),
+    bump: (x, y) => Math.sin(x * 1.1 + vn(x, y, 6, seed) * 5) * 0.35,
   };
 }
 
@@ -212,9 +284,9 @@ export function stitches(f: Figure, a: V2, b: V2, n: number, h: number, layer: n
 }
 
 /** Noisy blotches (bruising, gold leaf, mould) as a stain mask. */
-export const blotch = (scale: number, thr: number, seed: number) => (x: number, y: number) => valueNoise(x, y, scale, seed) > thr;
+export const blotch = (scale: number, thr: number, seed: number) => (x: number, y: number) => vn(x, y, scale, seed) > thr;
 /** Thin branching veins: the zero-crossing ridge of a noise field. */
-export const veins = (scale: number, w: number, seed: number) => (x: number, y: number) => Math.abs(valueNoise(x, y, scale, seed) - 0.5) < w;
+export const veins = (scale: number, w: number, seed: number) => (x: number, y: number) => Math.abs(vn(x, y, scale, seed) - 0.5) < w;
 
 const fieldCache = new Map<string, Float32Array>();
 /** valueNoise sampled once into a cached grid: cheap for big repeated stains. */
@@ -233,3 +305,66 @@ export function noiseField(w: number, h: number, scale: number, seed: number) {
 export function frame(w: number, h: number) {
   return new Figure(w, h);
 }
+
+// ---------------------------------------------------------------------------
+// Relief (bends normals: anatomy, wrinkles, seams)
+// ---------------------------------------------------------------------------
+
+function ptsBox(pts: V2[], w: number): [number, number, number, number] {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [x, y] of pts) {
+    x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+  }
+  return [x0 - w, y0 - w, x1 + w, y1 + w];
+}
+
+/** A raised (h>0) or sunken (h<0) ridge of half-width w along a polyline. */
+export function ridge(f: Figure, pts: V2[], w: number, h: number, only?: Material[]) {
+  const n = pts.length - 1;
+  if (n < 1) return;
+  const ax = new Float64Array(n), ay = new Float64Array(n), dx = new Float64Array(n), dy = new Float64Array(n), il = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    ax[i] = pts[i][0];
+    ay[i] = pts[i][1];
+    dx[i] = pts[i + 1][0] - ax[i];
+    dy[i] = pts[i + 1][1] - ay[i];
+    il[i] = 1 / (dx[i] * dx[i] + dy[i] * dy[i] || 1);
+  }
+  const w2 = w * w;
+  const k = (Math.PI * 0.5) / w;
+  f.relief((x, y) => {
+    let d2 = w2;
+    for (let i = 0; i < n; i++) {
+      let t = ((x - ax[i]) * dx[i] + (y - ay[i]) * dy[i]) * il[i];
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const ex = x - ax[i] - dx[i] * t;
+      const ey = y - ay[i] - dy[i] * t;
+      const e = ex * ex + ey * ey;
+      if (e < d2) d2 = e;
+    }
+    if (d2 >= w2) return 0;
+    const c = Math.cos(Math.sqrt(d2) * k);
+    return h * c * c;
+  }, ptsBox(pts, w), only);
+}
+
+/** A smooth bulge (muscle, knuckle, swelling) or dent (h<0). */
+export function dome(f: Figure, cx: number, cy: number, rx: number, ry: number, h: number, rot = 0, only?: Material[]) {
+  const c = Math.cos(-rot);
+  const s = Math.sin(-rot);
+  const r = Math.max(rx, ry);
+  f.relief((x, y) => {
+    const dx = x - cx;
+    const dy = y - cy;
+    const u = (dx * c - dy * s) / rx;
+    const v = (dx * s + dy * c) / ry;
+    const d = u * u + v * v;
+    return d >= 1 ? 0 : h * (1 - d) * (1 - d);
+  }, [cx - r, cy - r, cx + r, cy + r], only);
+}
+
+/** Bump texture: fine crisscross wrinkles (old, loose or dried skin). */
+export const wrinkleBump = (scale: number, amt: number, seed: number) => (x: number, y: number) => {
+  const n = vn(x, y, scale, seed);
+  return (Math.abs(n - 0.5) < 0.06 ? -amt : 0) + (vn(x, y, scale * 0.45, seed + 1) - 0.5) * amt * 0.5;
+};
