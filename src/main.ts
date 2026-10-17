@@ -10,6 +10,7 @@ import { EndingScene } from './scenes/EndingScene';
 import { GalleryScene } from './scenes/GalleryScene';
 import { VIEW_H, viewWidth } from './game/config';
 import { controls } from './game/controls';
+import { SnesPost } from './game/snespost';
 
 (window as unknown as { __booted: boolean }).__booted = true;
 
@@ -22,6 +23,7 @@ const game = new Phaser.Game({
   pixelArt: true,
   roundPixels: true,
   antialias: false,
+  pipeline: { SnesPost } as unknown as Phaser.Types.Core.PipelineConfig,
   width: viewWidth(),
   height: VIEW_H,
   scale: {

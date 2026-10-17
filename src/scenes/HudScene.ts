@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
+import { UI_K, uiH, uiSpace, uiW, ux, uy } from '../ui/uispace';
 import { P, hexNum, mix } from '../art/palette';
 import {
-  BAR_FILL_Y,
   BOSS_END,
   BOSS_FILL_Y,
-  HUD_BARS,
+  SHUD_BARS,
+  SHUD_FILL_Y,
+  SHUD_MEDAL,
   MINI_H,
   MINI_W,
   makeBossBar,
@@ -61,6 +63,7 @@ export class HudScene extends Phaser.Scene {
 
   private runLayer!: Phaser.GameObjects.Container;
   private bars!: Phaser.GameObjects.Graphics;
+  private edge!: Phaser.GameObjects.Graphics;
   private mini!: Phaser.GameObjects.Graphics;
   private miniMask!: Phaser.GameObjects.Graphics;
   private miniRect = new Phaser.Geom.Rectangle(0, 0, 0, 0);
@@ -89,10 +92,11 @@ export class HudScene extends Phaser.Scene {
 
   modal = false;
   private modalLayer: Phaser.GameObjects.Container | null = null;
-  private modalTap: ((p: Phaser.Input.Pointer) => void) | null = null;
+  private modalTap: ((p: { x: number; y: number }) => void) | null = null;
   private modalKey: ((k: string) => void) | null = null;
   private inset = { left: 0, right: 0, top: 0, bottom: 0 };
   private interactLabel!: GameText;
+  private shellText!: GameText;
   private controlsVisible = true;
 
   constructor() {
@@ -100,8 +104,9 @@ export class HudScene extends Phaser.Scene {
   }
 
   create() {
+    uiSpace(this);
     this.input.addPointer(3);
-    this.inset = safeInsets(this.scale.width);
+    this.inset = safeInsets(this.W);
     this.buildInkFrame();
     this.buildRunHud();
     this.buildControls();
@@ -120,10 +125,10 @@ export class HudScene extends Phaser.Scene {
   // -------------------------------------------------------------------------
 
   private get W() {
-    return this.scale.width;
+    return uiW(this);
   }
   private get H() {
-    return this.scale.height;
+    return uiH(this);
   }
 
   layout() {
@@ -141,8 +146,10 @@ export class HudScene extends Phaser.Scene {
       dodge: [44, 92],
       execute: [100, 106],
       speak: [100, 106],
-      stigma: [152, 98],
-      tear: [152, 38],
+      aim: [146, 30],
+      weapon: [150, 82],
+      stigma: [196, 66],
+      tear: [190, 22],
     };
     for (const b of this.btns) {
       if (b.action === 'pause') {
@@ -205,33 +212,35 @@ export class HudScene extends Phaser.Scene {
   // Run HUD: Reliquary, Censer, Lucidity, Tears
   // -------------------------------------------------------------------------
 
-  // Container-space anchors of the medallion and its vials
-  private static MEDAL_X = 4;
-  private static MEDAL_Y = 2;
-  private static BAR_X: Record<string, number> = { hp: 34, censer: 40, lucid: 40 };
-  private static BAR_Y: Record<string, number> = { hp: 8, censer: 18, lucid: 26 };
+  // Native-pixel anchors of the medallion and its bars (the layer is drawn 1:1
+  // with the play screen, so the HUD's pixels match the game's)
+  private static MEDAL_X = SHUD_MEDAL.x;
+  private static MEDAL_Y = SHUD_MEDAL.y;
+  private static BAR_X: Record<string, number> = Object.fromEntries(SHUD_BARS.map((b) => [b[0], b[3]]));
+  private static BAR_Y: Record<string, number> = Object.fromEntries(SHUD_BARS.map((b) => [b[0], b[4]]));
 
   private buildRunHud() {
-    this.runLayer = this.add.container(0, 0).setDepth(10);
+    this.runLayer = this.add.container(0, 0).setDepth(10).setScale(1 / UI_K);
     this.bars = this.add.graphics();
+    this.edge = this.add.graphics().setDepth(9);
     this.mini = this.add.graphics().setDepth(11);
     this.miniMask = this.make.graphics({}, false);
     this.mini.setMask(this.miniMask.createGeometryMask());
     this.miniFrameImg = this.add.image(0, 0, 'hud-mini-frame').setOrigin(0).setDepth(12).setVisible(false);
-    // Three vials emerging from behind the medallion: blood, censer smoke, lucidity
+    // Three bars beside the mask: blood, censer smoke, lucidity
     const bx = HudScene.BAR_X;
     const parts: Phaser.GameObjects.GameObject[] = [];
-    for (const [key] of HUD_BARS) parts.push(this.add.image(bx[key], HudScene.BAR_Y[key], `hud-bar-${key}`).setOrigin(0));
-    const fy = (k: string) => HudScene.BAR_Y[k] + BAR_FILL_Y;
-    this.fills.trail = this.add.image(bx.hp, fy('hp'), 'hud-fill-trail').setOrigin(0);
-    this.fills.hp = this.add.image(bx.hp, fy('hp'), 'hud-fill-hp').setOrigin(0);
-    this.fills.veil = this.add.image(bx.hp, fy('hp'), 'hud-fill-veil').setOrigin(0).setVisible(false);
-    this.fills.censer = this.add.image(bx.censer, fy('censer'), 'hud-fill-censer').setOrigin(0);
-    this.fills.lucid = this.add.image(bx.lucid, fy('lucid'), 'hud-fill-lucid').setOrigin(0);
-    // The portrait medallion over the vials' ends; it cracks as the mind goes, weeps as the body does
-    this.medal = this.add.image(HudScene.MEDAL_X, HudScene.MEDAL_Y, 'hud-medallion').setOrigin(0);
-    this.bleed = this.add.image(HudScene.MEDAL_X, HudScene.MEDAL_Y, 'hud-medallion-blood').setOrigin(0).setAlpha(0);
-    this.cracks = this.add.image(HudScene.MEDAL_X, HudScene.MEDAL_Y, 'hud-medallion-cracks').setOrigin(0).setAlpha(0);
+    for (const [key] of SHUD_BARS) parts.push(this.add.image(bx[key], HudScene.BAR_Y[key], `hud-s-bar-${key}`).setOrigin(0));
+    const fy = (k: string) => HudScene.BAR_Y[k] + SHUD_FILL_Y;
+    this.fills.trail = this.add.image(bx.hp, fy('hp'), 'hud-s-fill-trail').setOrigin(0);
+    this.fills.hp = this.add.image(bx.hp, fy('hp'), 'hud-s-fill-hp').setOrigin(0);
+    this.fills.veil = this.add.image(bx.hp, fy('hp'), 'hud-s-fill-veil').setOrigin(0).setVisible(false);
+    this.fills.censer = this.add.image(bx.censer, fy('censer'), 'hud-s-fill-censer').setOrigin(0);
+    this.fills.lucid = this.add.image(bx.lucid, fy('lucid'), 'hud-s-fill-lucid').setOrigin(0);
+    // The mask over the bars' ends; it cracks as the mind goes, weeps as the body does
+    this.medal = this.add.image(HudScene.MEDAL_X, HudScene.MEDAL_Y, 'hud-s-medal').setOrigin(0);
+    this.bleed = this.add.image(HudScene.MEDAL_X, HudScene.MEDAL_Y, 'hud-s-blood').setOrigin(0).setAlpha(0);
+    this.cracks = this.add.image(HudScene.MEDAL_X, HudScene.MEDAL_Y, 'hud-s-cracks').setOrigin(0).setAlpha(0);
     this.runLayer.add([
       ...parts,
       this.fills.trail,
@@ -308,6 +317,7 @@ export class HudScene extends Phaser.Scene {
   private drawBars() {
     const g = this.bars;
     g.clear();
+    this.edge.clear();
     const run = currentRun();
     const t = this.time.now;
     const ox = -(this.runLayer.x || 0);
@@ -331,10 +341,11 @@ export class HudScene extends Phaser.Scene {
     const frac = run.hp / run.maxHp;
     if (frac < 0.3 && run.hp > 0) {
       const a = (0.25 + 0.2 * Math.sin(t / 160)) * (1 - frac / 0.3);
-      g.fillStyle(hexNum(P.blood2), a);
-      g.fillRect(ox, 0, this.W, 6).fillRect(ox, this.H - 6, this.W, 6).fillRect(ox, 0, 6, this.H).fillRect(ox + this.W - 6, 0, 6, this.H);
-      g.fillStyle(hexNum(P.blood3), a * 0.6);
-      g.fillRect(ox + 6, 6, this.W - 12, 4).fillRect(ox + 6, this.H - 10, this.W - 12, 4).fillRect(ox + 6, 6, 4, this.H - 12).fillRect(ox + this.W - 10, 6, 4, this.H - 12);
+      const e = this.edge;
+      e.fillStyle(hexNum(P.blood2), a);
+      e.fillRect(0, 0, this.W, 6).fillRect(0, this.H - 6, this.W, 6).fillRect(0, 0, 6, this.H).fillRect(this.W - 6, 0, 6, this.H);
+      e.fillStyle(hexNum(P.blood3), a * 0.6);
+      e.fillRect(6, 6, this.W - 12, 4).fillRect(6, this.H - 10, this.W - 12, 4).fillRect(6, 6, 4, this.H - 12).fillRect(this.W - 10, 6, 4, this.H - 12);
     }
     // --- Blood (health) ---
     const target = Phaser.Math.Clamp(run.hp / run.maxHp, 0, 1);
@@ -351,8 +362,8 @@ export class HudScene extends Phaser.Scene {
       const w = this.crop(f.hp, shown);
       // Meniscus wobble
       if (shown > 0.02) {
-        const fy = HudScene.BAR_Y.hp + BAR_FILL_Y;
-        g.fillStyle(hexNum('#ffb0a0'), 1).fillRect(HudScene.BAR_X.hp + w - 1, fy + (Math.floor(t / 200) % 2), 1, HUD_BARS[0][2] - 1);
+        const fy = HudScene.BAR_Y.hp + SHUD_FILL_Y;
+        g.fillStyle(hexNum('#ffb0a0'), 1).fillRect(HudScene.BAR_X.hp + w - 1, fy + (Math.floor(t / 200) % 2), 1, SHUD_BARS[0][2] - 1);
       }
     } else {
       f.hp.setVisible(false);
@@ -366,7 +377,7 @@ export class HudScene extends Phaser.Scene {
     else f.censer.clearTint();
     // --- Lucidity --- (the glass cracks as it fails)
     const lu = Phaser.Math.Clamp(run.lucidity / run.maxLucidity, 0, 1);
-    const jitter = run.lucidity < 30 ? Math.round(Math.sin(t / 37) * 2) : 0;
+    const jitter = run.lucidity < 30 ? Math.round(Math.sin(t / 37) * 1.4) : 0;
     f.lucid.setX(HudScene.BAR_X.lucid + jitter);
     this.crop(f.lucid, lu);
     this.cracks.setAlpha(Phaser.Math.Clamp((0.6 - lu) * 2.2, 0, 1));
@@ -659,12 +670,15 @@ export class HudScene extends Phaser.Scene {
     mk('attack', 'attack', 24);
     mk('jump', 'jump', 22);
     mk('dodge', 'dodge', 18);
+    mk('aim', 'aim', 18);
+    mk('weapon', 'weapon', 18);
     mk('execute', 'execute', 18);
     mk('speak', 'speak', 18);
     mk('stigma', 'maw', 18);
     mk('tear', 'tear', 18);
     mk('pause', 'pause', 10);
     this.interactLabel = txt(this, 0, 0, '', 'label', 12).setOrigin(0.5, 1).setDepth(22).setTint(hexNum(P.gold0));
+    this.shellText = txt(this, 0, 0, '0', 'head', 12).setOrigin(0.5).setDepth(22).setVisible(false);
   }
 
   private btn(a: Action) {
@@ -677,7 +691,8 @@ export class HudScene extends Phaser.Scene {
     b.img.setVisible(v && this.controlsVisible);
   }
 
-  private onDown(p: Phaser.Input.Pointer) {
+  private onDown(raw: Phaser.Input.Pointer) {
+    const p = { id: raw.id, x: ux(raw), y: uy(raw) };
     if (this.modal) {
       this.modalTap?.(p);
       return;
@@ -706,7 +721,8 @@ export class HudScene extends Phaser.Scene {
     }
   }
 
-  private onMove(p: Phaser.Input.Pointer) {
+  private onMove(raw: Phaser.Input.Pointer) {
+    const p = { id: raw.id, x: ux(raw), y: uy(raw) };
     if (p.id !== this.stickPointer) return;
     const dx = p.x - this.stickOrigin.x;
     const dy = p.y - this.stickOrigin.y;
@@ -725,7 +741,8 @@ export class HudScene extends Phaser.Scene {
     else controls.setMove((dx * k) / max, (dy * k) / max);
   }
 
-  private onUp(p: Phaser.Input.Pointer) {
+  private onUp(raw: Phaser.Input.Pointer) {
+    const p = { id: raw.id, x: ux(raw), y: uy(raw) };
     if (p.id === this.stickPointer) {
       this.stickPointer = null;
       controls.setMove(0, 0);
@@ -761,7 +778,7 @@ export class HudScene extends Phaser.Scene {
   private buildKeyboard() {
     const kb = this.input.keyboard;
     if (!kb) return;
-    const names = ['W', 'A', 'S', 'D', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'J', 'Z', 'K', 'X', 'SPACE', 'L', 'C', 'I', 'V', 'H', 'E', 'ENTER', 'ESC', 'SHIFT'];
+    const names = ['W', 'A', 'S', 'D', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'J', 'Z', 'K', 'X', 'SPACE', 'L', 'C', 'I', 'V', 'H', 'E', 'ENTER', 'ESC', 'SHIFT', 'Q', 'R', 'F', 'TAB'];
     this.keys = {};
     for (const n of names) this.keys[n] = kb.addKey(n, false);
     kb.on('keydown', (ev: KeyboardEvent) => {
@@ -776,6 +793,8 @@ export class HudScene extends Phaser.Scene {
       [['J', 'Z'], 'attack'],
       [['SPACE'], 'jump'],
       [['K', 'X'], 'dodge'],
+      [['Q', 'R'], 'aim'],
+      [['F', 'TAB'], 'weapon'],
       [['L', 'C'], 'execute'],
       [['I', 'V'], 'stigma'],
       [['H'], 'tear'],
@@ -851,6 +870,18 @@ export class HudScene extends Phaser.Scene {
     this.setBtnVisible('attack', true);
     this.setBtnVisible('jump', true);
     this.setBtnVisible('dodge', true);
+    this.setBtnVisible('aim', hudState.inRun);
+    const shells = hudState.inRun && hudState.shellsMax > 0;
+    this.setBtnVisible('weapon', shells);
+    const wb = this.btn('weapon');
+    wb.img.setAlpha(hudState.shellArmed ? 1 : 0.6).setTint(hudState.shellArmed ? 0xffd890 : 0xffffff);
+    this.shellText.setVisible(shells && this.controlsVisible);
+    if (shells) {
+      const t = String(hudState.shells);
+      if (this.shellText.text !== t) this.shellText.setText(t);
+      this.shellText.setPosition(wb.img.x + 14 * (wb.scale ?? 1), wb.img.y + 12 * (wb.scale ?? 1));
+      this.shellText.setTint(hexNum(hudState.shells ? (hudState.shellArmed ? P.gold0 : P.bone1) : P.blood0));
+    }
   }
 
   // -------------------------------------------------------------------------

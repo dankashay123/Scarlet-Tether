@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { uiH, uiSpace, uiW } from '../ui/uispace';
 import { P, hexNum } from '../art/palette';
 import { buildHeroSheet } from '../art/hero';
 import { lookFromSeed } from '../art/look';
@@ -24,8 +25,9 @@ export class SuccessionScene extends Phaser.Scene {
   }
 
   create() {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    uiSpace(this);
+    const W = uiW(this);
+    const H = uiH(this);
     hudState.inRun = false;
     hud(this).setControlsVisible(false);
     stopLoop(this, 'music');

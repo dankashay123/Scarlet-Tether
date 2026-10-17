@@ -54,11 +54,37 @@ const ICONS: Record<string, (pc: PixelCanvas, c: number) => void> = {
     pc.px(c, c - 7, P.blood0);
   },
   attack: (pc, c) => {
-    // Chain swinging to a shackle
-    for (let i = 0; i < 5; i++) pc.rect(c - 8 + i * 3, c + 6 - i * 3, 2, 2, i % 2 ? P.iron0 : P.iron1);
-    pc.ellipse(c + 6, c - 6, 4, 4, P.iron0);
-    pc.ellipse(c + 6, c - 6, 1, 1, P.ink);
-    pc.px(c + 4, c - 8, P.bone0);
+    // A blood bolt leaving the cannon's mouth
+    pc.rect(c - 10, c - 3, 8, 6, P.iron1);
+    pc.rect(c - 10, c - 3, 8, 2, P.iron0);
+    pc.rect(c - 3, c - 4, 2, 8, P.bone2);
+    pc.ellipse(c + 5, c, 4, 3, P.blood1);
+    pc.ellipse(c + 6, c - 1, 2, 1, P.blood0);
+    pc.px(c + 7, c - 1, P.bone0);
+    pc.line(c, c - 5, c + 3, c - 3, P.blood2);
+    pc.line(c, c + 5, c + 3, c + 3, P.blood2);
+  },
+  aim: (pc, c) => {
+    // A planted foot and a fixed sight: aim without moving
+    for (let a = 0; a < 24; a++) {
+      const t = (a / 24) * Math.PI * 2;
+      pc.px(Math.round(c + Math.cos(t) * 7), Math.round(c + Math.sin(t) * 7), P.bone1);
+    }
+    pc.line(c, c - 10, c, c - 4, P.bone0);
+    pc.line(c, c + 4, c, c + 10, P.bone0);
+    pc.line(c - 10, c, c - 4, c, P.bone0);
+    pc.line(c + 4, c, c + 10, c, P.bone0);
+    pc.px(c, c, P.blood0);
+  },
+  weapon: (pc, c) => {
+    // A censer shell: brass casing, smoking cap
+    pc.rect(c - 3, c - 4, 7, 11, G2);
+    pc.rect(c - 3, c - 4, 2, 11, G1);
+    pc.rect(c - 3, c + 5, 7, 2, G3);
+    pc.ellipse(c, c - 6, 3, 3, P.blood1);
+    pc.px(c - 1, c - 7, P.blood0);
+    pc.px(c + 2, c - 10, P.smoke0);
+    pc.px(c, c - 11, P.smoke0);
   },
   dodge: (pc, c) => {
     // Three wind-streaks and a footprint
@@ -345,6 +371,95 @@ function barFill(w: number, fh: number, cols: string[]): PixelCanvas {
       pc.px(x, y, c);
     }
   }
+  return pc;
+}
+
+// ---------------------------------------------------------------------------
+// The SNES run HUD, drawn at native screen pixels (shown at 1:1 over play)
+// ---------------------------------------------------------------------------
+
+/** Width of a native bar's end cap; rows above the fill inside the frame. */
+export const SHUD_CAP = 5;
+export const SHUD_FILL_Y = 2;
+/** Bar key, frame width, fill height, frame position (native px). */
+export const SHUD_BARS: [string, number, number, number, number][] = [
+  ['hp', 88, 4, 19, 3],
+  ['censer', 66, 2, 20, 12],
+  ['lucid', 60, 2, 20, 18],
+];
+export const SHUD_MEDAL = { x: 1, y: 1, w: 22, h: 23 };
+
+const IR0 = '#8e8aa0';
+const IR1 = '#5c5870';
+const IR2 = '#34303f';
+
+/** A hard-edged iron rail with gilt studs, ending in a spear-tip cap. */
+function snesBarFrame(w: number, fh: number): PixelCanvas {
+  const h = fh + 4;
+  const pc = new PixelCanvas(w, h);
+  const x0 = w - SHUD_CAP;
+  for (let x = 0; x < x0; x++) {
+    pc.px(x, 0, P.ink);
+    pc.px(x, 1, x % 6 === 2 ? G1 : IR1);
+    for (let j = 0; j < fh; j++) pc.px(x, 2 + j, j === 0 ? '#1a1220' : '#0c0810');
+    pc.px(x, h - 2, IR2);
+    pc.px(x, h - 1, P.ink);
+  }
+  // The cap: a short iron collar and a gold spear point
+  const mid = Math.floor(h / 2);
+  pc.rect(x0, 0, 1, h, IR0);
+  pc.rect(x0 + 1, 0, 1, h, IR2);
+  for (let i = 0; i < SHUD_CAP - 2; i++) {
+    const half = Math.max(0, mid - 1 - i);
+    for (let y = mid - half - 1; y <= mid + half; y++) pc.px(x0 + 2 + i, y, y < mid ? G0 : y === mid ? G1 : G2);
+  }
+  pc.outline(P.ink);
+  return pc;
+}
+
+/** Flat bands: a bright lip, the body, a dark floor. No dithering. */
+function snesBarFill(w: number, fh: number, cols: string[]): PixelCanvas {
+  const pc = new PixelCanvas(w, fh);
+  for (let y = 0; y < fh; y++) for (let x = 0; x < w; x++) pc.px(x, y, y === 0 ? cols[0] : y === fh - 1 ? cols[3] : cols[1 + ((y - 1) % 2)]);
+  return pc;
+}
+
+/** The Severed's iron mask in a gilt-and-iron frame. */
+function snesMedal(): PixelCanvas {
+  const { w, h } = SHUD_MEDAL;
+  const pc = new PixelCanvas(w, h);
+  const cx = 10.5;
+  const cy = 11.5;
+  // Iron disc with a gold rim, lit from the upper left
+  pc.ellipse(cx, cy, 10.5, 11, (x, y) => (x + y < 16 ? G0 : x + y < 26 ? G1 : G2));
+  pc.ellipse(cx, cy, 8.5, 9, (x, y) => (x + y < 14 ? IR1 : IR2));
+  pc.ellipse(cx, cy, 7.5, 8, '#140c12');
+  // Crimson cowl rising to a point
+  pc.poly([[4, 19], [6, 8], [10, 2], [12, 3], [16, 9], [17, 19]], '#9a1626');
+  pc.poly([[6, 18], [7, 9], [10, 4], [11, 5], [8, 10], [8, 18]], '#c8343c');
+  pc.poly([[14, 10], [16, 10], [16, 19], [14, 19]], '#5c0c18');
+  // The opening and the iron mask with its ember slit
+  pc.ellipse(10.5, 12.5, 4, 5, '#0a0608');
+  pc.ellipse(10.5, 13, 3, 4, (x, y) => (x + y < 22 ? '#b8b4c4' : x + y < 25 ? IR0 : IR1));
+  pc.rect(8, 12, 6, 1, '#ff9a3a');
+  pc.px(9, 12, '#fff0b0');
+  pc.px(12, 14, IR2);
+  pc.px(10, 16, IR2);
+  pc.outline(P.ink);
+  return pc;
+}
+
+function snesMedalCracks(): PixelCanvas {
+  const pc = new PixelCanvas(SHUD_MEDAL.w, SHUD_MEDAL.h);
+  for (const [x, y] of [[5, 6], [6, 7], [7, 7], [8, 8], [7, 9], [14, 5], [14, 6], [15, 7], [16, 8], [13, 7], [12, 18], [13, 17], [14, 17], [15, 16]] as const) pc.px(x, y, '#e8e4f0');
+  return pc;
+}
+
+function snesMedalBlood(): PixelCanvas {
+  const pc = new PixelCanvas(SHUD_MEDAL.w, SHUD_MEDAL.h);
+  for (const [x, top, len] of [[6, 14, 5], [9, 16, 4], [12, 15, 5], [15, 13, 6]] as const)
+    for (let i = 0; i < len; i++) pc.px(x, top + i, i === len - 1 ? '#5c0c18' : '#b01e2e');
+  pc.rect(5, 19, 12, 1, '#7a1020');
   return pc;
 }
 
@@ -739,7 +854,9 @@ export function buildUi(scene: Phaser.Scene) {
   registerImage(scene, 'stick-knob', knob);
 
   const rims: Record<string, string> = {
-    attack: P.iron0,
+    attack: P.blood1,
+    aim: P.bone2,
+    weapon: G1,
     jump: P.bone2,
     dodge: P.smoke1,
     execute: P.blood1,
@@ -764,6 +881,15 @@ export function buildUi(scene: Phaser.Scene) {
   }
   registerImage(scene, 'hud-fill-trail', barFill(HUD_BARS[0][1] - BAR_CAP, HUD_BARS[0][2], ['#fff4e8', '#f0d8c8', '#e8d0c0', '#c8a898']));
   registerImage(scene, 'hud-fill-veil', barFill(HUD_BARS[0][1] - BAR_CAP, HUD_BARS[0][2], [P.veil0, P.veil0, P.veil1, P.veil1]));
+  registerImage(scene, 'hud-s-medal', snesMedal());
+  registerImage(scene, 'hud-s-cracks', snesMedalCracks());
+  registerImage(scene, 'hud-s-blood', snesMedalBlood());
+  for (const [k, w, fh] of SHUD_BARS) {
+    registerImage(scene, `hud-s-bar-${k}`, snesBarFrame(w, fh));
+    registerImage(scene, `hud-s-fill-${k}`, snesBarFill(w - SHUD_CAP, fh, FILLS[k]));
+  }
+  registerImage(scene, 'hud-s-fill-trail', snesBarFill(SHUD_BARS[0][1] - SHUD_CAP, SHUD_BARS[0][2], ['#fff4e8', '#f0d8c8', '#e8d0c0', '#c8a898']));
+  registerImage(scene, 'hud-s-fill-veil', snesBarFill(SHUD_BARS[0][1] - SHUD_CAP, SHUD_BARS[0][2], [P.veil0, P.veil0, P.veil1, P.veil1]));
   registerImage(scene, 'hud-coin-tear', coin('tear'));
   registerImage(scene, 'hud-coin-vert', coin('vert'));
   registerImage(scene, 'hud-mini-frame', miniFrame(MINI_W, MINI_H));

@@ -2,11 +2,15 @@
 // spoke is sewn shut; the one in its belly never learned to stop.
 import {
   BILE, BLOOD, OLD_BLOOD, MOUTH, TEETH, VEIN, RAW, NAIL,
-  anim, back, blotch, lineMask, dome, drip, ellMask, pool, renderFig, ridge, skinMat, stitches, tube, veins, vn, vnOf, frame, fgrain,
+  anim, scaled, back, blotch, lineMask, dome, drip, ellMask, pool, renderFig, ridge, skinMat, stitches, tube, veins, vn, vnOf, frame, fgrain,
   type AnimDef, type Material, type V2,
 } from './common';
 
-export const GOSSIP = { w: 96, h: 80, footY: 74 };
+/** Design canvas (the drawing code's units) and its scale to output pixels. */
+const D = { w: 96, h: 80, footY: 74 };
+const S = 0.46;
+const EYE_K = 1.9;
+export const GOSSIP = scaled(D, S);
 
 const SKIN = '#bc9a80';
 const LIP: Material = { ramp: ['#1a0608', '#3e1014', '#62202a', '#84343c', '#a24a4c', '#c06a62', '#dc9282'], spec: 0.7, tex: fgrain(1, 0.06, 5), glint: '#ffd8c8', shine: 22, dither: 0.3 };
@@ -36,8 +40,8 @@ interface GP {
 }
 
 function drawGossip(p: GP) {
-  const { w, h, footY } = GOSSIP;
-  const f = frame(w, h);
+  const { w, h, footY } = D;
+  const f = frame(w, h, S);
   const skin = skinMat(SKIN, 0.55, fgrain(1.6, 0.06, 12));
   const skinB = back(skin, 0.3);
   const sw = p.swell;
@@ -143,7 +147,8 @@ function drawGossip(p: GP) {
     [cx - 18, cy + 1, 1.0],
   ];
   const blink = p.blink ?? 0;
-  eyes.forEach(([ex, ey, r], i) => {
+  eyes.forEach(([ex, ey, r0], i) => {
+    const r = r0 * EYE_K; // eyes enlarged so they read at sprite size
     const lid = back(skin, 0.12);
     f.ellipse(ex, ey, r + 1.4, r + 1.0, lid, 3.55); // puffy lid
     dome(f, ex, ey - r * 0.6, r + 1.2, r * 0.7, 1.4, 0, [lid]);
@@ -155,7 +160,6 @@ function drawGossip(p: GP) {
     } else {
       ridge(f, [[ex - r, ey], [ex + r, ey + 0.3]], 0.6, -1.6, [lid]);
     }
-    f.stain((x, y) => Math.abs(Math.hypot(x - ex - 0.3, (y - ey) * 1.2) - r - 0.5) < 0.4, LIP, [skin, lid], [ex - r - 3, ey - r - 3, ex + r + 3, ey + r + 3]);
     // tears: yellowed and bloody
     const tear = i % 2 ? BILE : BLOOD;
     f.stain((x, y) => Math.abs(x - ex - 0.3 - Math.sin(y * 0.5) * 0.3) < 0.55 && y > ey + r && y < ey + r + 5 + i, tear, [skin], [ex - 2, ey, ex + 3, ey + r + 7 + i]);
@@ -244,8 +248,8 @@ function drawGossip(p: GP) {
 }
 
 function drawDead() {
-  const { w, h, footY } = GOSSIP;
-  const f = frame(w, h);
+  const { w, h, footY } = D;
+  const f = frame(w, h, S);
   const skin = skinMat(SKIN, 0.55, fgrain(1.6, 0.06, 12));
   pool(f, 48, footY - 0.5, 40, BILE, 9);
   pool(f, 40, footY, 20, BLOOD, 10, 0.3);

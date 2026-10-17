@@ -1,4 +1,4 @@
-export const VIEW_H = 360;
+export const VIEW_H = 224;
 
 /**
  * Logical width matches the device's landscape shape so wide phones see more,
@@ -12,7 +12,7 @@ export function viewWidth(): number {
   const sh = Math.max(1, Math.min(screen.width, screen.height));
   const aspect = ww > wh ? ww / wh : sw / sh;
   const w = Math.round(VIEW_H * aspect);
-  return Math.max(640, Math.min(820, w - (w % 2)));
+  return Math.max(400, Math.min(512, w - (w % 2)));
 }
 
 /** Draw order for the side-view world, back to front. */

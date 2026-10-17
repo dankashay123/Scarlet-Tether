@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { addSnesPost } from '../game/snespost';
 import { P, hexNum } from '../art/palette';
 import { DEPTH } from '../game/config';
 import { Level } from '../game/level';
@@ -98,6 +99,7 @@ export class HubScene extends Phaser.Scene implements World {
     cam.setBackgroundColor('#0b0507');
     cam.fadeIn(700, 11, 5, 7);
     if (cam.postFX) cam.postFX.addVignette(0.5, 0.5, 0.85, 0.35);
+    addSnesPost(this);
 
     this.buildScene();
     loop(this, 'amb_hub', 'amb');
@@ -129,33 +131,33 @@ export class HubScene extends Phaser.Scene implements World {
       switch (m.ch) {
         case 'M':
           this.add.sprite(m.x, m.y, 'magdalene').setOrigin(0.5, NPC_SIZES.magdalene.footY / NPC_SIZES.magdalene.h).play('magdalene:idle').setDepth(DEPTH.props + 3);
-          this.light(m.x, m.y - 60, 'light-lg', P.blood1, 0.3);
+          this.light(m.x, m.y - 37, 'light-lg', P.blood1, 0.3);
           this.stations.push({ x: m.x, y: m.y, label: 'Speak with the Weaver', act: () => this.magdalene() });
           break;
         case 'O':
           this.add.sprite(m.x, m.y, 'vivisect').setOrigin(0.5, NPC_SIZES.vivisect.footY / NPC_SIZES.vivisect.h).play('vivisect:idle').setDepth(DEPTH.props + 3).setFlipX(true);
-          this.add.sprite(m.x - 34, m.y, 'candelabra').setOrigin(0.5, 1).play('candelabra:flicker').setDepth(DEPTH.props + 2);
-          this.light(m.x - 34, m.y - 40, 'light-lg', P.candle, 0.4);
+          this.add.sprite(m.x - 21, m.y, 'candelabra').setOrigin(0.5, 1).play('candelabra:flicker').setDepth(DEPTH.props + 2);
+          this.light(m.x - 21, m.y - 25, 'light-lg', P.candle, 0.4);
           this.stations.push({ x: m.x, y: m.y, label: 'Speak with the Deacon', act: () => this.vivisect() });
           break;
         case 'L':
           this.add.sprite(m.x, m.y, 'hollow').setOrigin(0.5, NPC_SIZES.hollow.footY / NPC_SIZES.hollow.h).play('hollow:idle').setDepth(DEPTH.props + 3);
-          this.light(m.x, m.y - 40, 'light-sm', P.tear1, 0.4);
+          this.light(m.x, m.y - 25, 'light-sm', P.tear1, 0.4);
           this.stations.push({ x: m.x, y: m.y, label: 'Trade with Brother Hollow', act: () => this.hollow() });
           break;
         case 'W':
           this.add.image(m.x, m.y, 'prop-lectern').setOrigin(0.5, 1).setDepth(DEPTH.props + 3);
-          this.light(m.x, m.y - 30, 'light-sm', P.candle, 0.3);
+          this.light(m.x, m.y - 19, 'light-sm', P.candle, 0.3);
           this.stations.push({ x: m.x, y: m.y, label: 'Read the Lineage', act: () => this.lineage() });
           break;
         case 'c':
           this.add.sprite(m.x, m.y, 'candelabra').setOrigin(0.5, 1).play('candelabra:flicker').setDepth(DEPTH.props + 2);
-          this.light(m.x, m.y - 40, 'light-lg', P.candle, 0.4);
+          this.light(m.x, m.y - 25, 'light-lg', P.candle, 0.4);
           break;
         case 'D': {
           const s = this.add.sprite(m.x, m.y, 'door').setOrigin(0.5, 1).setDepth(DEPTH.props + 2);
           s.play('door:open');
-          this.add.image(m.x, m.y - 80, 'emblem-combat').setDepth(DEPTH.props + 3);
+          this.add.image(m.x, m.y - 52, 'emblem-combat').setDepth(DEPTH.props + 3);
           this.stations.push({ x: m.x, y: m.y, label: 'The Descent', act: () => this.descend() });
           break;
         }
@@ -207,6 +209,7 @@ export class HubScene extends Phaser.Scene implements World {
     return 'ignored';
   }
   addProjectile() {}
+  firePlayerShot() {}
   spawnTears() {}
   onEnemyKilled() {}
   hitstop() {}

@@ -73,6 +73,12 @@ export interface ShadeOpts {
   glows?: Glow[];
   /** Channel posterisation levels (0 = off). */
   levels?: number;
+  /** Ordered-dither band width between ramp steps (0 = flat SNES bands, 1 = full Bayer). */
+  dither?: number;
+  /** Resample every material ramp to this many flat shade bands (0 = as authored). */
+  bands?: number;
+  /** Multiplier on per-pixel texture (tex channel); < 1 calms speckle. */
+  texK?: number;
 }
 
 const pow24 = (v: number) => {
@@ -225,6 +231,7 @@ export class Relief {
     const fogRow = new Float32Array(H);
     for (let y = 0; y < H; y++) fogRow[y] = o.fog ? o.fog(y) : 0;
     const wrap = this.wrap;
+    const dith = o.dither ?? 0.6;
     const nl = lights.length;
     const LX = new Float64Array(nl);
     const LY = new Float64Array(nl);
@@ -249,14 +256,18 @@ export class Relief {
     const MN = new Int32Array(256);
     const MO = new Int32Array(256);
     const RAMP: number[] = [];
+    const bands = o.bands ?? 0;
+    const texK = o.texK ?? 1;
     o.mats.forEach((mm, k) => {
       if (!mm) return;
       MS[k] = mm.spec ?? 0;
       MA[k] = mm.alb ?? 1;
       ME[k] = mm.emit ? 1 : 0;
-      MN[k] = mm.ramp.length;
+      let rp = mm.ramp;
+      if (bands > 1 && rp.length > bands && !mm.emit) rp = Array.from({ length: bands }, (_, i) => mm.ramp[Math.round((i / (bands - 1)) * (mm.ramp.length - 1))]);
+      MN[k] = rp.length;
       MO[k] = RAMP.length;
-      for (const c of mm.ramp) RAMP.push(c[0], c[1], c[2]);
+      for (const c of rp) RAMP.push(c[0], c[1], c[2]);
     });
     const RP = new Float64Array(RAMP);
     // Height with empty neighbours replaced by the pixel's own height
@@ -272,14 +283,14 @@ export class Relief {
         const rn = MN[m];
         if (!rn) continue;
         const ro = MO[m];
-        const th = 0.5 + (bayer(x, y) - 0.5) * 0.6; // narrow dither bands: cleaner clusters
+        const th = 0.5 + (bayer(x, y) - 0.5) * dith; // narrow dither bands: cleaner clusters
         const xl = x > 0 ? x - 1 : wrap ? W - 1 : x;
         const xr = x < W - 1 ? x + 1 : wrap ? 0 : x;
         let r: number;
         let g: number;
         let b: number;
         if (ME[m]) {
-          let f = emi[i] + tex[i];
+          let f = emi[i] + tex[i] * texK;
           f = (f < 0 ? 0 : f > 1 ? 1 : f) * (rn - 1) * 0.9999;
           let ix = Math.floor(f);
           if (f - ix > th) ix++;
@@ -353,7 +364,7 @@ export class Relief {
             cav = cav > 0.35 ? 0.35 : cav < -0.55 ? -0.55 : cav;
             lum *= 1 + cav;
           }
-          const v = lum * MA[m] * (1 + tex[i]) + spec;
+          const v = lum * MA[m] * (1 + tex[i] * texK) + spec;
           const f = (v < 0 ? 0 : v > 1 ? 1 : v) * (rn - 1) * 0.9999;
           let ix = Math.floor(f);
           if (f - ix > th) ix++;

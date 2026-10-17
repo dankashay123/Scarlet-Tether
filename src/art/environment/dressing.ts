@@ -1,6 +1,7 @@
 import { PixelCanvas, bayer, hash2, mulberry32, registerImage, valueNoise } from '../pixel';
 import { KEY_LIGHT, folds, grain, type Light, type Material } from '../render';
-import { BLOOD, BONE, BRASS, FLESH, GOLD, IRON, MARBLE, OLD_BLOOD, SF, VOID, WAX, flame } from './props';
+import { BLOOD, BONE, BRASS, FLESH, GOLD, IRON, MARBLE, OLD_BLOOD, SC, SF, VOID, WAX, flame } from './props';
+import { finishSprite, reduce2, selout } from './snes-env';
 import { addGlow } from './relief';
 import { pnoise } from './paint';
 
@@ -17,13 +18,24 @@ import { pnoise } from './paint';
  *  - Standing decals 'deco-*' (origin 0.5, 1): bottom opaque row = ground.
  *  - Hanging decals 'drips-*', 'deco-lantern', 'deco-censer-hang',
  *    'deco-stalactites' (origin 0.5, 0): top row = attachment line.
- *  - 'web-l' (origin 0, 0) and 'web-r' (origin 1, 0): 24x24 corner cobwebs.
- *  - 'ink-top' / 'ink-bottom' 640x28 and 'ink-side' 28x360: torn ink-brush
+ *  - 'web-l' (origin 0, 0) and 'web-r' (origin 1, 0): 15x15 corner cobwebs.
+ *  - 'ink-top' / 'ink-bottom' 512x18 and 'ink-side' 18x224: torn ink-brush
  *    frame, horizontally (resp. vertically) tileable; flip ink-side for the right.
  *
- * Lighting matches the characters: KEY_LIGHT from the upper left, rim light,
- * ordered-dither ramps and near-black outlines.
+ * Lighting matches the characters: KEY_LIGHT from the upper left, rim light
+ * and selective dark outlines.
+ *
+ * SNES pass: decals are authored in their old 360 px coordinates and drawn at
+ * SC (0.625) of that size, rasterised at 2x and reduced, then quantised to a
+ * 15-colour sprite palette. Caps keep their 48x16 size. The ink frame strips
+ * are 512x18 / 18x224.
  */
+
+/** Quantise a decal to a sprite palette, keeping translucent pixels. */
+const snesifyKeep = (pc: PixelCanvas) => finishSprite(pc, { outline: false, keepAlpha: true });
+
+/** Source coordinate to final decal pixel. */
+const P = (v: number) => Math.round(v * SC);
 
 type V3 = [number, number, number];
 type Mask = (x: number, y: number) => boolean;
@@ -35,6 +47,13 @@ const INK = '#0b0507';
 // =============================================================================
 
 class Facets {
+  /** Internal (2x) size; the rendered canvas is fw x fh. */
+  readonly w: number;
+  readonly h: number;
+  readonly fw: number;
+  readonly fh: number;
+  /** Source units to internal pixels. */
+  private readonly k: number;
   readonly mat: Int16Array;
   readonly grp: Int16Array;
   readonly z: Float32Array;
@@ -47,10 +66,14 @@ class Facets {
   private seq = 0;
   private groups = 0;
 
-  constructor(
-    readonly w: number,
-    readonly h: number,
-  ) {
+  constructor(sw: number, sh: number, scale = SC) {
+    this.fw = Math.round(sw * scale);
+    this.fh = Math.round(sh * scale);
+    this.w = this.fw * 2;
+    this.h = this.fh * 2;
+    this.k = scale * 2;
+    const w = this.w;
+    const h = this.h;
     const n = w * h;
     this.mat = new Int16Array(n).fill(-1);
     this.grp = new Int16Array(n).fill(-1);
@@ -77,7 +100,8 @@ class Facets {
 
   /** Fill a mask with a material and normal (constant or per pixel). */
   add(mask: Mask, normal: V3 | ((x: number, y: number) => V3), m: Material, layer: number, bb?: [number, number, number, number], group = this.group(), bias?: (x: number, y: number) => number) {
-    const [x0, y0, x1, y1] = bb ?? [0, 0, this.w - 1, this.h - 1];
+    const K = this.k;
+    const [x0, y0, x1, y1] = bb ? [bb[0] * K, bb[1] * K, bb[2] * K + K, bb[3] * K + K] : [0, 0, this.w - 1, this.h - 1];
     const bx0 = Math.max(0, Math.floor(x0) - 1);
     const by0 = Math.max(0, Math.floor(y0) - 1);
     const bx1 = Math.min(this.w - 1, Math.ceil(x1) + 1);
@@ -96,14 +120,16 @@ class Facets {
     }
     for (let y = by0; y <= by1; y++)
       for (let x = bx0; x <= bx1; x++) {
-        if (!mask(x + 0.5, y + 0.5)) continue;
+        const sx = (x + 0.5) / K;
+        const sy = (y + 0.5) / K;
+        if (!mask(sx, sy)) continue;
         const o = y * this.w + x;
         if (zz < this.z[o]) continue;
         let nx = cx;
         let ny = cy;
         let nz = cz;
         if (fn) {
-          const n = fn(x, y);
+          const n = fn(Math.floor(sx), Math.floor(sy));
           const l = Math.hypot(n[0], n[1], n[2]) || 1;
           nx = n[0] / l;
           ny = n[1] / l;
@@ -115,7 +141,7 @@ class Facets {
         this.nx[o] = nx;
         this.ny[o] = ny;
         this.nz[o] = nz;
-        this.bias[o] = bias ? bias(x, y) : 0;
+        this.bias[o] = bias ? bias(Math.floor(sx), Math.floor(sy)) : 0;
       }
     return group;
   }
@@ -142,14 +168,21 @@ class Facets {
       for (let x = 0; x < this.w; x++) {
         const o = y * this.w + x;
         if (this.mat[o] < 0 || (allow && !allow.has(this.mat[o]))) continue;
-        if (mask(x + 0.5, y + 0.5)) {
+        if (mask((x + 0.5) / this.k, (y + 0.5) / this.k)) {
           this.mat[o] = mid;
           this.bias[o] += bias;
         }
       }
   }
 
+  /** Shade at 2x, reduce to fw x fh, then outline (selectively, when `outline` is set). */
   render(light: Light = KEY_LIGHT, outline: string | null = INK, lip = 0.16): PixelCanvas {
+    const pc = reduce2(this.renderRaw(light, lip), this.fw, this.fh);
+    if (outline) selout(pc, rgbOf(outline));
+    return pc;
+  }
+
+  private renderRaw(light: Light, lip: number): PixelCanvas {
     const { w: W, h: H } = this;
     const pc = new PixelCanvas(W, H);
     let lx = light.x;
@@ -179,7 +212,7 @@ class Facets {
         const dif = Math.max(0, nx * lx + ny * ly + nz * lz);
         const rim = Math.pow(Math.max(0, 1 - nz), 2.5) * Math.max(0, -nx * lx + ny * 0.1) * light.rim;
         const spec = m.spec ? Math.pow(Math.max(0, nx * hx + ny * hy + nz * hz), 24) * m.spec : 0;
-        let v = light.ambient + dif * 0.78 + rim + spec + (m.tex ? m.tex(x, y) : 0) + this.bias[o];
+        let v = light.ambient + dif * 0.78 + rim + spec + (m.tex ? m.tex(x, y) * 0.3 : 0) + this.bias[o];
         // A bright lip where an upward face meets the air or a farther part
         if (lip && ny < -0.15) {
           const up = y > 0 ? o - W : -1;
@@ -212,7 +245,6 @@ class Facets {
           }
         }
       }
-    if (outline) outlineCanvas(pc, outline);
     return pc;
   }
 }
@@ -232,17 +264,6 @@ function inPoly(pts: [number, number][], x: number, y: number) {
     if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
   }
   return inside;
-}
-
-/** 4-neighbour outline into transparent pixels (like Figure's selout). */
-function outlineCanvas(pc: PixelCanvas, color: string, alphaMin = 1) {
-  const marks: number[] = [];
-  for (let y = 0; y < pc.h; y++)
-    for (let x = 0; x < pc.w; x++) {
-      if (pc.alphaAt(x, y) > 0) continue;
-      if (pc.alphaAt(x - 1, y) >= alphaMin || pc.alphaAt(x + 1, y) >= alphaMin || pc.alphaAt(x, y - 1) >= alphaMin || pc.alphaAt(x, y + 1) >= alphaMin) marks.push(x, y);
-    }
-  for (let i = 0; i < marks.length; i += 2) pc.px(marks[i], marks[i + 1], color);
 }
 
 /** Composite b over a (same size). */
@@ -412,7 +433,7 @@ function drawCap(set: CapSet, variant: number): PixelCanvas {
   const style = set === 'crypt' ? CAP_STYLE.crypt : set === 'cistern' ? CAP_STYLE.brick : CAP_STYLE.cut;
   const M = CAP_MATS[set];
   const { stones, low } = capLayout(style, variant);
-  const fb = new Facets(48, 16);
+  const fb = new Facets(48, 16, 1);
   const seed = style.seed + variant * 31;
   const botAt = new Int8Array(48).fill(10);
   for (const s of stones) for (let x = s.x0; x <= s.x1; x++) botAt[x] = s.bot;
@@ -545,7 +566,7 @@ function drawCap(set: CapSet, variant: number): PixelCanvas {
   }
   const pc = fb.render({ ...KEY_LIGHT, ambient: 0.14 }, INK, 0.14);
   fadeDown(pc, 11, 16);
-  return pc;
+  return finishSprite(pc, { outline: false, keepAlpha: true });
 }
 
 /** Darken and dissolve rows y0..y1 so the cap melts into the tile below. */
@@ -612,7 +633,7 @@ function drawRubble(variant: number): PixelCanvas {
     const cx = R.range(2, W - 2);
     rock(fb, cx, H - 0.5, R.range(2, 4), R.range(1.5, 2.6), 4, 900 + i * 7 + variant, RUBBLE);
   }
-  return fb.render({ ...KEY_LIGHT, ambient: 0.15 });
+  return finishSprite(fb.render({ ...KEY_LIGHT, ambient: 0.15 }), { outline: false });
 }
 
 /** Skull facing left (look=-1) or right (1), roughly 2.2r wide. */
@@ -666,7 +687,7 @@ function drawSkulls(variant: number): PixelCanvas {
   // one skull tumbled to the side
   skull(s, variant ? W - 4.5 : 3.8, H - 3.7, 2.9, 6, 1);
   s.stain((x, y) => y > H - 3 && valueNoise(x, y, 2, 3) > 0.6, OLD_BLOOD, [BONE]);
-  return s.render({ ...KEY_LIGHT, ambient: 0.16 });
+  return finishSprite(s.render({ ...KEY_LIGHT, ambient: 0.16 }));
 }
 
 function drawBones(): PixelCanvas {
@@ -677,7 +698,7 @@ function drawBones(): PixelCanvas {
   for (let i = 0; i < 3; i++) s.capsule(17 + i * 2, 5.6, 19 + i * 2.2, 2.8, 0.5, 0.45, BONE, 0.9);
   skull(s, 24.6, 3.6, 2.6, 2, -1);
   bone(s, 9, 6, 13, 5.2, 0.55, 1.4);
-  return s.render({ ...KEY_LIGHT, ambient: 0.16 });
+  return finishSprite(s.render({ ...KEY_LIGHT, ambient: 0.16 }));
 }
 
 function drawCoffin(open: boolean): PixelCanvas {
@@ -727,7 +748,7 @@ function drawCoffin(open: boolean): PixelCanvas {
   // cracks and grime
   fb.stain((x, y) => Math.abs(valueNoise(x, y, 4, 61) - 0.5) < 0.025 && y > 9, RECESS, [S]);
   fb.stain((x, y) => y > 15 && valueNoise(x, y, 3, 63) > 0.62, MOSS, [S, Sd], -0.25);
-  let pc = fb.render({ ...KEY_LIGHT, ambient: 0.15 });
+  let pc = fb.render({ ...KEY_LIGHT, ambient: 0.15 }, null);
   if (open) {
     // the occupant: a skull at the head end, an arm hanging over the rim
     const s = new SF(W, H);
@@ -738,7 +759,7 @@ function drawCoffin(open: boolean): PixelCanvas {
     s.capsule(bx0 + 10, 7.6, bx0 + 13, 7.4, 1.2, 1, { ...OLD_BLOOD, ramp: ['#120a08', '#2a1e16', '#43342a', '#5e4c3c'] }, 2.6);
     pc = over(pc, s.render({ ...KEY_LIGHT, ambient: 0.16 }));
   }
-  return pc;
+  return finishSprite(pc);
 }
 
 /** Fluted cylinder normal at x for a shaft centred on cx with radius r. */
@@ -776,7 +797,7 @@ function drawBrokenColumn(): PixelCanvas {
   fb.stain((x, y) => x > 15 && x < 22 && Math.floor(y) === 45 && Math.floor(x) % 2 === 0, RECESS, [S]);
   rock(fb, 4, 47.5, 4, 2.5, 4, 77, RUBBLE);
   rock(fb, 12.5, 47.5, 3, 2, 4, 78, RUBBLE);
-  return fb.render({ ...KEY_LIGHT, ambient: 0.15 });
+  return finishSprite(fb.render({ ...KEY_LIGHT, ambient: 0.15 }), { outline: false });
 }
 
 function drawStatue(): PixelCanvas {
@@ -796,7 +817,7 @@ function drawStatue(): PixelCanvas {
   fb.facet([[2.5, 63], [2.5, 60.5], [29.5, 60.5], [29.5, 63]], [0, -0.3, 0.95], SLAB_MARBLE, 3, g);
   fb.facet([[3, 60.5], [4.5, 58.8], [27.5, 58.8], [29, 60.5]], up, SLAB_MARBLE, 3, g);
   fb.stain((x, y) => y > 70 && valueNoise(x, y, 3, 4) > 0.6, MOSS, [SLAB_MARBLE], -0.2);
-  const base = fb.render({ ...KEY_LIGHT, ambient: 0.15 });
+  const base = fb.render({ ...KEY_LIGHT, ambient: 0.15 }, null);
   // the hooded penitent, carved in marble
   const s = new SF(W, H);
   const robe: Material = { ...MARBLE, tex: (x, y) => folds(1.7, 0.36, 7)(x, y) + (MARBLE.tex ? MARBLE.tex(x, y) : 0), round: 0.7 };
@@ -822,7 +843,7 @@ function drawStatue(): PixelCanvas {
   // grime and weeping stains
   s.stain((x, y) => y > 46 && valueNoise(x, y, 2.5, 21) > 0.68, { ...MARBLE, ramp: MARBLE.ramp.slice(0, 5) }, [robe]);
   s.stain((x, y) => Math.abs(x - 12.4 - Math.sin(y * 0.6) * 0.4) < 0.6 && y > 18 && y < 30, OLD_BLOOD, [hood, MARBLE]);
-  return over(base, s.render({ ...KEY_LIGHT, ambient: 0.2 }));
+  return finishSprite(over(base, s.render({ ...KEY_LIGHT, ambient: 0.2 })));
 }
 
 function chain(s: SF, x: number, y0: number, y1: number, layer: number) {
@@ -859,9 +880,8 @@ function drawLamppost(): PixelCanvas {
   s.poly([[3, 6.8], [8, 2.6], [13, 6.8]], I, 3.1);
   s.capsule(8, 3, 8, 0.6, 0.6, 0.5, I, 3.2);
   const pc = s.render({ ...KEY_LIGHT, ambient: 0.16 });
-  flame(pc, 8, 11, 3, 0, false);
-  haze(pc, 8, 10, 8, '#ffb050', 0.42);
-  return pc;
+  haze(pc, P(8), P(10), 5, '#ffb050', 0.42);
+  return finishSprite(pc, { paint: (pc) => flame(pc, P(8), P(11), 2, 0, false) });
 }
 
 function drawUrn(): PixelCanvas {
@@ -880,7 +900,7 @@ function drawUrn(): PixelCanvas {
   s.stain((x, y) => Math.abs(y - 11.6) < 0.7, GOLD, [V]);
   s.stain((x, y) => Math.abs(y - 14) < 0.5 && Math.floor(x) % 2 === 0, GOLD, [V]);
   s.stain((x, y) => Math.hypot(x - 8, y - 9.2) < 1, { ...BLOOD, ramp: ['#1a0206', '#5a0a16', '#b0182a', '#ff6a50'] }, [V]);
-  return s.render({ ...KEY_LIGHT, ambient: 0.16 });
+  return finishSprite(s.render({ ...KEY_LIGHT, ambient: 0.16 }));
 }
 
 function drawCandles(): PixelCanvas {
@@ -901,31 +921,33 @@ function drawCandles(): PixelCanvas {
   });
   s.stain((x, y) => hash2(Math.floor(x), 3, 4) > 0.55 && y > 7 && y < 7 + hash2(Math.floor(x), 5, 4) * 6 && valueNoise(x, y, 1.5, 3) > 0.4, WAX, [WAX_PALE]);
   const pc = s.render({ ...KEY_LIGHT, ambient: 0.2 });
-  C.forEach(([x, top], i) => {
-    if (i === 4) return; // one guttered out
-    flame(pc, Math.round(x), Math.round(top) - 2, 3, i, false);
+  haze(pc, P(10), P(5), 6, '#ffb050', 0.3);
+  return finishSprite(pc, {
+    paint: (pc) =>
+      C.forEach(([x, top], i) => {
+        if (i === 4) return; // one guttered out
+        flame(pc, P(x), P(top) - 1, 2, i, false);
+      }),
   });
-  haze(pc, 10, 5, 9, '#ffb050', 0.3);
-  return pc;
 }
 
 function drawBloodPool(): PixelCanvas {
-  const W = 40;
-  const H = 4;
+  const W = 25;
+  const H = 3;
   const pc = new PixelCanvas(W, H);
   const RAMP = ['#140104', '#2a0208', '#3e0610', '#560a16', '#7a0c1c'];
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
-      const ex = (x + 0.5 - W / 2) / (W / 2 - 0.5 - (valueNoise(x, y, 4, 3) - 0.5) * 6);
-      const ey = (y + 0.5 - H + 0.3) / (H - 0.4 + (valueNoise(x, 0, 3, 5) - 0.5) * 1.6);
+      const ex = (x + 0.5 - W / 2) / (W / 2 - 0.5 - (valueNoise(x, y, 2.5, 3) - 0.5) * 4);
+      const ey = (y + 0.5 - H + 0.3) / (H - 0.4 + (valueNoise(x, 0, 2, 5) - 0.5) * 1.2);
       const d = ex * ex + ey * ey;
       if (d > 1 && !(y === H - 1 && Math.abs(ex) < 1.08)) continue;
-      const v = 0.25 + (1 - d) * 0.5 + (bayer(x, y) - 0.5) * 0.25;
+      const v = 0.25 + (1 - d) * 0.5;
       pc.px(x, y, RAMP[Math.max(1, Math.min(4, Math.round(v * 4)))]);
     }
   // wet highlights catching the key light
-  for (const [x, y] of [[13, 1], [14, 1], [15, 1], [24, 2], [25, 2], [9, 2]] as const) if (pc.alphaAt(x, y)) pc.px(x, y, '#c43a3a');
-  pc.px(14, 1, '#ff8a70');
+  for (const [x, y] of [[8, 1], [9, 1], [15, 1], [16, 1]] as const) if (pc.alphaAt(x, y)) pc.px(x, y, '#c43a3a');
+  pc.px(9, 1, '#ff8a70');
   return pc;
 }
 
@@ -956,14 +978,15 @@ function drawIcicles(variant: number): PixelCanvas {
     spike(fb, x, 1, big ? R.range(3.5, 5) : R.range(2.2, 3.4), len, ICE, 2 + R.f(), R.range(-0.6, 0.6));
   }
   const pc = fb.render({ ...KEY_LIGHT, ambient: 0.2 }, '#06080c', 0);
-  // translucent ice: let the deepest tones show what's behind
+  snesifyKeep(pc);
+  // translucent ice: let the deepest tones show what's behind (half transparency)
   const d = pc.data;
-  for (let i = 0; i < d.length; i += 4) if (d[i + 3] && d[i] + d[i + 1] + d[i + 2] < 150) d[i + 3] = 200;
+  for (let i = 0; i < d.length; i += 4) if (d[i + 3] && d[i] + d[i + 1] + d[i + 2] < 150) d[i + 3] = 192;
   // a falling drop under the tallest spike
-  const dx = Math.round(W / 2);
-  if (H > 16 && !pc.alphaAt(dx, H - 2)) {
-    pc.px(dx, H - 2, '#8cc4cc', 0.9);
-    pc.px(dx, H - 1, '#c4e8ec', 0.7);
+  const dx = Math.round(pc.w / 2);
+  const ph = pc.h;
+  if (H > 16 && !pc.alphaAt(dx, ph - 2)) {
+    pc.px(dx, ph - 2, '#8cc4cc');
   }
   return pc;
 }
@@ -981,7 +1004,7 @@ function drawWaxDrips(variant: number): PixelCanvas {
     s.capsule(x, 1, x, len, r * 1.2, r * 0.8, M, 2);
     s.ellipse(x, len + 0.5, r * 1.15, r * 1.3, M, 2.1);
   }
-  return s.render({ ...KEY_LIGHT, ambient: 0.15 });
+  return finishSprite(s.render({ ...KEY_LIGHT, ambient: 0.15 }));
 }
 
 function drawBloodDrips(variant: number): PixelCanvas {
@@ -1009,10 +1032,12 @@ function drawBloodDrips(variant: number): PixelCanvas {
     s.capsule(x, 1.5, x + R.range(-0.4, 0.4), len, 0.75, 0.55, BLOOD, 2);
     s.ellipse(x, len + 0.8, 1.05, 1.3, BLOOD, 2.1);
   }
-  const pc = s.render({ ...KEY_LIGHT, ambient: 0.16 });
-  const dx = Math.round(W * 0.6);
-  if (!pc.alphaAt(dx, H - 1)) pc.px(dx, H - 1, '#a8122a');
-  return pc;
+  return finishSprite(s.render({ ...KEY_LIGHT, ambient: 0.16 }), {
+    paint: (pc) => {
+      const dx = Math.round(pc.w * 0.6);
+      if (!pc.alphaAt(dx, pc.h - 1)) pc.px(dx, pc.h - 1, '#a8122a');
+    },
+  });
 }
 
 function drawLantern(): PixelCanvas {
@@ -1032,9 +1057,8 @@ function drawLantern(): PixelCanvas {
   s.poly([[5, 42], [11, 42], [8, 46]], I, 2.5);
   s.ellipse(8, 46.6, 0.9, 0.9, BRASS, 2.6);
   const pc = s.render({ ...KEY_LIGHT, ambient: 0.16 });
-  flame(pc, 8, 39, 3, 1, false);
-  haze(pc, 8, 37, 8, '#ffb050', 0.45);
-  return pc;
+  haze(pc, P(8), P(37), 5, '#ffb050', 0.45);
+  return finishSprite(pc, { paint: (pc) => flame(pc, P(8), P(39), 2, 1, false) });
 }
 
 function drawCenserHang(): PixelCanvas {
@@ -1058,13 +1082,16 @@ function drawCenserHang(): PixelCanvas {
   s.poly([[8, 35], [12, 35], [10, 38.5]], I, 2.3);
   s.ellipse(10, 39, 0.9, 0.9, BRASS, 2.4);
   const pc = s.render({ ...KEY_LIGHT, ambient: 0.16 });
-  // smoke curling out of the top
-  for (let i = 0; i < 9; i++) {
-    const xx = 10 + Math.round(Math.sin(i * 0.8) * 1.6);
-    if (hash2(i, 3, 11) < 0.75) pc.px(xx, 23 - i, '#8f877c', 0.45 * (1 - i / 9));
-  }
-  haze(pc, 10, 29, 9, '#ff8a3a', 0.32);
-  return pc;
+  haze(pc, P(10), P(29), 6, '#ff8a3a', 0.32);
+  return finishSprite(pc, {
+    paint: (pc) => {
+      // smoke curling out of the top
+      for (let i = 0; i < 5; i++) {
+        const xx = P(10) + Math.round(Math.sin(i * 1.1) * 1);
+        if (hash2(i, 3, 11) < 0.75 && !pc.alphaAt(xx, P(23) - i)) pc.px(xx, P(23) - i, '#8f877c');
+      }
+    },
+  });
 }
 
 function drawStalactites(): PixelCanvas {
@@ -1086,14 +1113,14 @@ function drawStalactites(): PixelCanvas {
   for (const [x, w, len] of spikes) spike(fb, x + R.range(-0.5, 0.5), 2.5, w, len + R.range(-1, 1), ROCK, 2 + R.f(), R.range(-0.8, 0.8));
   // pale mineral tips
   fb.stain((x, y) => y > 7 + valueNoise(x, 0, 2, 5) * 5, { ...ROCK, ramp: ['#1a1610', '#3e3626', '#6a5e44', '#9a8c66', '#c8b88a', '#ece0b6'] }, [ROCK], 0.06);
-  return fb.render({ ...KEY_LIGHT, ambient: 0.22 });
+  return finishSprite(fb.render({ ...KEY_LIGHT, ambient: 0.22 }), { outline: false });
 }
 
 // =============================================================================
 // D) Corner cobwebs
 // =============================================================================
 
-function lineA(pc: PixelCanvas, x0: number, y0: number, x1: number, y1: number, c: string, a: number) {
+function lineA0(pc: PixelCanvas, x0: number, y0: number, x1: number, y1: number, c: string, a: number) {
   const n = Math.max(1, Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))));
   let lx = -99;
   let ly = -99;
@@ -1108,7 +1135,10 @@ function lineA(pc: PixelCanvas, x0: number, y0: number, x1: number, y1: number, 
 }
 
 function drawWeb(): PixelCanvas {
-  const pc = new PixelCanvas(24, 24);
+  // authored on the old 24 px grid, plotted at SC (15x15)
+  const S = 15;
+  const pc = new PixelCanvas(S, S);
+  const lineA = (p: PixelCanvas, x0: number, y0: number, x1: number, y1: number, c: string, a: number) => lineA0(p, x0 * SC, y0 * SC, x1 * SC, y1 * SC, c, Math.min(0.6, a * 1.25));
   const R = rnd(4100);
   const angs = [0.1, 0.45, 0.82, 1.15, 1.47].map((a) => a + R.range(-0.06, 0.06));
   const lens = angs.map((_, i) => (i === 0 || i === angs.length - 1 ? 23.5 : R.range(17, 23)));
@@ -1139,7 +1169,7 @@ function drawWeb(): PixelCanvas {
   angs.forEach((a, i) => lineA(pc, 0, 0, Math.cos(a) * lens[i], Math.sin(a) * lens[i], '#ddd6d0', 0.42));
   // a torn strand hanging free, and dust packed into the corner
   lineA(pc, 13, 8, 13.5, 16, C, 0.28);
-  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) if (x + y < 4 && hash2(x, y, 9) > 0.4) pc.px(x, y, '#a8a09a', 0.3);
+  for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) if (x + y < 3 && hash2(x, y, 9) > 0.4) pc.px(x, y, '#a8a09a', 0.3);
   return pc;
 }
 
@@ -1164,7 +1194,7 @@ function inkStrip(L: number, D: number, seed: number): PixelCanvas {
   const R = rnd(seed);
   const edge = new Float32Array(L);
   for (let x = 0; x < L; x++)
-    edge[x] = 8 + pnoise(x, 0, 110, seed, L) * 8 + pnoise(x, 3, 23, seed + 1, L) * 5 + (pnoise(x, 7, 5, seed + 2, L) - 0.5) * 2.5;
+    edge[x] = 5 + pnoise(x, 0, 70, seed, L) * 5 + pnoise(x, 3, 15, seed + 1, L) * 3.2 + (pnoise(x, 7, 4, seed + 2, L) - 0.5) * 1.6;
   const solid = new Uint8Array(L * D);
   for (let y = 0; y < D; y++)
     for (let x = 0; x < L; x++) if (y < edge[x] + (pnoise(x, y, 2, seed + 9, L) - 0.5) * 1.6) solid[y * L + x] = 1;
@@ -1172,11 +1202,11 @@ function inkStrip(L: number, D: number, seed: number): PixelCanvas {
   const strokes = Math.round(L / 8);
   for (let s = 0; s < strokes; s++) {
     const xs = R.int(0, L - 1);
-    const len = R.range(18, 130) * (R.f() < 0.25 ? 1.6 : 1);
+    const len = R.range(12, 84) * (R.f() < 0.25 ? 1.6 : 1);
     const dir = R.f() < 0.5 ? -1 : 1;
-    const y0 = edge[xs] + R.range(-2, 4.5);
+    const y0 = edge[xs] + R.range(-1.3, 3);
     const slope = R.range(-0.035, 0.035);
-    const th = R.f() < 0.35 ? R.int(2, 3) : 1;
+    const th = R.f() < 0.3 ? 2 : 1;
     const bristle = R.range(0, 100);
     for (let i = 0; i < len; i++) {
       const t = i / len;
@@ -1194,7 +1224,7 @@ function inkStrip(L: number, D: number, seed: number): PixelCanvas {
   // flecks and spatter
   for (let s = 0; s < L / 14; s++) {
     const x = R.int(0, L - 1);
-    const y = Math.round(edge[x] + R.range(1, 12));
+    const y = Math.round(edge[x] + R.range(1, 8));
     if (y >= D) continue;
     solid[y * L + x] = 1;
     if (R.f() < 0.4) solid[y * L + ((x + 1) % L)] = 1;
@@ -1262,9 +1292,9 @@ export function drawDressing(): Map<string, PixelCanvas> {
   const web = drawWeb();
   out.set('web-l', web);
   out.set('web-r', mirror(web));
-  out.set('ink-top', inkStrip(640, 28, 5100));
-  out.set('ink-bottom', flipV(inkStrip(640, 28, 5200)));
-  out.set('ink-side', transpose(inkStrip(360, 28, 5300)));
+  out.set('ink-top', inkStrip(512, 18, 5100));
+  out.set('ink-bottom', flipV(inkStrip(512, 18, 5200)));
+  out.set('ink-side', transpose(inkStrip(224, 18, 5300)));
   return out;
 }
 

@@ -12,7 +12,7 @@ import { NPC_SIZES, npcAnims } from './creatures/npcs';
 import { gibAnims } from './creatures/gibs';
 
 export { BLIND, GOSSIP, PENITENT, CHERUB, BART, EAR, NPC_SIZES };
-export const GIB = { w: 16, h: 16, count: 10 };
+export const GIB = { w: 10, h: 10, count: 10 };
 
 /** 'blind' (the Blissful Blind) and 'blind-saint' (how Sanctum wants it seen). */
 export function buildBlindSheets(scene: Phaser.Scene) {
@@ -49,7 +49,7 @@ export function buildNpcSheets(scene: Phaser.Scene) {
   registerAnims(scene, 'hollow', n.hollow);
 }
 
-/** 'gib': 10 frames of 16x16 (no animations). */
+/** 'gib': 10 frames of 10x10 (no animations). */
 export function buildGibs(scene: Phaser.Scene) {
   registerSheet(scene, 'gib', gibAnims()[0].frames);
 }

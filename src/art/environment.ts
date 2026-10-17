@@ -29,7 +29,7 @@ import { drawBridge } from './environment/bridge';
  * share silhouettes so the game can crossfade between them.
  *
  * Backdrops per set S: 'bg-S-far' (~0.1), 'bg-S-mid' (~0.35), 'bg-S-near'
- * (~0.65), 'fg-S' (~1.3); each 640x360 and horizontally tileable.
+ * (~0.65), 'fg-S' (~1.3); each 512x224 and horizontally tileable.
  */
 export { ET, TILE };
 export type { EnvSet };

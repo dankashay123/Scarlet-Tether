@@ -2,11 +2,14 @@
 // came out. It swings its censer the way it once swung its fists.
 import {
   BLOOD, OLD_BLOOD, IRON, RUST, GOLD, BRASS, GLOW, SMOKE, VOID, RAW, THREAD, NAIL,
-  CATGUT, anim, back, bez, clothMat, dome, drip, lineMask, ridge, loc, pool, renderFig, skinMat, stitches, toLocal, tube, vn, hash2, woodMat, frame,
+  CATGUT, anim, scaled, back, bez, clothMat, dome, drip, lineMask, ridge, loc, pool, renderFig, skinMat, stitches, toLocal, tube, vn, hash2, woodMat, frame,
   type AnimDef, type Material, type V2,
 } from './common';
 
-export const PENITENT = { w: 128, h: 112, footY: 104 };
+/** Design canvas (the drawing code's units) and its scale to output pixels. */
+const D = { w: 128, h: 112, footY: 104 };
+const S = 0.42;
+export const PENITENT = scaled(D, S);
 
 const WOOD = woodMat('#6a2a1a', 5);
 const WOOD_D = back(WOOD, 0.35);
@@ -95,8 +98,8 @@ function drawCenser(f: Figure2, c: V2, hand: V2, layer: number, swing: number, s
 type Figure2 = ReturnType<typeof frame>;
 
 function drawPenitent(p: PP) {
-  const { w, h, footY } = PENITENT;
-  const f = frame(w, h);
+  const { w, h, footY } = D;
+  const f = frame(w, h, S);
   const skin = skinMat(SKIN, 0.35);
   const skinB = back(skin, 0.33);
   const L = p.lean;
@@ -321,8 +324,8 @@ function drawPenitent(p: PP) {
 }
 
 function drawDead() {
-  const { w, h, footY } = PENITENT;
-  const f = frame(w, h);
+  const { w, h, footY } = D;
+  const f = frame(w, h, S);
   const skin = skinMat(SKIN, 0.35);
   const skinB = back(skin, 0.33);
   pool(f, 64, footY - 0.5, 50, BLOOD, 13);
@@ -394,7 +397,7 @@ const BASE: PP = {
 
 export function penitentAnims(): AnimDef[] {
   const TAU = Math.PI * 2;
-  const F = PENITENT.footY;
+  const F = D.footY;
   const idle = (i: number): PP => {
     const a = (i / 4) * TAU;
     // a heavy heave of breath; the censer swings a beat behind the fist

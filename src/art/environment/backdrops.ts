@@ -3,7 +3,7 @@ import { drawCistern } from './cistern';
 import { drawNave } from './nave';
 
 /**
- * Parallax backdrops. Every layer is 640x360 and wraps horizontally.
+ * Parallax backdrops. Every layer is 512x224 (the SNES screen height) and wraps horizontally.
  *
  * The biome ('marble' = the lie, 'rot' = the truth) is an Andalusian nave of
  * muqarnas arches (nave.ts); the hub is the brick cistern (cistern.ts). Both

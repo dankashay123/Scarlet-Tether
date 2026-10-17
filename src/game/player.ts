@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { P, hexNum } from '../art/palette';
-import { FOOT_Y, FW, heroMeta } from '../art/hero';
+import { FOOT_Y, FH, FW, heroMeta } from '../art/hero';
 import { DEPTH } from './config';
 import { controls } from './controls';
 import { currentRun, hasSacrament, meta, rite } from './state';
@@ -10,65 +10,47 @@ import type { Enemy } from './enemies';
 import type { World } from './world';
 import { CRIME_VISIONS, DEVOUR_VISIONS } from './lore';
 
-type PState = 'move' | 'windup' | 'active' | 'recover' | 'charge' | 'dodge' | 'execute' | 'devour' | 'weep' | 'hurt' | 'dead' | 'locked' | 'climb' | 'hang' | 'mantle';
+type PState = 'move' | 'dodge' | 'execute' | 'devour' | 'weep' | 'hurt' | 'dead' | 'locked' | 'climb' | 'hang' | 'mantle';
 
-interface Swing {
-  key: 'a1' | 'a2' | 'a3' | 'up';
-  windup: number;
-  active: number;
-  recover: number;
-  from: number; // start angle (deg; 0 = forward, + = down)
-  to: number; // end angle
-  reach: number;
-  dmg: number;
-  poise: number;
-  stam: number;
-  heavy?: boolean;
-  lunge?: number;
-}
+/** Eight ways to point the Tether Cannon, as on a SNES pad. */
+export type Aim = 'fwd' | 'up' | 'diag-up' | 'diag-down' | 'down';
+const AIM_ANGLE: Record<Aim, number> = { fwd: 0, 'diag-up': -Math.PI / 4, up: -Math.PI / 2, 'diag-down': Math.PI / 4, down: Math.PI / 2 };
 
-const COMBO: Swing[] = [
-  { key: 'a1', windup: 0.13, active: 0.1, recover: 0.22, from: -110, to: 35, reach: 74, dmg: 12, poise: 12, stam: 12, lunge: 50 },
-  { key: 'a2', windup: 0.12, active: 0.1, recover: 0.24, from: 45, to: -80, reach: 74, dmg: 14, poise: 12, stam: 12, lunge: 50 },
-  { key: 'a3', windup: 0.26, active: 0.16, recover: 0.4, from: -165, to: 70, reach: 84, dmg: 24, poise: 30, stam: 20, lunge: 90 },
-];
-const UP: Swing = { key: 'up', windup: 0.12, active: 0.12, recover: 0.26, from: 10, to: -190, reach: 72, dmg: 14, poise: 14, stam: 14 };
-const AIR: Swing = { key: 'a3', windup: 0.08, active: 0.14, recover: 0.2, from: -60, to: 120, reach: 70, dmg: 14, poise: 16, stam: 12 };
-const HEAVY: Swing = { key: 'a3', windup: 0.08, active: 0.18, recover: 0.42, from: -175, to: 80, reach: 100, dmg: 40, poise: 50, stam: 28, heavy: true, lunge: 120 };
+export type Weapon = 'bolt' | 'shell';
 
 export const DODGE_TIME = 0.42;
 export const DODGE_IFRAMES = 0.3;
 export const PERFECT_WINDOW = 0.15;
-const CHARGE_MS = 380;
-const RUN = 128;
-const SNEAK = 52;
-const JUMP_V = 440; // apex ~5.25 tiles: one-way ledges 5 rows up; stone ledges higher via ledge grab
-const CLIMB_SPEED = 92;
-const LINKS = 18; // enough links that a full-length lash never shows gaps
-export const EXECUTE_RANGE = 44;
+const RUN = 112;
+const SNEAK = 46;
+const JUMP_V = 440; // apex ~5.25 tiles: rooms are built for 5-row hops
+const CLIMB_SPEED = 84;
+const BODY_H = 38;
+const CROUCH_H = 26;
+const FIRE_COOLDOWN = 0.16;
+const CHARGE_TIME = 0.9; // hold fire this long for a charged bolt
+const BOLT_SPEED = 420;
+export const EXECUTE_RANGE = 34;
 export const TEAR_COST = 6;
-export const DEVOUR_RANGE = 34;
-const ORIGIN_X = 52; // hip x in the hero frame
+export const DEVOUR_RANGE = 28;
+const ORIGIN_X = 29; // the hip in the hero frame
 
 export class Player {
   body: Body;
   state: PState = 'move';
   stateT = 0;
   face = 1;
+  aim: Aim = 'fwd';
+  crouching = false;
+  weapon: Weapon = 'bolt';
   sprite: Phaser.GameObjects.Sprite;
-  private links: Phaser.GameObjects.Image[] = [];
-  private head: Phaser.GameObjects.Image;
-  private headPos = new Phaser.Math.Vector2();
-  private headVel = new Phaser.Math.Vector2();
   private tether: Phaser.GameObjects.Graphics;
   private rope: { x: number; y: number; px: number; py: number }[] = [];
   private chargeGlow: Phaser.GameObjects.Image;
+  private flash: Phaser.GameObjects.Image;
 
-  private combo = 0;
-  private swing: Swing = COMBO[0];
-  private hitThisSwing = new Set<Enemy>();
-  private queued = false;
-  private strikes = 0;
+  private fireCd = 0;
+  private chargeT = 0;
   private ghostT = 0;
   private perfectUsed = false;
   private airDashed = false;
@@ -91,15 +73,13 @@ export class Player {
     y: number,
   ) {
     const s = world.sc;
-    this.body = new Body(x, y, 12, 46);
+    this.body = new Body(x, y, 12, BODY_H);
     this.tether = s.add.graphics().setDepth(DEPTH.player - 2);
-    for (let i = 0; i < LINKS; i++) this.links.push(s.add.image(x, y, 'chain-link').setDepth(DEPTH.player + 1));
-    this.head = s.add.image(x, y, 'chain-head').setDepth(DEPTH.player + 2);
-    this.sprite = s.add.sprite(x, y, 'player').setOrigin(ORIGIN_X / FW, FOOT_Y / 96).setDepth(DEPTH.player);
+    this.sprite = s.add.sprite(x, y, 'player').setOrigin(ORIGIN_X / FW, FOOT_Y / FH).setDepth(DEPTH.player);
     this.sprite.play('player:idle');
     this.chargeGlow = s.add.image(x, y, 'light-sm').setBlendMode(Phaser.BlendModes.ADD).setTint(hexNum(P.blood0)).setAlpha(0).setDepth(DEPTH.light);
-    this.headPos.set(x + 10, y);
-    for (let i = 0; i < 9; i++) this.rope.push({ x, y: y - 40 + i * 2, px: x, py: y - 40 + i * 2 });
+    this.flash = s.add.image(x, y, 'light-sm').setBlendMode(Phaser.BlendModes.ADD).setTint(hexNum(P.blood0)).setAlpha(0).setScale(0.5).setDepth(DEPTH.light);
+    for (let i = 0; i < 7; i++) this.rope.push({ x, y: y - 30 + i * 2, px: x, py: y - 30 + i * 2 });
   }
 
   get x() {
@@ -114,18 +94,17 @@ export class Player {
   set y(v: number) {
     this.body.y = v;
   }
-  /** Centre of mass, for enemies to aim at. */
   get cy() {
-    return this.body.y - (this.state === 'dodge' ? 12 : 24);
+    return this.body.cy;
   }
   get dodging() {
-    return this.state === 'dodge' && this.dodgeAge < DODGE_IFRAMES;
+    return this.state === 'dodge';
   }
   get dead() {
     return this.state === 'dead';
   }
   get invulnerable() {
-    return this.hurtInvuln > 0 || this.state === 'execute';
+    return this.hurtInvuln > 0 || this.state === 'execute' || this.state === 'dead' || (this.state === 'dodge' && this.dodgeAge < DODGE_IFRAMES);
   }
   get busy() {
     return this.state !== 'move';
@@ -145,7 +124,10 @@ export class Player {
     }
   }
 
-  lock(v: boolean) {
+  private lockAnim = 'idle';
+  /** Freeze the Severed in place (cutscenes, altars), optionally in a pose. */
+  lock(v: boolean, anim = 'idle') {
+    this.lockAnim = anim;
     if (v) this.setState('locked');
     else if (this.state === 'locked') this.setState('move');
   }
@@ -162,7 +144,7 @@ export class Player {
     if (run.stamina <= 0 && this.chokeT <= 0) {
       this.chokeT = 2.2;
       sfx(this.world.sc, 'choke');
-      this.world.fx.text(this.x, this.y - 64, 'Choking', P.smoke0);
+      this.world.fx.text(this.x, this.y - 48, 'Choking', P.smoke0);
     }
   }
 
@@ -180,124 +162,100 @@ export class Player {
     currentRun().stamina = 0;
     this.chokeT = 2.4;
     sfx(this.world.sc, 'choke');
-    this.world.fx.text(this.x, this.y - 64, 'Choked', P.smoke0);
+    this.world.fx.text(this.x, this.y - 48, 'Choked', P.smoke0);
   }
 
   private play(key: string) {
     const k = `player:${key}`;
-    if (this.sprite.anims.currentAnim?.key !== k) this.sprite.play(k, true);
+    if (this.sprite.anims.currentAnim?.key === k) return;
+    if (this.sprite.scene.anims.exists(k)) this.sprite.play(k, true);
   }
 
   // -------------------------------------------------------------------------
-  // Combat
+  // The Tether Cannon
   // -------------------------------------------------------------------------
 
-  private startSwing(s: Swing) {
-    this.swing = s;
-    this.hitThisSwing.clear();
-    // Turn to face the nearest foe in reach, so taps always connect
-    const t = this.nearestFoe(90);
-    if (t && Math.abs(t.x - this.x) > 4) this.face = t.x > this.x ? 1 : -1;
-    else if (Math.abs(controls.moveX) > 0.3) this.face = Math.sign(controls.moveX);
-    this.target = t;
-    this.spend(s.stam);
-    this.setState('windup');
-    this.play(s.heavy ? 'charge' : `${s.key}-0`);
+  /** Read the stick as an aim, SNES-style. Holding Aim plants the feet. */
+  private readAim() {
+    const mx = controls.moveX;
+    const my = controls.moveY;
+    const g = this.body.onGround;
+    this.crouching = false;
+    if (my < -0.55 && Math.abs(mx) < 0.4) this.aim = 'up';
+    else if (my < -0.3 && Math.abs(mx) >= 0.4) this.aim = 'diag-up';
+    else if (my > 0.3 && Math.abs(mx) >= 0.4) this.aim = 'diag-down';
+    else if (my > 0.55 && Math.abs(mx) < 0.4) {
+      if (g) {
+        this.crouching = true;
+        this.aim = 'fwd';
+      } else this.aim = 'down';
+    } else this.aim = 'fwd';
+    if (g && this.aim === 'diag-down' && controls.isHeld('aim')) this.crouching = false;
   }
 
-  private nearestFoe(range: number): Enemy | null {
-    let best: Enemy | null = null;
-    let bd = range;
-    for (const e of this.world.enemies) {
-      if (!e.targetable) continue;
-      const d = Math.abs(e.x - this.x) + Math.abs(e.cy - this.cy) * 0.6;
-      if (d < bd) {
-        bd = d;
-        best = e;
-      }
-    }
-    return best;
+  /** The muzzle in world space, from the current frame's anchor. */
+  private muzzle(): [number, number] {
+    const frame = Number(this.sprite.frame.name);
+    const m = (heroMeta as { muzzle?: [number, number, number][] }).muzzle?.[frame];
+    if (m) return [this.x + (m[0] - ORIGIN_X) * this.face, this.y + (m[1] - FOOT_Y)];
+    const a = AIM_ANGLE[this.aim];
+    const h = this.crouching ? 14 : 24;
+    return [this.x + Math.cos(a) * 14 * this.face, this.y - h + Math.sin(a) * 12];
   }
 
-  private reach() {
-    return this.swing.reach + meta().weapon.length * 6 + rite('lash') * 12;
-  }
-
-  private damageFor(s: Swing): { dmg: number; crit: boolean } {
-    let dmg = s.dmg * (1 + meta().weapon.weight * 0.15);
-    if (hasSacrament('debt')) dmg *= 1.25;
-    if (hasSacrament('knife')) dmg *= s.heavy ? 1.6 : 0.8;
-    if (s.key === 'a3' && !s.heavy) dmg *= 1 + rite('finisher') * 0.3;
-    const crit = Math.random() < (hasSacrament('blindeye') ? 0.35 : 0.05);
-    if (crit) dmg *= 2;
-    return { dmg: Math.round(dmg), crit };
-  }
-
-  /** Swing pivot: the shoulder. */
-  private pivot(): [number, number] {
-    return [this.x + this.face * 2, this.y - 36];
-  }
-
-  private angleAt(prog: number) {
-    const s = this.swing;
-    const a = Phaser.Math.DegToRad(s.from + (s.to - s.from) * prog);
-    // Mirror for facing left
-    return this.face > 0 ? a : Math.PI - a;
-  }
-
-  private checkHits() {
+  private fire(charged: boolean) {
     const w = this.world;
-    const s = this.swing;
-    const reach = this.reach();
-    const prog = Math.min(1, this.stateT / s.active);
-    const [px, py] = this.pivot();
-    const a0 = Phaser.Math.DegToRad(s.from);
-    const a1 = Phaser.Math.DegToRad(s.from + (s.to - s.from) * prog);
-    const lo = Math.min(a0, a1) - 0.25;
-    const hi = Math.max(a0, a1) + 0.25;
-    for (const e of w.enemies) {
-      if (!e.targetable || this.hitThisSwing.has(e)) continue;
-      const dx = e.x - px;
-      const dy = e.cy - py;
-      const d = Math.hypot(dx, dy);
-      if (d > reach + e.hurtR) continue;
-      // Angle relative to facing (0 = forward)
-      let a = Math.atan2(dy, dx * this.face);
-      // Bring into the swing's range (-pi..pi with wrap for overhead arcs)
-      if (a < lo - 0.1) a += Math.PI * 2;
-      if (a > hi + 0.1) a -= Math.PI * 2;
-      // Point-blank always connects (the up-swing's arc passes above a foe in front)
-      const close = d < e.hurtR + (s.key === 'up' ? 24 : 10);
-      // The chain can't lash through stone
-      if (!close && !w.level.lineClear(px, py, e.x, e.cy)) continue;
-      if ((a >= lo && a <= hi) || close) {
-        this.hitThisSwing.add(e);
-        const { dmg, crit } = this.damageFor(s);
-        this.strikes++;
-        const toxin = hasSacrament('tongue') && this.strikes % 3 === 0;
-        const bleed = s.heavy && meta().weapon.marrow > 0;
-        e.takeHit(dmg, s.poise, this.x, this.cy, { knock: s.heavy ? 220 : 120, crit, toxin, bleed: bleed ? meta().weapon.marrow : 0, heavy: !!s.heavy });
-        w.hitstop(s.heavy ? 120 : crit ? 90 : 60);
-        w.fx.shake(s.heavy ? 180 : 90, s.heavy ? 0.012 : 0.005);
-        sfx(w.sc, Math.random() < 0.5 ? 'hit_flesh' : 'hit_flesh2');
-      }
+    const run = currentRun();
+    const a = AIM_ANGLE[this.aim];
+    const dx = Math.cos(a) * this.face;
+    const dy = Math.sin(a);
+    const [mx, my] = this.muzzle();
+    let weapon = this.weapon;
+    if (weapon === 'shell' && (run.shells ?? 0) <= 0) weapon = 'bolt';
+    if (weapon === 'shell') {
+      run.shells--;
+      w.firePlayerShot({ x: mx, y: my, vx: dx * 300, vy: dy * 300, kind: 'shell', dmg: 30, poise: 40, radius: 4 });
+      sfx(w.sc, 'sludge', { volume: 0.7, rate: 1.5 });
+      w.fx.shake(80, 0.004);
+      this.body.vx -= dx * 30;
+    } else {
+      const dmg = (charged ? 26 : 7) * (1 + meta().weapon.weight * 0.15) * (hasSacrament('debt') ? 1.25 : 1);
+      w.firePlayerShot({ x: mx, y: my, vx: dx * BOLT_SPEED, vy: dy * BOLT_SPEED, kind: charged ? 'charged' : 'bolt', dmg, poise: charged ? 30 : 6, radius: charged ? 5 : 2, pierce: charged });
+      sfx(w.sc, 'spit', { volume: charged ? 0.8 : 0.4, rate: charged ? 0.9 : 1.7 });
     }
-    // The chain also finds the hollow places in the walls
-    const aw = this.angleAt(prog);
-    for (const k of [0.15, 0.3, 0.55, 0.8, 1]) {
-      const sx = px + Math.cos(aw) * reach * k;
-      const sy = py + Math.sin(aw) * reach * k;
-      if (w.strikeAt?.(sx, sy)) break;
-      const broken = w.level.strike(sx, sy, 6);
-      if (!broken.length) continue;
-      for (const [bx, by] of broken) w.fx.rubble(bx, by, 6);
-      w.fx.shake(220, 0.01);
-      w.hitstop(80);
-      sfx(w.sc, 'door_open', { volume: 0.9, rate: 0.7 });
-      sfx(w.sc, 'hit_flesh2', { volume: 0.6, rate: 0.5 });
-      w.fx.text(broken[0][0], broken[0][1] - 20, 'A hollow wall', P.bone1, 16, 1400);
-      break;
+    this.flash.setPosition(mx, my).setAlpha(0.9).setScale(charged || weapon === 'shell' ? 0.9 : 0.45);
+    w.noise(this.x, this.y, 150, 'combat');
+    this.fireCd = weapon === 'shell' ? 0.3 : FIRE_COOLDOWN;
+  }
+
+  /** Fire, charge and weapon switching; runs alongside movement, as in Super Metroid. */
+  private updateGun(dt: number) {
+    this.fireCd -= dt;
+    if (controls.take('weapon')) {
+      const owns = (currentRun().shellsMax ?? 0) > 0;
+      this.weapon = this.weapon === 'bolt' && owns ? 'shell' : 'bolt';
+      sfx(this.world.sc, 'ui_select', { volume: 0.5 });
     }
+    if (controls.take('attack') && this.fireCd <= 0) {
+      this.fire(false);
+      this.chargeT = 0;
+    }
+    // Holding fire gathers blood in the cannon for a charged bolt
+    if (controls.attackHeld && this.weapon === 'bolt') {
+      this.chargeT += dt;
+      const k = Math.min(1, Math.max(0, (this.chargeT - 0.25) / (CHARGE_TIME - 0.25)));
+      const [mx, my] = this.muzzle();
+      this.chargeGlow.setPosition(mx, my).setAlpha(k > 0 ? 0.3 + 0.3 * k + 0.15 * Math.sin(this.stateT * 30) : 0).setScale(0.3 + k * 0.4);
+    } else {
+      if (this.chargeT >= CHARGE_TIME) this.fire(true);
+      this.chargeT = 0;
+      this.chargeGlow.setAlpha(0);
+    }
+    this.flash.setAlpha(Math.max(0, this.flash.alpha - dt * 10));
+  }
+
+  get charging() {
+    return this.chargeT > 0.25;
   }
 
   private canDodge() {
@@ -328,7 +286,7 @@ export class Player {
     run.stamina = Math.min(run.maxStamina, run.stamina + 24);
     w.slowEnemies(900, 0.25);
     w.fx.ring(this.x, this.cy, 40, P.holy, 350);
-    w.fx.text(this.x, this.y - 70, 'Perfect', P.gold0);
+    w.fx.text(this.x, this.y - 52, 'Perfect', P.gold0);
     w.sc.cameras.main.flash(90, 255, 248, 220, false);
     if (source && !source.dead) source.breakPoise(0.6);
     if (hasSacrament('promise')) w.changeLucidity(-3, 'promise');
@@ -355,7 +313,7 @@ export class Player {
     dmg *= 1 - rite('iron') * 0.15;
     if (hasSacrament('lamb') && !this.lambUsed) {
       this.lambUsed = true;
-      w.fx.text(this.x, this.y - 64, 'Forgiven', P.holy);
+      w.fx.text(this.x, this.y - 48, 'Forgiven', P.holy);
       this.hurtInvuln = 0.6;
       return false;
     }
@@ -383,8 +341,6 @@ export class Player {
   private die() {
     this.setState('dead');
     this.play('die');
-    this.head.setVisible(false);
-    this.links.forEach((l) => l.setVisible(false));
     this.world.gore.explode(this.x, this.cy, 0.9, -this.face);
     this.world.gore.fountain(this.x, this.y - 30, 1800);
     this.world.gore.pool(this.x, this.y, 2);
@@ -406,7 +362,7 @@ export class Player {
   }
 
   canExecute() {
-    return this.state === 'move' || this.state === 'recover' ? !!this.nearestStaggered() : false;
+    return this.state === 'move' ? !!this.nearestStaggered() : false;
   }
 
   nearestCorpse() {
@@ -429,7 +385,7 @@ export class Player {
     this.target = e;
     e.beingExecuted = true;
     this.face = e.x >= this.x ? 1 : -1;
-    this.play('raise');
+    this.play('aim-diag-down');
     w.sc.cameras.main.zoomTo(1.4, 220, 'Cubic.easeOut');
     w.slowEnemies(800, 0);
   }
@@ -448,7 +404,7 @@ export class Player {
     run.hp = Math.min(run.maxHp, run.hp + heal);
     run.executions++;
     run.sin++;
-    w.fx.text(this.x, this.y - 72, `+${heal}`, P.blood0);
+    w.fx.text(this.x, this.y - 54, `+${heal}`, P.blood0);
     w.changeLucidity(-8, 'execute');
     this.target = null;
   }
@@ -465,7 +421,7 @@ export class Player {
   private finishWeep() {
     const run = currentRun();
     run.hp = Math.min(run.maxHp, run.hp + 32);
-    this.world.fx.text(this.x, this.y - 70, '+32', P.tear0);
+    this.world.fx.text(this.x, this.y - 52, '+32', P.tear0);
     this.world.changeLucidity(-12, 'tears');
     this.world.vision(Phaser.Utils.Array.GetRandom(CRIME_VISIONS));
   }
@@ -488,7 +444,7 @@ export class Player {
     run.hp = Math.min(run.maxHp, run.hp + 24);
     run.devoured++;
     run.sin++;
-    this.world.fx.text(this.x, this.y - 70, '+24', P.blood0);
+    this.world.fx.text(this.x, this.y - 52, '+24', P.blood0);
     this.world.changeLucidity(-10, 'devour');
     this.world.vision(Phaser.Utils.Array.GetRandom(DEVOUR_VISIONS));
   }
@@ -654,13 +610,11 @@ export class Player {
     // Censer: choking and regeneration
     if (this.chokeT > 0) {
       this.chokeT -= dt;
-      if (Math.random() < dt * 6) w.fx.smoke(this.x, this.y - 56, 1);
+      if (Math.random() < dt * 6) w.fx.smoke(this.x, this.y - 40, 1);
       if (this.chokeT <= 0) run.stamina = Math.max(run.stamina, run.maxStamina * 0.35);
     } else {
       this.staminaDelay -= dt;
-      if (this.staminaDelay <= 0 && this.state !== 'charge') {
-        run.stamina = Math.min(run.maxStamina, run.stamina + 36 * (hasSacrament('glutton') ? 0.6 : 1) * dt);
-      }
+      if (this.staminaDelay <= 0) run.stamina = Math.min(run.maxStamina, run.stamina + 36 * (hasSacrament('glutton') ? 0.6 : 1) * dt);
     }
     w.sc.registry.set('choking', this.chokeT > 0);
 
@@ -685,9 +639,10 @@ export class Player {
         this.syncVisuals(dt);
         return;
       case 'locked':
-        this.play('idle');
+        this.play(this.lockAnim);
         break;
       case 'move': {
+        this.readAim();
         if (controls.take('dodge') && this.canDodge()) {
           this.startDodge();
           break;
@@ -707,23 +662,18 @@ export class Player {
           this.startWeep();
           if ((this.state as PState) === 'weep') break;
         }
-        // Ladders and chains
-        {
+        // Ladders and chains (not while planting the feet to aim)
+        if (!controls.isHeld('aim')) {
           const L = w.level;
-          const up = controls.moveY < -0.55 && (L.climbablePx(this.x, this.body.cy) || L.climbablePx(this.x, this.body.top + 6));
+          const up = controls.moveY < -0.55 && Math.abs(controls.moveX) < 0.4 && (L.climbablePx(this.x, this.body.cy) || L.climbablePx(this.x, this.body.top + 6));
           const below = L.climbablePx(this.x, this.y + 4) || (L.oneWayAt(Math.floor(this.x / 16), Math.floor((this.y + 4) / 16)) && L.climbablePx(this.x, this.y + 20));
-          const down = controls.moveY > 0.55 && ((b.onGround && below) || (!b.onGround && L.climbablePx(this.x, this.body.cy)));
+          const down = controls.moveY > 0.55 && Math.abs(controls.moveX) < 0.4 && ((b.onGround && below) || (!b.onGround && L.climbablePx(this.x, this.body.cy)));
           if (up || down) {
             this.startClimb();
             break;
           }
         }
-        if (controls.take('attack')) {
-          if (!b.onGround) this.startSwing(AIR);
-          else if (controls.moveY < -0.55) this.startSwing(UP);
-          else this.setState('charge');
-          break;
-        }
+        this.updateGun(dt);
         // Jump / drop through ledges
         if (controls.peek('jump')) {
           const standingOnLedge = b.onGround && w.level.oneWayAt(Math.floor(this.x / 16), Math.floor(this.y / 16));
@@ -735,111 +685,36 @@ export class Player {
             controls.take('jump');
             b.vy = -JUMP_V * (wet ? 0.8 : 1);
             this.coyote = 0;
+            this.crouching = false;
             sfx(w.sc, 'dodge', { volume: 0.35, rate: 1.4 });
           }
         }
-        if (!controls.isHeld('jump') && b.vy < -160) b.vy = -160;
+        if (!controls.isHeld('jump') && b.vy < -150) b.vy = -150;
         const mx = controls.moveX;
+        const planted = controls.isHeld('aim') || this.crouching;
         if (Math.abs(mx) > 0.15) {
           this.face = mx > 0 ? 1 : -1;
-          const sneaking = Math.abs(mx) < 0.55 && b.onGround;
-          targetVx = this.face * (sneaking ? SNEAK : RUN * Math.min(1, Math.abs(mx) * 1.25)) * speedMul;
-          if (b.onGround) {
-            this.play(sneaking ? 'sneak' : 'run');
-            this.stepT -= dt;
-            if (this.stepT <= 0 && !sneaking) {
-              this.stepT = 0.3;
-              sfx(w.sc, 'footstep_wet', { volume: wet ? 1 : 0.45 });
-              w.noise(this.x, this.y, wet ? 130 : 95, 'step');
+          if (!planted) {
+            const sneaking = Math.abs(mx) < 0.55 && b.onGround;
+            targetVx = this.face * (sneaking ? SNEAK : RUN * Math.min(1, Math.abs(mx) * 1.25)) * speedMul;
+            if (b.onGround) {
+              this.stepT -= dt;
+              if (this.stepT <= 0 && !sneaking) {
+                this.stepT = 0.28;
+                sfx(w.sc, 'footstep_wet', { volume: wet ? 1 : 0.4 });
+                w.noise(this.x, this.y, wet ? 120 : 85, 'step');
+              }
             }
           }
-        } else if (b.onGround) this.play(this.landT > 0 ? 'kneel' : 'idle');
-        if (!b.onGround) this.play(b.vy < 0 ? 'jump' : 'fall');
+        }
+        this.pickMoveAnim(Math.abs(targetVx) > 1);
         break;
       }
-      case 'charge': {
-        const held = controls.heldMs('attack');
-        if (!controls.attackHeld) {
-          if (this.stateT < CHARGE_MS / 1000) this.startSwing(COMBO[(this.combo = 0)]);
-          else this.startSwing(HEAVY);
-          this.chargeGlow.setAlpha(0);
-          break;
-        }
-        if (held > CHARGE_MS) {
-          const k = Math.min(1, (held - CHARGE_MS) / 300);
-          this.chargeGlow.setAlpha(0.35 + 0.25 * Math.sin(this.stateT * 20) * k).setScale(0.7 + k * 0.5);
-          this.play('charge');
-          if (Math.abs(controls.moveX) > 0.15) {
-            this.face = Math.sign(controls.moveX);
-            targetVx = this.face * SNEAK * 0.6;
-          }
-        }
-        break;
-      }
-      case 'windup':
-        if (this.target && !this.target.dead && Math.abs(this.target.x - this.x) > 6) this.face = this.target.x > this.x ? 1 : -1;
-        if (this.stateT >= this.swing.windup) {
-          this.setState('active');
-          sfx(w.sc, this.swing.heavy || this.swing.key === 'a3' ? 'chain_swing_heavy' : 'chain_swing');
-          w.noise(this.x, this.y, 170, 'combat');
-          this.play(this.swing.heavy ? 'a3-1' : `${this.swing.key}-1`);
-          if (this.swing.lunge && b.onGround) b.vx = this.face * this.swing.lunge;
-          const [px, py] = this.pivot();
-          const a0 = this.angleAt(0);
-          const a1 = this.angleAt(1);
-          w.fx.swoosh(px, py, this.reach() - 4, a0, a1, this.swing.heavy ? P.blood0 : P.bone1);
-        }
-        accel = 300;
-        targetVx = b.vx * 0.9;
-        break;
-      case 'active':
-        this.checkHits();
-        accel = 400;
-        targetVx = b.vx;
-        if (this.stateT >= this.swing.active) {
-          this.setState('recover');
-          this.queued = false;
-          // (the up-swing has only two poses)
-          const rec = `${this.swing.key}-2`;
-          this.play(this.sprite.scene.anims.exists(`player:${rec}`) ? rec : `${this.swing.key}-1`);
-        }
-        break;
-      case 'recover':
-        if (controls.take('attack')) this.queued = true;
-        if (controls.peek('dodge') && this.canDodge() && this.stateT > 0.05) {
-          controls.take('dodge');
-          this.combo = 0;
-          this.startDodge();
-          break;
-        }
-        if (controls.peek('jump') && b.onGround && this.stateT > 0.08) {
-          this.combo = 0;
-          this.setState('move');
-          break;
-        }
-        if (controls.take('execute')) {
-          const e = this.nearestStaggered();
-          if (e) {
-            this.startExecute(e);
-            break;
-          }
-        }
-        if (this.queued && this.stateT > this.swing.recover * 0.35 && !this.swing.heavy && this.swing.key !== 'up' && this.combo < COMBO.length - 1 && b.onGround) {
-          this.combo++;
-          this.startSwing(COMBO[this.combo]);
-          break;
-        }
-        if (this.stateT >= this.swing.recover) {
-          this.combo = 0;
-          this.setState('move');
-        }
-        accel = 900;
-        break;
       case 'dodge': {
-        // A long lunge: full speed for most of it, then a skidding ease-out (~145px)
+        // A long lunge: full speed for most of it, then a skidding ease-out
         const t = this.stateT / DODGE_TIME;
         const k = t < 0.6 ? 1 : Math.max(0.15, 1 - (t - 0.6) / 0.4);
-        targetVx = this.face * 430 * (1 + rite('lunge') * 0.15) * k * (wet ? 0.7 : 1);
+        targetVx = this.face * 360 * (1 + rite('lunge') * 0.15) * k * (wet ? 0.7 : 1);
         accel = 9000;
         // Crimson afterimages streaming behind
         this.ghostT -= dt;
@@ -867,13 +742,10 @@ export class Player {
         const e = this.target;
         if (e) {
           const d = e.x - this.x;
-          if (Math.abs(d) > 22) targetVx = Math.sign(d) * 200;
+          if (Math.abs(d) > 18) targetVx = Math.sign(d) * 180;
           accel = 3000;
         }
-        if (this.stateT > 0.3 && this.target) {
-          this.play('a3-1');
-          this.finishExecute();
-        }
+        if (this.stateT > 0.3 && this.target) this.finishExecute();
         if (this.stateT > 0.7) this.setState('move');
         break;
       }
@@ -892,6 +764,7 @@ export class Player {
       case 'hurt':
         accel = 200;
         targetVx = b.vx;
+        this.updateGun(dt);
         if (this.stateT > 0.3 && b.onGround) this.setState('move');
         if (this.stateT > 0.8) this.setState('move');
         break;
@@ -901,7 +774,11 @@ export class Player {
     const dv = targetVx - b.vx;
     const maxDv = accel * dt;
     b.vx += Phaser.Math.Clamp(dv, -maxDv, maxDv);
-    b.h = this.state === 'dodge' ? 22 : 46;
+    const wantH = this.state === 'dodge' ? 18 : this.crouching ? CROUCH_H : BODY_H;
+    // Stand up only if there is headroom
+    if (wantH > b.h && w.level.solidPx(b.x, b.y - wantH + 1)) {
+      this.crouching = true;
+    } else b.h = wantH;
     b.gravity = gravityOn ? 1 : 0;
     const wasAir = !b.onGround;
     const fallV = b.vy;
@@ -909,7 +786,7 @@ export class Player {
     if (wasAir && b.onGround && fallV > 300) {
       this.landT = 0.12;
       sfx(w.sc, 'footstep_wet', { volume: 0.9, rate: 0.8 });
-      w.noise(this.x, this.y, 140, 'step');
+      w.noise(this.x, this.y, 120, 'step');
       w.fx.smoke(this.x, this.y - 2, 3, P.smoke1);
     }
     this.landT -= dt;
@@ -918,76 +795,41 @@ export class Player {
     this.syncVisuals(dt);
   }
 
-  // -------------------------------------------------------------------------
-  // Visuals: sprite, chain, tether
-  // -------------------------------------------------------------------------
-
-  private handPos(): [number, number] {
-    const frame = Number(this.sprite.frame.name);
-    const h = heroMeta.hands[frame] ?? [ORIGIN_X + 8, FOOT_Y - 30];
-    return [this.x + (h[0] - ORIGIN_X) * this.face, this.y + (h[1] - FOOT_Y)];
+  /** Pick the animation for standing, running, crouching or flying, with the cannon's aim. */
+  private pickMoveAnim(running: boolean) {
+    const b = this.body;
+    if (!b.onGround) {
+      if (this.aim === 'fwd') this.play(this.fireCd > 0 || this.charging ? 'air-fwd' : b.vy < 0 ? 'jump' : 'fall');
+      else this.play(`air-${this.aim}`);
+      return;
+    }
+    if (this.crouching) {
+      this.play(this.aim === 'diag-up' ? 'crouch-diag-up' : 'crouch');
+      return;
+    }
+    if (running) {
+      this.play(this.aim === 'diag-up' ? 'run-diag-up' : this.aim === 'diag-down' ? 'run-diag-down' : 'run');
+      return;
+    }
+    if (this.landT > 0 && this.aim === 'fwd') this.play('crouch');
+    else if (this.aim === 'fwd') this.play('idle');
+    else if (this.aim === 'down') this.play('crouch');
+    else this.play(`aim-${this.aim}`);
   }
+
+  // -------------------------------------------------------------------------
+  // Visuals: sprite, muzzle glow, the snapped tether
+  // -------------------------------------------------------------------------
 
   private syncVisuals(dt: number) {
     const s = this.sprite;
     s.setFlipX(this.face < 0);
-    s.setOrigin(this.face > 0 ? ORIGIN_X / FW : 1 - ORIGIN_X / FW, FOOT_Y / 96);
-    s.setPosition(Math.round(this.x), Math.round(this.y) + 0);
-    this.chargeGlow.setPosition(this.x, this.y - 40);
-    const [hx, hy] = this.handPos();
-
-    // Chain head target
-    let tx: number;
-    let ty: number;
-    let snap = false;
-    const reach = this.reach();
-    const [px, py] = this.pivot();
-    if (this.state === 'windup' || (this.state === 'charge' && controls.heldMs('attack') > CHARGE_MS)) {
-      const a = this.state === 'charge' ? this.stateT * 14 : this.angleAt(0) + Math.PI * 0.15 * -this.face;
-      const r = this.state === 'charge' ? 18 : reach * 0.5;
-      tx = px + Math.cos(a) * r;
-      ty = py + Math.sin(a) * r;
-    } else if (this.state === 'active') {
-      const a = this.angleAt(Math.min(1, this.stateT / this.swing.active));
-      tx = px + Math.cos(a) * reach;
-      ty = py + Math.sin(a) * reach;
-      snap = true;
-    } else {
-      // Dragging behind along the floor
-      tx = this.x - this.face * 16;
-      ty = this.y - 4;
-    }
-    if (snap) {
-      this.headPos.set(tx, ty);
-      this.headVel.set(0, 0);
-    } else {
-      const k = 70;
-      const damp = 10;
-      this.headVel.x += ((tx - this.headPos.x) * k - this.headVel.x * damp) * dt;
-      this.headVel.y += ((ty - this.headPos.y) * k - this.headVel.y * damp + 300) * dt;
-      this.headPos.x += this.headVel.x * dt;
-      this.headPos.y += this.headVel.y * dt;
-      // The shackle rests on the floor, never in it
-      const fy = this.world.level.floorY(this.headPos.x, this.headPos.y - 6);
-      if (fy !== null && this.headPos.y > fy - 4) {
-        this.headPos.y = fy - 4;
-        this.headVel.y = 0;
-        this.headVel.x *= 0.8;
-      }
-    }
-    this.head.setPosition(Math.round(this.headPos.x), Math.round(this.headPos.y));
-    const dist = Phaser.Math.Distance.Between(hx, hy, this.headPos.x, this.headPos.y);
-    const sag = this.state === 'active' ? 0 : Math.max(0, 30 - dist) * 0.4 + 3;
-    for (let i = 0; i < LINKS; i++) {
-      const t = (i + 1) / (LINKS + 1);
-      const lx = hx + (this.headPos.x - hx) * t;
-      const ly = hy + (this.headPos.y - hy) * t + Math.sin(t * Math.PI) * sag;
-      this.links[i].setPosition(Math.round(lx), Math.round(ly)).setRotation(Math.atan2(this.headPos.y - hy, this.headPos.x - hx));
-    }
+    s.setOrigin(this.face > 0 ? ORIGIN_X / FW : 1 - ORIGIN_X / FW, FOOT_Y / FH);
+    s.setPosition(Math.round(this.x), Math.round(this.y));
 
     // The snapped scarlet tether streaming from the nape (verlet rope)
     const ax = this.x - this.face * 3;
-    const ay = this.y - (this.state === 'dodge' ? 18 : 56);
+    const ay = this.y - (this.state === 'dodge' ? 14 : this.crouching ? 24 : 36);
     this.rope[0].x = ax;
     this.rope[0].y = ay;
     for (let i = 1; i < this.rope.length; i++) {
@@ -1006,7 +848,7 @@ export class Player {
         const dx = b2.x - a.x;
         const dy = b2.y - a.y;
         const d = Math.hypot(dx, dy) || 1;
-        const diff = (d - 3) / d;
+        const diff = (d - 2.5) / d;
         if (i === 1) {
           b2.x -= dx * diff;
           b2.y -= dy * diff;
@@ -1023,21 +865,16 @@ export class Player {
     if (this.state !== 'dead') {
       for (let i = 0; i < this.rope.length - 1; i++) {
         const a = this.rope[i];
-        const c = this.rope[i + 1];
         g.fillStyle(i % 3 === 2 ? hexNum(P.blood2) : hexNum(P.blood1), 1);
-        g.fillRect(Math.round(a.x), Math.round(a.y), 2, 2);
-        g.fillRect(Math.round((a.x + c.x) / 2), Math.round((a.y + c.y) / 2), 1, 1);
+        g.fillRect(Math.round(a.x), Math.round(a.y), 1, 2);
       }
-      const end = this.rope[this.rope.length - 1];
-      g.fillStyle(hexNum(P.blood0), 1).fillRect(Math.round(end.x), Math.round(end.y), 1, 2);
     }
   }
 
   destroy() {
     this.sprite.destroy();
-    this.head.destroy();
-    this.links.forEach((l) => l.destroy());
     this.tether.destroy();
     this.chargeGlow.destroy();
+    this.flash.destroy();
   }
 }

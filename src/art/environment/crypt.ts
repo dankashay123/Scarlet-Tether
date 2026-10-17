@@ -1,7 +1,8 @@
-import { PixelCanvas, bayer, hash2 } from '../pixel';
+import { PixelCanvas, hash2 } from '../pixel';
 import { type RGB, fbm, hex, inRound, pnoise, smooth } from './paint';
 import { EMPTY, type Glow, type PLight, type RMat, Relief, type ShadeOpts, ramp } from './relief';
-import { M, type RotSpec, ashlar, catenary, chain, hit, shafts } from './nave';
+import { H, LAYER_COLORS, SNES_SHADE, M, type RotSpec, W, ashlar, catenary, chain, hit, shafts } from './nave';
+import { snesLayer } from './snes-env';
 
 /**
  * The crypt backdrops: a cold catacomb of blue-green-grey stone. Round
@@ -15,10 +16,11 @@ import { M, type RotSpec, ashlar, catenary, chain, hit, shafts } from './nave';
  *
  * The small helpers here (icicles, niches, candles, cage lanterns, skulls,
  * rubble, mist, cobwebs and the plain/rot assembly) are shared with bridge.ts.
+ *
+ * SNES layout: 512x224 layers like the nave (W and H come from nave.ts).
  */
 
-export const W = 640;
-export const H = 360;
+export { W, H };
 
 /** Material ids beyond the nave's (which rotify() and the nave helpers use). */
 export const X = { ICE: 17, MOSS: 18, WAX: 19, FLAME: 20, SKY: 21, CITY: 22, CITYGOLD: 23, CLOUD: 24 } as const;
@@ -124,9 +126,9 @@ export function halfField(fn: (x: number, y: number) => number): Float32Array {
 function field() {
   if (!FIELD)
     FIELD = {
-      g: halfField((x, y) => fbm(x, y, 44, 301, W, 2) * 0.8 + pnoise(x, y, 9, 304, W) * 0.2),
-      lump: halfField((x, y) => pnoise(x, y, 7, 308, W) - 0.5),
-      vein: halfField((x, y) => Math.abs(pnoise(x, y, 8, 310, W) - 0.5)),
+      g: halfField((x, y) => fbm(x, y, 28, 301, W, 2) * 0.8 + pnoise(x, y, 6, 304, W) * 0.2),
+      lump: halfField((x, y) => pnoise(x, y, 5, 308, W) - 0.5),
+      vein: halfField((x, y) => Math.abs(pnoise(x, y, 5, 310, W) - 0.5)),
     };
   return FIELD;
 }
@@ -147,8 +149,8 @@ export function overgrow(R: Relief, s: RotSpec) {
       if (g > 0.6) {
         const k = Math.min(1, (g - 0.6) / 0.22);
         const lump = F.lump[j];
-        R.hgt[i] += 16 * Math.pow(k, 0.6) + lump * 8 * Math.min(1, k * 3);
-        R.mat[i] = k < 0.08 ? M.BLOOD : F.vein[j] < 0.028 && k > 0.2 ? M.SINEW : M.FLESH;
+        R.hgt[i] += 11 * Math.pow(k, 0.6) + lump * 5 * Math.min(1, k * 3);
+        R.mat[i] = k < 0.08 ? M.BLOOD : F.vein[j] < 0.034 && k > 0.2 ? M.SINEW : M.FLESH;
         R.tex[i] = lump * 0.3 + (lump < -0.3 ? -0.25 : 0);
         if (k > 0.5 && hash2(x >> 1, y >> 1, s.seed) > 0.992) R.mat[i] = M.BONE;
       } else if (g > 0.53) R.tex[i] -= (0.2 * (g - 0.53)) / 0.07;
@@ -157,8 +159,8 @@ export function overgrow(R: Relief, s: RotSpec) {
   for (const [x, y, len] of s.drips ?? []) {
     const base = R.hgt[wrapX(Math.round(x)) + Math.max(0, Math.min(H - 1, Math.round(y))) * W];
     const hz = (base > EMPTY / 2 ? base : z) + 1.5;
-    R.tube(x, y, x, y + len, 0.9, hz, M.BLOOD, 0, true);
-    R.tube(x, y + len, x, y + len + 1, 1.6, hz, M.BLOOD, 0, true);
+    R.tube(x, y, x, y + len, 0.75, hz, M.BLOOD, 0, true);
+    R.tube(x, y + len, x, y + len + 1, 1.3, hz, M.BLOOD, 0, true);
   }
   for (const [ex, ey, er] of s.eyes ?? []) {
     R.box(ex - er - 2, ey - er - 2, ex + er + 2, ey + er + 2, (x, y, i) => {
@@ -166,7 +168,7 @@ export function overgrow(R: Relief, s: RotSpec) {
       const dy = y + 0.5 - ey;
       const d = Math.sqrt(dx * dx + dy * dy);
       const base = R.hgt[i] > EMPTY / 2 ? R.hgt[i] : z;
-      if (d > er + 1.6) return;
+      if (d > er + 1.2) return;
       if (d > er) {
         R.put(i, base + 1.5, M.FLESH, -0.15);
         return;
@@ -180,9 +182,9 @@ export function overgrow(R: Relief, s: RotSpec) {
 }
 
 function shadeT(L: TLayer, t: Look): PixelCanvas {
-  const pc = L.R.shade({ mats: t.mats, keyC: t.key, key: t.keyDir, ambC: t.amb, lights: L.lights(t), glows: L.glows(t), tint: 0.75, ...L.opts(t) });
+  const pc = L.R.shade({ mats: t.mats, keyC: t.key, key: t.keyDir, ambC: t.amb, lights: L.lights(t), glows: L.glows(t), tint: 0.75, ...SNES_SHADE, aoR: 3, ...L.opts(t) });
   L.post?.(pc, t);
-  return pc;
+  return snesLayer(pc, LAYER_COLORS);
 }
 
 // --- Shared shape helpers ---------------------------------------------------------
@@ -223,7 +225,7 @@ export function icicles(R: Relief, x0: number, x1: number, top: (x: number) => n
     if (hsh > dens) continue;
     const q = hash2(x, seed, 12);
     const len = minLen + q * q * (maxLen - minLen);
-    const w = Math.min(2.6, 0.7 + len * 0.07);
+    const w = Math.min(1.9, 0.6 + len * 0.08);
     const tp = top(x);
     if (tp < 0) continue;
     const y0 = Math.floor(tp) - 1;
@@ -235,7 +237,7 @@ export function icicles(R: Relief, x0: number, x1: number, top: (x: number) => n
         const half = w * Math.pow(1 - k, 0.9) + 0.2;
         if (Math.abs(dx) > half) return;
         R.put(i, z + 1 + Math.sqrt(Math.max(0, 1 - (dx / (half + 0.3)) ** 2)) * w * 0.9, X.ICE, k > 0.8 ? 0.12 : Math.abs(dx) < 0.6 ? 0.08 : -0.04);
-      } else if (len > 12 && hash2(x, seed, 14) < 0.25 && Math.abs(dx) < 0.5 && yy === Math.floor(y0 + len + 2)) {
+      } else if (len > 8 && hash2(x, seed, 14) < 0.25 && Math.abs(dx) < 0.5 && yy === Math.floor(y0 + len + 2)) {
         R.put(i, z + 1, X.ICE, 0.2); // a falling drop
       }
     });
@@ -381,18 +383,19 @@ export function skull(R: Relief, cx: number, cy: number, s: number, z: number) {
 export function rubble(R: Relief, x0: number, x1: number, yBase: number, hMax: number, z: number, seed: number, m: number = M.WALL) {
   R.box(x0, yBase - hMax - 4, x1, yBase, (x, y, i) => {
     const k = (x + 0.5 - x0) / (x1 - x0);
-    const n = fbm(x, 0, 14, seed, W, 2);
+    const n = fbm(x, 0, 9, seed, W, 2);
     const top = yBase - hMax * Math.pow(Math.sin(k * Math.PI), 0.7) * (0.55 + 0.6 * n);
     if (y < top) return;
-    const hh = ashlar(x + seed * 7, y, 9 + Math.floor(hash2(Math.floor(y / 6), seed, 1) * 6), 6, seed);
+    const hh = ashlar(x + seed * 7, y, 6 + Math.floor(hash2(Math.floor(y / 4), seed, 1) * 4), 4, seed);
     const ty = hit.t;
-    R.raise(i, z + 4 + hh * 2.5 + n * 3 - (y - top) * 0.05, hash2(Math.floor((x + seed * 7) / 9), Math.floor(y / 6), seed + 3) > 0.8 ? M.TRIM : m, ty + (y < top + 1.5 ? 0.12 : 0));
+    R.raise(i, z + 4 + hh * 1.8 + n * 3 - (y - top) * 0.05, hash2(Math.floor((x + seed * 7) / 6), Math.floor(y / 4), seed + 3) > 0.8 ? M.TRIM : m, ty + (y < top + 1 ? 0.12 : 0));
   });
 }
 
 /** Stone sarcophagus seen from the side. */
 export function sarcophagus(R: Relief, x0: number, x1: number, yTop: number, yBot: number, z: number) {
-  const lid = 6;
+  const k = (yBot - yTop) / 30;
+  const lid = Math.max(3, Math.round(6 * k));
   R.box(x0 - 3, yTop, x1 + 3, yBot, (x, y, i) => {
     const ly = y - yTop;
     if (ly < lid) {
@@ -409,9 +412,9 @@ export function sarcophagus(R: Relief, x0: number, x1: number, yTop: number, yBo
     if (x < x0 || x > x1) return;
     const px = x - x0;
     const pw = x1 - x0;
-    const inPanel = px > 4 && px < pw - 4 && ly > lid + 3 && y < yBot - 6;
+    const inPanel = px > 3 && px < pw - 3 && ly > lid + 2 && y < yBot - 4;
     const cxp = pw / 2;
-    const cross = (Math.abs(px - cxp) < 1.5 && ly > lid + 4 && y < yBot - 7) || (Math.abs(ly - lid - 8) < 1.2 && Math.abs(px - cxp) < 5);
+    const cross = (Math.abs(px - cxp) < 1 && ly > lid + 3 && y < yBot - 5) || (Math.abs(ly - lid - 5.5) < 0.8 && Math.abs(px - cxp) < 3.5);
     if (inPanel) R.put(i, z + (cross ? 2.6 : 1.2), M.TRIM, cross ? 0.08 : -0.08);
     else R.put(i, z + 2.6 - (px < 1 || px > pw - 1 ? 0.8 : 0), M.TRIM, 0);
   });
@@ -431,11 +434,11 @@ export function streaks(R: Relief, x0: number, x1: number, y0: number, y1: numbe
 // --- Post passes -------------------------------------------------------------------
 
 let MIST: Float32Array | null = null;
-const MIST_Y = 200;
+const MIST_Y = 124;
 
 /** Low wisps of mist; on empty pixels (fill) it lays translucent mist down. The noise is computed once and shared. */
 export function mist(pc: PixelCanvas, y0: number, y1: number, c: RGB, k: number, seed: number, fill = false) {
-  if (!MIST) MIST = halfField((x, y) => (y < MIST_Y - 2 ? 0 : fbm(x + y * 0.4, y * 3, 70, 5, W, 3)));
+  if (!MIST) MIST = halfField((x, y) => (y < MIST_Y - 2 ? 0 : fbm(x + y * 0.4, y * 3, 44, 5, W, 3)));
   const d = pc.data;
   const off = Math.floor(hash2(seed, 5, 5) * W);
   for (let y = Math.max(MIST_Y, y0); y < Math.min(H, y1 + 40); y++) {
@@ -446,7 +449,7 @@ export function mist(pc: PixelCanvas, y0: number, y1: number, c: RGB, k: number,
       const xo = x + off;
       const n = MIST[row + (xo >= W ? xo - W : xo)];
       let a = f * (0.25 + 1.1 * n * n);
-      a = Math.round((a + (bayer(x, y) - 0.5) * 0.1) * 8) / 8;
+      a = Math.round(a * 4) / 4;
       if (a <= 0) continue;
       if (a > 0.9) a = 0.9;
       const p = (row + x) * 4;
@@ -529,7 +532,7 @@ export function cobweb(pc: PixelCanvas, ax: number, ay: number, sx: number, sy: 
   // a few loose strands hanging down
   for (let k = 0; k < 2; k++) {
     const [x0, y0] = pts[1 + k * 2][3];
-    lineA(pc, x0, y0, x0 + sx * 2, y0 + 6 + hash2(k, seed, 9) * 10, 0, c, a * 0.5, mask);
+    lineA(pc, x0, y0, x0 + sx * 1.5, y0 + size * (0.2 + hash2(k, seed, 9) * 0.3), 0, c, a * 0.5, mask);
   }
   for (const j of WEB_HIT) mask[j] = 0;
   WEB_HIT.length = 0;
@@ -608,101 +611,96 @@ const noFlame = (m: number) => (m === X.FLAME || m === X.WAX ? -9 : 0);
 
 function cryptFar(): TLayer {
   const R = new Relief(W, H);
-  const P = 160;
-  const CX = 80;
-  const YS = 160;
-  const RA = 50;
-  const B = 11;
+  const P = W / 5;
+  const CX = P / 2;
+  const YS = 99;
+  const RA = 31;
+  const B = 7;
   R.box(0, 0, W - 1, H - 1, (x, y, i) => {
     const u = wrapX(x) % P;
-    const pu = u < P / 2 ? u : u - P; // -80..80 around the pier
-    if (y < 34) {
+    const pu = u < P / 2 ? u : u - P; // around the pier
+    if (y < 21) {
       // barrel vault soffit with transverse ribs over the piers
-      if (Math.abs(pu + 0.5) < 8) {
-        R.put(i, -2 - (Math.abs(pu + 0.5) > 6.5 ? 1 : 0), M.TRIM, -0.1 - (34 - y) * 0.006);
+      if (Math.abs(pu + 0.5) < 5) {
+        R.put(i, -2 - (Math.abs(pu + 0.5) > 4 ? 1 : 0), M.TRIM, -0.1 - (21 - y) * 0.01);
         return;
       }
-      const hh = ashlar(x, y, 20, 8, 3);
-      R.put(i, -5 + hh * 0.6, M.WALL, hit.t - 0.12 - (34 - y) * 0.008);
+      const hh = ashlar(x, y, 16, 5, 3);
+      R.put(i, -5 + hh * 0.6, M.WALL, hit.t - 0.12 - (21 - y) * 0.013);
       return;
     }
-    if (y < 40) {
-      R.put(i, -1 + (y === 34 ? 0.6 : 0) - (y === 39 ? 0.8 : 0), M.TRIM, y === 34 ? 0.1 : 0);
+    if (y < 25) {
+      R.put(i, -1 + (y === 21 ? 0.6 : 0) - (y === 24 ? 0.8 : 0), M.TRIM, y === 21 ? 0.1 : 0);
       return;
     }
-    if (y >= 302) {
-      if (y < 306) R.put(i, 1.5 - (y === 305 ? 0.6 : 0), M.TRIM, y === 302 ? 0.12 : 0);
-      else R.put(i, ashlar(x, y, 32, 10, 9) * 0.4 - 1, M.WALL, hit.t - 0.12);
+    if (y >= 187) {
+      if (y < 190) R.put(i, 1.5 - (y === 189 ? 0.6 : 0), M.TRIM, y === 187 ? 0.12 : 0);
+      else R.put(i, ashlar(x, y, 32, 6, 9) * 0.4 - 1, M.WALL, hit.t - 0.12);
       return;
     }
     // impost blocks at the springing line
     const adx = Math.abs(u + 0.5 - CX);
-    if (y >= YS - 5 && y < YS && adx > RA - 2 && adx < RA + B + 3) {
-      R.put(i, 2 - (y === YS - 1 ? 0.8 : 0), M.TRIM, y === YS - 5 ? 0.12 : 0);
+    if (y >= YS - 3 && y < YS && adx > RA - 1.2 && adx < RA + B + 2) {
+      R.put(i, 2 - (y === YS - 1 ? 0.8 : 0), M.TRIM, y === YS - 3 ? 0.12 : 0);
       return;
     }
-    const res = vous(u, y, CX, YS, RA, B, 13, 0, 0.3);
+    const res = vous(u, y, CX, YS, RA, B, 11, 0, 0.3);
     if (res === 1) {
       R.put(i, hit.h, hit.m, hit.t);
       return;
     }
     if (res === 2) {
       // a second, receding arch deeper in the dark
-      const r2 = vous(u, y, CX, YS + 18, RA - 16, 7, 9, -16);
+      const r2 = vous(u, y, CX, YS + 11, RA - 10, 4.5, 8, -16);
       if (r2 === 1) R.put(i, hit.h, hit.m, hit.t - 0.1);
       else if (r2 === 2) {
         R.put(i, -40, M.LIT, 0);
-        R.emi[i] = 0.04 + 0.32 * smooth(YS - 20, 300, y) * Math.max(0, 1 - Math.abs(u + 0.5 - CX) / 40) + (hash2(u, y, 4) - 0.5) * 0.03;
-      } else R.put(i, -12 + ashlar(x, y, 16, 7, 21) * 0.5, M.WALL, hit.t - 0.18);
+        R.emi[i] = 0.04 + 0.32 * smooth(YS - 12, 186, y) * Math.max(0, 1 - Math.abs(u + 0.5 - CX) / 25) + (hash2(u | 0, y, 4) - 0.5) * 0.03;
+      } else R.put(i, -12 + ashlar(x, y, 16, 4, 21) * 0.5, M.WALL, hit.t - 0.18);
       return;
     }
     // wall and piers
-    const hh = ashlar(x, y, 20, 9, 7);
-    R.put(i, hh * 0.6, M.WALL, hit.t + (y > 270 ? -0.06 : 0));
+    const hh = ashlar(x, y, 16, 6, 7);
+    R.put(i, hh * 0.6, M.WALL, hit.t + (y > 167 ? -0.06 : 0));
   });
   // loculi stacked in each pier, a few with candles
   const flames: [number, number][] = [];
-  for (let k = 0; k < 4; k++) {
+  for (let k = 0; k < 5; k++) {
     const px = k * P;
-    flames.push(...niche(R, px, 74, 12, 18, 0, k & 1 ? 0 : 1, k * 3 + 1));
-    flames.push(...niche(R, px, 182, 14, 22, 0, k === 2 ? 0 : 2, k * 3 + 2));
-    flames.push(...niche(R, px, 234, 14, 22, 0, k === 1 ? 2 : 1, k * 3 + 3));
+    flames.push(...niche(R, px, 46, 8, 11, 0, k & 1 ? 0 : 1, k * 3 + 1));
+    flames.push(...niche(R, px, 113, 9, 14, 0, k === 2 ? 0 : 2, k * 3 + 2));
+    flames.push(...niche(R, px, 145, 9, 14, 0, k === 1 || k === 4 ? 2 : 1, k * 3 + 3));
   }
-  for (let k = 0; k < 4; k++) {
+  for (let k = 0; k < 5; k++) {
     const cx = k * P + CX;
-    icicles(R, cx - RA + 3, cx + RA - 3, (x) => YS - Math.sqrt(Math.max(0, RA * RA - (x + 0.5 - cx) ** 2)), 1, 30 + k, 0.22, 10);
+    icicles(R, cx - RA + 2, cx + RA - 2, (x) => YS - Math.sqrt(Math.max(0, RA * RA - (x + 0.5 - cx) ** 2)), 1, 30 + k, 0.22, 7);
   }
-  icicles(R, 0, W - 1, () => 40, 1, 7, 0.12, 7);
+  icicles(R, 0, W - 1, () => 25, 1, 7, 0.12, 5);
+  const bays = [0, 1, 2, 3, 4].map((k) => k * P + CX);
   return {
     R,
-    lights: (t) => [
-      ...[0, 1, 2, 3].map((k) => ({ x: k * P + CX, y: 270, z: -10, r: 110, c: t.cold, k: 0.45 })),
-      { x: 120, y: -60, z: 60, r: 300, c: t.cold, k: 0.2 },
-    ],
-    glows: (t) => [
-      ...[0, 1, 2, 3].map((k) => ({ x: k * P + CX, y: 285, r: 50, c: t.cold, k: 0.08 })),
-      ...flames.map(([x, y]) => ({ x, y, r: 9, c: t.candle, k: 0.4 })),
-    ],
+    lights: (t) => [...bays.map((x) => ({ x, y: 167, z: -6, r: 68, c: t.cold, k: 0.45 })), { x: 96, y: -37, z: 37, r: 186, c: t.cold, k: 0.2 }],
+    glows: (t) => [...bays.map((x) => ({ x, y: 177, r: 31, c: t.cold, k: 0.08 })), ...flames.map(([x, y]) => ({ x, y, r: 6, c: t.candle, k: 0.4 }))],
     opts: (t) => ({
       amb: 0.3,
       keyK: 0.3,
       fogC: t.haze,
-      fog: (y) => 0.38 + 0.14 * smooth(150, 320, y),
+      fog: (y) => 0.5 + 0.14 * smooth(93, 198, y),
       ao: 0.06,
     }),
     rot: {
       seed: 211,
-      bias: (x, y, m) => -0.22 + 0.24 * smooth(60, 10, y) + 0.2 * smooth(260, 310, y) + (m === M.TRIM ? 0.04 : 0) + (m === M.LIT ? -9 : 0) + noFlame(m),
-      sinews: [0, 1, 2, 3].map((k) => [k * P + CX - RA + 2, YS - 6, k * P + CX + RA - 2, YS - 6, 22, 1] as [number, number, number, number, number, number]),
-      drips: [0, 1, 2, 3].flatMap((k) => [
-        [k * P + 30, 40, 18],
-        [k * P + 120, 40, 30],
+      bias: (x, y, m) => -0.22 + 0.24 * smooth(37, 6, y) + 0.2 * smooth(161, 192, y) + (m === M.TRIM ? 0.04 : 0) + (m === M.LIT ? -9 : 0) + noFlame(m),
+      sinews: bays.map((cx) => [cx - RA + 1.5, YS - 4, cx + RA - 1.5, YS - 4, 14, 0.7] as [number, number, number, number, number, number]),
+      drips: [0, 1, 2, 3, 4].flatMap((k) => [
+        [k * P + 19, 25, 11],
+        [k * P + 75, 25, 19],
       ] as [number, number, number][]),
       z: 2,
     },
     post: (pc, t) => {
-      shafts(pc, [[60, 0.3, 9, 0.05], [350, 0.35, 12, 0.05]], t.cold, 40, 300, 13);
-      mist(pc, 240, 330, t.mist, 0.45, 5);
+      shafts(pc, [[48, 0.3, 6, 0.05], [280, 0.35, 7, 0.05]], t.cold, 25, 186, 13);
+      mist(pc, 149, 205, t.mist, 0.45, 5);
     },
   };
 }
@@ -712,140 +710,141 @@ function cryptFar(): TLayer {
 // sarcophagus, candle niches, iron lanterns, icicles, cobwebs
 // ============================================================================
 
-const MP = 320;
-const MCX = 160;
-const MYS = 176;
-const MRA = 100;
-const MB = 20;
-const PARA = 254;
+const MP = W / 3;
+const MCX = MP / 2;
+const MYS = 109;
+const MRA = 53;
+const MB = 11;
+const PARA = 157;
 
 function cryptMid(): TLayer {
   const R = new Relief(W, H);
   R.box(0, 0, W - 1, H - 1, (x, y, i) => {
     const b = Math.floor(wrapX(x) / MP);
     const u = wrapX(x) - b * MP;
-    const pu = u < MCX ? u : u - MP; // -160..160 around the pier at u = 0
+    const pu = u < MCX ? u : u - MP; // around the pier at u = 0
     const apu = Math.abs(pu + 0.5);
-    if (y < 10) {
-      R.put(i, -2 + ashlar(x, y, 32, 10, 2) * 0.5, M.WALL, hit.t - 0.2);
+    if (y < 6) {
+      R.put(i, -2 + ashlar(x, y, 32, 6, 2) * 0.5, M.WALL, hit.t - 0.2);
       return;
     }
-    if (y < 17) {
-      R.put(i, 2.5 - (y === 16 ? 1 : 0) + (y === 10 ? -0.5 : 0), M.TRIM, y === 11 ? 0.12 : 0);
+    if (y < 11) {
+      R.put(i, 2.5 - (y === 10 ? 1 : 0) + (y === 6 ? -0.5 : 0), M.TRIM, y === 7 ? 0.12 : 0);
       return;
     }
-    if (y >= 300) {
-      if (y < 305) R.put(i, 4 - (y === 304 ? 0.8 : 0), M.TRIM, y === 300 ? 0.14 : 0);
-      else R.put(i, ashlar(x, y, 40, 12, 12) * 0.6, M.WALL, hit.t - 0.1);
+    if (y >= 186) {
+      if (y < 189) R.put(i, 4 - (y === 188 ? 0.8 : 0), M.TRIM, y === 186 ? 0.14 : 0);
+      else R.put(i, ashlar(x, y, 32, 7, 12) * 0.6, M.WALL, hit.t - 0.1);
       return;
     }
     // pier pilaster: a flat projecting face with chamfers, impost band and base
-    if (apu < 30) {
-      if (y >= MYS - 9 && y < MYS - 1) {
-        R.put(i, 9 - (y === MYS - 2 ? 1 : 0) - (apu > 28.5 ? 0.8 : 0), M.TRIM, y === MYS - 9 ? 0.14 : 0);
+    if (apu < 16) {
+      if (y >= MYS - 6 && y < MYS - 1) {
+        R.put(i, 9 - (y === MYS - 2 ? 1 : 0) - (apu > 15 ? 0.8 : 0), M.TRIM, y === MYS - 6 ? 0.14 : 0);
         return;
       }
-      if (y >= 284) {
-        R.put(i, 8 - (y === 284 ? 0.6 : 0) - (apu > 28.5 ? 0.8 : 0), M.TRIM, y === 284 ? 0.12 : -0.04);
+      if (y >= 176) {
+        R.put(i, 8 - (y === 176 ? 0.6 : 0) - (apu > 15 ? 0.8 : 0), M.TRIM, y === 176 ? 0.12 : -0.04);
         return;
       }
-      if (apu < 24) {
-        const ch = apu > 22 ? (24 - apu) * 0.8 : 1.6;
-        R.put(i, 5 + ch + ashlar(x, y, 40, 14, 31) * 0.3, M.SHAFT, hit.t * 0.6);
+      if (apu < 13) {
+        const ch = apu > 11.5 ? (13 - apu) * 0.8 : 1.2;
+        R.put(i, 5 + ch + ashlar(x, y, 32, 9, 31) * 0.3, M.SHAFT, hit.t * 0.6);
         return;
       }
     }
-    const res = vous(u, y, MCX, MYS, MRA, MB, 25, 4, 0.35);
+    const res = vous(u, y, MCX, MYS, MRA, MB, 21, 4, 0.35);
     if (res === 1) {
       R.put(i, hit.h, hit.m, hit.t);
       return;
     }
     if (res === 0) {
-      const hh = ashlar(x, y, 32, 12, 5);
-      R.put(i, hh * 0.8 + 2, M.WALL, hit.t + (y < 40 ? -0.1 : 0));
+      const hh = ashlar(x, y, 16, 7, 5);
+      R.put(i, hh * 0.8 + 2, M.WALL, hit.t + (y < 25 ? -0.1 : 0));
       return;
     }
     // inside the opening
     const du = u + 0.5 - MCX;
     if (y < PARA) {
       // a jamb return just inside the arch
-      if (Math.abs(du) > MRA - 4 && y > MYS - 2) R.put(i, 1 - (Math.abs(du) > MRA - 1 ? 0 : 0.8), M.TRIM, -0.1);
+      if (Math.abs(du) > MRA - 2.5 && y > MYS - 1) R.put(i, 1 - (Math.abs(du) > MRA - 0.6 ? 0 : 0.8), M.TRIM, -0.1);
       return; // open to the far gallery
     }
-    if (y < PARA + 5) {
-      R.put(i, 3 - (y === PARA + 4 ? 1 : 0), M.TRIM, y === PARA ? 0.14 : 0);
+    if (y < PARA + 3) {
+      R.put(i, 3 - (y === PARA + 2 ? 1 : 0), M.TRIM, y === PARA ? 0.14 : 0);
       return;
     }
-    if (y >= 292) {
+    if (y >= 181) {
       R.put(i, 2, M.TRIM, -0.04);
       return;
     }
     if (b === 0) {
       // ossuary: rows of skulls with a course of long bones
-      const ly = y - PARA - 5;
-      if (ly >= 12 && ly < 16) {
-        const bu = (u + 2) % 22;
-        const knob = bu < 3 || bu > 18;
-        R.put(i, knob ? 2.5 : 1.8 - Math.abs(ly - 13.5) * 0.4, M.BONE, ly === 12 ? 0.05 : -0.05);
+      const ly = y - PARA - 3;
+      if (ly >= 8 && ly < 11) {
+        const bu = (u + 2) % 14;
+        const knob = bu < 2 || bu > 12;
+        R.put(i, knob ? 2.5 : 1.8 - Math.abs(ly - 9) * 0.4, M.BONE, ly === 8 ? 0.05 : -0.05);
         return;
       }
-      const row = ly < 12 ? 0 : 1;
-      const ry = ly < 12 ? ly : ly - 16;
-      const cu = (u + (row ? 4 : 0)) % 8;
-      const nx = (cu + 0.5 - 4) / 3.4;
-      const ny = (ry + 0.5 - 4.5) / 3.6;
+      const row = ly < 8 ? 0 : 1;
+      const ry = ly < 8 ? ly : ly - 11;
+      const cu = (u + (row ? 3 : 0)) % 6;
+      const nx = (cu + 0.5 - 3) / 2.6;
+      const ny = (ry + 0.5 - 3.5) / 2.9;
       const d = nx * nx + ny * ny;
       if (d < 1) {
-        const eye = ry >= 4 && ry <= 5 && (cu === 2 || cu === 5);
-        R.put(i, eye ? 0 : 1 + Math.sqrt(1 - d) * 2.2, eye ? M.DEEP : M.BONE, (hash2(Math.floor((u + (row ? 4 : 0)) / 8), row, 5) - 0.5) * 0.2);
+        const eye = ry === 3 && (Math.floor(cu) === 1 || Math.floor(cu) === 4);
+        R.put(i, eye ? 0 : 1 + Math.sqrt(1 - d) * 2.2, eye ? M.DEEP : M.BONE, (hash2(Math.floor((u + (row ? 3 : 0)) / 6), row, 5) - 0.5) * 0.2);
       } else R.put(i, -3, M.DEEP, 0);
       return;
     }
-    R.put(i, ashlar(x, y, 20, 9, 14) * 0.5, M.WALL, hit.t - 0.08);
+    R.put(i, ashlar(x, y, 16, 6, 14) * 0.5, M.WALL, hit.t - 0.08);
   });
   // sarcophagus before the parapet in the second bay
-  sarcophagus(R, MP + MCX - 42, MP + MCX + 42, 270, 300, 6);
+  sarcophagus(R, MP + MCX - 24, MP + MCX + 24, 167, 186, 6);
   // a pair of skulls on the parapet ledge
-  skull(R, MCX + 60, PARA - 4, 1, 6);
-  skull(R, MP + MCX - 70, PARA - 4, 1, 6);
+  skull(R, MCX + 32, PARA - 2.5, 0.65, 6);
+  skull(R, MP + MCX - 37, PARA - 2.5, 0.65, 6);
+  skull(R, 2 * MP + MCX + 18, PARA - 2.5, 0.65, 6);
   // niches in the pilasters
   const flames: [number, number][] = [];
   const nicheLights: [number, number][] = [];
-  for (let b = 0; b < 2; b++) {
+  for (let b = 0; b < 3; b++) {
     const px = b * MP;
-    flames.push(...niche(R, px, 196, 22, 34, 7, 3, 40 + b, M.TRIM));
-    nicheLights.push([px, 222]);
-    niche(R, px, 92, 16, 22, 7, 0, 50 + b, M.TRIM);
-    skull(R, px, 109, 1, 4);
+    flames.push(...niche(R, px, 121, 12, 21, 7, 3, 40 + b, M.TRIM));
+    nicheLights.push([px, 138]);
+    niche(R, px, 57, 9, 14, 7, 0, 50 + b, M.TRIM);
+    skull(R, px, 68, 0.65, 4);
   }
-  for (let b = 0; b < 2; b++) streaks(R, b * MP - 34, b * MP + 34, 20, 300, 61, [M.SHAFT, M.WALL, M.TRIM]);
+  for (let b = 0; b < 3; b++) streaks(R, b * MP - 18, b * MP + 18, 12, 186, 61, [M.SHAFT, M.WALL, M.TRIM]);
   // icicles: intrados, impost bands, cornice
-  for (let b = 0; b < 2; b++) {
+  for (let b = 0; b < 3; b++) {
     const cx = b * MP + MCX;
-    icicles(R, cx - MRA + 4, cx + MRA - 4, (x) => MYS - Math.sqrt(Math.max(0, MRA * MRA - (x + 0.5 - cx) ** 2)), 6, 70 + b, 0.3, 20);
-    icicles(R, b * MP - 30, b * MP + 30, () => MYS - 1, 10, 80 + b, 0.35, 12);
+    icicles(R, cx - MRA + 2.5, cx + MRA - 2.5, (x) => MYS - Math.sqrt(Math.max(0, MRA * MRA - (x + 0.5 - cx) ** 2)), 6, 70 + b, 0.3, 12);
+    icicles(R, b * MP - 16, b * MP + 16, () => MYS - 1, 10, 80 + b, 0.35, 7);
   }
-  icicles(R, 0, W - 1, () => 17, 4, 90, 0.08, 12);
+  icicles(R, 0, W - 1, () => 11, 4, 90, 0.08, 7);
   const lamps: [number, number][] = [];
-  for (let b = 0; b < 2; b++) {
+  for (let b = 0; b < 3; b++) {
     const cx = b * MP + MCX;
-    const len = b ? 74 : 104;
-    chain(R, cx, 17, 17 + len, 12);
-    lamps.push(cageLantern(R, cx, 17 + len, 1.1, 14));
+    const len = b === 1 ? 46 : 64;
+    chain(R, cx, 11, 11 + len, 12);
+    lamps.push(cageLantern(R, cx, 11 + len, 0.7, 14));
   }
   return {
     R,
     lights: (t) => [
-      ...lamps.map(([x, y]) => ({ x, y, z: 30, r: 150, c: t.lamp, k: 0.7 })),
-      ...nicheLights.map(([x, y]) => ({ x, y, z: 12, r: 50, c: t.candle, k: 1.1 })),
-      ...[0, 1].map((b) => ({ x: b * MP + MCX, y: 230, z: -60, r: 200, c: t.cold, k: 0.35 })),
+      ...lamps.map(([x, y]) => ({ x, y, z: 20, r: 93, c: t.lamp, k: 0.7 })),
+      ...nicheLights.map(([x, y]) => ({ x, y, z: 8, r: 31, c: t.candle, k: 1.1 })),
+      ...[0, 1, 2].map((b) => ({ x: b * MP + MCX, y: 143, z: -37, r: 124, c: t.cold, k: 0.35 })),
     ],
-    glows: (t) => [...lamps.map(([x, y]) => ({ x, y, r: 30, c: t.lamp, k: 0.35 })), ...flames.map(([x, y]) => ({ x, y, r: 12, c: t.candle, k: 0.3 }))],
+    glows: (t) => [...lamps.map(([x, y]) => ({ x, y, r: 19, c: t.lamp, k: 0.35 })), ...flames.map(([x, y]) => ({ x, y, r: 7, c: t.candle, k: 0.3 }))],
     opts: (t) => ({
       amb: 0.2,
       keyK: 0.28,
       fogC: t.fog,
-      fog: (y) => 0.22 + 0.12 * smooth(280, 360, y),
+      fog: (y) => 0.22 + 0.12 * smooth(174, 224, y),
       ao: 0.08,
       outline: 0.5,
       outlineC: [4, 6, 8],
@@ -855,36 +854,37 @@ function cryptMid(): TLayer {
       bias: (x, y, m) => {
         const u = wrapX(x) % MP;
         const d = Math.hypot(u - MCX, Math.min(0, y - MYS));
-        const band = y < MYS + 10 ? Math.max(0, 1 - Math.abs(d - MRA - 10) / 24) : 0;
-        return -0.2 + band * 0.3 + 0.26 * smooth(50, 10, y) + 0.22 * smooth(270, 300, y) + (m === M.BONE ? 0.08 : 0) + (m === X.ICE ? -0.1 : 0) + noFlame(m);
+        const band = y < MYS + 6 ? Math.max(0, 1 - Math.abs(d - MRA - 6) / 15) : 0;
+        return -0.2 + band * 0.3 + 0.26 * smooth(31, 6, y) + 0.22 * smooth(167, 186, y) + (m === M.BONE ? 0.08 : 0) + (m === X.ICE ? -0.1 : 0) + noFlame(m);
       },
-      sinews: [0, 1].flatMap((b) => {
+      sinews: [0, 1, 2].flatMap((b) => {
         const ox = b * MP;
         return [
-          [ox + MCX - MRA - 4, MYS - 4, ox + MCX + MRA + 4, MYS - 4, 50, 1.6],
-          [ox + 26, 120, ox + MCX - 60, 40, 30, 1.2],
+          [ox + MCX - MRA - 2.5, MYS - 2.5, ox + MCX + MRA + 2.5, MYS - 2.5, 28, 1.1],
+          [ox + 14, 74, ox + MCX - 32, 25, 18, 0.8],
         ] as [number, number, number, number, number, number][];
       }),
-      drips: [0, 1].flatMap((b) =>
+      drips: [0, 1, 2].flatMap((b) =>
         [0.15, 0.27, 0.42, 0.6, 0.74, 0.86].map((a, k) => {
           const ang = a * Math.PI;
-          return [b * MP + MCX + Math.cos(ang) * (MRA + 2), MYS - Math.sin(ang) * (MRA + 2), 12 + hash2(k, b, 3) * 40] as [number, number, number];
+          return [b * MP + MCX + Math.cos(ang) * (MRA + 1), MYS - Math.sin(ang) * (MRA + 1), 7 + hash2(k, b, 3) * 25] as [number, number, number];
         }),
       ),
       eyes: [
-        [MP, 150, 5],
-        [0, 60, 4],
-        [MCX + 130, 40, 3],
-        [MP + MCX, 284, 4],
+        [MP, 93, 3.2],
+        [0, 37, 2.6],
+        [MCX + 70, 25, 2.2],
+        [MP + MCX, 176, 2.6],
+        [2 * MP + 40, 60, 2.2],
       ],
       z: 8,
     },
     post: (pc, t) => {
-      cobweb(pc, MCX - MRA + 1, PARA - 1, 1, -1, 24, t.web, 0.5, 1);
-      cobweb(pc, MP + MCX + MRA - 1, PARA - 1, -1, -1, 30, t.web, 0.5, 2);
-      cobweb(pc, MCX + 34, 17, 1, 1, 22, t.web, 0.45, 3);
-      cobweb(pc, MP + MCX - MRA - 18, 17, -1, 1, 28, t.web, 0.4, 4);
-      mist(pc, 250, 340, t.mist, 0.35, 7, true);
+      cobweb(pc, MCX - MRA + 1, PARA - 1, 1, -1, 15, t.web, 0.5, 1);
+      cobweb(pc, MP + MCX + MRA - 1, PARA - 1, -1, -1, 18, t.web, 0.5, 2);
+      cobweb(pc, MCX + 20, 11, 1, 1, 14, t.web, 0.45, 3);
+      cobweb(pc, 2 * MP + MCX - MRA - 10, 11, -1, 1, 17, t.web, 0.4, 4);
+      mist(pc, 155, 211, t.mist, 0.35, 7, true);
     },
   };
 }
@@ -894,141 +894,141 @@ function cryptMid(): TLayer {
 // rubble, skulls and a toppled coffin at the bottom
 // ============================================================================
 
-const NPX = [120, 440];
-const NPW = 22;
+const NPX = [96, 352];
+const NPW = 14;
 
 function slabBottom(x: number): number {
   const xx = wrapX(x);
-  const bi = Math.floor(xx / 20);
-  return 12 + Math.floor(hash2(bi, 0, 71) * 14) + (hash2(bi, 1, 71) > 0.8 ? 8 : 0);
+  const bi = Math.floor(xx / 16);
+  return 7 + Math.floor(hash2(bi, 0, 71) * 9) + (hash2(bi, 1, 71) > 0.8 ? 5 : 0);
 }
 
 function cryptNear(): TLayer {
   const R = new Relief(W, H);
   // the slab lip across the top
-  R.box(0, 0, W - 1, 40, (x, y, i) => {
+  R.box(0, 0, W - 1, 25, (x, y, i) => {
     const bot = slabBottom(x);
     if (y >= bot) return;
-    const hh = ashlar(x, y, 20, 9, 72);
+    const hh = ashlar(x, y, 16, 6, 72);
     const lowest = y >= bot - 2;
-    R.put(i, 16 + hh * 1.4, hash2(x >> 1, y >> 1, 3) > 0.85 && y > 8 ? X.MOSS : M.TRIM, hit.t + (lowest ? 0.22 : 0.08));
+    R.put(i, 16 + hh * 1.4, hash2(x >> 1, y >> 1, 3) > 0.85 && y > 5 ? X.MOSS : M.TRIM, hit.t + (lowest ? 0.22 : 0.08));
   });
   // heavy square pillars
   for (const px of NPX) {
-    R.box(px - NPW - 8, 0, px + NPW + 8, H - 1, (x, y, i) => {
+    R.box(px - NPW - 5, 0, px + NPW + 5, H - 1, (x, y, i) => {
       const ax = Math.abs(x + 0.5 - px);
-      const capTop = 20;
-      if (y >= capTop && y < capTop + 14) {
-        const k = (y - capTop) / 14;
-        const half = NPW + 7 - k * 5;
+      const capTop = 12;
+      if (y >= capTop && y < capTop + 9) {
+        const k = (y - capTop) / 9;
+        const half = NPW + 4.5 - k * 3;
         if (ax > half) return;
-        R.put(i, 22 + (k < 0.3 ? 1 : 0) - (ax > half - 1 ? 1 : 0), M.TRIM, y === capTop ? 0.12 : k > 0.9 ? -0.1 : 0);
+        R.put(i, 22 + (k < 0.3 ? 1 : 0) - (ax > half - 1 ? 1 : 0), M.TRIM, y === capTop ? 0.12 : k > 0.85 ? -0.1 : 0);
         return;
       }
-      if (y >= 312) {
-        const half = NPW + 6 - (y < 316 ? 3 : 0);
+      if (y >= 193) {
+        const half = NPW + 4 - (y < 196 ? 2 : 0);
         if (ax > half) return;
-        R.put(i, 22 - (ax > half - 1 ? 1 : 0), M.TRIM, y === 312 ? 0.1 : -0.04);
+        R.put(i, 22 - (ax > half - 1 ? 1 : 0), M.TRIM, y === 193 ? 0.1 : -0.04);
         return;
       }
       if (y < capTop) {
-        if (ax > NPW + 2) return;
+        if (ax > NPW + 1.5) return;
         R.put(i, 20, M.TRIM, -0.1);
         return;
       }
       if (ax > NPW) return;
-      const ch = ax > NPW - 3 ? (NPW - ax) * 0.7 : 2.1;
-      const hh = ashlar(x + px, y, 40, 16, 74 + px);
-      R.put(i, 18 + ch + hh * 1.1, y > 290 - pnoise(x, 0, 6, 3, W) * 20 ? X.MOSS : M.SHAFT, hit.t * 0.7);
+      const ch = ax > NPW - 2 ? (NPW - ax) * 0.7 : 1.4;
+      const hh = ashlar(x + px, y, 32, 10, 74 + px);
+      R.put(i, 18 + ch + hh * 1.1, y > 180 - pnoise(x, 0, 6, 3, W) * 12 ? X.MOSS : M.SHAFT, hit.t * 0.7);
     });
-    icicles(R, px - NPW - 6, px + NPW + 6, () => 34, 22, 100 + px, 0.4, 16);
+    icicles(R, px - NPW - 4, px + NPW + 4, () => 21, 22, 100 + px, 0.4, 10);
   }
-  for (const px of NPX) streaks(R, px - NPW, px + NPW, 30, 300, 103, [M.SHAFT]);
+  for (const px of NPX) streaks(R, px - NPW, px + NPW, 19, 186, 103, [M.SHAFT]);
   // icicles off the slab, and two big ice stalactites
-  icicles(R, 0, W - 1, slabBottom, 18, 104, 0.35, 26, 3);
+  icicles(R, 0, W - 1, slabBottom, 18, 104, 0.35, 16, 2);
   for (const [sx, len] of [
-    [262, 64],
-    [574, 46],
+    [210, 40],
+    [459, 29],
   ] as [number, number][]) {
     const top = slabBottom(sx);
-    R.box(sx - 8, top - 2, sx + 8, top + len, (x, y, i) => {
+    R.box(sx - 5, top - 2, sx + 5, top + len, (x, y, i) => {
       const k = (y - top) / len;
-      const wob = Math.sin(y * 0.4 + sx) * 0.8;
-      const half = 6 * Math.pow(1 - k, 1.4) + 0.3;
+      const wob = Math.sin(y * 0.5 + sx) * 0.5;
+      const half = 4 * Math.pow(1 - k, 1.4) + 0.3;
       const dx = x + 0.5 - sx - wob * k;
       if (Math.abs(dx) > half) return;
-      const rib = Math.abs(Math.sin(dx * 1.3 + y * 0.05)) < 0.3;
-      R.put(i, 20 + Math.sqrt(Math.max(0, 1 - (dx / (half + 0.3)) ** 2)) * 4, X.ICE, rib ? 0.1 : -0.02);
+      const rib = Math.abs(Math.sin(dx * 1.6 + y * 0.08)) < 0.3;
+      R.put(i, 20 + Math.sqrt(Math.max(0, 1 - (dx / (half + 0.3)) ** 2)) * 3, X.ICE, rib ? 0.1 : -0.02);
     });
   }
   // lanterns
   const lamps: [number, number][] = [];
-  chain(R, 300, 0, 140, 24);
-  lamps.push(cageLantern(R, 300, 140, 1.5, 26));
-  chain(R, 600, 0, 66, 24);
-  lamps.push(cageLantern(R, 600, 66, 1.2, 26));
+  chain(R, 240, 0, 87, 24);
+  lamps.push(cageLantern(R, 240, 87, 0.95, 26));
+  chain(R, 480, 0, 41, 24);
+  lamps.push(cageLantern(R, 480, 41, 0.75, 26));
   // bottom: rubble, skull pile, coffin lid leaning on a pillar, sarcophagus
-  rubble(R, 176, 300, H, 44, 16, 3);
-  rubble(R, 480, 560, H, 26, 16, 7);
+  rubble(R, 141, 240, H, 27, 16, 3);
+  rubble(R, 384, 448, H, 16, 16, 7);
   for (const [sx, sy] of [
-    [470, 352],
-    [478, 349],
-    [486, 353],
-    [474, 344],
-    [482, 342],
+    [376, 218],
+    [382, 216],
+    [389, 219],
+    [379, 213],
+    [386, 212],
   ] as [number, number][])
-    skull(R, sx, sy, 1, 24);
-  R.box(140, 290, 190, H - 1, (x, y, i) => {
+    skull(R, sx, sy, 0.65, 24);
+  R.box(112, 180, 152, H - 1, (x, y, i) => {
     // a wooden coffin lid propped at an angle against the left pillar
-    const t = (y - 296) / 64;
-    const cx = 146 + t * 28;
-    const half = 7 + Math.min(t, 1 - t) * 6;
+    const t = (y - 184) / 40;
+    const cx = 117 + t * 17;
+    const half = 4.5 + Math.min(t, 1 - t) * 4;
     const dx = x + 0.5 - cx;
-    if (y < 296 || Math.abs(dx) > half) return;
-    const plank = Math.abs(dx) % 5 < 0.8;
-    const band = Math.abs(t - 0.25) < 0.02 || Math.abs(t - 0.7) < 0.02;
+    if (y < 184 || Math.abs(dx) > half) return;
+    const plank = Math.abs(dx) % 3.2 < 0.6;
+    const band = Math.abs(t - 0.25) < 0.03 || Math.abs(t - 0.7) < 0.03;
     R.put(i, 26 + (band ? 1.2 : 0) - (Math.abs(dx) > half - 1 ? 0.8 : 0), band ? M.IRON : M.WOOD, plank ? -0.15 : (hash2(x, y >> 2, 5) - 0.5) * 0.1);
   });
-  sarcophagus(R, 330, 410, 318, 352, 18);
-  R.box(320, 352, 420, H - 1, (x, y, i) => R.put(i, 18, M.TRIM, -0.1));
+  sarcophagus(R, 264, 328, 197, 218, 18);
+  R.box(256, 218, 336, H - 1, (x, y, i) => R.put(i, 18, M.TRIM, -0.1));
   return {
     R,
     lights: (t) => [
-      ...lamps.map(([x, y]) => ({ x, y, z: 46, r: 200, c: t.lamp, k: 0.95 })),
-      { x: 280, y: -80, z: 80, r: 360, c: t.cold, k: 0.28 },
-      ...NPX.map((px) => ({ x: px + 70, y: 200, z: 10, r: 120, c: t.cold, k: 0.3 })),
+      ...lamps.map(([x, y]) => ({ x, y, z: 28, r: 124, c: t.lamp, k: 0.95 })),
+      { x: 224, y: -50, z: 50, r: 223, c: t.cold, k: 0.28 },
+      ...NPX.map((px) => ({ x: px + 44, y: 124, z: 6, r: 75, c: t.cold, k: 0.3 })),
     ],
-    glows: (t) => lamps.map(([x, y]) => ({ x, y, r: 40, c: t.lamp, k: 0.36 })),
+    glows: (t) => lamps.map(([x, y]) => ({ x, y, r: 25, c: t.lamp, k: 0.36 })),
     opts: (t) => ({ amb: 0.16, keyK: 0.24, ao: 0.07, outline: 0.55, outlineC: [3, 5, 6], fogC: t.fog, fog: () => 0.06 }),
     rot: {
       seed: 251,
-      bias: (x, y, m) => -0.18 + 0.3 * smooth(50, 0, y) + 0.22 * smooth(300, 340, y) + (m === M.SHAFT ? 0.06 : 0) + (m === M.WOOD ? 0.05 : 0) + noFlame(m),
+      bias: (x, y, m) => -0.18 + 0.3 * smooth(31, 0, y) + 0.22 * smooth(186, 211, y) + (m === M.SHAFT ? 0.06 : 0) + (m === M.WOOD ? 0.05 : 0) + noFlame(m),
       sinews: [
-        [NPX[0] + NPW, 60, NPX[0] + 150, 22, 40, 2],
-        [NPX[1] - NPW, 90, NPX[1] - 110, 26, 46, 1.8],
-        [NPX[1] + NPW, 50, NPX[1] + 200, 24, 60, 2.2],
+        [NPX[0] + NPW, 37, NPX[0] + 93, 14, 25, 1.3],
+        [NPX[1] - NPW, 56, NPX[1] - 68, 16, 28, 1.2],
+        [NPX[1] + NPW, 31, NPX[1] + 124, 15, 37, 1.4],
       ],
       drips: [
-        [NPX[0] - 10, 34, 50],
-        [NPX[0] + 14, 34, 26],
-        [NPX[1] + 4, 34, 60],
-        [210, 24, 40],
-        [380, 22, 30],
-        [520, 30, 20],
+        [NPX[0] - 6, 21, 31],
+        [NPX[0] + 9, 21, 16],
+        [NPX[1] + 3, 21, 37],
+        [168, 15, 25],
+        [304, 14, 19],
+        [416, 19, 12],
       ],
       eyes: [
-        [NPX[0], 160, 5],
-        [NPX[1] + 4, 230, 4],
-        [60, 14, 4],
-        [250, 336, 4],
+        [NPX[0], 99, 3.2],
+        [NPX[1] + 3, 143, 2.6],
+        [48, 9, 2.6],
+        [200, 208, 2.6],
       ],
       z: 20,
     },
     post: (pc, t) => {
-      cobweb(pc, NPX[0] + NPW + 7, 33, 1, 1, 34, t.web, 0.55, 11);
-      cobweb(pc, NPX[1] - NPW - 7, 33, -1, 1, 26, t.web, 0.5, 12);
-      cobweb(pc, NPX[1] + NPW + 7, 33, 1, 1, 18, t.web, 0.45, 13);
-      mist(pc, 300, 360, t.mist, 0.3, 9);
+      cobweb(pc, NPX[0] + NPW + 4.5, 20, 1, 1, 21, t.web, 0.55, 11);
+      cobweb(pc, NPX[1] - NPW - 4.5, 20, -1, 1, 16, t.web, 0.5, 12);
+      cobweb(pc, NPX[1] + NPW + 4.5, 20, 1, 1, 11, t.web, 0.45, 13);
+      mist(pc, 186, 224, t.mist, 0.3, 9);
     },
   };
 }
@@ -1041,52 +1041,52 @@ function cryptFg(): TLayer {
   const R = new Relief(W, H);
   const fragBot = (x: number) => {
     const xx = wrapX(x);
-    const inA = xx < 120 || xx > 600;
-    const inB = xx > 380 && xx < 470;
+    const inA = xx < 96 || xx > 480;
+    const inB = xx > 304 && xx < 376;
     if (!inA && !inB) return -1;
-    const k = inA ? Math.sin(((xx + 40) % W) / 160 * Math.PI) : Math.sin(((xx - 380) / 90) * Math.PI);
-    return 4 + Math.max(0, k) * 26 + (hash2(xx >> 3, 0, 5) - 0.5) * 8;
+    const k = inA ? Math.sin((((xx + 32) % W) / 128) * Math.PI) : Math.sin(((xx - 304) / 72) * Math.PI);
+    return 2.5 + Math.max(0, k) * 16 + (hash2(xx >> 3, 0, 5) - 0.5) * 5;
   };
-  R.box(0, 0, W - 1, 44, (x, y, i) => {
+  R.box(0, 0, W - 1, 27, (x, y, i) => {
     const b = fragBot(x);
     if (b < 0 || y >= b) return;
-    const hh = ashlar(x, y, 16, 8, 120);
+    const hh = ashlar(x, y, 16, 5, 120);
     R.put(i, 30 + hh, M.TRIM, hit.t - 0.08);
   });
-  icicles(R, 0, W - 1, fragBot, 30, 121, 0.4, 24, 3);
-  chain(R, 300, 0, 34, 30);
-  rubble(R, 120, 270, H + 6, 30, 26, 11);
-  skull(R, 196, H - 26, 1.4, 34);
-  R.box(470, 320, 620, H - 1, (x, y, i) => {
+  icicles(R, 0, W - 1, fragBot, 30, 121, 0.4, 15, 2);
+  chain(R, 240, 0, 21, 30);
+  rubble(R, 96, 216, H + 4, 19, 26, 11);
+  skull(R, 157, H - 16, 0.9, 34);
+  R.box(376, 198, 496, H - 1, (x, y, i) => {
     // a broken coffin box, its lid fallen askew
-    const lx = x - 480;
-    const top = 336 + lx * 0.04;
-    if (lx >= 0 && lx < 120 && y >= top) {
-      R.put(i, 28 + (y < top + 2 ? 1 : 0), M.WOOD, lx % 12 < 1 ? -0.2 : 0);
+    const lx = x - 384;
+    const top = 208 + lx * 0.04;
+    if (lx >= 0 && lx < 96 && y >= top) {
+      R.put(i, 28 + (y < top + 1.5 ? 1 : 0), M.WOOD, lx % 8 < 1 ? -0.2 : 0);
       return;
     }
-    const t = (x - 470) / 70;
-    const ly = 330 - t * 14;
-    if (t >= 0 && t <= 1 && y >= ly && y < ly + 5) R.put(i, 31, M.WOOD, y === Math.floor(ly) ? 0.1 : 0);
+    const t = (x - 376) / 43;
+    const ly = 205 - t * 9;
+    if (t >= 0 && t <= 1 && y >= ly && y < ly + 3) R.put(i, 31, M.WOOD, y === Math.floor(ly) ? 0.1 : 0);
   });
   return {
     R,
     lights: (t) => [
-      { x: 320, y: 200, z: 70, r: 400, c: t.cold, k: 0.15 },
-      { x: 300, y: 140, z: 60, r: 220, c: t.lamp, k: 0.14 },
+      { x: 256, y: 124, z: 43, r: 248, c: t.cold, k: 0.15 },
+      { x: 240, y: 87, z: 37, r: 136, c: t.lamp, k: 0.14 },
     ],
     glows: () => [],
     opts: () => ({ amb: 0.06, keyK: 0.1, ao: 0.05, outline: 0.7, outlineC: [2, 3, 4] }),
     rot: {
       seed: 271,
-      bias: (x, y) => 0.02 + 0.1 * smooth(330, 360, y),
+      bias: (x, y) => 0.02 + 0.1 * smooth(205, 224, y),
       drips: [
-        [40, 20, 30],
-        [90, 26, 22],
-        [420, 26, 26],
-        [620, 10, 18],
+        [32, 12, 19],
+        [72, 16, 14],
+        [336, 16, 16],
+        [496, 6, 11],
       ],
-      sinews: [[40, 24, 300, 10, 26, 2.2]],
+      sinews: [[32, 15, 240, 6, 16, 1.4]],
       z: 30,
     },
   };

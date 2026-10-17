@@ -1,4 +1,9 @@
 import Phaser from 'phaser';
+import { addSnesPost } from '../game/snespost';
+import { UI_K, uiH, uiW } from '../ui/uispace';
+
+/** The title nave's floor row (16-px tiles) on the 224-px screen. */
+const TITLE_FLOOR = 12;
 import { P, hexNum } from '../art/palette';
 import { registerImage } from '../art/pixel';
 import { drawSaint } from '../art/environment/props';
@@ -21,7 +26,6 @@ import { buildHeroSheet } from '../art/hero';
 import { lookFromSeed } from '../art/look';
 import { txt } from '../ui/text';
 
-const FLOOR_ROW = 17;
 
 /**
  * The title: a lone penitent kneels in the drowned nave before a saint who
@@ -32,6 +36,7 @@ export class TitleScene extends Phaser.Scene {
   private backdrop!: Backdrop;
   private gore!: Gore;
   private drift = 0;
+  private uiCam: Phaser.Cameras.Scene2D.Camera | null = null;
 
   constructor() {
     super('Title');
@@ -40,8 +45,17 @@ export class TitleScene extends Phaser.Scene {
   create() {
     this.started = false;
     this.drift = 0;
+    // The nave renders at native SNES pixels; the title and menu sit on a
+    // second camera laid out in UI space (see ui/uispace.ts).
     const W = this.scale.width;
-    const H = this.scale.height;
+    const UW = uiW(this);
+    const H = uiH(this);
+    const uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height).setZoom(UI_K).setOrigin(0, 0).setRoundPixels(false);
+    this.uiCam = uiCam;
+    let uiMode = false;
+    const route = (go: Phaser.GameObjects.GameObject) => (uiMode ? this.cameras.main.ignore(go) : uiCam.ignore(go));
+    this.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, route);
+    this.events.once('shutdown', () => this.events.off(Phaser.Scenes.Events.ADDED_TO_SCENE, route));
     if (!this.scene.isActive('Hud')) this.scene.launch('Hud');
     this.scene.bringToTop('Hud');
     hud(this).setControlsVisible?.(false);
@@ -51,55 +65,55 @@ export class TitleScene extends Phaser.Scene {
     this.backdrop = new Backdrop(this, 'marble');
     const cols = Math.ceil(W / 16) + 5;
     const rows: string[] = [];
-    for (let y = 0; y < FLOOR_ROW; y++) rows.push('.'.repeat(cols));
+    for (let y = 0; y < TITLE_FLOOR; y++) rows.push('.'.repeat(cols));
     rows.push('#'.repeat(cols));
     const level = new Level(this, { name: 'title', kind: 'hub', rows }, 'marble');
     this.gore = new Gore(this, level);
-    const floorY = FLOOR_ROW * 16;
-    const cx = W / 2 + 18; // the camera breathes around x = 18
+    const floorY = TITLE_FLOOR * 16;
+    const cx = W / 2 + 11; // the camera breathes around x = 11
 
     // A great saint, rendered at double detail, weeping into a pool
     if (!this.textures.exists('prop-saint-big')) registerImage(this, 'prop-saint-big', drawSaint(false, 2));
-    const saintX = cx + Math.min(150, W * 0.24);
+    const saintX = cx + Math.min(93, W * 0.24);
     this.add.image(saintX, floorY, 'prop-saint-big').setOrigin(0.5, 1).setDepth(DEPTH.props);
     this.gore.pool(saintX, floorY, 3);
-    for (let i = 0; i < 14; i++) this.gore.splat(saintX + (Math.random() - 0.5) * 120, floorY - 1, 0.5 + Math.random() * 0.7, i % 2 ? P.blood2 : P.blood3);
+    for (let i = 0; i < 14; i++) this.gore.splat(saintX + (Math.random() - 0.5) * 75, floorY - 1, 0.5 + Math.random() * 0.7, i % 2 ? P.blood2 : P.blood3);
     // Tears of blood run down from her eyes, endlessly
     this.time.addEvent({
       delay: 260,
       loop: true,
       callback: () => {
         const side = Math.random() < 0.5 ? -1 : 1;
-        this.gore.spray(saintX + side * 7, floorY - 158, Math.PI / 2, 1, 0.15, 0.2);
+        this.gore.spray(saintX + side * 4, floorY - 99, Math.PI / 2, 1, 0.15, 0.2);
       },
     });
 
     // Confessional booths, candles and cages framing the scene
-    this.add.image(cx - Math.min(210, W * 0.36), floorY, 'prop-booth').setOrigin(0.5, 1).setDepth(DEPTH.props);
-    this.add.image(cx + Math.min(290, W * 0.46), floorY, 'prop-booth').setOrigin(0.5, 1).setDepth(DEPTH.props).setFlipX(true);
-    for (const dx of [-120, -40, 70, 230]) this.add.sprite(cx + dx, floorY, 'candelabra').setOrigin(0.5, 1).play('candelabra:flicker').setDepth(DEPTH.props + 1);
-    for (const [dx, y] of [[-170, 0], [40, -20], [210, -10]] as const) {
+    this.add.image(cx - Math.min(130, W * 0.36), floorY, 'prop-booth').setOrigin(0.5, 1).setDepth(DEPTH.props);
+    this.add.image(cx + Math.min(180, W * 0.46), floorY, 'prop-booth').setOrigin(0.5, 1).setDepth(DEPTH.props).setFlipX(true);
+    for (const dx of [-75, -25, 43, 143]) this.add.sprite(cx + dx, floorY, 'candelabra').setOrigin(0.5, 1).play('candelabra:flicker').setDepth(DEPTH.props + 1);
+    for (const [dx, y] of [[-105, 0], [25, -12], [130, -6]] as const) {
       const cage = this.add.image(cx + dx, y, 'prop-cage').setOrigin(0.5, 0).setDepth(DEPTH.props - 1);
       this.tweens.add({ targets: cage, angle: { from: -2, to: 2 }, duration: 3000 + Math.random() * 1500, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     }
     // Hanging chains swaying in a draught that should not exist down here
-    for (const dx of [-260, -90, 120, 300]) {
-      const len = 6 + Math.floor(Math.random() * 6);
+    for (const dx of [-160, -56, 75, 186]) {
+      const len = 4 + Math.floor(Math.random() * 4);
       const c = this.add.container(cx + dx, 0).setDepth(DEPTH.props - 2);
       for (let i = 0; i < len; i++) c.add(this.add.image(0, i * 16, 'hang-chain').setOrigin(0.5, 0));
       this.tweens.add({ targets: c, angle: { from: -1.5, to: 1.5 }, duration: 2600 + Math.random() * 1200, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     }
 
     // The penitent, kneeling in a shaft of false daylight
-    const heroX = cx - 40;
+    const heroX = cx - 25;
     const shaft = this.add.image(heroX, 0, 'prop-grate-light').setOrigin(0.5, 0).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.light).setAlpha(0.6);
-    shaft.setScale(1.3, (floorY + 10) / shaft.height);
+    shaft.setScale(1.1, (floorY + 10) / shaft.height);
     this.tweens.add({ targets: shaft, alpha: 0.35, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-    this.add.sprite(heroX, floorY, 'player').setOrigin(0.5, 90 / 96).play('player:kneel').setDepth(DEPTH.player);
+    this.add.sprite(heroX, floorY, 'player').setOrigin(29 / 64, 52 / 56).play('player:kneel').setDepth(DEPTH.player);
     this.gore.pool(heroX, floorY, 1.2);
     const glow = (x: number, y: number, r: string, a: number) => this.add.image(x, y, r).setBlendMode(Phaser.BlendModes.ADD).setTint(hexNum('#ffb050')).setAlpha(a).setDepth(DEPTH.light);
-    for (const dx of [-120, -40, 70, 230]) {
-      const l = glow(cx + dx, floorY - 44, 'light-lg', 0.35);
+    for (const dx of [-75, -25, 43, 143]) {
+      const l = glow(cx + dx, floorY - 27, 'light-lg', 0.35);
       this.tweens.add({ targets: l, alpha: 0.22, duration: 160 + Math.random() * 200, yoyo: true, repeat: -1 });
     }
 
@@ -112,8 +126,8 @@ export class TitleScene extends Phaser.Scene {
         .setDepth(DEPTH.fx);
       this.tweens.add({
         targets: mote,
-        y: mote.y - 40 - Math.random() * 60,
-        x: mote.x + (Math.random() - 0.5) * 40,
+        y: mote.y - 25 - Math.random() * 37,
+        x: mote.x + (Math.random() - 0.5) * 25,
         alpha: 0,
         duration: 4000 + Math.random() * 5000,
         repeat: -1,
@@ -125,10 +139,12 @@ export class TitleScene extends Phaser.Scene {
     if (this.cameras.main.postFX) {
       this.cameras.main.postFX.addVignette(0.5, 0.45, 0.85, 0.35);
     }
+    addSnesPost(this);
 
     // --- The title -------------------------------------------------------------
+    uiMode = true;
     const ty = Math.round(H * 0.17);
-    const ux = W / 2; // screen-space centre for the UI
+    const ux = UW / 2; // screen-space centre for the UI
     const frame = this.add.graphics().setDepth(DEPTH.overlay).setScrollFactor(0);
         const gold = hexNum('#c9a45c');
     const dark = hexNum('#5a4020');
@@ -154,7 +170,9 @@ export class TitleScene extends Phaser.Scene {
     for (const o of [frame, title1, title2]) o.setAlpha(0);
     this.tweens.add({ targets: [frame, title1, title2], alpha: 1, duration: 1800, delay: 400 });
     // Blood seeps from the title, now and then
-    this.time.addEvent({ delay: 700, loop: true, callback: () => this.gore.spray(cx - 40 + Math.random() * 80, ty + 44, Math.PI / 2, 1, 0.1, 0.2) });
+    uiMode = false;
+    this.time.addEvent({ delay: 700, loop: true, callback: () => this.gore.spray(this.cameras.main.scrollX + W / 2 - 25 + Math.random() * 50, (ty + 44) * UI_K, Math.PI / 2, 1, 0.1, 0.2) });
+    uiMode = true;
 
     const m = meta();
     if (new URLSearchParams(location.search).has('splash')) return; // capture mode for the loading splash
@@ -165,7 +183,7 @@ export class TitleScene extends Phaser.Scene {
       { label: 'Credits', act: () => this.credits() },
       ...(m.seenIntro ? [{ label: 'Forget Everything', act: () => this.forget() }] : []),
     ];
-    const rx = W - Math.max(24, Math.round(W * 0.06));
+    const rx = UW - Math.max(24, Math.round(UW * 0.06));
     const top = Math.round(H * 0.52);
     const menuRows = items.map((it, i) => {
       const y = top + i * 24 + (i > 0 && items[0].sub ? 10 : 0);
@@ -213,6 +231,7 @@ export class TitleScene extends Phaser.Scene {
       else if (ev.key === 'ArrowUp' || ev.key === 'w') select((sel + menuRows.length - 1) % menuRows.length);
       else if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'e' || ev.key === 'j') choose();
     });
+    uiMode = false;
     this.events.once('shutdown', () => this.gore.destroy());
   }
 
@@ -222,7 +241,7 @@ export class TitleScene extends Phaser.Scene {
     // A slow, breathing drift through the nave's parallax
     this.drift += dt;
     const cam = this.cameras.main;
-    cam.scrollX = 18 + Math.sin(this.drift * 0.12) * 18;
+    cam.scrollX = 11 + Math.sin(this.drift * 0.12) * 11;
     this.backdrop.update();
   }
 
@@ -253,6 +272,7 @@ export class TitleScene extends Phaser.Scene {
     sfx(this, 'bell_distant', { volume: 0.8 });
     loop(this, 'amb_hub', 'amb', 0.6);
     this.cameras.main.fadeOut(900, 11, 5, 7);
+    this.uiCam?.fadeOut(900, 11, 5, 7);
     this.time.delayedCall(950, () => {
       hud(this).setControlsVisible(true);
       if (!meta().seenIntro) this.scene.start('Intro');

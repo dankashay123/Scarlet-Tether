@@ -32,8 +32,8 @@ export class Bartholomew extends Enemy {
 
   constructor(world: World, x: number, y: number) {
     ensureBossSheet(world.sc);
-    super(world, x, y, 'bart', BART, 90, 190, 560, 170);
-    this.hurtR = 44;
+    super(world, x, y, 'bart', BART, 54, 114, 560, 170);
+    this.hurtR = 26;
     this.tearValue = 60;
     this.knockResist = 0;
     this.face = -1;
@@ -41,12 +41,12 @@ export class Bartholomew extends Enemy {
     // The booth is immovable and too tall to climb.
     const tx = Math.floor(x / TILE);
     const ty = Math.floor(y / TILE);
-    for (let dx = -2; dx <= 2; dx++) for (let dy = 1; dy <= 7; dy++) world.level.setSolid(tx + dx, ty - dy, true);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = 1; dy <= 5; dy++) world.level.setSolid(tx + dx, ty - dy, true);
   }
 
   /** Strikes land on the bloated body, not the top of the booth. */
   get cy() {
-    return this.y - 70;
+    return this.y - 42;
   }
 
   get targetable() {
@@ -66,12 +66,12 @@ export class Bartholomew extends Enemy {
     const w = this.world;
     this.beingExecuted = false;
     this.hp -= this.maxHp * 0.12;
-    w.gore.gibs(this.x - 30, this.cy, 6, -80);
-    w.gore.spray(this.x - 30, this.cy, Math.PI + 0.3, 80, 1.6);
-    w.gore.entrail(this.x - 30, this.cy, 1.4);
-    w.gore.entrail(this.x - 30, this.cy, 1.4);
-    w.gore.mist(this.x - 30, this.cy, 1.2);
-    w.fx.text(this.x, this.y - 200, 'Absolved', P.blood0, 20, 1200);
+    w.gore.gibs(this.x - 18, this.cy, 6, -80);
+    w.gore.spray(this.x - 18, this.cy, Math.PI + 0.3, 80, 1.6);
+    w.gore.entrail(this.x - 18, this.cy, 1.4);
+    w.gore.entrail(this.x - 18, this.cy, 1.4);
+    w.gore.mist(this.x - 18, this.cy, 1.2);
+    w.fx.text(this.x, this.y - 120, 'Absolved', P.blood0, 20, 1200);
     this.poise = this.maxPoise;
     this.setState('recover');
     this.play(this.phase >= 2 ? 'idle2' : 'idle');
@@ -107,18 +107,18 @@ export class Bartholomew extends Enemy {
     this.onPhase?.(n);
     if (n === 2) {
       this.play('vomit');
-      w.gore.bile(this.x - 20, this.y - 90, 40);
-      w.fx.sparks(this.x - 20, this.y - 90, 14, P.bone0);
+      w.gore.bile(this.x - 12, this.y - 54, 40);
+      w.fx.sparks(this.x - 12, this.y - 54, 14, P.bone0);
       w.sc.time.delayedCall(1400, () => {
         this.transition = false;
         this.play('idle2');
       });
     } else {
       this.play('earless');
-      w.gore.fountain(this.x, this.y - 190, 2200, -Math.PI / 2 - 0.3);
-      w.gore.explode(this.x - 20, this.y - 180, 1.8, -1);
+      w.gore.fountain(this.x, this.y - 114, 2200, -Math.PI / 2 - 0.3);
+      w.gore.explode(this.x - 12, this.y - 108, 1.8, -1);
       w.sc.time.delayedCall(500, () => {
-        this.ear = new Ear(w, this.x - 30, this.y - 170, this);
+        this.ear = new Ear(w, this.x - 18, this.y - 102, this);
         w.enemies.push(this.ear);
         this.transition = false;
       });
@@ -130,14 +130,14 @@ export class Bartholomew extends Enemy {
     this.ear = null;
     this.hp = 0;
     hudState.bossHp = 0;
-    w.fx.text(this.x, this.y - 210, BOSS_LINES.death, P.bone0, 10, 3200);
+    w.fx.text(this.x, this.y - 126, BOSS_LINES.death, P.bone0, 10, 3200);
     for (const p of this.pools) p.destroy();
     this.pools = [];
     w.sc.time.delayedCall(900, () => {
       super.kill(false, true);
       // He comes apart in stages: belly, chest, the mouth that confessed it all
       for (let i = 0; i < 4; i++)
-        w.sc.time.delayedCall(i * 260, () => w.gore.explode(this.x + (Math.random() - 0.5) * 60, this.y - 60 - i * 40, 2.4, i % 2 ? 1 : -1));
+        w.sc.time.delayedCall(i * 260, () => w.gore.explode(this.x + (Math.random() - 0.5) * 60, this.y - 36 - i * 24, 2.4, i % 2 ? 1 : -1));
       this.play('dead');
       this.onDefeat?.();
     });
@@ -164,7 +164,7 @@ export class Bartholomew extends Enemy {
         this.play(idle);
         if (this.cooldown <= 0) {
           const r = Math.random();
-          if (dx < 110) this.moveName = 'grasp';
+          if (dx < 70) this.moveName = 'grasp';
           else if (this.phase === 2 && r < 0.3) this.moveName = 'vomit';
           else this.moveName = r < 0.6 ? 'wave' : 'globs';
           this.setState('windup');
@@ -178,9 +178,9 @@ export class Bartholomew extends Enemy {
         this.sprite.x = Math.round(this.x) + (Math.floor(this.stateT * 24) % 2 ? 1 : 0);
         if (this.moveName === 'grasp') {
           const k = this.stateT / dur;
-          const x0 = this.x - 140;
-          this.tele.clear().fillStyle(hexNum(P.blood2), 0.28 * k).fillRect(x0, this.y - 40, 110 * k, 40);
-          this.tele.lineStyle(1, hexNum(P.blood1), 0.8).strokeRect(x0, this.y - 40, 110, 40);
+          const x0 = this.x - 84;
+          this.tele.clear().fillStyle(hexNum(P.blood2), 0.28 * k).fillRect(x0, this.y - 24, 66 * k, 24);
+          this.tele.lineStyle(1, hexNum(P.blood1), 0.8).strokeRect(x0, this.y - 24, 66, 24);
         }
         if (this.stateT > dur) {
           this.tele.clear();
@@ -189,7 +189,7 @@ export class Bartholomew extends Enemy {
         break;
       }
       case 'attack':
-        if (this.moveName === 'grasp') this.strike(this.x - 85, this.y - 20, 55, 24);
+        if (this.moveName === 'grasp') this.strike(this.x - 51, this.y - 12, 34, 24);
         if (this.stateT > 0.35) {
           this.setState('recover');
           this.play(idle);
@@ -207,14 +207,14 @@ export class Bartholomew extends Enemy {
   private release() {
     const w = this.world;
     this.setState('attack');
-    const mouthX = this.x - 30;
-    const mouthY = this.y - 80;
+    const mouthX = this.x - 18;
+    const mouthY = this.y - 48;
     if (this.moveName === 'vomit') {
       this.play('vomit');
       sfx(w.sc, 'spit', { rate: 0.5 });
       for (let i = 0; i < 3; i++) {
         if (this.pools.length >= 7) break;
-        const tx = i === 0 ? this.player.x : 60 + Math.random() * (this.x - 180);
+        const tx = i === 0 ? this.player.x : 60 + Math.random() * (this.x - 108);
         const t = 0.8;
         w.addProjectile({
           x: mouthX,
@@ -226,7 +226,7 @@ export class Bartholomew extends Enemy {
           gravity: 600,
           key: 'proj-sludge',
           onEnd: (x) => {
-            const fy = w.level.floorY(x, this.y - 40) ?? this.y;
+            const fy = w.level.floorY(x, this.y - 24) ?? this.y;
             this.pools.push(new MalicePool(w, x, fy));
             w.gore.bile(x, fy - 4, 12);
             sfx(w.sc, 'sludge');
@@ -240,7 +240,7 @@ export class Bartholomew extends Enemy {
     sfx(w.sc, 'sludge');
     sfx(w.sc, 'hit_flesh', { rate: 0.5 });
     if (this.moveName === 'grasp') {
-      w.gore.bile(this.x - 90, this.y - 6, 10);
+      w.gore.bile(this.x - 54, this.y - 6, 10);
       return;
     }
     if (this.moveName === 'wave') {
@@ -249,7 +249,7 @@ export class Bartholomew extends Enemy {
       for (let i = 0; i < waves; i++) {
         w.sc.time.delayedCall(i * 650, () => {
           if (this.dead) return;
-          w.addProjectile({ x: this.x - 60, y: this.y - 10, vx: -175 - i * 25, vy: 0, r: 9, damage: 16, key: 'proj-wave', rolls: true, life: 6 });
+          w.addProjectile({ x: this.x - 36, y: this.y - 6, vx: -175 - i * 25, vy: 0, r: 9, damage: 16, key: 'proj-wave', rolls: true, life: 6 });
         });
       }
     } else {
@@ -258,7 +258,7 @@ export class Bartholomew extends Enemy {
       for (let i = 0; i < n; i++) {
         const tx = this.player.x + (i - (n - 1) / 2) * 46;
         const t = 0.9 + i * 0.08;
-        w.addProjectile({ x: mouthX, y: mouthY - 30, vx: (tx - mouthX) / t, vy: (this.y - 10 - (mouthY - 30) - 0.5 * 600 * t * t) / t, r: 6, damage: 14, gravity: 600, key: 'proj-sludge', onEnd: (x, y) => w.gore.bile(x, y, 8) });
+        w.addProjectile({ x: mouthX, y: mouthY - 30, vx: (tx - mouthX) / t, vy: (this.y - 6 - (mouthY - 30) - 0.5 * 600 * t * t) / t, r: 6, damage: 14, gravity: 600, key: 'proj-sludge', onEnd: (x, y) => w.gore.bile(x, y, 8) });
       }
     }
   }
@@ -287,8 +287,8 @@ export class Ear extends Enemy {
     y: number,
     private boss: Bartholomew,
   ) {
-    super(world, x, y, 'ear', EAR, 22, 30, 90, 9999);
-    this.hurtR = 18;
+    super(world, x, y, 'ear', EAR, 14, 20, 90, 9999);
+    this.hurtR = 12;
     this.tearValue = 0;
     this.knockResist = 0.2;
     this.body.vx = -120;

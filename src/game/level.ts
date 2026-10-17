@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { ET, TILE } from '../art/environment';
 import { hash2, valueNoise } from '../art/pixel';
-import { DEPTH } from './config';
+import { DEPTH, VIEW_H } from './config';
 import { normalise, type Layout } from './layouts';
 
 export interface Marker {
@@ -18,6 +18,17 @@ const CEILING_SNAPPED = new Set(['P', 'k']);
 const MARKER_CHARS = new Set([...FLOOR_SNAPPED, ...CEILING_SNAPPED, 'f', 'H', '^']);
 
 export type TileSet = 'marble' | 'cistern';
+
+/** A sealed door in a doorway: solid until the right shot opens it. */
+export interface Hatch {
+  key: string;
+  tx: number;
+  ty0: number;
+  ty1: number;
+  kind: 'crimson';
+  img: Phaser.GameObjects.Image;
+  open: boolean;
+}
 
 /** A crumbling ledge tile: shakes when stood on, falls, then reforms. */
 interface Crumble {
@@ -87,6 +98,8 @@ export class Level {
   private hidden = new Set<number>();
   /** Called as a ledge starts to give (fall = false) and as it drops away. */
   onCrumble: ((x: number, y: number, fall: boolean) => void) | null = null;
+  /** Sealed doors in doorways (Super Metroid hatches). */
+  readonly hatches: Hatch[] = [];
   private lastRot = -1;
 
   constructor(
@@ -95,13 +108,13 @@ export class Level {
     set: TileSet,
   ) {
     const l = normalise(layout);
-    // Pad with stone so the level always fills the 360px-tall view.
+    // Pad with stone so the level always fills the 224px-tall view.
     // Deep ground beneath, so the camera can frame the floor high enough to
     // keep the action clear of the thumbs; stone above to fill the view.
     const rows = [...l.rows];
     const wide = rows[0].length;
     for (let i = 0; i < 6; i++) rows.push('#'.repeat(wide));
-    while (rows.length * TILE < 368) rows.unshift('#'.repeat(wide));
+    while (rows.length * TILE < VIEW_H + 8) rows.unshift('#'.repeat(wide));
     this.rows = rows;
     this.h = rows.length;
     this.w = wide;
@@ -153,6 +166,28 @@ export class Level {
       this.rot = map2.createLayer(0, ts2, 0, 0)!.setDepth(DEPTH.tiles + 1);
       this.rot.forEachTile((t) => (t.alpha = 0));
     }
+  }
+
+  /** Seal a doorway column (tiles ty0..ty1) with a hatch. */
+  addHatch(key: string, tx: number, ty0: number, ty1: number, kind: 'crimson') {
+    for (let ty = ty0; ty <= ty1; ty++) this.solid[ty * this.w + tx] = 1;
+    const img = this.scene.add.image(tx * TILE, ty0 * TILE, `hatch-${kind}`).setOrigin(0, 0).setDepth(DEPTH.tiles + 2);
+    const h: Hatch = { key, tx, ty0, ty1, kind, img, open: false };
+    this.hatches.push(h);
+    return h;
+  }
+
+  hatchAt(px: number, py: number): Hatch | null {
+    const tx = Math.floor(px / TILE);
+    const ty = Math.floor(py / TILE);
+    return this.hatches.find((h) => !h.open && h.tx === tx && ty >= h.ty0 && ty <= h.ty1) ?? null;
+  }
+
+  openHatch(h: Hatch) {
+    if (h.open) return;
+    h.open = true;
+    for (let ty = h.ty0; ty <= h.ty1; ty++) this.solid[ty * this.w + h.tx] = 0;
+    h.img.setTexture('hatch-open');
   }
 
   /** Something heavy is standing at (px, py): start any crumbling ledge there. */

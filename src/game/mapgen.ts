@@ -8,7 +8,7 @@ const STEP: Record<Dir, [number, number]> = { W: [-1, 0], E: [1, 0], N: [0, -1],
 export type RoomRole = 'start' | 'combat' | 'elite' | 'confessional' | 'votive' | 'cache' | 'ante';
 
 /** An exit on a template: which cell of the template, and which edge. */
-interface Exit {
+export interface Exit {
   cx: number;
   cy: number;
   dir: Dir;
@@ -39,7 +39,7 @@ export interface GeneratedMap {
 }
 
 const exitCache = new Map<Template, Exit[]>();
-function exitsOf(t: Template): Exit[] {
+export function exitsOf(t: Template): Exit[] {
   const c = exitCache.get(t);
   if (c) return c;
   const out: Exit[] = [];
@@ -194,7 +194,7 @@ function tryGenerate(seed: number, mainLength: number): GeneratedMap | null {
   return assemble(rooms);
 }
 
-function assemble(rooms: PlacedRoom[]): GeneratedMap {
+export function assemble(rooms: PlacedRoom[]): GeneratedMap {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;

@@ -23,6 +23,19 @@ export interface Corpse {
   eaten: boolean;
 }
 
+/** A shot from the Tether Cannon. */
+export interface PlayerShotSpec {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  kind: 'bolt' | 'charged' | 'shell';
+  dmg: number;
+  poise: number;
+  radius: number;
+  pierce?: boolean;
+}
+
 export interface ProjectileSpec {
   x: number;
   y: number;
@@ -51,6 +64,7 @@ export interface World {
   noise(x: number, y: number, radius: number, kind: 'step' | 'combat'): void;
   hitPlayer(hit: PlayerHit): HitResult;
   addProjectile(p: ProjectileSpec): void;
+  firePlayerShot(s: PlayerShotSpec): void;
   spawnTears(x: number, y: number, n: number): void;
   onEnemyKilled(e: Enemy, executed: boolean): void;
   hitstop(ms: number): void;

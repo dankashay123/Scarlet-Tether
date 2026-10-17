@@ -1,6 +1,7 @@
 import { PixelCanvas, bayer, hash2 } from '../pixel';
 import { type RGB } from './paint';
-import { pick, tnoise } from './paint';
+import { clamp01, tnoise } from './paint';
+import { snesStrip } from './snes-env';
 import { ramp } from './relief';
 
 export const TILE = 16;
@@ -19,6 +20,15 @@ interface Flags {
 }
 
 const INK = '#0b0507';
+
+/** Ramp pick with a narrow ordered-dither band: flat SNES shade steps. */
+function pick(ramp: string[], v: number, x: number, y: number): string {
+  const n = ramp.length;
+  const f = clamp01(v) * (n - 1) * 0.9999;
+  let i = Math.floor(f);
+  if (f - i > 0.5 + (bayer(x, y) - 0.5) * 0.25) i++;
+  return ramp[Math.max(0, Math.min(n - 1, i))];
+}
 
 // --- Ramps (string ramps are used by liquids, grates and thorns) ---------------
 const WOOD = ['#140706', '#2a110d', '#46201a', '#6a3022', '#8f4a30', '#b46a44'];
@@ -79,15 +89,14 @@ function body(x: number, y: number, o: Px) {
     o.t = 0;
     return;
   }
-  const e = Math.min(bx - 1, 15 - bx, by, 6 - by);
   o.p = P.BODY;
-  o.h = Math.min(1, e * 0.55) * 1.3 + (tnoise(x, y, 8, 11 + course) - 0.5) * 0.9 + (tnoise(x, y, 16, 5) - 0.5) * 0.35;
-  o.t = (course ? -0.04 : 0.05) + (tnoise(x, y, 4, 21) - 0.5) * 0.12;
-  // chipped arrises
-  if ((course === 0 && bx >= 1 && bx <= 2 && by === 0) || (course === 1 && bx === 14 && by >= 5)) {
-    o.h -= 1;
-    o.t -= 0.1;
-  }
+  // flat block face with a crisp bevel: bright top-left arris, dark bottom-right
+  o.h = 1.3;
+  o.t = course ? -0.06 : 0.04;
+  if (by === 0 || bx === 1) o.t += 0.3;
+  else if (by === 6 || bx === 15) o.t -= 0.28;
+  // a chipped corner (2x2 cluster)
+  if (course === 0 && bx >= 12 && bx <= 13 && by <= 1) o.t -= 0.18;
   // a hairline crack
   if (course === 1 && by >= 2 && by <= 5 && x === 6 + (by >> 1)) {
     o.p = P.CRACK;
@@ -113,7 +122,8 @@ function layout(x: number, y: number, f: Flags, frieze: boolean, o: Px) {
     if (y < 4) {
       o.p = P.CAP;
       o.h = [3.5, 4.3, 4.3, 3.6][y] + side;
-      o.t = (tnoise(x, y * 4, 4, 31) - 0.5) * 0.12 + (x === 7 && y > 0 ? -0.25 : 0);
+      // bright walk line on top, slab joint every 8 px
+      o.t = (y === 0 ? 0.35 : y === 3 ? -0.15 : 0) + (x === 7 && y > 0 ? -0.3 : 0);
     } else if (y === 4) {
       o.p = P.FILLET;
       o.h = 3.1 + side;
@@ -265,11 +275,11 @@ const rotMat: MatFn = (x, y, f, o) => {
     case P.BODY: {
       o.m = RT.MEAT;
       const v = tnoise(x, y, 4, 77);
-      if (Math.abs(v - 0.5) < 0.045) {
+      if (Math.abs(v - 0.5) < 0.07) {
         o.m = RT.SINEW;
         o.h += 0.7;
       }
-      if (tnoise(x, y, 8, 79) > 0.72) o.t -= 0.15;
+      if (tnoise(x, y, 4, 79) > 0.7) o.t -= 0.15;
       break;
     }
     case P.CRACK:
@@ -286,9 +296,9 @@ const rotMat: MatFn = (x, y, f, o) => {
       break;
     case P.CAP: {
       o.m = RT.FLESH;
-      const lump = tnoise(x, y * 2, 8, 41) - 0.5;
-      o.h += lump * 1.6;
-      o.t += lump * 0.3 + (y === 0 ? 0.1 : 0);
+      const lump = tnoise(x, y * 2, 4, 41) - 0.5;
+      o.h += lump * 1.2;
+      o.t += lump * 0.25 + (y === 0 ? 0.3 : 0);
       break;
     }
     case P.FILLET:
@@ -359,10 +369,9 @@ function brick(x: number, y: number, o: Px) {
     return;
   }
   o.p = P.BODY;
-  const e = Math.min(bx - 1, 7 - bx, by, 2 - by);
   const id = ((x + (row & 1) * 4) >> 3) & 1;
-  o.h = Math.min(1, e * 0.7) + (tnoise(x, y, 8, 61) - 0.5) * 0.6;
-  o.t = (hash2(id, row, 3) - 0.5) * 0.2 + (by === 0 ? 0.04 : 0);
+  o.h = 1;
+  o.t = (hash2(id, row, 3) - 0.5) * 0.2 + (by === 0 || bx === 1 ? 0.25 : bx === 7 || by === 2 ? -0.22 : 0);
 }
 
 const cisternMat: MatFn = (x, y, f, o) => {
@@ -379,7 +388,8 @@ const cisternMat: MatFn = (x, y, f, o) => {
       }
       break;
     case P.CAP:
-      o.m = y === 0 && tnoise(x, 0, 4, 21) > 0.52 ? CS.MOSS : CS.KERB;
+      o.m = y <= 1 && tnoise(x, 0, 2, 21) > 0.55 ? CS.MOSS : CS.KERB;
+      if (y === 0) o.t += 0.3;
       if (x === 8 && y > 0) o.t -= 0.3;
       break;
     case P.FILLET:
@@ -409,7 +419,7 @@ const KX = -0.45;
 const KY = -0.8;
 const KZ = 0.55;
 const KL = Math.sqrt(KX * KX + KY * KY + KZ * KZ);
-const DEPTH_DARK = 0.7;
+const DEPTH_DARK = 0.42;
 
 /**
  * Render one 16x16 tile from a per-pixel description. Pixels just outside the
@@ -470,7 +480,7 @@ function renderTile(pc: PixelCanvas, ox: number, desc: (x: number, y: number, f:
       if (f.E) dep = Math.min(dep, 15 - x);
       const dk = !depthFade ? 0 : dep >= 15 ? 1 : dep <= 3 ? 0 : (dep - 3) / 12;
       v *= 1 - dk * DEPTH_DARK;
-      v += (0.14 - v) * dk * 0.5; // and loses contrast
+      v += (0.2 - v) * dk * 0.3; // and loses some contrast
       const sp = mats.spec[m];
       if (sp > 0) {
         const hx = KX / KL;
@@ -480,11 +490,11 @@ function renderTile(pc: PixelCanvas, ox: number, desc: (x: number, y: number, f:
         const nh = (nx * hx + ny * hy + nz * hz) / hl;
         if (nh > 0) v += nh ** 20 * sp * 0.6 * (1 - dk);
       }
-      const rmp = mats.ramps[m];
+      const rmp = bandsOf(mats.ramps[m]);
       const n = rmp.length;
       const fq = Math.max(0, Math.min(1, v)) * (n - 1) * 0.9999;
       let i = Math.floor(fq);
-      if (fq - i > 0.5 + (bayer(x, y) - 0.5) * 0.7) i++;
+      if (fq - i > 0.5) i++;
       let [r, g, b] = rmp[Math.min(n - 1, i)];
       // outline the silhouette (sides and underside) like the characters
       const openW = !pp[k - 1];
@@ -501,6 +511,17 @@ function renderTile(pc: PixelCanvas, ox: number, desc: (x: number, y: number, f:
       d[o4 + 2] = b;
       d[o4 + 3] = 255;
     }
+}
+
+/** A material ramp cut down to 5 flat bands: near-black, 3 shades, highlight. */
+const BANDS = new Map<RGB[], RGB[]>();
+function bandsOf(r: RGB[]): RGB[] {
+  let b = BANDS.get(r);
+  if (!b) {
+    b = r.length <= 5 ? r : [0, 0.3, 0.55, 0.78, 1].map((t) => r[Math.round(t * (r.length - 1))]);
+    BANDS.set(r, b);
+  }
+  return b;
 }
 
 // --- Platforms (one-way ledges) ---------------------------------------------------
@@ -522,7 +543,7 @@ function ledge(x: number, y: number, kind: 0 | 1 | 2, o: Px) {
     if (y < 3) {
       o.p = P.CAP;
       o.h = [3.4, 4.2, 3.9][y] + side;
-      o.t = (tnoise(x, y * 4, 4, 9) - 0.5) * 0.1;
+      o.t = y === 0 ? 0.3 : 0;
     } else if (y === 3) {
       o.p = P.FILLET;
       o.h = 3.2 + side;
@@ -659,7 +680,7 @@ function liquid(pc: PixelCanvas, ox: number, set: EnvSet, top: boolean) {
   const L = LIQ[set];
   for (let y = 0; y < 16; y++)
     for (let x = 0; x < 16; x++) {
-      const n = tnoise(x, y, 4, 61) * 0.6 + tnoise(x, y, 8, 62) * 0.4;
+      const n = tnoise(x, y, 2, 61) * 0.7 + tnoise(x, y, 4, 62) * 0.3;
       if (top) {
         const wave = Math.round(Math.sin((x / 16) * Math.PI * 4) * 0.8 + 1);
         if (y < wave) {
@@ -679,7 +700,8 @@ function liquid(pc: PixelCanvas, ox: number, set: EnvSet, top: boolean) {
       if (set === 'rot' && tnoise(x, y, 4, 71) > 0.72) v -= 0.3; // clots
       let c = pick(L.body, v, x, y);
       // Slow drifting highlights
-      if (Math.abs(tnoise(x, y * 3, 4, 64) - 0.5) < 0.03) c = L.surf[1];
+      // slow ripples: short horizontal glints in 4 px dashes (tile in x and y)
+      if ((y + Math.round(Math.sin((x / 16) * Math.PI * 2) * 1.2) + 16) % 8 === 4 && (x + (y >> 3) * 8) % 16 < 5) c = L.surf[1];
       pc.px(ox + x, y, c, L.alpha);
     }
 }
@@ -802,5 +824,6 @@ export function drawTileset(set: EnvSet): PixelCanvas {
   liquid(pc, ET.LIQUID * 16, set, false);
   grate(pc, ET.GRATE * 16, set);
   thorns(pc, ET.THORNS * 16, set);
-  return pc;
+  // SNES finish: one ~32-colour palette for the strip, dedithered tile by tile
+  return snesStrip(pc, 22, TILE);
 }
