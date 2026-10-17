@@ -395,6 +395,54 @@ function shard() { // execution prompt marker: a small gilded dagger
   return f.outline();
 }
 
+// Thurible of Embers: a gilded censer, its vents glowing. Two swing frames.
+function thurible(i) {
+  const f = new Frame(12, 14);
+  for (let y = 0; y < 4; y++) f.set(6 + (i && y < 2 ? 1 : 0), y, 'iron1'); // chain stub
+  f.shade(M.rect(4, 4, 5, 1), RAMP.gold, { flat: true });               // lid knob
+  const body = M.ellipse(6, 8, 3.6, 3.4);
+  f.shade(body, RAMP.gold);
+  for (const [x, y] of [[4, 8], [6, 7], [8, 8], [6, 10]]) f.set(x, y, i ? 'ember0' : 'ember1');
+  f.set(5, 12, 'gold2'); f.set(6, 12, 'gold2'); f.set(7, 12, 'gold2');
+  return f.outline();
+}
+
+// Holy Water Flask: a stoppered glass bottle of pale blue water.
+function flask() {
+  const f = new Frame(8, 10);
+  f.shade(M.rect(3, 0, 2, 2), RAMP.wood, { flat: true });
+  f.set(3, 2, 'sky0'); f.set(4, 2, 'sky1');
+  f.shade(M.ellipse(3.5, 6, 2.6, 2.6), ['sky0', 'sky1', 'sky2']);
+  f.set(2, 5, 'holy0');
+  return f.outline();
+}
+
+function chainLink(i) {
+  const f = new Frame(6, 4);
+  if (i === 0) { f.shade(M.minus(M.rect(0, 0, 6, 4), M.rect(1, 1, 4, 2)), RAMP.iron); }
+  else { f.shade(M.rect(0, 1, 6, 2), RAMP.iron); f.set(0, 1, 'iron0'); }
+  return f;
+}
+
+function hook() {
+  const f = new Frame(8, 8);
+  f.shade(M.union(M.line(0, 3, 5, 3, 2), M.line(5, 0, 7, 3), M.line(5, 6, 7, 4)), RAMP.iron);
+  f.set(7, 3, 'holy0');
+  return f.outline();
+}
+
+// Flagellant's Rain: a falling thorned scourge, crimson with bone barbs.
+function scourge(i) {
+  const f = new Frame(8, 16);
+  for (let y = 0; y < 16; y++) {
+    const x = 3 + Math.round(Math.sin(y * 0.7 + i) * 1.2);
+    f.set(x, y, y < 4 ? 'blood2' : y < 12 ? 'blood1' : 'blood0');
+    if (y % 4 === 2) f.set(x + 1, y, 'bone1');
+    if (y % 4 === 0) f.set(x - 1, y, 'bone2');
+  }
+  return f.outline();
+}
+
 function fxSheet() {
   return sheet('fx', 16, 16, {
     bolt: [bolt()],
@@ -403,6 +451,11 @@ function fxSheet() {
     gib: [0, 1, 2, 3].map(gib),
     wardenGib: [0, 1, 2, 3].map(wardenGib),
     dagger: [shard()],
+    thurible: [thurible(0), thurible(1)],
+    flask: [flask()],
+    link: [chainLink(0), chainLink(1)],
+    hook: [hook()],
+    scourge: [scourge(0), scourge(2)],
   }, { fps: 8 });
 }
 

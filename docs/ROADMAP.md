@@ -5,7 +5,9 @@ Goal (GDD): one Stratum, a 30-minute run that ends in Martyrdom and a first Vigi
 - [x] **Movement, auto-targeting, dash with perfect dodge** — joystick + keyboard,
       elites-first targeting with tap-to-lock, 2-charge dash with i-frames,
       perfect dodge slow-mo and Fervor spike
-- [ ] Nail Crossbow (basic bolts done; mutations to come), Thurible of Embers, one Penance, two Miracles
+- [x] **Nail Crossbow, Thurible of Embers, one Penance, two Miracles** — piercing bolts; orbiting censer that burns;
+      Holy Water Flask (lobbed at the densest cluster, slowing pool); Chain of Penitence (binds up to 4,
+      yanks them together, ignores shields); Flagellant's Rain (charged by Fervor, scourges fall across the view)
 - [ ] Stratum 1: Risen and Gravewarden done; Candle-Mourner caster, procedural rooms, shrine, ability gate
 - [ ] Fervor tiers, executions, dismemberment gore — first pass in (tiers, edge tint, elite executions, gibs, floor stains); Inquisitor still to do
 - [ ] Stigmata level-ups with 20 Wounds

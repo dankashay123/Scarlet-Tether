@@ -34,10 +34,14 @@ const T = {
   hurtIframes: 0.6,
   crossbow: { range: 160, cooldown: 0.38, speed: 280, dmg: [6, 9], crit: 0.1, pierce: 1 },
   fervor: { decayDelay: 2, decay: 2.5, tiers: ['MURMUR', 'CHANT', 'RAPTURE', 'FRENZY'] },
-  wave: { start: 8, max: 30, ramp: 90, eliteEvery: 25, elitesMax: 2, cap: 40 },
+  thurible: { radius: 24, speed: 3.4, dmg: 4, hitCd: 0.45, burn: { dps: 4, time: 2 } },
+  flask: { cd: 6, flight: 0.45, radius: 30, time: 4, dps: 8, splash: 8, slow: 0.45, range: 170 },
+  chain: { cd: 8, range: 150, links: 4, linkRange: 64, bind: 2, dmg: 14, speed: 420 },
+  penance: { charge: 160, time: 3, every: 0.07, dmg: 12, radius: 14 },
+  wave: { start: 10, max: 34, ramp: 120, eliteEvery: 25, elitesMax: 2, cap: 40 },
 };
 const ENEMY = {
-  risen: { sheet: 'risen', hp: 18, r: 5, speed: 24, reach: 17, windup: 0.45, recover: 0.55, dmg: 8, xp: 3, fervor: 3 },
+  risen: { sheet: 'risen', hp: 18, r: 5, speed: 28, reach: 17, windup: 0.45, recover: 0.55, dmg: 8, xp: 3, fervor: 3 },
   gravewarden: { sheet: 'gravewarden', hp: 90, r: 9, speed: 15, reach: 30, windup: 0.6, recover: 0.7, dmg: 16, xp: 15, fervor: 12, elite: true },
 };
 
@@ -127,14 +131,14 @@ function text(s, x, y, color, { sc = 1, shadow = PAL.outline, align = 'left' } =
 
 // -------------------------------------------------------------- input ---
 const keys = new Set();
-const input = { mx: 0, my: 0, dash: false, execute: false };
+const input = { mx: 0, my: 0, dash: false, execute: false, m1: false, m2: false, pen: false };
 const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0, active: false };
 const HUD = {};
 function layoutHud() {
   HUD.dash = { x: W - 40, y: H - 40, r: 20, icon: 'dash' };
-  HUD.m1 = { x: W - 88, y: H - 26, r: 13, icon: 'flask', sealed: true, label: 'HOLY WATER' };
-  HUD.m2 = { x: W - 26, y: H - 88, r: 13, icon: 'chain', sealed: true, label: 'CHAIN OF PENITENCE' };
-  HUD.pen = { x: W - 80, y: H - 76, r: 15, icon: 'penance', sealed: true, label: 'PENANCE' };
+  HUD.m1 = { x: W - 88, y: H - 26, r: 13, icon: 'flask', label: 'HOLY WATER' };
+  HUD.m2 = { x: W - 26, y: H - 88, r: 13, icon: 'chain', label: 'CHAIN OF PENITENCE' };
+  HUD.pen = { x: W - 80, y: H - 76, r: 15, icon: 'penance', label: 'PENANCE' };
   HUD.exec = { x: W - 128, y: H - 40, r: 14, icon: 'dagger' };
   HUD.pause = { x: W - 14, y: 14, r: 10, icon: 'pause' };
 }
@@ -151,7 +155,7 @@ function pointerDown(id, cx, cy) {
   if (hitBtn(HUD.pause, x, y)) { game.state = 'pause'; return; }
   if (hitBtn(HUD.dash, x, y, 10)) { input.dash = true; HUD.dash.pressed = 0.12; return; }
   if (game.execTarget && hitBtn(HUD.exec, x, y)) { input.execute = true; return; }
-  for (const k of ['m1', 'm2', 'pen']) if (hitBtn(HUD[k], x, y)) { toast(`${HUD[k].label}: SEALED BY THE CHOIR`); return; }
+  for (const k of ['m1', 'm2', 'pen']) if (hitBtn(HUD[k], x, y)) { input[k] = true; HUD[k].pressed = 0.12; return; }
   if (x < W * 0.45 && stick.id === null) { Object.assign(stick, { id, ox: x, oy: y, x, y, active: true }); return; }
   // Tap an enemy to lock it (or execute it if it is staggered).
   const wx = x + cam.x, wy = y + cam.y;
@@ -180,6 +184,9 @@ addEventListener('keydown', (e) => {
   keys.add(e.code);
   if (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyK') input.dash = true;
   if (e.code === 'KeyE' || e.code === 'KeyJ') input.execute = true;
+  if (e.code === 'KeyQ' || e.code === 'Digit1') input.m1 = true;
+  if (e.code === 'KeyF' || e.code === 'Digit2') input.m2 = true;
+  if (e.code === 'KeyR' || e.code === 'Digit3') input.pen = true;
   if (e.code === 'Escape' || e.code === 'KeyP') { if (game.state === 'play') game.state = 'pause'; else if (game.state === 'pause') game.state = 'play'; }
   if (e.code === 'Enter' || e.code === 'Space') onTap(-1, -1);
 });
@@ -270,16 +277,16 @@ function newRun() {
   player = {
     x: room.pw / 2, y: room.ph / 2, r: 5, hp: 100, maxHp: 100, face: 1,
     charges: T.dash.charges, recharge: 0, dashT: 0, dashStart: -9, dashDx: 1, dashDy: 0, iframes: 0, perfectUsed: false,
-    fireCd: 0.6, lock: null, target: null, anim: 'idle', animT: 0, hurt: 0, ghostT: 0,
+    fireCd: 0.6, thAng: 0, m1cd: 0, m2cd: 0, penance: 0, rainT: 0, rainTick: 0, lock: null, target: null, anim: 'idle', animT: 0, hurt: 0, ghostT: 0,
   };
-  enemies = []; bolts = []; parts = []; gibs = []; nums = []; ghosts = []; rings = [];
+  enemies = []; bolts = []; parts = []; gibs = []; nums = []; ghosts = []; rings = []; pools = []; flasks = []; chains = []; lashes = [];
   Object.assign(game, { time: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, execTarget: null, flash: 0, runStart: 0 });
   director = { t: 0, eliteT: 12 };
 }
 
 function toast(msg, t = 2) { game.toast = { msg, t }; }
 const fervorTier = () => Math.min(3, Math.floor(game.fervor / 25));
-function addFervor(n) { game.fervor = Math.min(100, game.fervor + n); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
+function addFervor(n) { if (player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + n); game.fervor = Math.min(100, game.fervor + n); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
 
 // --------------------------------------------------------------- enemies ---
 function spawnEnemy(type) {
@@ -310,14 +317,19 @@ function updateDirector(dt) {
 function updateEnemy(e, dt) {
   const d = e.def;
   e.t += dt; e.animT += dt; e.flash = Math.max(0, e.flash - dt);
+  updateStatus(e, dt);
+  if (e.dead) return;
   // Knockback.
   if (e.kx || e.ky) { moveCircle(e, e.kx * dt, e.ky * dt, e.r); e.kx *= Math.pow(0.001, dt); e.ky *= Math.pow(0.001, dt); if (Math.abs(e.kx) + Math.abs(e.ky) < 2) e.kx = e.ky = 0; }
   const dx = player.x - e.x, dy = player.y - e.y, dist = Math.hypot(dx, dy) || 1;
   switch (e.state) {
     case 'spawn': if (e.t > (e.elite ? 1.2 : 0.8)) { e.state = 'walk'; e.t = 0; } return;
+  }
+  if (e.bound > 0) return; // chained in place
+  switch (e.state) {
     case 'walk': {
       e.face = dx < 0 ? -1 : 1;
-      let vx = dx / dist * d.speed, vy = dy / dist * d.speed;
+      let vx = dx / dist * d.speed * e.slowK, vy = dy / dist * d.speed * e.slowK;
       // Separation so the horde spreads instead of stacking.
       for (const o of enemies) {
         if (o === e || o.dead || o.state === 'spawn') continue;
@@ -377,17 +389,17 @@ function perfectDodge(src) {
   nums.push({ x: player.x, y: player.y - 34, v: 'PERFECT', t: 0, color: PAL.gold0, crit: true });
 }
 
-function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60) {
+function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   if (e.dead) return;
   // Gravewarden: the tower shield takes most of a frontal hit.
   let blocked = false;
-  if (e.elite && e.state !== 'stagger' && Math.sign(dirx) === -e.face && Math.abs(dirx) > Math.abs(diry) * 0.6) { dmg = Math.max(1, Math.round(dmg * 0.35)); blocked = true; crit = false; }
+  if (!opts.status && !(e.bound > 0) && e.elite && e.state !== 'stagger' && Math.sign(dirx) === -e.face && Math.abs(dirx) > Math.abs(diry) * 0.6) { dmg = Math.max(1, Math.round(dmg * 0.35)); blocked = true; crit = false; }
   dmg = Math.round(dmg * (1 + fervorTier() * 0.1));
   e.hp -= dmg; e.flash = 0.05;
   if (!e.elite || !blocked) { e.kx += dirx * kb * (e.elite ? 0.2 : 1); e.ky += diry * kb * (e.elite ? 0.2 : 1); }
-  nums.push({ x: e.x + rand(-4, 4), y: e.y - (e.elite ? 30 : 20), v: dmg, t: 0, color: blocked ? PAL.iron0 : crit ? PAL.gold0 : PAL.bone0, crit });
+  nums.push({ x: e.x + rand(-4, 4), y: e.y - (e.elite ? 30 : 20), v: dmg, t: 0, color: blocked ? PAL.iron0 : crit ? PAL.gold0 : opts.color || PAL.bone0, crit });
   if (blocked) sparks(e.x + e.face * 10, e.y - 12, PAL.gold0, 4);
-  else bleed(e.x, e.y - 8, crit ? 4 : 2, dirx);
+  else if (dirx || diry) bleed(e.x, e.y - 8, crit ? 4 : 2, dirx);
   if (e.elite && !e.staggered && e.hp > 0 && e.hp <= e.maxHp * 0.15) { e.staggered = true; e.state = 'stagger'; e.t = 0; toast('STAGGERED: EXECUTE IT', 1.5); }
   if (e.hp <= 0) killEnemy(e, dirx, diry);
 }
@@ -431,6 +443,7 @@ function updateParts(dt) {
     if (p.kind === 'spark') { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.9; p.vy *= 0.9; p.life -= dt; continue; }
     p.x += p.vx * dt; p.y += p.vy * dt; p.vz -= 260 * dt; p.z += p.vz * dt;
     if (p.z <= 0) { // landed: stain the floor
+      if (p.clean) { p.life = -1; continue; }
       sctxStain.fillStyle = p.c; sctxStain.fillRect(Math.round(p.x), Math.round(p.y), p.s, p.s);
       if (p.s === 2 && rng() < 0.5) sctxStain.fillRect(Math.round(p.x + Math.sign(p.vx)), Math.round(p.y), 2, 1);
       p.life = -1;
@@ -511,6 +524,233 @@ function updateBolts(dt) {
   bolts = bolts.filter((b) => b.life > 0);
 }
 
+// ------------------------------------------------------------ abilities ---
+// Censer: Thurible of Embers. Miracles: Holy Water Flask, Chain of
+// Penitence. Penance: Flagellant's Rain. All auto-targeted.
+let pools = [], flasks = [], chains = [], lashes = [];
+
+function inRange(e, R) { return !e.dead && e.state !== 'spawn' && Math.hypot(e.x - player.x, e.y - player.y) <= R; }
+
+function thuriblePos() {
+  const a = player.thAng, R = T.thurible.radius;
+  return { x: player.x + Math.cos(a) * R, y: player.y - 10 + Math.sin(a) * R * 0.6, behind: Math.sin(a) < 0 };
+}
+
+function updateThurible(dt) {
+  player.thAng += T.thurible.speed * dt;
+  const t = thuriblePos();
+  for (const e of enemies) {
+    if (e.dead || e.state === 'spawn' || (e.thCd ?? 0) > game.time) continue;
+    const hy = e.y - (e.elite ? 14 : 9);
+    if (Math.hypot(e.x - t.x, hy - t.y) < (e.elite ? 13 : 9)) {
+      e.thCd = game.time + T.thurible.hitCd;
+      const dx = e.x - player.x, dy = e.y - player.y, d = Math.hypot(dx, dy) || 1;
+      e.burn = T.thurible.burn.time;
+      hurtEnemy(e, T.thurible.dmg, false, dx / d, dy / d, 50);
+      sparks(t.x, t.y, PAL.ember0, 3);
+    }
+  }
+  if (rng() < dt * 25) parts.push({ kind: 'spark', x: t.x + rand(-2, 2), y: t.y + 3, z: 0, vx: rand(-8, 8), vy: rand(5, 20), vz: 0, c: pick([PAL.ember0, PAL.ember1, PAL.ember2]), life: rand(0.2, 0.45) });
+}
+
+// Status damage (burn, holy water) builds up and lands in half-second ticks.
+function statusTick(e, key, dps, dt, color) {
+  e[key] = (e[key] || 0) + dps * dt;
+  if (e[key] >= dps * 0.5) { const n = Math.round(e[key]); e[key] = 0; hurtEnemy(e, n, false, 0, 0, 0, { status: true, color }); }
+}
+
+function updateStatus(e, dt) {
+  if (e.burn > 0) {
+    e.burn -= dt; statusTick(e, 'burnAcc', T.thurible.burn.dps, dt, PAL.ember1);
+    if (rng() < dt * 8) parts.push({ kind: 'spark', x: e.x + rand(-4, 4), y: e.y - rand(4, 16), z: 0, vx: 0, vy: -20, vz: 0, c: PAL.ember1, life: 0.3 });
+  }
+  e.slowK = 1;
+  for (const p of pools) {
+    const dx = (e.x - p.x) / p.r, dy = (e.y - p.y) / (p.r * 0.6);
+    if (dx * dx + dy * dy <= 1) { e.slowK = 1 - T.flask.slow; if (!e.dead) statusTick(e, 'poolAcc', T.flask.dps, dt, PAL.sky1); break; }
+  }
+  if (e.bound > 0) e.bound -= dt;
+}
+
+function bestCluster(R) {
+  let best = null, bn = -1;
+  for (const e of enemies) {
+    if (!inRange(e, R)) continue;
+    let n = 0; for (const o of enemies) if (!o.dead && Math.hypot(o.x - e.x, o.y - e.y) < 34) n++;
+    if (e === player.lock) n += 100;
+    if (n > bn) { bn = n; best = e; }
+  }
+  return best;
+}
+
+function castFlask() {
+  const t = bestCluster(T.flask.range);
+  const tx = t ? t.x : player.x + player.face * 60, ty = t ? t.y : player.y;
+  flasks.push({ sx: player.x, sy: player.y - 14, tx, ty, t: 0 });
+  player.m1cd = T.flask.cd;
+}
+
+function castChain() {
+  let t = null, bd = Infinity;
+  for (const e of enemies) {
+    if (!inRange(e, T.chain.range)) continue;
+    const d = Math.hypot(e.x - player.x, e.y - player.y) - (e.elite ? 10000 : 0) - (e === player.lock ? 20000 : 0);
+    if (d < bd) { bd = d; t = e; }
+  }
+  if (!t) { toast('NOTHING TO BIND'); return; }
+  chains.push({ x: player.x + player.face * 6, y: player.y - 14, target: t, links: [], t: 0, phase: 'fly' });
+  player.m2cd = T.chain.cd;
+}
+
+function castPenance() {
+  player.penance = 0; player.rainT = T.penance.time; player.rainTick = 0;
+  game.shake = Math.max(game.shake, 3);
+  toast("FLAGELLANT'S RAIN", 1.5);
+}
+
+function updateAbilities(dt) {
+  const p = player;
+  p.m1cd = Math.max(0, p.m1cd - dt); p.m2cd = Math.max(0, p.m2cd - dt);
+  if (input.m1) { input.m1 = false; if (p.m1cd <= 0) castFlask(); }
+  if (input.m2) { input.m2 = false; if (p.m2cd <= 0) castChain(); }
+  if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) castPenance(); }
+  updateThurible(dt);
+
+  // Flasks arc to the target and shatter into a pool of holy water.
+  for (const f of flasks) {
+    f.t += dt;
+    if (f.t >= T.flask.flight) {
+      f.done = true;
+      pools.push({ x: f.tx, y: f.ty, r: T.flask.radius, t: 0 });
+      for (let i = 0; i < 10; i++) parts.push({ kind: 'blood', x: f.tx, y: f.ty, z: 4, vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(20, 70), c: pick([PAL.sky0, PAL.sky1, PAL.holy0]), s: 1, clean: true });
+      for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - f.tx, (e.y - f.ty) / 0.6) < T.flask.radius) {
+        const dx = e.x - f.tx, dy = e.y - f.ty, d = Math.hypot(dx, dy) || 1;
+        hurtEnemy(e, T.flask.splash, false, dx / d, dy / d, 40, { status: true, color: PAL.sky0 });
+      }
+      game.shake = Math.max(game.shake, 2);
+    }
+  }
+  flasks = flasks.filter((f) => !f.done);
+  for (const pl of pools) pl.t += dt;
+  pools = pools.filter((pl) => pl.t < T.flask.time);
+
+  // Chain of Penitence: the hook flies, bites, then leaps to nearby foes.
+  for (const c of chains) {
+    c.t += dt;
+    if (c.phase === 'fly') {
+      const tg = c.target, ty = tg.y - (tg.elite ? 14 : 9);
+      const dx = tg.x - c.x, dy = ty - c.y, d = Math.hypot(dx, dy);
+      const step = T.chain.speed * dt;
+      if (tg.dead || d <= step) {
+        if (tg.dead) { c.phase = 'done'; continue; }
+        c.phase = 'bind'; c.t = 0;
+        const bound = [tg];
+        for (const e of enemies.filter((o) => !o.dead && o !== tg && o.state !== 'spawn').sort((a, b) => Math.hypot(a.x - tg.x, a.y - tg.y) - Math.hypot(b.x - tg.x, b.y - tg.y))) {
+          if (bound.length >= T.chain.links || Math.hypot(e.x - tg.x, e.y - tg.y) > T.chain.linkRange) break;
+          bound.push(e);
+        }
+        c.links = bound;
+        for (const e of bound) {
+          e.bound = T.chain.bind;
+          if (e.state === 'windup' || e.state === 'strike') { e.state = 'walk'; e.t = 0; }
+          // Yank them together.
+          const ox = tg.x - e.x, oy = tg.y - e.y, od = Math.hypot(ox, oy) || 1;
+          if (e !== tg) { e.kx += ox / od * Math.min(220, od * 4); e.ky += oy / od * Math.min(220, od * 4); }
+          hurtEnemy(e, T.chain.dmg, rng() < 0.15, ox / od, oy / od, 0, { status: true, color: PAL.iron0 });
+        }
+        sparks(tg.x, ty, PAL.iron0, 6);
+        game.shake = Math.max(game.shake, 3); game.hitstop = Math.max(game.hitstop, 0.04);
+      } else { c.x += dx / d * step; c.y += dy / d * step; }
+    } else if (c.phase === 'bind' && c.t > T.chain.bind) c.phase = 'done';
+  }
+  chains = chains.filter((c) => c.phase !== 'done');
+
+  // Flagellant's Rain: scourges fall across the whole view.
+  if (p.rainT > 0) {
+    p.rainT -= dt; p.rainTick -= dt;
+    while (p.rainTick <= 0) {
+      p.rainTick += T.penance.every;
+      const vis = enemies.filter((e) => !e.dead && e.state !== 'spawn' && e.x > cam.x && e.x < cam.x + W && e.y > cam.y && e.y < cam.y + H);
+      let x, y;
+      if (vis.length && rng() < 0.7) { const e = pick(vis); x = e.x + rand(-6, 6); y = e.y + rand(-4, 4); }
+      else { x = cam.x + rand(16, W - 16); y = cam.y + rand(30, H - 10); }
+      if (!solidAt(x, y)) lashes.push({ x, y, t: 0, i: Math.floor(rng() * 2), hit: false });
+    }
+  }
+  for (const l of lashes) {
+    l.t += dt;
+    if (!l.hit && l.t >= 0.12) {
+      l.hit = true;
+      for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - l.x, (e.y - l.y) / 0.7) < T.penance.radius) hurtEnemy(e, T.penance.dmg, rng() < 0.2, rand(-1, 1), 1, 30, { status: true });
+      sparks(l.x, l.y, PAL.blood0, 3); splat(l.x, l.y, 3);
+      game.shake = Math.max(game.shake, 1.5);
+    }
+  }
+  lashes = lashes.filter((l) => l.t < 0.3);
+}
+
+function drawThurible(t) {
+  const p = player, hx = p.x + p.face * 6, hy = p.y - 16;
+  ctx.fillStyle = PAL.iron1;
+  for (let i = 1; i < 6; i++) { const k = i / 6; ctx.fillRect(Math.round(hx + (t.x - hx) * k), Math.round(hy + (t.y - 6 - hy) * k), 1, 1); }
+  spr('fx', 'thurible', Math.floor(game.real * 6), t.x, t.y, { ax: 6, ay: 8 });
+}
+
+function drawChainLine(x0, y0, x1, y1) {
+  const d = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.floor(d / 5));
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  for (let i = 0; i <= n; i++) {
+    const k = i / n, f = frameOf('fx', 'link', i);
+    ctx.save(); ctx.translate(Math.round(x0 + (x1 - x0) * k), Math.round(y0 + (y1 - y0) * k)); ctx.rotate(a);
+    ctx.drawImage(IMG.fx, f.x, f.y, 6, 4, -3, -2, 6, 4); ctx.restore();
+  }
+}
+
+function drawAbilitiesGround() {
+  for (const pl of pools) {
+    const fade = Math.min(1, (T.flask.time - pl.t) / 0.5), grow = Math.min(1, pl.t / 0.15);
+    const r = pl.r * grow;
+    ctx.globalAlpha = 0.55 * fade; ctx.fillStyle = PAL.sky2;
+    ctx.beginPath(); ctx.ellipse(Math.round(pl.x), Math.round(pl.y), r, r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.8 * fade; ctx.strokeStyle = PAL.sky1; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(Math.round(pl.x), Math.round(pl.y), r - 1, r * 0.6 - 1, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = fade; ctx.fillStyle = PAL.sky0;
+    for (let i = 0; i < 4; i++) { const a = game.real * 1.3 + i * 1.7 + pl.x, k = (Math.sin(game.real * 3 + i) + 1) / 2 * 0.8; ctx.fillRect(Math.round(pl.x + Math.cos(a) * r * k), Math.round(pl.y + Math.sin(a) * r * 0.6 * k), 1, 1); }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawAbilitiesAir() {
+  for (const f of flasks) {
+    const k = f.t / T.flask.flight, x = f.sx + (f.tx - f.sx) * k, y = f.sy + (f.ty - f.sy) * k - Math.sin(k * Math.PI) * 34;
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(k * 9);
+    const fr = frameOf('fx', 'flask', 0); ctx.drawImage(IMG.fx, fr.x, fr.y, 8, 10, -4, -5, 8, 10); ctx.restore();
+  }
+  for (const c of chains) {
+    if (c.phase === 'fly') {
+      drawChainLine(player.x + player.face * 6, player.y - 14, c.x, c.y);
+      const a = Math.atan2(c.target.y - 9 - c.y, c.target.x - c.x), f = frameOf('fx', 'hook', 0);
+      ctx.save(); ctx.translate(Math.round(c.x), Math.round(c.y)); ctx.rotate(a); ctx.drawImage(IMG.fx, f.x, f.y, 8, 8, -4, -4, 8, 8); ctx.restore();
+    } else if (c.phase === 'bind') {
+      const live = c.links.filter((e) => !e.dead);
+      for (let i = 1; i < live.length; i++) drawChainLine(live[0].x, live[0].y - 9, live[i].x, live[i].y - 9);
+      for (const e of live) { ctx.fillStyle = PAL.iron0; ctx.fillRect(Math.round(e.x - 5), Math.round(e.y - 7), 10, 1); ctx.fillStyle = PAL.iron2; ctx.fillRect(Math.round(e.x - 5), Math.round(e.y - 6), 10, 1); }
+    }
+  }
+  for (const l of lashes) {
+    const k = Math.min(1, l.t / 0.12), y = l.y - 70 * (1 - k);
+    spr('fx', 'scourge', l.i, l.x, y, { ax: 4, ay: 15, alpha: l.t > 0.2 ? 1 - (l.t - 0.2) / 0.1 : 1 });
+  }
+}
+
+function drawAbilitiesGlow() {
+  const t = thuriblePos();
+  glow(t.x, t.y, 16, 'rgba(255,138,42,0.35)');
+  for (const pl of pools) glow(pl.x, pl.y, pl.r * 1.3, `rgba(122,216,255,${0.22 * Math.min(1, (T.flask.time - pl.t) / 0.5)})`);
+  for (const f of flasks) glow(f.sx + (f.tx - f.sx) * f.t / T.flask.flight, f.sy + (f.ty - f.sy) * f.t / T.flask.flight - Math.sin(f.t / T.flask.flight * Math.PI) * 34, 8, 'rgba(200,240,255,0.4)');
+  for (const l of lashes) if (l.hit) glow(l.x, l.y, 14, `rgba(224,56,58,${0.5 * (1 - (l.t - 0.12) / 0.18)})`);
+}
+
 // --------------------------------------------------------------- player ---
 function updatePlayer(dt) {
   const p = player;
@@ -575,7 +815,7 @@ function die() {
 function update(realDt) {
   game.real += realDt;
   if (game.toast) { game.toast.t -= realDt; if (game.toast.t <= 0) game.toast = null; }
-  if (HUD.dash.pressed) HUD.dash.pressed = Math.max(0, HUD.dash.pressed - realDt);
+  for (const k of ['dash', 'm1', 'm2', 'pen']) if (HUD[k].pressed) HUD[k].pressed = Math.max(0, HUD[k].pressed - realDt);
   if (game.state === 'dead') { game.deathT += realDt; }
   if (game.state !== 'play') return;
   readMove();
@@ -594,6 +834,7 @@ function update(realDt) {
   updateDirector(dt);
   for (const e of enemies) if (!e.dead) updateEnemy(e, dt);
   enemies = enemies.filter((e) => !e.dead);
+  updateAbilities(dt);
   updateBolts(dt);
   updateParts(dt);
   for (const g of ghosts) g.t += realDt;
@@ -630,8 +871,11 @@ function render() {
   // Dash afterimages.
   for (const g of ghosts) spr('saint', 'dash', g.i, g.x, g.y, { flip: g.face < 0, white: true, alpha: 0.5 * (1 - g.t / 0.2) });
   // Y-sorted actors.
-  const actors = enemies.filter((e) => e.state !== 'spawn').concat([player]).sort((a, b) => a.y - b.y);
-  for (const a of actors) a === player ? drawPlayer() : drawEnemy(a);
+  drawAbilitiesGround();
+  const th = thuriblePos(); th.isThurible = true; th.y += 10;
+  const actors = enemies.filter((e) => e.state !== 'spawn').concat([player, th]).sort((a, b) => a.y - b.y);
+  for (const a of actors) a === player ? drawPlayer() : a.isThurible ? drawThurible(thuriblePos()) : drawEnemy(a);
+  drawAbilitiesAir();
   // Gibs in flight and blood droplets.
   for (const g of gibs) spr('fx', g.anim, g.i, g.x, g.y - g.z, { ax: 4, ay: 4 });
   for (const p of parts) { ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x), Math.round(p.y - p.z), p.s || 1, p.s || 1); }
@@ -651,6 +895,7 @@ function render() {
   ctx.save(); ctx.translate(-cx, -cy); ctx.globalCompositeOperation = 'lighter';
   for (const c of room.candles) glow(c.x, c.y - 8, 26 + Math.sin(game.real * 9 + c.ph) * 2, 'rgba(127,214,122,0.16)');
   glow(player.x, player.y - 30, 14, 'rgba(255,224,138,0.18)');
+  drawAbilitiesGlow();
   for (const b of bolts) glow(b.x, b.y, b.crit ? 12 : 8, b.crit ? 'rgba(255,224,138,0.5)' : 'rgba(255,246,208,0.3)');
   for (const p of parts) if (p.kind === 'spark') glow(p.x, p.y, 4, 'rgba(255,224,138,0.4)');
   for (const r of rings) { const k = r.t / r.max; ctx.strokeStyle = `rgba(255,224,138,${0.9 * (1 - k)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(r.x, r.y, 6 + r.r * k, 0, Math.PI * 2); ctx.stroke(); }
@@ -688,6 +933,8 @@ function renderLight(cx, cy) {
     dctx.fillStyle = g; dctx.fillRect(x - cx - r, y - cy - r, r * 2, r * 2);
   };
   hole(player.x, player.y - 12, 110 + fervorTier() * 6);
+  for (const pl of pools) hole(pl.x, pl.y, pl.r * 1.6, 0.6);
+  for (const l of lashes) if (l.hit) hole(l.x, l.y, 24, 0.6);
   for (const c of room.candles) hole(c.x, c.y - 6, 62 + Math.sin(game.real * 7 + c.ph) * 3, 0.85);
   for (const b of bolts) hole(b.x, b.y, 22, 0.5);
   dctx.globalCompositeOperation = 'source-over';
@@ -740,6 +987,7 @@ function renderScreenFx() {
   const tints = [null, 'rgba(255,138,42,', 'rgba(168,28,34,', 'rgba(255,224,138,'];
   if (tints[tier]) edge(tints[tier], 0.16 + 0.05 * Math.sin(game.real * 4));
   if (player.hurt > 0) edge('rgba(224,56,58,', player.hurt * 1.5);
+  if (player.rainT > 0) edge('rgba(110,16,24,', 0.45);
   if (game.slowmo > 0) { ctx.fillStyle = 'rgba(200,240,255,0.08)'; ctx.fillRect(0, 0, W, H); }
   if (game.flash > 0) { ctx.fillStyle = `rgba(255,246,208,${game.flash * 3})`; ctx.fillRect(0, 0, W, H); }
 }
@@ -800,7 +1048,11 @@ function renderHud() {
   const dashK = p.charges >= T.dash.charges ? 1 : p.recharge / T.dash.recharge;
   circleBtn(HUD.dash, { active: p.charges > 0, fill: p.charges < T.dash.charges ? dashK : 0 });
   for (let i = 0; i < T.dash.charges; i++) { ctx.fillStyle = i < p.charges ? PAL.gold0 : PAL.stone2; ctx.fillRect(HUD.dash.x - 5 + i * 8, HUD.dash.y + HUD.dash.r + 4, 4, 2); }
-  circleBtn(HUD.m1, { active: false }); circleBtn(HUD.m2, { active: false }); circleBtn(HUD.pen, { active: false });
+  circleBtn(HUD.m1, { active: p.m1cd <= 0, fill: p.m1cd > 0 ? 1 - p.m1cd / T.flask.cd : 0 });
+  circleBtn(HUD.m2, { active: p.m2cd <= 0, fill: p.m2cd > 0 ? 1 - p.m2cd / T.chain.cd : 0 });
+  const penReady = p.penance >= T.penance.charge && p.rainT <= 0;
+  if (penReady) { ctx.globalCompositeOperation = 'lighter'; glow(HUD.pen.x, HUD.pen.y, 24 + Math.sin(game.real * 6) * 3, 'rgba(224,56,58,0.55)'); ctx.globalCompositeOperation = 'source-over'; }
+  circleBtn(HUD.pen, { active: penReady, fill: penReady ? 0 : p.penance / T.penance.charge });
   if (game.execTarget) circleBtn(HUD.exec, { active: true });
   // Bottom-left: joystick.
   if (stick.active) {
@@ -884,7 +1136,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#d9a640;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { game, T, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, input, newRun, spawnEnemy };
+window.HS = { game, T, hud: HUD, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnEnemy };
 </script>
 </body>
 </html>

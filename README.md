@@ -30,7 +30,10 @@ Debug URL flags: `?run` skips the title, `?fps` shows frame rate.
 |---|---|---|
 | Left thumb | WASD / arrows | Move |
 | Dash button | Space / Shift | Dash (2 charges). Dash just before a hit lands for a Perfect Dodge |
+| Flask button | Q / 1 | Holy Water Flask (Miracle, 6 s cooldown) |
+| Chain button | F / 2 | Chain of Penitence (Miracle, 8 s cooldown) |
+| Sun button | R / 3 | Flagellant's Rain (Penance; charges from Fervor) |
 | Tap an enemy | click | Lock target (tap again to release) |
 | Dagger button / tap staggered elite | E | Execute |
 
-The Relic Weapon fires on its own: elites first, then the nearest enemy.
+The Relic Weapon and the Thurible (an orbiting censer) work on their own; the crossbow fires: elites first, then the nearest enemy.
