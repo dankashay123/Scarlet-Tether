@@ -435,8 +435,9 @@ glowing VFX over muted, grimy environments.
 | Elites | 32 × 32 px |
 | Bosses | 64 to 128 px, built from multiple parts |
 | Projectiles and pickups | 8 to 12 px |
-| Palette | One master palette of about 48 colors; each Stratum uses a 16-color subset plus shared character and VFX colors |
-| Outlines | 1 px dark outline on characters, enemies and loot; none on tiles |
+| Palette | One master palette of 17 materials × 5 hue-shifted shades (about 87 colors; highlights warm, shadows cool/violet); each Stratum leans on a subset plus shared character and VFX colors |
+| Outlines | 1 px dark outline on characters, enemies, props and loot; none on tiles |
+| Shading | Per-part surface normals (sphere, cylinder, bevel) lit from the top-left, with light ordered dithering |
 | Lighting | Darkness overlay per Stratum, candle light radii, additive glow layer for VFX |
 
 ### Animation
@@ -491,7 +492,10 @@ Sprites animate at 10 to 12 fps; VFX and particles run at 60 fps.
 
 - Claude draws every sprite in code and exports PNG sheets, each with a JSON frame map.
 - The master palette is enforced at export so nothing drifts off-palette.
-- Consistency rules: light from the top-left, 1 px outlines, at most 3 shades per material.
+- Consistency rules: light from the top-left, 1 px outlines, up to 5 shades per material.
+- Quality bar: Otherworld Legends. Furnished rooms (columns, tombs, statues, candelabras, wall decor),
+  bold black-on-white skill buttons with cooldown sweeps, chunky outlined damage numbers, sprite VFX
+  (impact stars, blood bursts, floor splats, smoke) over an additive glow layer.
 
 ## Tech and platform
 

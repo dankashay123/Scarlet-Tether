@@ -6,14 +6,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="theme-color" content="#0d0a0e">
+<meta name="theme-color" content="#0b0710">
 <title>Hollow Saint</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #0d0a0e; overflow: hidden; }
+  html, body { margin: 0; height: 100%; background: #0b0710; overflow: hidden; }
   body { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
   canvas { position: absolute; image-rendering: pixelated; image-rendering: crisp-edges; }
   #rotate { display: none; position: fixed; inset: 0; align-items: center; justify-content: center;
-    color: #d9a640; font: 16px Georgia, serif; text-align: center; padding: 24px; background: #0d0a0e; }
+    color: #ffd155; font: 16px Georgia, serif; text-align: center; padding: 24px; background: #0b0710; }
   @media (orientation: portrait) { #rotate { display: flex; } }
 </style>
 </head>
@@ -33,16 +33,17 @@ const T = {
   slowmo: { scale: 0.25, time: 0.45 },
   hurtIframes: 0.6,
   crossbow: { range: 160, cooldown: 0.38, speed: 280, dmg: [6, 9], crit: 0.1, pierce: 1 },
-  fervor: { decayDelay: 2, decay: 2.5, tiers: ['MURMUR', 'CHANT', 'RAPTURE', 'FRENZY'] },
   thurible: { radius: 24, speed: 3.4, dmg: 4, hitCd: 0.45, burn: { dps: 4, time: 2 } },
   flask: { cd: 6, flight: 0.45, radius: 30, time: 4, dps: 8, splash: 8, slow: 0.45, range: 170 },
   chain: { cd: 8, range: 150, links: 4, linkRange: 64, bind: 2, dmg: 14, speed: 420 },
   penance: { charge: 160, time: 3, every: 0.07, dmg: 12, radius: 14 },
+  fervor: { decayDelay: 2, decay: 2.5, tiers: ['MURMUR', 'CHANT', 'RAPTURE', 'FRENZY'] },
   wave: { start: 10, max: 34, ramp: 120, eliteEvery: 25, elitesMax: 2, cap: 40 },
+  ambient: 'rgba(10,8,26,0.5)',  // Undercroft darkness
 };
 const ENEMY = {
-  risen: { sheet: 'risen', hp: 18, r: 5, speed: 28, reach: 17, windup: 0.45, recover: 0.55, dmg: 8, xp: 3, fervor: 3 },
-  gravewarden: { sheet: 'gravewarden', hp: 90, r: 9, speed: 15, reach: 30, windup: 0.6, recover: 0.7, dmg: 16, xp: 15, fervor: 12, elite: true },
+  risen: { sheet: 'risen', hp: 18, r: 5, speed: 28, reach: 17, windup: 0.45, recover: 0.55, dmg: 8, fervor: 3, hy: 12, hr: 8 },
+  gravewarden: { sheet: 'gravewarden', hp: 90, r: 9, speed: 15, reach: 30, windup: 0.6, recover: 0.7, dmg: 16, fervor: 12, elite: true, hy: 17, hr: 12 },
 };
 
 // ------------------------------------------------------------ display ---
@@ -89,43 +90,60 @@ async function loadAssets() {
 }
 
 function frameOf(sheet, anim, i) { const a = SPR[sheet].anims[anim]; return a[((i % a.length) + a.length) % a.length]; }
-// Draw a frame with its anchor at world/screen pixel (x, y).
-function spr(sheet, anim, i, x, y, { flip = false, white = false, alpha = 1, ax, ay } = {}) {
+// Draw a frame with its anchor at pixel (x, y). Default anchor: sheet anchor, else bottom-centre.
+function spr(sheet, anim, i, x, y, { flip = false, white = false, alpha = 1, ax, ay, c = ctx } = {}) {
   const s = SPR[sheet], f = frameOf(sheet, anim, i);
-  const w = f.w ?? s.frameW, h = f.h ?? s.frameH;
-  const axx = ax ?? s.anchorX ?? w / 2, ayy = ay ?? s.anchorY ?? h / 2;
+  const axx = ax ?? s.anchorX ?? Math.floor(f.w / 2), ayy = ay ?? s.anchorY ?? f.h - 1;
   const img = white ? WHITE[sheet] : IMG[sheet];
-  if (alpha !== 1) ctx.globalAlpha = alpha;
+  if (alpha !== 1) c.globalAlpha = alpha;
   x = Math.round(x); y = Math.round(y);
-  if (flip) { ctx.save(); ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(img, f.x, f.y, w, h, -(w - axx), y - ayy, w, h); ctx.restore(); }
-  else ctx.drawImage(img, f.x, f.y, w, h, x - axx, y - ayy, w, h);
-  if (alpha !== 1) ctx.globalAlpha = 1;
+  if (flip) { c.save(); c.translate(x, 0); c.scale(-1, 1); c.drawImage(img, f.x, f.y, f.w, f.h, -(f.w - axx), y - ayy, f.w, f.h); c.restore(); }
+  else c.drawImage(img, f.x, f.y, f.w, f.h, x - axx, y - ayy, f.w, f.h);
+  if (alpha !== 1) c.globalAlpha = 1;
 }
+const sprC = (sheet, anim, i, x, y, o = {}) => { const f = frameOf(sheet, anim, i); spr(sheet, anim, i, x, y, { ax: Math.floor(f.w / 2), ay: Math.floor(f.h / 2), ...o }); };
 
 // --------------------------------------------------------- pixel font ---
-// 3x5 glyphs, rows of 3 bits.
-const GLYPHS = {};
-(function buildFont() {
-  const src = 'A010101111101101B110101110101110C011100100100011D110101101101110E111100110100111F111100110100100G011100101101011H101101111101101I111010010010111J001001001101010K101101110101101L100100100100111M101111111101101N110101101101101O010101101101010P110101110100100Q010101101110011R110101110101101S011100010001110T111010010010010U101101101101111V101101101101010W101101111111101X101101010101101Y101101010010010Z111001010100111' +
-    '0111101101101111' + '1010110010010111' + '2110001010100111' + '3110001010001110' + '4101101111001001' + '5111100110001110' + '6011100111101111' + '7111001010010010' + '8111101111101111' + '9111101111001110' +
-    '.000000000000010' + ',000000000010100' + '!010010010000010' + '?110001010000010' + ':000010000010000' + "'010010000000000" + '-000000111000000' + '%101001010100101' + '/001001010100100' + '+000010111010000' + '"101101000000000' + ' 000000000000000';
-  for (let i = 0; i < src.length; i += 16) GLYPHS[src[i]] = src.slice(i + 1, i + 16);
-})();
-function textW(s, sc = 1) { return s.length * 4 * sc - sc; }
-function text(s, x, y, color, { sc = 1, shadow = PAL.outline, align = 'left' } = {}) {
+// 5x7 glyphs, rows of 5 bits.
+const GLYPHS = {
+  A: '01110100011000111111100011000110001', B: '11110100011000111110100011000111110', C: '01110100011000010000100001000101110',
+  D: '11110100011000110001100011000111110', E: '11111100001000011110100001000011111', F: '11111100001000011110100001000010000',
+  G: '01110100011000010111100011000101111', H: '10001100011000111111100011000110001', I: '01110001000010000100001000010001110',
+  J: '00111000100001000010000101001001100', K: '10001100101010011000101001001010001', L: '10000100001000010000100001000011111',
+  M: '10001110111010110101100011000110001', N: '10001100011100110101100111000110001', O: '01110100011000110001100011000101110',
+  P: '11110100011000111110100001000010000', Q: '01110100011000110001101011001001101', R: '11110100011000111110101001001010001',
+  S: '01111100001000001110000010000111110', T: '11111001000010000100001000010000100', U: '10001100011000110001100011000101110',
+  V: '10001100011000110001100010101000100', W: '10001100011000110101101011010101010', X: '10001100010101000100010101000110001',
+  Y: '10001100010101000100001000010000100', Z: '11111000010001000100010001000011111',
+  0: '01110100011001110101110011000101110', 1: '00100011000010000100001000010001110', 2: '01110100010000100010001000100011111',
+  3: '11111000100010000010000011000101110', 4: '00010001100101010010111110001000010', 5: '11111100001111000001000011000101110',
+  6: '00110010001000011110100011000101110', 7: '11111000010001000100010000100001000', 8: '01110100011000101110100011000101110',
+  9: '01110100011000101111000010001001100',
+  '.': '00000000000000000000000000110001100', ',': '00000000000000000000011000010001000', '!': '00100001000010000100001000000000100',
+  '?': '01110100010000100010001000000000100', ':': '00000011000110000000011000110000000', "'": '00100001000100000000000000000000000',
+  '-': '00000000000000011111000000000000000', '%': '11000110010001000100010001001100011', '/': '00001000010001000100010001000010000',
+  '+': '00000001000010011111001000010000000', '"': '01010010100000000000000000000000000', ' ': '00000000000000000000000000000000000',
+};
+const textW = (s, sc = 1, bold = false) => String(s).length * (6 + (bold ? 1 : 0)) * sc - sc;
+// Draw pixel text. `bold` doubles strokes horizontally (damage numbers).
+function text(s, x, y, color, { sc = 1, outline = PAL ? PAL.outline : '#000', align = 'left', bold = false, shadow = true } = {}) {
   s = String(s).toUpperCase();
-  if (align === 'center') x -= Math.floor(textW(s, sc) / 2);
-  else if (align === 'right') x -= textW(s, sc);
+  const w = textW(s, sc, bold);
+  if (align === 'center') x -= Math.floor(w / 2); else if (align === 'right') x -= w;
   x = Math.round(x); y = Math.round(y);
+  const adv = (6 + (bold ? 1 : 0)) * sc;
   const pass = (ox, oy, c) => {
     ctx.fillStyle = c;
     for (let i = 0; i < s.length; i++) {
       const g = GLYPHS[s[i]] || GLYPHS['?'];
-      for (let r = 0; r < 5; r++) for (let q = 0; q < 3; q++)
-        if (g[r * 3 + q] === '1') ctx.fillRect(x + i * 4 * sc + q * sc + ox, y + r * sc + oy, sc, sc);
+      for (let r = 0; r < 7; r++) for (let q = 0; q < 5; q++)
+        if (g[r * 5 + q] === '1') ctx.fillRect(x + i * adv + q * sc + ox, y + r * sc + oy, sc * (bold ? 2 : 1), sc);
     }
   };
-  if (shadow) { pass(-1, 0, shadow); pass(1, 0, shadow); pass(0, -1, shadow); pass(0, 1, shadow); pass(1, 1, shadow); }
+  if (outline) {
+    if (shadow) pass(0, sc + 1, outline);
+    for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) pass(ox, oy, outline);
+  }
   pass(0, 0, color);
 }
 
@@ -135,12 +153,13 @@ const input = { mx: 0, my: 0, dash: false, execute: false, m1: false, m2: false,
 const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0, active: false };
 const HUD = {};
 function layoutHud() {
-  HUD.dash = { x: W - 40, y: H - 40, r: 20, icon: 'dash' };
-  HUD.m1 = { x: W - 88, y: H - 26, r: 13, icon: 'flask', label: 'HOLY WATER' };
-  HUD.m2 = { x: W - 26, y: H - 88, r: 13, icon: 'chain', label: 'CHAIN OF PENITENCE' };
-  HUD.pen = { x: W - 80, y: H - 76, r: 15, icon: 'penance', label: 'PENANCE' };
-  HUD.exec = { x: W - 128, y: H - 40, r: 14, icon: 'dagger' };
-  HUD.pause = { x: W - 14, y: 14, r: 10, icon: 'pause' };
+  HUD.dash = { x: W - 32, y: H - 34, r: 19, icon: 'dash' };
+  HUD.m1 = { x: W - 78, y: H - 22, r: 15, icon: 'flask' };
+  HUD.m2 = { x: W - 26, y: H - 82, r: 15, icon: 'chain' };
+  HUD.pen = { x: W - 72, y: H - 68, r: 17, icon: 'penance' };
+  HUD.exec = { x: W - 120, y: H - 30, r: 15, icon: 'dagger' };
+  HUD.pause = { x: W - 15, y: 15, r: 11, icon: 'pause' };
+  HUD.joy = { x: 48, y: H - 48 };
 }
 function toLocal(cx, cy) {
   const r = screen.getBoundingClientRect();
@@ -159,8 +178,8 @@ function pointerDown(id, cx, cy) {
   if (x < W * 0.45 && stick.id === null) { Object.assign(stick, { id, ox: x, oy: y, x, y, active: true }); return; }
   // Tap an enemy to lock it (or execute it if it is staggered).
   const wx = x + cam.x, wy = y + cam.y;
-  let best = null, bd = 18;
-  for (const e of enemies) { if (e.dead || e.state === 'spawn') continue; const d = Math.hypot(e.x - wx, e.y - 8 - wy); if (d < bd) { bd = d; best = e; } }
+  let best = null, bd = 20;
+  for (const e of enemies) { if (e.dead || e.state === 'spawn') continue; const d = Math.hypot(e.x - wx, e.y - e.def.hy - wy); if (d < bd) { bd = d; best = e; } }
   if (best && best.state === 'stagger') { input.execute = best; return; }
   player.lock = best && player.lock !== best ? best : null;
 }
@@ -168,7 +187,7 @@ function pointerMove(id, cx, cy) {
   if (id !== stick.id) return;
   const [x, y] = toLocal(cx, cy);
   stick.x = x; stick.y = y;
-  const d = Math.hypot(x - stick.ox, y - stick.oy), max = 26;
+  const d = Math.hypot(x - stick.ox, y - stick.oy), max = 24;
   if (d > max) { stick.ox = x - (x - stick.ox) / d * max; stick.oy = y - (y - stick.oy) / d * max; } // the base follows the thumb
 }
 function pointerUp(id) { if (id === stick.id) { stick.id = null; stick.active = false; } }
@@ -202,7 +221,7 @@ function readMove() {
   if (keys.has('KeyS') || keys.has('ArrowDown')) y += 1;
   if (stick.active) {
     const dx = stick.x - stick.ox, dy = stick.y - stick.oy, d = Math.hypot(dx, dy);
-    if (d > 3) { const m = Math.min(1, d / 22); x = dx / d * m; y = dy / d * m; }
+    if (d > 3) { const m = Math.min(1, d / 20); x = dx / d * m; y = dy / d * m; }
   }
   const d = Math.hypot(x, y);
   if (d > 1) { x /= d; y /= d; }
@@ -216,44 +235,96 @@ let rng = Math.random;
 const rand = (a, b) => a + rng() * (b - a);
 const pick = (a) => a[Math.floor(rng() * a.length)];
 
+// A Stratum 1 hall: three-tile-tall walls, a carpet cross, colonnades and
+// tomb furniture. Props are solid tiles drawn as y-sorted actors.
 function makeRoom() {
-  const w = 46, h = 28;
+  const w = 46, h = 30, TOP = 4;
   const solid = [];
-  for (let y = 0; y < h; y++) { solid.push([]); for (let x = 0; x < w; x++) solid[y].push(y < 2 || y >= h - 1 || x < 1 || x >= w - 1); }
-  // Pillars (2x2: a cap over a face), kept clear of the centre and each other.
-  const pillars = [];
-  for (let tries = 0; pillars.length < 9 && tries < 300; tries++) {
-    const px = Math.floor(rand(4, w - 6)), py = Math.floor(rand(5, h - 5));
-    if (Math.abs(px - w / 2) < 5 && Math.abs(py - h / 2) < 4) continue;
-    if (pillars.some((p) => Math.abs(p.x - px) < 7 && Math.abs(p.y - py) < 6)) continue;
-    pillars.push({ x: px, y: py });
-    for (let yy = 0; yy < 2; yy++) for (let xx = 0; xx < 2; xx++) solid[py + yy][px + xx] = true;
-  }
+  for (let y = 0; y < h; y++) { solid.push([]); for (let x = 0; x < w; x++) solid[y].push(y < TOP || y >= h - 1 || x < 1 || x >= w - 1); }
   const isSolid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || solid[y][x];
-  // Bake tiles.
+  const cx = Math.floor(w / 2), cy = Math.floor((TOP + h) / 2);
+  const carpet = (x, y) => (Math.abs(x - cx) <= 1 && y >= TOP) || (Math.abs(y - cy) <= 1 && x >= 1 && x < w - 1);
+  const props = [], lights = [], decals = [];
+  const free = (x0, y0, ww, hh, m = 1) => {
+    for (let y = y0 - m; y < y0 + hh + m; y++) for (let x = x0 - m; x < x0 + ww + m; x++) if (isSolid(x, y) || carpet(x, y)) return false;
+    return !(Math.abs(x0 - cx) < 5 && Math.abs(y0 - cy) < 4);
+  };
+  const place = (kind, tx, ty, tw = 1, th = 1, extra = {}) => {
+    for (let y = ty; y < ty + th; y++) for (let x = tx; x < tx + tw; x++) solid[y][x] = true;
+    props.push({ kind, x: (tx + tw / 2) * TILE, y: (ty + th) * TILE - 1, ...extra });
+  };
+  // Colonnades flanking the long carpet.
+  for (let y = TOP + 3; y < h - 3; y += 5) {
+    if (Math.abs(y - cy) < 3) continue;
+    for (const x of [cx - 5, cx + 5]) place('column', x, y);
+  }
+  // Statues with votive candles.
+  for (const [x, y] of [[cx - 9, TOP + 2], [cx + 9, TOP + 2]]) { place('statue', x, y); decals.push({ kind: 'candles', x: x * TILE + 8, y: (y + 2) * TILE - 2 }); }
+  for (let n = 0, tries = 0; n < 6 && tries < 400; tries++) {
+    const x = Math.floor(rand(3, w - 5)), y = Math.floor(rand(TOP + 2, h - 3));
+    if (free(x, y, 2, 1)) { place('sarcophagus', x, y, 2, 1); n++; if (rng() < 0.6) decals.push({ kind: 'candles', x: x * TILE + rand(4, 28), y: (y + 1) * TILE + 12 }); }
+  }
+  for (let n = 0, tries = 0; n < 6 && tries < 400; tries++) {
+    const x = Math.floor(rand(2, w - 2)), y = Math.floor(rand(TOP + 1, h - 2));
+    if (free(x, y, 1, 1)) { place('candelabra', x, y, 1, 1, { ph: rng() * 9 }); lights.push({ x: x * TILE + 8, y: (y + 1) * TILE - 30, r: 72, c: 'flame', a: 0.95, flick: rng() * 9 }); n++; }
+  }
+  for (let n = 0, tries = 0; n < 10 && tries < 400; tries++) {
+    const x = rng() < 0.5 ? Math.floor(rand(2, 5)) : Math.floor(rand(w - 5, w - 2)), y = Math.floor(rand(TOP + 1, h - 2));
+    if (free(x, y, 1, 1, 0)) { place('urn', x, y); n++; }
+  }
+  const bones = [];
+  for (let n = 0; n < 12; n++) bones.push({ x: rand(2, w - 2) * TILE, y: rand(TOP + 1, h - 2) * TILE });
+
+  // Bake floor, walls and flat decals.
   roomCanvas = document.createElement('canvas'); roomCanvas.width = w * TILE; roomCanvas.height = h * TILE;
   const rc = roomCanvas.getContext('2d');
   const t = SPR.tiles.anims, I = IMG.tiles;
-  const candles = [];
+  const tile = (f, x, y) => rc.drawImage(I, f.x, f.y, 16, 16, x * TILE, y * TILE, 16, 16);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    let f;
-    if (!isSolid(x, y)) { const n = rng(); f = t.floor[n < 0.72 ? 0 : n < 0.82 ? 1 : n < 0.91 ? 2 : 3]; }
-    else if (!isSolid(x, y + 1)) f = t.wall[2];       // face
-    else if (y + 2 < h && !isSolid(x, y + 2) && isSolid(x, y + 1)) f = t.wall[1]; // cap
-    else f = t.wall[0];                                 // top
-    rc.drawImage(I, f.x, f.y, 16, 16, x * TILE, y * TILE, 16, 16);
-    // Soft shadow on floor under a wall face.
-    if (!isSolid(x, y) && isSolid(x, y - 1)) { rc.fillStyle = 'rgba(13,10,14,0.45)'; rc.fillRect(x * TILE, y * TILE, 16, 3); }
-    if (isSolid(x, y) && !isSolid(x, y + 1) && y === 1 && x % 5 === 2) candles.push({ x: x * TILE + 8, y: y * TILE + 13, ph: rng() * 10 });
+    const isWall = y < TOP || y >= h - 1 || x < 1 || x >= w - 1;
+    if (!isWall) { // floor (also under props, so tombs and columns sit on stone)
+      if (carpet(x, y)) {
+        const inV = Math.abs(x - cx) <= 1, inH = Math.abs(y - cy) <= 1;
+        let k = rng() < 0.1 ? 3 : 0;
+        if (inV && !inH) k = x - cx === -1 ? 1 : x - cx === 1 ? 2 : k;
+        if (inH && !inV) k = y - cy === -1 ? 4 : y - cy === 1 ? 5 : k;
+        tile(t.carpet[k], x, y);
+      } else {
+        const n = rng();
+        tile(n < 0.02 ? t.misc[0] : t.floor[n < 0.4 ? 0 : Math.floor(rng() * 8)], x, y);
+      }
+      if (y === TOP) { rc.fillStyle = 'rgba(11,7,16,0.5)'; rc.fillRect(x * TILE, y * TILE, 16, 4); rc.fillStyle = 'rgba(11,7,16,0.25)'; rc.fillRect(x * TILE, y * TILE + 4, 16, 3); }
+      continue;
+    }
+    let f = t.wall[0];
+    if (y < TOP && x >= 1 && x < w - 1) f = y === TOP - 1 ? t.wall[3] : y === TOP - 2 ? t.wall[2] : y === TOP - 3 ? t.wall[1] : t.wall[0];
+    tile(f, x, y);
   }
-  for (const p of pillars) candles.push({ x: p.x * TILE + 16, y: (p.y + 1) * TILE + 13, ph: rng() * 10 });
+  // Wall decor on the back wall's faces.
+  const D = SPR.walldecor.anims.decor;
+  for (let x = 2; x < w - 2; x++) {
+    if (Math.abs(x - cx) <= 2) continue;
+    const n = rng();
+    const k = n < 0.4 ? -1 : n < 0.58 ? 0 : n < 0.72 ? 1 : n < 0.9 ? 2 : 3;
+    if (k < 0) continue;
+    const f = D[k];
+    rc.drawImage(IMG.walldecor, f.x, f.y, f.w, f.h, x * TILE, (TOP - 2) * TILE, f.w, f.h);
+    if (k === 2) lights.push({ x: x * TILE + 8, y: (TOP - 2) * TILE + 4, r: 56, c: 'flame', a: 0.9, flick: rng() * 9, sconce: true });
+    if (k === 0) lights.push({ x: x * TILE + 8, y: (TOP - 2) * TILE + 16, r: 26, c: 'flame', a: 0.45, flick: rng() * 9 });
+    x++; // keep decor spaced
+  }
+  // The great banners over the carpet.
+  const bf = D[1];
+  for (const dx of [-2, 2]) rc.drawImage(IMG.walldecor, bf.x, bf.y, bf.w, bf.h, (cx + dx) * TILE, (TOP - 2) * TILE, bf.w, bf.h);
+  const bp = frameOf('props', 'bonepile', 0);
+  for (const b of bones) if (!isSolid(Math.floor(b.x / TILE), Math.floor(b.y / TILE)) && !carpet(Math.floor(b.x / TILE), Math.floor(b.y / TILE))) rc.drawImage(IMG.props, bp.x, bp.y, bp.w, bp.h, Math.round(b.x - bp.w / 2), Math.round(b.y - bp.h / 2), bp.w, bp.h);
   stain = document.createElement('canvas'); stain.width = roomCanvas.width; stain.height = roomCanvas.height;
   sctxStain = stain.getContext('2d');
-  room = { w, h, solid, isSolid, candles, pw: w * TILE, ph: h * TILE };
+  for (const d of decals) lights.push({ x: d.x, y: d.y - 8, r: 42, c: 'flame', a: 0.75, flick: rng() * 9 });
+  room = { w, h, solid, isSolid, props, lights, decals, pw: w * TILE, ph: h * TILE, cx, cy, top: TOP };
 }
 
 const solidAt = (px, py) => room.isSolid(Math.floor(px / TILE), Math.floor(py / TILE));
-// Move a circle, sliding along walls. Returns true if it bumped.
 function moveCircle(o, dx, dy, r) {
   let bumped = false;
   const tryAxis = (ax, d) => {
@@ -269,34 +340,37 @@ function moveCircle(o, dx, dy, r) {
 
 // --------------------------------------------------------------- state ---
 const game = { state: 'title', time: 0, real: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, toast: null, execTarget: null, flash: 0 };
-let player, enemies = [], bolts = [], parts = [], gibs = [], nums = [], ghosts = [], rings = [];
+let player, enemies = [], bolts = [], parts = [], gibs = [], nums = [], ghosts = [], rings = [], fxs = [];
+let pools = [], flasks = [], chains = [], lashes = [];
 let director;
 
 function newRun() {
   makeRoom();
   player = {
-    x: room.pw / 2, y: room.ph / 2, r: 5, hp: 100, maxHp: 100, face: 1,
+    x: room.cx * TILE + 8, y: room.cy * TILE + 8, r: 5, hp: 100, maxHp: 100, face: 1,
     charges: T.dash.charges, recharge: 0, dashT: 0, dashStart: -9, dashDx: 1, dashDy: 0, iframes: 0, perfectUsed: false,
     fireCd: 0.6, thAng: 0, m1cd: 0, m2cd: 0, penance: 0, rainT: 0, rainTick: 0, lock: null, target: null, anim: 'idle', animT: 0, hurt: 0, ghostT: 0,
   };
-  enemies = []; bolts = []; parts = []; gibs = []; nums = []; ghosts = []; rings = []; pools = []; flasks = []; chains = []; lashes = [];
-  Object.assign(game, { time: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, execTarget: null, flash: 0, runStart: 0 });
+  enemies = []; bolts = []; parts = []; gibs = []; nums = []; ghosts = []; rings = []; fxs = []; pools = []; flasks = []; chains = []; lashes = [];
+  Object.assign(game, { time: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, execTarget: null, flash: 0 });
   director = { t: 0, eliteT: 12 };
 }
 
 function toast(msg, t = 2) { game.toast = { msg, t }; }
 const fervorTier = () => Math.min(3, Math.floor(game.fervor / 25));
 function addFervor(n) { if (player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + n); game.fervor = Math.min(100, game.fervor + n); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
+// One-shot sprite effects.
+function playFx(sheet, anim, x, y, fps = 24, o = {}) { fxs.push({ sheet, anim, x, y, t: 0, fps, n: SPR[sheet].anims[anim].length, ...o }); }
 
 // --------------------------------------------------------------- enemies ---
 function spawnEnemy(type) {
   const def = ENEMY[type];
-  for (let i = 0; i < 40; i++) {
-    const x = rand(TILE * 2, room.pw - TILE * 2), y = rand(TILE * 3, room.ph - TILE * 2);
+  for (let i = 0; i < 60; i++) {
+    const x = rand(TILE * 2, room.pw - TILE * 2), y = rand(TILE * (room.top + 1), room.ph - TILE * 2);
     const d = Math.hypot(x - player.x, y - player.y);
     if (d < 90 || d > 260) continue;
     if (solidAt(x - 10, y - 10) || solidAt(x + 10, y + 10) || solidAt(x + 10, y - 10) || solidAt(x - 10, y + 10)) continue;
-    enemies.push({ type, def, x, y, hp: def.hp, maxHp: def.hp, r: def.r, state: 'spawn', t: 0, animT: rng(), face: x < player.x ? 1 : -1, flash: 0, kx: 0, ky: 0, elite: !!def.elite, staggered: false, hitDone: false });
+    enemies.push({ type, def, x, y, hp: def.hp, maxHp: def.hp, r: def.r, state: 'spawn', t: 0, animT: rng(), face: x < player.x ? 1 : -1, flash: 0, kx: 0, ky: 0, elite: !!def.elite, staggered: false, hitDone: false, slowK: 1, bound: 0 });
     return;
   }
 }
@@ -319,29 +393,28 @@ function updateEnemy(e, dt) {
   e.t += dt; e.animT += dt; e.flash = Math.max(0, e.flash - dt);
   updateStatus(e, dt);
   if (e.dead) return;
-  // Knockback.
   if (e.kx || e.ky) { moveCircle(e, e.kx * dt, e.ky * dt, e.r); e.kx *= Math.pow(0.001, dt); e.ky *= Math.pow(0.001, dt); if (Math.abs(e.kx) + Math.abs(e.ky) < 2) e.kx = e.ky = 0; }
   const dx = player.x - e.x, dy = player.y - e.y, dist = Math.hypot(dx, dy) || 1;
-  switch (e.state) {
-    case 'spawn': if (e.t > (e.elite ? 1.2 : 0.8)) { e.state = 'walk'; e.t = 0; } return;
+  if (e.state === 'spawn') {
+    if (e.t > (e.elite ? 1.2 : 0.8)) { e.state = 'walk'; e.t = 0; playFx('fx', 'smoke', e.x, e.y - 6, 14, { alpha: 0.8 }); }
+    return;
   }
   if (e.bound > 0) return; // chained in place
   switch (e.state) {
     case 'walk': {
       e.face = dx < 0 ? -1 : 1;
       let vx = dx / dist * d.speed * e.slowK, vy = dy / dist * d.speed * e.slowK;
-      // Separation so the horde spreads instead of stacking.
       for (const o of enemies) {
         if (o === e || o.dead || o.state === 'spawn') continue;
         const ox = e.x - o.x, oy = e.y - o.y, od = Math.hypot(ox, oy), min = e.r + o.r + 3;
-        if (od > 0 && od < min) { vx += ox / od * 40 * (1 - od / min) * 2; vy += oy / od * 40 * (1 - od / min) * 2; }
+        if (od > 0 && od < min) { vx += ox / od * 80 * (1 - od / min); vy += oy / od * 80 * (1 - od / min); }
       }
       moveCircle(e, vx * dt, vy * dt, e.r);
       if (dist < d.reach * 0.85) { e.state = 'windup'; e.t = 0; e.hitDone = false; }
       break;
     }
     case 'windup':
-      if (e.t >= d.windup) { e.state = 'strike'; e.t = 0; e.sx = e.x; e.sy = e.y; if (!e.elite) resolveStrike(e); }
+      if (e.t >= d.windup) { e.state = 'strike'; e.t = 0; if (!e.elite) resolveStrike(e); }
       break;
     case 'strike':
       if (e.elite) { // shield-bash lunge
@@ -351,16 +424,14 @@ function updateEnemy(e, dt) {
       } else if (e.t > 0.12) { e.state = 'recover'; e.t = 0; }
       break;
     case 'recover': if (e.t > d.recover) { e.state = 'walk'; e.t = 0; } break;
-    case 'stagger':
-      if (e.t > 3) { e.state = 'walk'; e.t = 0; }
-      break;
+    case 'stagger': if (e.t > 3) { e.state = 'walk'; e.t = 0; } break;
   }
 }
 
 function resolveStrike(e) {
-  // The Risen claws the space in front of it. The check also covers where the
-  // Saint dashed from, so dashing away at the last instant still counts as a
-  // perfect dodge.
+  // The claw covers the space in front of the Risen. The check also covers
+  // where the Saint dashed from, so dashing away at the last instant still
+  // counts as a perfect dodge.
   const hx = e.x + e.face * 9, hy = e.y - 2;
   const near = (x, y) => Math.hypot(x - hx, y - hy) < 11;
   damagePlayer(e, e.def.dmg, [[player.x, player.y], [player.dashX ?? player.x, player.dashY ?? player.y]].filter(([x, y]) => near(x, y)));
@@ -369,37 +440,40 @@ function resolveStrike(e) {
 function damagePlayer(src, dmg, contacts) {
   if (!contacts.length) return;
   const dashing = game.time - player.dashStart <= T.dash.iframes;
-  if (dashing && game.time - player.dashStart <= T.dash.perfectWindow + 0.05 && !player.perfectUsed) { perfectDodge(src); return; }
+  if (dashing && game.time - player.dashStart <= T.dash.perfectWindow + 0.05 && !player.perfectUsed) { perfectDodge(); return; }
   if (player.iframes > 0) return;
   const [cx, cy] = contacts[0];
-  if (Math.hypot(cx - player.x, cy - player.y) > 1) return; // only the dash-origin was in reach: a plain miss
+  if (Math.hypot(cx - player.x, cy - player.y) > 1) return; // only the dash origin was in reach: a plain miss
   player.hp -= dmg; player.iframes = T.hurtIframes; player.hurt = 0.3;
   game.shake = Math.max(game.shake, 4); game.hitstop = 0.05;
   game.fervor = Math.max(0, game.fervor - 8);
-  bleed(player.x, player.y - 10, 5, src.x < player.x ? 1 : -1);
-  nums.push({ x: player.x, y: player.y - 30, v: dmg, t: 0, color: PAL.blood0, crit: false });
+  bleed(player.x, player.y - 16, 6, src.x < player.x ? 1 : -1);
+  playFx('fx', 'burst', player.x, player.y - 16, 20);
+  nums.push({ x: player.x, y: player.y - 40, v: dmg, t: 0, color: PAL.blood0, crit: false });
   if (player.hp <= 0) { player.hp = 0; die(); }
 }
 
-function perfectDodge(src) {
+function perfectDodge() {
   player.perfectUsed = true; game.perfects++;
   game.slowmo = T.slowmo.time; game.flash = 0.12;
   addFervor(15);
-  rings.push({ x: player.x, y: player.y - 12, t: 0, max: 0.4, r: 40, color: PAL.gold0 });
-  nums.push({ x: player.x, y: player.y - 34, v: 'PERFECT', t: 0, color: PAL.gold0, crit: true });
+  rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.45, r: 48, color: '255,224,138' });
+  playFx('fx', 'impact', player.x, player.y - 18, 20);
+  nums.push({ x: player.x, y: player.y - 44, v: 'PERFECT', t: 0, color: PAL.gold0, crit: true });
 }
 
 function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   if (e.dead) return;
-  // Gravewarden: the tower shield takes most of a frontal hit.
   let blocked = false;
+  // Gravewarden: the tower shield takes most of a frontal hit.
   if (!opts.status && !(e.bound > 0) && e.elite && e.state !== 'stagger' && Math.sign(dirx) === -e.face && Math.abs(dirx) > Math.abs(diry) * 0.6) { dmg = Math.max(1, Math.round(dmg * 0.35)); blocked = true; crit = false; }
   dmg = Math.round(dmg * (1 + fervorTier() * 0.1));
   e.hp -= dmg; e.flash = 0.05;
-  if (!e.elite || !blocked) { e.kx += dirx * kb * (e.elite ? 0.2 : 1); e.ky += diry * kb * (e.elite ? 0.2 : 1); }
-  nums.push({ x: e.x + rand(-4, 4), y: e.y - (e.elite ? 30 : 20), v: dmg, t: 0, color: blocked ? PAL.iron0 : crit ? PAL.gold0 : opts.color || PAL.bone0, crit });
-  if (blocked) sparks(e.x + e.face * 10, e.y - 12, PAL.gold0, 4);
-  else if (dirx || diry) bleed(e.x, e.y - 8, crit ? 4 : 2, dirx);
+  if (!blocked) { e.kx += dirx * kb * (e.elite ? 0.2 : 1); e.ky += diry * kb * (e.elite ? 0.2 : 1); }
+  nums.push({ x: e.x + rand(-5, 5), y: e.y - e.def.hy * 2 - 4, v: dmg, t: 0, color: blocked ? PAL.iron1 : crit ? PAL.gold1 : opts.color || PAL.cloth0, crit, small: !!opts.status && !crit });
+  const hy = e.y - e.def.hy;
+  if (blocked) { sparks(e.x + e.face * 10, hy, PAL.gold0, 5); playFx('fx', 'impact', e.x + e.face * 10, hy, 30); }
+  else if (dirx || diry) { bleed(e.x, hy, crit ? 5 : 2, dirx); if (!opts.status) playFx('fx', 'impact', e.x - dirx * 4, hy, 30, { small: !crit }); }
   if (e.elite && !e.staggered && e.hp > 0 && e.hp <= e.maxHp * 0.15) { e.staggered = true; e.state = 'stagger'; e.t = 0; toast('STAGGERED: EXECUTE IT', 1.5); }
   if (e.hp <= 0) killEnemy(e, dirx, diry);
 }
@@ -415,27 +489,25 @@ function killEnemy(e, dirx, diry, executed = false) {
 
 // ---------------------------------------------------------------- gore ---
 function bleed(x, y, n, dir) {
-  for (let i = 0; i < n; i++) parts.push({ kind: 'blood', x, y, z: 6, vx: dir * rand(10, 70) + rand(-20, 20), vy: rand(-30, 30), vz: rand(10, 60), c: pick([PAL.blood0, PAL.blood1, PAL.blood1, PAL.blood2]), s: rng() < 0.3 ? 2 : 1 });
+  for (let i = 0; i < n; i++) parts.push({ kind: 'blood', x, y, z: 8, vx: dir * rand(10, 80) + rand(-25, 25), vy: rand(-30, 30), vz: rand(10, 70), c: pick([PAL.blood0, PAL.blood1, PAL.blood1, PAL.blood2]), s: rng() < 0.35 ? 2 : 1 });
 }
 function sparks(x, y, c, n) {
-  for (let i = 0; i < n; i++) parts.push({ kind: 'spark', x, y, z: 0, vx: rand(-80, 80), vy: rand(-80, 80), vz: 0, c, life: rand(0.1, 0.3) });
+  for (let i = 0; i < n; i++) parts.push({ kind: 'spark', x, y, z: 0, vx: rand(-90, 90), vy: rand(-90, 90), vz: 0, c, life: rand(0.1, 0.3) });
 }
 function dismember(e, dirx, diry, executed) {
   const n = e.elite ? 4 : 2 + Math.floor(rng() * 3);
   const kinds = [0, 1, 2, 3].sort(() => rng() - 0.5).slice(0, n);
-  for (const k of kinds) gibs.push({ anim: e.elite ? 'wardenGib' : 'gib', i: k, x: e.x, y: e.y - 6, z: 8, vx: dirx * rand(30, 90) + rand(-40, 40), vy: diry * rand(30, 90) + rand(-40, 40), vz: rand(40, 110), rot: 0, settled: false, t: 0 });
-  bleed(e.x, e.y - 8, executed ? 30 : e.elite ? 22 : 12, dirx);
-  // A splat that stains the floor for the rest of the room.
-  splat(e.x, e.y, e.elite ? 9 : 6);
+  for (const k of kinds) gibs.push({ anim: e.elite ? 'wardenGib' : 'gib', i: k, x: e.x, y: e.y - 6, z: 10, vx: dirx * rand(30, 100) + rand(-45, 45), vy: diry * rand(30, 100) + rand(-45, 45), vz: rand(50, 120), settled: false });
+  bleed(e.x, e.y - e.def.hy, executed ? 34 : e.elite ? 24 : 12, dirx);
+  playFx('fx', 'burst', e.x, e.y - e.def.hy, 18, { big: e.elite || executed });
+  splat(e.x + dirx * 6, e.y, e.elite || executed);
 }
-function splat(x, y, r) {
-  const c = sctxStain;
-  for (let i = 0; i < r * 3; i++) {
-    const a = rng() * Math.PI * 2, d = Math.pow(rng(), 0.7) * r;
-    c.fillStyle = d < r * 0.5 ? PAL.blood2 : pick([PAL.blood2, PAL.blood3]);
-    const s = rng() < 0.4 ? 2 : 1;
-    c.fillRect(Math.round(x + Math.cos(a) * d), Math.round(y + Math.sin(a) * d * 0.6), s, s);
-  }
+function splat(x, y, big = false) {
+  const f = frameOf('fx', 'splat', Math.floor(rng() * 3));
+  const s = big ? 1.5 : 1;
+  sctxStain.globalAlpha = 0.85;
+  sctxStain.drawImage(IMG.fx, f.x, f.y, f.w, f.h, Math.round(x - f.w * s / 2), Math.round(y - f.h * s / 2), Math.round(f.w * s), Math.round(f.h * s));
+  sctxStain.globalAlpha = 1;
 }
 
 function updateParts(dt) {
@@ -443,16 +515,14 @@ function updateParts(dt) {
     if (p.kind === 'spark') { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.9; p.vy *= 0.9; p.life -= dt; continue; }
     p.x += p.vx * dt; p.y += p.vy * dt; p.vz -= 260 * dt; p.z += p.vz * dt;
     if (p.z <= 0) { // landed: stain the floor
-      if (p.clean) { p.life = -1; continue; }
-      sctxStain.fillStyle = p.c; sctxStain.fillRect(Math.round(p.x), Math.round(p.y), p.s, p.s);
-      if (p.s === 2 && rng() < 0.5) sctxStain.fillRect(Math.round(p.x + Math.sign(p.vx)), Math.round(p.y), 2, 1);
       p.life = -1;
+      if (p.clean) continue;
+      sctxStain.fillStyle = p.c === PAL.blood0 ? PAL.blood1 : p.c; sctxStain.fillRect(Math.round(p.x), Math.round(p.y), p.s, p.s);
+      if (p.s === 2 && rng() < 0.5) sctxStain.fillRect(Math.round(p.x + Math.sign(p.vx)), Math.round(p.y), 2, 1);
     }
   }
   parts = parts.filter((p) => (p.life ?? 1) > 0);
   for (const g of gibs) {
-    if (g.settled) continue;
-    g.t += dt;
     g.vz -= 300 * dt; g.z += g.vz * dt;
     const bx = g.x;
     moveCircle(g, g.vx * dt, g.vy * dt, 2);
@@ -464,12 +534,14 @@ function updateParts(dt) {
       if (Math.abs(g.vx) + Math.abs(g.vy) < 4 && g.vz === 0) {
         g.settled = true; // bake into the floor stain
         const f = frameOf('fx', g.anim, g.i);
-        sctxStain.drawImage(IMG.fx, f.x, f.y, 8, 8, Math.round(g.x - 4), Math.round(g.y - 4), 8, 8);
+        sctxStain.drawImage(IMG.fx, f.x, f.y, f.w, f.h, Math.round(g.x - 5), Math.round(g.y - 5), f.w, f.h);
       }
     }
     if (rng() < dt * 20 && g.z > 1) parts.push({ kind: 'blood', x: g.x, y: g.y, z: g.z, vx: 0, vy: 0, vz: 0, c: PAL.blood1, s: 1 });
   }
   gibs = gibs.filter((g) => !g.settled);
+  for (const f of fxs) f.t += dt;
+  fxs = fxs.filter((f) => f.t * f.fps < f.n);
 }
 
 // -------------------------------------------------------------- weapons ---
@@ -480,8 +552,7 @@ function chooseTarget() {
   let best = null, bd = Infinity;
   for (const e of enemies) {
     if (!ok(e)) continue;
-    // Priority: elites first, then nearest.
-    const d = Math.hypot(e.x - player.x, e.y - player.y) - (e.elite ? 10000 : 0);
+    const d = Math.hypot(e.x - player.x, e.y - player.y) - (e.elite ? 10000 : 0); // elites first, then nearest
     if (d < bd) { bd = d; best = e; }
   }
   return best;
@@ -493,28 +564,28 @@ function updateCrossbow(dt) {
   if (!player.target || player.fireCd > 0) return;
   player.fireCd = T.crossbow.cooldown;
   const t = player.target;
-  const sx = player.x + player.face * 8, sy = player.y - 13;
-  const tx = t.x + t.kx * 0.05, ty = t.y - (t.elite ? 14 : 9);
+  player.face = t.x < player.x ? -1 : 1;
+  const sx = player.x + player.face * 13, sy = player.y - 15;
+  const tx = t.x + t.kx * 0.05, ty = t.y - t.def.hy;
   const d = Math.hypot(tx - sx, ty - sy) || 1;
   const crit = rng() < T.crossbow.crit;
-  bolts.push({ x: sx, y: sy, vx: (tx - sx) / d * T.crossbow.speed, vy: (ty - sy) / d * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce, hit: new Set(), crit });
-  player.face = tx < player.x ? -1 : 1;
+  bolts.push({ x: sx, y: sy, vx: (tx - sx) / d * T.crossbow.speed, vy: (ty - sy) / d * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce, hit: new Set(), crit, trail: [] });
+  playFx('fx', 'impact', sx, sy, 40, { small: true, skip: 2 });
 }
 
 function updateBolts(dt) {
   for (const b of bolts) {
     b.life -= dt;
-    const steps = 3;
-    for (let s = 0; s < steps && b.life > 0; s++) {
-      b.x += b.vx * dt / steps; b.y += b.vy * dt / steps;
-      if (solidAt(b.x, b.y + 8)) { b.life = 0; sparks(b.x, b.y, PAL.iron0, 3); break; }
+    b.trail.unshift([b.x, b.y]); if (b.trail.length > 6) b.trail.pop();
+    for (let s = 0; s < 3 && b.life > 0; s++) {
+      b.x += b.vx * dt / 3; b.y += b.vy * dt / 3;
+      if (solidAt(b.x, b.y + 10)) { b.life = 0; sparks(b.x, b.y, PAL.iron0, 4); playFx('fx', 'impact', b.x, b.y, 30, { small: true }); break; }
       for (const e of enemies) {
         if (e.dead || e.state === 'spawn' || b.hit.has(e)) continue;
-        const hy = e.y - (e.elite ? 14 : 9), hr = e.elite ? 11 : 7;
+        const hy = e.y - e.def.hy, hr = e.def.hr;
         if (Math.abs(b.x - e.x) < hr && Math.abs(b.y - hy) < hr + 2) {
           b.hit.add(e);
-          const sp = Math.hypot(b.vx, b.vy);
-          const [lo, hi] = T.crossbow.dmg;
+          const sp = Math.hypot(b.vx, b.vy), [lo, hi] = T.crossbow.dmg;
           hurtEnemy(e, Math.round(rand(lo, hi + 1) * (b.crit ? 2 : 1)), b.crit, b.vx / sp, b.vy / sp);
           if (b.pierce-- <= 0) { b.life = 0; break; }
         }
@@ -527,13 +598,10 @@ function updateBolts(dt) {
 // ------------------------------------------------------------ abilities ---
 // Censer: Thurible of Embers. Miracles: Holy Water Flask, Chain of
 // Penitence. Penance: Flagellant's Rain. All auto-targeted.
-let pools = [], flasks = [], chains = [], lashes = [];
-
 function inRange(e, R) { return !e.dead && e.state !== 'spawn' && Math.hypot(e.x - player.x, e.y - player.y) <= R; }
-
 function thuriblePos() {
   const a = player.thAng, R = T.thurible.radius;
-  return { x: player.x + Math.cos(a) * R, y: player.y - 10 + Math.sin(a) * R * 0.6, behind: Math.sin(a) < 0 };
+  return { x: player.x + Math.cos(a) * R, y: player.y - 12 + Math.sin(a) * R * 0.6 };
 }
 
 function updateThurible(dt) {
@@ -541,16 +609,15 @@ function updateThurible(dt) {
   const t = thuriblePos();
   for (const e of enemies) {
     if (e.dead || e.state === 'spawn' || (e.thCd ?? 0) > game.time) continue;
-    const hy = e.y - (e.elite ? 14 : 9);
-    if (Math.hypot(e.x - t.x, hy - t.y) < (e.elite ? 13 : 9)) {
+    if (Math.hypot(e.x - t.x, e.y - e.def.hy - t.y) < e.def.hr + 3) {
       e.thCd = game.time + T.thurible.hitCd;
       const dx = e.x - player.x, dy = e.y - player.y, d = Math.hypot(dx, dy) || 1;
       e.burn = T.thurible.burn.time;
       hurtEnemy(e, T.thurible.dmg, false, dx / d, dy / d, 50);
-      sparks(t.x, t.y, PAL.ember0, 3);
+      sparks(t.x, t.y, PAL.ember0, 4);
     }
   }
-  if (rng() < dt * 25) parts.push({ kind: 'spark', x: t.x + rand(-2, 2), y: t.y + 3, z: 0, vx: rand(-8, 8), vy: rand(5, 20), vz: 0, c: pick([PAL.ember0, PAL.ember1, PAL.ember2]), life: rand(0.2, 0.45) });
+  if (rng() < dt * 30) parts.push({ kind: 'spark', x: t.x + rand(-2, 2), y: t.y + 4, z: 0, vx: rand(-8, 8), vy: rand(5, 20), vz: 0, c: pick([PAL.ember0, PAL.ember1, PAL.ember2]), life: rand(0.2, 0.45) });
 }
 
 // Status damage (burn, holy water) builds up and lands in half-second ticks.
@@ -558,16 +625,15 @@ function statusTick(e, key, dps, dt, color) {
   e[key] = (e[key] || 0) + dps * dt;
   if (e[key] >= dps * 0.5) { const n = Math.round(e[key]); e[key] = 0; hurtEnemy(e, n, false, 0, 0, 0, { status: true, color }); }
 }
-
 function updateStatus(e, dt) {
   if (e.burn > 0) {
     e.burn -= dt; statusTick(e, 'burnAcc', T.thurible.burn.dps, dt, PAL.ember1);
-    if (rng() < dt * 8) parts.push({ kind: 'spark', x: e.x + rand(-4, 4), y: e.y - rand(4, 16), z: 0, vx: 0, vy: -20, vz: 0, c: PAL.ember1, life: 0.3 });
+    if (rng() < dt * 10) parts.push({ kind: 'spark', x: e.x + rand(-4, 4), y: e.y - rand(4, 20), z: 0, vx: 0, vy: -24, vz: 0, c: pick([PAL.ember0, PAL.ember1]), life: 0.35 });
   }
   e.slowK = 1;
   for (const p of pools) {
     const dx = (e.x - p.x) / p.r, dy = (e.y - p.y) / (p.r * 0.6);
-    if (dx * dx + dy * dy <= 1) { e.slowK = 1 - T.flask.slow; if (!e.dead) statusTick(e, 'poolAcc', T.flask.dps, dt, PAL.sky1); break; }
+    if (dx * dx + dy * dy <= 1) { e.slowK = 1 - T.flask.slow; if (!e.dead) statusTick(e, 'poolAcc', T.flask.dps, dt, PAL.holy2); break; }
   }
   if (e.bound > 0) e.bound -= dt;
 }
@@ -582,14 +648,11 @@ function bestCluster(R) {
   }
   return best;
 }
-
 function castFlask() {
   const t = bestCluster(T.flask.range);
-  const tx = t ? t.x : player.x + player.face * 60, ty = t ? t.y : player.y;
-  flasks.push({ sx: player.x, sy: player.y - 14, tx, ty, t: 0 });
+  flasks.push({ sx: player.x, sy: player.y - 18, tx: t ? t.x : player.x + player.face * 60, ty: t ? t.y : player.y, t: 0 });
   player.m1cd = T.flask.cd;
 }
-
 function castChain() {
   let t = null, bd = Infinity;
   for (const e of enemies) {
@@ -598,13 +661,12 @@ function castChain() {
     if (d < bd) { bd = d; t = e; }
   }
   if (!t) { toast('NOTHING TO BIND'); return; }
-  chains.push({ x: player.x + player.face * 6, y: player.y - 14, target: t, links: [], t: 0, phase: 'fly' });
+  chains.push({ x: player.x + player.face * 8, y: player.y - 18, target: t, links: [], t: 0, phase: 'fly' });
   player.m2cd = T.chain.cd;
 }
-
 function castPenance() {
   player.penance = 0; player.rainT = T.penance.time; player.rainTick = 0;
-  game.shake = Math.max(game.shake, 3);
+  game.shake = Math.max(game.shake, 3); game.flash = 0.1;
   toast("FLAGELLANT'S RAIN", 1.5);
 }
 
@@ -616,16 +678,17 @@ function updateAbilities(dt) {
   if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) castPenance(); }
   updateThurible(dt);
 
-  // Flasks arc to the target and shatter into a pool of holy water.
   for (const f of flasks) {
     f.t += dt;
     if (f.t >= T.flask.flight) {
       f.done = true;
       pools.push({ x: f.tx, y: f.ty, r: T.flask.radius, t: 0 });
-      for (let i = 0; i < 10; i++) parts.push({ kind: 'blood', x: f.tx, y: f.ty, z: 4, vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(20, 70), c: pick([PAL.sky0, PAL.sky1, PAL.holy0]), s: 1, clean: true });
+      for (let i = 0; i < 14; i++) parts.push({ kind: 'blood', x: f.tx, y: f.ty, z: 4, vx: rand(-70, 70), vy: rand(-45, 45), vz: rand(20, 80), c: pick([PAL.holy0, PAL.holy1, PAL.holy2]), s: rng() < 0.4 ? 2 : 1, clean: true });
+      rings.push({ x: f.tx, y: f.ty, t: 0, max: 0.35, r: 34, color: '138,224,255', flat: true });
+      playFx('fx', 'impact', f.tx, f.ty - 4, 24);
       for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - f.tx, (e.y - f.ty) / 0.6) < T.flask.radius) {
         const dx = e.x - f.tx, dy = e.y - f.ty, d = Math.hypot(dx, dy) || 1;
-        hurtEnemy(e, T.flask.splash, false, dx / d, dy / d, 40, { status: true, color: PAL.sky0 });
+        hurtEnemy(e, T.flask.splash, false, dx / d, dy / d, 40, { status: true, color: PAL.holy1 });
       }
       game.shake = Math.max(game.shake, 2);
     }
@@ -634,15 +697,13 @@ function updateAbilities(dt) {
   for (const pl of pools) pl.t += dt;
   pools = pools.filter((pl) => pl.t < T.flask.time);
 
-  // Chain of Penitence: the hook flies, bites, then leaps to nearby foes.
   for (const c of chains) {
     c.t += dt;
     if (c.phase === 'fly') {
-      const tg = c.target, ty = tg.y - (tg.elite ? 14 : 9);
-      const dx = tg.x - c.x, dy = ty - c.y, d = Math.hypot(dx, dy);
-      const step = T.chain.speed * dt;
-      if (tg.dead || d <= step) {
-        if (tg.dead) { c.phase = 'done'; continue; }
+      const tg = c.target, ty = tg.y - tg.def.hy;
+      const dx = tg.x - c.x, dy = ty - c.y, d = Math.hypot(dx, dy), step = T.chain.speed * dt;
+      if (tg.dead) { c.phase = 'done'; continue; }
+      if (d <= step) {
         c.phase = 'bind'; c.t = 0;
         const bound = [tg];
         for (const e of enemies.filter((o) => !o.dead && o !== tg && o.state !== 'spawn').sort((a, b) => Math.hypot(a.x - tg.x, a.y - tg.y) - Math.hypot(b.x - tg.x, b.y - tg.y))) {
@@ -653,19 +714,18 @@ function updateAbilities(dt) {
         for (const e of bound) {
           e.bound = T.chain.bind;
           if (e.state === 'windup' || e.state === 'strike') { e.state = 'walk'; e.t = 0; }
-          // Yank them together.
           const ox = tg.x - e.x, oy = tg.y - e.y, od = Math.hypot(ox, oy) || 1;
           if (e !== tg) { e.kx += ox / od * Math.min(220, od * 4); e.ky += oy / od * Math.min(220, od * 4); }
           hurtEnemy(e, T.chain.dmg, rng() < 0.15, ox / od, oy / od, 0, { status: true, color: PAL.iron0 });
+          playFx('fx', 'impact', e.x, e.y - e.def.hy, 24);
         }
-        sparks(tg.x, ty, PAL.iron0, 6);
+        sparks(tg.x, ty, PAL.iron0, 8);
         game.shake = Math.max(game.shake, 3); game.hitstop = Math.max(game.hitstop, 0.04);
       } else { c.x += dx / d * step; c.y += dy / d * step; }
     } else if (c.phase === 'bind' && c.t > T.chain.bind) c.phase = 'done';
   }
   chains = chains.filter((c) => c.phase !== 'done');
 
-  // Flagellant's Rain: scourges fall across the whole view.
   if (p.rainT > 0) {
     p.rainT -= dt; p.rainTick -= dt;
     while (p.rainTick <= 0) {
@@ -682,80 +742,18 @@ function updateAbilities(dt) {
     if (!l.hit && l.t >= 0.12) {
       l.hit = true;
       for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - l.x, (e.y - l.y) / 0.7) < T.penance.radius) hurtEnemy(e, T.penance.dmg, rng() < 0.2, rand(-1, 1), 1, 30, { status: true });
-      sparks(l.x, l.y, PAL.blood0, 3); splat(l.x, l.y, 3);
+      sparks(l.x, l.y, PAL.blood0, 4); splat(l.x, l.y);
+      playFx('fx', 'burst', l.x, l.y - 4, 26);
       game.shake = Math.max(game.shake, 1.5);
     }
   }
   lashes = lashes.filter((l) => l.t < 0.3);
 }
 
-function drawThurible(t) {
-  const p = player, hx = p.x + p.face * 6, hy = p.y - 16;
-  ctx.fillStyle = PAL.iron1;
-  for (let i = 1; i < 6; i++) { const k = i / 6; ctx.fillRect(Math.round(hx + (t.x - hx) * k), Math.round(hy + (t.y - 6 - hy) * k), 1, 1); }
-  spr('fx', 'thurible', Math.floor(game.real * 6), t.x, t.y, { ax: 6, ay: 8 });
-}
-
-function drawChainLine(x0, y0, x1, y1) {
-  const d = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.floor(d / 5));
-  const a = Math.atan2(y1 - y0, x1 - x0);
-  for (let i = 0; i <= n; i++) {
-    const k = i / n, f = frameOf('fx', 'link', i);
-    ctx.save(); ctx.translate(Math.round(x0 + (x1 - x0) * k), Math.round(y0 + (y1 - y0) * k)); ctx.rotate(a);
-    ctx.drawImage(IMG.fx, f.x, f.y, 6, 4, -3, -2, 6, 4); ctx.restore();
-  }
-}
-
-function drawAbilitiesGround() {
-  for (const pl of pools) {
-    const fade = Math.min(1, (T.flask.time - pl.t) / 0.5), grow = Math.min(1, pl.t / 0.15);
-    const r = pl.r * grow;
-    ctx.globalAlpha = 0.55 * fade; ctx.fillStyle = PAL.sky2;
-    ctx.beginPath(); ctx.ellipse(Math.round(pl.x), Math.round(pl.y), r, r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 0.8 * fade; ctx.strokeStyle = PAL.sky1; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.ellipse(Math.round(pl.x), Math.round(pl.y), r - 1, r * 0.6 - 1, 0, 0, Math.PI * 2); ctx.stroke();
-    ctx.globalAlpha = fade; ctx.fillStyle = PAL.sky0;
-    for (let i = 0; i < 4; i++) { const a = game.real * 1.3 + i * 1.7 + pl.x, k = (Math.sin(game.real * 3 + i) + 1) / 2 * 0.8; ctx.fillRect(Math.round(pl.x + Math.cos(a) * r * k), Math.round(pl.y + Math.sin(a) * r * 0.6 * k), 1, 1); }
-    ctx.globalAlpha = 1;
-  }
-}
-
-function drawAbilitiesAir() {
-  for (const f of flasks) {
-    const k = f.t / T.flask.flight, x = f.sx + (f.tx - f.sx) * k, y = f.sy + (f.ty - f.sy) * k - Math.sin(k * Math.PI) * 34;
-    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(k * 9);
-    const fr = frameOf('fx', 'flask', 0); ctx.drawImage(IMG.fx, fr.x, fr.y, 8, 10, -4, -5, 8, 10); ctx.restore();
-  }
-  for (const c of chains) {
-    if (c.phase === 'fly') {
-      drawChainLine(player.x + player.face * 6, player.y - 14, c.x, c.y);
-      const a = Math.atan2(c.target.y - 9 - c.y, c.target.x - c.x), f = frameOf('fx', 'hook', 0);
-      ctx.save(); ctx.translate(Math.round(c.x), Math.round(c.y)); ctx.rotate(a); ctx.drawImage(IMG.fx, f.x, f.y, 8, 8, -4, -4, 8, 8); ctx.restore();
-    } else if (c.phase === 'bind') {
-      const live = c.links.filter((e) => !e.dead);
-      for (let i = 1; i < live.length; i++) drawChainLine(live[0].x, live[0].y - 9, live[i].x, live[i].y - 9);
-      for (const e of live) { ctx.fillStyle = PAL.iron0; ctx.fillRect(Math.round(e.x - 5), Math.round(e.y - 7), 10, 1); ctx.fillStyle = PAL.iron2; ctx.fillRect(Math.round(e.x - 5), Math.round(e.y - 6), 10, 1); }
-    }
-  }
-  for (const l of lashes) {
-    const k = Math.min(1, l.t / 0.12), y = l.y - 70 * (1 - k);
-    spr('fx', 'scourge', l.i, l.x, y, { ax: 4, ay: 15, alpha: l.t > 0.2 ? 1 - (l.t - 0.2) / 0.1 : 1 });
-  }
-}
-
-function drawAbilitiesGlow() {
-  const t = thuriblePos();
-  glow(t.x, t.y, 16, 'rgba(255,138,42,0.35)');
-  for (const pl of pools) glow(pl.x, pl.y, pl.r * 1.3, `rgba(122,216,255,${0.22 * Math.min(1, (T.flask.time - pl.t) / 0.5)})`);
-  for (const f of flasks) glow(f.sx + (f.tx - f.sx) * f.t / T.flask.flight, f.sy + (f.ty - f.sy) * f.t / T.flask.flight - Math.sin(f.t / T.flask.flight * Math.PI) * 34, 8, 'rgba(200,240,255,0.4)');
-  for (const l of lashes) if (l.hit) glow(l.x, l.y, 14, `rgba(224,56,58,${0.5 * (1 - (l.t - 0.12) / 0.18)})`);
-}
-
 // --------------------------------------------------------------- player ---
 function updatePlayer(dt) {
   const p = player;
   p.iframes = Math.max(0, p.iframes - dt); p.hurt = Math.max(0, p.hurt - dt);
-  // Dash charges recharge one at a time.
   if (p.charges < T.dash.charges) { p.recharge += dt; if (p.recharge >= T.dash.recharge) { p.recharge = 0; p.charges++; } }
   if (input.dash) {
     input.dash = false;
@@ -767,10 +765,9 @@ function updatePlayer(dt) {
       p.dashT = T.dash.time; p.dashStart = game.time; p.dashX = p.x; p.dashY = p.y;
       p.iframes = Math.max(p.iframes, T.dash.iframes); p.perfectUsed = false;
       if (Math.abs(dx) > 0.1) p.face = Math.sign(dx);
-      for (let i = 0; i < 4; i++) parts.push({ kind: 'spark', x: p.x + rand(-4, 4), y: p.y, z: 0, vx: -p.dashDx * rand(20, 60), vy: rand(-10, 10), vz: 0, c: PAL.stone1, life: 0.25 });
+      playFx('fx', 'smoke', p.x, p.y - 4, 18, { alpha: 0.6 });
     }
   }
-  // Execute a staggered elite.
   game.execTarget = enemies.find((e) => !e.dead && e.state === 'stagger' && Math.hypot(e.x - p.x, e.y - p.y) < 90) || null;
   if (input.execute) {
     const t = input.execute === true ? game.execTarget : input.execute;
@@ -794,15 +791,14 @@ function updatePlayer(dt) {
 }
 
 function execute(e) {
-  const p = player;
-  // The Saint lunges to the elite's side; a heavy hit-pause sells the blow.
-  const side = p.x < e.x ? -1 : 1;
-  p.x = e.x + side * 14; p.y = e.y; moveCircle(p, 0, 0, p.r);
+  const p = player, side = p.x < e.x ? -1 : 1;
+  p.x = e.x + side * 16; p.y = e.y; moveCircle(p, 0, 0, p.r);
   p.face = -side; p.iframes = Math.max(p.iframes, 0.5);
   game.hitstop = 0.18; game.shake = 8; game.flash = 0.08;
   p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.05));
   addFervor(20);
-  nums.push({ x: e.x, y: e.y - 40, v: 'EXECUTED', t: 0, color: PAL.blood0, crit: true });
+  rings.push({ x: e.x, y: e.y - 16, t: 0, max: 0.4, r: 40, color: '255,90,74' });
+  nums.push({ x: e.x, y: e.y - 48, v: 'EXECUTED', t: 0, color: PAL.blood0, crit: true });
   killEnemy(e, -side, 0, true);
 }
 
@@ -815,8 +811,8 @@ function die() {
 function update(realDt) {
   game.real += realDt;
   if (game.toast) { game.toast.t -= realDt; if (game.toast.t <= 0) game.toast = null; }
-  for (const k of ['dash', 'm1', 'm2', 'pen']) if (HUD[k].pressed) HUD[k].pressed = Math.max(0, HUD[k].pressed - realDt);
-  if (game.state === 'dead') { game.deathT += realDt; }
+  for (const k of ['dash', 'm1', 'm2', 'pen']) if (HUD[k] && HUD[k].pressed) HUD[k].pressed = Math.max(0, HUD[k].pressed - realDt);
+  if (game.state === 'dead') game.deathT += realDt;
   if (game.state !== 'play') return;
   readMove();
   game.flash = Math.max(0, game.flash - realDt);
@@ -825,7 +821,6 @@ function update(realDt) {
   if (game.slowmo > 0) { game.slowmo -= realDt; game.timeScale = T.slowmo.scale; } else game.timeScale = 1;
   const dt = realDt * game.timeScale;
   game.time += dt;
-  // Fervor decays after a short grace.
   game.fervorT += dt;
   if (game.fervorT > T.fervor.decayDelay) game.fervor = Math.max(0, game.fervor - T.fervor.decay * dt);
 
@@ -842,50 +837,68 @@ function update(realDt) {
   for (const r of rings) r.t += realDt;
   rings = rings.filter((r) => r.t < r.max);
   for (const n of nums) n.t += realDt;
-  nums = nums.filter((n) => n.t < 0.8);
+  nums = nums.filter((n) => n.t < 0.85);
 
-  // Camera: centre on the Saint, clamped to the room.
-  const tx = player.x - W / 2, ty = player.y - 10 - H / 2;
+  const tx = player.x - W / 2, ty = player.y - 14 - H / 2;
   cam.x = room.pw <= W ? (room.pw - W) / 2 : Math.max(0, Math.min(room.pw - W, tx));
   cam.y = room.ph <= H ? (room.ph - H) / 2 : Math.max(0, Math.min(room.ph - H, ty));
 }
 
 // --------------------------------------------------------------- render ---
+function glow(x, y, r, c, g2 = ctx) {
+  const g = g2.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, c); g.addColorStop(1, 'rgba(0,0,0,0)');
+  g2.fillStyle = g; g2.fillRect(x - r, y - r, r * 2, r * 2);
+}
+const LIGHT_RGB = { flame: '95,220,108', ember: '255,122,31', holy: '138,224,255', gold: '255,209,85', blood: '224,32,46' };
+const onScreen = (x, y, cx, cy, m) => x > cx - m && x < cx + W + m && y > cy - m && y < cy + H + m;
+
 function render() {
-  ctx.fillStyle = PAL.outline; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#0b0710'; ctx.fillRect(0, 0, W, H);
   if (game.state === 'title' || !player) { renderTitle(); blit(); return; }
   const sx = game.shake ? Math.round(rand(-game.shake, game.shake)) : 0, sy = game.shake ? Math.round(rand(-game.shake, game.shake)) : 0;
   const cx = Math.round(cam.x) + sx, cy = Math.round(cam.y) + sy;
   ctx.save(); ctx.translate(-cx, -cy);
   ctx.drawImage(roomCanvas, 0, 0); ctx.drawImage(stain, 0, 0);
-  // Wall candles.
-  for (const c of room.candles) spr('fx', 'candle', Math.floor(game.real * 8 + c.ph), c.x, c.y, { ax: 4, ay: 13 });
-  // Spawn mounds.
-  for (const e of enemies) if (e.state === 'spawn') spr('fx', 'mound', Math.min(2, Math.floor(e.t / (e.elite ? 0.4 : 0.27))), e.x, e.y, { ax: 8, ay: 7 });
-  // Shadows.
-  ctx.fillStyle = 'rgba(13,10,14,0.5)';
-  const shadow = (x, y, rx) => { ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y), rx, rx * 0.4, 0, 0, Math.PI * 2); ctx.fill(); };
-  for (const e of enemies) if (e.state !== 'spawn') shadow(e.x, e.y, e.elite ? 10 : 6);
-  shadow(player.x, player.y, 7);
-  for (const g of gibs) shadow(g.x, g.y, 2);
-  // Dash afterimages.
-  for (const g of ghosts) spr('saint', 'dash', g.i, g.x, g.y, { flip: g.face < 0, white: true, alpha: 0.5 * (1 - g.t / 0.2) });
-  // Y-sorted actors.
+  for (const d of room.decals) spr('props', 'candles', Math.floor(game.real * 6 + d.x), d.x, d.y);
+  for (const l of room.lights) if (l.sconce) flame(l.x, l.y, l.flick);
   drawAbilitiesGround();
-  const th = thuriblePos(); th.isThurible = true; th.y += 10;
-  const actors = enemies.filter((e) => e.state !== 'spawn').concat([player, th]).sort((a, b) => a.y - b.y);
-  for (const a of actors) a === player ? drawPlayer() : a.isThurible ? drawThurible(thuriblePos()) : drawEnemy(a);
+  for (const e of enemies) if (e.state === 'spawn') spr('fx', 'mound', Math.min(2, Math.floor(e.t / (e.elite ? 0.4 : 0.27))), e.x, e.y + 3);
+  // Shadows.
+  ctx.fillStyle = 'rgba(11,7,16,0.45)';
+  const shadow = (x, y, rx) => { ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y), rx, Math.max(2, rx * 0.4), 0, 0, Math.PI * 2); ctx.fill(); };
+  for (const e of enemies) if (e.state !== 'spawn') shadow(e.x, e.y, e.elite ? 12 : 7);
+  shadow(player.x, player.y, 8);
+  for (const g of gibs) shadow(g.x, g.y, 3);
+  for (const p of room.props) if (p.kind !== 'urn' && onScreen(p.x, p.y, cx, cy, 40)) shadow(p.x, p.y - 2, p.kind === 'sarcophagus' ? 18 : p.kind === 'candelabra' ? 6 : 11);
+  for (const g of ghosts) spr('saint', 'dash', g.i, g.x, g.y, { flip: g.face < 0, white: true, alpha: 0.45 * (1 - g.t / 0.2) });
+  // Y-sorted actors and props.
+  const th = thuriblePos();
+  const actors = [player, { th: true, y: th.y + 12 }, ...enemies.filter((e) => e.state !== 'spawn'), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, 70))];
+  actors.sort((a, b) => a.y - b.y);
+  for (const a of actors) {
+    if (a === player) drawPlayer();
+    else if (a.th) drawThurible(thuriblePos());
+    else if (a.kind) drawProp(a);
+    else drawEnemy(a);
+  }
   drawAbilitiesAir();
-  // Gibs in flight and blood droplets.
-  for (const g of gibs) spr('fx', g.anim, g.i, g.x, g.y - g.z, { ax: 4, ay: 4 });
+  for (const g of gibs) spr('fx', g.anim, g.i, g.x, g.y - g.z, { ax: 5, ay: 5 });
   for (const p of parts) { ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x), Math.round(p.y - p.z), p.s || 1, p.s || 1); }
-  // Bolts.
   for (const b of bolts) {
     const f = frameOf('fx', 'bolt', 0);
     ctx.save(); ctx.translate(Math.round(b.x), Math.round(b.y)); ctx.rotate(Math.atan2(b.vy, b.vx));
-    ctx.drawImage(IMG.fx, f.x, f.y, 12, 5, -6, -2, 12, 5); ctx.restore();
+    ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -8, -3, f.w, f.h); ctx.restore();
   }
-  // Target markers.
+  for (const f of fxs) {
+    if (f.skip && f.t * f.fps < 1) continue;
+    const i = Math.min(f.n - 1, Math.floor(f.t * f.fps) + (f.skip || 0));
+    const fr = frameOf(f.sheet, f.anim, i);
+    const s = f.small ? 0.5 : f.big ? 1.6 : 1;
+    if (f.alpha) ctx.globalAlpha = f.alpha;
+    ctx.drawImage(IMG[f.sheet], fr.x, fr.y, fr.w, fr.h, Math.round(f.x - fr.w * s / 2), Math.round(f.y - fr.h * s / 2), Math.round(fr.w * s), Math.round(fr.h * s));
+    ctx.globalAlpha = 1;
+  }
   if (player.target) drawMarker(player.target, player.lock === player.target);
   ctx.restore();
 
@@ -893,20 +906,29 @@ function render() {
 
   // Additive glow (VFX layer).
   ctx.save(); ctx.translate(-cx, -cy); ctx.globalCompositeOperation = 'lighter';
-  for (const c of room.candles) glow(c.x, c.y - 8, 26 + Math.sin(game.real * 9 + c.ph) * 2, 'rgba(127,214,122,0.16)');
-  glow(player.x, player.y - 30, 14, 'rgba(255,224,138,0.18)');
+  for (const l of room.lights) if (onScreen(l.x, l.y, cx, cy, 80)) glow(l.x, l.y, l.r * 0.45 + Math.sin(game.real * 9 + (l.flick || 0)) * 2, `rgba(${LIGHT_RGB[l.c]},0.22)`);
+  glow(player.x, player.y - 37, 16, 'rgba(255,209,85,0.25)');
   drawAbilitiesGlow();
-  for (const b of bolts) glow(b.x, b.y, b.crit ? 12 : 8, b.crit ? 'rgba(255,224,138,0.5)' : 'rgba(255,246,208,0.3)');
-  for (const p of parts) if (p.kind === 'spark') glow(p.x, p.y, 4, 'rgba(255,224,138,0.4)');
-  for (const r of rings) { const k = r.t / r.max; ctx.strokeStyle = `rgba(255,224,138,${0.9 * (1 - k)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(r.x, r.y, 6 + r.r * k, 0, Math.PI * 2); ctx.stroke(); }
+  for (const b of bolts) {
+    ctx.strokeStyle = b.crit ? 'rgba(255,209,85,0.8)' : 'rgba(255,244,176,0.55)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(b.x, b.y); for (const [x, y] of b.trail) ctx.lineTo(x, y); ctx.stroke();
+    glow(b.x, b.y, b.crit ? 14 : 9, b.crit ? 'rgba(255,209,85,0.6)' : 'rgba(255,244,176,0.35)');
+  }
+  for (const p of parts) if (p.kind === 'spark') glow(p.x, p.y, 4, 'rgba(255,192,74,0.5)');
+  for (const f of fxs) if (f.anim === 'impact' && !f.small) glow(f.x, f.y, 20 * (1 - f.t * f.fps / f.n), 'rgba(255,244,176,0.6)');
+  for (const r of rings) {
+    const k = r.t / r.max;
+    ctx.strokeStyle = `rgba(${r.color},${0.9 * (1 - k)})`; ctx.lineWidth = 3 * (1 - k) + 1;
+    ctx.beginPath(); ctx.ellipse(r.x, r.y, 6 + r.r * k, (6 + r.r * k) * (r.flat ? 0.6 : 1), 0, 0, Math.PI * 2); ctx.stroke();
+  }
   ctx.restore();
 
-  // Damage numbers.
   for (const n of nums) {
-    const k = n.t / 0.8, rise = 14 * Math.min(1, n.t * 5) + n.t * 6;
-    const sc = n.crit ? 2 : 1;
-    text(String(n.v), n.x - cx, n.y - cy - rise - (n.crit ? 4 : 0), n.color, { sc, align: 'center' });
-    void k;
+    const rise = 16 * Math.min(1, n.t * 6) + n.t * 8, pop = n.t < 0.08;
+    const sc = n.crit ? (pop ? 3 : 2) : n.small ? 1 : pop ? 2 : 1;
+    ctx.globalAlpha = n.t > 0.65 ? Math.max(0, 1 - (n.t - 0.65) / 0.2) : 1;
+    text(String(n.v) + (n.crit && typeof n.v === 'number' ? '!' : ''), n.x - cx, n.y - cy - rise, n.color, { sc, align: 'center', bold: !n.small });
+    ctx.globalAlpha = 1;
   }
   renderScreenFx();
   renderHud();
@@ -915,28 +937,38 @@ function render() {
   blit();
 }
 
-function glow(x, y, r, c) {
-  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-  g.addColorStop(0, c); g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+function flame(x, y, ph = 0) {
+  const k = Math.floor(game.real * 10 + ph) % 3;
+  ctx.fillStyle = PAL.flame3; ctx.fillRect(x - 2, y - 1, 3, 3);
+  ctx.fillStyle = PAL.flame1; ctx.fillRect(x - 1, y - 2 - (k === 1 ? 1 : 0), 2, 3);
+  ctx.fillStyle = PAL.flame0; ctx.fillRect(x - 1 + (k === 2 ? 1 : 0), y - 1, 1, 2);
+}
+
+function drawProp(p) {
+  if (p.kind === 'candelabra') spr('props', 'candelabra', Math.floor(game.real * 8 + p.ph), p.x, p.y);
+  else spr('props', p.kind, 0, p.x, p.y);
 }
 
 function renderLight(cx, cy) {
-  // Darkness overlay with light radii cut out (GDD: darkness per Stratum,
-  // candle light radii). Undercroft darkness is cold and heavy.
+  // Darkness with light radii cut out (GDD: darkness per Stratum, candle radii).
   dctx.globalCompositeOperation = 'source-over';
-  dctx.fillStyle = 'rgba(8,6,12,0.72)'; dctx.fillRect(0, 0, W, H);
+  dctx.clearRect(0, 0, W, H);
+  dctx.fillStyle = T.ambient; dctx.fillRect(0, 0, W, H);
+  const v = dctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.7);
+  v.addColorStop(0, 'rgba(11,7,16,0)'); v.addColorStop(1, 'rgba(11,7,16,0.55)');
+  dctx.fillStyle = v; dctx.fillRect(0, 0, W, H);
   dctx.globalCompositeOperation = 'destination-out';
   const hole = (x, y, r, a = 1) => {
-    const g = dctx.createRadialGradient(x - cx, y - cy, r * 0.2, x - cx, y - cy, r);
-    g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(0.6, `rgba(0,0,0,${a * 0.6})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+    const g = dctx.createRadialGradient(x - cx, y - cy, r * 0.15, x - cx, y - cy, r);
+    g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(0.55, `rgba(0,0,0,${a * 0.65})`); g.addColorStop(1, 'rgba(0,0,0,0)');
     dctx.fillStyle = g; dctx.fillRect(x - cx - r, y - cy - r, r * 2, r * 2);
   };
-  hole(player.x, player.y - 12, 110 + fervorTier() * 6);
-  for (const pl of pools) hole(pl.x, pl.y, pl.r * 1.6, 0.6);
-  for (const l of lashes) if (l.hit) hole(l.x, l.y, 24, 0.6);
-  for (const c of room.candles) hole(c.x, c.y - 6, 62 + Math.sin(game.real * 7 + c.ph) * 3, 0.85);
-  for (const b of bolts) hole(b.x, b.y, 22, 0.5);
+  hole(player.x, player.y - 14, 120 + fervorTier() * 8);
+  for (const l of room.lights) if (onScreen(l.x, l.y, cx, cy, 100)) hole(l.x, l.y, l.r + Math.sin(game.real * 7 + (l.flick || 0)) * 3, l.a);
+  for (const pl of pools) hole(pl.x, pl.y, pl.r * 1.6, 0.7);
+  for (const l of lashes) if (l.hit) hole(l.x, l.y, 28, 0.7);
+  for (const b of bolts) hole(b.x, b.y, 24, 0.6);
+  for (const f of fxs) if (f.anim === 'impact' || f.anim === 'burst') hole(f.x, f.y, 26, 0.6);
   dctx.globalCompositeOperation = 'source-over';
   ctx.drawImage(dark, 0, 0);
 }
@@ -957,39 +989,102 @@ function drawEnemy(e) {
   else if (e.state === 'strike') { anim = 'attack'; i = 2; }
   else if (e.state === 'recover') { anim = 'attack'; i = e.t < 0.15 ? 2 : 3; }
   else if (e.state === 'stagger') { anim = 'attack'; i = 3; }
-  // Windup telegraph: flash white on the beat before the hit.
+  if (e.bound > 0) i = 0;
   const tele = e.state === 'windup' && e.t > e.def.windup - 0.18 && Math.floor(game.real * 24) % 2 === 0;
-  const shake = e.state === 'stagger' ? Math.round(Math.sin(game.real * 60)) : 0;
-  spr(e.def.sheet, anim, i, e.x + shake, e.y, { flip, white: e.flash > 0 || tele });
-  if (e.elite) { // elite HP pip bar
-    const w = 22, x = Math.round(e.x - w / 2), y = Math.round(e.y - 36);
-    ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, 4);
-    ctx.fillStyle = PAL.blood2; ctx.fillRect(x, y, w, 2);
-    ctx.fillStyle = e.state === 'stagger' ? PAL.gold0 : PAL.blood0; ctx.fillRect(x, y, Math.max(0, Math.round(w * e.hp / e.maxHp)), 2);
+  const shake = e.state === 'stagger' || e.bound > 0 ? Math.round(Math.sin(game.real * 60)) : 0;
+  spr(e.def.sheet, anim, i, e.x + shake, e.y, { flip, white: e.flash > 0 });
+  if (tele) spr(e.def.sheet, anim, i, e.x + shake, e.y, { flip, white: true, alpha: 0.45 });
+  if (e.elite) {
+    const w = 26, x = Math.round(e.x - w / 2), y = Math.round(e.y - 44), fw = Math.max(0, Math.round(w * e.hp / e.maxHp));
+    ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, 5);
+    ctx.fillStyle = PAL.blood4; ctx.fillRect(x, y, w, 3);
+    ctx.fillStyle = e.state === 'stagger' ? PAL.gold1 : PAL.blood1; ctx.fillRect(x, y, fw, 3);
+    ctx.fillStyle = e.state === 'stagger' ? PAL.gold0 : PAL.blood0; ctx.fillRect(x, y, fw, 1);
   }
-  if (e.state === 'stagger') spr('fx', 'dagger', 0, e.x, e.y - 40 + Math.round(Math.sin(game.real * 8) * 2), { ax: 4, ay: 11 });
+  if (e.state === 'stagger') spr('fx', 'dagger', 0, e.x, e.y - 48 + Math.round(Math.sin(game.real * 8) * 2));
 }
 
 function drawMarker(e, locked) {
-  const h = e.elite ? 30 : 20, w = e.elite ? 22 : 14;
-  const x = Math.round(e.x - w / 2), y = Math.round(e.y - h - 2), s = locked ? 4 : 3;
+  const h = e.def.hy * 2 + 4, w = e.elite ? 28 : 18;
+  const x = Math.round(e.x - w / 2), y = Math.round(e.y - h - 2), s = 4;
   const pulse = locked ? Math.round(Math.sin(game.real * 10)) : 0;
-  ctx.fillStyle = locked ? PAL.gold0 : 'rgba(217,166,64,0.55)';
-  for (const [cx, cy, dx, dy] of [[x - pulse, y - pulse, 1, 1], [x + w + pulse, y - pulse, -1, 1], [x - pulse, y + h + pulse, 1, -1], [x + w + pulse, y + h + pulse, -1, -1]]) {
-    ctx.fillRect(dx > 0 ? cx : cx - s + 1, cy, s, 1);
-    ctx.fillRect(cx, dy > 0 ? cy : cy - s + 1, 1, s);
+  const draw = (col, o) => {
+    ctx.fillStyle = col;
+    for (const [px, py, dx, dy] of [[x - pulse, y - pulse, 1, 1], [x + w + pulse, y - pulse, -1, 1], [x - pulse, y + h + pulse, 1, -1], [x + w + pulse, y + h + pulse, -1, -1]]) {
+      ctx.fillRect((dx > 0 ? px : px - s + 1) + o, py + o, s, 2); ctx.fillRect(px + o - (dx > 0 ? 0 : 1), (dy > 0 ? py : py - s + 1) + o, 2, s);
+    }
+  };
+  draw(PAL.outline, 1);
+  draw(locked ? PAL.gold0 : PAL.gold1, 0);
+}
+
+function drawThurible(t) {
+  const p = player, hx = p.x + p.face * 8, hy = p.y - 20;
+  for (let i = 1; i < 7; i++) { const k = i / 7; ctx.fillStyle = i % 2 ? PAL.iron2 : PAL.iron1; ctx.fillRect(Math.round(hx + (t.x - hx) * k), Math.round(hy + (t.y - 7 - hy) * k), 1, 1); }
+  sprC('fx', 'thurible', Math.floor(game.real * 6), t.x, t.y);
+}
+function drawChainLine(x0, y0, x1, y1) {
+  const d = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.floor(d / 5)), a = Math.atan2(y1 - y0, x1 - x0);
+  for (let i = 0; i <= n; i++) {
+    const k = i / n, f = frameOf('fx', 'link', i);
+    ctx.save(); ctx.translate(Math.round(x0 + (x1 - x0) * k), Math.round(y0 + (y1 - y0) * k)); ctx.rotate(a);
+    ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -3, -2, f.w, f.h); ctx.restore();
   }
+}
+function drawAbilitiesGround() {
+  for (const pl of pools) {
+    const fade = Math.min(1, (T.flask.time - pl.t) / 0.5), r = pl.r * Math.min(1, pl.t / 0.15);
+    ctx.globalAlpha = 0.5 * fade; ctx.fillStyle = PAL.holy4;
+    ctx.beginPath(); ctx.ellipse(Math.round(pl.x), Math.round(pl.y), r, r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.45 * fade; ctx.fillStyle = PAL.holy3;
+    ctx.beginPath(); ctx.ellipse(Math.round(pl.x - 2), Math.round(pl.y - 1), r * 0.7, r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.9 * fade; ctx.strokeStyle = PAL.holy1; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(Math.round(pl.x), Math.round(pl.y), r - 1, r * 0.6 - 1, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = fade; ctx.fillStyle = PAL.holy0;
+    for (let i = 0; i < 6; i++) { const a = game.real * 1.3 + i * 1.7 + pl.x, k = (Math.sin(game.real * 3 + i) + 1) / 2 * 0.8; ctx.fillRect(Math.round(pl.x + Math.cos(a) * r * k), Math.round(pl.y + Math.sin(a) * r * 0.6 * k), 1, 1); }
+    ctx.globalAlpha = 1;
+  }
+}
+function drawAbilitiesAir() {
+  for (const f of flasks) {
+    const k = f.t / T.flask.flight, x = f.sx + (f.tx - f.sx) * k, y = f.sy + (f.ty - f.sy) * k - Math.sin(k * Math.PI) * 36;
+    const fr = frameOf('fx', 'flask', 0);
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(k * 9); ctx.drawImage(IMG.fx, fr.x, fr.y, fr.w, fr.h, -5, -6, fr.w, fr.h); ctx.restore();
+  }
+  for (const c of chains) {
+    if (c.phase === 'fly') {
+      drawChainLine(player.x + player.face * 8, player.y - 18, c.x, c.y);
+      const a = Math.atan2(c.target.y - c.target.def.hy - c.y, c.target.x - c.x), f = frameOf('fx', 'hook', 0);
+      ctx.save(); ctx.translate(Math.round(c.x), Math.round(c.y)); ctx.rotate(a); ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -5, -5, f.w, f.h); ctx.restore();
+    } else if (c.phase === 'bind') {
+      const live = c.links.filter((e) => !e.dead);
+      for (let i = 1; i < live.length; i++) drawChainLine(live[0].x, live[0].y - live[0].def.hy, live[i].x, live[i].y - live[i].def.hy);
+      for (const e of live) { const y = Math.round(e.y - e.def.hy + 2); ctx.fillStyle = PAL.iron0; ctx.fillRect(Math.round(e.x - 6), y, 12, 1); ctx.fillStyle = PAL.iron3; ctx.fillRect(Math.round(e.x - 6), y + 1, 12, 1); }
+    }
+  }
+  for (const l of lashes) {
+    const k = Math.min(1, l.t / 0.12);
+    spr('fx', 'scourge', l.i, l.x, l.y - 80 * (1 - k), { alpha: l.t > 0.2 ? 1 - (l.t - 0.2) / 0.1 : 1 });
+  }
+}
+function drawAbilitiesGlow() {
+  const t = thuriblePos();
+  glow(t.x, t.y, 18, 'rgba(255,122,31,0.4)');
+  for (const pl of pools) glow(pl.x, pl.y, pl.r * 1.3, `rgba(63,164,240,${0.3 * Math.min(1, (T.flask.time - pl.t) / 0.5)})`);
+  for (const f of flasks) { const k = f.t / T.flask.flight; glow(f.sx + (f.tx - f.sx) * k, f.sy + (f.ty - f.sy) * k - Math.sin(k * Math.PI) * 36, 10, 'rgba(216,247,255,0.5)'); }
+  for (const l of lashes) if (l.hit) glow(l.x, l.y, 18, `rgba(224,32,46,${0.6 * (1 - (l.t - 0.12) / 0.18)})`);
+  for (const c of chains) if (c.phase === 'fly') glow(c.x, c.y, 10, 'rgba(238,242,247,0.4)');
 }
 
 function renderScreenFx() {
   // Fervor tint: screen edges shift ember -> crimson -> white-gold.
   const tier = fervorTier();
-  const tints = [null, 'rgba(255,138,42,', 'rgba(168,28,34,', 'rgba(255,224,138,'];
-  if (tints[tier]) edge(tints[tier], 0.16 + 0.05 * Math.sin(game.real * 4));
-  if (player.hurt > 0) edge('rgba(224,56,58,', player.hurt * 1.5);
-  if (player.rainT > 0) edge('rgba(110,16,24,', 0.45);
-  if (game.slowmo > 0) { ctx.fillStyle = 'rgba(200,240,255,0.08)'; ctx.fillRect(0, 0, W, H); }
-  if (game.flash > 0) { ctx.fillStyle = `rgba(255,246,208,${game.flash * 3})`; ctx.fillRect(0, 0, W, H); }
+  const tints = [null, 'rgba(255,122,31,', 'rgba(181,29,54,', 'rgba(255,244,176,'];
+  if (tints[tier]) edge(tints[tier], 0.18 + 0.06 * Math.sin(game.real * 4));
+  if (player.rainT > 0) edge('rgba(125,18,51,', 0.5);
+  if (player.hurt > 0) edge('rgba(224,32,46,', player.hurt * 1.6);
+  if (game.slowmo > 0) { ctx.fillStyle = 'rgba(216,247,255,0.08)'; ctx.fillRect(0, 0, W, H); }
+  if (game.flash > 0) { ctx.fillStyle = `rgba(255,251,234,${game.flash * 3})`; ctx.fillRect(0, 0, W, H); }
 }
 function edge(rgb, a) {
   const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, W * 0.62);
@@ -998,115 +1093,120 @@ function edge(rgb, a) {
 }
 
 // ----------------------------------------------------------------- HUD ---
-function frameBox(x, y, w, h) { // gilded pixel frame
-  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
-  ctx.fillStyle = PAL.gold2; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
-  ctx.fillStyle = PAL.gold1; ctx.fillRect(x - 1, y - 1, w + 2, 1); ctx.fillRect(x - 1, y - 1, 1, h + 2);
-  ctx.fillStyle = PAL.void; ctx.fillRect(x, y, w, h);
+function gild(x, y, w, h) { // gilded pixel frame with bevel
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+  ctx.fillStyle = PAL.gold3; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+  ctx.fillStyle = PAL.gold1; ctx.fillRect(x - 2, y - 2, w + 4, 1); ctx.fillRect(x - 2, y - 2, 1, h + 4);
+  ctx.fillStyle = PAL.gold0; ctx.fillRect(x - 2, y - 2, 2, 1);
+  ctx.fillStyle = PAL.gold4; ctx.fillRect(x - 2, y + h + 1, w + 4, 1); ctx.fillRect(x + w + 1, y - 2, 1, h + 4);
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
 }
-function bar(x, y, w, h, k, fill, back, hi) {
-  frameBox(x, y, w, h);
-  ctx.fillStyle = back; ctx.fillRect(x, y, w, h);
+function bar(x, y, w, h, k, ramp) {
+  gild(x, y, w, h);
+  ctx.fillStyle = PAL[ramp + '4']; ctx.fillRect(x, y, w, h);
   const fw = Math.round(w * Math.max(0, Math.min(1, k)));
-  ctx.fillStyle = fill; ctx.fillRect(x, y, fw, h);
-  ctx.fillStyle = hi; ctx.fillRect(x, y, fw, 1);
+  ctx.fillStyle = PAL[ramp + '2']; ctx.fillRect(x, y, fw, h);
+  ctx.fillStyle = PAL[ramp + '1']; ctx.fillRect(x, y, fw, Math.ceil(h / 2));
+  ctx.fillStyle = PAL[ramp + '0']; ctx.fillRect(x, y, fw, 1);
+  ctx.fillStyle = PAL[ramp + '3']; ctx.fillRect(x, y + h - 1, fw, 1);
+  if (fw > 1 && fw < w) { ctx.fillStyle = PAL.white; ctx.fillRect(x + fw - 1, y, 1, h); }
 }
-function circleBtn(b, { active = true, fill = 0 } = {}) {
-  const r = b.r + (b.pressed ? -1 : 0);
-  ctx.fillStyle = 'rgba(13,10,14,0.72)'; ctx.beginPath(); ctx.arc(b.x, b.y, r + 2, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = active ? PAL.gold1 : PAL.stone2; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.stroke();
-  if (fill > 0 && fill < 1) { ctx.strokeStyle = PAL.gold0; ctx.beginPath(); ctx.arc(b.x, b.y, r, -Math.PI / 2, -Math.PI / 2 + fill * Math.PI * 2); ctx.stroke(); }
-  const ic = b.sealed ? 'lock' : b.icon;
-  spr(ic === 'dagger' ? 'fx' : 'icons', ic, 0, b.x, b.y, { ax: ic === 'dagger' ? 4 : 8, ay: ic === 'dagger' ? 6 : 8, alpha: active ? 1 : 0.35 });
+function button(b, { active = true, cd = 0, cdText = '', ring = 0, ringColor = PAL.blood1 } = {}) {
+  const pr = b.pressed ? 1 : 0;
+  if (ring > 0) {
+    ctx.strokeStyle = PAL.outline; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 2, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = ringColor; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 2, -Math.PI / 2, -Math.PI / 2 + ring * Math.PI * 2); ctx.stroke();
+  }
+  sprC('ui', b.icon, 0, b.x, b.y + pr, { alpha: active ? 1 : 0.55 });
+  if (cd > 0) { // dark sweep for the remaining cooldown, plus seconds left
+    ctx.fillStyle = 'rgba(11,7,16,0.62)'; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.arc(b.x, b.y, b.r - 1, -Math.PI / 2, -Math.PI / 2 + cd * Math.PI * 2); ctx.closePath(); ctx.fill();
+    if (cdText) text(cdText, b.x, b.y - 3, PAL.cloth0, { align: 'center', bold: true });
+  }
 }
 
 function renderHud() {
   const p = player;
   // Top-left: portrait, HP, Fervor.
-  frameBox(6, 6, 22, 22);
-  ctx.save(); ctx.beginPath(); ctx.rect(6, 6, 22, 22); ctx.clip();
-  spr('saint', 'idle', Math.floor(game.real * 3), 17, 37, {});
-  ctx.restore();
-  bar(33, 7, 86, 6, p.hp / p.maxHp, PAL.blood1, PAL.blood3, PAL.blood0);
-  text(`${Math.ceil(p.hp)}`, 35, 15, PAL.bone1, { shadow: PAL.outline });
+  gild(8, 8, 26, 26);
+  spr('ui', 'portrait', 0, 8, 8, { ax: 0, ay: 0 });
+  if (p.hurt > 0) { ctx.fillStyle = `rgba(224,32,46,${p.hurt * 2})`; ctx.fillRect(8, 8, 26, 26); }
+  bar(41, 9, 104, 9, p.hp / p.maxHp, 'blood');
+  text(`${Math.ceil(p.hp)}/${p.maxHp}`, 44, 10, PAL.cloth0, { shadow: false });
   const tier = fervorTier();
-  const fcol = [PAL.ember2, PAL.ember1, PAL.blood0, PAL.gold0][tier];
-  bar(33, 23, 70, 4, game.fervor / 100, fcol, PAL.void, PAL.holy0);
-  for (let i = 1; i < 4; i++) { ctx.fillStyle = PAL.gold2; ctx.fillRect(33 + Math.round(70 * i / 4), 23, 1, 4); }
-  text(T.fervor.tiers[tier], 107, 22, fcol);
+  const framp = ['ember', 'ember', 'crimson', 'gold'][tier];
+  bar(41, 25, 80, 6, game.fervor / 100, framp);
+  for (let i = 1; i < 4; i++) { ctx.fillStyle = PAL.outline; ctx.fillRect(41 + Math.round(80 * i / 4), 25, 1, 6); }
+  text(T.fervor.tiers[tier], 127, 25, PAL[framp + '1']);
   // Top-right: minimap and pause.
-  const mw = 46, mh = Math.round(46 * room.ph / room.pw), mx = W - 30 - mw, my = 6;
-  frameBox(mx, my, mw, mh);
+  const mw = 54, mh = Math.round(54 * room.ph / room.pw), mx = W - 34 - mw, my = 8;
+  gild(mx, my, mw, mh);
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(mx, my, mw, mh);
   const k = mw / room.pw;
-  ctx.fillStyle = PAL.stone4;
-  for (let y = 0; y < room.h; y++) for (let x = 0; x < room.w; x++) if (room.solid[y][x]) ctx.fillRect(mx + Math.floor(x * TILE * k), my + Math.floor(y * TILE * k), Math.ceil(TILE * k), Math.ceil(TILE * k));
+  ctx.fillStyle = PAL.stone3;
+  for (let y = 0; y < room.h; y++) for (let x = 0; x < room.w; x++) if (!room.solid[y][x]) ctx.fillRect(mx + Math.floor(x * TILE * k), my + Math.floor(y * TILE * k), Math.ceil(TILE * k), Math.ceil(TILE * k));
+  ctx.strokeStyle = 'rgba(255,244,176,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(Math.round(mx + cam.x * k) + 0.5, Math.round(my + cam.y * k) + 0.5, Math.round(W * k), Math.round(H * k));
   for (const e of enemies) { ctx.fillStyle = e.elite ? PAL.gold0 : PAL.blood0; ctx.fillRect(mx + Math.round(e.x * k), my + Math.round(e.y * k), 1, 1); }
-  ctx.fillStyle = PAL.holy0; ctx.fillRect(mx + Math.round(p.x * k) - 1, my + Math.round(p.y * k) - 1, 2, 2);
-  circleBtn(HUD.pause);
-  text(`KILLS ${game.kills}`, W - 30, my + mh + 6, PAL.bone2, { align: 'right' });
+  ctx.fillStyle = PAL.white; ctx.fillRect(mx + Math.round(p.x * k) - 1, my + Math.round(p.y * k) - 1, 2, 2);
+  button(HUD.pause);
+  text(`${game.kills}`, W - 34, my + mh + 7, PAL.cloth1, { align: 'right', bold: true });
+  text('SLAIN', W - 34 - textW(String(game.kills), 1, true) - 5, my + mh + 7, PAL.stone1, { align: 'right' });
   // Bottom-right: dash, Miracles, Penance.
-  const dashK = p.charges >= T.dash.charges ? 1 : p.recharge / T.dash.recharge;
-  circleBtn(HUD.dash, { active: p.charges > 0, fill: p.charges < T.dash.charges ? dashK : 0 });
-  for (let i = 0; i < T.dash.charges; i++) { ctx.fillStyle = i < p.charges ? PAL.gold0 : PAL.stone2; ctx.fillRect(HUD.dash.x - 5 + i * 8, HUD.dash.y + HUD.dash.r + 4, 4, 2); }
-  circleBtn(HUD.m1, { active: p.m1cd <= 0, fill: p.m1cd > 0 ? 1 - p.m1cd / T.flask.cd : 0 });
-  circleBtn(HUD.m2, { active: p.m2cd <= 0, fill: p.m2cd > 0 ? 1 - p.m2cd / T.chain.cd : 0 });
+  const dashK = p.charges >= T.dash.charges ? 0 : 1 - p.recharge / T.dash.recharge;
+  button(HUD.dash, { active: p.charges > 0, cd: p.charges === 0 ? dashK : 0 });
+  for (let i = 0; i < T.dash.charges; i++) { const x = HUD.dash.x - 7 + i * 9, y = HUD.dash.y + HUD.dash.r + 3; ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, 7, 4); ctx.fillStyle = i < p.charges ? PAL.gold1 : PAL.ink3; ctx.fillRect(x, y, 5, 2); }
+  button(HUD.m1, { active: p.m1cd <= 0, cd: p.m1cd / T.flask.cd, cdText: p.m1cd > 0 ? String(Math.ceil(p.m1cd)) : '' });
+  button(HUD.m2, { active: p.m2cd <= 0, cd: p.m2cd / T.chain.cd, cdText: p.m2cd > 0 ? String(Math.ceil(p.m2cd)) : '' });
   const penReady = p.penance >= T.penance.charge && p.rainT <= 0;
-  if (penReady) { ctx.globalCompositeOperation = 'lighter'; glow(HUD.pen.x, HUD.pen.y, 24 + Math.sin(game.real * 6) * 3, 'rgba(224,56,58,0.55)'); ctx.globalCompositeOperation = 'source-over'; }
-  circleBtn(HUD.pen, { active: penReady, fill: penReady ? 0 : p.penance / T.penance.charge });
-  if (game.execTarget) circleBtn(HUD.exec, { active: true });
+  if (penReady) { ctx.globalCompositeOperation = 'lighter'; glow(HUD.pen.x, HUD.pen.y, 28 + Math.sin(game.real * 6) * 4, 'rgba(224,32,46,0.6)'); ctx.globalCompositeOperation = 'source-over'; }
+  button(HUD.pen, { active: penReady, ring: penReady ? 1 : p.penance / T.penance.charge, ringColor: penReady ? PAL.blood0 : PAL.blood2 });
+  if (game.execTarget) button(HUD.exec);
   // Bottom-left: joystick.
-  if (stick.active) {
-    ctx.strokeStyle = 'rgba(217,166,64,0.5)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(stick.ox, stick.oy, 26, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = 'rgba(242,234,216,0.6)'; ctx.beginPath(); ctx.arc(stick.x, stick.y, 9, 0, Math.PI * 2); ctx.fill();
-  } else if (game.time < 6) {
-    text('MOVE', 40, H - 40, PAL.bone3, { align: 'center' });
-  }
-  if (game.toast) text(game.toast.msg, W / 2, 34, PAL.bone0, { align: 'center' });
-  if (location.search.includes('fps')) text(`${Math.round(fpsAvg)} FPS ${enemies.length} E`, 6, H - 10, PAL.candle0);
+  const jx = stick.active ? stick.ox : HUD.joy.x, jy = stick.active ? stick.oy : HUD.joy.y;
+  sprC('ui', 'ring', 0, jx, jy, { alpha: stick.active ? 0.85 : 0.4 });
+  sprC('ui', 'knob', 0, stick.active ? stick.x : jx, stick.active ? stick.y : jy, { alpha: stick.active ? 1 : 0.6 });
+  if (game.toast) text(game.toast.msg, W / 2, 44, PAL.cloth0, { align: 'center' });
+  if (location.search.includes('fps')) text(`${Math.round(fpsAvg)} FPS ${enemies.length}`, 8, 44, PAL.flame1);
 }
 
 function overlay(title, sub) {
-  ctx.fillStyle = 'rgba(13,10,14,0.7)'; ctx.fillRect(0, 0, W, H);
-  text(title, W / 2, H / 2 - 16, PAL.gold0, { sc: 3, align: 'center' });
-  text(sub, W / 2, H / 2 + 8, PAL.bone1, { align: 'center' });
+  ctx.fillStyle = 'rgba(11,7,16,0.72)'; ctx.fillRect(0, 0, W, H);
+  text(title, W / 2, H / 2 - 22, PAL.gold1, { sc: 3, align: 'center' });
+  text(sub, W / 2, H / 2 + 8, PAL.cloth1, { align: 'center' });
 }
 
 const ODDS = ['3 TO 1', '5 TO 2', '7 TO 4', '2 TO 1', 'EVENS', '9 TO 2'];
 function renderTitle() {
   if (!PAL) return;
-  ctx.fillStyle = PAL.outline; ctx.fillRect(0, 0, W, H);
-  const g = ctx.createRadialGradient(W / 2, H * 0.62, 10, W / 2, H * 0.62, H * 0.7);
-  g.addColorStop(0, 'rgba(63,122,74,0.35)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  const g = ctx.createRadialGradient(W / 2, H * 0.62, 10, W / 2, H * 0.62, H * 0.75);
+  g.addColorStop(0, 'rgba(95,220,108,0.28)'); g.addColorStop(0.5, 'rgba(125,18,51,0.18)'); g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  if (IMG.saint) spr('saint', 'idle', Math.floor(game.real * 4), W / 2, H * 0.62);
-  text('HOLLOW SAINT', W / 2, H * 0.18, PAL.gold0, { sc: 4, align: 'center' });
-  text('THE WORLD REMEMBERS WHAT YOU FORGET', W / 2, H * 0.18 + 28, PAL.bone2, { align: 'center' });
-  if (Math.floor(game.real * 2) % 2 === 0) text('TAP TO DESCEND', W / 2, H * 0.78, PAL.bone0, { sc: 2, align: 'center' });
-  text(`THE GILDED LAMB GIVES ${ODDS[Math.floor(game.real / 4) % ODDS.length]} ON YOUR DEATH TODAY`, W / 2, H - 14, PAL.candle1, { align: 'center' });
+  if (IMG.saint) { ctx.save(); ctx.translate(Math.round(W / 2), Math.round(H * 0.7)); ctx.scale(2, 2); spr('saint', 'idle', Math.floor(game.real * 4), 0, 0); ctx.restore(); }
+  text('HOLLOW SAINT', W / 2, H * 0.1, PAL.gold1, { sc: 4, align: 'center' });
+  text('THE WORLD REMEMBERS WHAT YOU FORGET', W / 2, H * 0.1 + 38, PAL.cloth2, { align: 'center' });
+  if (Math.floor(game.real * 2) % 2 === 0) text('TAP TO DESCEND', W / 2, H * 0.76, PAL.cloth0, { sc: 2, align: 'center' });
+  text(`THE GILDED LAMB GIVES ${ODDS[Math.floor(game.real / 4) % ODDS.length]} ON YOUR DEATH TODAY`, W / 2, H - 16, PAL.flame1, { align: 'center' });
 }
 
 function renderReceipt() {
   const k = Math.min(1, game.deathT * 1.5);
-  ctx.fillStyle = `rgba(13,10,14,${0.8 * k})`; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = `rgba(11,7,16,${0.8 * k})`; ctx.fillRect(0, 0, W, H);
   if (k < 1) return;
-  const r = game.receipt, w = 168, h = 120, x = Math.round(W / 2 - w / 2), y = Math.round(H / 2 - h / 2);
+  const r = game.receipt, w = 200, h = 150, x = Math.round(W / 2 - w / 2), y = Math.round(H / 2 - h / 2);
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
   ctx.fillStyle = PAL.bone1; ctx.fillRect(x, y, w, h);
   ctx.fillStyle = PAL.bone0; ctx.fillRect(x, y, w, 2);
-  for (let i = 0; i < w; i += 4) { ctx.fillStyle = PAL.outline; ctx.fillRect(x + i, y + h, 2, 2); } // torn edge
-  const line = (s, yy, c = PAL.void, al = 'center') => text(s, al === 'center' ? W / 2 : x + 8, y + yy, c, { shadow: null, align: al });
-  line('THE CHOIR OF VAEL', 8, PAL.blood2);
-  line('RECEIPT OF DESCENT', 16);
-  ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 8, y + 25, w - 16, 1);
+  for (let i = 0; i < w; i += 4) { ctx.fillStyle = PAL.bone1; ctx.fillRect(x + i, y + h, 2, 2); }
+  const line = (s, yy, c = PAL.ink1, al = 'center') => text(s, al === 'center' ? W / 2 : x + 10, y + yy, c, { outline: null, align: al });
+  line('THE CHOIR OF VAEL', 9, PAL.crimson3);
+  line('RECEIPT OF DESCENT', 19);
+  ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 30, w - 20, 1);
   const m = Math.floor(r.time / 60), s = String(Math.floor(r.time % 60)).padStart(2, '0');
-  line(`TIME IN THE WOUND     ${m}:${s}`, 32, PAL.void, 'left');
-  line(`RISEN RETURNED TO REST  ${r.kills}`, 41, PAL.void, 'left');
-  line(`BEST FERVOR            ${r.fervor}%`, 50, PAL.void, 'left');
-  line(`PERFECT DODGES          ${r.perfects}`, 59, PAL.void, 'left');
-  ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 8, y + 69, w - 16, 1);
-  line('YOUR TITHE HAS BEEN', 76, PAL.blood2);
-  line('GRATEFULLY RECEIVED.', 84, PAL.blood2);
-  if (game.deathT > 1.6 && Math.floor(game.real * 2) % 2 === 0) line('TAP TO RISE AGAIN', 104);
+  const row = (a, b, yy) => { line(a, yy, PAL.ink1, 'left'); text(b, x + w - 10, y + yy, PAL.ink1, { outline: null, align: 'right' }); };
+  row('TIME IN THE WOUND', `${m}:${s}`, 37); row('RISEN LAID TO REST', String(r.kills), 48); row('BEST FERVOR', `${r.fervor}%`, 59); row('PERFECT DODGES', String(r.perfects), 70);
+  ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 82, w - 20, 1);
+  line('YOUR TITHE HAS BEEN', 90, PAL.crimson3);
+  line('GRATEFULLY RECEIVED.', 100, PAL.crimson3);
+  if (game.deathT > 1.6 && Math.floor(game.real * 2) % 2 === 0) line('TAP TO RISE AGAIN', 128);
 }
 
 function onTap() {
@@ -1134,7 +1234,7 @@ resize();
 loadAssets().then(() => {
   if (location.search.includes('run')) { newRun(); game.state = 'play'; }
   requestAnimationFrame(frame);
-}).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#d9a640;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
+}).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
 window.HS = { game, T, hud: HUD, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnEnemy };
 </script>

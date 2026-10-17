@@ -1,41 +1,33 @@
-// The master palette (GDD: "one master palette of about 48 colors").
-// Every sprite pixel must be one of these; tools/sprites.mjs enforces it.
-// Ramps run light -> dark (light comes from the top-left).
-export const PALETTE = {
-  // Shared darks and the 1 px outline.
-  outline: '#0d0a0e', void: '#1a1420', dusk: '#2a2230',
-
-  // Undercroft stone.
-  stone0: '#7f7984', stone1: '#65606a', stone2: '#4f4b54', stone3: '#3d3a42', stone4: '#2e2c33',
-
-  // Bone white.
-  bone0: '#f2ead8', bone1: '#d8ccb4', bone2: '#b8ab94', bone3: '#857a68',
-
-  // Candle green (Undercroft light).
-  candle0: '#c8ffb0', candle1: '#7fd67a', candle2: '#3f7a4a', candle3: '#1f3a2a',
-
-  // Gilding.
-  gold0: '#ffe08a', gold1: '#d9a640', gold2: '#9a6c24', gold3: '#5a3e1a',
-
-  // Blood and crimson cloth.
-  blood0: '#e0383a', blood1: '#a81c22', blood2: '#6e1018', blood3: '#3a0b10',
-
-  // Pale vestments.
-  cloth0: '#e8e4dc', cloth1: '#bfb7aa', cloth2: '#8a8174',
-
-  // Risen flesh (grey-green rot).
-  rot0: '#98a888', rot1: '#6f8064', rot2: '#4b5a48',
-
-  // Grave cloth and wood.
-  shroud0: '#7a5e52', shroud1: '#4a3a35', wood0: '#8a5a32', wood1: '#4f2e1a',
-
-  // Iron.
-  iron0: '#9aa0aa', iron1: '#5c6270', iron2: '#353a46',
-
-  // Holy and ember VFX.
-  holy0: '#fff6d0', sky0: '#c8f0ff', sky1: '#7ad8ff', sky2: '#3a6aa8',
-  ember0: '#ffb648', ember1: '#ff8a2a', ember2: '#c84a14',
+// The master palette. Every sprite pixel must be one of these; the exporter
+// in tools/sprites.mjs enforces it.
+//
+// v2: hue-shifted 5-step ramps (highlights warm, shadows cool and violet),
+// in the Otherworld Legends manner. Ramps run light -> dark.
+const R = {
+  ink: ['#0b0710', '#150f1c', '#1f1828', '#2a2236', '#383047'],
+  crimson: ['#ff7a66', '#e8383f', '#b51d36', '#7d1233', '#4a0b2a'],
+  cloth: ['#fffaf0', '#e8e0d2', '#c2b6aa', '#918599', '#5f566f'],
+  gold: ['#fff4b0', '#ffd155', '#e09a2c', '#a8601e', '#6b3518'],
+  bone: ['#fffbea', '#eadfc4', '#c9b897', '#9a8770', '#665848'],
+  rot: ['#c4dc9e', '#94b37a', '#6b8c60', '#48654c', '#2c4038'],
+  shroud: ['#a8876f', '#7c5f50', '#57413d', '#3a2a30', '#22181f'],
+  iron: ['#eef2f7', '#b2bccb', '#7c88a0', '#525b75', '#30364b'],
+  wood: ['#d6955a', '#a2643a', '#733f28', '#4a261c', '#2b1514'],
+  stone: ['#a59fb0', '#837d92', '#655f76', '#4b465b', '#353143'],
+  slate: ['#6f7a8c', '#566073', '#424a5c', '#313747', '#222634'],
+  moss: ['#b6d36a', '#7fa548', '#557a37', '#36542b', '#213622'],
+  flame: ['#f4ffd8', '#b8ff8f', '#5fdc6c', '#2c9e55', '#155c3c'],
+  ember: ['#fff3b0', '#ffc04a', '#ff7a1f', '#d6401a', '#8a1f1a'],
+  holy: ['#ffffff', '#d8f7ff', '#8ae0ff', '#3fa4f0', '#2a5cc0'],
+  blood: ['#ff5a4a', '#e0202e', '#a8102a', '#6a0a22', '#3a0618'],
+  violet: ['#d4b0ff', '#9a6ae6', '#6a44b8', '#432a80', '#271a4d'],
 };
+
+export const RAMPS = R;
+export const PALETTE = {};
+for (const [name, ramp] of Object.entries(R)) ramp.forEach((hex, i) => { PALETTE[`${name}${i}`] = hex; });
+PALETTE.outline = R.ink[0];
+PALETTE.white = '#ffffff';
 
 export const NAMES = Object.keys(PALETTE);
 export const RGB = NAMES.map((n) => {
@@ -43,16 +35,5 @@ export const RGB = NAMES.map((n) => {
   return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 });
 export const IDX = Object.fromEntries(NAMES.map((n, i) => [n, i]));
-
-// Common ramps [light, base, dark].
-export const RAMP = {
-  cloth: ['cloth0', 'cloth1', 'cloth2'],
-  crimson: ['blood0', 'blood1', 'blood2'],
-  gold: ['gold0', 'gold1', 'gold2'],
-  rot: ['rot0', 'rot1', 'rot2'],
-  shroud: ['shroud0', 'shroud1', 'void'],
-  bone: ['bone0', 'bone1', 'bone2'],
-  iron: ['iron0', 'iron1', 'iron2'],
-  wood: ['wood0', 'wood0', 'wood1'],
-  stone: ['stone1', 'stone2', 'stone3'],
-};
+// A ramp as palette indices, light -> dark.
+export const ramp = (name) => R[name].map((_, i) => IDX[`${name}${i}`]);
