@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { uiH, uiSpace, uiW, ux, uy } from '../ui/uispace';
 import { P, hexNum, mix } from '../art/palette';
 import {
   BAR_FILL_Y,
@@ -89,10 +90,11 @@ export class HudScene extends Phaser.Scene {
 
   modal = false;
   private modalLayer: Phaser.GameObjects.Container | null = null;
-  private modalTap: ((p: Phaser.Input.Pointer) => void) | null = null;
+  private modalTap: ((p: { x: number; y: number }) => void) | null = null;
   private modalKey: ((k: string) => void) | null = null;
   private inset = { left: 0, right: 0, top: 0, bottom: 0 };
   private interactLabel!: GameText;
+  private shellText!: GameText;
   private controlsVisible = true;
 
   constructor() {
@@ -100,8 +102,9 @@ export class HudScene extends Phaser.Scene {
   }
 
   create() {
+    uiSpace(this);
     this.input.addPointer(3);
-    this.inset = safeInsets(this.scale.width);
+    this.inset = safeInsets(this.W);
     this.buildInkFrame();
     this.buildRunHud();
     this.buildControls();
@@ -120,10 +123,10 @@ export class HudScene extends Phaser.Scene {
   // -------------------------------------------------------------------------
 
   private get W() {
-    return this.scale.width;
+    return uiW(this);
   }
   private get H() {
-    return this.scale.height;
+    return uiH(this);
   }
 
   layout() {
@@ -141,8 +144,10 @@ export class HudScene extends Phaser.Scene {
       dodge: [44, 92],
       execute: [100, 106],
       speak: [100, 106],
-      stigma: [152, 98],
-      tear: [152, 38],
+      aim: [146, 30],
+      weapon: [150, 82],
+      stigma: [196, 66],
+      tear: [190, 22],
     };
     for (const b of this.btns) {
       if (b.action === 'pause') {
@@ -659,12 +664,15 @@ export class HudScene extends Phaser.Scene {
     mk('attack', 'attack', 24);
     mk('jump', 'jump', 22);
     mk('dodge', 'dodge', 18);
+    mk('aim', 'aim', 18);
+    mk('weapon', 'weapon', 18);
     mk('execute', 'execute', 18);
     mk('speak', 'speak', 18);
     mk('stigma', 'maw', 18);
     mk('tear', 'tear', 18);
     mk('pause', 'pause', 10);
     this.interactLabel = txt(this, 0, 0, '', 'label', 12).setOrigin(0.5, 1).setDepth(22).setTint(hexNum(P.gold0));
+    this.shellText = txt(this, 0, 0, '0', 'head', 12).setOrigin(0.5).setDepth(22).setVisible(false);
   }
 
   private btn(a: Action) {
@@ -677,7 +685,8 @@ export class HudScene extends Phaser.Scene {
     b.img.setVisible(v && this.controlsVisible);
   }
 
-  private onDown(p: Phaser.Input.Pointer) {
+  private onDown(raw: Phaser.Input.Pointer) {
+    const p = { id: raw.id, x: ux(raw), y: uy(raw) };
     if (this.modal) {
       this.modalTap?.(p);
       return;
@@ -706,7 +715,8 @@ export class HudScene extends Phaser.Scene {
     }
   }
 
-  private onMove(p: Phaser.Input.Pointer) {
+  private onMove(raw: Phaser.Input.Pointer) {
+    const p = { id: raw.id, x: ux(raw), y: uy(raw) };
     if (p.id !== this.stickPointer) return;
     const dx = p.x - this.stickOrigin.x;
     const dy = p.y - this.stickOrigin.y;
@@ -725,7 +735,8 @@ export class HudScene extends Phaser.Scene {
     else controls.setMove((dx * k) / max, (dy * k) / max);
   }
 
-  private onUp(p: Phaser.Input.Pointer) {
+  private onUp(raw: Phaser.Input.Pointer) {
+    const p = { id: raw.id, x: ux(raw), y: uy(raw) };
     if (p.id === this.stickPointer) {
       this.stickPointer = null;
       controls.setMove(0, 0);
@@ -761,7 +772,7 @@ export class HudScene extends Phaser.Scene {
   private buildKeyboard() {
     const kb = this.input.keyboard;
     if (!kb) return;
-    const names = ['W', 'A', 'S', 'D', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'J', 'Z', 'K', 'X', 'SPACE', 'L', 'C', 'I', 'V', 'H', 'E', 'ENTER', 'ESC', 'SHIFT'];
+    const names = ['W', 'A', 'S', 'D', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'J', 'Z', 'K', 'X', 'SPACE', 'L', 'C', 'I', 'V', 'H', 'E', 'ENTER', 'ESC', 'SHIFT', 'Q', 'R', 'F', 'TAB'];
     this.keys = {};
     for (const n of names) this.keys[n] = kb.addKey(n, false);
     kb.on('keydown', (ev: KeyboardEvent) => {
@@ -776,6 +787,8 @@ export class HudScene extends Phaser.Scene {
       [['J', 'Z'], 'attack'],
       [['SPACE'], 'jump'],
       [['K', 'X'], 'dodge'],
+      [['Q', 'R'], 'aim'],
+      [['F', 'TAB'], 'weapon'],
       [['L', 'C'], 'execute'],
       [['I', 'V'], 'stigma'],
       [['H'], 'tear'],
@@ -851,6 +864,18 @@ export class HudScene extends Phaser.Scene {
     this.setBtnVisible('attack', true);
     this.setBtnVisible('jump', true);
     this.setBtnVisible('dodge', true);
+    this.setBtnVisible('aim', hudState.inRun);
+    const shells = hudState.inRun && hudState.shellsMax > 0;
+    this.setBtnVisible('weapon', shells);
+    const wb = this.btn('weapon');
+    wb.img.setAlpha(hudState.shellArmed ? 1 : 0.6).setTint(hudState.shellArmed ? 0xffd890 : 0xffffff);
+    this.shellText.setVisible(shells && this.controlsVisible);
+    if (shells) {
+      const t = String(hudState.shells);
+      if (this.shellText.text !== t) this.shellText.setText(t);
+      this.shellText.setPosition(wb.img.x + 14 * (wb.scale ?? 1), wb.img.y + 12 * (wb.scale ?? 1));
+      this.shellText.setTint(hexNum(hudState.shells ? (hudState.shellArmed ? P.gold0 : P.bone1) : P.blood0));
+    }
   }
 
   // -------------------------------------------------------------------------

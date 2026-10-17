@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { uiH, uiSpace, uiW } from '../ui/uispace';
 import { P, hexNum } from '../art/palette';
 import { SLICE_ENDING } from '../game/lore';
 import { meta } from '../game/state';
@@ -13,8 +14,9 @@ export class EndingScene extends Phaser.Scene {
   }
 
   async create() {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    uiSpace(this);
+    const W = uiW(this);
+    const H = uiH(this);
     hud(this).setControlsVisible(false);
     const art = this.add.image(W / 2, H / 2, 'sanctum').setAlpha(0.35);
     art.setScale(Math.max(W / art.width, H / art.height));

@@ -1,6 +1,7 @@
 import { PixelCanvas, hash2 } from '../pixel';
 import { type RGB, fbm, hex, inGothic, pnoise, smooth } from './paint';
 import { EMPTY, type Glow, type PLight, type RMat, Relief, type ShadeOpts, ramp } from './relief';
+import { snesLayer } from './snes-env';
 
 /**
  * The Under-Nave backdrops (marble = the lie, rot = the truth), modelled on
@@ -13,10 +14,21 @@ import { EMPTY, type Glow, type PLight, type RMat, Relief, type ShadeOpts, ramp 
  * shaded twice: as stone, and, after a flesh overgrowth pass, as rot. The two
  * versions share composition so the sanity crossfade reads as the same hall
  * revealing what it truly is.
+ *
+ * SNES layout: every layer is 512x224 (the 224 px screen, tileable in x), the
+ * architecture drawn at about 0.6 of the old 360 px scale so it keeps its
+ * proportion to the ~40 px hero, shaded in flat bands and quantised by
+ * snesify (snes-env.ts).
  */
 
-const W = 640;
-const H = 360;
+export const W = 512;
+export const H = 224;
+/** Shading dither for SNES bands (relief default is 0.6). */
+export const DITHER = 0;
+/** Colours per backdrop layer (then snesify-style quantised, despeckled). */
+export const LAYER_COLORS = 16;
+/** Relief shading for hand-pixelled bands: flat ramps of a few values, calm texture. */
+export const SNES_SHADE = { dither: 0, bands: 5, texK: 0.3 } as const;
 
 // --- Materials ------------------------------------------------------------------
 export const M = {
@@ -129,8 +141,8 @@ export function ashlar(x: number, y: number, bw: number, bh: number, seed: numbe
     return -1;
   }
   const e = Math.min(bx, bw - 1 - bx, by, bh - 1 - by);
-  hit.t = (hash2(id, row, seed) - 0.5) * 0.16 + (hash2(xx, y, seed + 1) - 0.5) * 0.05;
-  if (hash2(xx >> 1, y >> 1, seed + 2) > 0.985) return -0.5; // chips
+  // tone per block only: chunky, no per-pixel grain
+  hit.t = (hash2(id, row, seed) - 0.5) * 0.16;
   return Math.min(1, e * 0.5) * 0.8;
 }
 
@@ -187,9 +199,9 @@ function muqArch(x: number, y: number, cx: number, ys: number, r: number, B: num
     // Pendant drops hanging from the cusps of the innermost tier
     const uc = frac(ua);
     const dc = Math.min(uc, 1 - uc) * cellArc;
-    const len = 3.6;
+    const len = Math.min(3.6, B * 0.25 + 0.8);
     const q = rr / len;
-    const wdt = 1.5 * Math.sqrt(Math.max(0, 1 - q * q * q * q));
+    const wdt = Math.min(1.5, cellArc * 0.28) * Math.sqrt(Math.max(0, 1 - q * q * q * q));
     if (rr > -len && dc < wdt) {
       hit.h = base + 4.2 - dc * 0.8;
       hit.m = M.TRIM;
@@ -198,7 +210,7 @@ function muqArch(x: number, y: number, cx: number, ys: number, r: number, B: num
     }
     return 2;
   }
-  const tiers = 3;
+  const tiers = B >= 10 ? 3 : B >= 6 ? 2 : 1;
   const tH = B / tiers;
   const k = Math.min(tiers - 1, Math.floor(rr / tH));
   const v = (rr - k * tH) / tH;
@@ -300,7 +312,7 @@ export function column(R: Relief, cx: number, top: number, bot: number, hw: numb
         h += 0.9;
         m = M.TRIM;
       }
-      t = (pnoise(x, y, 6, 3, 0) - 0.5) * 0.06;
+      t = 0;
     } else {
       const k = (y - (bot - baseH)) / baseH;
       if (k < 0.18) half = hw + 0.8;
@@ -369,9 +381,8 @@ export function lantern(R: Relief, cx: number, y: number, s: number, z: number):
         return;
       }
       // glowing glass, pierced with a small star pattern
-      const st = star(nx * 1.5 + 0.5, k * 2.2, 0.12);
       R.put(i, z + 2, M.GLASS, 0);
-      R.emi[i] = 0.62 + (st === 1 ? -0.3 : 0.1) + (1 - Math.abs(nx)) * 0.25 - k * 0.1;
+      R.emi[i] = 0.68 + (1 - Math.abs(nx)) * 0.25 - k * 0.1;
       return;
     }
     const k = (ly - fin - cap - body) / bot;
@@ -384,15 +395,16 @@ export function lantern(R: Relief, cx: number, y: number, s: number, z: number):
 }
 
 /** Hanging curtain tied back to a column: attached along x=xa, spreading `w0` px. */
-function curtain(R: Relief, xa: number, dir: 1 | -1, y0: number, yTie: number, yEnd: number, w0: number, z: number, seed: number) {
-  R.box(Math.min(xa, xa + dir * (w0 + 4)), y0, Math.max(xa, xa + dir * (w0 + 4)), yEnd, (x, y, i) => {
+function curtain(R: Relief, xa: number, dir: 1 | -1, y0: number, yTie: number, yEnd: number, w0: number, z: number, seed: number, k = 0.62) {
+  const w4 = 4 * k;
+  R.box(Math.min(xa, xa + dir * (w0 + w4)), y0, Math.max(xa, xa + dir * (w0 + w4)), yEnd, (x, y, i) => {
     let wy: number;
     if (y < yTie) {
       const t = (y - y0) / (yTie - y0);
-      wy = w0 * Math.pow(1 - t, 1.3) + 4;
+      wy = w0 * Math.pow(1 - t, 1.3) + w4;
     } else {
       const t = (y - yTie) / (yEnd - yTie);
-      wy = 4 + t * 7 - t * t * 5;
+      wy = w4 + (t * 7 - t * t * 5) * k;
     }
     const s = ((x + 0.5 - xa) * dir) / wy;
     if (s < 0 || s > 1) return;
@@ -400,8 +412,8 @@ function curtain(R: Relief, xa: number, dir: 1 | -1, y0: number, yTie: number, y
     const nF = y < yTie ? 5 : 3;
     const ph = s * nF + t * 0.8 + hash2(seed, 0, 1);
     const fold = Math.abs(Math.sin(ph * Math.PI)); // sharp creases, round crowns
-    let h = z + 2 + fold * 5 + Math.sin(s * Math.PI) * 1.5;
-    const tie = y > yTie - 3 && y < yTie + 2;
+    let h = z + 2 + fold * 4 + Math.sin(s * Math.PI) * 1.2;
+    const tie = y > yTie - 2 && y < yTie + 1.5;
     if (tie) h += 2;
     const hem = s > 0.9 && y < yTie;
     R.raise(i, h, tie ? M.GOLD : M.CLOTH, hem ? 0.12 : fold < 0.25 ? -0.15 : 0);
@@ -409,21 +421,21 @@ function curtain(R: Relief, xa: number, dir: 1 | -1, y0: number, yTie: number, y
 }
 
 /** A cloth swag sagging between two points. */
-function swag(R: Relief, x0: number, x1: number, y: number, sag: number, depth: number, z: number) {
+function swag(R: Relief, x0: number, x1: number, y: number, sag: number, depth: number, z: number, er = 2) {
   R.box(x0, y - 2, x1, y + sag + depth + 4, (x, yy, i) => {
     const t = (x + 0.5 - x0) / (x1 - x0);
     if (t < 0 || t > 1) return;
     const st = Math.sin(t * Math.PI);
     const top = y + st * sag * 0.45;
-    const bot = y + st * sag + depth * (0.35 + 0.65 * st) + Math.sin(t * 37) * 0.8;
+    const bot = y + st * sag + depth * (0.35 + 0.65 * st) + Math.sin(t * 30) * 0.6;
     if (yy < top || yy > bot) return;
     const k = (yy - top) / Math.max(1, bot - top);
     // folds run along the sag: several stacked catenary bands
-    const fold = Math.abs(Math.sin(k * Math.PI * 3.5));
+    const fold = Math.abs(Math.sin(k * Math.PI * 2.5));
     R.raise(i, z + 2 + fold * 3 + st * 2, M.CLOTH, yy > bot - 1.5 ? 0.1 : fold < 0.25 ? -0.15 : 0);
   });
   // gathered ends
-  for (const ex of [x0, x1]) R.tube(ex, y - 2, ex, y + depth * 0.9, 3, z + 3, M.CLOTH, -0.05);
+  for (const ex of [x0, x1]) R.tube(ex, y - 2, ex, y + depth * 0.9, er, z + 3, M.CLOTH, -0.05);
 }
 
 /** Turned balusters between rails, a full balustrade y0..y1 across x0..x1. */
@@ -488,12 +500,12 @@ export function rotify(R: Relief, s: RotSpec) {
   R.box(0, 0, W - 1, H - 1, (x, y, i) => {
     const m = R.mat[i];
     if (!m || m === M.GLASS || m === M.LIT || m === M.IRON) return;
-    const g = fbm(x, y, 44, s.seed, W, 2) * 0.8 + pnoise(x, y, 9, s.seed + 3, W) * 0.2 + s.bias(x, y, m);
+    const g = fbm(x, y, 28, s.seed, W, 2) * 0.8 + pnoise(x, y, 6, s.seed + 3, W) * 0.2 + s.bias(x, y, m);
     if (g > 0.6) {
       const k = Math.min(1, (g - 0.6) / 0.22);
-      const lump = pnoise(x, y, 7, s.seed + 7, W) - 0.5;
-      R.hgt[i] += 16 * Math.pow(k, 0.6) + lump * 8 * Math.min(1, k * 3);
-      const vein = Math.abs(pnoise(x, y, 8, s.seed + 9, W) - 0.5) < 0.028 && k > 0.2;
+      const lump = pnoise(x, y, 5, s.seed + 7, W) - 0.5;
+      R.hgt[i] += 11 * Math.pow(k, 0.6) + lump * 5 * Math.min(1, k * 3);
+      const vein = Math.abs(pnoise(x, y, 5, s.seed + 9, W) - 0.5) < 0.034 && k > 0.2;
       R.mat[i] = k < 0.08 ? M.BLOOD : vein ? M.SINEW : M.FLESH;
       R.tex[i] = lump * 0.3 + (lump < -0.3 ? -0.25 : 0);
       if (k > 0.5 && hash2(x >> 1, y >> 1, s.seed) > 0.992) R.mat[i] = M.BONE; // teeth and bone shards
@@ -505,8 +517,8 @@ export function rotify(R: Relief, s: RotSpec) {
   for (const [x, y, len] of s.drips ?? []) {
     const base = R.hgt[wrapX(Math.round(x)) + Math.max(0, Math.min(H - 1, Math.round(y))) * W];
     const hz = (base > EMPTY / 2 ? base : z) + 1.5;
-    R.tube(x, y, x, y + len, 0.9, hz, M.BLOOD, 0, true);
-    R.tube(x, y + len, x, y + len + 1, 1.6, hz, M.BLOOD, 0, true);
+    R.tube(x, y, x, y + len, 0.75, hz, M.BLOOD, 0, true);
+    R.tube(x, y + len, x, y + len + 1, 1.3, hz, M.BLOOD, 0, true);
   }
   for (const [ex, ey, er] of s.eyes ?? []) {
     R.box(ex - er - 2, ey - er - 2, ex + er + 2, ey + er + 2, (x, y, i) => {
@@ -514,7 +526,7 @@ export function rotify(R: Relief, s: RotSpec) {
       const dy = y + 0.5 - ey;
       const d = Math.sqrt((dx) ** 2 + (dy) ** 2);
       const base = R.hgt[i] > EMPTY / 2 ? R.hgt[i] : z;
-      if (d > er + 1.6) return;
+      if (d > er + 1.2) return;
       if (d > er) {
         R.put(i, base + 1.5, M.FLESH, -0.15); // puckered lid
         return;
@@ -567,98 +579,105 @@ interface Layer {
   post?: (pc: PixelCanvas, t: Theme) => void;
 }
 
+/** Gallery bay (13 per layer) and arcade bay (6 per layer). */
+const FG_P = W / 13;
+const FA_P = W / 6;
+
 function farLayer(): Layer {
   const R = new Relief(W, H);
+  const VC = W / 26; // vault coffer cell
   R.box(0, 0, W - 1, H - 1, (x, y, i) => {
-    if (y < 56) {
+    if (y < 35) {
       // coffered vault
-      const st = star(x / 32, (y + 8) / 32, 0.05);
-      R.put(i, st ? -3 : -5, st ? M.TRIM : M.WALL, st === 2 ? 0.1 : y < 20 ? -0.2 : 0);
+      const cu = wrapX(x) % (VC * 2);
+      const cv = (y + 3) % 12;
+      const rib = cu < 2 || cv < 2;
+      R.put(i, rib ? -3 : -5 - (cu < 4 || cv < 4 ? 0 : 1), rib ? M.TRIM : M.WALL, y < 12 ? -0.2 : 0);
       return;
     }
-    if (y < 66) {
-      if (y < 59) R.put(i, 2 - (y === 58 ? 1 : 0), M.TRIM, 0.05);
-      else if (muqFrieze(x, y, 59, 7, 6, 0)) R.put(i, hit.h, hit.m, hit.t);
-      else R.put(i, -8, M.DEEP, 0);
+    if (y < 41) {
+      if (y < 37) R.put(i, 2 - (y === 36 ? 1 : 0), M.TRIM, 0.05);
+      else R.put(i, (Math.floor(x / 4) & 1) && y < 40 ? 0.5 : 1.2, M.TRIM, y === 37 ? 0.08 : -0.05);
       return;
     }
-    if (y < 170) {
-      // gallery: lobed horseshoe arches, period 64
-      const u = wrapX(x) % 64;
-      const res = muqArch(u, y, 32, 112, 22, 7, 6, 0);
+    if (y < 105) {
+      // gallery: lobed horseshoe arches
+      const u = wrapX(x) % FG_P;
+      const cx = FG_P / 2;
+      const res = muqArch(u, y, cx, 70, 13, 4.5, 4.4, 0);
       if (res === 1) R.put(i, hit.h, hit.m, hit.t);
       else if (res === 2) {
-        if (inGothic(u, y, 27, 37, 126, 0.7) && y < 160) {
+        if (inGothic(u, y, cx - 3.2, cx + 3.2, 79, 0.7) && y < 99) {
           R.put(i, -20, M.LIT, 0);
-          R.emi[i] = 0.18 + 0.12 * (1 - (y - 112) / 50);
+          R.emi[i] = 0.18 + 0.12 * (1 - (y - 70) / 31);
         } else R.put(i, -20, M.DEEP, 0);
       } else {
-        const hgt = ashlar(x, y, 32, 12, 4);
-        const st = y < 104 && Math.abs(u - 0) > 6 && Math.abs(u - 64) > 6 ? star(u / 16 + 0.5, y / 16, 0.07) : 0;
-        R.put(i, hgt * 0.6 + (st ? 0.6 : 0), st ? M.TRIM : M.WALL, hit.t);
+        const hgt = ashlar(x, y, 16, 7, 4);
+        R.put(i, hgt * 0.6, M.WALL, hit.t);
       }
       return;
     }
-    if (y < 186) {
-      const u = wrapX(x) % 8;
-      if (y < 173 || y >= 183) R.put(i, 1.5, M.TRIM, y === 170 ? 0.1 : 0);
+    if (y < 115) {
+      // a pierced balustrade along the gallery floor
+      const PB = W / 96;
+      const u = wrapX(x) % PB;
+      if (y < 107 || y >= 113) R.put(i, 1.5, M.TRIM, y === 105 ? 0.1 : 0);
       else {
-        const k = (y - 173) / 10;
-        const half = 1.4 + Math.sin(k * Math.PI) * 0.9;
-        if (Math.abs(u - 4) < half) R.put(i, 1, M.TRIM, 0);
+        const k = (y - 107) / 6;
+        const half = 1 + Math.sin(k * Math.PI) * 0.6;
+        if (Math.abs(u - PB / 2) < half) R.put(i, 1, M.TRIM, 0);
         else R.put(i, -12, M.DEEP, 0);
       }
       return;
     }
-    if (y < 300) {
-      const u = wrapX(x) % 128;
-      const res = muqArch(u, y, 64, 222, 48, 12, 8, 0);
+    if (y < 186) {
+      const u = wrapX(x) % FA_P;
+      const cx = FA_P / 2;
+      const res = muqArch(u, y, cx, 138, 30, 7.5, 5.6, 0);
       if (res === 1) R.put(i, hit.h, hit.m, hit.t);
       else if (res === 2) {
-        const glowY = smooth(230, 300, y);
+        const glowY = smooth(143, 186, y);
         R.put(i, -30, M.LIT, 0);
-        R.emi[i] = 0.06 + glowY * 0.22 * (1 - Math.abs(u - 64) / 50);
-        if (inGothic(u, y, 54, 74, 250, 0.62)) R.emi[i] += 0.12;
+        R.emi[i] = 0.06 + glowY * 0.22 * (1 - Math.abs(u - cx) / 31);
+        if (inGothic(u, y, cx - 6.2, cx + 6.2, 155, 0.62)) R.emi[i] += 0.12;
       } else {
-        const hgt = ashlar(x, y, 32, 14, 6);
-        const st = y < 218 ? star(u / 18, y / 18, 0.07) : 0;
-        R.put(i, hgt * 0.6 + (st ? 0.6 : 0), st ? M.TRIM : M.WALL, hit.t);
+        const hgt = ashlar(x, y, 16, 9, 6);
+        R.put(i, hgt * 0.6, M.WALL, hit.t);
       }
       return;
     }
-    if (y < 304) R.put(i, 2, M.TRIM, y === 300 ? 0.15 : 0);
-    else R.put(i, ashlar(x, y, 40, 14, 9) * 0.5, M.WALL, hit.t - 0.1);
+    if (y < 189) R.put(i, 2, M.TRIM, y === 186 ? 0.15 : 0);
+    else R.put(i, ashlar(x, y, 32, 9, 9) * 0.5, M.WALL, hit.t - 0.1);
   });
   // gallery colonnettes and arcade columns
-  for (let k = 0; k < 10; k++) column(R, k * 64, 104, 170, 2.2, 1);
-  for (let k = 0; k < 5; k++) {
-    column(R, k * 128 - 2, 208, 300, 3.4, 1);
-    column(R, k * 128 + 6, 208, 300, 3.4, 1.5);
+  for (let k = 0; k < 13; k++) column(R, k * FG_P, 64, 105, 1.6, 1);
+  for (let k = 0; k < 6; k++) {
+    column(R, k * FA_P - 1.5, 129, 186, 2.2, 1);
+    column(R, k * FA_P + 3.5, 129, 186, 2.2, 1.5);
   }
+  const doors = [0, 1, 2, 3, 4, 5].map((k) => FA_P / 2 + k * FA_P);
   return {
     R,
-    lights: (t) => [
-      ...[0, 1, 2, 3, 4].map((k) => ({ x: 64 + k * 128, y: 280, z: 8, r: 90, c: t.door, k: 0.35 })),
-      { x: 320, y: -40, z: 40, r: 320, c: t.lamp, k: 0.25 },
-    ],
-    glows: (t) => [0, 1, 2, 3, 4].map((k) => ({ x: 64 + k * 128, y: 285, r: 60, c: t.door, k: 0.12 })),
+    lights: (t) => [...doors.map((x) => ({ x, y: 174, z: 6, r: 56, c: t.door, k: 0.35 })), { x: 256, y: -25, z: 26, r: 200, c: t.lamp, k: 0.25 }],
+    glows: (t) => doors.map((x) => ({ x, y: 177, r: 36, c: t.door, k: 0.12 })),
     opts: (t) => ({
       amb: 0.26,
       keyK: 0.3,
       fogC: t.haze,
-      fog: (y) => 0.42 + 0.22 * smooth(140, 300, y) - 0.12 * smooth(300, 360, y),
+      fog: (y) => 0.42 + 0.22 * smooth(87, 186, y) - 0.12 * smooth(186, 224, y),
       ao: 0.06,
+      aoR: 3,
     }),
     rot: {
       seed: 41,
-      bias: (x, y, m) => -0.2 + 0.26 * smooth(70, 20, y) + (m === M.TRIM ? 0.04 : 0) + 0.18 * smooth(250, 300, y),
-      sinews: [0, 1, 2, 3, 4].flatMap((k) => [
-        [k * 128 + 18, 196, k * 128 + 110, 196, 28, 1.2] as [number, number, number, number, number, number],
-        [k * 128 + 30, 120, k * 128 + 70, 120, 14, 0.8] as [number, number, number, number, number, number],
+      bias: (x, y, m) => -0.2 + 0.26 * smooth(43, 12, y) + (m === M.TRIM ? 0.04 : 0) + 0.18 * smooth(155, 186, y),
+      sinews: [0, 1, 2, 3, 4, 5].flatMap((k) => [
+        [k * FA_P + 11, 122, k * FA_P + 74, 122, 17, 0.9] as [number, number, number, number, number, number],
+        [k * FA_P + 22, 74, k * FA_P + 48, 74, 9, 0.6] as [number, number, number, number, number, number],
       ]),
       z: 2,
     },
-    post: (pc, t) => shafts(pc, [[120, 0.55, 14, 0.07], [300, 0.5, 10, 0.05], [470, 0.6, 16, 0.06]], t.lamp, 60, 330, 3),
+    post: (pc, t) => shafts(pc, [[96, 0.55, 9, 0.07], [240, 0.5, 6, 0.05], [376, 0.6, 10, 0.06]], t.lamp, 37, 205, 3),
   };
 }
 
@@ -666,11 +685,11 @@ function farLayer(): Layer {
 // MID: ornate arcade — muqarnas arches, columns, lattice, lit doorway, lantern
 // ===========================================================================
 
-const BAY = 320;
-const MCX = 160;
-const MYS = 150;
-const MR = 100;
-const MB = 20;
+const BAY = W / 3;
+const MCX = BAY / 2;
+const MYS = 93;
+const MR = 53;
+const MB = 11;
 
 function midLayer(): Layer {
   const R = new Relief(W, H);
@@ -679,199 +698,205 @@ function midLayer(): Layer {
     const u = x - b * BAY;
     const dx = u + 0.5 - MCX;
     const adx = Math.abs(dx);
-    if (y < 12) {
-      const rib = Math.abs((u % 40) - 20) < 1.5;
+    if (y < 7) {
+      const rib = Math.abs((u % (BAY / 7)) - BAY / 14) < 1;
       R.put(i, rib ? -4 : -7, rib ? M.TRIM : M.WALL, -0.2);
       return;
     }
-    if (y < 30) {
-      if (y < 15) R.put(i, 2 - (y === 14 ? 0.8 : 0), M.TRIM, y === 12 ? 0.1 : 0);
-      else if (y >= 27) R.put(i, 1.5 - (y === 29 ? 0.6 : 0), M.TRIM, 0);
-      else if (muqFrieze(u, y, 15, 12, 10, 0)) R.put(i, hit.h, hit.m, hit.t);
+    if (y < 19) {
+      if (y < 9) R.put(i, 2 - (y === 8 ? 0.8 : 0), M.TRIM, y === 7 ? 0.1 : 0);
+      else if (y >= 17) R.put(i, 1.5 - (y === 18 ? 0.6 : 0), M.TRIM, 0);
+      else if (muqFrieze(u, y, 9, 8, BAY / 28, 0)) R.put(i, hit.h, hit.m, hit.t);
       else R.put(i, -6, M.DEEP, 0);
       return;
     }
-    if (y >= 300) {
-      if (y < 303) R.put(i, 3 - (y === 302 ? 0.6 : 0), M.TRIM, y === 300 ? 0.15 : 0);
-      else if (y < 306) R.put(i, 1, M.TRIM, -0.05);
+    if (y >= 186) {
+      if (y < 188) R.put(i, 3 - (y === 187 ? 0.6 : 0), M.TRIM, y === 186 ? 0.15 : 0);
+      else if (y < 190) R.put(i, 1, M.TRIM, -0.05);
       else {
-        const pu = wrapX(x) % 40;
-        const inP = pu > 4 && pu < 36 && y > 312 && y < 346;
-        const hh = ashlar(x, y, 40, 16, 12) * 0.6;
+        const PP = W / 20;
+        const pu = wrapX(x) % PP;
+        const inP = pu > 3 && pu < PP - 3 && y > 193 && y < 216;
+        const hh = ashlar(x, y, 32, 10, 12) * 0.6;
         if (inP) {
-          const edge = pu < 6 || pu > 34 || y < 314 || y > 344;
+          const edge = pu < 4 || pu > PP - 4 || y < 195 || y > 214;
           R.put(i, edge ? -1 : -2, M.WALL, -0.08);
         } else R.put(i, hh, M.WALL, hit.t - 0.04);
       }
       return;
     }
-    const res = muqArch(u, y, MCX, MYS, MR, MB, 9, 3);
+    const res = muqArch(u, y, MCX, MYS, MR, MB, 5.5, 3);
     if (res === 1) {
       R.put(i, hit.h, hit.m, hit.t);
       return;
     }
     if (res === 0) {
       const past = hit.t; // px beyond the band
-      if (y < MYS && past < 4) {
-        R.put(i, 4.2 - (past > 2.5 ? 1 : 0) + (past < 1 ? 0.6 : 0), M.TRIM, past < 1 ? 0.08 : 0);
+      if (y < MYS && past < 2.5) {
+        R.put(i, 4.2 - (past > 1.5 ? 1 : 0) + (past < 0.7 ? 0.6 : 0), M.TRIM, past < 0.7 ? 0.08 : 0);
         return;
       }
       // spandrels and the pier between bays
-      const px = u < MCX ? u : u - BAY; // -160..160 around the bay boundary
+      const px = u < MCX ? u : u - BAY;
       const apx = Math.abs(px);
-      if (apx < 16 && y > 58 && y < 288) {
+      if (apx < 9 && y > 36 && y < 179) {
         // tall lattice panel in the pier
-        const edge = apx > 13 || y < 61 || y > 285;
+        const edge = apx > 7.5 || y < 38 || y > 177;
         if (edge) R.put(i, 1.6, M.TRIM, 0.04);
         else {
-          const st = star((px + 0.5) / 13 + 0.5, (y - 61) / 13, 0.07);
-          R.put(i, st ? -0.6 : -2.2, st ? M.TRIM : M.WALL, st === 2 ? 0.12 : st ? 0 : -0.08);
+          // stacked recessed panels
+          const pv = (y - 38) % 23;
+          const ridge = pv < 2 || apx < 1.5;
+          R.put(i, ridge ? -0.6 : -2.2, ridge ? M.TRIM : M.WALL, ridge ? 0.06 : -0.08);
         }
         return;
       }
-      if (apx < 13 && y > 32 && y < 56) {
-        const dd = Math.sqrt((px + 0.5) ** 2 + (y + 0.5 - 44) ** 2);
-        if (dd < 11) {
-          const ring = dd > 9;
-          const ang = Math.atan2(y + 0.5 - 44, px + 0.5);
-          const petal = Math.cos(ang * 8) * 0.5 + 0.5;
-          R.put(i, ring ? 2 : 0.5 + petal * (1 - dd / 9) * 2, ring ? M.TRIM : M.TRIM, ring ? 0 : -0.04 + petal * 0.08);
+      if (apx < 8 && y > 19 && y < 35) {
+        const dd = Math.sqrt((px + 0.5) ** 2 + (y + 0.5 - 27) ** 2);
+        if (dd < 6.6) {
+          const ring = dd > 5.2;
+          const ang = Math.atan2(y + 0.5 - 27, px + 0.5);
+          const petal = Math.cos(ang * 6) * 0.5 + 0.5;
+          R.put(i, ring ? 2 : 0.5 + petal * (1 - dd / 5.2) * 2, M.TRIM, ring ? 0 : -0.04 + petal * 0.08);
           return;
         }
       }
       if (y < MYS) {
-        const st = star((u + 0.5) / 18, (y - 30) / 18, 0.07);
-        R.put(i, st ? 0.4 : -0.8, st ? M.TRIM : M.WALL, st === 2 ? 0.1 : -0.06);
+        const hh = ashlar(x, y, 16, 8, 3);
+        R.put(i, hh * 0.6 - 0.4, M.WALL, hit.t - 0.04);
         return;
       }
-      const hh = ashlar(x, y, 32, 16, 5);
+      const hh = ashlar(x, y, 16, 10, 5);
       R.put(i, hh * 0.7, M.WALL, hit.t);
       return;
     }
     // --- inside the arch: the alcove ---
     const back = -12;
-    if (y < 153 && !inGothic(u, y, MCX - 66, MCX + 66, 200, 0.62)) {
+    if (y < MYS + 2 && !inGothic(u, y, MCX - 35, MCX + 35, 124, 0.62)) {
       // the alcove is a screen wall open to the hall beyond: cornice and stepped merlons
-      if (y >= 145) {
-        R.put(i, back + 3 - (y === 152 ? 1 : 0) - (y === 148 ? 0.7 : 0), M.TRIM, y === 145 ? 0.12 : 0);
+      if (y >= 89) {
+        R.put(i, back + 3 - (y === 94 ? 1 : 0) - (y === 91 ? 0.7 : 0), M.TRIM, y === 89 ? 0.12 : 0);
         return;
       }
-      const mu = (((u - MCX) % 14) + 14 + 7) % 14 - 7;
+      const mu = ((((u - MCX) % 8) + 8 + 4) % 8) - 4;
       const am = Math.abs(mu + 0.5);
-      const top = am < 1.5 ? 133 : am < 3.5 ? 137 : am < 5 ? 141 : 999;
+      const top = am < 1 ? 80 : am < 2 ? 83 : am < 3 ? 86 : 999;
       if (y >= top) R.put(i, back + 2, M.TRIM, y === top ? 0.1 : 0);
       return;
     }
-    if (inGothic(u, y, MCX - 24, MCX + 24, 226, 0.62)) {
+    if (inGothic(u, y, MCX - 12.5, MCX + 12.5, 140, 0.62)) {
       // lit doorway
-      const k = smooth(150, 300, y);
+      const k = smooth(93, 186, y);
       R.put(i, -40, M.LIT, 0);
-      R.emi[i] = 0.25 + 0.55 * k * (1 - (adx / 24) ** 2) + (hash2(u, y, 3) - 0.5) * 0.04;
-      if (y > 286) R.emi[i] += 0.1;
+      R.emi[i] = 0.25 + 0.55 * k * (1 - (adx / 12.5) ** 2) + (hash2(u | 0, y, 3) - 0.5) * 0.04;
+      if (y > 177) R.emi[i] += 0.1;
       return;
     }
-    if (inGothic(u, y, MCX - 30, MCX + 30, 224, 0.62)) {
-      const inner = inGothic(u, y, MCX - 27, MCX + 27, 225, 0.62);
+    if (inGothic(u, y, MCX - 16, MCX + 16, 139, 0.62)) {
+      const inner = inGothic(u, y, MCX - 14.4, MCX + 14.4, 139.5, 0.62);
       R.put(i, back + (inner ? 1.5 : 3), M.TRIM, inner ? -0.05 : 0.06);
       return;
     }
-    const big = inGothic(u, y, MCX - 66, MCX + 66, 200, 0.62);
-    const bigIn = inGothic(u, y, MCX - 61, MCX + 61, 201, 0.62);
+    const big = inGothic(u, y, MCX - 35, MCX + 35, 124, 0.62);
+    const bigIn = inGothic(u, y, MCX - 32, MCX + 32, 124.6, 0.62);
     if (big && !bigIn) {
-      R.put(i, back + 3 - (inGothic(u, y, MCX - 63.5, MCX + 63.5, 200.5, 0.62) ? 1.2 : 0), M.TRIM, 0.05);
+      R.put(i, back + 3 - (inGothic(u, y, MCX - 33.5, MCX + 33.5, 124.3, 0.62) ? 1.2 : 0), M.TRIM, 0.05);
       return;
     }
-    if (bigIn && y < 292) {
-      const st = star((u + 0.5 - MCX) / 12 + 0.5, (y - 70) / 12, 0.075);
+    if (bigIn && y < 181) {
+      const st = star((u + 0.5 - MCX) / 14 + 0.5, (y - 43) / 14, 0.13);
       R.put(i, back + (st ? 0.8 : -1), st ? M.TRIM : M.WALL, st === 2 ? 0.12 : st ? 0 : -0.1);
       return;
     }
-    if (adx > 72 && adx < 95 && y > 212 && y < 300) {
+    if (adx > 38 && adx < 50.5 && y > 131 && y < 186) {
       // side doors: carved frame, studded wooden leaves under a little jali
-      const fx = Math.min(adx - 72, 95 - adx);
-      if (fx < 3 || y < 215) {
-        R.put(i, back + 2.2 - (fx < 1 ? 0.6 : 0), M.TRIM, 0.04);
+      const fx = Math.min(adx - 38, 50.5 - adx);
+      if (fx < 1.6 || y < 133) {
+        R.put(i, back + 2.2 - (fx < 0.8 ? 0.6 : 0), M.TRIM, 0.04);
         return;
       }
-      const st = star((adx - 75) / 8.5, (y - 216) / 8.5, 0.1);
-      R.put(i, back - 1 + (st ? 0.8 : 0), st === 2 ? M.GOLD : M.WOOD, st ? 0.05 : (adx - 75) % 17 < 1 ? -0.2 : 0);
+      const plank = (adx - 39.6) % 4 < 1;
+      const band = Math.abs(y - 150) < 1 || Math.abs(y - 170) < 1;
+      R.put(i, back - 1 + (band ? 0.8 : 0), band ? M.GOLD : M.WOOD, plank ? -0.15 : 0);
       return;
     }
-    if (adx > 74 && adx < 93 && y > 168 && y < 208) {
-      if (inGothic(adx, y, 76, 91, 182, 0.7)) {
-        const st = star((adx - 76) / 7.5, (y - 168) / 7.5, 0.13);
-        R.put(i, st ? back + 0.5 : back - 8, st ? M.TRIM : M.DEEP, 0);
+    if (adx > 39 && adx < 49.5 && y > 104 && y < 129) {
+      if (inGothic(adx, y, 40.5, 48, 113, 0.7)) {
+        const mull = Math.abs(adx - 44.25) < 1;
+        R.put(i, mull ? back + 0.5 : back - 8, mull ? M.TRIM : M.DEEP, 0);
         return;
       }
-      if (inGothic(adx, y, 74, 93, 181, 0.7)) {
+      if (inGothic(adx, y, 39, 49.5, 112, 0.7)) {
         R.put(i, back + 1.5, M.TRIM, 0.05);
         return;
       }
     }
-    const hh = ashlar(x, y, 24, 12, 7);
+    const hh = ashlar(x, y, 16, 7, 7);
     R.put(i, back + hh * 0.8, M.WALL, hit.t - 0.06);
   });
   const lamps: [number, number][] = [];
-  for (let b = 0; b < 2; b++) {
+  for (let b = 0; b < 3; b++) {
     const ox = b * BAY;
-    column(R, ox + MCX - MR - 9, MYS - 16, 300, 5.5, 5);
-    column(R, ox + MCX + MR + 9, MYS - 16, 300, 5.5, 5);
-    if (b === 0) curtain(R, ox + MCX - MR + 1, 1, 52, 204, 262, 44, 2, 1);
-    else curtain(R, ox + MCX + MR - 1, -1, 52, 204, 262, 44, 2, 2);
-    chain(R, ox + MCX, 30, 118, 12);
-    lamps.push(lantern(R, ox + MCX, 118, 1.25, 14));
+    column(R, ox + MCX - MR - 5, MYS - 10, 186, 3.2, 5);
+    column(R, ox + MCX + MR + 5, MYS - 10, 186, 3.2, 5);
+    if (b === 0) curtain(R, ox + MCX - MR + 1, 1, 32, 126, 162, 24, 2, 1);
+    else if (b === 2) curtain(R, ox + MCX + MR - 1, -1, 32, 126, 162, 24, 2, 2);
+    const cl = b === 1 ? 64 : 73;
+    chain(R, ox + MCX, 19, cl, 12);
+    lamps.push(lantern(R, ox + MCX, cl, 0.78, 14));
   }
-  // Pier niches with candles below the lattice panel are part of the panel; add votive shelf
   return {
     R,
     lights: (t) => [
-      ...lamps.map(([x, y]) => ({ x, y, z: 30, r: 180, c: t.lamp, k: 0.62 })),
-      ...lamps.map(([x]) => ({ x, y: 268, z: 4, r: 120, c: t.door, k: 0.7 })),
+      ...lamps.map(([x, y]) => ({ x, y, z: 20, r: 110, c: t.lamp, k: 0.62 })),
+      ...lamps.map(([x]) => ({ x, y: 166, z: 3, r: 75, c: t.door, k: 0.7 })),
     ],
     glows: (t) => [
-      ...lamps.map(([x, y]) => ({ x, y, r: 40, c: t.lamp, k: 0.4 })),
-      ...lamps.map(([x]) => ({ x, y: 270, r: 70, c: t.door, k: 0.16 })),
+      ...lamps.map(([x, y]) => ({ x, y, r: 25, c: t.lamp, k: 0.4 })),
+      ...lamps.map(([x]) => ({ x, y: 167, r: 43, c: t.door, k: 0.16 })),
     ],
     opts: (t) => ({
       amb: 0.15,
       keyK: 0.24,
       fogC: t.fog,
-      fog: (y) => 0.26 + 0.1 * smooth(300, 360, y),
+      fog: (y) => 0.26 + 0.1 * smooth(186, 224, y),
       ao: 0.08,
+      aoR: 3,
     }),
     rot: {
       seed: 77,
       bias: (x, y, m) => {
         const u = wrapX(x) % BAY;
         const d = Math.hypot(u - MCX, Math.min(0, y - MYS));
-        const nearBand = y < MYS + 10 ? Math.max(0, 1 - Math.abs(d - MR - 8) / 22) : 0;
-        return -0.2 + nearBand * 0.3 + 0.26 * smooth(60, 12, y) + 0.24 * smooth(262, 300, y) + (m === M.TRIM ? 0.04 : 0) + (m === M.SHAFT ? 0.02 : 0);
+        const nearBand = y < MYS + 6 ? Math.max(0, 1 - Math.abs(d - MR - 5) / 13) : 0;
+        return -0.2 + nearBand * 0.3 + 0.26 * smooth(37, 7, y) + 0.24 * smooth(162, 186, y) + (m === M.TRIM ? 0.04 : 0) + (m === M.SHAFT ? 0.02 : 0);
       },
-      sinews: [0, 1].flatMap((b) => {
+      sinews: [0, 1, 2].flatMap((b) => {
         const ox = b * BAY;
         return [
-          [ox + MCX - MR - 6, 146, ox + MCX + MR + 6, 146, 46, 1.6],
-          [ox + MCX + 24, 64, ox + MCX + MR - 6, 112, 30, 1.2],
-          [ox + MCX - MR - 9, 200, ox + MCX - 60, 150, 26, 1],
+          [ox + MCX - MR - 3.5, 90, ox + MCX + MR + 3.5, 90, 28, 1.1],
+          [ox + MCX + 13, 40, ox + MCX + MR - 3, 69, 18, 0.8],
+          [ox + MCX - MR - 5, 124, ox + MCX - 32, 93, 16, 0.7],
         ] as [number, number, number, number, number, number][];
       }),
-      drips: [0, 1].flatMap((b) =>
+      drips: [0, 1, 2].flatMap((b) =>
         [0.12, 0.2, 0.31, 0.4, 0.55, 0.66, 0.8, 0.9].map((a, k) => {
           const ang = a * Math.PI;
-          return [b * BAY + MCX + Math.cos(ang) * (MR - 4), MYS - Math.sin(ang) * (MR - 4), 10 + hash2(k, b, 3) * 50] as [number, number, number];
+          return [b * BAY + MCX + Math.cos(ang) * (MR - 2), MYS - Math.sin(ang) * (MR - 2), 6 + hash2(k, b, 3) * 30] as [number, number, number];
         }),
       ),
       eyes: [
-        [0, 172, 6],
-        [BAY, 120, 4],
-        [BAY - 40, 70, 3],
-        [40, 90, 3],
-        [MCX, 70 + 4, 3],
-        [BAY + MCX - 34, 250, 3],
+        [0, 107, 4],
+        [BAY, 74, 3],
+        [BAY - 21, 43, 2.2],
+        [21, 56, 2.2],
+        [MCX, 46, 2.2],
+        [BAY + MCX - 18, 155, 2.2],
+        [2 * BAY + MCX + 20, 60, 2.2],
       ],
       z: 8,
     },
-    post: (pc, t) => shafts(pc, [[100, 0.35, 10, 0.05], [420, 0.4, 12, 0.05]], t.lamp, 30, 300, 9),
+    post: (pc, t) => shafts(pc, [[80, 0.35, 6, 0.05], [336, 0.4, 7, 0.05]], t.lamp, 19, 186, 9),
   };
 }
 
@@ -879,85 +904,88 @@ function midLayer(): Layer {
 // NEAR: heavy columns and arch frames, drapes, hanging lanterns, balustrade
 // ===========================================================================
 
-const NC = [96, 416];
-const NYS = 100;
-const NR = 148;
-const NB = 22;
+const NBAY = W / 2;
+const NC = [64, 64 + NBAY];
+const NYS = 62;
+const NR = 120;
+const NB = 14;
 
 function nearLayer(): Layer {
   const R = new Relief(W, H);
   // Arch frames (spandrels) across the top
-  R.box(0, 0, W - 1, NYS + 4, (x, y, i) => {
+  R.box(0, 0, W - 1, NYS + 3, (x, y, i) => {
     const xx = wrapX(x);
-    const b = Math.floor(((xx - NC[0] + W) % W) / BAY);
-    const cx = wrapX(NC[0] + BAY / 2 + b * BAY);
+    const b = Math.floor(((xx - NC[0] + W) % W) / NBAY);
+    const cx = wrapX(NC[0] + NBAY / 2 + b * NBAY);
     let u = xx - cx;
     if (u > W / 2) u -= W;
     if (u < -W / 2) u += W;
-    const res = muqArch(u + 200, y, 200, NYS, NR, NB, 11, 10, 1.7);
+    const res = muqArch(u + 300, y, 300, NYS, NR, NB, 7, 10, 2.2);
     if (res === 1) R.put(i, hit.h, hit.m, hit.t);
     else if (res === 0 && y < NYS) {
       const past = hit.t;
-      if (past < 5) R.put(i, 14 - (past > 3 ? 1.2 : 0) + (past < 1.5 ? 0.6 : 0), M.TRIM, past < 1.5 ? 0.06 : 0);
+      if (past < 3) R.put(i, 14 - (past > 2 ? 1.2 : 0) + (past < 1 ? 0.6 : 0), M.TRIM, past < 1 ? 0.06 : 0);
       else {
-        const st = star((u + 0.5) / 22 + 0.5, y / 22 + 0.3, 0.06);
+        const st = star((u + 0.5) / 24 + 0.5, y / 24 + 0.3, 0.1);
         R.put(i, st ? 10.5 : 9, st ? M.TRIM : M.WALL, st === 2 ? 0.12 : -0.05);
       }
     }
   });
   // Balustrade along the bottom, plinth below
-  balustrade(R, 0, W - 1, 292, 342, W / 46, 8);
-  R.box(0, 343, W - 1, H - 1, (x, y, i) => {
-    const pu = wrapX(x) % 64;
-    const panel = pu > 5 && pu < 59 && y > 347 && y < 358;
-    R.raise(i, panel ? 8 : 9.5 - (y === 343 ? 0.6 : 0), M.WALL, panel ? -0.1 : hash2(x >> 2, y >> 2, 3) * 0.05);
+  balustrade(R, 0, W - 1, 181, 212, W / 60, 8);
+  R.box(0, 213, W - 1, H - 1, (x, y, i) => {
+    const PP = W / 12;
+    const pu = wrapX(x) % PP;
+    const panel = pu > 3 && pu < PP - 3 && y > 215 && y < 222;
+    R.raise(i, panel ? 8 : 9.5 - (y === 213 ? 0.6 : 0), M.WALL, panel ? -0.1 : hash2(x >> 2, y >> 2, 3) * 0.05);
   });
-  for (const cx of NC) column(R, cx, NYS - 24, 334, 12, 14, { capH: 36 });
+  for (const cx of NC) column(R, cx, NYS - 15, 207, 7.5, 14, { capH: 22 });
   // Drapes and lanterns
-  curtain(R, NC[0] + 13, 1, 0, 168, 236, 58, 16, 4);
-  swag(R, NC[1] + 16, NC[1] + 210, 6, 34, 20, 16);
-  curtain(R, NC[1] - 13, -1, 0, 150, 214, 40, 16, 6);
+  curtain(R, NC[0] + 8, 1, 0, 104, 146, 36, 16, 4);
+  swag(R, NC[1] + 10, NC[1] + NBAY - 10, 4, 21, 12, 16);
+  curtain(R, NC[1] - 8, -1, 0, 93, 133, 25, 16, 6);
   const lamps: [number, number][] = [];
-  chain(R, 250, 0, 146, 22);
-  lamps.push(lantern(R, 250, 146, 1.7, 24));
-  chain(R, 560, 0, 96, 22);
-  lamps.push(lantern(R, 560, 96, 1.45, 24));
+  chain(R, 196, 0, 90, 22);
+  lamps.push(lantern(R, 196, 90, 1.05, 24));
+  chain(R, 448, 0, 60, 22);
+  lamps.push(lantern(R, 448, 60, 0.9, 24));
   return {
     R,
-    lights: (t) => lamps.map(([x, y]) => ({ x, y, z: 40, r: 210, c: t.lamp, k: 1.05 })),
-    glows: (t) => lamps.map(([x, y]) => ({ x, y, r: 46, c: t.lamp, k: 0.4 })),
+    lights: (t) => lamps.map(([x, y]) => ({ x, y, z: 26, r: 130, c: t.lamp, k: 1.05 })),
+    glows: (t) => lamps.map(([x, y]) => ({ x, y, r: 28, c: t.lamp, k: 0.4 })),
     opts: (t) => ({
       amb: 0.09,
       keyK: 0.12,
       ao: 0.07,
+      aoR: 3,
       outline: 0.65,
       fogC: t.fog,
       fog: () => 0.05,
     }),
     rot: {
       seed: 113,
-      bias: (x, y, m) => -0.18 + 0.28 * smooth(90, 0, y) + 0.24 * smooth(290, 330, y) + (m === M.SHAFT ? 0.06 : 0) + (m === M.CLOTH ? -0.2 : 0),
+      bias: (x, y, m) => -0.18 + 0.28 * smooth(56, 0, y) + 0.24 * smooth(180, 205, y) + (m === M.SHAFT ? 0.06 : 0) + (m === M.CLOTH ? -0.2 : 0),
       sinews: [
-        [NC[0] + 12, 90, NC[0] + 150, 60, 50, 2],
-        [NC[1] - 12, 110, NC[1] - 120, 50, 40, 1.8],
-        [NC[1] + 12, 70, NC[1] + 290, 40, 70, 2.2],
+        [NC[0] + 7.5, 56, NC[0] + 110, 37, 31, 1.3],
+        [NC[1] - 7.5, 68, NC[1] - 90, 31, 25, 1.2],
+        [NC[1] + 7.5, 43, NC[1] + 220, 25, 43, 1.4],
       ],
       drips: [
-        [NC[0] + 30, 70, 50],
-        [NC[0] + 70, 30, 30],
-        [NC[1] - 40, 60, 70],
-        [NC[1] + 40, 40, 40],
-        [NC[1] + 100, 22, 24],
-        [NC[0] - 34, 64, 60],
-        [180, 292, 20],
-        [470, 292, 30],
-        [610, 292, 16],
+        [NC[0] + 20, 43, 31],
+        [NC[0] + 50, 19, 19],
+        [NC[1] - 30, 37, 43],
+        [NC[1] + 30, 25, 25],
+        [NC[1] + 80, 14, 15],
+        [NC[0] - 25, 40, 37],
+        [144, 181, 12],
+        [376, 181, 19],
+        [488, 181, 10],
       ],
       eyes: [
-        [NC[0], 20, 5],
-        [NC[1] - 30, 30, 4],
-        [NC[1] + 34, 14, 4],
-        [NC[0] + 10, 230, 4],
+        [NC[0], 12, 3.2],
+        [NC[1] - 24, 19, 2.6],
+        [NC[1] + 27, 9, 2.6],
+        [NC[0] + 8, 143, 2.6],
       ],
       z: 14,
     },
@@ -971,47 +999,47 @@ function nearLayer(): Layer {
 function fgLayer(): Layer {
   const R = new Relief(W, H);
   // Hanging arch corners meeting over a pier at x = 0
-  R.box(-150, 0, 150, 80, (x, y, i) => {
-    const cx = x < 0 ? -160 : 160;
-    const res = muqArch(x, y, cx, 40, 146, 22, 12, 20, 3.2);
+  R.box(-93, 0, 93, 50, (x, y, i) => {
+    const cx = x < 0 ? -99 : 99;
+    const res = muqArch(x, y, cx, 25, 90, 14, 7.5, 20, 3.2);
     if (res === 1) R.put(i, hit.h, hit.m, hit.t);
-    else if (res === 0 && y < 40) R.put(i, 20 - (hit.t < 4 ? 0 : 1), hit.t < 4 ? M.TRIM : M.WALL, 0);
+    else if (res === 0 && y < 25) R.put(i, 20 - (hit.t < 2.5 ? 0 : 1), hit.t < 2.5 ? M.TRIM : M.WALL, 0);
   });
-  column(R, 0, 34, 92, 9, 22, { capH: 26 });
-  R.box(-20, 66, 20, 96, (x, y, i) => {
+  column(R, 0, 21, 57, 5.6, 22, { capH: 16 });
+  R.box(-12, 41, 12, 60, (x, y, i) => {
     // the shaft is broken off just below the capital
-    if (R.mat[i] && y > 70 + Math.abs(Math.sin(x * 1.7)) * 6 + (x > 0 ? 4 : 0)) R.put(i, EMPTY, 0, 0);
+    if (R.mat[i] && y > 43 + Math.abs(Math.sin(x * 1.7)) * 4 + (x > 0 ? 2.5 : 0)) R.put(i, EMPTY, 0, 0);
   });
-  swag(R, 330, 520, -6, 26, 18, 20);
-  chain(R, 600, 0, 40, 22);
+  swag(R, 270, 390, -4, 16, 11, 20);
+  chain(R, 480, 0, 25, 22);
   // bottom: broken balustrade and rubble
-  balustrade(R, 140, 300, 326, 372, 16, 20);
-  R.box(130, 318, 312, H - 1, (x, y, i) => {
-    if (R.mat[i] && y < 322 + Math.abs(Math.sin(x * 0.21) * 10 + Math.sin(x * 0.9) * 3)) R.put(i, EMPTY, 0, 0);
+  balustrade(R, 112, 212, 202, 231, 10, 20);
+  R.box(104, 197, 220, H - 1, (x, y, i) => {
+    if (R.mat[i] && y < 200 + Math.abs(Math.sin(x * 0.34) * 6 + Math.sin(x * 1.45) * 2)) R.put(i, EMPTY, 0, 0);
   });
-  R.box(440, 330, 580, H - 1, (x, y, i) => {
-    const n = fbm(x, y, 9, 5, W, 2);
-    const top = 352 - Math.sin(((x - 440) / 140) * Math.PI) * 18 + (n - 0.5) * 12;
+  R.box(352, 205, 439, H - 1, (x, y, i) => {
+    const n = fbm(x, y, 6, 5, W, 2);
+    const top = 218 - Math.sin(((x - 352) / 87) * Math.PI) * 11 + (n - 0.5) * 7.5;
     if (y > top) R.put(i, 20 + n * 6, M.WALL, (n - 0.5) * 0.2);
   });
   return {
     R,
     lights: (t) => [
-      { x: 320, y: 200, z: 60, r: 380, c: t.lamp, k: 0.16 },
-      { x: 0, y: 140, z: 40, r: 200, c: t.lamp, k: 0.12 },
+      { x: 256, y: 124, z: 40, r: 236, c: t.lamp, k: 0.16 },
+      { x: 0, y: 87, z: 26, r: 124, c: t.lamp, k: 0.12 },
     ],
     glows: () => [],
-    opts: () => ({ amb: 0.05, keyK: 0.08, ao: 0.05, outline: 0.7 }),
+    opts: () => ({ amb: 0.05, keyK: 0.08, ao: 0.05, aoR: 3, outline: 0.7 }),
     rot: {
       seed: 151,
-      bias: (x, y) => 0.02 + 0.1 * smooth(330, 360, y),
+      bias: (x, y) => 0.02 + 0.1 * smooth(205, 224, y),
       drips: [
-        [40, 60, 30],
-        [90, 40, 20],
-        [400, 30, 26],
-        [470, 40, 16],
+        [32, 37, 19],
+        [72, 25, 12],
+        [320, 19, 16],
+        [376, 25, 10],
       ],
-      sinews: [[60, 40, 340, 6, 30, 2.4]],
+      sinews: [[48, 25, 272, 4, 19, 1.6]],
       z: 22,
     },
   };
@@ -1028,10 +1056,11 @@ function shadeLayer(L: Layer, t: Theme, R: Relief): PixelCanvas {
     lights: L.lights(t),
     glows: L.glows(t),
     tint: 0.75,
+    ...SNES_SHADE,
     ...o,
   });
   L.post?.(pc, t);
-  return pc;
+  return snesLayer(pc, LAYER_COLORS);
 }
 
 type Layers = { far: PixelCanvas; mid: PixelCanvas; near: PixelCanvas; fg: PixelCanvas };

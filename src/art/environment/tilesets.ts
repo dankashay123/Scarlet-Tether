@@ -1,6 +1,7 @@
 import { PixelCanvas, bayer, hash2 } from '../pixel';
 import { type RGB } from './paint';
-import { pick, tnoise } from './paint';
+import { clamp01, tnoise } from './paint';
+import { snesStrip } from './snes-env';
 import { ramp } from './relief';
 
 export const TILE = 16;
@@ -19,6 +20,15 @@ interface Flags {
 }
 
 const INK = '#0b0507';
+
+/** Ramp pick with a narrow ordered-dither band: flat SNES shade steps. */
+function pick(ramp: string[], v: number, x: number, y: number): string {
+  const n = ramp.length;
+  const f = clamp01(v) * (n - 1) * 0.9999;
+  let i = Math.floor(f);
+  if (f - i > 0.5 + (bayer(x, y) - 0.5) * 0.25) i++;
+  return ramp[Math.max(0, Math.min(n - 1, i))];
+}
 
 // --- Ramps (string ramps are used by liquids, grates and thorns) ---------------
 const WOOD = ['#140706', '#2a110d', '#46201a', '#6a3022', '#8f4a30', '#b46a44'];
@@ -484,7 +494,7 @@ function renderTile(pc: PixelCanvas, ox: number, desc: (x: number, y: number, f:
       const n = rmp.length;
       const fq = Math.max(0, Math.min(1, v)) * (n - 1) * 0.9999;
       let i = Math.floor(fq);
-      if (fq - i > 0.5 + (bayer(x, y) - 0.5) * 0.7) i++;
+      if (fq - i > 0.5 + (bayer(x, y) - 0.5) * 0.2) i++;
       let [r, g, b] = rmp[Math.min(n - 1, i)];
       // outline the silhouette (sides and underside) like the characters
       const openW = !pp[k - 1];
@@ -802,5 +812,6 @@ export function drawTileset(set: EnvSet): PixelCanvas {
   liquid(pc, ET.LIQUID * 16, set, false);
   grate(pc, ET.GRATE * 16, set);
   thorns(pc, ET.THORNS * 16, set);
-  return pc;
+  // SNES finish: one ~32-colour palette for the strip, dedithered tile by tile
+  return snesStrip(pc, 32, TILE);
 }

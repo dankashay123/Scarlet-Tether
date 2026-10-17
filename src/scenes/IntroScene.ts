@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { uiH, uiSpace, uiW } from '../ui/uispace';
 import { P, hexNum } from '../art/palette';
 import { INTRO_SCRIPT } from '../game/lore';
 import { meta, save } from '../game/state';
@@ -21,8 +22,9 @@ export class IntroScene extends Phaser.Scene {
   }
 
   create() {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    uiSpace(this);
+    const W = uiW(this);
+    const H = uiH(this);
     this.i = 0;
     this.done = false;
     hud(this).setControlsVisible(false);
@@ -58,8 +60,8 @@ export class IntroScene extends Phaser.Scene {
   }
 
   private snap() {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    const W = uiW(this);
+    const H = uiH(this);
     // One tether, from one smiling window, straight down; then it breaks.
     const x = Math.round(W * 0.46);
     const g = this.tether;
@@ -79,8 +81,8 @@ export class IntroScene extends Phaser.Scene {
   }
 
   private fall() {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    const W = uiW(this);
+    const H = uiH(this);
     this.tether.clear();
     this.tweens.add({ targets: this.art, y: -this.art.displayHeight, duration: 2600, ease: 'Quad.In' });
     const body = this.add.sprite(W / 2, -20, 'player').play('player:fall').setScale(2).setAngle(160);

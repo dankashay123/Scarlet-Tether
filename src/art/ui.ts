@@ -54,11 +54,37 @@ const ICONS: Record<string, (pc: PixelCanvas, c: number) => void> = {
     pc.px(c, c - 7, P.blood0);
   },
   attack: (pc, c) => {
-    // Chain swinging to a shackle
-    for (let i = 0; i < 5; i++) pc.rect(c - 8 + i * 3, c + 6 - i * 3, 2, 2, i % 2 ? P.iron0 : P.iron1);
-    pc.ellipse(c + 6, c - 6, 4, 4, P.iron0);
-    pc.ellipse(c + 6, c - 6, 1, 1, P.ink);
-    pc.px(c + 4, c - 8, P.bone0);
+    // A blood bolt leaving the cannon's mouth
+    pc.rect(c - 10, c - 3, 8, 6, P.iron1);
+    pc.rect(c - 10, c - 3, 8, 2, P.iron0);
+    pc.rect(c - 3, c - 4, 2, 8, P.bone2);
+    pc.ellipse(c + 5, c, 4, 3, P.blood1);
+    pc.ellipse(c + 6, c - 1, 2, 1, P.blood0);
+    pc.px(c + 7, c - 1, P.bone0);
+    pc.line(c, c - 5, c + 3, c - 3, P.blood2);
+    pc.line(c, c + 5, c + 3, c + 3, P.blood2);
+  },
+  aim: (pc, c) => {
+    // A planted foot and a fixed sight: aim without moving
+    for (let a = 0; a < 24; a++) {
+      const t = (a / 24) * Math.PI * 2;
+      pc.px(Math.round(c + Math.cos(t) * 7), Math.round(c + Math.sin(t) * 7), P.bone1);
+    }
+    pc.line(c, c - 10, c, c - 4, P.bone0);
+    pc.line(c, c + 4, c, c + 10, P.bone0);
+    pc.line(c - 10, c, c - 4, c, P.bone0);
+    pc.line(c + 4, c, c + 10, c, P.bone0);
+    pc.px(c, c, P.blood0);
+  },
+  weapon: (pc, c) => {
+    // A censer shell: brass casing, smoking cap
+    pc.rect(c - 3, c - 4, 7, 11, G2);
+    pc.rect(c - 3, c - 4, 2, 11, G1);
+    pc.rect(c - 3, c + 5, 7, 2, G3);
+    pc.ellipse(c, c - 6, 3, 3, P.blood1);
+    pc.px(c - 1, c - 7, P.blood0);
+    pc.px(c + 2, c - 10, P.smoke0);
+    pc.px(c, c - 11, P.smoke0);
   },
   dodge: (pc, c) => {
     // Three wind-streaks and a footprint
@@ -739,7 +765,9 @@ export function buildUi(scene: Phaser.Scene) {
   registerImage(scene, 'stick-knob', knob);
 
   const rims: Record<string, string> = {
-    attack: P.iron0,
+    attack: P.blood1,
+    aim: P.bone2,
+    weapon: G1,
     jump: P.bone2,
     dodge: P.smoke1,
     execute: P.blood1,

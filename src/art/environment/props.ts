@@ -1,7 +1,16 @@
-import { BLOOD, IRON, OLD_BLOOD, RUST } from '../hero';
-import { PixelCanvas, bayer, hash2, valueNoise } from '../pixel';
+import { PixelCanvas, hash2, valueNoise } from '../pixel';
 import { Figure, KEY_LIGHT, folds, grain, type Light, type Material } from '../render';
 import { inGothic } from './paint';
+import { finishSprite, reduce2 } from './snes-env';
+
+/**
+ * Props for the SNES screen (224 px tall, ~40 px hero): every prop is authored
+ * in its old 360 px coordinates and drawn at SC = 0.625 of that size. Shapes
+ * are rasterised at twice the target resolution and box-reduced (which turns
+ * the renderer's ordered dither into flat tone), then given a selective
+ * outline and quantised to a 15-colour SNES sprite palette.
+ */
+export const SC = 0.625;
 
 // ---------------------------------------------------------------------------
 // Materials
@@ -37,25 +46,50 @@ export const VOID: Material = { ramp: ['#050203', '#0b0507', '#140a0c'], round: 
 export const RUBY: Material = { ramp: ['#2a0208', '#6a0a18', '#b0182a', '#ff4a4a', '#ffd0c0'], spec: 1, round: 1 };
 export const DRIED: Material = { ramp: ['#1a100c', '#3a2a1e', '#5a4430', '#7e6446', '#a08660', '#c4ac84'], tex: grain(1.2, 0.15, 14), round: 0.8 };
 export const PAGE: Material = { ramp: ['#3a2e20', '#8a7a5a', '#c8b88e', '#e8dcb8'], round: 0.2, tex: (x, y) => (y % 2 === 0 && hash2(x, y, 2) > 0.5 ? -0.18 : 0) };
-export { BLOOD, OLD_BLOOD, IRON, RUST };
+// Shared with the hero's look (copied so the environment does not depend on hero.ts)
+export const BLOOD: Material = { ramp: ['#2a0208', '#4e0815', '#7a0c1c', '#a8122a', '#d0262f', '#ff5a4a'], spec: 0.9, round: 0.4 };
+export const OLD_BLOOD: Material = { ramp: ['#1e070a', '#34090f', '#4e1018', '#6a1a1e', '#83292a'], spec: 0.15, round: 0.3 };
+export const IRON: Material = { ramp: ['#0e0d10', '#26252b', '#3d3c44', '#5b5a63', '#87868f', '#c4c3c8'], spec: 0.9, tex: grain(1.5, 0.12, 7), round: 0.9 };
+export const RUST: Material = { ramp: ['#1a0a06', '#3a170c', '#5e2a12', '#8a4a22', '#b06a36'], spec: 0.2, tex: grain(1.5, 0.15, 9) };
 
-/** Figure with a uniform scale so the same prop can be drawn larger in backgrounds. */
+/**
+ * Figure in old-scale coordinates, drawn at `k` x SC: the canvas is W x H
+ * (= round(w * k * SC) x round(h * k * SC)); shapes are rasterised at 2x that
+ * and reduced on render. Radii never drop below half a final pixel.
+ */
 export class SF {
   readonly f: Figure;
+  readonly W: number;
+  readonly H: number;
+  /** Source units to final pixels. */
+  readonly q: number;
+  private readonly k: number;
   constructor(
     readonly w: number,
     readonly h: number,
-    readonly k = 1,
+    k = 1,
+    scale = SC,
   ) {
-    this.f = new Figure(Math.round(w * k), Math.round(h * k));
+    this.q = k * scale;
+    this.W = Math.round(w * this.q);
+    this.H = Math.round(h * this.q);
+    this.k = this.q * 2;
+    this.f = new Figure(this.W * 2, this.H * 2);
+  }
+  private r(v: number) {
+    return Math.max(1, v * this.k);
+  }
+  /** Source coordinate to final pixel. */
+  P(v: number) {
+    return Math.round(v * this.q);
   }
   ellipse(cx: number, cy: number, rx: number, ry: number, m: Material, l: number, rot = 0) {
     const k = this.k;
-    this.f.ellipse(cx * k, cy * k, rx * k, ry * k, m, l, rot);
+    this.f.ellipse(cx * k, cy * k, this.r(rx), this.r(ry), m, l, rot);
   }
   capsule(ax: number, ay: number, bx: number, by: number, ra: number, rb: number, m: Material, l: number) {
     const k = this.k;
-    this.f.capsule(ax * k, ay * k, bx * k, by * k, ra * k, rb * k, m, l);
+    this.f.capsule(ax * k, ay * k, bx * k, by * k, this.r(ra), this.r(rb), m, l);
   }
   poly(pts: [number, number][], m: Material, l: number) {
     this.f.poly(
@@ -75,8 +109,9 @@ export class SF {
     const k = this.k;
     this.f.stain((x, y) => mask(x / k, y / k), m, only);
   }
+  /** Shade at 2x and reduce to W x H (no outline yet: see finishSprite). */
   render(light: Light = KEY_LIGHT) {
-    return this.f.render(light);
+    return reduce2(this.f.render(light, 'transparent'), this.W, this.H);
   }
 }
 
@@ -100,7 +135,8 @@ export function flame(pc: PixelCanvas, x: number, y: number, h = 4, f = 0, halo 
     const t = i / hh; // 0 base .. 1 tip
     const cx = x + Math.round(sway * t);
     const w = t < 0.6 ? 1 : 0;
-    const core = t < 0.45 ? 4 : t < 0.7 ? 3 : t < 0.9 ? 2 : 1;
+    // small SNES flames: warm bands (a white core would read as wax)
+    const core = hh <= 3 ? [3, 2, 1][Math.min(2, i)] : t < 0.45 ? 4 : t < 0.7 ? 3 : t < 0.9 ? 2 : 1;
     pc.px(cx, y - i, FLAME[core]);
     if (w && hh > 3) {
       pc.px(cx - 1, y - i, FLAME[Math.max(1, core - 2)]);
@@ -118,7 +154,7 @@ function smoke(pc: PixelCanvas, x: number, y: number, h: number, seed: number) {
 }
 
 // ---------------------------------------------------------------------------
-// Confessional booth (64x96 at k=1)
+// Confessional booth (64x96 source units; 40x60 at k=1)
 // ---------------------------------------------------------------------------
 
 export function drawBooth(rot: boolean, open: boolean, k = 1, f = 0): PixelCanvas {
@@ -192,8 +228,10 @@ export function drawBooth(rot: boolean, open: boolean, k = 1, f = 0): PixelCanva
   s.capsule(32, 0.8, 32, 10, 1.15, 1.15, G, 5);
   s.capsule(29, 3.6, 35, 3.6, 1.1, 1.1, G, 5);
   // Lattice on the screens
-  s.stain((x, y) => ((x > 10 && x < 18) || (x > 46 && x < 54)) && y > 46 && y < 82 && ((Math.floor(x) + Math.floor(y)) % 4 === 0 || (Math.floor(x) - Math.floor(y) + 400) % 4 === 0), G, [WD]);
-  s.stain((x, y) => ((x > 10 && x < 18) || (x > 46 && x < 54)) && y > 46 && y < 82 && (Math.floor(x) + Math.floor(y)) % 4 === 2 && (Math.floor(x) - Math.floor(y) + 400) % 4 === 2, VOID, [WD]);
+  const lat = (x: number, y: number) => ((Math.floor(x / 1.6) + Math.floor(y / 1.6)) % 4 + 4) % 4;
+  const lat2 = (x: number, y: number) => ((Math.floor(x / 1.6) - Math.floor(y / 1.6)) % 4 + 4) % 4;
+  s.stain((x, y) => ((x > 10 && x < 18) || (x > 46 && x < 54)) && y > 46 && y < 82 && (lat(x, y) === 0 || lat2(x, y) === 0), G, [WD]);
+  s.stain((x, y) => ((x > 10 && x < 18) || (x > 46 && x < 54)) && y > 46 && y < 82 && lat(x, y) === 2 && lat2(x, y) === 2, VOID, [WD]);
   // Gore: soaked hem, blood seeping beneath the curtain
   s.stain((x, y) => y > 80 + valueNoise(x, 0, 3, 5) * 6, OLD_BLOOD, [W, WD, CURTAIN]);
   s.stain((x, y) => x > 22 && x < 42 && y > 84, BLOOD, [W, WD, CURTAIN, G]);
@@ -211,13 +249,15 @@ export function drawBooth(rot: boolean, open: boolean, k = 1, f = 0): PixelCanva
     s.stain((x, y) => Math.abs(valueNoise(x, y, 4, 9) - 0.5) < 0.035 && y > 20, { ramp: ['#24080d', '#4d1f2b', '#6a2030'] }, [W, WD]);
     s.stain((x, y) => Math.hypot(x - 32, y - 23) < 1.2, VOID, [FLESH]);
   }
-  const pc = s.render({ ...KEY_LIGHT, ambient: 0.14 });
-  if (open) flame(pc, Math.round(32 * k), Math.round(75 * k), Math.round(4 * k), f);
-  return pc;
+  return finishSprite(s.render({ ...KEY_LIGHT, ambient: 0.14 }), {
+    paint: (pc) => {
+      if (open) flame(pc, s.P(32), s.P(75), Math.max(2, s.P(4)), f, false);
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
-// Candelabra (24x48)
+// Candelabra (24x48 source; 15x30)
 // ---------------------------------------------------------------------------
 
 export function drawCandelabra(f: number, rot = false, k = 1, lit = true): PixelCanvas {
@@ -240,17 +280,18 @@ export function drawCandelabra(f: number, rot = false, k = 1, lit = true): Pixel
   s.stain((x, y) => (Math.abs(x - 5) < 0.6 && y > 13 && y < 17) || (Math.abs(x - 11) < 0.6 && y > 11 && y < 15), WAX, [M]);
   s.stain((x, y) => y > 43 && valueNoise(x, y, 2, 3) > 0.55, rot ? FLESH : OLD_BLOOD, [M]);
   if (rot) s.stain((x, y) => Math.abs(y - 26) < 1.4 || Math.abs(y - 34) < 1, FLESH, [M]);
-  const pc = s.render();
-  if (lit) {
-    flame(pc, Math.round(4 * k), Math.round(7 * k), Math.round(3 * k), f);
-    flame(pc, Math.round(12 * k), Math.round(4 * k), Math.round(3.5 * k), f + 1);
-    flame(pc, Math.round(20 * k), Math.round(7.5 * k), Math.round(3 * k), f + 2);
-  }
-  return pc;
+  return finishSprite(s.render(), {
+    paint: (pc) => {
+      if (!lit) return;
+      flame(pc, s.P(4), s.P(8), Math.max(2, s.P(3)), f, false);
+      flame(pc, s.P(12), s.P(5), Math.max(2, s.P(4)), f + 1, false);
+      flame(pc, s.P(20), s.P(8), Math.max(2, s.P(3)), f + 2, false);
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
-// Weeping saint (48x96)
+// Weeping saint (48x96 source; 30x60 at k=1)
 // ---------------------------------------------------------------------------
 
 export function drawSaint(rot: boolean, k = 1): PixelCanvas {
@@ -297,11 +338,11 @@ export function drawSaint(rot: boolean, k = 1): PixelCanvas {
     s.stain((x, y) => Math.abs(y - 28.6) < 0.5 && Math.abs(x - 24) < 1.6 && Math.floor(x) % 2 === 0, BONE, [M]);
     for (let i = 0; i < 5; i++) s.capsule(13 + i * 5.5, 78, 12 + i * 5.8 + hash2(i, 0, 3) * 3, 84 + hash2(i, 1, 3) * 6, 1.6, 0.6, FLESH, 2.1);
   }
-  return s.render({ ...KEY_LIGHT, ambient: 0.18 });
+  return finishSprite(s.render({ ...KEY_LIGHT, ambient: 0.18 }));
 }
 
 // ---------------------------------------------------------------------------
-// Hanging cage with a corpse (32x64, top-anchored)
+// Hanging cage with a corpse (32x64 source; 20x40, top-anchored)
 // ---------------------------------------------------------------------------
 
 export function drawCage(rot = false, k = 1): PixelCanvas {
@@ -335,14 +376,19 @@ export function drawCage(rot = false, k = 1): PixelCanvas {
   s.ellipse(16, 59.5, 11.5, 2.4, BAR, 5.2);
   s.capsule(5, 59.5, 27, 59.5, 1.2, 1.2, RUST, 5.3);
   s.stain((x, y) => valueNoise(x, y, 2, 77) > 0.66, RUST, [BAR]);
-  const pc = s.render();
-  // Blood dripping from the floor of the cage
-  for (const [x, l] of [[12, 3], [18, 2], [28, 3]] as const) for (let i = 0; i < l; i++) pc.px(Math.round(x * k), Math.round((61 + i) * k), i === l - 1 ? '#d0262f' : '#7a0c1c');
-  return pc;
+  return finishSprite(s.render(), {
+    paint: (pc) => {
+      // Blood dripping from the floor of the cage
+      for (const [x, l] of [[12, 3], [18, 2], [28, 3]] as const) {
+        const n = Math.max(1, s.P(l));
+        for (let i = 0; i < n; i++) pc.px(s.P(x), s.P(61) + 1 + i, i === n - 1 ? '#d0262f' : '#7a0c1c');
+      }
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
-// Gothic doorway with portcullis (48x72)
+// Gothic doorway with portcullis (48x72 source; 30x45)
 // ---------------------------------------------------------------------------
 
 const DOOR_IN = (x: number, y: number) => inGothic(x, y, 9, 39, 26, 0.72);
@@ -384,34 +430,37 @@ function portcullis(): PixelCanvas {
 export function drawDoorFrames(): PixelCanvas[] {
   const frame = doorFrame();
   const bars = portcullis();
+  const DW = frame.w;
+  const DH = frame.h;
+  const inside = (x: number, y: number) => DOOR_IN((x + 0.5) / SC, (y + 0.5) / SC);
   const out: PixelCanvas[] = [];
   for (const lift of [0, 0.22, 0.48, 0.74, 1]) {
-    const pc = new PixelCanvas(48, 72);
-    // Interior darkness with a dim red glow from beyond
-    for (let y = 0; y < 72; y++)
-      for (let x = 0; x < 48; x++) {
-        if (!DOOR_IN(x + 0.5, y + 0.5)) continue;
-        const g = Math.max(0, (y - 26) / 46) * 2 + bayer(x, y) * 0.999;
+    const pc = new PixelCanvas(DW, DH);
+    // Interior darkness with a dim red glow from beyond (flat bands)
+    for (let y = 0; y < DH; y++)
+      for (let x = 0; x < DW; x++) {
+        if (!inside(x, y)) continue;
+        const g = Math.max(0, (y / SC - 26) / 46) * 3;
         pc.px(x, y, ['#0b0507', '#1a0609', '#2a0a0e'][Math.min(2, Math.floor(g))]);
       }
-    const dy = -Math.round(lift * 64);
-    for (let y = 0; y < 72; y++)
-      for (let x = 0; x < 48; x++) {
+    const dy = -Math.round(lift * 64 * SC);
+    for (let y = 0; y < DH; y++)
+      for (let x = 0; x < DW; x++) {
         const sy = y - dy;
-        if (sy < 0 || sy >= 72 || !DOOR_IN(x + 0.5, y + 0.5)) continue;
-        const o = (sy * 48 + x) * 4;
-        if (bars.data[o + 3] === 0) continue;
-        const c = '#' + [bars.data[o], bars.data[o + 1], bars.data[o + 2]].map((v) => v.toString(16).padStart(2, '0')).join('');
+        if (sy < 0 || sy >= DH || !inside(x, y)) continue;
+        const o = (sy * DW + x) * 4;
+        if (bars.data[o + 3] < 110) continue;
+        const c = '#' + [bars.data[o], bars.data[o + 1], bars.data[o + 2]].map((v) => (v | 0).toString(16).padStart(2, '0')).join('');
         pc.px(x, y, c);
       }
     pc.blit(frame, 0, 0);
-    out.push(pc);
+    out.push(finishSprite(pc));
   }
   return out;
 }
 
 // ---------------------------------------------------------------------------
-// Votive altar (64x64)
+// Votive altar (64x64 source; 40x40)
 // ---------------------------------------------------------------------------
 
 export function drawVotive(spent: boolean): PixelCanvas {
@@ -436,17 +485,18 @@ export function drawVotive(spent: boolean): PixelCanvas {
     s.capsule(x, 39, x, 39 - hh, 1.3, 1.3, WAX, 2.8);
   }
   s.stain((x, y) => y > 40 && y < 47 && candles.some(([cx]) => Math.abs(x - cx - 0.6) < 0.7 && y < 41 + hash2(cx, 1, 2) * 6), WAX);
-  const pc = s.render({ ...KEY_LIGHT, ambient: 0.18 });
-  candles.forEach(([x, h], i) => {
-    const hh = spent ? Math.max(2, h * 0.35) : h;
-    if (!spent) flame(pc, Math.round(x), Math.round(38 - hh), 3 + (i % 2), i);
-    else smoke(pc, Math.round(x), Math.round(37 - hh), 7, i);
+  return finishSprite(s.render({ ...KEY_LIGHT, ambient: 0.18 }), {
+    paint: (pc) =>
+      candles.forEach(([x, h], i) => {
+        const hh = spent ? Math.max(2, h * 0.35) : h;
+        if (!spent) flame(pc, s.P(x), s.P(38.5 - hh), 2 + (i % 2), i, false);
+        else smoke(pc, s.P(x), s.P(37 - hh), 5, i);
+      }),
   });
-  return pc;
 }
 
 // ---------------------------------------------------------------------------
-// Reliquary cache (32x28)
+// Reliquary cache (32x28 source; 20x18)
 // ---------------------------------------------------------------------------
 
 export function drawCache(open: boolean): PixelCanvas {
@@ -469,22 +519,27 @@ export function drawCache(open: boolean): PixelCanvas {
     s.ellipse(16, 12.5, 6, 1.6, VOID, 3.05);
   }
   s.stain((x, y) => y > 23 && valueNoise(x, y, 1.5, 3) > 0.6, OLD_BLOOD, [GOLD]);
-  const pc = s.render();
+  const pc = finishSprite(s.render(), {
+    paint: (pc) => {
+      if (open) for (let x = s.P(12); x < s.P(21); x++) pc.px(x, s.P(12), x % 2 ? '#fff8dc' : '#ffe08a');
+    },
+  });
   if (open) {
-    // Holy light spilling out
-    for (let y = 0; y < 13; y++)
-      for (let x = 4; x < 28; x++) {
-        const t = 1 - y / 13;
-        const d = Math.abs(x - 16) / (6 + (13 - y) * 0.6);
-        if (d < 1 && pc.alphaAt(x, y) < 200) pc.px(x, y, '#fff1a8', (1 - d) * t * 0.6);
+    // Holy light spilling out (half-transparent bands over the empty pixels)
+    const top = s.P(12);
+    for (let y = 0; y < top; y++)
+      for (let x = s.P(4); x < s.P(28); x++) {
+        const t = 1 - y / top;
+        const d = Math.abs(x + 0.5 - s.P(16)) / ((6 + (13 - y / SC) * 0.6) * SC);
+        const a = (1 - d) * t * 0.6;
+        if (d < 1 && a > 0.12 && pc.alphaAt(x, y) === 0) pc.px(x, y, '#fff1a8', a > 0.3 ? 0.5 : 0.25);
       }
-    for (let x = 12; x < 21; x++) pc.px(x, 12, x % 2 ? '#fff8dc' : '#ffe08a');
   }
   return pc;
 }
 
 // ---------------------------------------------------------------------------
-// Censer (24x24)
+// Censer (24x24 source; 15x15)
 // ---------------------------------------------------------------------------
 
 export function drawCenser(rot = false, k = 1): PixelCanvas {
@@ -495,25 +550,24 @@ export function drawCenser(rot = false, k = 1): PixelCanvas {
   s.ellipse(12, 15, 8, 4.6, M, 3);
   s.capsule(4, 13, 20, 13, 1.1, 1.1, rot ? BONE : GOLD, 3.2);
   s.ellipse(12, 20.5, 3, 1.4, M, 2.5);
-  const pc = s.render();
-  const K = (v: number) => Math.round(v * k);
-  for (const [ax, ay] of [[6, 9], [18, 9], [12, 5]]) pc.line(K(12), K(0.5), K(ax), K(ay), rot ? '#7a3540' : '#a87a35');
-  pc.px(K(12), 0, '#e0b468');
-  // Pierced holes glowing with embers
-  for (const [x, y] of [[8, 15], [12, 16], [16, 15], [10, 10], [14, 10], [6, 14], [18, 14]]) {
-    pc.px(K(x), K(y), '#ffb050');
-    if (k > 1) pc.px(K(x) + 1, K(y), '#e8742a');
-  }
-  for (let i = 0; i < 6; i++) {
-    const x = K(5 + hash2(i, 1, 9) * 14);
-    const y = K(19 + hash2(i, 2, 9) * 4);
-    if (pc.alphaAt(x, y) === 0) pc.px(x, y, i % 2 ? '#ffe08a' : '#e8742a');
-  }
-  return pc;
+  const K = (v: number) => s.P(v);
+  return finishSprite(s.render(), {
+    paint: (pc) => {
+      for (const [ax, ay] of [[6, 9], [18, 9], [12, 5]]) pc.line(K(12), 0, K(ax), K(ay), rot ? '#7a3540' : '#a87a35');
+      pc.px(K(12), 0, '#e0b468');
+      // Pierced holes glowing with embers
+      for (const [x, y] of [[8, 15], [16, 15], [12, 10], [12, 16]]) pc.px(K(x), K(y), '#ffb050');
+      for (let i = 0; i < 4; i++) {
+        const x = K(5 + hash2(i, 1, 9) * 14);
+        const y = K(20 + hash2(i, 2, 9) * 3);
+        if (pc.alphaAt(x, y) === 0) pc.px(x, y, i % 2 ? '#ffe08a' : '#e8742a');
+      }
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
-// Bone lectern with a skin-bound book (32x48)
+// Bone lectern with a skin-bound book (32x48 source; 20x30)
 // ---------------------------------------------------------------------------
 
 export function drawLectern(): PixelCanvas {
@@ -538,28 +592,31 @@ export function drawLectern(): PixelCanvas {
   s.capsule(16.5, 14, 18, 25, 0.7, 0.6, BLOOD, 3.5);
   s.stain((x, y) => Math.abs(valueNoise(x, y, 2, 5) - 0.5) < 0.05, { ramp: ['#24080d', '#4d1f2b'] }, [FLESH]);
   s.stain((x, y) => y > 42 && valueNoise(x, y, 2, 9) > 0.5, OLD_BLOOD, [BONE]);
-  return s.render({ ...KEY_LIGHT, ambient: 0.16 });
+  return finishSprite(s.render({ ...KEY_LIGHT, ambient: 0.16 }));
 }
 
 // ---------------------------------------------------------------------------
-// Golden light shaft (64x200), for additive blending
+// Golden light shaft (40x125), for additive blending
 // ---------------------------------------------------------------------------
 
 export function drawLightShaft(): PixelCanvas {
-  const pc = new PixelCanvas(64, 200);
-  for (let y = 0; y < 200; y++)
-    for (let x = 0; x < 64; x++) {
-      const cx = 32 + (y - 100) * 0.05;
-      const hw = 12 + y * 0.09;
+  const W = 40;
+  const H = 125;
+  const pc = new PixelCanvas(W, H);
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const cx = 20 + (y - 62) * 0.05;
+      const hw = 7.5 + y * 0.09;
       const dx = (x + 0.5 - cx) / hw;
       if (Math.abs(dx) >= 1) continue;
       let f = 1 - dx * dx;
       f *= f;
       const bars = 0.6 + 0.4 * Math.abs(Math.cos(dx * Math.PI * 2.5));
-      const along = Math.min(1, y / 12) * Math.pow(1 - y / 200, 1.2);
-      const dust = 0.85 + valueNoise(x, y * 0.5, 6, 3) * 0.3;
-      let a = f * bars * along * dust * 0.8;
-      let c = y < 40 ? '#ffe2a0' : '#ffc860';
+      const along = Math.min(1, y / 8) * Math.pow(1 - y / H, 1.2);
+      const dust = 0.85 + valueNoise(x, y * 0.5, 4, 3) * 0.3;
+      // SNES colour math: a few flat translucency bands
+      let a = Math.round(f * bars * along * dust * 0.8 * 6) / 6;
+      let c = y < 25 ? '#ffe2a0' : '#ffc860';
       if (hash2(x, y, 7) > 0.993 && f > 0.2) {
         a = Math.min(1, a + 0.5);
         c = '#fff8dc';
@@ -570,79 +627,36 @@ export function drawLightShaft(): PixelCanvas {
 }
 
 // ---------------------------------------------------------------------------
-// Door emblems (13x13)
+// Door emblems (9x9, hand-pixelled for the SNES door)
 // ---------------------------------------------------------------------------
 
+const EMBLEM_ART: Record<string, string[]> = {
+  combat: ['.........', '.........', '...bbb...', '..bbbbb..', '..k.b.k..', '..bbbbd..', '...bdb...', '....r....', '.........'],
+  elite: ['...g.g...', '...ggg...', '...bbb...', '..bbbbb..', '..k.b.k..', '..bbbbd..', '...bdb...', '.........', '.........'],
+  confessional: ['....g....', '....w....', '...wwW...', '..wwwWW..', '..ww.WW..', '..wwrWW..', '..wwrWW..', '.........', '.........'],
+  votive: ['....o....', '...ofo...', '....f....', '....i....', '...bbB...', '...bbB...', '...bbB...', '..ggggg..', '.........'],
+  cache: ['....t....', '....t....', '...ltT...', '...ltT...', '..lttTT..', '..ttwTT..', '...TTT...', '.........', '.........'],
+  boss: ['.........', '...ppp...', '..pqqqp..', '..pqmqp..', '...pmqp..', '....qp...', '...rp....', '..rr.....', '.........'],
+};
+const EMBLEM_INK: Record<string, string> = {
+  b: '#efe3bf', d: '#9a845a', k: '#0b0507', r: '#d0262f', g: '#e8c25a', w: '#8f4a30', W: '#6a3022',
+  o: '#e8742a', f: '#ffe08a', i: '#2a1a10', B: '#cdb889', t: '#6fb3e0', T: '#336b9e', l: '#bfe6ff',
+  p: '#d98f7a', q: '#b05a55', m: '#4d1f2b',
+};
+
 export function drawEmblem(kind: string): PixelCanvas {
-  const pc = new PixelCanvas(13, 13);
-  for (let y = 0; y < 13; y++)
-    for (let x = 0; x < 13; x++) {
-      const d = Math.hypot(x - 6, y - 6);
-      if (d <= 6.4) pc.px(x, y, d > 5.4 ? (x + y < 11 ? '#e8c25a' : '#7a5418') : d > 4.7 ? '#140a0c' : '#2a1418');
+  const pc = new PixelCanvas(9, 9);
+  for (let y = 0; y < 9; y++)
+    for (let x = 0; x < 9; x++) {
+      const d = Math.hypot(x - 4, y - 4);
+      if (d <= 4.5) pc.px(x, y, d > 3.6 ? (x + y < 8 ? '#e8c25a' : '#7a5418') : '#2a1418');
     }
-  const P = (x: number, y: number, c: string) => pc.px(x, y, c);
-  const B0 = '#efe3bf';
-  const B1 = '#9a845a';
-  const INK = '#0b0507';
-  switch (kind) {
-    case 'combat':
-    case 'elite': {
-      const oy = kind === 'elite' ? 1 : 0;
-      for (let y = 3; y <= 7; y++) for (let x = 4; x <= 8; x++) if (Math.hypot(x - 6, y - 5) < 2.9) P(x, y + oy, y > 6 || x > 7 ? B1 : B0);
-      for (const x of [5, 6, 7]) P(x, 8 + oy, x === 6 ? B1 : B0);
-      P(5, 5 + oy, INK);
-      P(7, 5 + oy, INK);
-      P(6, 7 + oy, '#5f4e35');
-      if (kind === 'elite') {
-        for (const x of [4, 6, 8]) P(x, 2, '#fff1a8');
-        for (const x of [4, 5, 6, 7, 8]) P(x, 3, '#e8c25a');
-        P(6, 1, '#e8c25a');
-      } else {
-        P(6, 10, '#d0262f');
-      }
-      break;
-    }
-    case 'confessional':
-      for (let y = 3; y <= 9; y++)
-        for (let x = 3; x <= 9; x++) {
-          const roof = y < 6 && Math.abs(x - 6) <= y - 3;
-          if (roof || y >= 6) P(x, y, x < 6 ? '#8f4a30' : '#6a3022');
-        }
-      P(6, 2, '#e8c25a');
-      for (let y = 7; y <= 9; y++) P(6, y, '#b0222a');
-      P(6, 6, '#0b0507');
-      break;
-    case 'votive':
-      for (let y = 6; y <= 9; y++) for (const x of [5, 6, 7]) P(x, y, x === 7 ? '#cdb889' : '#efe3bf');
-      P(6, 5, '#2a1a10');
-      P(6, 4, '#ffe08a');
-      P(6, 3, '#ffb050');
-      P(6, 2, '#e8742a');
-      P(5, 4, '#e8742a');
-      P(7, 4, '#e8742a');
-      for (const x of [4, 5, 6, 7, 8]) P(x, 10, '#b98a2e');
-      break;
-    case 'cache':
-      // A tear of atonement
-      for (let y = 2; y <= 10; y++)
-        for (let x = 3; x <= 9; x++) {
-          const t = (y - 2) / 8;
-          const w = t < 0.55 ? t * 4.2 : Math.sqrt(Math.max(0, 1 - ((y - 7.6) / 2.8) ** 2)) * 2.9;
-          if (Math.abs(x - 6) <= w) P(x, y, x < 6 && y < 8 ? '#bfe6ff' : y > 8 || x > 7 ? '#336b9e' : '#6fb3e0');
-        }
-      P(5, 7, '#ffffff');
-      break;
-    case 'boss':
-      // A severed ear
-      for (let y = 2; y <= 10; y++)
-        for (let x = 3; x <= 9; x++) {
-          const d = Math.hypot((x - 6.4) / 3.2, (y - 5.6) / 4.2);
-          if (d < 1 && !(x < 5 && y > 7)) P(x, y, d > 0.65 ? '#d98f7a' : d > 0.35 ? '#b05a55' : '#4d1f2b');
-        }
-      P(6, 6, '#7a3540');
-      P(7, 5, '#f2c3a8');
-      for (const [x, y] of [[4, 9], [5, 10], [6, 10]]) P(x, y, '#d0162a');
-      break;
-  }
+  const art = EMBLEM_ART[kind];
+  if (art)
+    art.forEach((row, y) =>
+      [...row].forEach((ch, x) => {
+        if (ch !== '.' && EMBLEM_INK[ch]) pc.px(x, y, EMBLEM_INK[ch]);
+      }),
+    );
   return pc;
 }

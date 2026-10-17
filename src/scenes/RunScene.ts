@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { addSnesPost } from '../game/snespost';
 import { P, hexNum } from '../art/palette';
 import { DEPTH } from '../game/config';
 import { Level } from '../game/level';
@@ -21,7 +22,9 @@ import type { PlacedRoom } from '../game/mapgen';
 import { BOSS_LINES, GRATE_WHISPERS, ROOM_CLEAR_LINES, SACRAMENTS, STIGMA_TEXT } from '../game/lore';
 import { hud } from './HudScene';
 import { pauseMenu } from '../ui/menus';
-import type { Corpse, HitResult, PlayerHit, ProjectileSpec, World } from '../game/world';
+import type { Corpse, HitResult, PlayerHit, PlayerShotSpec, ProjectileSpec, World } from '../game/world';
+import { buildWorld } from '../game/worldmap';
+import { CW as CELL_W, CH as CELL_H, SIDE_ROWS } from '../game/rooms';
 
 interface Projectile extends ProjectileSpec {
   img: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
@@ -45,7 +48,9 @@ interface Interactable {
 
 interface Pickup {
   img: Phaser.GameObjects.Sprite | Phaser.GameObjects.Image;
-  kind: 'tear' | 'vertebra' | 'shard' | 'mark';
+  kind: 'tear' | 'vertebra' | 'shard' | 'mark' | 'launcher' | 'shells';
+  /** Persistent pickups: once taken, gone from this save for good. */
+  key?: string;
   x: number;
   y: number;
   vx: number;
@@ -74,6 +79,7 @@ export class RunScene extends Phaser.Scene implements World {
   private doors: Door[] = [];
   private interactables: Interactable[] = [];
   private pickups: Pickup[] = [];
+  private playerShots: (PlayerShotSpec & { img: Phaser.GameObjects.Image; life: number; hit: Set<Enemy> })[] = [];
   private lucid!: LucidityFx;
   private swaps: { img: Phaser.GameObjects.Image; lie: string; truth: string }[] = [];
   private hitstopT = 0;
@@ -107,6 +113,7 @@ export class RunScene extends Phaser.Scene implements World {
     this.doors = [];
     this.interactables = [];
     this.pickups = [];
+    this.playerShots = [];
     this.swaps = [];
     this.roomEnemies = new Map();
     this.curRoom = -1;
@@ -153,13 +160,15 @@ export class RunScene extends Phaser.Scene implements World {
     };
     this.gore = new Gore(this, this.level);
     this.fx = new Fx(this);
-    const spawn = this.level.find('S')[0];
+    const spawn = this.spawnPoint();
     this.player = new Player(this, spawn.x, spawn.y);
     this.player.newRoom();
 
+    this.buildHatches();
     this.buildProps();
     this.setupCamera();
     this.lucid = new LucidityFx(this);
+    addSnesPost(this);
     this.lucid.onRot = (rot) => {
       this.backdrop.setRot(rot);
       for (const s of this.swaps) if (!s.img.getData('spent')) s.img.setTexture(rot > 0.5 ? s.truth : s.lie);
@@ -180,7 +189,7 @@ export class RunScene extends Phaser.Scene implements World {
     loop(this, 'amb_drip', 'amb');
     if (this.stage === 'map') {
       stopLoop(this, 'music');
-      hud(this).banner('The Sunken Confessionals', `${meta().citizen.name} descends`);
+      hud(this).banner('The Sunken Confessionals', meta().world.explored.length ? 'The Severed wakes at the altar' : 'The Severed descends');
       if (!meta().flags.tutorialSide) this.tutorial();
     } else this.time.delayedCall(700, () => this.bossIntro());
     this.cameras.main.fadeIn(500, 11, 5, 7);
@@ -191,13 +200,24 @@ export class RunScene extends Phaser.Scene implements World {
       hudState.inRun = false;
       this.cameras.main.fadeOut(600, 11, 5, 7);
       descent.reset();
-      this.time.delayedCall(620, () => this.scene.start('Succession', { cause: 'retreat, abandoning the descent' }));
+      this.time.delayedCall(620, () => this.scene.start('Hub', { arrival: 'chute' }));
     });
   }
 
   // -------------------------------------------------------------------------
   // Construction
   // -------------------------------------------------------------------------
+
+  /** The last save altar knelt at (or the Chute's Foot). */
+  private spawnPoint(): { x: number; y: number } {
+    const L = this.level;
+    if (this.stage === 'map') {
+      const r = this.rooms.find((x) => x.id === meta().world.save);
+      const altar = r && L.markers.find((m) => m.ch === 'X' && m.tx >= r.x0 && m.tx <= r.x1 && m.ty >= r.y0 && m.ty <= r.y1);
+      if (altar) return { x: altar.x - 24, y: altar.y };
+    }
+    return L.find('S')[0];
+  }
 
   private setupCamera() {
     const cam = this.cameras.main;
@@ -251,16 +271,19 @@ export class RunScene extends Phaser.Scene implements World {
         case 'D':
           this.addDoor(m.x, m.y);
           break;
-        case 'X':
-          this.buildFeature(m.x, m.y, this.roomAtTile(m.tx, m.ty)?.role ?? 'cache');
+        case 'X': {
+          const r = this.roomAtTile(m.tx, m.ty);
+          if (r && this.stage === 'map' && buildWorld().items.has(r.id)) break; // placed below
+          this.buildFeature(m.x, m.y, r?.role ?? 'cache');
           break;
+        }
         case 'V':
           this.buildVotive(m.x, m.y);
           break;
         case 'K':
           // Secrets behind false walls: the first holds a Reliquary Shard, the next a Mark
-          if (niche === 0) this.placeRelic(m.x, m.y - 8, 'shard');
-          else if (niche === 1) this.placeRelic(m.x, m.y - 8, 'mark');
+          if (niche === 0) this.placeRelic(m.x, m.y - 8, 'shard', `niche:${m.tx},${m.ty}`);
+          else if (niche === 1) this.placeRelic(m.x, m.y - 8, 'mark', `niche:${m.tx},${m.ty}`);
           else this.buildFeature(m.x, m.y, 'cache');
           niche++;
           break;
@@ -275,7 +298,10 @@ export class RunScene extends Phaser.Scene implements World {
       const e = this.add.image(d.x, d.y - 80, 'emblem-boss').setDepth(DEPTH.props + 2);
       this.tweens.add({ targets: e, y: e.y - 3, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     }
-    if (this.stage === 'map') this.placeCherub(cages);
+    if (this.stage === 'map') {
+      this.placeCherub(cages);
+      this.placeTreasures();
+    }
     this.scatterDecor();
     this.dressing = new Dressing(
       this,
@@ -439,6 +465,7 @@ export class RunScene extends Phaser.Scene implements World {
     this.backdrop.setTheme(r.theme);
     const first = !descent.explored.has(r.id);
     descent.explored.add(r.id);
+    if (first) meta().world.explored = [...descent.explored];
     this.wakeRoom(r);
     if (first) {
       const title = r.role === 'combat' ? r.tpl.name : ROLE_TITLES[r.role] ?? r.tpl.name;
@@ -518,6 +545,110 @@ export class RunScene extends Phaser.Scene implements World {
     return 'hit';
   }
 
+  // -------------------------------------------------------------------------
+  // The Tether Cannon's shots
+  // -------------------------------------------------------------------------
+
+  firePlayerShot(s: PlayerShotSpec) {
+    const key = s.kind === 'bolt' ? 'shot-bolt' : s.kind === 'charged' ? 'shot-charged' : 'shot-shell';
+    const img = this.add.image(s.x, s.y, key).setDepth(DEPTH.projectile).setRotation(Math.atan2(s.vy, s.vx));
+    this.playerShots.push({ ...s, img, life: s.kind === 'shell' ? 1.6 : 0.9, hit: new Set() });
+  }
+
+  private updatePlayerShots(dt: number) {
+    const L = this.level;
+    for (let i = this.playerShots.length - 1; i >= 0; i--) {
+      const s = this.playerShots[i];
+      s.life -= dt;
+      const steps = 3;
+      let done = s.life <= 0;
+      for (let k = 0; k < steps && !done; k++) {
+        s.x += (s.vx * dt) / steps;
+        s.y += (s.vy * dt) / steps;
+        // Foes
+        for (const e of this.enemies) {
+          if (!e.targetable || s.hit.has(e)) continue;
+          if (Math.hypot(e.x - s.x, e.cy - s.y) > e.hurtR + s.radius) continue;
+          s.hit.add(e);
+          if (s.kind === 'shell') {
+            done = true;
+            break;
+          }
+          e.takeHit(s.dmg, s.poise, s.x - Math.sign(s.vx || 1) * 10, s.y, { knock: s.kind === 'charged' ? 160 : 50, heavy: s.kind === 'charged' });
+          this.hitstop(s.kind === 'charged' ? 70 : 20);
+          if (!s.pierce) {
+            done = true;
+            break;
+          }
+        }
+        // The Captive Hymn's cage
+        if (!done && this.strikeAt(s.x, s.y)) done = true;
+        // Stone, hatches and cracked walls
+        if (!done && L.solidPx(s.x, s.y)) {
+          const h = L.hatchAt(s.x, s.y);
+          if (h && s.kind === 'shell') this.blowHatch(h);
+          else if (h) this.fx.text(s.x - Math.sign(s.vx) * 10, s.y - 12, 'Sealed: a Censer Shell', P.blood0, 10, 900);
+          if (s.kind === 'shell') {
+            const broken = L.strike(s.x, s.y, 10);
+            for (const [bx, by] of broken) this.fx.rubble(bx, by, 6);
+            if (broken.length) sfx(this, 'door_open', { volume: 0.9, rate: 0.7 });
+          } else if (L.ch(Math.floor(s.x / 16), Math.floor(s.y / 16)) === 'w') this.fx.text(s.x, s.y - 10, 'It sounds hollow', P.bone1, 10, 900);
+          done = true;
+        }
+      }
+      if (done || s.x < 0 || s.y < 0 || s.x > L.pxW || s.y > L.pxH) {
+        this.shotImpact(s);
+        s.img.destroy();
+        this.playerShots.splice(i, 1);
+        continue;
+      }
+      s.img.setPosition(Math.round(s.x), Math.round(s.y));
+      if (s.kind !== 'bolt' && Math.random() < 0.6) this.fx.smoke(s.x - s.vx * 0.02, s.y - s.vy * 0.02, 1, s.kind === 'shell' ? '#5a4030' : P.blood2);
+    }
+  }
+
+  /** Sparks, blood or a censer's blast where a shot ends. */
+  private shotImpact(s: { x: number; y: number; vx: number; vy: number; kind: PlayerShotSpec['kind']; dmg: number; poise: number }) {
+    if (s.kind === 'shell') {
+      this.fx.ring(s.x, s.y, 26, '#ffb040', 260);
+      this.fx.smoke(s.x, s.y, 5, '#4a3a30');
+      this.fx.shake(140, 0.008);
+      sfx(this, 'hit_flesh2', { volume: 0.8, rate: 0.6 });
+      for (const e of this.enemies) {
+        if (!e.targetable) continue;
+        const d = Math.hypot(e.x - s.x, e.cy - s.y);
+        if (d < 28 + e.hurtR) e.takeHit(s.dmg, s.poise, s.x, s.y, { knock: 200, heavy: true });
+      }
+    } else this.fx.sparks(s.x, s.y, s.kind === 'charged' ? 10 : 4, s.kind === 'charged' ? P.blood0 : '#ffb0a0');
+  }
+
+  private blowHatch(h: import('../game/level').Hatch) {
+    this.level.openHatch(h);
+    const m = meta();
+    if (!m.world.hatches.includes(h.key)) m.world.hatches.push(h.key);
+    save();
+    this.fx.rubble(h.tx * 16 + 8, (h.ty0 + h.ty1) * 8 + 8, 14);
+    sfx(this, 'door_open', { volume: 1, rate: 0.8 });
+    this.fx.shake(200, 0.01);
+  }
+
+  /** Crimson hatches between rooms, unless already blown open in this save. */
+  private buildHatches() {
+    if (this.stage !== 'map') return;
+    const w = buildWorld();
+    for (const h of w.hatches) {
+      const key = `${h.a}-${h.b}`;
+      if (meta().world.hatches.includes(key)) continue;
+      const a = this.rooms[h.a];
+      const link = a?.links.find((l) => l.to === h.b);
+      if (!link) continue;
+      const e = link.exit;
+      const tx = e.dir === 'E' ? a.x0 + (e.cx + 1) * CELL_W - 1 : a.x0 + e.cx * CELL_W;
+      const ty0 = a.y0 + e.cy * CELL_H + SIDE_ROWS[0];
+      this.level.addHatch(key, tx, ty0, ty0 + SIDE_ROWS.length - 1, 'crimson');
+    }
+  }
+
   addProjectile(o: ProjectileSpec) {
     const img = o.key === 'proj-wave' ? this.add.sprite(o.x, o.y, 'wave').play('wave:roll').setOrigin(0.5, 1) : this.add.image(o.x, o.y, o.key);
     img.setDepth(DEPTH.projectile);
@@ -532,11 +663,62 @@ export class RunScene extends Phaser.Scene implements World {
   }
 
   /** A collectible waiting in a secret: bobbing, glowing, picked up by walking into it. */
-  private placeRelic(x: number, y: number, kind: 'shard' | 'mark') {
-    const img = this.add.image(x, y, kind === 'shard' ? 'relic-shard' : 'mark-seal').setDepth(DEPTH.fx - 2);
+  private placeRelic(x: number, y: number, kind: 'shard' | 'mark' | 'launcher' | 'shells', key?: string) {
+    if (key && meta().world.taken.includes(key)) return;
+    const tex = { shard: 'relic-shard', mark: 'mark-seal', launcher: 'item-launcher', shells: 'item-shells' }[kind];
+    const img = this.add.image(x, y, tex).setDepth(DEPTH.fx - 2);
     this.tweens.add({ targets: img, y: y - 4, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-    this.addLight(x, y, 'light-sm', kind === 'shard' ? P.gold1 : P.blood0, 0.5);
-    this.pickups.push({ img, kind, x, y, vx: 0, vy: 0, age: 1, rest: true });
+    this.addLight(x, y, 'light-sm', kind === 'mark' ? P.blood0 : P.gold1, 0.5);
+    this.pickups.push({ img, kind, key, x, y, vx: 0, vy: 0, age: 1, rest: true });
+  }
+
+  /** The world's fixed treasures and save altars, on each room's 'X' spot. */
+  private placeTreasures() {
+    const L = this.level;
+    for (const [id, item] of buildWorld().items) {
+      const r = this.rooms.find((x) => x.id === id);
+      if (!r) continue;
+      const inRoom = (m: { tx: number; ty: number }) => m.tx >= r.x0 && m.tx <= r.x1 && m.ty >= r.y0 && m.ty <= r.y1;
+      let spot = L.markers.find((m) => m.ch === 'X' && inRoom(m));
+      if (!spot) {
+        // The Chute's Foot has no feature spot: raise the altar beside the landing
+        const s = L.markers.find((m) => m.ch === 'S' && inRoom(m));
+        if (!s) continue;
+        const x = s.x + 56;
+        spot = { ...s, x, y: L.floorY(x, s.y - 8) ?? s.y };
+      }
+      if (item === 'save') this.buildAltar(spot.x, spot.y, r);
+      else this.placeRelic(spot.x, spot.y - 14, item === 'shard' ? 'shard' : item, `${id}:${item}`);
+    }
+  }
+
+  /** Kneel to save, heal and refill shells; death returns you here. */
+  private buildAltar(x: number, y: number, r: PlacedRoom) {
+    this.add.image(x, y, 'prop-votive').setOrigin(0.5, 1).setDepth(DEPTH.props + 2);
+    this.addLight(x, y - 30, 'light-lg', P.holy, 0.4);
+    const it: Interactable = {
+      x,
+      y,
+      label: 'Kneel at the altar',
+      used: false,
+      act: () => {
+        const run = currentRun();
+        const m = meta();
+        m.world.save = r.id;
+        m.world.explored = [...descent.explored];
+        save();
+        run.hp = run.maxHp;
+        run.shells = run.shellsMax;
+        run.lucidity = Math.max(run.lucidity, run.maxLucidity * 0.75);
+        this.player.sprite.play('kneel', true);
+        sfx(this, 'heal', { volume: 0.9 });
+        sfx(this, 'bell_distant', { volume: 0.6 });
+        this.fx.ring(x, y - 20, 50, P.holy, 600);
+        hud(this).banner('The altar remembers you', 'Your progress is kept. Health and shells restored.');
+        this.time.delayedCall(1500, () => (it.used = false));
+      },
+    };
+    this.interactables.push(it);
   }
 
   spawnMark(x: number, y: number) {
@@ -806,18 +988,42 @@ export class RunScene extends Phaser.Scene implements World {
     this.time.delayedCall(2000, () => {
       this.cameras.main.fadeOut(900, 40, 0, 0);
       this.time.delayedCall(950, () => {
-        hudState.inRun = false;
-        const r = this.rooms.find((x) => x.id === this.curRoom);
-        const cause = this.stage === 'boss' ? 'the Grand Confessional' : r ? (r.role === 'combat' || r.role === 'elite' ? r.tpl.name : ROLE_TITLES[r.role] ?? r.tpl.name) : 'the Under-Naves';
-        descent.reset();
-        this.scene.start('Succession', { cause });
+        // Death is not the end here: wake at the last altar, whole again.
+        // Items taken stay taken; Tears carried are halved; foes return.
+        const run = currentRun();
+        const m = meta();
+        m.deaths++;
+        save();
+        run.hp = run.maxHp;
+        run.shells = run.shellsMax;
+        run.lucidity = Math.max(run.lucidity, run.maxLucidity * 0.5);
+        run.tears = Math.floor(run.tears / 2);
+        descent.stage = 'map';
+        this.scene.restart({ respawn: true });
       });
     });
   }
 
   private collect(p: Pickup) {
     const run = currentRun();
+    if (p.key) {
+      const w = meta().world;
+      if (!w.taken.includes(p.key)) w.taken.push(p.key);
+      save();
+    }
     if (p.kind === 'tear') run.tears++;
+    else if (p.kind === 'launcher' || p.kind === 'shells') {
+      const m = meta();
+      m.shellsMax += 5;
+      if (p.kind === 'launcher') m.flags.launcher = true;
+      run.shellsMax = m.flags.launcher ? m.shellsMax : 0;
+      run.shells = run.shellsMax;
+      save();
+      sfx(this, 'bell_distant', { volume: 1, rate: 0.8 });
+      this.fx.ring(p.x, p.y, 60, P.gold1, 700);
+      if (p.kind === 'launcher') hud(this).banner('The Censer Launcher', 'Switch to shells with the censer button. They break cracked stone and crimson hatches.');
+      else hud(this).banner('Censer Shells', m.flags.launcher ? `+5 shells (${m.shellsMax} carried)` : 'Five shells, and nothing yet to fire them.');
+    }
     else if (p.kind === 'shard') {
       // Permanent, like the reliquary it was broken from
       const m = meta();
@@ -845,12 +1051,12 @@ export class RunScene extends Phaser.Scene implements World {
 
   private tutorial() {
     const tips = [
-      'Left thumb: run. Push lightly to creep — the Blind hunt by sound.',
+      'Left thumb: run, and aim the Tether Cannon in eight directions.',
+      'Hold the sight button to plant your feet and aim without moving.',
+      'Tap the bolt button to fire. Hold it, then let go, for a charged bolt.',
       'Jump with the wing button. Hold down and jump to drop through a ledge.',
-      'Chain: tap to combo, hold then release for a heavy blow. Push up to strike above.',
-      'Dodge just before a blow lands: a Perfect Dodge slows the world.',
-      'Break a foe and a ✞ appears. Execute them to heal — violence costs Lucidity.',
-      `The Tear button spends ${TEAR_COST} Tears to heal. Tears also buy upgrades above.`,
+      'Dash through danger. Break a foe and a ✞ appears: execute them to heal.',
+      `The Tear button spends ${TEAR_COST} Tears to heal. Kneel at altars to keep your progress.`,
     ];
     tips.forEach((t, i) => this.time.delayedCall(1500 + i * 5000, () => hud(this).toast(t, P.bone0)));
     meta().flags.tutorialSide = true;
@@ -894,6 +1100,7 @@ export class RunScene extends Phaser.Scene implements World {
       if (this.smokes[i].done) this.smokes.splice(i, 1);
     }
     this.updateProjectiles(edt);
+    this.updatePlayerShots(dt);
     this.updatePickups(dt);
     this.gore.update(dt);
     this.lucid.update(dt);
@@ -943,6 +1150,9 @@ export class RunScene extends Phaser.Scene implements World {
     hudState.interact = label;
     hudState.stigmaReady = !!p.nearestCorpse();
     hudState.tearReady = run.tears >= TEAR_COST && run.hp < run.maxHp;
+    hudState.shells = run.shells;
+    hudState.shellsMax = run.shellsMax;
+    hudState.shellArmed = this.player.weapon === 'shell';
     if (action && !this.busyInteract && (controls.take('speak') || (controls.moveY < -0.7 && label.startsWith('Enter')))) action();
     controls.take('speak');
   }

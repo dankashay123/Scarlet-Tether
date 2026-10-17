@@ -1,6 +1,8 @@
-import { generateMap, type GeneratedMap } from './mapgen';
+import type { GeneratedMap } from './mapgen';
+import { buildWorld } from './worldmap';
+import { meta } from './state';
 
-/** The current descent: one generated map of the Sunken Confessionals, then the boss. */
+/** The persistent world of the Sunken Confessionals (handmade), then the boss stage. */
 class Descent {
   seed = 0;
   map: GeneratedMap | null = null;
@@ -10,10 +12,11 @@ class Descent {
   stage: 'map' | 'boss' = 'map';
   /** Where to put the player when returning to the map (unused for now). */
 
-  start(seed = Math.floor(Math.random() * 1e9)) {
+  start(seed = 7) {
     this.seed = seed;
-    this.map = generateMap(seed);
-    this.explored = new Set();
+    this.map = buildWorld().map;
+    // Exploration persists in the save
+    this.explored = new Set(meta().world.explored);
     this.cleared = new Set();
     this.stage = 'map';
     return this.map;

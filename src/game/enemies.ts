@@ -33,7 +33,7 @@ export abstract class Enemy {
   private restT = 0;
   abstract readonly kind: EnemyKind;
   body: Body;
-  hurtR = 12;
+  hurtR = 8;
   hp: number;
   maxHp: number;
   poise: number;
@@ -351,7 +351,7 @@ export class Blind extends Enemy {
   private cooldown = 0.6;
 
   constructor(world: World, x: number, y: number, elite = false) {
-    super(world, x, y, 'blind', BLIND, 14, 44, elite ? 70 : 42, elite ? 40 : 26);
+    super(world, x, y, 'blind', BLIND, 10, 30, elite ? 70 : 42, elite ? 40 : 26);
     this.skins = ['blind-saint', 'blind'];
     this.elite = elite;
     this.tearValue = elite ? 6 : 3;
@@ -372,7 +372,7 @@ export class Blind extends Enemy {
     this.alertT -= dt;
     this.cooldown -= dt;
     const dx = this.dxToPlayer();
-    const near = Math.abs(dx) < 30 && Math.abs(this.player.y - this.y) < 40;
+    const near = Math.abs(dx) < 22 && Math.abs(this.player.y - this.y) < 28;
     if (near) this.hear(this.player.x);
     switch (this.state) {
       case 'idle':
@@ -421,7 +421,7 @@ export class Blind extends Enemy {
         }
         break;
       case 'attack':
-        this.strike(this.x + this.face * 14, this.cy, 14, this.elite ? 22 : 18);
+        this.strike(this.x + this.face * 10, this.cy, 10, this.elite ? 22 : 18);
         if (this.stateT > 0.2 && this.body.onGround) {
           this.setState('recover');
           this.play('idle');
@@ -447,10 +447,10 @@ export class Gossip extends Enemy {
   private cooldown = 1.2 + Math.random();
 
   constructor(world: World, x: number, y: number, elite = false) {
-    super(world, x, y, 'gossip', GOSSIP, 22, 34, elite ? 60 : 32, elite ? 34 : 18);
+    super(world, x, y, 'gossip', GOSSIP, 14, 22, elite ? 60 : 32, elite ? 34 : 18);
     this.elite = elite;
     this.tearValue = elite ? 6 : 3;
-    this.hurtR = 15;
+    this.hurtR = 10;
     if (elite) this.sprite.setTint((this.baseTint = hexNum('#d0ffa0')));
   }
 
@@ -506,8 +506,8 @@ export class Gossip extends Enemy {
   private spit() {
     const w = this.world;
     sfx(w.sc, 'spit');
-    const ox = this.x + this.face * 12;
-    const oy = this.y - 26;
+    const ox = this.x + this.face * 8;
+    const oy = this.y - 16;
     const g = 600;
     const shots = this.elite ? [-0.12, 0, 0.12] : [0];
     for (const s of shots) {
@@ -531,10 +531,10 @@ export class Penitent extends Enemy {
   private tele: Phaser.GameObjects.Graphics;
 
   constructor(world: World, x: number, y: number) {
-    super(world, x, y, 'penitent', PENITENT, 30, 80, 160, 70);
+    super(world, x, y, 'penitent', PENITENT, 20, 42, 160, 70);
     this.elite = true;
     this.tearValue = 10;
-    this.hurtR = 22;
+    this.hurtR = 15;
     this.knockResist = 0.25;
     this.tele = world.sc.add.graphics().setDepth(DEPTH.hazard);
   }
@@ -548,13 +548,13 @@ export class Penitent extends Enemy {
       case 'wander':
       case 'hunt':
         this.faceTo(this.player.x);
-        if (adx > 34 && this.walk(Math.sign(dx), 36)) this.play('walk');
+        if (adx > 24 && this.walk(Math.sign(dx), 36)) this.play('walk');
         else {
           this.body.vx = 0;
           this.play('idle');
         }
-        if (this.cooldown <= 0 && adx < 90 && Math.abs(this.player.y - this.y) < 60) {
-          this.move = adx < 46 ? 'sweep' : 'slam';
+        if (this.cooldown <= 0 && adx < 90 && Math.abs(this.player.y - this.y) < 40) {
+          this.move = adx < 32 ? 'sweep' : 'slam';
           this.setState('windup');
           this.play(this.move === 'slam' ? 'windup' : 'sweep-windup');
           this.telegraph(this.move === 'slam' ? 850 : 550);
@@ -564,7 +564,7 @@ export class Penitent extends Enemy {
       case 'windup': {
         const dur = this.move === 'slam' ? 0.85 : 0.55;
         const k = this.stateT / dur;
-        const cx = this.x + this.face * (this.move === 'slam' ? 46 : 30);
+        const cx = this.x + this.face * (this.move === 'slam' ? 30 : 20);
         const r = this.move === 'slam' ? 34 : 48;
         this.tele.clear();
         this.tele.fillStyle(hexNum(P.blood2), 0.25 * k).fillRect(cx - r, this.y - 6, r * 2 * k, 6);
@@ -578,15 +578,15 @@ export class Penitent extends Enemy {
           sfx(w.sc, 'hit_flesh', { rate: 0.6 });
           if (this.move === 'slam') {
             w.fx.smoke(cx, this.y - 4, 10);
-            w.addSmoke(cx, this.y - 20, 30, 2400);
+            w.addSmoke(cx, this.y - 12, 22, 2400);
           }
         }
         break;
       }
       case 'attack': {
-        const cx = this.x + this.face * (this.move === 'slam' ? 46 : 30);
-        if (this.move === 'slam') this.strike(cx, this.y - 16, 30, 28);
-        else this.strike(cx, this.y - 34, 40, 20);
+        const cx = this.x + this.face * (this.move === 'slam' ? 30 : 20);
+        if (this.move === 'slam') this.strike(cx, this.y - 10, 22, 28);
+        else this.strike(cx, this.y - 22, 28, 20);
         if (this.stateT > 0.25) {
           this.setState('recover');
           this.play('idle');
@@ -630,11 +630,11 @@ export class Cherub extends Enemy {
   private t = Math.random() * 10;
 
   constructor(world: World, x: number, y: number) {
-    super(world, x, y, 'cherub', CHERUB, 22, 26, 26, 14);
+    super(world, x, y, 'cherub', CHERUB, 14, 16, 26, 14);
     this.flying = true;
     this.homeY = y;
     this.tearValue = 3;
-    this.hurtR = 14;
+    this.hurtR = 9;
     this.body.y = y + 13;
     // Never start with feet buried in a floor below the marker
     const fy = world.level.floorY(x, y);
@@ -654,7 +654,7 @@ export class Cherub extends Enemy {
         // Hover at a distance, bobbing
         const want = Math.abs(dx) > 110 ? Math.sign(dx) * 70 : Math.abs(dx) < 60 ? -Math.sign(dx) * 40 : 0;
         this.body.vx += (want - this.body.vx) * Math.min(1, dt * 3);
-        const ty = Math.min(this.homeY, this.player.y - 80) + Math.sin(this.t * 2.4) * 10;
+        const ty = Math.min(this.homeY, this.player.y - 56) + Math.sin(this.t * 2.4) * 10;
         this.body.vy += ((ty - this.y) * 2 - this.body.vy) * Math.min(1, dt * 3);
         if (this.cooldown <= 0 && Math.abs(dx) < 180 && this.world.level.lineClear(this.x, this.cy, this.player.x, this.player.cy)) {
           this.setState('windup');
@@ -677,7 +677,7 @@ export class Cherub extends Enemy {
       case 'attack':
         this.body.vx = this.diveVx;
         this.body.vy = this.diveVy;
-        this.strike(this.x, this.cy, 12, 14);
+        this.strike(this.x, this.cy, 9, 14);
         if (this.stateT > 0.6 || this.body.onGround || this.body.hitWall) {
           this.setState('recover');
           this.play('fly');
@@ -699,6 +699,6 @@ export class Cherub extends Enemy {
     this.body.gravity = 1;
     super.kill(executed, heavy);
     // The dead frame lies at the bottom of the canvas, its pool on the floor line
-    this.sprite.setOrigin(0.5, 62 / 64);
+    this.sprite.setOrigin(0.5, 25 / 26);
   }
 }

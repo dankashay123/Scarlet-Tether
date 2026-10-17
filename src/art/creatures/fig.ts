@@ -1,17 +1,24 @@
-// Creature renderer: the volumetric `Figure` (render.ts) tuned for painted,
-// anatomical sprites.
+// Creature renderer: the volumetric `Figure` (render.ts) tuned for small,
+// SNES-style anatomical sprites.
 //
 // Same API as render.ts's Figure (masks inflated into height fields, lit and
 // quantised onto ramps), plus:
-//  - relief: a per-pixel bump layer that bends normals, so wrinkles, ribs,
-//    tendons, veins and cloth folds catch light and cast a lit/shadow edge
-//    instead of being flat value stains (`relief()`, Material.bump);
+//  - design scale: every coordinate, radius and bounding box passed in is in
+//    "design" units; the figure rasterises them at `s` output pixels per unit.
+//    Geometry is re-solved at the small size (masks are sampled at each output
+//    pixel, with sub-pixel samples so thin parts stay continuous, and parts
+//    never shrink below one pixel), so a creature authored at the old 360-px
+//    scale draws cleanly at the 224-px one;
+//  - relief: a per-pixel bump layer that bends normals, so ribs, tendons and
+//    folds catch light (`relief()`, Material.bump); detail too fine for the
+//    output size is dropped instead of turning into noise;
 //  - cast shadows: a nearer part darkens what lies just beneath it on the
 //    side away from the key light, which separates limbs from bodies;
-//  - wrap lighting and per-material dithering (soft skin, clean metal), so
-//    surfaces read as painted clusters instead of noisy checkerboards;
-//  - crisp specular glints on wet and polished materials (Material.glint);
-//  - selective outlines tinted by the material they surround.
+//  - SNES shading: each material is cut to a few clean colour bands (little
+//    or no dithering, quiet textures), wrap lighting on soft materials, crisp
+//    specular glints on wet and polished ones (Material.glint);
+//  - selective outlines: near-black on the shadow side, a dark shade of the
+//    material on the side the key light hits.
 import type { Light, Material as BaseMaterial } from '../render';
 import { PixelCanvas } from '../pixel';
 
@@ -32,19 +39,44 @@ export interface Material extends BaseMaterial {
 }
 
 type Mask = (x: number, y: number) => boolean;
-/** Inline shapes (k 0: capsule, k 1: ellipse) — rasterised without a closure call per pixel. */
+/** Inline shapes (k 0: capsule, k 1: ellipse) in output pixels — rasterised without a closure call per pixel. */
 interface Shape { k: 0 | 1; ax: number; ay: number; dx: number; dy: number; iL2: number; ra: number; dr: number }
 type BBox = [number, number, number, number];
 
+/** Thinnest part radius, in output pixels (keeps 1-px strands continuous). */
+const MIN_R = 0.55;
+/** Most shade bands per material (SNES sprites use 3–5 per material). */
+const BANDS = 5;
 
 const OUT_RGB = rgba('#080306');
 let scratch = new Float32Array(4096);
 interface Buffers { mat: Int16Array; part: Int16Array; z: Float32Array; nx: Float32Array; ny: Float32Array; nz: Float32Array; bmp: Float32Array }
 const pool = new Map<number, Buffers[]>();
+const bandCache = new Map<string[], string[]>();
+
+/** A ramp cut down to at most BANDS shades, darkest and lightest kept. */
+function bands(r: string[]): string[] {
+  if (r.length <= BANDS) return r;
+  let b = bandCache.get(r);
+  if (!b) {
+    b = [];
+    for (let i = 0; i < BANDS; i++) b.push(r[Math.round((i * (r.length - 1)) / (BANDS - 1))]);
+    bandCache.set(r, b);
+  }
+  return b;
+}
 
 export class Figure {
+  /** Output size in pixels. */
   readonly w: number;
   readonly h: number;
+  /** Output pixels per design unit. */
+  readonly s: number;
+  private readonly is: number;
+  // design → pixel: px = x * A + ox (A is s, times any local zoom)
+  private A: number;
+  private ox = 0;
+  private oy = 0;
   private mat: Int16Array;
   private part: Int16Array;
   private z: Float32Array;
@@ -55,15 +87,21 @@ export class Figure {
   private mats: Material[] = [];
   private matIndex = new Map<Material, number>();
   private parts = 0;
-  // bounds of everything drawn so far (whole-canvas passes only walk this)
+  /** Pixels each part won (small parts — eyes, teeth, lips — get no inner line). */
+  private area: number[] = [];
+  // bounds of everything drawn so far, in pixels (whole-canvas passes only walk this)
   private fx0 = 1e9;
   private fy0 = 1e9;
   private fx1 = -1;
   private fy1 = -1;
 
-  constructor(w: number, h: number) {
+  /** `w`×`h` output pixels; coordinates passed to the drawing calls are scaled by `s`. */
+  constructor(w: number, h: number, s = 1) {
     this.w = w;
     this.h = h;
+    this.s = s;
+    this.is = 1 / s;
+    this.A = s;
     const n = w * h;
     // buffers are recycled between frames (a sheet renders dozens of same-size figures)
     const b = pool.get(n)?.pop();
@@ -104,14 +142,53 @@ export class Figure {
     return i;
   }
 
-  /** Pixel material (for callers that need to sample the figure). */
+  /**
+   * Draw what follows `k` times larger about the design point (cx, cy), so a
+   * feature that must read at sprite size (a face, a fist) can be exaggerated
+   * the way pixel artists do. `zoom()` with no arguments resets it.
+   */
+  zoom(cx = 0, cy = 0, k = 1) {
+    this.A = this.s * k;
+    this.ox = cx * this.s * (1 - k);
+    this.oy = cy * this.s * (1 - k);
+  }
+
+  /** Is anything drawn at this design-space point? */
   has(x: number, y: number) {
-    x |= 0;
-    y |= 0;
+    x = (x * this.A + this.ox) | 0;
+    y = (y * this.A + this.oy) | 0;
     return x >= 0 && y >= 0 && x < this.w && y < this.h && this.mat[y * this.w + x] >= 0;
   }
 
-  add(mask: Mask | Shape, m: Material, layer: number, bbox?: BBox) {
+  /**
+   * Coverage test of a design-space mask at output pixel (px, py): the pixel
+   * centre, or at least two of four quarter-pixel samples (so strands thinner
+   * than a pixel still draw as an unbroken line).
+   */
+  private hit(mask: Mask, px: number, py: number) {
+    const iA = 1 / this.A;
+    const cx = (px + 0.5 - this.ox) * iA;
+    const cy = (py + 0.5 - this.oy) * iA;
+    if (mask(cx, cy)) return true;
+    if (iA <= 1) return false;
+    const q = 0.27 * iA;
+    let n = 0;
+    if (mask(cx - q, cy - q)) n++;
+    if (mask(cx + q, cy + q)) n++;
+    if (n === 2) return true;
+    if (mask(cx + q, cy - q)) n++;
+    if (n === 2) return true;
+    if (n === 0) return false;
+    return mask(cx - q, cy + q);
+  }
+
+  /** Add a part from a design-space mask (bbox in design units). */
+  add(mask: Mask, m: Material, layer: number, bbox?: BBox) {
+    const { A, ox, oy } = this;
+    this.addPx(mask, m, layer, bbox ? [bbox[0] * A + ox, bbox[1] * A + oy, bbox[2] * A + ox, bbox[3] * A + oy] : undefined, true);
+  }
+
+  private addPx(mask: Mask | Shape, m: Material, layer: number, bbox: BBox | undefined, design: boolean) {
     const [x0, y0, x1, y1] = bbox ?? [0, 0, this.w - 1, this.h - 1];
     // one pixel of air around the part so the distance transform sees an edge
     const bx0 = Math.max(0, Math.floor(x0) - 1) - 1;
@@ -137,7 +214,7 @@ export class Figure {
         let inside = false;
         if (!(edgeY || x === 0 || x === bw - 1 || xx < 0 || xx >= W0)) {
           const px = xx + 0.5;
-          if (typeof mask === 'function') inside = mask(px, py);
+          if (typeof mask === 'function') inside = design ? this.hit(mask, xx, yy) : mask(px, py);
           else if (mask.k === 0) {
             // capsule
             let t = ((px - mask.ax) * mask.dx + (py - mask.ay) * mask.dy) * mask.iL2;
@@ -206,9 +283,12 @@ export class Figure {
     }
     const round = m.round ?? 1;
     const pid = this.parts++;
+    let won = 0;
     const mid = this.mi(m);
     const bump = m.bump;
     const W = this.w;
+    const { A, ox, oy } = this;
+    const iA = 1 / A;
     if (bx0 + 1 < this.fx0) this.fx0 = Math.max(0, bx0 + 1);
     if (by0 + 1 < this.fy0) this.fy0 = Math.max(0, by0 + 1);
     if (bx1 - 1 > this.fx1) this.fx1 = Math.min(this.w - 1, bx1 - 1);
@@ -230,24 +310,42 @@ export class Figure {
         this.nx[o] = -gx * l;
         this.ny[o] = -gy * l;
         this.nz[o] = l;
-        this.bmp[o] = bump ? bump(bx0 + x, by0 + y) : 0;
+        // bump heights scale with the figure so slopes keep their angle
+        this.bmp[o] = bump ? bump((bx0 + x + 0.5 - ox) * iA, (by0 + y + 0.5 - oy) * iA) * A : 0;
+        won++;
       }
+    this.area[pid] = won;
   }
 
   ellipse(cx: number, cy: number, rx: number, ry: number, m: Material, layer: number, rot = 0) {
+    const { A, ox, oy } = this;
+    cx = cx * A + ox;
+    cy = cy * A + oy;
+    rx = Math.max(MIN_R, rx * A);
+    ry = Math.max(MIN_R, ry * A);
     const r = Math.max(rx, ry);
-    this.add({ k: 1, ax: cx, ay: cy, dx: Math.cos(-rot), dy: Math.sin(-rot), iL2: 1 / (rx * rx), ra: 1 / (ry * ry), dr: 0 }, m, layer, [cx - r, cy - r, cx + r, cy + r]);
+    this.addPx({ k: 1, ax: cx, ay: cy, dx: Math.cos(-rot), dy: Math.sin(-rot), iL2: 1 / (rx * rx), ra: 1 / (ry * ry), dr: 0 }, m, layer, [cx - r, cy - r, cx + r, cy + r], false);
   }
 
   capsule(ax: number, ay: number, bx: number, by: number, ra: number, rb: number, m: Material, layer: number) {
+    const { A, ox, oy } = this;
+    ax = ax * A + ox;
+    ay = ay * A + oy;
+    bx = bx * A + ox;
+    by = by * A + oy;
+    ra = Math.max(MIN_R, ra * A);
+    rb = Math.max(MIN_R, rb * A);
     const dx = bx - ax;
     const dy = by - ay;
     const L2 = dx * dx + dy * dy || 1;
     const R = Math.max(ra, rb);
-    this.add({ k: 0, ax, ay, dx, dy, iL2: 1 / L2, ra, dr: rb - ra }, m, layer, [Math.min(ax, bx) - R, Math.min(ay, by) - R, Math.max(ax, bx) + R, Math.max(ay, by) + R]);
+    this.addPx({ k: 0, ax, ay, dx, dy, iL2: 1 / L2, ra, dr: rb - ra }, m, layer, [Math.min(ax, bx) - R, Math.min(ay, by) - R, Math.max(ax, bx) + R, Math.max(ay, by) + R], false);
   }
 
-  poly(pts: [number, number][], m: Material, layer: number) {
+  poly(pts0: [number, number][], m: Material, layer: number) {
+    // rasterised directly at the output size
+    const { A, ox: zx, oy: zy } = this;
+    const pts = pts0.map(([x, y]) => [x * A + zx, y * A + zy] as [number, number]);
     let x0 = Infinity;
     let y0 = Infinity;
     let x1 = -Infinity;
@@ -281,7 +379,7 @@ export class Figure {
         for (let c = a; c <= b; c++) buf[r * pw + c] = 1;
       }
     }
-    this.add(
+    this.addPx(
       (x, y) => {
         const c = Math.floor(x) - ox;
         const r = Math.floor(y) - oy;
@@ -290,15 +388,18 @@ export class Figure {
       m,
       layer,
       [x0, y0, x1, y1],
+      false,
     );
   }
 
+  /** Pixel region of a design-space bbox, clipped to what has been drawn. */
   private region(bbox: BBox | undefined): [number, number, number, number] {
     if (!bbox) return [this.fx0, this.fy0, this.fx1, this.fy1];
-    return [Math.max(this.fx0, Math.floor(bbox[0]) - 1), Math.max(this.fy0, Math.floor(bbox[1]) - 1), Math.min(this.fx1, Math.ceil(bbox[2]) + 1), Math.min(this.fy1, Math.ceil(bbox[3]) + 1)];
+    const { A, ox, oy } = this;
+    return [Math.max(this.fx0, Math.floor(bbox[0] * A + ox) - 1), Math.max(this.fy0, Math.floor(bbox[1] * A + oy) - 1), Math.min(this.fx1, Math.ceil(bbox[2] * A + ox) + 1), Math.min(this.fy1, Math.ceil(bbox[3] * A + oy) + 1)];
   }
 
-  /** Repaint existing pixels (keeps their shape and relief). */
+  /** Repaint existing pixels (keeps their shape and relief). Mask and bbox in design units. */
   stain(mask: Mask, m: Material, only?: Material[], bbox?: BBox) {
     const mid = this.mi(m);
     const allow = only ? only.map((x) => this.matIndex.get(x)).filter((x): x is number => x !== undefined) : null;
@@ -310,26 +411,60 @@ export class Figure {
         const k = this.mat[o];
         if (k < 0) continue;
         if (allow && allow.indexOf(k) < 0) continue;
-        if (mask(x + 0.5, y + 0.5)) this.mat[o] = mid;
+        if (this.hit(mask, x, y)) this.mat[o] = mid;
       }
   }
 
   /**
-   * Add relief (height) to existing pixels: `fn` returns the height to add
-   * (0 for none). Raised ridges catch the key light on their upper-left side
-   * and fall into shadow on the other, like real anatomy.
+   * Add relief (height) to existing pixels: `fn` (design units) returns the
+   * height to add (0 for none). Raised ridges catch the key light on their
+   * upper-left side and fall into shadow on the other, like real anatomy.
    */
   relief(fn: (x: number, y: number) => number, bbox?: BBox, only?: Material[]) {
     const allow = only ? only.map((x) => this.matIndex.get(x)).filter((x): x is number => x !== undefined) : null;
     if (allow && !allow.length) return;
     const [x0, y0, x1, y1] = this.region(bbox);
+    const { A, ox, oy } = this;
+    const iA = 1 / A;
     for (let y = y0; y <= y1; y++)
       for (let x = x0; x <= x1; x++) {
         const o = y * this.w + x;
         const k = this.mat[o];
         if (k < 0 || (allow && allow.indexOf(k) < 0)) continue;
-        const v = fn(x + 0.5, y + 0.5);
-        if (v) this.bmp[o] += v;
+        const v = fn((x + 0.5 - ox) * iA, (y + 0.5 - oy) * iA);
+        if (v) this.bmp[o] += v * A;
+      }
+  }
+
+  /**
+   * Stains (bruises, spatter, grime) leave lone pixels at sprite size: a pixel
+   * whose material differs from its neighbours within the same part, where
+   * those neighbours agree, takes their material. Separate parts (an eye, a
+   * tooth) are never touched, so deliberate 1-px details survive.
+   */
+  private despeckle() {
+    const { w: W, mat, part } = this;
+    const src = mat.slice();
+    for (let y = Math.max(1, this.fy0); y <= Math.min(this.h - 2, this.fy1); y++)
+      for (let x = Math.max(1, this.fx0); x <= Math.min(W - 2, this.fx1); x++) {
+        const o = y * W + x;
+        const c = src[o];
+        if (c < 0) continue;
+        const p = part[o];
+        let m = -1;
+        let same = 0;
+        let n = 0;
+        for (let j = 0; j < 4; j++) {
+          const q = j === 0 ? o - 1 : j === 1 ? o + 1 : j === 2 ? o - W : o + W;
+          if (part[q] !== p) continue;
+          n++;
+          const k = src[q];
+          if (k === c) same++;
+          else if (m === -1) m = k;
+          else if (k !== m) m = -2;
+        }
+        // isolated (no same-material neighbour) or a 1-px nub poking out
+        if (m >= 0 && n >= 3 && same === 0) mat[o] = m;
       }
   }
 
@@ -338,6 +473,7 @@ export class Figure {
     const pc = new PixelCanvas(W, H);
     if (this.fx1 < 0) return pc;
     const data = pc.data;
+    const small = this.s < 1;
     let lx = light.x;
     let ly = light.y;
     let lz = light.z;
@@ -356,23 +492,27 @@ export class Figure {
     const l2 = Math.hypot(lx, ly) || 1;
     const sx = lx / l2;
     const sy = ly / l2;
-    const PN = 5;
+    const PN = small ? Math.max(2, Math.round(5 * this.s)) : 5;
     const pdx = new Int32Array(PN);
     const pdy = new Int32Array(PN);
     const pk = new Float32Array(PN);
     for (let t = 1; t <= PN; t++) {
       pdx[t - 1] = Math.round(sx * t);
       pdy[t - 1] = Math.round(sy * t);
-      pk[t - 1] = 0.24 * (1 - (t - 1) * 0.16);
+      pk[t - 1] = 0.24 * (1 - ((t - 1) / PN) * 0.8);
     }
+    if (small) this.despeckle();
     const mats = this.mats;
-    const rgbs = mats.map((m) => m.ramp.map((c) => rgba(c)));
+    // SNES: few clean bands per material, almost no dither, quiet textures
+    const rgbs = mats.map((m) => (small ? bands(m.ramp) : m.ramp).map((c) => rgba(c)));
     const glints = mats.map((m) => (m.glint ? rgba(m.glint) : null));
     const wraps = mats.map((m) => m.wrap ?? 0.15);
-    const dths = mats.map((m) => m.dither ?? 0.55);
+    const dths = mats.map((m) => (m.dither ?? 0.55) * (small ? 0.12 : 1));
     const specs = mats.map((m) => m.spec ?? 0);
     const shines = mats.map((m) => m.shine ?? 24);
     const texs = mats.map((m) => m.tex ?? null);
+    const texK = small ? 0.35 : 1;
+    const is = this.is;
     const { mat, part, z, nx: NX, ny: NY, nz: NZ, bmp } = this;
     const put = (o: number, c: readonly number[]) => {
       const i = o * 4;
@@ -381,7 +521,10 @@ export class Figure {
       data[i + 2] = c[2];
       data[i + 3] = 255;
     };
-    const ambient = light.ambient;
+    // sprite size: lift the shadows a little and calm fine relief, so the
+    // forms read as a few clean bands rather than a field of creases
+    const ambient = light.ambient + (small ? 0.12 : 0);
+    const bK = small ? 0.3 : 1;
     const rimK = light.rim;
     const X0 = this.fx0;
     const Y0 = this.fy0;
@@ -399,8 +542,8 @@ export class Figure {
         const br = x < W - 1 && part[o + 1] === p ? bmp[o + 1] : b0;
         const bu = y > 0 && part[o - W] === p ? bmp[o - W] : b0;
         const bd = y < H - 1 && part[o + W] === p ? bmp[o + W] : b0;
-        let nx = NX[o] - (br - bl) * 0.5;
-        let ny = NY[o] - (bd - bu) * 0.5;
+        let nx = NX[o] - (br - bl) * 0.5 * bK;
+        let ny = NY[o] - (bd - bu) * 0.5 * bK;
         let nz = NZ[o];
         const nl = 1 / Math.sqrt(nx * nx + ny * ny + nz * nz);
         nx *= nl;
@@ -439,7 +582,7 @@ export class Figure {
         // relief also self-shadows a little in its own creases
         let v = ambient + dif * 0.82 + rim + sp - sh + (b0 < 0 ? b0 * 0.05 : 0);
         const tx = texs[mi];
-        if (tx !== null) v += tx(x, y);
+        if (tx !== null) v += tx((x + 0.5) * is, (y + 0.5) * is) * texK;
         v = v < 0 ? 0 : v > 0.999 ? 0.999 : v;
         const ramp = rgbs[mi];
         const n = ramp.length;
@@ -452,6 +595,10 @@ export class Figure {
     }
     // inner lines: where a nearer part overlaps, darken the far side
     const lines = mats.map((m) => rgba(m.line ?? m.ramp[0]));
+    // at sprite size only sizeable parts cut a dark line into what lies behind
+    const minA = small ? 8 : 0;
+    const area = this.area;
+    const big = (q: number) => area[part[q]] >= minA;
     for (let y = Y0; y <= Y1; y++) {
       for (let x = X0; x <= X1; x++) {
         const o = y * W + x;
@@ -460,30 +607,34 @@ export class Figure {
         const zo = z[o] + 200;
         const p = part[o];
         if (
-          (x < W - 1 && mat[o + 1] >= 0 && part[o + 1] !== p && z[o + 1] > zo) ||
-          (x > 0 && mat[o - 1] >= 0 && part[o - 1] !== p && z[o - 1] > zo) ||
-          (y < H - 1 && mat[o + W] >= 0 && part[o + W] !== p && z[o + W] > zo) ||
-          (y > 0 && mat[o - W] >= 0 && part[o - W] !== p && z[o - W] > zo)
+          (x < W - 1 && mat[o + 1] >= 0 && part[o + 1] !== p && z[o + 1] > zo && big(o + 1)) ||
+          (x > 0 && mat[o - 1] >= 0 && part[o - 1] !== p && z[o - 1] > zo && big(o - 1)) ||
+          (y < H - 1 && mat[o + W] >= 0 && part[o + W] !== p && z[o + W] > zo && big(o + W)) ||
+          (y > 0 && mat[o - W] >= 0 && part[o - W] !== p && z[o - W] > zo && big(o - W))
         )
           put(o, lines[mi]);
       }
     }
-    // outer outline, tinted toward the material it wraps
+    // outer outline: near-black tinted toward the material it wraps on the
+    // shadow side; on the lit (upper-left) side a dark shade of the material
     const oc = outline === '#080306' ? OUT_RGB : rgba(outline);
     const tint = rgbs.map((r) => [(oc[0] * 2 + r[0][0]) / 3, (oc[1] * 2 + r[0][1]) / 3, (oc[2] * 2 + r[0][2]) / 3]);
+    const lit = small ? rgbs.map((r) => {
+      const a = r[0];
+      const b = r[Math.min(r.length - 1, 1)];
+      return [(a[0] + b[0] * 2) / 3, (a[1] + b[1] * 2) / 3, (a[2] + b[2] * 2) / 3];
+    }) : tint;
     for (let y = Math.max(0, Y0 - 1); y <= Math.min(H - 1, Y1 + 1); y++)
       for (let x = Math.max(0, X0 - 1); x <= Math.min(W - 1, X1 + 1); x++) {
         const o = y * W + x;
         if (mat[o] >= 0) continue;
-        let q = -1;
-        if (x < W - 1 && mat[o + 1] >= 0) q = o + 1;
-        else if (x > 0 && mat[o - 1] >= 0) q = o - 1;
-        else if (y < H - 1 && mat[o + W] >= 0) q = o + W;
-        else if (y > 0 && mat[o - W] >= 0) q = o - W;
-        if (q >= 0) put(o, tint[mat[q]]);
+        // body to the right or below: this outline pixel faces the key light
+        if (x < W - 1 && mat[o + 1] >= 0) put(o, lit[mat[o + 1]]);
+        else if (y < H - 1 && mat[o + W] >= 0) put(o, lit[mat[o + W]]);
+        else if (x > 0 && mat[o - 1] >= 0) put(o, tint[mat[o - 1]]);
+        else if (y > 0 && mat[o - W] >= 0) put(o, tint[mat[o - W]]);
       }
     this.release();
     return pc;
   }
 }
-

@@ -2,13 +2,18 @@
 // hold it: bloat-fused into his booth, his head become one vast listening ear.
 import {
   BLOOD, OLD_BLOOD, IRON, GOLD, MALICE, MOUTH, TEETH, VOID, VEIN, RAW, BONE, BILE, THREAD,
-  anim, back, bez, drip, ellMask, ellT, lineMask, loc, pool, renderFig, skinMat, toLocal, tube, veins, blotch, valueNoise, hash2,
+  anim, scaled, back, bez, drip, ellMask, ellT, lineMask, loc, pool, renderFig, skinMat, toLocal, tube, veins, blotch, valueNoise, hash2,
   woodMat, clothMat, frame, grain, ramp, noiseField,
   type AnimDef, type Material, type V2,
 } from './common';
 
-export const BART = { w: 240, h: 240, footY: 234 };
-export const EAR = { w: 56, h: 60, footY: 56 };
+/** Design canvases (the drawing code's units) and their scale to output pixels. */
+const DB = { w: 240, h: 240, footY: 234 };
+const DE = { w: 56, h: 60, footY: 56 };
+const SB = 0.6;
+const SE = 0.64;
+export const BART = scaled(DB, SB);
+export const EAR = scaled(DE, SE);
 
 const SKIN = '#b48e7e';
 const WOOD = woodMat('#6a2a1a', 8);
@@ -323,8 +328,8 @@ function stump(f: F, p: BP, skin: Material) {
 }
 
 function drawBart(p: BP) {
-  const { w, h } = BART;
-  const f = frame(w, h);
+  const { w, h } = DB;
+  const f = frame(w, h, SB);
   const skin = skinMat(SKIN, 0.4);
   const skinB = back(skin, 0.3);
   // ---- arms: shoulder, elbow, fist for each state --------------------------
@@ -359,8 +364,8 @@ function drawBart(p: BP) {
 }
 
 function drawDead() {
-  const { w, h, footY } = BART;
-  const f = frame(w, h);
+  const { w, h, footY } = DB;
+  const f = frame(w, h, SB);
   const skin = skinMat(SKIN, 0.4);
   const skinB = back(skin, 0.3);
   pool(f, 120, footY - 1, 110, BLOOD, 3);
@@ -412,8 +417,8 @@ function drawDead() {
 // The torn-off ear: a separate enemy that keeps listening.
 // ---------------------------------------------------------------------------
 function drawEar(i: number, dead: boolean) {
-  const { w, h, footY } = EAR;
-  const f = frame(w, h);
+  const { w, h, footY } = DE;
+  const f = frame(w, h, SE);
   if (dead) {
     pool(f, 28, footY - 0.5, 24, BLOOD, 3);
     ear(f, [8, footY - 6], Math.PI / 2 - 0.15, 0.62, 2, 1);

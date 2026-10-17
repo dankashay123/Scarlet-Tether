@@ -31,11 +31,30 @@ export interface MetaState {
   marks: number;
   /** Rites bought from Deacon Vivisect with Marks. */
   rites: Record<string, number>;
+  /** Censer Shell capacity (0 until the Censer Launcher is found). */
+  shellsMax: number;
+  /** The persistent world: where you last knelt, what you have seen and taken. */
+  world: WorldSave;
   settings: { sfx: number; music: number; shake: boolean; leftHanded: boolean; bigButtons: boolean };
 }
 
-const KEY = 'scarlet-tether-save-v1';
+const KEY = 'scarlet-tether-save-v2'; // v2: the SNES metroidvania (v1 saves were the melee roguelite)
 const VERSION = 1;
+
+export interface WorldSave {
+  /** Room id of the last save altar knelt at (0: the Chute's Foot). */
+  save: number;
+  explored: number[];
+  /** Items taken, as "roomId:kind" keys, so they never return. */
+  taken: string[];
+  /** Crimson hatches blown open, as "a-b" room pairs. */
+  hatches: string[];
+  bossDead: boolean;
+}
+
+export function freshWorld(): WorldSave {
+  return { save: 0, explored: [], taken: [], hatches: [], bossDead: false };
+}
 
 function fresh(): MetaState {
   return {
@@ -59,6 +78,8 @@ function fresh(): MetaState {
     cherubs: 0,
     marks: 0,
     rites: {},
+    shellsMax: 0,
+    world: freshWorld(),
     settings: { sfx: 1, music: 1, shake: true, leftHanded: false, bigButtons: false },
   };
 }
@@ -75,7 +96,7 @@ export function meta(): MetaState {
     loaded = null;
   }
   const base = fresh();
-  state = loaded && loaded.version === VERSION ? { ...base, ...loaded, settings: { ...base.settings, ...loaded.settings } } : base;
+  state = loaded && loaded.version === VERSION ? { ...base, ...loaded, settings: { ...base.settings, ...loaded.settings }, world: { ...freshWorld(), ...(loaded.world ?? {}) } } : base;
   return state;
 }
 
@@ -140,6 +161,9 @@ export interface RunState {
   maxLucidity: number;
   tears: number; // carried this descent
   vertebrae: number;
+  /** Censer Shells (the heavy ammunition) and their capacity; 0 capacity = not yet found. */
+  shells: number;
+  shellsMax: number;
   sacraments: string[];
   sin: number; // trauma accumulated this descent
   room: number; // rooms cleared
@@ -162,6 +186,9 @@ export function newRun(): RunState {
     maxLucidity: maxLucidity(m),
     tears: 0,
     vertebrae: 0,
+    // Shell capacity counts only once the Censer Launcher is found
+    shells: m.flags.launcher ? m.shellsMax ?? 0 : 0,
+    shellsMax: m.flags.launcher ? m.shellsMax ?? 0 : 0,
     sacraments: [],
     sin: 0,
     room: 0,

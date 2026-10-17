@@ -2,6 +2,7 @@ import { P } from './palette';
 import { PixelCanvas, bayer, hash2, registerImage } from './pixel';
 import { SheetBuilder } from './sheet';
 import { Figure, KEY_LIGHT, grain } from './render';
+import { snesify } from './snes';
 import { BLOOD, IRON, RUST } from './hero';
 
 // Small pieces shared by every scene: pickups, projectiles, the chain,
@@ -56,6 +57,88 @@ function markSeal(): PixelCanvas {
   // A drip of wax escaping the rim
   f.capsule(11, 12, 12, 15, 1.1, 0.8, wax, 2.5);
   return f.render(KEY_LIGHT);
+}
+
+/** Tether Cannon shots: a blood bolt, a charged clot of blood, a brass Censer Shell. */
+function shot(kind: 'bolt' | 'charged' | 'shell'): PixelCanvas {
+  if (kind === 'bolt') {
+    const pc = new PixelCanvas(10, 4);
+    pc.rect(0, 1, 3, 2, P.blood3);
+    pc.rect(3, 1, 4, 2, P.blood1);
+    pc.rect(6, 0, 3, 4, P.blood0);
+    pc.px(8, 1, '#ffd0c0');
+    pc.px(8, 2, '#ffd0c0');
+    return pc;
+  }
+  if (kind === 'charged') {
+    const f = new Figure(18, 12);
+    const m = { ramp: ['#2a0208', '#6a0a18', '#b0182a', '#ff3b3b', '#ffb0a0', '#fff0e8'], spec: 1 };
+    f.ellipse(12, 6, 5, 4, m, 2);
+    f.capsule(2, 6, 11, 6, 1.4, 3.2, m, 1);
+    const pc = f.render(KEY_LIGHT);
+    snesify(pc);
+    return pc;
+  }
+  const f = new Figure(14, 8);
+  const brass = { ramp: ['#2a1a06', '#6a4812', '#b08030', '#e8c060', '#fff0b0'], spec: 1 };
+  f.capsule(4, 4, 10, 4, 2.4, 2.6, brass, 1);
+  f.ellipse(11, 4, 2, 2.4, { ramp: ['#3a0a04', '#a02010', '#ff7a20', '#ffd060'] }, 2);
+  f.capsule(0, 4, 4, 4, 0.8, 1.6, { ramp: ['#401008', '#c04010', '#ffa040'] }, 0.5);
+  return f.render(KEY_LIGHT);
+}
+
+/** A crimson hatch, 16x80: a sealed iron door of the Under-Naves, opened only by a Censer Shell. */
+function hatch(open: boolean): PixelCanvas {
+  const pc = new PixelCanvas(16, 80);
+  const iron = ['#1a1214', '#2e2226', '#4a383c', '#6e5458'];
+  const red = ['#3a0610', '#6e0c1c', '#a8182c', '#e04050'];
+  if (open) {
+    pc.rect(0, 0, 3, 80, iron[1]);
+    pc.rect(13, 0, 3, 80, iron[1]);
+    pc.rect(0, 0, 16, 3, iron[2]);
+    pc.rect(0, 77, 16, 3, iron[2]);
+    return pc;
+  }
+  pc.rect(0, 0, 16, 80, iron[1]);
+  pc.rect(2, 2, 12, 76, red[1]);
+  for (let y = 4; y < 76; y += 12) {
+    pc.rect(3, y, 10, 9, red[2]);
+    pc.rect(3, y, 10, 1, red[3]);
+    pc.rect(3, y + 8, 10, 1, red[0]);
+  }
+  // A thorned cross seal in the middle
+  pc.rect(7, 30, 2, 20, iron[3]);
+  pc.rect(4, 36, 8, 2, iron[3]);
+  pc.px(5, 33, iron[3]);
+  pc.px(10, 33, iron[3]);
+  pc.rect(0, 0, 16, 1, iron[3]);
+  pc.rect(0, 0, 1, 80, iron[2]);
+  pc.rect(15, 0, 1, 80, iron[0]);
+  return pc;
+}
+
+/** Pickups that change the game: the Censer Launcher and a Censer Shell expansion. */
+function launcherItem(): PixelCanvas {
+  const f = new Figure(18, 18);
+  const iron = { ramp: ['#141012', '#2a2226', '#4a3c40', '#7a6468', '#b09ca0'], spec: 1 };
+  const brass = { ramp: ['#2a1a06', '#6a4812', '#b08030', '#e8c060', '#fff0b0'], spec: 1 };
+  f.capsule(3, 11, 14, 6, 3, 2.2, iron, 1);
+  f.ellipse(14.5, 5.5, 2.6, 2.6, brass, 2);
+  f.ellipse(14.5, 5.5, 1.2, 1.2, { ramp: ['#300', '#a01010', '#ff5030'] }, 3);
+  f.capsule(5, 12, 4, 16, 1.2, 1.2, brass, 2);
+  const pc = f.render(KEY_LIGHT);
+  snesify(pc);
+  return pc;
+}
+
+function shellItem(): PixelCanvas {
+  const f = new Figure(14, 16);
+  const brass = { ramp: ['#2a1a06', '#6a4812', '#b08030', '#e8c060', '#fff0b0'], spec: 1 };
+  for (let i = 0; i < 3; i++) f.capsule(3 + i * 4, 13, 3 + i * 4, 4, 1.6, 1.8, brass, 1 + i * 0.1);
+  f.capsule(2, 13, 12, 13, 1, 1, { ramp: ['#200808', '#601818', '#a03030'] }, 2);
+  const pc = f.render(KEY_LIGHT);
+  snesify(pc);
+  return pc;
 }
 
 function projectile(kind: 'bile' | 'sludge'): PixelCanvas {
@@ -149,11 +232,15 @@ function softDot(r: number, color: string): PixelCanvas {
 }
 
 function light(r: number): PixelCanvas {
+  // Hard-edged rings, like SNES colour-math halos, rather than a smooth falloff
   const pc = new PixelCanvas(r * 2, r * 2);
+  const bands = [0.07, 0.15, 0.26, 0.42];
   for (let y = 0; y < r * 2; y++)
     for (let x = 0; x < r * 2; x++) {
       const d = Math.hypot(x - r + 0.5, y - r + 0.5) / r;
-      if (d < 1) pc.px(x, y, '#ffffff', Math.pow(1 - d, 2));
+      if (d >= 1) continue;
+      const k = d < 0.3 ? 3 : d < 0.55 ? 2 : d < 0.8 ? 1 : 0;
+      pc.px(x, y, '#ffffff', bands[k]);
     }
   return pc;
 }
@@ -186,6 +273,13 @@ export function buildProps(scene: Phaser.Scene) {
   new SheetBuilder('tear').add('spin', [tearPickup(0), tearPickup(1)], 3).build(scene);
   registerImage(scene, 'vertebra', vertebra());
   registerImage(scene, 'relic-shard', relicShard());
+  registerImage(scene, 'shot-bolt', shot('bolt'));
+  registerImage(scene, 'shot-charged', shot('charged'));
+  registerImage(scene, 'shot-shell', shot('shell'));
+  registerImage(scene, 'hatch-crimson', hatch(false));
+  registerImage(scene, 'hatch-open', hatch(true));
+  registerImage(scene, 'item-launcher', launcherItem());
+  registerImage(scene, 'item-shells', shellItem());
   registerImage(scene, 'mark-seal', markSeal());
   registerImage(scene, 'proj-bile', projectile('bile'));
   registerImage(scene, 'proj-sludge', projectile('sludge'));

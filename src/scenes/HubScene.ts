@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { addSnesPost } from '../game/snespost';
 import { P, hexNum } from '../art/palette';
 import { DEPTH } from '../game/config';
 import { Level } from '../game/level';
@@ -98,6 +99,7 @@ export class HubScene extends Phaser.Scene implements World {
     cam.setBackgroundColor('#0b0507');
     cam.fadeIn(700, 11, 5, 7);
     if (cam.postFX) cam.postFX.addVignette(0.5, 0.5, 0.85, 0.35);
+    addSnesPost(this);
 
     this.buildScene();
     loop(this, 'amb_hub', 'amb');
@@ -207,6 +209,7 @@ export class HubScene extends Phaser.Scene implements World {
     return 'ignored';
   }
   addProjectile() {}
+  firePlayerShot() {}
   spawnTears() {}
   onEnemyKilled() {}
   hitstop() {}

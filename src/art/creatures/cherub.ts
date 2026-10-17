@@ -2,12 +2,15 @@
 // mouth sewn so it cannot cry. The leaf is peeling, the feathers plucked.
 import {
   BLOOD, OLD_BLOOD, GOLD, RAW, BONE, MOUTH, CATGUT,
-  anim, back, dome, loc, pool, renderFig, ridge, skinMat, stitches, toLocal, tube, vn, vnOf, frame, fgrain,
+  anim, scaled, back, dome, loc, pool, renderFig, ridge, skinMat, stitches, toLocal, tube, vn, vnOf, frame, fgrain,
   type AnimDef, type Material, type V2,
 } from './common';
 
 // footY puts the sprite centre on the body's centre (13px above its feet)
-export const CHERUB = { w: 64, h: 64, footY: 45 };
+/** Design canvas (the drawing code's units) and its scale to output pixels. */
+const D = { w: 64, h: 64, footY: 45 };
+const S = 0.4;
+export const CHERUB = scaled(D, S);
 
 const SKIN = '#d4aa98';
 const LIP: Material = { ramp: ['#1a0608', '#4a1418', '#7a2a34', '#a24a54', '#c87878'], spec: 0.6, glint: '#ffd8d0', dither: 0.2 };
@@ -74,8 +77,8 @@ function wing(f: F, root: V2, a: number, len: number, lag: number, m: Material, 
 }
 
 function drawCherub(p: CP) {
-  const { w, h } = CHERUB;
-  const f = frame(w, h);
+  const { w, h } = D;
+  const f = frame(w, h, S);
   const skin = skinMat(SKIN, 0.45, fgrain(1.5, 0.04, 2));
   const skinB = back(skin, 0.3);
   const { c, th } = p;
@@ -118,7 +121,9 @@ function drawCherub(p: CP) {
   f.capsule(...P(-1.5, -5), ...P(1.5, -10), 1.6, 1.3, skinB, 2.5);
   f.ellipse(...P(2.5, -11), 1.6, 1.5, skinB, 2.55);
 
-  // ---- the head: an infant's swollen skull ---------------------------------------------
+  // ---- the head: an infant's swollen skull (drawn larger, so the face reads) -----------
+  const neck = P(3, -4);
+  f.zoom(neck[0], neck[1], 1.25);
   f.ellipse(...P(-1, 6.5), 10, 9.4, skin, 5, th); // cranium
   f.ellipse(...P(4.5, 1.5), 7, 7, skin, 5.02, th); // face
   f.ellipse(...P(7.5, -2), 4.4, 3.8, skin, 5.1, th); // fat cheek
@@ -148,6 +153,8 @@ function drawCherub(p: CP) {
   f.capsule(...P(7.2, -3.8), ...P(11.6, -3.8), 0.35, 0.35, MOUTH, 5.17);
   stitches(f, P(8.2, -3.8), P(11.4, -3.8), 3, 1.7, 5.2);
   f.stain((x, y) => Math.hypot(x - m[0], y - m[1]) < 3.2 && vn(x, y, 1, 7) > 0.7, BLOOD, [LIP, skin], [m[0] - 4, m[1] - 4, m[0] + 4, m[1] + 4]);
+
+  f.zoom();
 
   // ---- front arm: a tiny fist clutching nothing ------------------------------------
   tube(f, [P(3, -5), P(6, -9), P(7.5, -12)], 1.8, 1.4, skin, 6);
@@ -190,9 +197,9 @@ function drawCherub(p: CP) {
 }
 
 function drawDead() {
-  const { w, h } = CHERUB;
+  const { w, h } = D;
   const body = drawCherub({ c: [30, 52], th: -Math.PI / 2 + 0.15, wing: 2.6, wingB: 2.2, cord: 1, cordDir: [1, 0.08], dead: true, t: 0.4 });
-  const f = frame(w, h);
+  const f = frame(w, h, S);
   pool(f, 32, h - 2.5, 24, BLOOD, 3);
   const under = renderFig(f);
   under.blit(body, 0, 0);

@@ -5,6 +5,7 @@ import { PixelCanvas, hash2, valueNoise } from '../pixel';
 import { mix } from '../palette';
 import { BLOOD as BLOOD0, OLD_BLOOD as OLD_BLOOD0, IRON as IRON0, RUST as RUST0, shade } from '../hero';
 import { SheetBuilder } from '../sheet';
+import { snesify } from '../snes';
 
 export { shade, hash2, valueNoise, Figure, folds, grain, ramp, mix };
 
@@ -24,7 +25,17 @@ export interface AnimDef {
   repeat: number;
 }
 
-export const anim = (name: string, frames: PixelCanvas[], fps = 8, repeat = -1): AnimDef => ({ name, frames, fps, repeat });
+/** An animation; every frame is finished with snesify() (15-bit colour, ≤15 colours, de-dithered). */
+export const anim = (name: string, frames: PixelCanvas[], fps = 8, repeat = -1): AnimDef => {
+  for (const fr of frames) snesify(fr);
+  return { name, frames, fps, repeat };
+};
+
+/** Output frame size for a creature authored at design size `d` and drawn at scale `s`. */
+export interface FrameSize { w: number; h: number; footY: number }
+export function scaled(d: FrameSize, s: number, footY?: number): FrameSize {
+  return { w: Math.ceil(d.w * s), h: Math.ceil(d.h * s), footY: footY ?? Math.round(d.footY * s) };
+}
 
 export function registerAnims(scene: Phaser.Scene, key: string, anims: AnimDef[]) {
   const sb = new SheetBuilder(key);
@@ -274,6 +285,8 @@ export function stitches(f: Figure, a: V2, b: V2, n: number, h: number, layer: n
   const L = Math.hypot(dx, dy) || 1;
   const px = -dy / L;
   const py = dx / L;
+  // keep at least two output pixels between stitches so they read as stitches
+  n = Math.max(1, Math.min(n, Math.floor((L * f.s) / 2)));
   for (let i = 0; i < n; i++) {
     const t = (i + 0.5) / n;
     const cx = a[0] + dx * t;
@@ -302,8 +315,9 @@ export function noiseField(w: number, h: number, scale: number, seed: number) {
   return (x: number, y: number) => arr[Math.min(h - 1, Math.max(0, y | 0)) * w + Math.min(w - 1, Math.max(0, x | 0))];
 }
 
-export function frame(w: number, h: number) {
-  return new Figure(w, h);
+/** A figure for a `w`×`h` design-unit canvas, rasterised at `s` output pixels per unit. */
+export function frame(w: number, h: number, s = 1) {
+  return new Figure(Math.ceil(w * s), Math.ceil(h * s), s);
 }
 
 // ---------------------------------------------------------------------------
@@ -321,7 +335,8 @@ function ptsBox(pts: V2[], w: number): [number, number, number, number] {
 /** A raised (h>0) or sunken (h<0) ridge of half-width w along a polyline. */
 export function ridge(f: Figure, pts: V2[], w: number, h: number, only?: Material[]) {
   const n = pts.length - 1;
-  if (n < 1) return;
+  // a ridge narrower than a pixel at the output size would only add noise
+  if (n < 1 || w * f.s < 0.65) return;
   const ax = new Float64Array(n), ay = new Float64Array(n), dx = new Float64Array(n), dy = new Float64Array(n), il = new Float64Array(n);
   for (let i = 0; i < n; i++) {
     ax[i] = pts[i][0];
@@ -350,6 +365,7 @@ export function ridge(f: Figure, pts: V2[], w: number, h: number, only?: Materia
 
 /** A smooth bulge (muscle, knuckle, swelling) or dent (h<0). */
 export function dome(f: Figure, cx: number, cy: number, rx: number, ry: number, h: number, rot = 0, only?: Material[]) {
+  if (Math.max(rx, ry) * f.s < 0.8) return;
   const c = Math.cos(-rot);
   const s = Math.sin(-rot);
   const r = Math.max(rx, ry);

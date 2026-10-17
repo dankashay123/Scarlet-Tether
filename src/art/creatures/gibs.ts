@@ -1,13 +1,16 @@
 // Gibs: the bits that fly out of things when the Tether is done with them.
 import { BLOOD, OLD_BLOOD, BONE, RAW, TEETH, VOID, anim, back, renderFig, skinMat, tube, frame, type AnimDef, type Material } from './common';
 
+/** Gibs are authored on a 16x16 design canvas and drawn at 10x10. */
+export const GIB_S = 10 / 16;
+
 const FAT: Material = { ramp: ['#3a2a10', '#7a6430', '#b0985a', '#d8c488', '#f0e4b0'], spec: 0.5 };
 const ORGAN: Material = { ramp: ['#1a040a', '#3e0a16', '#6a1424', '#8e2232', '#b03a44', '#d86a68'], spec: 0.9 };
 const EYE: Material = { ramp: ['#4a4038', '#9a9284', '#d8d2c4', '#f4f0e8', '#ffffff'], spec: 1 };
 const GUT: Material = { ramp: ['#2a0a12', '#5a1e2a', '#8a3a44', '#b0606a', '#d08a8a', '#ecb4a8'], spec: 0.8 };
 
 function gib(k: number) {
-  const f = frame(16, 16);
+  const f = frame(16, 16, GIB_S);
   const skin = skinMat('#b8907a', 0.4);
   switch (k) {
     case 0: // chunk of flesh with fat and skin
@@ -74,7 +77,7 @@ function gib(k: number) {
 }
 
 function skinStrip() {
-  const f = frame(16, 16);
+  const f = frame(16, 16, GIB_S);
   const skin = skinMat('#c4a088', 0.4);
   tube(f, [[1, 6], [5, 4], [9, 7], [13, 5], [15, 8]], 1.6, 1.3, skin, 1);
   tube(f, [[1, 7.5], [5, 5.5], [9, 8.5], [13, 6.5], [15, 9.5]], 1, 0.8, RAW, 0.9);

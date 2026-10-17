@@ -1,13 +1,20 @@
-import { Figure, KEY_LIGHT, folds, grain, ramp, type Material } from './render';
-import { PixelCanvas, hash2, valueNoise } from './pixel';
+import { KEY_LIGHT, type Material } from './render';
+import { PixelCanvas, hash2 } from './pixel';
+import { rgba } from './palette';
 import { mixPose, solve, type Joints, type Limb, type Pose, type Proportions } from './rig';
 import { SheetBuilder } from './sheet';
+import { snesify } from './snes';
 
 // ---------------------------------------------------------------------------
-// The Severed: a penitent knight of Sanctum. Crimson cowl with a tall
-// capirote point bound by an iron crown of thorns, a blind iron mask, a
-// blackened breastplate under a ragged mantle, a spiked pauldron, gauntlets
-// and greaves, and a long tattered cloak dragged through blood.
+// The Severed, SNES scale: a penitent gunner about 40 px tall. Crimson cowl
+// with a tall point, an iron mask with an ember eye slit, blackened steel
+// pauldron and greaves, a dark robe under a tattered crimson cloak, and the
+// Tether Cannon (a ribbed bone-and-iron arm-cannon with a glowing core) where
+// the front forearm should be.
+//
+// Frames are drawn at 1x by a small cel renderer (inflated part masks lit by
+// the key light, quantised into flat bands with no dithering, inner lines and
+// a selective outline) and finished with snesify() to a 15-colour palette.
 // ---------------------------------------------------------------------------
 
 export interface CitizenLook {
@@ -20,20 +27,13 @@ export interface CitizenLook {
   helix: boolean;
 }
 
-export const FW = 112;
-export const FH = 96;
-export const FOOT_Y = 90;
-const K = 1.25; // body scale
+export const FW = 64;
+export const FH = 56;
+export const FOOT_Y = 52;
 
-const PR: Proportions = { torso: 17 * K, neck: 4 * K, thigh: 12 * K, shin: 12 * K, upperArm: 10 * K, foreArm: 10 * K, shoulderBack: 1 };
-
-const SKIN_RAMPS: Record<string, string[]> = {};
-function skinMat(base: string): Material {
-  const r =
-    SKIN_RAMPS[base] ??
-    (SKIN_RAMPS[base] = ramp(['#140709', shade(base, -0.6), shade(base, -0.35), shade(base, -0.12), base, shade(base, 0.2)], 7));
-  return { ramp: r, spec: 0.3, tex: grain(1.5, 0.05, 3) };
-}
+const PR: Proportions = { torso: 10.5, neck: 2.2, thigh: 9.2, shin: 9.2, upperArm: 6.5, foreArm: 5, shoulderBack: 0.5 };
+/** Elbow to muzzle tip along the cannon. */
+const CANNON = 13;
 
 export function shade(hex: string, t: number) {
   const n = parseInt(hex.slice(1), 16);
@@ -54,39 +54,107 @@ export function shade(hex: string, t: number) {
   return '#' + c(r) + c(g) + c(b);
 }
 
+// Shared materials for other painters (props, gore)
 export const BLOOD: Material = { ramp: ['#2a0208', '#4e0815', '#7a0c1c', '#a8122a', '#d0262f', '#ff5a4a'], spec: 0.9, round: 0.4 };
 export const OLD_BLOOD: Material = { ramp: ['#1e070a', '#34090f', '#4e1018', '#6a1a1e', '#83292a'], spec: 0.15, round: 0.3 };
+export const IRON: Material = { ramp: ['#0e0d10', '#26252b', '#3d3c44', '#5b5a63', '#87868f', '#c4c3c8'], spec: 0.9, round: 0.9 };
+export const RUST: Material = { ramp: ['#1a0a06', '#3a170c', '#5e2a12', '#8a4a22', '#b06a36'], spec: 0.2 };
 
-const TRIM_CACHE = new Map<string, Material>();
-function trimMat(c: string): Material {
-  let m = TRIM_CACHE.get(c);
-  if (!m) TRIM_CACHE.set(c, (m = { ramp: ramp(['#1a1206', shade(c, -0.6), shade(c, -0.3), c, shade(c, 0.45)], 5), spec: 0.8, round: 0.3 }));
-  return m;
+// ---------------------------------------------------------------------------
+// Palette: 15 colours in all, chosen by hand so snesify() keeps them.
+// ---------------------------------------------------------------------------
+
+/** Cel material: a short ramp of flat bands. */
+interface Mat {
+  ramp: [number, number, number][];
+  round: number;
+  spec: number;
+  bias: number;
+  /** Colour for inner lines and the lit-side outline. */
+  line: [number, number, number];
 }
 
-function hairMat(c: string): Material {
-  return { ramp: ramp(['#0b0507', shade(c, -0.6), shade(c, -0.35), shade(c, -0.1), c, shade(c, 0.3)], 6), tex: (x, y) => Math.sin(x * 1.7 + y * 0.5) * 0.14, round: 0.7 };
+const to5 = (v: number) => {
+  const q = Math.round((v / 255) * 31);
+  return (q << 3) | (q >> 2);
+};
+/** Colour in the SNES 15-bit space. */
+const C = (h: string): [number, number, number] => {
+  const [r, g, b] = rgba(h);
+  return [to5(r), to5(g), to5(b)];
+};
+
+/**
+ * Quantise a frame with snesify(), then restore the frame's own hand-picked
+ * colours: the frame is already within 15 colours of 15-bit space, so all
+ * that should change is the dedithering. Where the median cut merged two bands
+ * the original band is kept; a pixel snesify cleaned up takes the colour of
+ * the neighbour it joined. Every frame so shares one sprite palette.
+ */
+function snesFrame(pc: PixelCanvas) {
+  const d = pc.data;
+  const n = pc.w * pc.h;
+  const orig = new Int32Array(n).fill(-1);
+  for (let i = 0; i < n; i++) if (d[i * 4 + 3]) orig[i] = (d[i * 4] << 16) | (d[i * 4 + 1] << 8) | d[i * 4 + 2];
+  snesify(pc);
+  const out = new Int32Array(n).fill(-1);
+  const votes = new Map<number, Map<number, number>>();
+  for (let i = 0; i < n; i++) {
+    if (!d[i * 4 + 3]) continue;
+    out[i] = (d[i * 4] << 16) | (d[i * 4 + 1] << 8) | d[i * 4 + 2];
+    let m = votes.get(orig[i]);
+    if (!m) votes.set(orig[i], (m = new Map()));
+    m.set(out[i], (m.get(out[i]) ?? 0) + 1);
+  }
+  const usual = new Map<number, number>();
+  for (const [k, m] of votes) {
+    let best = -1;
+    let bn = -1;
+    for (const [c, cnt] of m) if (cnt > bn) ((bn = cnt), (best = c));
+    usual.set(k, best);
+  }
+  const w = pc.w;
+  for (let i = 0; i < n; i++) {
+    if (out[i] < 0) continue;
+    let c = orig[i];
+    if (usual.get(c) !== out[i]) {
+      // Cleaned up: join the neighbour snesify matched it to
+      for (const q of [i - 1, i + 1, i - w, i + w])
+        if (q >= 0 && q < n && out[q] === out[i] && usual.get(orig[q]) === out[q]) {
+          c = orig[q];
+          break;
+        }
+    }
+    d[i * 4] = c >> 16;
+    d[i * 4 + 1] = (c >> 8) & 255;
+    d[i * 4 + 2] = c & 255;
+  }
+}
+const INK = C('#0c0609');
+const STEEL_R = ['#1d1d29', '#363a4c', '#5d6478', '#a3abc0'];
+const ROBE_R = ['#190f18', '#36242f'];
+const BONE_R = ['#6a573a', '#b29f74', '#e8dfbd'];
+const HOT = '#ffdc9c';
+
+function mat(r: string[], o: Partial<Omit<Mat, 'ramp' | 'line'>> & { line?: string } = {}): Mat {
+  return { ramp: r.map(C), round: o.round ?? 1, spec: o.spec ?? 0, bias: o.bias ?? 0, line: o.line ? C(o.line) : INK };
 }
 
-export const IRON: Material = { ramp: ['#0e0d10', '#26252b', '#3d3c44', '#5b5a63', '#87868f', '#c4c3c8'], spec: 0.9, tex: grain(1.5, 0.12, 7), round: 0.9 };
-export const RUST: Material = { ramp: ['#1a0a06', '#3a170c', '#5e2a12', '#8a4a22', '#b06a36'], spec: 0.2, tex: grain(1.5, 0.15, 9) };
+const STEEL = mat(STEEL_R, { spec: 0.55 });
+const PLATE = mat(STEEL_R, { spec: 0.45, round: 0.7 });
+const STEEL_BACK = mat(STEEL_R.slice(0, 3), { round: 0.8, bias: -0.12 });
+const ROBE = mat(ROBE_R, { round: 0.7, bias: 0.05 });
+const ROBE_BACK = mat(ROBE_R, { round: 0.6, bias: -0.25 });
+const BONE = mat(BONE_R, { round: 1, spec: 0.25, bias: -0.08 });
+const VOID = mat([ROBE_R[0]], { round: 0 });
 
-// --- The penitent's armour: blackened, pitted steel with hard highlights -----
-const STEEL_RAMP = ['#060609', '#0c0c11', '#13141a', '#1b1c24', '#24252f', '#2e303b', '#3a3c49', '#4a4d5b', '#646776', '#9093a2', '#cfd1da'];
-const pitted = grain(3, 0.035, 4);
-const STEEL: Material = { ramp: STEEL_RAMP, spec: 0.7, round: 1, tex: pitted, line: '#030305' };
-/** Flatter plates (breastplate, faulds) so the highlight runs in a band. */
-const PLATE: Material = { ramp: STEEL_RAMP.slice(0, 10), spec: 0.6, round: 0.6, tex: pitted, line: '#030305' };
-const STEEL_BACK: Material = { ramp: STEEL_RAMP.slice(0, 8), spec: 0.5, round: 1, tex: pitted, line: '#030305' };
-/** The blind mask, deep inside the cowl: mostly shadow, one cold glint. */
-const MASK: Material = { ramp: ['#030304', '#07070a', '#0d0d12', '#15151c', '#23242e', '#4a4c58'], spec: 0.6, round: 1 };
-const LEATHER: Material = { ramp: ['#0b0605', '#170e0b', '#241712', '#33221a', '#463025', '#5c4030'], spec: 0.25, round: 0.6, tex: grain(1.2, 0.08, 31) };
-const EYE_GLINT: Material = { ramp: ['#7a1410', '#c83a22', '#ff9a5a'], round: 0 };
-const SMEAR: Material = { ramp: ['#2a1a1e', '#4a3438', '#6e5458', '#94787a', '#b89c9a'], round: 0.25, line: '#0b0507' };
-const STREAK: Material = { ramp: ['#1a080c', '#2e0f16', '#45161e'], round: 0 };
-const OLD_BONE: Material = { ramp: ['#2a2018', '#5f4e35', '#a8946a', '#d8c8a0'], spec: 0.4 };
-
-const UNDER_RAMP = ['#07060a', '#0e0b10', '#151116', '#1d171d', '#261e25', '#31262e', '#3e3039'];
+interface Pal {
+  cloak: Mat;
+  cloth: Mat; // cowl, mantle, tabard
+  glow: Mat;
+  ember: Mat;
+}
+const PAL_CACHE = new Map<string, Pal>();
 
 /** The concept's crimson: a light or grey robe tone is pulled back toward it. */
 function cloakTone(hex: string) {
@@ -97,517 +165,365 @@ function cloakTone(hex: string) {
   return r > 90 && r > g * 2 && r > b * 1.6 ? hex : '#9a1626';
 }
 
-interface HeroPalette {
-  skin: Material;
-  skinShade: Material;
-  robe: Material;
-  cloak: Material;
-  hood: Material;
-  hoodIn: Material;
-  tabard: Material;
-  under: Material;
-  underBack: Material;
-  hair: Material;
-  trim: Material;
-}
-
-const PAL_CACHE = new Map<string, HeroPalette>();
-
-function heroPalette(look: CitizenLook): HeroPalette {
-  const key = look.skin + look.robe + look.hair + look.trim;
-  const hit = PAL_CACHE.get(key);
-  if (hit) return hit;
-  const skin = skinMat(look.skin);
+function palette(look: CitizenLook): Pal {
   const base = cloakTone(look.robe);
-  const crimson = ramp(['#0e0408', shade(base, -0.75), shade(base, -0.55), shade(base, -0.34), shade(base, -0.14), base, shade(base, 0.14)], 8);
-  const cloakR = crimson.map((c) => shade(c, -0.22));
-  const shadeR = ramp(['#060204', shade(look.skin, -0.85), shade(look.skin, -0.7)], 4);
-  const pal: HeroPalette = {
-    skin,
-    skinShade: { ramp: shadeR, round: 0.6 },
-    robe: { ramp: crimson, tex: folds(2.4, 0.2, 4), round: 0.75 },
-    cloak: { ramp: cloakR, tex: folds(2.2, 0.3, 7), round: 0.55 },
-    hood: { ramp: crimson, tex: folds(3.2, 0.12, 5), round: 0.9 },
-    hoodIn: { ramp: ['#020102', '#070304', '#10060a', shade(base, -0.8)], round: 0.2 },
-    tabard: { ramp: crimson.map((c) => shade(c, -0.1)), tex: folds(1.6, 0.22, 9), round: 0.5 },
-    under: { ramp: UNDER_RAMP, tex: folds(2.6, 0.16, 2), round: 0.7 },
-    underBack: { ramp: UNDER_RAMP.map((c) => shade(c, -0.35)), round: 0.7 },
-    hair: hairMat(shade(look.hair, -0.55)),
-    trim: trimMat(look.trim),
+  let p = PAL_CACHE.get(base);
+  if (p) return p;
+  // Four crimson bands keyed off the look's robe (canonical #9a1626)
+  const cr = [shade(base, -0.62), shade(base, -0.32), shade(base, 0.04), shade(base, 0.34)];
+  p = {
+    cloak: mat(cr, { round: 0.55, bias: -0.04, line: cr[0] }),
+    cloth: mat(cr, { round: 0.85, bias: 0.04, line: cr[0] }),
+    glow: mat([cr[1], cr[2], cr[3]], { round: 0.6, bias: 0.3 }),
+    ember: mat([cr[3], HOT], { round: 0, bias: 0.45 }),
   };
-  PAL_CACHE.set(key, pal);
-  return pal;
+  PAL_CACHE.set(base, p);
+  return p;
 }
+
+// ---------------------------------------------------------------------------
+// Cel renderer
+// ---------------------------------------------------------------------------
 
 type Mask = (x: number, y: number) => boolean;
-type Op =
-  | { k: 'a'; mask: Mask; m: Material; layer: number; box: [number, number, number, number] }
-  | { k: 'e'; cx: number; cy: number; rx: number; ry: number; m: Material; layer: number; rot: number }
-  | { k: 'c'; ax: number; ay: number; bx: number; by: number; ra: number; rb: number; m: Material; layer: number }
-  | { k: 's'; mask: Mask; m: Material; only?: Material[] };
+type V = [number, number];
 
-/**
- * Records a frame's parts, then replays them onto a Figure cropped to the
- * parts' bounds: lighting and outlining cost scale with canvas area, and the
- * figure fills well under half of the frame.
- */
-class Rec {
-  private ops: Op[] = [];
-  x0 = Infinity;
-  y0 = Infinity;
-  x1 = -Infinity;
-  y1 = -Infinity;
-  private grow(x0: number, y0: number, x1: number, y1: number) {
-    this.x0 = Math.min(this.x0, x0);
-    this.y0 = Math.min(this.y0, y0);
-    this.x1 = Math.max(this.x1, x1);
-    this.y1 = Math.max(this.y1, y1);
-  }
-  add(mask: Mask, m: Material, layer: number, box: [number, number, number, number]) {
-    this.grow(...box);
-    this.ops.push({ k: 'a', mask, m, layer, box });
-  }
-  ellipse(cx: number, cy: number, rx: number, ry: number, m: Material, layer: number, rot = 0) {
-    const r = Math.max(rx, ry);
-    this.grow(cx - r, cy - r, cx + r, cy + r);
-    this.ops.push({ k: 'e', cx, cy, rx, ry, m, layer, rot });
-  }
-  capsule(ax: number, ay: number, bx: number, by: number, ra: number, rb: number, m: Material, layer: number) {
-    const r = Math.max(ra, rb);
-    this.grow(Math.min(ax, bx) - r, Math.min(ay, by) - r, Math.max(ax, bx) + r, Math.max(ay, by) + r);
-    this.ops.push({ k: 'c', ax, ay, bx, by, ra, rb, m, layer });
-  }
-  stain(mask: Mask, m: Material, only?: Material[]) {
-    this.ops.push({ k: 's', mask, m, only });
-  }
-  /** Render into a full FW x FH frame. */
-  render(light: Parameters<Figure['render']>[0]): PixelCanvas {
-    // Offsets snap to 8px so ordered dithering and textures stay put between frames
-    const ox = Math.max(0, Math.floor((this.x0 - 3) / 8) * 8);
-    const oy = Math.max(0, Math.floor((this.y0 - 3) / 8) * 8);
-    const w = Math.min(FW, Math.ceil(this.x1 + 3)) - ox;
-    const h = Math.min(FH, Math.ceil(this.y1 + 3)) - oy;
-    const out = new PixelCanvas(FW, FH);
-    if (w <= 0 || h <= 0) return out;
-    const f = new Figure(w, h);
-    const mats = new Map<Material, Material>();
-    const M = (m: Material) => {
-      let r = mats.get(m);
-      if (!r) {
-        const tex = m.tex;
-        mats.set(m, (r = tex ? { ...m, tex: (x, y) => tex(x + ox, y + oy) } : m));
-      }
-      return r;
-    };
-    for (const o of this.ops) {
-      if (o.k === 'a') f.add((x, y) => o.mask(x + ox, y + oy), M(o.m), o.layer, [o.box[0] - ox, o.box[1] - oy, o.box[2] - ox, o.box[3] - oy]);
-      else if (o.k === 'e') f.ellipse(o.cx - ox, o.cy - oy, o.rx, o.ry, M(o.m), o.layer, o.rot);
-      else if (o.k === 'c') f.capsule(o.ax - ox, o.ay - oy, o.bx - ox, o.by - oy, o.ra, o.rb, M(o.m), o.layer);
-      else f.stain((x, y) => o.mask(x + ox, y + oy), M(o.m), o.only?.map(M));
+const LN = Math.hypot(KEY_LIGHT.x, KEY_LIGHT.y, KEY_LIGHT.z);
+const LX = KEY_LIGHT.x / LN;
+const LY = KEY_LIGHT.y / LN;
+const LZ = KEY_LIGHT.z / LN;
+const HL = Math.hypot(LX, LY, LZ + 1);
+const HX_ = LX / HL;
+const HY_ = LY / HL;
+const HZ_ = (LZ + 1) / HL;
+
+class Cel {
+  readonly n = FW * FH;
+  mat = new Int16Array(this.n).fill(-1);
+  part = new Int16Array(this.n).fill(-1);
+  z = new Float32Array(this.n).fill(-1e9);
+  v = new Float32Array(this.n);
+  mats: Mat[] = [];
+  private mi = new Map<Mat, number>();
+  private parts = 0;
+  // scratch
+  private ins = new Uint8Array(this.n);
+  private d = new Float32Array(this.n);
+
+  private idx(m: Mat) {
+    let i = this.mi.get(m);
+    if (i === undefined) {
+      i = this.mats.length;
+      this.mats.push(m);
+      this.mi.set(m, i);
     }
-    out.blit(f.render(light), ox, oy);
-    return out;
+    return i;
   }
-}
 
-/**
- * Polygon part with a scanline mask: crossings are computed once per row
- * instead of testing every edge for every pixel (Figure.poly), which keeps
- * the big cloth shapes cheap.
- */
-function fillPoly(f: Rec, pts: [number, number][], m: Material, layer: number) {
-  const n = pts.length;
-  const xs = new Float64Array(n);
-  const ys = new Float64Array(n);
-  let x0 = Infinity;
-  let y0 = Infinity;
-  let x1 = -Infinity;
-  let y1 = -Infinity;
-  for (let i = 0; i < n; i++) {
-    xs[i] = pts[i][0];
-    ys[i] = pts[i][1];
-    x0 = Math.min(x0, xs[i]);
-    y0 = Math.min(y0, ys[i]);
-    x1 = Math.max(x1, xs[i]);
-    y1 = Math.max(y1, ys[i]);
+  add(mask: Mask, m: Mat, layer: number, x0: number, y0: number, x1: number, y1: number) {
+    const bx0 = Math.max(0, Math.floor(x0) - 1);
+    const by0 = Math.max(0, Math.floor(y0) - 1);
+    const bx1 = Math.min(FW - 1, Math.ceil(x1) + 1);
+    const by1 = Math.min(FH - 1, Math.ceil(y1) + 1);
+    const bw = bx1 - bx0 + 1;
+    const bh = by1 - by0 + 1;
+    if (bw <= 0 || bh <= 0) return;
+    const ins = this.ins;
+    const d = this.d;
+    let any = false;
+    for (let y = 0; y < bh; y++)
+      for (let x = 0; x < bw; x++) {
+        const k = mask(bx0 + x + 0.5, by0 + y + 0.5);
+        ins[y * bw + x] = k ? 1 : 0;
+        d[y * bw + x] = k ? 1e6 : 0;
+        if (k) any = true;
+      }
+    if (!any) return;
+    const at = (x: number, y: number) => (x < 0 || y < 0 || x >= bw || y >= bh ? 0 : d[y * bw + x]);
+    for (let y = 0; y < bh; y++)
+      for (let x = 0; x < bw; x++) {
+        const i = y * bw + x;
+        if (ins[i]) d[i] = Math.min(d[i], at(x - 1, y) + 1, at(x, y - 1) + 1, at(x - 1, y - 1) + 1.414, at(x + 1, y - 1) + 1.414);
+      }
+    let maxD = 0;
+    for (let y = bh - 1; y >= 0; y--)
+      for (let x = bw - 1; x >= 0; x--) {
+        const i = y * bw + x;
+        if (!ins[i]) continue;
+        d[i] = Math.min(d[i], at(x + 1, y) + 1, at(x, y + 1) + 1, at(x + 1, y + 1) + 1.414, at(x - 1, y + 1) + 1.414);
+        if (d[i] > maxD) maxD = d[i];
+      }
+    const R = Math.max(1, maxD);
+    const hgt = (x: number, y: number) => {
+      const t = Math.min(1, at(x, y) / R);
+      return t <= 0 ? 0 : Math.sqrt(1 - (1 - t) * (1 - t)) * R;
+    };
+    const pid = this.parts++;
+    const mid = this.idx(m);
+    const round = m.round;
+    for (let y = 0; y < bh; y++)
+      for (let x = 0; x < bw; x++) {
+        const i = y * bw + x;
+        if (!ins[i]) continue;
+        const h = hgt(x, y);
+        const zz = layer * 1000 + h * round;
+        const o = (by0 + y) * FW + bx0 + x;
+        if (zz < this.z[o]) continue;
+        let nx = -(hgt(x + 1, y) - hgt(x - 1, y)) * 0.5 * round;
+        let ny = -(hgt(x, y + 1) - hgt(x, y - 1)) * 0.5 * round;
+        let nz = 1;
+        const l = Math.hypot(nx, ny, nz);
+        nx /= l;
+        ny /= l;
+        nz /= l;
+        const dif = Math.max(0, nx * LX + ny * LY + nz * LZ);
+        const rim = (1 - nz) * (1 - nz) * Math.max(0, nx * 0.9 + ny * 0.2) * 0.55;
+        const spec = m.spec ? Math.pow(Math.max(0, nx * HX_ + ny * HY_ + nz * HZ_), 14) * m.spec : 0;
+        this.z[o] = zz;
+        this.mat[o] = mid;
+        this.part[o] = pid;
+        this.v[o] = 0.12 + dif * 0.9 + rim + spec + m.bias;
+      }
   }
-  const cross = new Float64Array(n);
-  let nc = 0;
-  let rowY = NaN;
-  f.add(
-    (x, y) => {
-      if (y !== rowY) {
-        rowY = y;
-        nc = 0;
-        for (let i = 0, k = n - 1; i < n; k = i++) {
-          const yi = ys[i];
-          const yk = ys[k];
-          if (yi > y !== yk > y) cross[nc++] = ((xs[k] - xs[i]) * (y - yi)) / (yk - yi) + xs[i];
+
+  ellipse(cx: number, cy: number, rx: number, ry: number, m: Mat, layer: number, rot = 0) {
+    const c = Math.cos(-rot);
+    const s = Math.sin(-rot);
+    const r = Math.max(rx, ry);
+    this.add(
+      (x, y) => {
+        const dx = x - cx;
+        const dy = y - cy;
+        const u = dx * c - dy * s;
+        const v = dx * s + dy * c;
+        return (u * u) / (rx * rx) + (v * v) / (ry * ry) <= 1;
+      },
+      m,
+      layer,
+      cx - r,
+      cy - r,
+      cx + r,
+      cy + r,
+    );
+  }
+
+  capsule(a: V, b: V, ra: number, rb: number, m: Mat, layer: number) {
+    const [ax, ay] = a;
+    const [bx, by] = b;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const L2 = dx * dx + dy * dy || 1;
+    const r = Math.max(ra, rb);
+    this.add(
+      (x, y) => {
+        let t = ((x - ax) * dx + (y - ay) * dy) / L2;
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        const px = ax + dx * t - x;
+        const py = ay + dy * t - y;
+        const rr = ra + (rb - ra) * t;
+        return px * px + py * py <= rr * rr;
+      },
+      m,
+      layer,
+      Math.min(ax, bx) - r,
+      Math.min(ay, by) - r,
+      Math.max(ax, bx) + r,
+      Math.max(ay, by) + r,
+    );
+  }
+
+  /** Polygon with a per-row crossing cache. */
+  poly(pts: V[], m: Mat, layer: number) {
+    const n = pts.length;
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const [x, y] of pts) {
+      if (x < x0) x0 = x;
+      if (y < y0) y0 = y;
+      if (x > x1) x1 = x;
+      if (y > y1) y1 = y;
+    }
+    const cross = new Float64Array(n);
+    let nc = 0;
+    let rowY = NaN;
+    this.add(
+      (x, y) => {
+        if (y !== rowY) {
+          rowY = y;
+          nc = 0;
+          for (let i = 0, k = n - 1; i < n; k = i++) {
+            const yi = pts[i][1];
+            const yk = pts[k][1];
+            if (yi > y !== yk > y) cross[nc++] = ((pts[k][0] - pts[i][0]) * (y - yi)) / (yk - yi) + pts[i][0];
+          }
+        }
+        let inside = false;
+        for (let i = 0; i < nc; i++) if (x < cross[i]) inside = !inside;
+        return inside;
+      },
+      m,
+      layer,
+      x0,
+      y0,
+      x1,
+      y1,
+    );
+  }
+
+  /** Seam: darkest band where lit, ink where already in shadow. */
+  seam(mask: Mask, only: Mat) {
+    const om = this.mi.get(only);
+    if (om === undefined) return;
+    for (let o = 0; o < this.n; o++) {
+      if (this.mat[o] !== om) continue;
+      if (mask((o % FW) + 0.5, ((o / FW) | 0) + 0.5)) this.v[o] = this.v[o] * only.ramp.length < 1.05 ? -9 : -1;
+    }
+  }
+
+  /** Shift the lighting of existing pixels (bands, ribs, folds). */
+  tone(mask: Mask, dv: number, only?: Mat) {
+    const om = only ? this.mi.get(only) : undefined;
+    if (only && om === undefined) return;
+    for (let o = 0; o < this.n; o++) {
+      if (this.mat[o] < 0 || (om !== undefined && this.mat[o] !== om)) continue;
+      if (mask((o % FW) + 0.5, ((o / FW) | 0) + 0.5)) this.v[o] += dv;
+    }
+  }
+
+  render(): PixelCanvas {
+    const pc = new PixelCanvas(FW, FH);
+    const D = pc.data;
+    const put = (o: number, c: [number, number, number]) => {
+      D[o * 4] = c[0];
+      D[o * 4 + 1] = c[1];
+      D[o * 4 + 2] = c[2];
+      D[o * 4 + 3] = 255;
+    };
+    const { mat, part, z, v } = this;
+    for (let o = 0; o < this.n; o++) {
+      const mi = mat[o];
+      if (mi < 0) continue;
+      const m = this.mats[mi];
+      let val = v[o];
+      // Contact shadow under a nearer part
+      for (const up of [FW, FW * 2]) {
+        const a = o - up;
+        if (a >= 0 && mat[a] >= 0 && part[a] !== part[o] && z[a] > z[o] + 400) {
+          val -= up === FW ? 0.3 : 0.15;
+          break;
         }
       }
-      let inside = false;
-      for (let i = 0; i < nc; i++) if (x < cross[i]) inside = !inside;
-      return inside;
-    },
-    m,
-    layer,
-    [x0, y0, x1, y1],
-  );
-}
-
-/**
- * Hero pose: the rig pose plus secondary-motion and effect controls.
- * - wind: cloak stream (0 hanging, 1 flat behind, 2 billowing up-behind, <0 swung forward)
- * - smear: previous front-arm angle; draws a motion smear from there to the current arm
- * - streak: dash speed lines behind the body (0..1)
- */
-export interface HeroPose extends Pose {
-  wind?: number;
-  smear?: number;
-  streak?: number;
-}
-
-interface HeroOpts {
-  look: CitizenLook;
-  pose: HeroPose;
-  hurt?: boolean;
-}
-
-type V = [number, number];
-const lerp2 = (a: V, b: V, t: number): V => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-const seg = (p: V, ang: number, len: number): V => [p[0] + Math.sin(ang) * len, p[1] + Math.cos(ang) * len];
-
-/** Draw one frame of the Severed. Returns the canvas and the front hand position. */
-export function drawHero(o: HeroOpts): { pc: PixelCanvas; hand: [number, number] } {
-  const f = new Rec();
-  const { look, pose } = o;
-  const j = solve(pose, PR);
-  const pal = heroPalette(look);
-  const { robe, cloak, hood, hoodIn, under, underBack, hair, trim, tabard } = pal;
-  const wave = Math.sin(pose.t * Math.PI * 2);
-  const wave2 = Math.cos(pose.t * Math.PI * 2);
-  const wind = pose.wind ?? 0.15;
-
-  const [sx, sy] = j.shoulder;
-  const [hx, hy] = j.hip;
-  const [nx, ny] = j.neck;
-  // Body-space offsets: ox along "forward", oy along "down the spine"
-  const cl = Math.cos(pose.lean);
-  const sl = Math.sin(pose.lean);
-  const T = (ox: number, oy: number): V => [sx + cl * ox - sl * oy, sy + sl * ox + cl * oy];
-  const ha = pose.lean + pose.head * 0.6;
-  const ch = Math.cos(ha);
-  const shh = Math.sin(ha);
-  const hdx = j.head[0] + 0.5;
-  const hdy = j.head[1] - 1;
-  const H = (ox: number, oy: number): V => [hdx + ch * ox - shh * oy, hdy + shh * ox + ch * oy];
-  const floor = (p: V): V => (p[1] > FOOT_Y - 1 ? [p[0] - (p[1] - FOOT_Y + 1) * 0.8, FOOT_Y - 1] : p);
-
-  // --- Dash speed lines --------------------------------------------------------
-  if (pose.streak) {
-    for (let i = 0; i < 4; i++) {
-      const y = hy - 14 + i * 6 + hash2(i, 1, 3) * 3;
-      const x1 = hx - 12 - hash2(i, 2, 3) * 6;
-      const len = (14 + hash2(i, 3, 3) * 16) * pose.streak;
-      f.capsule(x1 - len, y, x1, y, 0.4, 0.7, STREAK, 0.3);
+      if (val < -5) {
+        put(o, INK);
+        continue;
+      }
+      const r = m.ramp;
+      const k = Math.max(0, Math.min(r.length - 1, Math.floor(val * r.length)));
+      put(o, r[k]);
     }
-  }
-
-  // --- Crimson cloak streaming behind, tattered and blood-heavy at the hem -----
-  const theta0 = 0.08 + wind * 1.3 + Math.max(0, pose.lean - 0.6) * 0.7 + wave2 * 0.04;
-  const bend = -0.35 * Math.min(1, Math.max(0, wind));
-  const cLen = 40 + Math.min(1, Math.abs(wind)) * 6 - Math.max(0, wind - 1) * 12;
-  const amp = 1.0 + Math.min(1.5, Math.abs(wind)) * 1.6;
-  const c0 = T(-5.5, -2.5);
-  const back: V[] = [];
-  const front: V[] = [];
-  const N = 9;
-  let cx = c0[0];
-  let cy = c0[1];
-  for (let i = 0; i <= N; i++) {
-    const t = i / N;
-    const th = theta0 + bend * t;
-    if (i > 0) {
-      cx += -Math.sin(th) * (cLen / N);
-      cy += Math.cos(th) * (cLen / N);
+    // Inner lines where a part sits well in front of another
+    for (let o = 0; o < this.n; o++) {
+      if (mat[o] < 0) continue;
+      const x = o % FW;
+      for (const q of [x < FW - 1 ? o + 1 : -1, x > 0 ? o - 1 : -1, o + FW, o - FW]) {
+        if (q < 0 || q >= this.n || mat[q] < 0 || part[q] === part[o]) continue;
+        if (z[q] > z[o] + 450) {
+          put(o, this.mats[mat[o]].line);
+          break;
+        }
+      }
     }
-    const ripple = Math.sin(t * 5.5 - pose.t * Math.PI * 2) * amp * t;
-    const bx = cx + Math.cos(th) * ripple;
-    const by = cy + Math.sin(th) * ripple;
-    const w = 6.5 + t * 11;
-    back.push(floor([bx, by]));
-    front.push(floor([bx + Math.cos(th) * w, by + Math.sin(th) * w * (wind > 0.5 ? 1 : 0.45)]));
-  }
-  const bb = back[N];
-  const fb = front[N];
-  const thE = theta0 + bend;
-  const hem: V[] = [];
-  const TEETH = 9;
-  for (let i = 1; i < TEETH; i++) {
-    const t = i / TEETH;
-    const deep = (i % 2 ? 5.5 : 0.5) + hash2(i, 5, 17) * 3.5 + Math.sin(pose.t * 6.28 + i) * 0.8;
-    hem.push(floor([bb[0] + (fb[0] - bb[0]) * t - Math.sin(thE) * deep, bb[1] + (fb[1] - bb[1]) * t + Math.cos(thE) * deep]));
-  }
-  // The cloak's near side wraps the back of the body, leaving the armour at the front
-  fillPoly(f, [...back, ...hem, ...front.slice().reverse().slice(0, N - 2), T(-3, PR.torso + 4), T(-2.5, PR.torso - 3), T(-1, 3), T(0, -2)], cloak, 4.7);
-  const hemX0 = Math.min(bb[0], fb[0]) - 6;
-  const hemX1 = Math.max(bb[0], fb[0]) + 6;
-  const cloakHemY = (x: number) => bb[1] + (fb[1] - bb[1]) * Math.max(0, Math.min(1, (x - bb[0]) / (fb[0] - bb[0] || 1)));
-
-  // --- Back arm: dark sleeve, blackened vambrace and gauntlet --------------------
-  f.capsule(sx, sy, j.elbowB[0], j.elbowB[1], 2.9, 2.3, underBack, 1);
-  const wB = lerp2(j.elbowB, j.handB, 0.82);
-  f.capsule(j.elbowB[0], j.elbowB[1], wB[0], wB[1], 2.3, 2.1, STEEL_BACK, 1.25);
-  f.ellipse(j.handB[0], j.handB[1], 2.3, 2.5, STEEL_BACK, 1.5);
-
-  // --- Legs live under the robe: armoured shins and pointed sabatons ----------
-  const leg = (knee: V, foot: V, limb: Limb, back: boolean, layer: number) => {
-    const shinA = limb.a - limb.b;
-    const grounded = foot[1] >= FOOT_Y - 4;
-    const toeDown = grounded ? 0 : Math.max(-0.4, Math.min(1.25, -shinA * 0.8 + 0.15));
-    const m = back ? STEEL_BACK : STEEL;
-    const thigh = lerp2(knee, j.hip, 0.15);
-    f.capsule(thigh[0], thigh[1], knee[0], knee[1], 3.4, 3.0, back ? underBack : under, layer - 0.3);
-    const ankle = lerp2(knee, foot, 0.92);
-    f.capsule(knee[0], knee[1], ankle[0], ankle[1], 3.0, 2.3, m, layer);
-    // Knee cop with a short spike
-    f.ellipse(knee[0] + Math.cos(limb.a) * 1.2, knee[1] - Math.sin(limb.a) * 0.6, 2.7, 2.5, m, layer + 0.3);
-    // Sabaton: heel to pointed toe, following the foot's angle in the air
-    const tx = Math.cos(toeDown);
-    const ty = Math.sin(toeDown);
-    f.capsule(foot[0] - tx * 1.5, foot[1] - ty * 1.5 + 0.3, foot[0] + tx * 6, foot[1] + ty * 6 + 0.9, 2.3, 1.1, m, layer + 0.25);
-  };
-  leg(j.kneeB, j.footB, pose.legB, true, 2);
-  leg(j.kneeF, j.footF, pose.legF, false, 3);
-
-  // --- Dark under-robe, hem below the knee ----------------------------------------
-  const kneeMidX = (j.kneeF[0] + j.kneeB[0]) / 2;
-  const kneeY = Math.max(j.kneeF[1], j.kneeB[1]);
-  const hemY = Math.max(kneeY + 4, Math.min(kneeY + 9, Math.max(j.footF[1], j.footB[1]) - 9));
-  const sway = wave * 2 - wind * 2.5;
-  const rf = Math.max(j.kneeF[0], j.kneeB[0]) + 4;
-  const rb = Math.min(j.kneeF[0], j.kneeB[0], j.kneeB[0] + (j.footB[0] - j.kneeB[0]) * 0.4) - 6 + sway;
-  const rhem: V[] = [];
-  const RT = 8;
-  for (let i = 0; i <= RT; i++) {
-    const t = i / RT;
-    rhem.push([rf + (rb - rf) * t, hemY + (hash2(i, 3, 11) - 0.3) * 5 + (i % 2) * 2.5 - (t * 2 - 1) * 1.5]);
-  }
-  fillPoly(f, [T(5.5, 13), [hx + 6, hy - 3], [Math.max(hx + 7, kneeMidX + 2.5), hy + 7], ...rhem, [Math.min(hx - 7, rb + 1), hy + 5], [hx - 6.5, hy - 5], T(-6, 13)], under, 4);
-
-  // --- Crimson tabard hanging from the belt, between the legs --------------------
-  {
-    const botX = hx + 3 + (j.kneeF[0] - hx) * 0.45 + sway * 0.4;
-    const by = hemY + 3;
-    fillPoly(f, [T(0.5, 19.5), T(6.3, 19.8), [botX + 3.4, by - 1], [botX + 1.6, by + 2.5], [botX - 0.3, by - 0.5], [botX - 2.2, by + 3], [botX - 3.2, by]], tabard, 4.2);
-  }
-
-  // --- Faulds: two steel lames over the hips -------------------------------------
-  fillPoly(f, [T(-5.4, 21.6), T(7.0, 22), T(7.6, 25.6), T(-5.8, 25.0)], PLATE, 4.35);
-  fillPoly(f, [T(-5.8, 19.2), T(6.6, 19.6), T(7.2, 22.6), T(-6.2, 22.2)], PLATE, 4.55);
-
-  // --- Breastplate -----------------------------------------------------------------
-  fillPoly(f, [T(-4.5, 0), T(2.5, -0.5), T(5.6, 3), T(6.7, 8), T(6.1, 13), T(4.6, 17.5), T(-4.6, 18.2), T(-5.9, 10)], PLATE, 5);
-  // Plackart lip, riveted
-  f.capsule(...T(-4.6, 14), ...T(5.4, 14.4), 1.2, 1.2, PLATE, 5.25);
-
-  // --- Belt with buckle, a dangling rosary and reliquary ----------------------
-  f.capsule(...T(-5.8, 19.2), ...T(6.4, 19.6), 1.6, 1.6, LEATHER, 5.45);
-  {
-    const [bx, by] = T(4.4, 19.4);
-    f.ellipse(bx, by, 1.6, 1.8, trim, 5.65);
-    for (let i = 0; i < 3; i++) {
-      const t = (i + 1) / 4;
-      const px = bx - 1 + t * 2 + sway * 0.5 * t;
-      const py = by + 1 + Math.sin(t * Math.PI) * 5 + t * 3;
-      f.ellipse(px, py, 0.9, 0.9, i % 2 ? trim : OLD_BONE, 5.6);
+    // Outer outline: ink, softened to the material's own dark on the lit (upper-left) side
+    const marks: [number, [number, number, number]][] = [];
+    for (let o = 0; o < this.n; o++) {
+      if (mat[o] >= 0) continue;
+      const x = o % FW;
+      const r = x < FW - 1 ? o + 1 : -1;
+      const l = x > 0 ? o - 1 : -1;
+      const dn = o + FW < this.n ? o + FW : -1;
+      const up = o - FW;
+      const has = (q: number) => q >= 0 && mat[q] >= 0;
+      if (!(has(r) || has(l) || has(dn) || has(up))) continue;
+      const lit = (has(r) || has(dn)) && !has(l) && !has(up);
+      const q = has(r) ? r : has(dn) ? dn : has(l) ? l : up;
+      const m = this.mats[mat[q]];
+      marks.push([o, lit && m.line !== INK ? m.line : lit ? m.ramp[0] : INK]);
     }
-    const rx = bx + 0.8 + sway * 0.5;
-    const ry = by + 10;
-    f.capsule(rx, ry - 1.5, rx, ry + 3.5, 0.7, 0.7, trim, 5.62);
-    f.capsule(rx - 1.6, ry, rx + 1.6, ry, 0.7, 0.7, trim, 5.62);
+    for (const [o, c] of marks) put(o, c);
+    return pc;
   }
-  // Leather baldric across the plate
-  f.capsule(...T(5, 1.5), ...T(-5, 17), 1.1, 1.1, LEATHER, 5.35);
-
-  if (look.maw) {
-    const [mx, my] = T(3.5, 10);
-    f.ellipse(mx, my, 3.2, 4.2, { ramp: ['#120204', '#3a0610', '#7a1020', '#b8302a', '#c8e05a', '#f0ff9a'], round: -1 }, 5.7);
-    f.ellipse(mx, my, 1.3, 2.2, { ramp: ['#000000', '#1a0306'], round: 0 }, 5.8);
-    for (let i = 0; i < 5; i++) f.ellipse(mx - 2.6 + i * 1.3, my - 3.4 + (i % 2) * 6.8, 0.6, 0.9, { ramp: ['#5f4e35', '#cdb889', '#efe3bf'] }, 5.85);
-  }
-
-  // --- Shoulder mantle: crimson capelet with a ragged edge ----------------------
-  const mHem: V[] = [];
-  const MT = 7;
-  for (let i = 0; i <= MT; i++) {
-    const t = i / MT;
-    mHem.push(T(5.5 - t * 13 - wind * t * 2, 3.5 + (i % 2 ? 2.4 : 0) + hash2(i, 7, 23) * 1.5 + t * 2.5 - wave * t));
-  }
-  fillPoly(f, [T(3, -4), T(5.6, -0.5), ...mHem, T(-7.5, 0), T(-5, -4.5)], robe, 5.9);
-
-  // --- Hooded head ------------------------------------------------------------------
-  // Cowl drape over the neck
-  fillPoly(f, [H(-6.5, 1), H(3, 4.5), [nx + 4, ny + 3], T(4, -1), T(-6, -1)], hood, 7.4);
-  // The cowl's point: stiff, swept up and back, raked further by speed
-  const sw = Math.max(-0.4, Math.min(1.1, wind)) + wave * 0.12;
-  // At speed the point trails in world space instead of following the head's pitch
-  const hp = ha * (1 - 0.85 * Math.max(0, Math.min(1, wind)));
-  const Hp = (ox: number, oy: number): V => [hdx + Math.cos(hp) * ox - Math.sin(hp) * oy, hdy + Math.sin(hp) * ox + Math.cos(hp) * oy];
-  fillPoly(
-    f,
-    [H(-6.5, -1.5), H(-6.6, -5.6), Hp(-8.2 - sw * 1.4, -10.4 + sw * 1.1), Hp(-11.5 - sw * 3.2, -17 + sw * 4.2), Hp(-5.0 - sw * 1.2, -12 + sw * 1.0), H(-1.0, -7.4), H(1.5, -6.4)],
-    hood,
-    7.55,
-  );
-  // Hood shell
-  f.ellipse(...H(-0.8, -0.6), 6.4, 6.8, hood, 7.6, ha);
-  // Shadowed interior of the cowl
-  {
-    const [ix, iy] = H(3.4, 1);
-    f.stain((x, y) => ((x - ix) / 4.6) ** 2 + ((y - iy) / 6.4) ** 2 < 1, hoodIn, [hood]);
-  }
-  const hs = look.hairStyle;
-  if (hs === 1) fillPoly(f, [H(-0.5, 2), H(2, 3.5), H(1.5, 9.5 + wave), H(-1.5, 8)], hair, 7.7);
-  // Chin, lost in shadow below the mask
-  f.ellipse(...H(3.4, 4.4), 2.0, 1.5, pal.skinShade, 7.75);
-  // Blind iron mask: a glint of an eye through the slit, a weeping streak
-  const [fx, fy] = H(3.7, 0.9);
-  f.ellipse(fx, fy, 2.6, 3.9, MASK, 7.8, ha);
-  f.ellipse(...H(5.6, 0.6), 0.9, 2.2, MASK, 7.82, ha);
-  {
-    const [ex, ey] = H(4.7, -0.7);
-    f.capsule(ex - 1, ey, ex + 0.6, ey, 0.5, 0.5, EYE_GLINT, 7.84);
-    const [bx, by] = H(4.3, 1.2);
-    f.capsule(bx, by, bx - shh * 3.5, by + ch * 3.5, 0.45, 0.35, BLOOD, 7.84);
-  }
-  if (hs === 0 || hs === 3) f.ellipse(...H(1.6, -3.4), 1.8, 1.1, hair, 7.88, ha);
-  // Brim of the hood overhanging the brow
-  f.capsule(...H(-0.5, -6.4), ...H(5.6, -3.6), 1.8, 1.4, hood, 7.9);
-  // --- Front arm: sleeve, spiked pauldron, vambrace, gauntlet -------------------------
-  f.capsule(sx, sy, j.elbowF[0], j.elbowF[1], 3.4, 2.8, under, 7.95);
-  {
-    const phi = pose.armF.a * 0.4 + pose.lean * 0.5;
-    const ux = Math.sin(phi);
-    const uy = Math.cos(phi);
-    const P = (a: number, d: number): V => [sx + 0.6 + ux * (d + 2.4) + uy * a, sy + uy * (d + 2.4) - ux * a];
-        // Spikes first, so their roots sink into the dome
-    const spikes: [number, number, number][] = [
-      [-2.8, -0.8, 3.6],
-      [-0.4, -0.4, 4.8],
-      [2.0, -0.05, 3.2],
-    ];
-    for (const [a, tilt, len] of spikes) {
-      const base = P(a, -2.6);
-      const ang = phi + Math.PI + tilt; // pointing up out of the dome, raked back
-      const tip = seg(base, ang, len);
-      const px = Math.cos(ang) * 1.3;
-      const py = -Math.sin(ang) * 1.3;
-      fillPoly(f, [[base[0] - px, base[1] - py], tip, [base[0] + px, base[1] + py]], STEEL, 8.3);
-    }
-    const plate = (pts: V[], layer: number) => fillPoly(f, pts.map(([a, d]) => P(a, d)), PLATE, layer);
-    plate([[-4.4, 4.4], [4.6, 4.4], [4.0, 7.2], [0.2, 8.0], [-3.8, 7.0]], 8.0);
-    plate([[-5.2, 1.8], [5.4, 1.8], [5.0, 4.9], [0.2, 5.7], [-4.8, 4.8]], 8.2);
-    const dome: V[] = [];
-    for (let i = 0; i <= 6; i++) {
-      const t = (i / 6) * Math.PI;
-      dome.push([-Math.cos(t) * 5.8, 1.4 - Math.sin(t) * 4.4]);
-    }
-    plate([...dome, [4.8, 2.8], [0.2, 3.4], [-4.8, 2.8]], 8.4);
-    // Rivets
-    for (const [a, d] of [
-      [-3.4, 0.8],
-      [3.4, 0.8],
-    ] as V[])
-      f.ellipse(...P(a, d), 0.65, 0.65, trim, 8.6);
-  }
-  // Motion smear: a crescent trailing the gauntlet along its arc
-  if (pose.smear !== undefined && Math.abs(pose.smear - pose.armF.a) > 0.2) {
-    const outer: V[] = [];
-    const inner: V[] = [];
-    const S = 8;
-    for (let i = 0; i <= S; i++) {
-      const k = i / S;
-      const a = pose.smear + (pose.armF.a - pose.smear) * k;
-      const e = seg(j.shoulder, a, PR.upperArm);
-      const hnd = seg(e, a + pose.armF.b, PR.foreArm + 2.5);
-      outer.push(hnd);
-      // thin at the tail, full width at the hand
-      inner.push(lerp2(hnd, j.shoulder, 0.08 + 0.42 * k * k));
-    }
-    fillPoly(f, [...outer, ...inner.reverse()], SMEAR, 8.75);
-  }
-  {
-    const wF = lerp2(j.elbowF, j.handF, 0.8);
-    const fa = Math.atan2(j.handF[0] - j.elbowF[0], j.handF[1] - j.elbowF[1]);
-    // Couter
-    f.ellipse(j.elbowF[0], j.elbowF[1], 2.6, 2.6, STEEL, 9.22);
-    f.capsule(j.elbowF[0], j.elbowF[1], wF[0], wF[1], 2.9, 2.6, STEEL, 9.0);
-    // Leather straps on the vambrace
-    for (const t of [0.45]) {
-      const [qx, qy] = lerp2(j.elbowF, j.handF, t);
-      const ex = Math.sin(fa);
-      const ey = Math.cos(fa);
-      f.capsule(qx - ey * 2.9, qy + ex * 2.9, qx + ey * 2.9, qy - ex * 2.9, 0.75, 0.75, LEATHER, 9.25);
-    }
-    // Chain links hanging from the bracer
-    const [cx0, cy0] = lerp2(j.elbowF, j.handF, 0.5);
-    for (let k = 0; k < 2; k++) {
-      const swing = Math.sin(pose.t * Math.PI * 2 + k) * 0.5 * k - wind * 0.9 * k;
-      f.ellipse(cx0 + swing, cy0 + 2.6 + k * 2, k % 2 ? 0.7 : 1.1, k % 2 ? 1.2 : 0.9, IRON, 9.3 + k * 0.01);
-    }
-    // Gauntlet: flared cuff, plated hand
-    f.ellipse(wF[0], wF[1], 3.0, 3.0, STEEL, 9.45, -fa);
-    f.ellipse(j.handF[0], j.handF[1], 2.7, 3.0, STEEL, 9.7, -fa);
-    // The shackle that holds the Tether
-    const [wx, wy] = lerp2(j.elbowF, j.handF, 0.74);
-    f.ellipse(wx, wy, 3.1, 3.1, IRON, 9.9);
-    f.ellipse(wx, wy, 1.3, 1.3, RUST, 9.95);
-  }
-  if (look.helix) {
-    const [hxx, hyy] = lerp2(j.elbowF, j.handF, 0.38);
-    f.ellipse(hxx, hyy - 1, 3.2, 4.0, { ramp: ['#2a0a10', '#6a2030', '#a8505a', '#d8908a', '#f2c0b0'], spec: 0.5 }, 10);
-    f.ellipse(hxx + 0.5, hyy - 0.8, 1.4, 2.1, { ramp: ['#0b0507', '#3a0a12'], round: 0 }, 10.1);
-  }
-
-  // --- Gore ----------------------------------------------------------------------
-  f.stain((x, y) => {
-    const n = valueNoise(x, y, 2.5, 21);
-    if (y > hemY - 6 + n * 6) return true; // robe hem soaked
-    if (n > 0.82) return true; // old spatter, dried on cloth and steel
-    if (x < hemX0 || x > hemX1) return false;
-    const d = y - cloakHemY(x);
-    return d > -9 + valueNoise(x, 0, 2, 5) * 7 && d < 10; // cloak hem dragged through blood
-  }, OLD_BLOOD, [under, cloak, tabard, PLATE]);
-  const [gx, gy] = j.handF;
-  f.stain(
-    (x, y) => y > hemY - 1 + valueNoise(x, 1, 2, 6) * 3 || valueNoise(x, y, 1.6, 33) > 0.93 || ((x - gx) ** 2 + (y - gy) ** 2 < 8 && hash2(x | 0, y | 0, 4) < 0.5),
-    BLOOD,
-    [under, robe, hood, tabard],
-  );
-  if (o.hurt) f.stain((x, y) => valueNoise(x, y, 2, 40) > 0.6, BLOOD);
-
-  const pc = f.render({ ...KEY_LIGHT, ambient: 0.1, rim: 0.75 });
-  return { pc, hand: [Math.round(j.handF[0]), Math.round(j.handF[1])] };
 }
 
 // ---------------------------------------------------------------------------
 // Poses
 // ---------------------------------------------------------------------------
 
-const HX = 52;
-const HY = FOOT_Y - 30;
+/**
+ * Hero pose: the rig pose plus the gun and the cloth.
+ * - aim: cannon direction in rig angles (0 down, PI/2 forward, PI up). When
+ *   set, the front arm is solved to hold the cannon on that line.
+ * - brace: the back hand supports the cannon from below.
+ * - cloak: cloak direction (0 hangs, PI/2 streams flat behind, more lifts it)
+ * - flap: ripple amplitude; streak: dash speed lines (0..1)
+ */
+export interface HeroPose extends Pose {
+  aim?: number;
+  brace?: boolean;
+  cloak?: number;
+  flap?: number;
+  streak?: number;
+}
+
+const PI = Math.PI;
+const FWD = PI / 2;
+const DUP = (3 * PI) / 4;
+const DDN = PI / 4;
+const UP = PI;
+const DOWN = 0;
+
+/** Upper-arm angle that holds the cannon on a given aim. */
+function upperFor(aim: number) {
+  const ys = [0.55, 0.3, 0.6, 1.2, 1.75];
+  const t = Math.max(0, Math.min(3.999, (aim / PI) * 4));
+  const i = Math.floor(t);
+  return ys[i] + (ys[i + 1] - ys[i]) * (t - i);
+}
+
+const lerp2 = (a: V, b: V, t: number): V => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+const seg = (p: V, ang: number, len: number): V => [p[0] + Math.sin(ang) * len, p[1] + Math.cos(ang) * len];
+
+/** Two-bone IK in rig angles; the elbow bends below the reach line. */
+function ik(s: V, t: V, l1: number, l2: number): Limb {
+  const dx = t[0] - s[0];
+  const dy = t[1] - s[1];
+  const D = Math.max(0.01, Math.min(l1 + l2 - 0.01, Math.hypot(dx, dy)));
+  const phi = Math.atan2(dx, dy);
+  const al = Math.acos(Math.max(-1, Math.min(1, (l1 * l1 + D * D - l2 * l2) / (2 * l1 * D))));
+  const a = phi - al;
+  const e = seg(s, a, l1);
+  const b = Math.atan2(s[0] + dx - e[0], s[1] + dy - e[1]) - a;
+  return { a, b };
+}
+
+const HX = 29;
+const HY = FOOT_Y - 20;
+
 export const STAND: HeroPose = {
   x: HX,
   y: HY,
-  lean: 0.06,
-  head: 0.06,
-  armF: { a: 0.22, b: 0.5 },
-  armB: { a: -0.14, b: 0.35 },
-  legF: { a: 0.2, b: 0.12 },
-  legB: { a: -0.16, b: 0.12 },
+  lean: 0.05,
+  head: 0.05,
+  armF: { a: 0.55, b: 1.0 },
+  armB: { a: -0.1, b: 0.3 },
+  legF: { a: 0.3, b: 0.2 },
+  legB: { a: -0.24, b: 0.12 },
   t: 0,
-  wind: 0.1,
+  aim: FWD,
+  brace: true,
+  cloak: 0.3,
+  flap: 0.5,
 };
 
 type PP = Partial<Omit<HeroPose, 'armF' | 'armB' | 'legF' | 'legB'>> & { armF?: [number, number]; armB?: [number, number]; legF?: [number, number]; legB?: [number, number] };
@@ -620,287 +536,442 @@ function P(o: PP): HeroPose {
 /** Plant the lowest point of the body on the floor (then lift by `air`). */
 function ground(p: HeroPose, air = 0): HeroPose {
   const j: Joints = solve(p, PR);
-  const low = Math.max(j.footF[1] + 2.4, j.footB[1] + 2.4, j.kneeF[1] + 2.8, j.kneeB[1] + 2.8, j.hip[1] + 5, j.shoulder[1] + 5, j.head[1] + 6);
-  return { ...p, y: p.y + (FOOT_Y + 0.4 - low) - air };
+  const low = Math.max(j.footF[1] + 1.7, j.footB[1] + 1.7, j.kneeF[1] + 2, j.kneeB[1] + 2, j.hip[1] + 3, j.shoulder[1] + 3.5, j.neck[1] + 7);
+  return { ...p, y: p.y + (FOOT_Y - low) - air };
 }
+
+// ---------------------------------------------------------------------------
+// Drawing
+// ---------------------------------------------------------------------------
+
+interface Drawn {
+  pc: PixelCanvas;
+  hand: [number, number];
+  muzzle: [number, number, number];
+}
+
+/** Draw one frame of the Severed. */
+export function drawHero(o: { look: CitizenLook; pose: HeroPose; hurt?: boolean }): Drawn {
+  const { pose } = o;
+  const pal = palette(o.look);
+  const f = new Cel();
+  // The cannon arm holds its aim
+  let armF = pose.armF;
+  if (pose.aim !== undefined) {
+    const a = upperFor(pose.aim);
+    armF = { a, b: pose.aim - a };
+  }
+  const p: Pose = { ...pose, armF };
+  const j = solve(p, PR);
+  const ph = pose.t * PI * 2;
+
+  const [sx, sy] = j.shoulder;
+  const cl = Math.cos(pose.lean);
+  const sl = Math.sin(pose.lean);
+  /** Body space: ox forward, oy down the spine from the shoulder. */
+  const T = (ox: number, oy: number): V => [sx + cl * ox - sl * oy, sy + sl * ox + cl * oy];
+  const ha = pose.lean + pose.head;
+  const ch = Math.cos(ha);
+  const shh = Math.sin(ha);
+  const hc = seg(j.neck, PI - ha, 3.4);
+  const H = (ox: number, oy: number): V => [hc[0] + ch * ox - shh * oy, hc[1] + shh * ox + ch * oy];
+  const floorY = FOOT_Y - 1;
+  const floor = (q: V): V => (q[1] > floorY ? [q[0] - (q[1] - floorY) * 0.7, floorY] : q);
+
+  // --- Dash speed lines ------------------------------------------------------
+  if (pose.streak) {
+    for (let i = 0; i < 3; i++) {
+      const y = j.hip[1] - 9 + i * 5 + hash2(i, 1, 3) * 2;
+      const x1 = j.hip[0] - 14 - hash2(i, 2, 3) * 4;
+      const len = (8 + hash2(i, 3, 3) * 10) * pose.streak;
+      f.capsule([x1 - len, y], [x1, y], 0.3, 0.55, pal.cloak, 0.2);
+    }
+  }
+
+  // --- Cloak: from the back of the shoulders, tattered at the hem -------------
+  {
+    const ang = pose.cloak ?? 0.12;
+    const amp = pose.flap ?? 0.6;
+    const N = 8;
+    const L = 21 - Math.max(0, ang - 1.2) * 3;
+    const bend = ang > 1.3 ? -0.55 : ang > 0.4 ? -0.25 : 0.05;
+    let [cx, cy] = T(-3.6, -1.6);
+    const back: V[] = [];
+    const front: V[] = [];
+    for (let i = 0; i <= N; i++) {
+      const t = i / N;
+      const th = ang + bend * t;
+      if (i > 0) {
+        cx -= Math.sin(th) * (L / N);
+        cy += Math.cos(th) * (L / N);
+      }
+      const rip = Math.sin(t * 4.6 - ph) * amp * t;
+      const bx = cx + Math.cos(th) * rip;
+      const by = cy + Math.sin(th) * rip;
+      const w = 5.5 + t * 4.5;
+      back.push(floor([bx, by]));
+      front.push(floor([bx + Math.cos(th) * w, by + Math.sin(th) * w]));
+    }
+    const bb = back[N];
+    const fb = front[N];
+    const thE = ang + bend;
+    const hem: V[] = [];
+    const TEETH = 7;
+    for (let i = 1; i < TEETH; i++) {
+      const t = i / TEETH;
+      const deep = (i % 2 ? 3.4 : 0.2) + hash2(i, 5, 17) * 1.6 + Math.sin(ph + i) * 0.6;
+      hem.push(floor([bb[0] + (fb[0] - bb[0]) * t - Math.sin(thE) * deep, bb[1] + (fb[1] - bb[1]) * t + Math.cos(thE) * deep]));
+    }
+    f.poly([...back, ...hem, ...front.slice().reverse(), T(0, 8), T(0.5, -1)], pal.cloak, 1);
+    // A fold down the cloak
+    const fold = back.map((q, i) => lerp2(q, front[i], 0.5));
+    f.tone((x, y) => {
+      for (let i = 2; i < N; i++) {
+        const q = fold[i];
+        if (Math.abs(x - q[0]) < 0.7 && Math.abs(y - q[1]) < L / N / 1.6) return true;
+      }
+      return false;
+    }, -0.22, pal.cloak);
+  }
+
+  // --- Back arm --------------------------------------------------------------
+  const sB: V = [sx - 1.4, sy + 0.6];
+  let armB = pose.armB;
+  const dir: V = [Math.sin(armF.a + armF.b), Math.cos(armF.a + armF.b)];
+  const below: V = [-dir[1], dir[0]];
+  if (pose.brace) armB = ik(sB, [j.elbowF[0] + dir[0] * 3 + below[0] * 2.4, j.elbowF[1] + dir[1] * 3 + below[1] * 2.4], PR.upperArm, PR.foreArm);
+  const eB = seg(sB, armB.a, PR.upperArm);
+  const hB = seg(eB, armB.a + armB.b, PR.foreArm);
+  f.capsule(sB, eB, 1.7, 1.5, ROBE_BACK, 2);
+  f.capsule(eB, hB, 1.5, 1.4, STEEL_BACK, 2.1);
+  f.ellipse(hB[0], hB[1], 1.5, 1.5, STEEL_BACK, pose.brace ? 8.6 : 2.2);
+
+  // --- Legs: dark thighs, steel greaves, pointed sabatons ------------------------
+  const leg = (knee: V, foot: V, limb: Limb, back: boolean, layer: number) => {
+    const shinA = limb.a - limb.b;
+    const grounded = foot[1] >= FOOT_Y - 3;
+    const toe = grounded ? 0 : Math.max(-0.4, Math.min(1.2, -shinA * 0.8 + 0.2));
+    const m = back ? STEEL_BACK : STEEL;
+    f.capsule(lerp2(j.hip, knee, 0.1), knee, 2.4, 2.0, back ? ROBE_BACK : ROBE, layer);
+    f.capsule(knee, lerp2(knee, foot, 0.95), 1.9, 1.5, m, layer + 0.2);
+    f.ellipse(knee[0] + 0.5, knee[1] - 0.2, 1.8, 1.7, m, layer + 0.25);
+    const tx = Math.cos(toe);
+    const ty = Math.sin(toe);
+    f.capsule([foot[0] - tx * 1.2, foot[1] - ty * 1.2 + 0.3], [foot[0] + tx * 4.2, foot[1] + ty * 4.2 + 0.7], 1.5, 0.8, m, layer + 0.3);
+  };
+  leg(j.kneeB, j.footB, pose.legB, true, 3);
+
+  // --- Dark robe skirt over the thighs -----------------------------------------
+  const [hx, hy] = j.hip;
+  {
+    const kneeY = Math.max(j.kneeF[1], j.kneeB[1]);
+    const hemY = Math.min(kneeY - 1.5, hy + 6);
+    const front = Math.max(hx + 4, j.kneeF[0] - 1, j.kneeB[0] - 1);
+    const back = Math.min(hx - 4.5, j.kneeB[0] - 1.5, j.kneeF[0] - 1.5) + Math.sin(ph) * 0.6;
+    const pts: V[] = [T(4, 9.5), [hx + 4, hy], [front + 0.5, hemY - 1]];
+    const R = 4;
+    for (let i = 0; i <= R; i++) {
+      const t = i / R;
+      pts.push([front + (back - front) * t, hemY + (i % 2) * 2 + hash2(i, 3, 11) * 1.2 - t * 1.5]);
+    }
+    pts.push([back - 0.5, hy + 1], T(-4, 9));
+    f.poly(pts, ROBE, 4);
+  }
+  leg(j.kneeF, j.footF, pose.legF, false, 4.4);
+
+  // --- Torso: breastplate, crimson sash and tabard ------------------------------
+  f.poly([T(-3.4, -0.6), T(2.2, -1), T(4.2, 2), T(4.6, 5.5), T(3.6, 9.4), T(-3.4, 9.8), T(-4.2, 4.5)], PLATE, 6);
+  f.capsule(T(-3.8, 9.4), T(4.2, 9.6), 1.1, 1.1, pal.cloth, 6.3);
+  {
+    const kx = (j.kneeF[0] - hx) * 0.35 + Math.sin(ph) * 0.3;
+    const a = T(1.2, 10);
+    const b = T(4.4, 10.2);
+    const by = Math.min(j.kneeF[1], hy + 8) + 0.5;
+    f.poly([a, b, [b[0] + kx + 0.3, by - 0.5], [b[0] + kx - 1.2, by + 1.2], [a[0] + kx + 1, by - 0.2], [a[0] + kx, by + 1]], pal.cloth, 6.2);
+  }
+
+  // --- Mantle: crimson capelet with a ragged edge -------------------------------
+  {
+    const hem: V[] = [];
+    const MT = 4;
+    for (let i = 0; i <= MT; i++) {
+      const t = i / MT;
+      hem.push(T(3.4 - t * 8.6 - (pose.cloak ?? 0) * t * 1.2, 2.6 + (i % 2 ? 1.6 : 0) + t * 1.6 + Math.sin(ph + t * 3) * 0.3 * t));
+    }
+    f.poly([T(2, -2.6), T(3.8, 0), ...hem, T(-5.4, -0.5), T(-3.8, -2.8)], pal.cloth, 6.5);
+  }
+
+  // --- Head: cowl with its tall point, iron mask, ember eye -----------------------
+  {
+    const cloak = pose.cloak ?? 0;
+    const sw = Math.max(-0.3, Math.min(1.2, cloak * 0.7)) + Math.sin(ph) * 0.08;
+    // The point trails in world space at speed
+    const hp = (pose.lean + Math.max(0, pose.head) * 0.6) * (1 - 0.7 * Math.max(0, Math.min(1, cloak / 1.4)));
+    const Hp = (ox: number, oy: number): V => [hc[0] + Math.cos(hp) * ox - Math.sin(hp) * oy, hc[1] + Math.sin(hp) * ox + Math.cos(hp) * oy];
+    // drape over the neck
+    f.poly([H(-4, 1), H(2.4, 3.2), T(3, -0.8), T(-4, -0.6)], pal.cloth, 7);
+    f.poly([H(-3.6, -1), H(-4.2, -3.2), Hp(-5.4 - sw * 1.2, -6.4 + sw * 0.8), Hp(-7.6 - sw * 2.6, -10.4 + sw * 3.2), Hp(-3.2 - sw * 0.8, -7.6 + sw * 0.8), H(-0.4, -4.4), H(1.2, -3.8)], pal.cloth, 7.1);
+    f.ellipse(...H(-0.4, -0.2), 4.1, 4.3, pal.cloth, 7.2, ha);
+    // dark opening of the cowl
+    f.ellipse(...H(2.4, 0.6), 2.2, 2.9, VOID, 7.4, ha);
+    // iron mask and its ember slit
+    f.ellipse(...H(2.9, 0.9), 1.3, 2.3, STEEL, 7.5, ha);
+    f.capsule(H(2.6, -0.1), H(4.1, -0.1), 0.55, 0.55, pal.ember, 7.6);
+    // brim over the brow
+    f.capsule(H(-0.6, -3.6), H(3.4, -2.2), 1.2, 0.9, pal.cloth, 7.7);
+  }
+
+  // --- Front arm: spiked pauldron and the Tether Cannon ----------------------------
+  const e = j.elbowF;
+  const at = (t: number, n = 0): V => [e[0] + dir[0] * t + below[0] * n, e[1] + dir[1] * t + below[1] * n];
+  // Sleeve (mostly under the pauldron)
+  f.capsule(j.shoulder, e, 2.0, 1.8, ROBE, 7.8);
+  {
+    const phi = armF.a * 0.35 + pose.lean * 0.5;
+    const ux = Math.sin(phi);
+    const uy = Math.cos(phi);
+    const Q = (a: number, d: number): V => [sx + 0.4 + ux * d + uy * a, sy + 0.8 + uy * d - ux * a];
+    // spike, raked back
+    const sb = Q(-1, -2.4);
+    const sa = phi + PI + 0.5;
+    f.poly([[sb[0] - 1, sb[1]], seg(sb, sa, 3.4), [sb[0] + 1, sb[1] + 0.4]], STEEL, 8.1);
+    const dome: V[] = [];
+    for (let i = 0; i <= 6; i++) {
+      const t = (i / 6) * PI;
+      dome.push(Q(-Math.cos(t) * 3.9, 0.6 - Math.sin(t) * 3.2));
+    }
+    f.poly([...dome, Q(3.3, 2.4), Q(0, 3.1), Q(-3.3, 2.4)], STEEL, 8.2);
+    f.poly([Q(-3.1, 2.2), Q(3.3, 2.2), Q(2.8, 4.4), Q(0, 4.9), Q(-2.7, 4.2)], PLATE, 8.15);
+  }
+  // Cannon: iron housing over the forearm, ribbed bone barrel, banded, glowing core and muzzle
+  f.ellipse(e[0], e[1], 1.9, 1.9, STEEL, 9);
+  f.capsule(at(-0.4), at(3.2), 2.6, 2.5, STEEL, 9.1);
+  f.capsule(at(3), at(11.2), 2.4, 2.7, BONE, 9.2);
+  // ribs: dark vertebra seams across the bone
+  // vertebra ridges ringing the barrel
+  for (const t of [5.4, 9.6]) f.capsule(at(t, -2.75), at(t, 2.75), 0.75, 0.75, BONE, 9.7);
+  f.capsule(at(3.4, -2.4), at(3.4, 2.4), 0.7, 0.7, STEEL, 9.4);
+  // core: a crimson window glowing in the barrel
+  f.ellipse(...at(7.6, -0.4), 1.5, 1.3, pal.glow, 9.3, -Math.atan2(dir[1], dir[0]));
+  f.ellipse(...at(7.6, -0.7), 0.55, 0.5, pal.ember, 9.35);
+  // muzzle: iron collar, glowing mouth
+  f.capsule(at(11, -2.7), at(11, 2.7), 0.9, 0.9, STEEL, 9.4);
+  f.ellipse(...at(12.3), 1.1, 1.9, pal.glow, 9.5, -Math.atan2(dir[1], dir[0]));
+  f.ellipse(...at(12.6), 0.5, 0.9, pal.ember, 9.6, -Math.atan2(dir[1], dir[0]));
+
+  // Hurt: the steel flares hot for a frame
+  if (o.hurt) f.tone(() => true, 0.22, STEEL);
+
+  const pc = f.render();
+  snesFrame(pc);
+  const tip = at(CANNON);
+  const aim = armF.a + armF.b;
+  const r1 = (v: number) => Math.round(v * 2) / 2;
+  return {
+    pc,
+    hand: [Math.round(tip[0]), Math.round(tip[1])],
+    muzzle: [r1(tip[0]), r1(tip[1]), Math.round(Math.atan2(Math.cos(aim), Math.sin(aim)) * 1000) / 1000],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Animations
+// ---------------------------------------------------------------------------
 
 function idle(i: number, n: number): HeroPose {
-  const ph = (i / n) * Math.PI * 2;
-  const b = Math.sin(ph); // breath
-  const c = Math.cos(ph);
-  return ground(
-    P({
-      lean: 0.06 + b * 0.025,
-      head: 0.08 + b * 0.05,
-      armF: [0.22 + b * 0.05, 0.5 + b * 0.06],
-      armB: [-0.14 - b * 0.04, 0.35 + b * 0.05],
-      legF: [0.2, 0.12 + Math.max(0, -b) * 0.06],
-      legB: [-0.16, 0.12 + Math.max(0, -b) * 0.06],
-      wind: 0.12 + c * 0.08,
-      t: i / n,
-    }),
-  );
+  const b = Math.sin((i / n) * PI * 2); // breath
+  return ground(P({ lean: 0.05 + b * 0.02, head: 0.05 + b * 0.04, legF: [0.3, 0.2 + Math.max(0, -b) * 0.05], legB: [-0.24, 0.12 + Math.max(0, -b) * 0.05], cloak: 0.3 + b * 0.05, flap: 0.5, t: i / n }));
 }
 
-/** Run with contact, down, passing and up positions; body bob comes from planting the stance foot. */
-function run(i: number, n: number, crouch = 0): HeroPose {
+function aim(a: number, o: PP = {}): HeroPose {
+  return ground(P({ aim: a, brace: a > DDN && a < UP - 0.1, ...(a > DUP ? { head: -0.08, lean: -0.03 } : {}), ...o }));
+}
+
+/** Run: two strides per cycle; body bob comes from planting the stance foot. */
+function run(i: number, n: number, a: number): HeroPose {
   const ph = i / n;
-  const s = Math.sin(ph * Math.PI * 2);
-  const c = Math.cos(ph * Math.PI * 2);
-  const stride = crouch ? 0.5 : 0.78;
-  const lift = crouch ? 0.9 : 1.3;
-  // knee folds hardest while the leg swings through (thigh moving forward)
-  const knee = (cc: number, ss: number) => 0.22 + Math.max(0, cc) ** 0.8 * lift + Math.max(0, -ss) * 0.25;
+  const s = Math.sin(ph * PI * 2);
+  const c = Math.cos(ph * PI * 2);
+  const knee = (cc: number, ss: number) => 0.2 + Math.max(0, cc) ** 0.8 * 1.35 + Math.max(0, -ss) * 0.25;
   const p = P({
-    lean: (crouch ? 0.48 : 0.3) + Math.abs(c) * 0.03,
-    head: crouch ? 0.25 : 0.0 - Math.abs(c) * 0.03,
-    legF: [s * stride + 0.1, knee(c, s)],
-    legB: [-s * stride + 0.1, knee(-c, -s)],
-    armF: [crouch ? 0.3 - s * 0.15 : -0.35 - s * 0.3, crouch ? 0.65 : 0.45 + Math.max(0, s) * 0.3],
-    armB: [crouch ? -0.2 + s * 0.2 : -0.15 + s * 0.45, crouch ? 0.9 : 0.9 + s * 0.15],
-    wind: crouch ? 0.35 + c * 0.05 : 0.75 + Math.abs(s) * 0.1,
+    lean: 0.24 + Math.abs(c) * 0.03,
+    head: -0.08,
+    legF: [s * 0.8 + 0.12, knee(c, s)],
+    legB: [-s * 0.8 + 0.12, knee(-c, -s)],
+    aim: a,
+    brace: false,
+    armB: [-s * 0.85 + 0.15, 0.7 + Math.max(0, -s) * 0.5],
+    cloak: 0.95 + Math.abs(s) * 0.12,
+    flap: 1.1,
     t: ph * 2,
   });
-  // airborne just after each push-off
-  const air = crouch ? 0 : Math.max(0, Math.sin(ph * Math.PI * 4 - 0.9)) * 1.6;
+  const air = Math.max(0, Math.sin(ph * PI * 4 - 0.9)) * 1.3;
   return ground(p, air);
 }
 
+function crouch(a: number): HeroPose {
+  return ground(P({ lean: 0.22, head: 0.0, legF: [1.45, 2.1], legB: [0.3, 1.85], aim: a, brace: a < UP - 0.1, cloak: 0.2, t: 0.2 }));
+}
+
+const AIR_LEGS: PP = { legF: [1.15, 1.6], legB: [0.25, 1.4] };
+function air(a: number, o: PP = {}): HeroPose {
+  return P({ y: HY - 2, lean: 0.12, head: 0.0, ...AIR_LEGS, aim: a, brace: false, armB: [-0.6, 0.8], cloak: 1.2, flap: 1.0, t: 0.4, ...o });
+}
+
 const JUMP: HeroPose[] = [
-  // take-off: stretched long, back leg still pushing, arms thrown up
-  P({ y: HY - 2, lean: 0.12, head: -0.15, armF: [2.1, 0.3], armB: [-0.9, 0.3], legF: [0.55, 1.0], legB: [-0.45, 0.05], wind: -0.05, t: 0.1 }),
-  // rising: knees drawing up
-  P({ y: HY - 2, lean: 0.14, head: -0.08, armF: [1.5, 0.6], armB: [-0.4, 0.6], legF: [1.0, 1.6], legB: [-0.05, 0.9], wind: -0.02, t: 0.3 }),
-  P({ y: HY - 3, lean: 0.2, head: 0.0, armF: [1.0, 0.9], armB: [0.1, 0.9], legF: [1.25, 1.95], legB: [0.35, 1.6], wind: 0.15, t: 0.5 }),
-  // apex: tucked, cloak starting to float
-  P({ y: HY - 4, lean: 0.24, head: 0.08, armF: [0.8, 1.1], armB: [0.3, 1.0], legF: [1.35, 2.15], legB: [0.6, 1.95], wind: 0.55, t: 0.7 }),
+  // take-off: stretched long, back leg still pushing
+  P({ y: HY - 1, lean: 0.12, head: -0.12, legF: [0.6, 1.0], legB: [-0.45, 0.08], aim: FWD, brace: false, armB: [-0.9, 0.4], cloak: 0.05, flap: 0.4, t: 0.1 }),
+  // rising: knees drawing up, cloak dragged below
+  P({ y: HY - 2, lean: 0.14, head: -0.06, legF: [1.0, 1.6], legB: [0.0, 1.1], aim: FWD, brace: false, armB: [-0.6, 0.6], cloak: 0.25, flap: 0.6, t: 0.3 }),
+  // apex hold: tucked, cloak starting to float
+  P({ y: HY - 2, ...AIR_LEGS, lean: 0.14, aim: FWD, brace: false, armB: [-0.4, 0.8], cloak: 0.9, flap: 0.8, t: 0.6 }),
 ];
 
 function fall(i: number, n: number): HeroPose {
-  const s = Math.sin((i / n) * Math.PI * 2);
-  return P({
-    y: HY - 3,
-    lean: 0.0 + s * 0.02,
-    head: -0.12,
-    // arms flung up for balance, legs reaching for the ground
-    armF: [1.95 + s * 0.08, 0.55],
-    armB: [-1.7 - s * 0.08, 0.35],
-    legF: [0.55 + s * 0.04, 0.9],
-    legB: [-0.25 - s * 0.04, 0.35],
-    wind: 1.55 + s * 0.12,
-    t: i / n,
-  });
+  const s = Math.sin((i / n) * PI * 2 + 0.6);
+  return P({ y: HY - 2, lean: 0.04, head: -0.1, legF: [0.6 + s * 0.05, 0.9], legB: [-0.2 - s * 0.05, 0.45], aim: FWD, brace: false, armB: [-1.4 - s * 0.1, 0.4], cloak: 1.75 + s * 0.1, flap: 1.3, t: i / n });
 }
 
-// Attack phases. Arm angle `a`: 0 hangs down, +PI/2 points forward, PI points up.
-// The live chain swings from swing.from to swing.to (degrees, y down), so the
-// hand leads the arc: cocked at `from`, follows through past `to`.
-const A = (o: PP) => ground(P(o));
-/** Shared last recovery frame: back to guard, weight settling. */
-const SETTLE = A({ lean: 0.1, head: 0.06, armF: [0.25, 0.5], armB: [-0.16, 0.38], legF: [0.3, 0.18], legB: [-0.24, 0.14], wind: 0.15, t: 0.9 });
-const ATTACKS: Record<string, HeroPose[][]> = {
-  // a1: overhead diagonal lash (-110 -> 35)
-  a1: [
-    [
-      A({ lean: -0.04, head: 0.02, armF: [-1.4, 1.2], armB: [0.35, 1.3], legF: [0.42, 0.35], legB: [-0.32, 0.25], wind: 0.05, t: 0.1 }),
-      A({ lean: -0.18, head: -0.08, armF: [-2.45, 0.35], armB: [0.6, 1.3], legF: [0.5, 0.4], legB: [-0.42, 0.3], wind: -0.1, t: 0.2 }),
-    ],
-    [
-      A({ lean: 0.05, head: -0.05, armF: [3.1, -0.1], armB: [0.3, 0.6], legF: [0.62, 0.35], legB: [-0.5, 0.15], smear: 3.85, wind: 0.1, t: 0.3 }),
-      A({ lean: 0.24, head: 0.05, armF: [1.75, 0.05], armB: [-0.4, 0.5], legF: [0.75, 0.45], legB: [-0.62, 0.1], smear: 3.1, wind: 0.45, t: 0.4 }),
-      A({ lean: 0.36, head: 0.12, armF: [0.95, 0.15], armB: [-0.75, 0.4], legF: [0.82, 0.55], legB: [-0.66, 0.08], smear: 1.75, wind: 0.65, t: 0.5 }),
-    ],
-    [
-      A({ lean: 0.4, head: 0.15, armF: [0.6, 0.3], armB: [-0.8, 0.45], legF: [0.82, 0.6], legB: [-0.66, 0.1], wind: 0.6, t: 0.6 }),
-      A({ lean: 0.3, head: 0.12, armF: [0.45, 0.5], armB: [-0.5, 0.45], legF: [0.62, 0.45], legB: [-0.5, 0.15], wind: 0.35, t: 0.7 }),
-      SETTLE,
-    ],
-  ],
-  // a2: rising backhand (45 -> -80)
-  a2: [
-    [
-      A({ lean: 0.28, head: 0.12, armF: [0.55, 1.4], armB: [-0.6, 0.6], legF: [0.55, 0.55], legB: [-0.45, 0.35], wind: 0.35, t: 0.1 }),
-      A({ lean: 0.36, head: 0.16, armF: [0.15, 1.8], armB: [-0.9, 0.5], legF: [0.62, 0.75], legB: [-0.5, 0.45], wind: 0.45, t: 0.2 }),
-    ],
-    [
-      A({ lean: 0.22, head: 0.05, armF: [1.3, 0.35], armB: [-0.8, 0.4], legF: [0.6, 0.45], legB: [-0.55, 0.15], smear: 0.3, wind: 0.4, t: 0.3 }),
-      A({ lean: 0.02, head: -0.08, armF: [2.3, 0.05], armB: [-0.5, 0.4], legF: [0.55, 0.3], legB: [-0.55, 0.1], smear: 1.3, wind: 0.2, t: 0.4 }),
-      A({ lean: -0.14, head: -0.18, armF: [2.95, -0.15], armB: [-0.2, 0.4], legF: [0.5, 0.25], legB: [-0.5, 0.08], smear: 2.3, wind: 0.05, t: 0.5 }),
-    ],
-    [
-      A({ lean: -0.18, head: -0.2, armF: [3.2, -0.25], armB: [-0.1, 0.5], legF: [0.5, 0.25], legB: [-0.5, 0.1], wind: -0.05, t: 0.6 }),
-      A({ lean: -0.06, head: -0.06, armF: [2.4, 0.3], armB: [-0.15, 0.45], legF: [0.42, 0.25], legB: [-0.38, 0.12], wind: 0.05, t: 0.7 }),
-      SETTLE,
-    ],
-  ],
-  // a3: two-handed overhead slam (-165 -> 70)
-  a3: [
-    [
-      A({ lean: -0.1, head: -0.05, armF: [-1.7, 0.1], armB: [-1.5, 0.2], legF: [0.55, 0.6], legB: [-0.5, 0.4], wind: 0.05, t: 0.15 }),
-      A({ lean: -0.3, head: -0.12, armF: [-2.55, -0.2], armB: [-2.35, -0.1], legF: [0.62, 0.7], legB: [-0.6, 0.5], wind: -0.15, t: 0.25 }),
-      A({ lean: -0.34, head: -0.14, armF: [-2.65, -0.25], armB: [-2.45, -0.15], legF: [0.64, 0.74], legB: [-0.62, 0.52], wind: -0.2, t: 0.3 }),
-    ],
-    [
-      A({ lean: -0.08, head: -0.1, armF: [3.0, -0.1], armB: [3.2, -0.1], legF: [0.75, 0.55], legB: [-0.6, 0.3], smear: 3.63, wind: 0.1, t: 0.4 }),
-      A({ lean: 0.3, head: 0.05, armF: [1.95, 0.0], armB: [2.1, 0.05], legF: [0.95, 0.85], legB: [-0.72, 0.15], smear: 3.0, wind: 0.5, t: 0.5 }),
-      A({ lean: 0.55, head: 0.15, armF: [1.0, 0.1], armB: [1.1, 0.15], legF: [1.1, 1.2], legB: [-0.8, 0.1], smear: 1.95, wind: 0.85, t: 0.6 }),
-      A({ lean: 0.62, head: 0.2, armF: [0.45, 0.2], armB: [0.55, 0.25], legF: [1.15, 1.35], legB: [-0.82, 0.08], smear: 1.0, wind: 0.9, t: 0.7 }),
-    ],
-    [
-      A({ lean: 0.64, head: 0.22, armF: [0.35, 0.25], armB: [0.45, 0.3], legF: [1.15, 1.4], legB: [-0.82, 0.08], wind: 0.7, t: 0.8 }),
-      A({ lean: 0.52, head: 0.2, armF: [0.35, 0.4], armB: [0.3, 0.4], legF: [1.0, 1.2], legB: [-0.72, 0.12], wind: 0.4, t: 0.9 }),
-      A({ lean: 0.34, head: 0.14, armF: [0.3, 0.5], armB: [0.0, 0.4], legF: [0.72, 0.75], legB: [-0.55, 0.15], wind: 0.2, t: 1.0 }),
-      SETTLE,
-    ],
-  ],
-  // up: forward, over the head, to behind (10 -> -190)
-  up: [
-    [
-      A({ lean: 0.2, head: 0.1, armF: [1.1, 0.7], armB: [-0.4, 0.5], legF: [0.5, 0.65], legB: [-0.4, 0.5], wind: 0.25, t: 0.1 }),
-      A({ lean: 0.26, head: 0.14, armF: [0.9, 1.0], armB: [-0.6, 0.5], legF: [0.62, 0.95], legB: [-0.45, 0.75], wind: 0.3, t: 0.2 }),
-    ],
-    [
-      A({ lean: 0.0, head: -0.25, armF: [2.2, 0.1], armB: [-0.6, 0.4], legF: [0.35, 0.2], legB: [-0.3, 0.05], smear: 1.0, wind: 0.0, t: 0.3 }),
-      A({ lean: -0.2, head: -0.45, armF: [3.25, -0.05], armB: [-0.4, 0.4], legF: [0.3, 0.12], legB: [-0.28, 0.05], smear: 2.2, wind: -0.1, t: 0.4 }),
-      A({ lean: -0.3, head: -0.4, armF: [4.35, -0.1], armB: [-0.1, 0.5], legF: [0.32, 0.12], legB: [-0.3, 0.06], smear: 3.25, wind: -0.15, t: 0.5 }),
-    ],
-    [
-      A({ lean: -0.26, head: -0.3, armF: [4.5, 0.0], armB: [0.0, 0.5], legF: [0.35, 0.18], legB: [-0.32, 0.1], wind: -0.1, t: 0.6 }),
-      A({ lean: -0.1, head: -0.1, armF: [3.6, 0.5], armB: [-0.1, 0.45], legF: [0.3, 0.16], legB: [-0.26, 0.12], wind: 0.0, t: 0.7 }),
-      SETTLE,
-    ],
-  ],
-};
-
-/** Heavy charge: the a3 wind-up held, trembling with strain. */
-function charge(i: number): HeroPose {
-  const w = ATTACKS.a3[0];
-  const b = w[w.length - 1];
-  if (i === 0) return b;
-  const q = i === 1 ? 1 : -1;
-  return { ...b, x: b.x + q * 0.6, armF: { a: b.armF.a + q * 0.06, b: b.armF.b }, armB: { a: b.armB.a - q * 0.05, b: b.armB.b }, wind: (b.wind ?? 0) + 0.15 + q * 0.12, t: i / 3 };
-}
-
-/** The dash: coil, explode into a low lunge with the cloak streaming, brake, rise. */
+/** The dash: coil, explode into a low lunge with the cloak streaming, brake. */
 const SLIDE: HeroPose[] = [
-  A({ lean: 0.55, head: 0.1, armF: [-0.7, 0.8], armB: [-0.3, 1.3], legF: [1.0, 1.4], legB: [-0.45, 1.0], wind: 0.4, t: 0.0 }),
-  A({ lean: 1.0, head: -0.2, armF: [-1.5, 0.3], armB: [-1.1, 0.4], legF: [1.35, 1.9], legB: [-1.25, 0.05], wind: 1.0, streak: 0.6, t: 0.15 }),
-  A({ lean: 1.08, head: -0.28, armF: [-1.65, 0.2], armB: [-1.3, 0.3], legF: [1.45, 2.05], legB: [-1.35, 0.0], wind: 1.15, streak: 1, t: 0.3 }),
-  A({ lean: 1.08, head: -0.28, armF: [-1.6, 0.25], armB: [-1.25, 0.3], legF: [1.45, 2.05], legB: [-1.35, 0.0], wind: 1.1, streak: 0.9, t: 0.45 }),
-  A({ lean: 0.92, head: -0.2, armF: [-1.3, 0.4], armB: [-1.0, 0.5], legF: [1.35, 1.9], legB: [-1.2, 0.15], wind: 0.95, streak: 0.5, t: 0.6 }),
-  A({ lean: 0.7, head: -0.05, armF: [0.2, 1.0], armB: [-0.6, 0.7], legF: [1.15, 1.7], legB: [-0.8, 0.6], wind: 0.6, t: 0.75 }),
-  A({ lean: 0.4, head: 0.05, armF: [0.3, 0.8], armB: [-0.3, 0.5], legF: [0.75, 0.95], legB: [-0.45, 0.5], wind: 0.35, t: 0.9 }),
+  ground(P({ lean: 0.5, head: -0.1, legF: [1.0, 1.4], legB: [-0.45, 1.0], aim: FWD, brace: false, armB: [-0.6, 0.8], cloak: 0.6, flap: 0.6, t: 0.0 })),
+  ground(P({ lean: 0.8, head: -0.4, legF: [1.4, 1.85], legB: [-1.15, 0.05], aim: FWD, brace: false, armB: [-1.2, 0.4], cloak: 1.45, flap: 1, streak: 0.6, t: 0.17 })),
+  ground(P({ lean: 0.86, head: -0.45, legF: [1.5, 2.0], legB: [-1.3, 0.0], aim: FWD, brace: false, armB: [-1.3, 0.3], cloak: 1.6, flap: 1.1, streak: 1, t: 0.34 })),
+  ground(P({ lean: 0.86, head: -0.45, legF: [1.5, 2.0], legB: [-1.3, 0.0], aim: FWD, brace: false, armB: [-1.25, 0.35], cloak: 1.55, flap: 1.1, streak: 0.9, t: 0.5 })),
+  ground(P({ lean: 0.7, head: -0.3, legF: [1.4, 1.9], legB: [-1.1, 0.25], aim: FWD, brace: false, armB: [-1.0, 0.5], cloak: 1.3, flap: 0.9, streak: 0.4, t: 0.67 })),
+  ground(P({ lean: 0.42, head: -0.05, legF: [1.0, 1.4], legB: [-0.6, 0.7], aim: FWD, brace: false, armB: [-0.5, 0.6], cloak: 0.7, flap: 0.7, t: 0.84 })),
 ];
 
 const HURT: HeroPose[] = [
-  A({ lean: -0.45, head: -0.55, armF: [-0.9, 1.1], armB: [-1.3, 0.6], legF: [0.5, 0.35], legB: [-0.15, 0.3], wind: 0.6, t: 0.2 }),
-  A({ lean: -0.3, head: -0.3, armF: [-0.4, 1.0], armB: [-0.9, 0.7], legF: [0.55, 0.6], legB: [-0.3, 0.5], wind: 0.35, t: 0.35 }),
-  A({ lean: 0.1, head: 0.2, armF: [0.3, 0.9], armB: [-0.3, 0.6], legF: [0.5, 0.7], legB: [-0.35, 0.55], wind: 0.1, t: 0.5 }),
-];
-
-const KNEEL: HeroPose[] = [
-  // landing squat: weight dropped, arms out
-  A({ lean: 0.4, head: 0.15, armF: [0.9, 0.7], armB: [-0.6, 0.5], legF: [1.25, 1.75], legB: [-0.2, 1.55], wind: -0.15, t: 0.1 }),
-  A({ lean: 0.42, head: 0.35, armF: [0.8, 1.2], armB: [0.2, 1.2], legF: [1.4, 1.9], legB: [-0.05, 2.05], wind: 0.0, t: 0.2 }),
-  // knelt, head bowed
-  A({ lean: 0.3, head: 0.5, armF: [0.85, 1.6], armB: [0.65, 1.6], legF: [1.5, 1.6], legB: [-0.3, 2.3], wind: 0.05, t: 0.3 }),
-];
-
-const RAISE: HeroPose[] = [
-  A({ lean: 0.2, head: 0.1, armF: [-0.4, 0.6], armB: [-0.6, 0.6], legF: [0.45, 0.45], legB: [-0.4, 0.35], wind: 0.2, t: 0.1 }),
-  A({ lean: -0.05, head: -0.15, armF: [-1.9, 0.2], armB: [-1.7, 0.2], legF: [0.42, 0.3], legB: [-0.38, 0.22], wind: 0.1, t: 0.2 }),
-  A({ lean: -0.16, head: -0.32, armF: [-2.8, 0.0], armB: [-2.55, 0.1], legF: [0.4, 0.25], legB: [-0.36, 0.2], wind: 0.05, t: 0.3 }),
+  ground(P({ lean: -0.4, head: -0.5, aim: undefined, armF: [1.3, 1.0], armB: [-1.3, 0.6], brace: false, legF: [0.5, 0.35], legB: [-0.15, 0.3], cloak: 0.7, flap: 1, t: 0.2 })),
+  ground(P({ lean: -0.22, head: -0.25, aim: undefined, armF: [1.0, 0.8], armB: [-0.9, 0.7], brace: false, legF: [0.55, 0.6], legB: [-0.3, 0.5], cloak: 0.4, flap: 0.8, t: 0.4 })),
 ];
 
 const DIE: HeroPose[] = [
-  A({ lean: -0.45, head: -0.6, armF: [-0.8, 1.0], armB: [-1.3, 0.5], legF: [0.5, 0.3], legB: [-0.1, 0.3], wind: 0.5, t: 0.0 }),
-  A({ lean: -0.25, head: -0.4, armF: [-0.4, 0.7], armB: [-0.8, 0.5], legF: [0.6, 0.9], legB: [-0.2, 0.9], wind: 0.3, t: 0.15 }),
+  ground(P({ lean: -0.45, head: -0.6, aim: undefined, armF: [1.2, 1.0], armB: [-1.3, 0.5], brace: false, legF: [0.5, 0.3], legB: [-0.1, 0.3], cloak: 0.6, t: 0.0 })),
+  ground(P({ lean: -0.25, head: -0.4, aim: undefined, armF: [0.6, 0.6], armB: [-0.8, 0.5], brace: false, legF: [0.6, 0.9], legB: [-0.2, 0.9], cloak: 0.35, t: 0.15 })),
   // to the knees
-  A({ lean: 0.05, head: -0.2, armF: [0.0, 0.4], armB: [-0.2, 0.4], legF: [1.45, 1.7], legB: [0.0, 2.3], wind: 0.05, t: 0.3 }),
-  A({ lean: 0.2, head: 0.4, armF: [0.2, 0.3], armB: [0.1, 0.3], legF: [1.5, 1.6], legB: [0.05, 2.35], wind: 0.0, t: 0.4 }),
+  ground(P({ lean: 0.05, head: -0.2, aim: undefined, armF: [0.15, 0.3], armB: [-0.2, 0.4], brace: false, legF: [1.45, 1.7], legB: [0.0, 2.3], cloak: 0.08, t: 0.3 })),
+  ground(P({ lean: 0.2, head: 0.45, aim: undefined, armF: [0.2, 0.2], armB: [0.1, 0.3], brace: false, legF: [1.5, 1.6], legB: [0.05, 2.35], cloak: 0.0, t: 0.4 })),
   // topple forward
-  A({ lean: 0.75, head: 0.5, armF: [0.9, 0.6], armB: [0.7, 0.7], legF: [1.6, 1.7], legB: [0.3, 2.2], wind: -0.1, t: 0.5 }),
-  A({ lean: 1.2, head: 0.3, armF: [1.5, 0.5], armB: [1.3, 0.7], legF: [-0.5, 0.9], legB: [-0.3, 1.3], wind: 0.25, t: 0.6 }),
-  A({ lean: 1.52, head: 0.2, armF: [1.7, 0.2], armB: [1.5, 0.3], legF: [-1.25, 0.35], legB: [-1.15, 0.6], wind: 0.35, t: 0.7 }),
-  A({ lean: 1.58, head: 0.12, armF: [1.62, 0.1], armB: [1.45, 0.2], legF: [-1.45, 0.12], legB: [-1.5, 0.28], wind: 0.3, t: 0.75 }),
+  ground(P({ lean: 0.75, head: 0.5, aim: undefined, armF: [0.9, 0.5], armB: [0.7, 0.7], brace: false, legF: [1.6, 1.7], legB: [0.3, 2.2], cloak: 0.1, t: 0.5 })),
+  ground(P({ lean: 1.2, head: 0.3, aim: undefined, armF: [1.5, 0.3], armB: [1.3, 0.7], brace: false, legF: [-0.5, 0.9], legB: [-0.3, 1.3], cloak: 0.5, t: 0.6 })),
+  ground(P({ lean: 1.52, head: 0.2, aim: undefined, armF: [1.7, 0.1], armB: [1.5, 0.3], brace: false, legF: [-1.25, 0.35], legB: [-1.15, 0.6], cloak: 1.3, flap: 0.3, t: 0.7 })),
+  ground(P({ lean: 1.58, head: 0.12, aim: undefined, armF: [1.62, 0.0], armB: [1.45, 0.2], brace: false, legF: [-1.45, 0.12], legB: [-1.5, 0.28], cloak: 1.45, flap: 0.2, t: 0.75 })),
 ];
 
 function climb(i: number, n: number): HeroPose {
-  const ph = (i / n) * Math.PI * 2;
+  const ph = (i / n) * PI * 2;
   const s = Math.sin(ph);
   const c = Math.cos(ph);
   return P({
-    y: HY + Math.abs(c) * 1.2,
+    y: HY + Math.abs(c) * 1,
     lean: -0.04,
     head: -0.25,
-    armF: [-2.75 + s * 0.4, -0.25 - Math.max(0, -s) * 0.6],
-    armB: [-2.75 - s * 0.4, -0.25 - Math.max(0, s) * 0.6],
+    aim: undefined,
+    brace: false,
+    // hand over hand; the cannon stays pointed up, out of the way
+    armF: [2.45 + s * 0.45, PI - 2.45 - s * 0.45 + 0.05],
+    armB: [2.45 - s * 0.45, PI - 2.45 + s * 0.45 - 0.2],
     legF: [0.45 + s * 0.4, 0.8 + s * 0.5],
     legB: [0.45 - s * 0.4, 0.8 - s * 0.5],
-    wind: 0.0,
+    cloak: 0.05,
+    flap: 0.4,
     t: i / n,
   });
 }
 
 function hang(i: number, n: number): HeroPose {
-  const s = Math.sin((i / n) * Math.PI * 2);
-  return P({ lean: -0.1 + s * 0.03, head: -0.38, armF: [-3.0, 0.05], armB: [-2.9, 0.05], legF: [0.2 + s * 0.08, 0.25], legB: [-0.05 + s * 0.06, 0.45], wind: -0.05 + s * 0.06, t: i / n });
+  const s = Math.sin((i / n) * PI * 2);
+  return P({ lean: -0.08 + s * 0.03, head: -0.35, aim: undefined, brace: false, armF: [2.85, 0.2], armB: [-2.9, 0.05], legF: [0.2 + s * 0.08, 0.25], legB: [-0.05 + s * 0.06, 0.45], cloak: 0.02 + s * 0.04, flap: 0.3, t: i / n });
 }
 
 const MANTLE: HeroPose[] = [
-  P({ y: HY + 2, lean: 0.1, head: -0.2, armF: [-2.4, -1.4], armB: [-2.3, -1.3], legF: [0.7, 1.2], legB: [0.2, 0.9], wind: 0, t: 0.1 }),
-  P({ y: HY + 4, lean: 0.6, head: 0.1, armF: [0.2, 1.4], armB: [0.0, 1.5], legF: [1.3, 1.9], legB: [0.3, 1.6], wind: 0.2, t: 0.3 }),
-  P({ y: HY + 6, lean: 0.75, head: 0.25, armF: [0.6, 1.0], armB: [0.4, 1.2], legF: [1.6, 2.1], legB: [-0.2, 1.4], wind: 0.35, t: 0.5 }),
-  P({ y: HY + 3, lean: 0.4, head: 0.15, armF: [0.4, 0.8], armB: [0.0, 0.7], legF: [0.9, 1.2], legB: [-0.35, 0.8], wind: 0.25, t: 0.7 }),
+  P({ y: HY + 1, lean: 0.1, head: -0.2, aim: undefined, brace: false, armF: [2.5, 0.5], armB: [-2.3, -1.3], legF: [0.7, 1.2], legB: [0.2, 0.9], cloak: 0, t: 0.1 }),
+  P({ y: HY + 3, lean: 0.6, head: 0.1, aim: undefined, brace: false, armF: [0.6, 1.2], armB: [0.0, 1.5], legF: [1.3, 1.9], legB: [0.3, 1.6], cloak: 0.25, t: 0.3 }),
+  P({ y: HY + 4, lean: 0.75, head: 0.25, aim: undefined, brace: false, armF: [0.7, 0.9], armB: [0.4, 1.2], legF: [1.6, 2.1], legB: [-0.2, 1.4], cloak: 0.4, t: 0.5 }),
+  P({ y: HY + 2, lean: 0.4, head: 0.15, aim: undefined, brace: false, armF: [0.6, 0.7], armB: [0.0, 0.7], legF: [0.9, 1.2], legB: [-0.35, 0.8], cloak: 0.25, t: 0.7 }),
 ];
 
+const KNEEL: HeroPose[] = [
+  ground(P({ lean: 0.35, head: 0.15, aim: DDN, brace: false, armB: [-0.6, 0.5], legF: [1.25, 1.75], legB: [-0.2, 1.55], cloak: 0.2, t: 0.1 })),
+  ground(P({ lean: 0.38, head: 0.35, aim: 0.5, brace: false, armB: [0.2, 1.2], legF: [1.4, 1.9], legB: [-0.05, 2.05], cloak: 0.1, t: 0.2 })),
+  // knelt, head bowed, the cannon grounded before the altar
+  ground(P({ lean: 0.28, head: 0.55, aim: 0.35, brace: false, armB: [0.65, 1.4], legF: [1.5, 1.6], legB: [-0.3, 2.3], cloak: 0.05, t: 0.3 })),
+];
+
+// ---------------------------------------------------------------------------
+// Sheet
+// ---------------------------------------------------------------------------
+
 export interface HeroMeta {
-  /** Front hand position per frame index, for the live-drawn chain. */
+  /** Muzzle tip [x, y, angleRad] per sheet frame (facing right; 0 = forward, -PI/2 = up). */
+  muzzle: [number, number, number][];
+  /** Front "hand" (the muzzle tip, rounded) per sheet frame. */
   hands: [number, number][];
 }
 
-export const heroMeta: HeroMeta = { hands: [] };
+export const heroMeta: HeroMeta = { muzzle: [], hands: [] };
+
+export interface HeroAnim {
+  name: string;
+  frames: PixelCanvas[];
+  fps: number;
+  repeat: number;
+}
 
 const seq = (n: number) => Array.from({ length: n }, (_, i) => i);
 
-export function buildHeroSheet(scene: Phaser.Scene, look: CitizenLook, key = 'player') {
-  const sb = new SheetBuilder(key);
+/** Draw every animation (no Phaser needed); fills heroMeta as a side effect. */
+export function drawHeroAnims(look: CitizenLook): HeroAnim[] {
+  const out: HeroAnim[] = [];
+  const muzzle: [number, number, number][] = [];
   const hands: [number, number][] = [];
-  // Identical poses (shared settle / hold frames) are drawn once
-  const cache = new Map<string, { pc: PixelCanvas; hand: [number, number] }>();
+  const cache = new Map<string, Drawn>();
   const add = (name: string, poses: HeroPose[], fps: number, repeat = -1, hurt = false) => {
     const frames = poses.map((p, i) => {
       const h = hurt && i === 0;
-      const key = JSON.stringify(p) + h;
-      let r = cache.get(key);
-      if (!r) cache.set(key, (r = drawHero({ look, pose: p, hurt: h })));
+      const k = JSON.stringify(p) + h;
+      let r = cache.get(k);
+      if (!r) cache.set(k, (r = drawHero({ look, pose: p, hurt: h })));
+      muzzle.push(r.muzzle);
       hands.push(r.hand);
       return r.pc;
     });
-    sb.add(name, frames, fps, repeat);
+    out.push({ name, frames, fps, repeat });
   };
-  add('idle', seq(8).map((i) => idle(i, 8)), 7);
-  add('run', seq(10).map((i) => run(i, 10)), 16);
-  add('sneak', seq(6).map((i) => run(i, 6, 1)), 8);
-  add('jump', JUMP, 11, 0);
-  add('fall', seq(4).map((i) => fall(i, 4)), 10);
-  // Attack phases: windup, active (smear frames, finished inside swing.active), recover
-  const fps: Record<string, [number, number, number]> = { a1: [16, 30, 14], a2: [17, 30, 13], a3: [12, 25, 10], up: [17, 25, 12] };
-  for (const k of ['a1', 'a2', 'a3', 'up'] as const) {
-    ATTACKS[k].forEach((poses, i) => add(`${k}-${i}`, poses, fps[k][i], 0));
-  }
-  add('charge', seq(3).map(charge), 12);
-  add('slide', SLIDE, 17, 0);
-  add('hurt', HURT, 12, 0, true);
-  add('kneel', KNEEL, 12, 0);
-  add('raise', RAISE, 12, 0);
-  add('die', DIE, 10, 0, true);
+  add('idle', seq(4).map((i) => idle(i, 4)), 4);
+  add('aim-up', [aim(UP)], 1);
+  add('aim-diag-up', [aim(DUP)], 1);
+  add('aim-diag-down', [aim(DDN)], 1);
+  add('run', seq(10).map((i) => run(i, 10, FWD)), 18);
+  add('run-diag-up', seq(10).map((i) => run(i, 10, DUP)), 18);
+  add('run-diag-down', seq(10).map((i) => run(i, 10, DDN)), 18);
+  add('crouch', [crouch(FWD)], 1);
+  add('crouch-diag-up', [crouch(DUP)], 1);
+  add('jump', JUMP, 12, 0);
+  add('fall', seq(2).map((i) => fall(i, 2)), 8);
+  add('air-fwd', [air(FWD)], 1);
+  add('air-up', [air(UP)], 1);
+  add('air-diag-up', [air(DUP)], 1);
+  add('air-diag-down', [air(DDN)], 1);
+  add('air-down', [air(DOWN, { legF: [0.9, 1.5], legB: [-0.1, 1.2] })], 1);
+  add('slide', SLIDE, 14, 0);
+  add('hurt', HURT, 10, 0, true);
+  add('die', DIE, 10, 0);
   add('climb', seq(6).map((i) => climb(i, 6)), 9);
   add('hang', seq(2).map((i) => hang(i, 2)), 2.5);
-  add('mantle', MANTLE, 16, 0);
-  add('air-attack', [ATTACKS.a3[1][1], ATTACKS.a3[1][3]], 14, 0);
-  sb.build(scene);
+  add('mantle', MANTLE, 14, 0);
+  add('kneel', KNEEL, 10, 0);
+  heroMeta.muzzle = muzzle;
   heroMeta.hands = hands;
+  return out;
+}
+
+export function buildHeroSheet(scene: Phaser.Scene, look: CitizenLook, key = 'player') {
+  const sb = new SheetBuilder(key);
+  for (const a of drawHeroAnims(look)) sb.add(a.name, a.frames, a.fps, a.repeat);
+  sb.build(scene);
 }
 
 /** Interpolated preview of a pose for debug galleries. */

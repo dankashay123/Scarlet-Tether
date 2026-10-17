@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { uiH, uiSpace, uiW } from '../ui/uispace';
 import { P, hexNum } from '../art/palette';
 import { registerImage } from '../art/pixel';
 import { drawSaint } from '../art/environment/props';
@@ -38,10 +39,11 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create() {
+    uiSpace(this);
     this.started = false;
     this.drift = 0;
-    const W = this.scale.width;
-    const H = this.scale.height;
+    const W = uiW(this);
+    const H = uiH(this);
     if (!this.scene.isActive('Hud')) this.scene.launch('Hud');
     this.scene.bringToTop('Hud');
     hud(this).setControlsVisible?.(false);
@@ -95,7 +97,7 @@ export class TitleScene extends Phaser.Scene {
     const shaft = this.add.image(heroX, 0, 'prop-grate-light').setOrigin(0.5, 0).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.light).setAlpha(0.6);
     shaft.setScale(1.3, (floorY + 10) / shaft.height);
     this.tweens.add({ targets: shaft, alpha: 0.35, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-    this.add.sprite(heroX, floorY, 'player').setOrigin(0.5, 90 / 96).play('player:kneel').setDepth(DEPTH.player);
+    this.add.sprite(heroX, floorY, 'player').setOrigin(29 / 64, 52 / 56).setScale(1.6).play('player:kneel').setDepth(DEPTH.player);
     this.gore.pool(heroX, floorY, 1.2);
     const glow = (x: number, y: number, r: string, a: number) => this.add.image(x, y, r).setBlendMode(Phaser.BlendModes.ADD).setTint(hexNum('#ffb050')).setAlpha(a).setDepth(DEPTH.light);
     for (const dx of [-120, -40, 70, 230]) {

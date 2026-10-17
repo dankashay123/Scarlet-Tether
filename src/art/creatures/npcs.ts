@@ -1,14 +1,21 @@
 // The three who still speak: Mother Magdalene, Deacon Vivisect, Brother Hollow.
 import {
   BLOOD, OLD_BLOOD, IRON, RUST, GOLD, BONE, VOID, RAW, NAIL, GLASS, TEAR, THREAD, TEETH,
-  anim, back, bez, clothMat, drip, ridge, loc, pool, renderFig, skinMat, stitches, tube, vn, hash2, woodMat, frame, ramp, grain,
+  anim, scaled, back, bez, clothMat, drip, ridge, loc, pool, renderFig, skinMat, stitches, tube, vn, hash2, woodMat, frame, ramp, grain,
   type AnimDef, type Material, type V2,
 } from './common';
 
+/** Design canvases (the drawing code's units) and their scale to output pixels. */
+const DM = { w: 128, h: 112, footY: 106 };
+const DV = { w: 80, h: 96, footY: 90 };
+const DH = { w: 80, h: 96, footY: 90 };
+const SM = 0.55;
+const SV = 0.5;
+const SH = 0.5;
 export const NPC_SIZES = {
-  magdalene: { w: 128, h: 112, footY: 106 },
-  vivisect: { w: 80, h: 96, footY: 90 },
-  hollow: { w: 80, h: 96, footY: 90 },
+  magdalene: scaled(DM, SM),
+  vivisect: scaled(DV, SV),
+  hollow: scaled(DH, SH),
 };
 
 type F = ReturnType<typeof frame>;
@@ -19,8 +26,8 @@ const VEIL: Material = { ramp: ramp(['#08040a', '#160c1a', '#24162a', '#3a2a3a',
 // Mother Magdalene, the Weaver
 // ---------------------------------------------------------------------------
 function drawMagdalene(i: number) {
-  const { w, h, footY } = NPC_SIZES.magdalene;
-  const f = frame(w, h);
+  const { w, h, footY } = DM;
+  const f = frame(w, h, SM);
   const ph = (i / 4) * Math.PI * 2;
   const wood = woodMat('#4a2416', 3);
   const woodD = back(wood, 0.3);
@@ -92,7 +99,8 @@ function drawMagdalene(i: number) {
   // gold-thread hem and cincture
   f.capsule(12, footY - 2, 86, footY - 2, 0.9, 0.9, GOLD, 3.2);
   f.capsule(40, 62, 62, 60, 1.2, 1.2, GOLD, 3.2);
-  // ---- veiled head ---------------------------------------------------------------------
+  // ---- veiled head (drawn larger, so it reads) ------------------------------------------
+  f.zoom(54, 42, 1.3);
   f.ellipse(52, 30, 7, 8, skin, 4);
   f.poly([[44, 22], [52, 18], [60, 22], [61, 34], [58, 40], [62, 46], [30, 74], [36, 44]], VEIL, 4.5);
   f.ellipse(52, 26, 8.5, 8.5, VEIL, 4.4);
@@ -106,6 +114,7 @@ function drawMagdalene(i: number) {
     f.capsule(52 + Math.cos(a) * 8, 26 + Math.sin(a) * 8, 52 + Math.cos(a) * 13, 26 + Math.sin(a) * 13, 0.45, 0.3, IRON, 4.8);
   }
   f.capsule(44, 21, 60, 21, 0.8, 0.8, GOLD, 4.75);
+  f.zoom();
   // ---- near arms (three), sewn on at the shoulder ------------------------------------
   sh.forEach((s, k) => armTo(s, reach[k], skin, 6, k));
   stitches(f, [48, 40], [50, 62], 6, 2, 6.3);
@@ -139,8 +148,8 @@ function barbs(f: F, pts: V2[], layer: number) {
 }
 
 function drawVivisect(i: number) {
-  const { w, h, footY } = NPC_SIZES.vivisect;
-  const f = frame(w, h);
+  const { w, h, footY } = DV;
+  const f = frame(w, h, SV);
   const skin = skinMat('#b8a89a', 0.35);
   const skinB = back(skin, 0.32);
   const smock = clothMat('#c4bca6', i * 0.25, 7);
@@ -171,8 +180,9 @@ function drawVivisect(i: number) {
     wire.push([39 + side * 12, y + side * 2]);
   }
   barbs(f, wire.filter((p, k) => Math.cos((k / 22) * Math.PI * 7) > -0.2), 3.5);
-  // head: bald, stitched, caged in a wire mask
+  // head: bald, stitched, caged in a wire mask (drawn larger, so it reads)
   const hb = b * 0.5;
+  f.zoom(43, 7, 1.25);
   f.capsule(40, 24 + hb, 42, 18 + hb, 2.6, 2.4, skin, 5);
   f.ellipse(43, 12 + hb, 6.2, 7, skin, 5.5);
   f.ellipse(47.5, 16 + hb, 3, 2.6, skin, 5.55);
@@ -187,6 +197,7 @@ function drawVivisect(i: number) {
   }, IRON, 5.8, [38, 4, 52, 22]);
   f.ellipse(46.5, 11 + hb, 0.9, 0.7, { ramp: ['#ff6040', '#ffd0a0'], round: 0 }, 5.9);
   f.stain((x, y) => x > 44 && y > 14 + hb && y < 24 + hb && hash2(x | 0, y | 0, 7) < 0.45, BLOOD, [skin]);
+  f.zoom();
   // near arm, holding the bone saw low and forward
   tube(f, [[43, 26 + b * 0.5], [46, 42], [54, 50]], 3.2, 2.6, smock, 6);
   barbs(f, [[42, 30], [47, 34], [44, 38], [48, 42], [47, 46], [52, 48]], 6.2);
@@ -217,8 +228,8 @@ function drawVivisect(i: number) {
 // Brother Hollow
 // ---------------------------------------------------------------------------
 function drawHollow(i: number) {
-  const { w, h, footY } = NPC_SIZES.hollow;
-  const f = frame(w, h);
+  const { w, h, footY } = DH;
+  const f = frame(w, h, SH);
   const robe = clothMat('#4a3a2c', i * 0.25, 9);
   const robeB = back(robe, 0.3);
   const wood = woodMat('#5a3a22', 7);

@@ -1,7 +1,8 @@
 // Unified input state written by the HUD (touch + keyboard) and read by
 // gameplay scenes. Presses are buffered briefly so taps never get lost.
 
-export type Action = 'attack' | 'jump' | 'dodge' | 'execute' | 'stigma' | 'tear' | 'speak' | 'pause';
+/** 'attack' fires the Tether Cannon; 'aim' plants the feet to aim; 'weapon' switches bolt/shell. */
+export type Action = 'attack' | 'jump' | 'dodge' | 'execute' | 'stigma' | 'tear' | 'speak' | 'pause' | 'aim' | 'weapon';
 
 const BUFFER_MS = 160;
 
@@ -75,6 +76,10 @@ export const hudState = {
   interact: '' as string,
   stigmaReady: false,
   tearReady: false,
+  /** Censer shells: carried / capacity (capacity 0 until the launcher), and whether armed. */
+  shells: 0,
+  shellsMax: 0,
+  shellArmed: false,
   inRun: false,
   bossName: '',
   bossHp: 0,

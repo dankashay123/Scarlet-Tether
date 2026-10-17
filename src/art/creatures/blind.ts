@@ -3,11 +3,16 @@
 import { solve, type Pose, type Proportions, type Joints } from '../rig';
 import {
   BLOOD, OLD_BLOOD, NAIL, TEETH, MOUTH, VOID, MARBLE, HOLY, GOLD, BONE, RAW,
-  CATGUT, anim, back, clothMat, dome, drip, lineMask, loc, pool, renderFig, ridge, ring, skinMat, stitches, toLocal, tube,
+  CATGUT, anim, scaled, back, clothMat, dome, drip, lineMask, loc, pool, renderFig, ridge, ring, skinMat, stitches, toLocal, tube,
   vn, hash2, shade, frame, folds, wrinkleBump, type AnimDef, type Material, type V2,
 } from './common';
 
-export const BLIND = { w: 96, h: 80, footY: 74 };
+/** Design canvas (the drawing code's units) and its scale to output pixels. */
+const D = { w: 96, h: 80, footY: 74 };
+const S = 0.5;
+const HEAD_ZOOM = 1.4;
+const HAND_ZOOM = 1.2;
+export const BLIND = scaled(D, S);
 
 const PR: Proportions = { torso: 23, neck: 4, thigh: 14, shin: 14, upperArm: 15, foreArm: 15, shoulderBack: 1 };
 
@@ -49,8 +54,8 @@ const SAINT_RAG: Material = { ...clothMat('#e6dfd0', 0, 9), ramp: ['#1e1a18', '#
 const SAINT_SKIN: Material = { ...MARBLE, wrap: 0.2, dither: 0.3, glint: '#ffffff', shine: 30 };
 
 function drawBlind(o: BlindOpts) {
-  const { w, h, footY } = BLIND;
-  const f = frame(w, h);
+  const { w, h, footY } = D;
+  const f = frame(w, h, S);
   const p = o.pose;
   const j: Joints = solve(p, PR);
   const saint = o.saint;
@@ -71,6 +76,7 @@ function drawBlind(o: BlindOpts) {
 
   // ---- limbs ---------------------------------------------------------------
   const hand = (e: V2, hd: V2, m: Material, layer: number) => {
+    f.zoom(hd[0], hd[1], HAND_ZOOM); // claws a touch larger, so they read
     const ang = Math.atan2(hd[0] - e[0], hd[1] - e[1]); // direction of the forearm
     // palm: a bony wedge, knuckles forward
     f.ellipse(hd[0], hd[1], 1.7, 2.4, m, layer, -ang);
@@ -97,6 +103,7 @@ function drawBlind(o: BlindOpts) {
     const ta = ang - 0.9 - spread * 0.3;
     const t1: V2 = [hd[0] + Math.sin(ta) * 3.4, hd[1] + Math.cos(ta) * 3.4];
     f.capsule(hd[0], hd[1], t1[0], t1[1], 1.0, 0.7, m, layer + 0.09);
+    f.zoom();
   };
   const arm = (sh: V2, el: V2, hd: V2, m: Material, layer: number, sleeve: Material | null) => {
     if (sleeve) {
@@ -213,6 +220,8 @@ function drawBlind(o: BlindOpts) {
   const H = (u: number, v: number) => loc(hc, th, u, v);
   // stringy neck: tendons stand out of it
   f.capsule(sx + 0.5, sy + 1.5, neckTop[0], neckTop[1], 3.2, 2.4, skin, 6);
+  // at sprite size the face is what reads: draw the head larger than life
+  f.zoom(neckTop[0], neckTop[1], HEAD_ZOOM);
   if (!saint) {
     ridge(f, [[sx + 2.5, sy + 1], H(-0.5, -3)], 0.7, 1.2, [skin]);
     ridge(f, [[sx - 0.5, sy], H(-2.5, -1.5)], 0.6, 0.8, [skin]);
@@ -301,6 +310,8 @@ function drawBlind(o: BlindOpts) {
     drip(f, cn[0], cn[1], 2.5 + ((p.t * 10) % 3), BLOOD, 7.4, 0.55);
   }
 
+  f.zoom();
+
   // ---- near limbs --------------------------------------------------------------
   if (saint) {
     f.capsule(j.footF[0] - 1, j.footF[1] + 1, j.footF[0] + 4.5, j.footF[1] + 1.5, 1.8, 1.3, skin, 5.5);
@@ -380,7 +391,7 @@ function idle(i: number): Key {
     legF: { a: 0.45, b: 0.6 + s * 0.04 },
     legB: { a: 0.0, b: 0.5 + s * 0.04 },
     t: i / 6,
-  }, BLIND.footY);
+  }, D.footY);
   return { p, o: { breath: s, curl: 0.45 + c * 0.15, spread: 0.1 + Math.max(0, Math.sin(a * 2)) * 0.15 } };
 }
 
@@ -399,14 +410,14 @@ function walk(i: number): Key {
     armF: { a: 0.42 - Math.sin(a - 0.7) * 0.36, b: 0.28 + Math.max(0, Math.sin(a - 1.6)) * 0.3 },
     armB: { a: 0.42 + Math.sin(a - 0.7) * 0.36, b: 0.3 + Math.max(0, -Math.sin(a - 1.6)) * 0.3 },
     t: ph,
-  }, BLIND.footY);
+  }, D.footY);
   return { p, o: { curl: 0.5, breath: Math.sin(a * 2) * 0.5 } };
 }
 
-const W0 = ground({ ...STAND, x: 39, lean: 0.95, head: 0.45, armF: { a: -0.25, b: 0.9 }, armB: { a: -0.45, b: 0.8 }, legF: { a: 0.75, b: 1.25 }, legB: { a: 0.15, b: 1.05 }, t: 0.1 }, BLIND.footY);
-const W1 = ground({ ...STAND, x: 37, lean: 0.4, head: -0.1, armF: { a: 1.5, b: -0.2 }, armB: { a: 1.2, b: -0.1 }, legF: { a: 0.65, b: 1.0 }, legB: { a: -0.05, b: 0.85 }, t: 0.25 }, BLIND.footY);
-const W2 = ground({ ...STAND, x: 35, lean: -0.05, head: -0.45, armF: { a: 2.45, b: -0.5 }, armB: { a: 2.2, b: -0.35 }, legF: { a: 0.8, b: 1.3 }, legB: { a: -0.2, b: 1.0 }, t: 0.4 }, BLIND.footY);
-const W3 = ground({ ...W2, x: 34, lean: -0.12, head: -0.55, armF: { a: 2.6, b: -0.55 }, armB: { a: 2.35, b: -0.45 }, t: 0.5 }, BLIND.footY);
+const W0 = ground({ ...STAND, x: 39, lean: 0.95, head: 0.45, armF: { a: -0.25, b: 0.9 }, armB: { a: -0.45, b: 0.8 }, legF: { a: 0.75, b: 1.25 }, legB: { a: 0.15, b: 1.05 }, t: 0.1 }, D.footY);
+const W1 = ground({ ...STAND, x: 37, lean: 0.4, head: -0.1, armF: { a: 1.5, b: -0.2 }, armB: { a: 1.2, b: -0.1 }, legF: { a: 0.65, b: 1.0 }, legB: { a: -0.05, b: 0.85 }, t: 0.25 }, D.footY);
+const W2 = ground({ ...STAND, x: 35, lean: -0.05, head: -0.45, armF: { a: 2.45, b: -0.5 }, armB: { a: 2.2, b: -0.35 }, legF: { a: 0.8, b: 1.3 }, legB: { a: -0.2, b: 1.0 }, t: 0.4 }, D.footY);
+const W3 = ground({ ...W2, x: 34, lean: -0.12, head: -0.55, armF: { a: 2.6, b: -0.55 }, armB: { a: 2.35, b: -0.45 }, t: 0.5 }, D.footY);
 const WINDUP: Key[] = [
   { p: W0, o: { gape: 0.15, curl: 0.8, spread: 0.2 } },
   { p: W1, o: { gape: 0.45, curl: 0.5, spread: 0.6 } },
@@ -419,33 +430,33 @@ const ATTACK: Key[] = [
   // the rake: claws tear down through the arc
   { p: { ...STAND, x: 35, y: 44, lean: 1.3, head: -0.15, armF: { a: 1.35, b: 0.05 }, armB: { a: 1.15, b: 0.15 }, legF: { a: 0.7, b: 1.3 }, legB: { a: -0.9, b: 0.35 }, t: 0.7 }, o: { gape: 1, spread: 0.9, curl: 0.6, smear: 1 } },
   // follow-through: arms swept low and behind, landing
-  { p: ground({ ...STAND, x: 42, lean: 1.15, head: 0.05, armF: { a: 0.35, b: 0.55 }, armB: { a: 0.15, b: 0.6 }, legF: { a: 0.95, b: 1.25 }, legB: { a: -0.7, b: 0.25 }, t: 0.8 }, BLIND.footY), o: { gape: 0.7, spread: 0.5, curl: 0.9 } },
+  { p: ground({ ...STAND, x: 42, lean: 1.15, head: 0.05, armF: { a: 0.35, b: 0.55 }, armB: { a: 0.15, b: 0.6 }, legF: { a: 0.95, b: 1.25 }, legB: { a: -0.7, b: 0.25 }, t: 0.8 }, D.footY), o: { gape: 0.7, spread: 0.5, curl: 0.9 } },
   // crouched recovery
-  { p: ground({ ...STAND, x: 42, lean: 0.95, head: 0.3, armF: { a: 0.5, b: 0.35 }, armB: { a: 0.3, b: 0.45 }, legF: { a: 0.85, b: 1.3 }, legB: { a: -0.3, b: 0.8 }, t: 0.9 }, BLIND.footY), o: { gape: 0.4, curl: 0.6 } },
+  { p: ground({ ...STAND, x: 42, lean: 0.95, head: 0.3, armF: { a: 0.5, b: 0.35 }, armB: { a: 0.3, b: 0.45 }, legF: { a: 0.85, b: 1.3 }, legB: { a: -0.3, b: 0.8 }, t: 0.9 }, D.footY), o: { gape: 0.4, curl: 0.6 } },
 ];
 const STAGGER: Key[] = [
-  { p: ground({ ...STAND, x: 36, lean: 0.05, head: -0.8, armF: { a: -0.6, b: 0.6 }, armB: { a: -0.95, b: 0.4 }, legF: { a: 0.5, b: 0.4 }, legB: { a: -0.2, b: 0.3 }, t: 0.1 }, BLIND.footY), o: { hurt: true, gape: 0.8, spread: 1, curl: 0.1 } },
-  { p: ground({ ...STAND, x: 35, lean: -0.15, head: 0.9, armF: { a: -0.2, b: 0.9 }, armB: { a: -1.2, b: 0.2 }, legF: { a: 0.6, b: 0.5 }, legB: { a: -0.35, b: 0.35 }, t: 0.3 }, BLIND.footY), o: { hurt: true, gape: 0.5, spread: 0.6 } },
-  { p: ground({ ...STAND, x: 36, lean: 0.45, head: 0.65, armF: { a: 0.15, b: 0.5 }, armB: { a: -0.35, b: 0.4 }, legF: { a: 0.55, b: 0.75 }, legB: { a: -0.25, b: 0.6 }, t: 0.45 }, BLIND.footY), o: { hurt: true, gape: 0.3, curl: 0.7 } },
+  { p: ground({ ...STAND, x: 36, lean: 0.05, head: -0.8, armF: { a: -0.6, b: 0.6 }, armB: { a: -0.95, b: 0.4 }, legF: { a: 0.5, b: 0.4 }, legB: { a: -0.2, b: 0.3 }, t: 0.1 }, D.footY), o: { hurt: true, gape: 0.8, spread: 1, curl: 0.1 } },
+  { p: ground({ ...STAND, x: 35, lean: -0.15, head: 0.9, armF: { a: -0.2, b: 0.9 }, armB: { a: -1.2, b: 0.2 }, legF: { a: 0.6, b: 0.5 }, legB: { a: -0.35, b: 0.35 }, t: 0.3 }, D.footY), o: { hurt: true, gape: 0.5, spread: 0.6 } },
+  { p: ground({ ...STAND, x: 36, lean: 0.45, head: 0.65, armF: { a: 0.15, b: 0.5 }, armB: { a: -0.35, b: 0.4 }, legF: { a: 0.55, b: 0.75 }, legB: { a: -0.25, b: 0.6 }, t: 0.45 }, D.footY), o: { hurt: true, gape: 0.3, curl: 0.7 } },
 ];
 // Lying face-down, sprawled toward the right
-const DEAD: Pose = { ...STAND, x: 36, y: BLIND.footY - 8, lean: 1.5, head: 1.25, armF: { a: 1.45, b: 0.3 }, armB: { a: -1.3, b: 0.3 }, legF: { a: -1.4, b: 0.25 }, legB: { a: -1.6, b: 0.6 }, t: 0.5 };
+const DEAD: Pose = { ...STAND, x: 36, y: D.footY - 8, lean: 1.5, head: 1.25, armF: { a: 1.45, b: 0.3 }, armB: { a: -1.3, b: 0.3 }, legF: { a: -1.4, b: 0.25 }, legB: { a: -1.6, b: 0.6 }, t: 0.5 };
 const FALL: Key[] = [
   // knees buckle
-  { p: ground({ ...STAND, x: 37, lean: 0.55, head: -0.5, armF: { a: -0.1, b: 0.4 }, armB: { a: -0.4, b: 0.3 }, legF: { a: 1.0, b: 1.9 }, legB: { a: 0.6, b: 2.0 }, t: 0.2 }, BLIND.footY, true), o: { gape: 0.9, hurt: true, spread: 0.8 } },
+  { p: ground({ ...STAND, x: 37, lean: 0.55, head: -0.5, armF: { a: -0.1, b: 0.4 }, armB: { a: -0.4, b: 0.3 }, legF: { a: 1.0, b: 1.9 }, legB: { a: 0.6, b: 2.0 }, t: 0.2 }, D.footY, true), o: { gape: 0.9, hurt: true, spread: 0.8 } },
   // pitching forward onto the knees
-  { p: ground({ ...STAND, x: 37, lean: 1.05, head: 0.6, armF: { a: 1.0, b: 0.2 }, armB: { a: 0.3, b: 0.3 }, legF: { a: 1.2, b: 2.5 }, legB: { a: 1.0, b: 2.6 }, t: 0.35 }, BLIND.footY, true), o: { gape: 0.6, hurt: true, spread: 0.6 } },
+  { p: ground({ ...STAND, x: 37, lean: 1.05, head: 0.6, armF: { a: 1.0, b: 0.2 }, armB: { a: 0.3, b: 0.3 }, legF: { a: 1.2, b: 2.5 }, legB: { a: 1.0, b: 2.6 }, t: 0.35 }, D.footY, true), o: { gape: 0.6, hurt: true, spread: 0.6 } },
   // the chest hits the floor
-  { p: ground({ ...STAND, x: 36, lean: 1.38, head: 1.1, armF: { a: 1.4, b: 0.3 }, armB: { a: -0.6, b: 0.4 }, legF: { a: 0.2, b: 1.6 }, legB: { a: -0.1, b: 1.4 }, t: 0.45 }, BLIND.footY, true), o: { gape: 0.3, hurt: true, spread: 0.6 } },
+  { p: ground({ ...STAND, x: 36, lean: 1.38, head: 1.1, armF: { a: 1.4, b: 0.3 }, armB: { a: -0.6, b: 0.4 }, legF: { a: 0.2, b: 1.6 }, legB: { a: -0.1, b: 1.4 }, t: 0.45 }, D.footY, true), o: { gape: 0.3, hurt: true, spread: 0.6 } },
 ];
 
 function deadWithPool(saint: boolean) {
   const body = drawBlind({ saint, pose: DEAD, dead: !saint, spread: 0.6, curl: 0.7 });
   if (saint) return body;
-  const f = frame(BLIND.w, BLIND.h);
-  pool(f, 46, BLIND.footY - 0.5, 30, BLOOD, 4);
-  pool(f, 64, BLIND.footY, 12, OLD_BLOOD, 5, 0.5);
-  f.ellipse(78, BLIND.footY - 1, 1.6, 1.4, { ...BONE, ramp: ['#3a0a10', '#c8c0b0', '#f4f0e8'] }, 2); // a stray eye
+  const f = frame(D.w, D.h, S);
+  pool(f, 46, D.footY - 0.5, 30, BLOOD, 4);
+  pool(f, 64, D.footY, 12, OLD_BLOOD, 5, 0.5);
+  f.ellipse(78, D.footY - 1, 1.6, 1.4, { ...BONE, ramp: ['#3a0a10', '#c8c0b0', '#f4f0e8'] }, 2); // a stray eye
   const under = renderFig(f);
   under.blit(body, 0, 0);
   return under;
