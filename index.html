@@ -1176,14 +1176,15 @@ function renderSite() {
   badge(S.badge, L.x0 + 18, L.y0 + 14, true);
   text(S.name, L.x0 + 34, L.y0 + 9, PAL.gold1);
   let y = L.y0 + 38;
-  for (const l of wrap(S.what, Math.floor((L.pw - 24) / 6))) { text(l, L.x0 + 12, y, PAL.cloth1, { small: true, outline: null }); y += 10; }
+  for (const l of wrapW(S.what, L.pw - 24, true)) { text(l, L.x0 + 12, y, PAL.cloth1, { small: true, outline: null }); y += 10; }
   y += 6;
   if (done) {
     text('UNLOCKED', L.x0 + 12, y, PAL.flame1); y += 13;
-    text('COMING IN A LATER BUILD. THE CHOIR IS STILL HANGING THE BELLS.', L.x0 + 12, y, PAL.stone1, { small: true, outline: null });
+    for (const l of wrapW('COMING IN A LATER BUILD. THE CHOIR IS STILL HANGING THE BELLS.', L.pw - 24, true)) { text(l, L.x0 + 12, y, PAL.stone1, { small: true, outline: null }); y += 10; }
   } else {
     badge('lock', L.x0 + 19, y + 4);
-    text(`UNLOCKED WHEN YOU ${S.need}`, L.x0 + 32, y, PAL.blood0); y += 15;
+    for (const l of wrapW(`UNLOCKED WHEN YOU ${S.need}`, L.pw - 44)) { text(l, L.x0 + 32, y, PAL.blood0); y += 12; }
+    y += 3;
     const bw = L.pw - 80; gild(L.x0 + 14, y, bw, 7); ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0 + 14, y, bw, 7); ctx.fillStyle = PAL.gold1; ctx.fillRect(L.x0 + 14, y, Math.round(bw * Math.min(1, a / b)), 7);
     text(`${Math.min(a, b)} / ${b}`, L.x0 + 22 + bw, y - 1, PAL.cloth0, { small: true, outline: null });
   }
@@ -1430,6 +1431,13 @@ function renderDescent() {
 }
 
 // Wrap text to a width in characters.
+// Wrap to a pixel width in the given font.
+function wrapW(s, w, small = false) {
+  const out = []; let line = '';
+  for (const word of s.split(' ')) { const next = line ? line + ' ' + word : word; if (line && textW(next, 1, small) > w) { out.push(line); line = word; } else line = next; }
+  if (line) out.push(line);
+  return out;
+}
 function wrap(s, n) {
   const out = []; let line = '';
   for (const w of s.split(' ')) { if ((line + ' ' + w).trim().length > n) { out.push(line.trim()); line = w; } else line += ' ' + w; }
@@ -3896,7 +3904,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { game, T, hud: HUD, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError };
+window.HS = { game, T, hud: HUD, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, SITES, openSite };
 </script>
 </body>
 </html>
