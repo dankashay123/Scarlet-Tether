@@ -33,7 +33,7 @@ function slab(theme, tw, th, v) {
   const chips = [[0, 0], [sw - 1, 0], [0, sh - 1], [sw - 1, sh - 1]].map(([cx, cy], i) => hash(seed, i, 5) < 0.35 ? [cx, cy, 1.5 + hash(seed, i, 6) * 2] : null).filter(Boolean);
   // One crack on some slabs: a jagged polyline from an edge inward.
   const cracks = [];
-  if (hash(seed, 9) < 0.3 && w * h >= 512) {
+  if (hash(seed, 9) < 0.16 && w * h >= 512) {
     let x = hash(seed, 10) < 0.5 ? 1 : 3 + hash(seed, 11) * (sw - 6), y = x === 1 ? 3 + hash(seed, 12) * (sh - 6) : 1;
     const ang = x === 1 ? (hash(seed, 13) - 0.5) * 1.2 : Math.PI / 2 + (hash(seed, 13) - 0.5) * 1.2;
     const n = 3 + Math.floor(hash(seed, 14) * 3);

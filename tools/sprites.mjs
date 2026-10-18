@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { RGB, IDX, PALETTE, FINE, ramp } from './palette.mjs';
 // v5: sculpted models (tools/sdf.mjs) replace hand-drawn animations by name.
 const OVR = {};
-for (const m of ['saint', 'common', 'rare', 'elite', 'town', 'townfolk', 'dungeon', 'floor', 'vfx', 'icons']) {
+for (const m of ['saint', 'common', 'rare', 'elite', 'town', 'townfolk', 'dungeon', 'floor', 'vfx', 'props']) {
   let set;
   try { set = (await import(`./models/${m}.mjs`)).default; } catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') console.warn(`models/${m}.mjs failed to load: ${e.message}`); continue; }
   for (const [sh, anims] of Object.entries(set)) OVR[sh] = { ...OVR[sh], ...anims };
@@ -145,6 +145,7 @@ const P = (f, x, y, c) => f.set(x, y, c);
 // ----------------------------------------------------------------- sheets ---
 
 function sheet(name, anims, extra = {}) {
+  if (process.argv.includes('--audit')) { const old = Object.keys(anims).filter((k) => !(OVR[name] && OVR[name][k])); if (old.length) console.log(`old art in ${name}: ${old.join(' ')}`); }
   if (OVR[name]) { anims = { ...anims }; for (const [a, fn] of Object.entries(OVR[name])) anims[a] = fn(); }
   // Each row (one animation) gets cells as wide as its widest frame.
   const rows = Object.entries(anims);
@@ -469,12 +470,9 @@ function wallLower() {
 }
 
 function tilesSheet() {
-  return sheet('tiles', {
-    floor: [0, 1, 2, 3, 4, 5, 6, 7].map(floorTile),
-    carpet: [0, 1, 2, 3, 4, 5].map(carpetTile),
-    misc: [grate()],
-    wall: [wallTop(), wallCap(), wallUpper(), wallLower()],
-  });
+  // Only the carpet is still used (sculpted in models/dungeon.mjs); the old
+  // floor and wall tiles were replaced by models/floor.mjs and the hall sheet.
+  return sheet('tiles', { carpet: [0, 1, 2, 3, 4, 5].map(carpetTile) });
 }
 
 // ========================================================== wall decor ===

@@ -268,6 +268,7 @@ function layoutHud() {
   HUD.act = { x: W - 122 * k, y: H - 38 * k, r: 19 * k, icon: 'talk' };
   HUD.pause = { x: W - 15 * k, y: 15 * k, r: 11 * k, icon: 'pause' };
   HUD.mute = { x: W - 15 * k, y: 42 * k, r: 10 * k, icon: 'sound' };
+  HUD.bag = { x: W - 15 * k, y: 68 * k, r: 11 * k, icon: 'bag' };
   HUD.joy = { x: 48 * k, y: H - 48 * k };
   for (const b of Object.values(HUD)) if (b && b.x !== undefined) { b.x = Math.round(b.x); b.y = Math.round(b.y); }
 }
@@ -283,6 +284,7 @@ function pointerDown(id, cx, cy) {
   if (onTap(x, y)) return;
   if (game.state !== 'play') return;
   if (hitBtn(HUD.pause, x, y)) { sfx('tap'); game.state = 'pause'; return; }
+  if (hitBtn(HUD.bag, x, y)) { openInventory(); return; }
   if (tutTap(x, y)) return;
   if (game.interact && hitBtn(HUD.act, x, y)) { game.interact.use(); return; }
   if (hitBtn(HUD.dash, x, y, 10)) { input.dash = true; HUD.dash.pressed = 0.12; return; }
@@ -321,6 +323,8 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyR' || e.code === 'Digit3') input.pen = true;
   if (e.code === 'Escape' || e.code === 'KeyP') { if (game.state === 'play') game.state = 'pause'; else if (game.state === 'pause') game.state = 'play'; }
   if (e.code === 'KeyM') AUDIO.setMuted(!AUDIO.muted);
+  if (e.code === 'KeyI' || e.code === 'KeyB') { if (game.state === 'play') openInventory(); else if (game.state === 'inv') closeInventory(); }
+  if (e.code === 'Escape' && game.state === 'inv') { closeInventory(); return; }
   if (e.code === 'Enter' || (e.code === 'Space' && game.state !== 'play')) onTap(-1, -1);
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
@@ -369,12 +373,12 @@ function makeDungeon() {
     const x0 = 1 + gx * cw + Math.floor((cw - rw) / 2) + Math.floor(rand(-1, 2)), y0 = 5 + gy * ch + Math.floor((ch - 4 - rh) / 2) + Math.floor(rand(-1, 1));
     rooms.push({ id: rooms.length, gx, gy, x0, y0, x1: x0 + rw - 1, y1: y0 + rh - 1, links: [], gates: [], state: 'idle', visited: false, known: false });
   }
-  const at = (gx, gy) => rooms[gy * cols + gx];
+  const at = (gx, gy) => (gx >= 0 && gy >= 0 && gx < cols && gy < rows ? rooms[gy * cols + gx] : null);
   // A random spanning tree over the grid, plus two loops.
   const seen = new Set([0]), edges = [];
   const frontier = () => rooms.flatMap((r) => seen.has(r.id) ? [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [r, at(r.gx + dx, r.gy + dy)]).filter(([, b]) => b && !seen.has(b.id)) : []);
   for (let f = frontier(); f.length; f = frontier()) { const [a, b] = pick(f); seen.add(b.id); edges.push([a, b]); }
-  for (let n = 0; n < 2; n++) { const a = pick(rooms), b = at(a.gx + (rng() < 0.5 ? 1 : 0), a.gy + (rng() < 0.5 ? 0 : 1)); if (b && b !== a && !edges.some(([p, q]) => (p === a && q === b) || (p === b && q === a))) edges.push([a, b]); }
+  for (let n = 0; n < 2; n++) { const a = pick(rooms), right = rng() < 0.5, b = at(a.gx + (right ? 1 : 0), a.gy + (right ? 0 : 1)); if (b && b !== a && !edges.some(([p, q]) => (p === a && q === b) || (p === b && q === a))) edges.push([a, b]); }
   for (const r of rooms) carve(r.x0, r.y0, r.x1, r.y1);
   for (const [a, b] of edges) {
     a.links.push(b.id); b.links.push(a.id);
@@ -414,6 +418,9 @@ function makeDungeon() {
   const nearGate = (r, x, y, m = 3) => r.gates.some((g) => g.tiles.some(([gx, gy]) => Math.abs(gx - x) <= m && Math.abs(gy - y) <= m));
   const roomFree = (r, x, y, tw = 1, th = 1, m = 1) => {
     if (x < r.x0 + 1 || y < r.y0 + 1 || x + tw > r.x1 || y + th > r.y1) return false;
+    // Keep the start's spawn and every carpet aisle clear.
+    if ((r.type === 'start' || r.type === 'exit' || r.theme === 'chapel') && x <= r.cx + 1 && x + tw - 1 >= r.cx - 1) return false;
+    if (r.type === 'start' && Math.abs(x - r.cx) <= 3 && Math.abs(y - (r.cy + 2)) <= 3) return false;
     for (let yy = y - m; yy < y + th + m; yy++) for (let xx = x - m; xx < x + tw + m; xx++) if (isSolid(xx, yy)) return false;
     return !nearGate(r, x, y, 3) && !nearGate(r, x + tw - 1, y + th - 1, 3);
   };
@@ -508,11 +515,32 @@ function makeDungeon() {
     tile(f, x, y, IMG.hall);
   }
   bakeWallEdges(rc, w, h, isFloor);
+  // Stone pilasters break up each back wall: at both ends and every few tiles.
+  const PL = SPR.hall.anims.pilaster[0], pil = new Set();
+  for (const r of rooms) for (let x = r.x0; x <= r.x1; x += 7) {
+    const px = x === r.x0 ? r.x0 : Math.min(x, r.x1);
+    if (r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - px) <= 1))) continue;
+    if (isSolid(px, r.y0) || !isSolid(px, r.y0 - 1)) continue;
+    rc.drawImage(IMG.hall, PL.x, PL.y, PL.w, PL.h, px * TILE, (r.y0 - 4) * TILE, PL.w, PL.h); pil.add(`${r.id},${px}`);
+  }
+  for (const r of rooms) if (!pil.has(`${r.id},${r.x1}`) && !isSolid(r.x1, r.y0) && isSolid(r.x1, r.y0 - 1) && !r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - r.x1) <= 1))) { rc.drawImage(IMG.hall, PL.x, PL.y, PL.w, PL.h, r.x1 * TILE, (r.y0 - 4) * TILE, PL.w, PL.h); pil.add(`${r.id},${r.x1}`); }
+  // An engraved seal in the middle of the floor of crypts, ossuaries and reliquaries.
+  for (const r of rooms) {
+    if (r.type === 'start' || r.type === 'exit' || r.theme === 'chapel' || r.theme === 'flooded') continue;
+    if (r.type !== 'elite' && rng() < 0.4) continue;
+    const ox = (r.cx + 0.5) * TILE, oy = (r.cy + 0.5) * TILE, R0 = r.type === 'elite' ? 46 : 36;
+    const groove = (x, y) => { x = Math.round(x); y = Math.round(y); if (isSolid(Math.floor(x / TILE), Math.floor(y / TILE))) return; rc.fillStyle = PAL.stone4h; rc.fillRect(x, y, 1, 1); rc.fillStyle = PAL.stone2h; rc.fillRect(x + 1, y + 1, 1, 1); };
+    const circle = (rr) => { for (let a = 0; a < Math.PI * 2; a += 0.5 / rr) groove(ox + Math.cos(a) * rr, oy + Math.sin(a) * rr * 0.62); };
+    circle(R0); circle(R0 - 5);
+    for (let k = 0; k < 6; k++) { const a0 = k * Math.PI / 3 - Math.PI / 2, a1 = a0 + Math.PI * 2 / 3 * 2; for (let t = 0; t <= 1; t += 0.012) { const a = a0 + (a1 - a0) * 0, x0 = ox + Math.cos(a0) * (R0 - 5), y0 = oy + Math.sin(a0) * (R0 - 5) * 0.62, x1 = ox + Math.cos(a0 + Math.PI * 2 / 3) * (R0 - 5), y1 = oy + Math.sin(a0 + Math.PI * 2 / 3) * (R0 - 5) * 0.62; groove(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t); } }
+    for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6, x = ox + Math.cos(a) * (R0 - 2.5), y = oy + Math.sin(a) * (R0 - 2.5) * 0.62; groove(x - 1, y); groove(x + 1, y); groove(x, y - 1); }
+  }
   // Wall decor above each room's top edge.
   const D = SPR.walldecor.anims.decor;
   for (const r of rooms) for (let x = r.x0 + 1; x < r.x1; x++) {
     if (r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - x) <= 1))) continue;
     if (isSolid(x, r.y0) || !isSolid(x, r.y0 - 1)) continue;
+    if ([-1, 0, 1].some((d) => pil.has(`${r.id},${x + d}`))) continue;
     const n = rng();
     if (r.theme === 'ossuary' && n < 0.45) { const sf = frameOf('loot', 'skullwall', 0); rc.drawImage(IMG.loot, sf.x, sf.y, sf.w, sf.h, x * TILE, (r.y0 - 3) * TILE, sf.w, sf.h); continue; }
     const k = n < 0.3 ? -1 : n < 0.55 ? 'glass' : n < 0.73 ? 'banner' : n < 0.9 ? 'torch' : 'alcove';
@@ -606,13 +634,16 @@ function planWaves(r) {
   return waves;
 }
 function spawnPoint(r, minD = 70) {
-  for (let i = 0; i < 80; i++) {
+  // A tile with free tiles all around it, away from the player.
+  const clear = (tx, ty) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (room.isSolid(tx + dx, ty + dy)) return false; return true; };
+  for (let i = 0; i < 120; i++) {
     const tx = Math.floor(rand(r.x0 + 1, r.x1)), ty = Math.floor(rand(r.y0 + 1, r.y1));
+    if (!clear(tx, ty)) continue;
     const x = tx * TILE + 8, y = ty * TILE + 8;
-    if (room.isSolid(tx, ty) || room.isSolid(tx + 1, ty) || room.isSolid(tx - 1, ty)) continue;
-    if (Math.hypot(x - player.x, y - player.y) < minD && i < 60) continue;
+    if (Math.hypot(x - player.x, y - player.y) < minD && i < 90) continue;
     return [x, y];
   }
+  for (let ty = r.y0 + 1; ty < r.y1; ty++) for (let tx = r.x0 + 1; tx < r.x1; tx++) if (clear(tx, ty)) return [tx * TILE + 8, ty * TILE + 8];
   return [r.cx * TILE + 8, r.cy * TILE + 8];
 }
 function startWave(r) {
@@ -634,7 +665,7 @@ function updateFloor(dt) {
     if (cur.type === 'shrine') cur.state = 'clear';
     else if (cur.type === 'treasury') { cur.state = 'clear'; if (rng() < 0.75) { const [x, y] = spawnPoint(cur, 60); spawnMonster('imp', x, y, { room: cur.id }); toast('A COLLECTION IMP! CATCH IT!', 2.2); } }
     else {
-      cur.state = 'active'; cur.wave = 0; cur.waves = planWaves(cur);
+      cur.state = 'active'; cur.wave = 0; cur.waves = planWaves(cur); cur.lastHurt = game.time;
       setGates(cur, true); game.shake = 3;
       toast(cur.type === 'exit' ? "THE WARDEN'S CHAMBER SEALS" : cur.type === 'elite' ? 'SOMETHING TERRIBLE STIRS' : 'THE GATES FALL', 1.6);
       startWave(cur);
@@ -646,6 +677,12 @@ function updateFloor(dt) {
     const alive = enemies.filter((e) => e.room === r.id && !e.dead && !e.illusion && e.type !== 'imp').length;
     if (alive <= Math.max(1, Math.floor(r.waveSize * 0.15)) && r.wave < r.waves.length - 1) { r.wave++; startWave(r); }
     else if (alive === 0) clearRoom(r);
+    // Safety net: if nothing in the room has been hurt for a while, pull the
+    // survivors out into the open near the player (one may be wedged somewhere).
+    else if (game.time - (r.lastHurt || 0) > 15) {
+      r.lastHurt = game.time;
+      for (const e of enemies) if (e.room === r.id && !e.dead && !e.illusion) { const [x, y] = spawnPoint(r, 50); blinkTo(e, x, y); e.under = false; }
+    }
   }
 }
 function clearRoom(r) {
@@ -671,10 +708,13 @@ function finishDescent() {
 function bankRun(died) {
   const R = game.run;
   R.tithe = died ? Math.floor(R.gold / 2) : 0;
-  const keptItems = died ? R.items.filter((_, i) => i % 2 === 0) : R.items;
   SAVE.gold = (SAVE.gold || 0) + R.gold - R.tithe;
-  SAVE.stash = (SAVE.stash || []).concat(keptItems.map((it) => ({ name: it.name, rarity: it.rarity, slot: it.slot, affixes: it.affixes }))).slice(-200);
-  R.lostItems = R.items.length - keptItems.length;
+  // On death the Choir takes every other relic found this run (worn ones are safe).
+  const found = SAVE.bag.filter((it) => it.run);
+  const lost = died ? found.filter((_, i) => i % 2 === 1) : [];
+  SAVE.bag = SAVE.bag.filter((it) => !lost.includes(it));
+  for (const it of SAVE.bag) it.run = false;
+  R.lostItems = lost.length;
   game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time, gold: R.gold, tithe: R.tithe, items: R.items, lostItems: R.lostItems, rooms: room.rooms.filter((q) => q.state === 'clear').length, total: room.rooms.length };
   persist();
 }
@@ -800,7 +840,7 @@ function resetWorld() {
 }
 function newRun() {
   makeDungeon();
-  player = makePlayer((room.start.cx + 0.5) * TILE, (room.start.cy + 2) * TILE);
+  player = makePlayer((room.start.cx + 0.5) * TILE, (room.start.cy + 2) * TILE); applyGear(true);
   resetWorld();
   game.scene = 'wound'; game.state = 'play'; game.cardAt = game.real; game.waystone = null; game.interact = null;
   Object.assign(game, { time: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, execTarget: null, flash: 0,
@@ -815,7 +855,7 @@ function newRun() {
 
 function toast(msg, t = 2) { game.toast = { msg, t }; game.toastColor = null; }
 const fervorTier = () => Math.min(3, Math.floor(game.fervor / 25));
-function addFervor(n) { if (player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + n); game.fervor = Math.min(100, game.fervor + n); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
+function addFervor(n) { if (player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + n * (G.powers.has('penance') ? 1.4 : 1)); game.fervor = Math.min(100, game.fervor + n * (1 + G.fervor / 100)); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
 // One-shot sprite effects.
 function playFx(sheet, anim, x, y, fps = 24, o = {}) { fxs.push({ sheet, anim, x, y, t: 0, fps, n: SPR[sheet].anims[anim].length, ...o }); }
 
@@ -886,8 +926,8 @@ function makeTown() {
   // Mud, filth and puddles that catch the lamplight.
   for (let k = 0; k < 182; k++) { const px = rng() * w * TILE, py = (TOP + 1 + rng() * (h - TOP - 2)) * TILE; rc.fillStyle = `rgba(34,24,31,${0.25 + rng() * 0.3})`; rc.beginPath(); rc.ellipse(px, py, 10 + rng() * 39, 4 + rng() * 8, 0, 0, Math.PI * 2); rc.fill(); }
   for (let k = 0; k < 52; k++) { const px = rng() * w * TILE, py = (TOP + 2 + rng() * (h - TOP - 3)) * TILE, rx = 6 + rng() * 14; rc.fillStyle = 'rgba(42,92,192,0.22)'; rc.beginPath(); rc.ellipse(px, py, rx, rx * 0.35, 0, 0, Math.PI * 2); rc.fill(); rc.fillStyle = 'rgba(216,247,255,0.25)'; rc.fillRect(Math.round(px - rx * 0.4), Math.round(py - 1), Math.round(rx * 0.5), 1); }
-  const lw = SPR.tiles.anims.wall[3];
-  for (let x = 0; x < w; x++) rc.drawImage(IMG.tiles, lw.x, lw.y, 16, 16, x * TILE, (h - 1) * TILE, 16, 16);
+  const lw = SPR.hall.anims.wall[3];
+  for (let x = 0; x < w; x++) rc.drawImage(IMG.hall, lw.x, lw.y, 16, 16, x * TILE, (h - 1) * TILE, 16, 16);
   // Building fronts along the north side, packed with houses between landmarks.
   const front = (sheetName, anim, cx, i = 0) => { const f = frameOf(sheetName, anim, i); rc.drawImage(IMG[sheetName], f.x, f.y, f.w, f.h, Math.round(cx - f.w / 2), base - f.h + 2, f.w, f.h); return { l: cx - f.w / 2, r: cx + f.w / 2, f }; };
   const landmarks = [['town2', 'gate', 91], ['town', 'stall', 588], ['town2', 'plush', 692], ['town', 'tavern', 910], ['town', 'forge', 1186], ['town2', 'mausoleum', 1664], ['town2', 'cathedral', 2340]];
@@ -1080,7 +1120,7 @@ function drawNpc(n) {
 
 function enterTown(wake = true) {
   makeTown();
-  player = makePlayer(2340, (room.top + 3) * TILE);
+  player = makePlayer(2340, (room.top + 3) * TILE); applyGear(true);
   game.district = null;
   resetWorld();
   game.buff = null; game.banner = null; game.focus = null;
@@ -1151,7 +1191,7 @@ function renderTutorial() {
   text('SKIP TUTORIAL', r.x + r.w - 6, r.y + r.h - 9, PAL.blood0, { outline: null, align: 'right' });
   ctx.fillStyle = PAL.blood0; ctx.fillRect(r.x + r.w - 6 - textW('SKIP TUTORIAL'), r.y + r.h - 1, textW('SKIP TUTORIAL'), 1);
   // Bouncing pointer at the control being taught.
-  const tgt = s.target === 'act' ? (game.interact ? HUD.act : null) : s.target === 'map' ? { x: W - 70, y: 30, r: 22 } : HUD[s.target];
+  const tgt = s.target === 'act' ? (game.interact ? HUD.act : null) : s.target === 'map' ? { x: HUD.pause.x - HUD.pause.r - 56, y: 40, r: 26 } : HUD[s.target];
   if (tgt) {
     const b = Math.round(Math.sin(game.real * 8) * 3), up = tgt.y < H / 2;
     const ax = tgt.x, ay = up ? tgt.y + tgt.r + 6 + b : tgt.y - tgt.r - 6 - b;
@@ -1521,7 +1561,7 @@ function segDist(px, py, x0, y0, x1, y1) {
 }
 function hurtPlayerRaw(dmg, color) {
   if (game.buff && game.buff.kind === 'warding') dmg *= 0.5;
-  dmg = Math.max(1, Math.round(dmg));
+  dmg = Math.max(1, Math.round(dmg * G.armorK));
   player.hp -= dmg; player.hurt = Math.max(player.hurt, 0.15); sfx('hurt', { vol: 0.5, gap: 0.3 });
   nums.push({ x: player.x + rand(-4, 4), y: player.y - 52, v: dmg, t: 0, color, small: true });
   if (player.hp <= 0) { player.hp = 0; die(); }
@@ -1623,7 +1663,7 @@ function damagePlayer(src, dmg, contacts) {
   const [cx, cy] = contacts[0];
   if (Math.hypot(cx - player.x, cy - player.y) > 1) return; // only the dash origin was in reach: a plain miss
   if (game.buff && game.buff.kind === 'warding') dmg *= 0.5;
-  dmg = Math.max(1, Math.round(dmg));
+  dmg = Math.max(1, Math.round(dmg * G.armorK));
   player.hp -= dmg; player.iframes = T.hurtIframes; player.hurt = 0.3; game.lastHit = src.type; sfx('hurt');
   game.shake = Math.max(game.shake, 4); game.hitstop = 0.05;
   game.fervor = Math.max(0, game.fervor - 8);
@@ -1635,7 +1675,8 @@ function damagePlayer(src, dmg, contacts) {
 }
 
 function perfectDodge() {
-  player.perfectUsed = true; game.perfects++; sfx('perfect');
+  player.perfectUsed = true; game.perfects++;
+  if (G.powers.has('perfectHeal')) player.hp = Math.min(player.maxHp, player.hp + 10); sfx('perfect');
   game.slowmo = T.slowmo.time; game.flash = 0.12;
   addFervor(15);
   rings.push({ x: player.x, y: player.y - 21, t: 0, max: 0.45, r: 48, color: '255,224,138' });
@@ -1644,6 +1685,8 @@ function perfectDodge() {
 }
 
 function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
+  dmg = Math.max(1, Math.round(dmg * G.dmgMul));
+  if (e.room !== undefined && room.rooms && room.rooms[e.room]) room.rooms[e.room].lastHurt = game.time;
   if (e.dead || e.state === 'spawn' || e.spawnDelay > 0 || e.under) return;
   if (e.ward > 0) { nums.push({ x: e.x, y: e.y - e.hy * 2 - 4, v: 'WARDED', t: 0, color: PAL.holy1, small: true }); return; }
   let blocked = false;
@@ -1673,6 +1716,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   e.dead = true; sfx(rng() < 0.5 ? 'kill0' : 'kill1', { vol: e.elite ? 1.3 : 1, rate: e.tier === 'elite' ? 0.8 : 1 });
   if (player.lock === e) player.lock = null;
   if (e.illusion) { playFx('fx', 'smoke', e.x, e.y - 8, 14); return; }
+  if (G.lok) player.hp = Math.min(player.maxHp, player.hp + G.lok);
   game.kills++;
   addFervor(e.def.fervor + 1);
   game.shake = Math.max(game.shake, e.tier === 'elite' ? 7 : e.elite ? 4 : 1.5);
@@ -1762,17 +1806,103 @@ const ADJ = ['WORN', 'FRAYED', 'MOTHEATEN', 'PLAIN', 'STAINED'];
 const SUFFIX = ['OF THE FOX', 'OF PENANCE', 'OF THE VIGIL', 'OF EMBERS', 'OF TALLOW', 'OF THE CROW', 'OF SORROW', 'OF THE LAMB'];
 const RARE_A = ['SORROW', 'GALL', 'MARROW', 'ASHEN', 'HOLLOW', 'VESPER', 'GRAVE', 'TITHE', 'CANDLE', 'SAINT'];
 const LEGENDARIES = { hood: 'HOOD OF ASH-CHOIR', mantle: 'MANTLE OF THE NINTH WOUND', girdle: 'GIRDLE OF THE UNFED', gloves: 'HANDS THAT COUNTED COINS', greaves: 'THE LONG DESCENT', rosary: 'ROSARY OF UNSAID PRAYERS', seal: 'SEAL OF THE FIRST TITHE', relic: 'THE WEEPING KNUCKLE' };
-const AFFIX_STATS = ['+DAMAGE', '+CRIT CHANCE', '+MAX HP', '+DASH RECHARGE', '+FERVOR GAIN', '+GOLD FIND', '+MOVE SPEED', '+MIRACLE COOLDOWN', '+ARMOR', '+LIFE ON KILL'];
+// Item stats. Each slot has a base stat; extra rolls come from the pool.
+// Values are per roll at common; rarer tiers multiply them.
+const STAT = {
+  dmg: { label: 'DAMAGE', lo: 3, hi: 7, pct: true }, crit: { label: 'CRIT CHANCE', lo: 1, hi: 3, pct: true },
+  hp: { label: 'MAX HP', lo: 5, hi: 12 }, dash: { label: 'DASH RECHARGE', lo: 4, hi: 8, pct: true },
+  fervor: { label: 'FERVOR GAIN', lo: 5, hi: 12, pct: true }, gold: { label: 'GOLD FIND', lo: 8, hi: 18, pct: true },
+  speed: { label: 'MOVE SPEED', lo: 2, hi: 5, pct: true }, cdr: { label: 'MIRACLE COOLDOWN', lo: 4, hi: 8, pct: true },
+  armor: { label: 'ARMOR', lo: 2, hi: 5, pct: true }, lok: { label: 'LIFE ON KILL', lo: 1, hi: 2 },
+};
+const SLOT_BASE = { hood: 'hp', mantle: 'armor', gloves: 'dmg', girdle: 'hp', greaves: 'speed', rosary: 'fervor', seal: 'crit', relic: 'cdr' };
+const SLOT_ORDER = ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'seal', 'relic', 'greaves'];
+const TIER_K = [1, 1.25, 1.55, 1.9, 2.1];
+// Relic-touched (legendary) powers, one per slot.
+const POWERS = {
+  hood: { key: 'pierce', text: 'BOLTS PIERCE ONE MORE FOE.' }, mantle: { key: 'perfectHeal', text: 'PERFECT DODGES HEAL 10.' },
+  gloves: { key: 'fire', text: 'THE CROSSBOW FIRES 20% FASTER.' }, girdle: { key: 'globe', text: 'HEALTH GLOBES HEAL TWICE AS MUCH.' },
+  greaves: { key: 'dashCharge', text: '+1 DASH CHARGE.' }, rosary: { key: 'decay', text: 'FERVOR FADES HALF AS FAST.' },
+  seal: { key: 'critX', text: 'CRITICAL BOLTS DEAL TRIPLE DAMAGE.' }, relic: { key: 'penance', text: 'PENANCE CHARGES 40% FASTER.' },
+};
+const SET_TEXT = ["2 PIECES: +10% DAMAGE.", '4 PIECES: +1 DASH CHARGE, +15% DAMAGE.'];
+const SALVAGE = [5, 15, 40, 120, 200];
+let itemSeq = 0;
 function rollItem(boost = 0) {
   let total = 0; const w = RARITY.map((r, i) => r.w * (i ? 1 + boost * i : Math.max(0.2, 1 - boost * 0.5)));
   for (const x of w) total += x;
   let roll = rng() * total, ri = 0;
   for (; ri < w.length - 1 && roll > w[ri]; ri++) roll -= w[ri];
-  const rarity = RARITY[ri], slot = pick(Object.keys(SLOTS)), base = pick(SLOTS[slot]);
+  const slot = pick(Object.keys(SLOTS)), base = pick(SLOTS[slot]);
   const name = ri === 0 ? `${pick(ADJ)} ${base}` : ri === 1 ? `${base} ${pick(SUFFIX)}` : ri === 2 ? `${pick(RARE_A)} ${base}` : ri === 3 ? LEGENDARIES[slot] : `ODILE'S ${base}`;
-  const n = [0, 1 + Math.floor(rng() * 2), 3 + Math.floor(rng() * 2), 4, 4][ri];
-  return { name, rarity: rarity.id, ri, slot, affixes: [...AFFIX_STATS].sort(() => rng() - 0.5).slice(0, n) };
+  return makeItem(slot, ri, name);
 }
+function makeItem(slot, ri, name, keys) {
+  const k = TIER_K[ri], roll = (key) => { const S = STAT[key]; return Math.max(1, Math.round((S.lo + rng() * (S.hi - S.lo)) * k)); };
+  const n = [0, 1 + Math.floor(rng() * 2), 2 + Math.floor(rng() * 2), 3, 3][ri];
+  const extra = keys || Object.keys(STAT).filter((x) => x !== SLOT_BASE[slot]).sort(() => rng() - 0.5).slice(0, n);
+  const stats = [[SLOT_BASE[slot], roll(SLOT_BASE[slot])], ...extra.map((x) => [x, roll(x)])];
+  return { id: `${Date.now().toString(36)}${(itemSeq++).toString(36)}`, name, slot, ri, rarity: RARITY[ri].id, stats, power: ri === 3 ? slot : null, set: ri === 4, isNew: true };
+}
+const statLine = ([key, v]) => `+${v}${STAT[key].pct ? '%' : ''} ${STAT[key].label}`;
+// A rough worth for comparisons: stats weighted, powers count extra.
+const itemScore = (it) => !it ? 0 : it.stats.reduce((a, [key, v]) => a + v / ((STAT[key].lo + STAT[key].hi) / 2), 0) + (it.power ? 4 : 0) + (it.set ? 2 : 0);
+
+// ------------------------------------------------------------ the bag ---
+const BAG_SIZE = 30;
+function gearInit() {
+  SAVE.equip = SAVE.equip || {};
+  SAVE.bag = SAVE.bag || [];
+  // Old saves kept a flat stash of names; turn them into real items once.
+  if (SAVE.stash && SAVE.stash.length) {
+    const map = { '+DAMAGE': 'dmg', '+CRIT CHANCE': 'crit', '+MAX HP': 'hp', '+DASH RECHARGE': 'dash', '+FERVOR GAIN': 'fervor', '+GOLD FIND': 'gold', '+MOVE SPEED': 'speed', '+MIRACLE COOLDOWN': 'cdr', '+ARMOR': 'armor', '+LIFE ON KILL': 'lok' };
+    for (const o of SAVE.stash.slice(-BAG_SIZE)) { const ri = Math.max(0, RARITY.findIndex((r) => r.id === o.rarity)); const it = makeItem(o.slot, ri, o.name, (o.affixes || []).map((a) => map[a]).filter((x) => x && x !== SLOT_BASE[o.slot]).slice(0, 3)); it.isNew = false; SAVE.bag.push(it); }
+    SAVE.bag = SAVE.bag.slice(-BAG_SIZE); delete SAVE.stash; persist();
+  }
+}
+// Totals from everything worn.
+let G = null;
+function gearStats() {
+  const g = { dmg: 0, crit: 0, hp: 0, dash: 0, fervor: 0, gold: 0, speed: 0, cdr: 0, armor: 0, lok: 0, powers: new Set(), setN: 0 };
+  for (const it of Object.values(SAVE.equip || {})) { if (!it) continue; for (const [key, v] of it.stats) g[key] += v; if (it.power) g.powers.add(POWERS[it.power].key); if (it.set) g.setN++; }
+  if (g.setN >= 2) g.dmg += 10; if (g.setN >= 4) g.dmg += 15;
+  g.dmgMul = 1 + g.dmg / 100; g.armorK = 1 - Math.min(60, g.armor) / 100; g.cdrK = 1 - Math.min(50, g.cdr) / 100; g.dashK = 1 - Math.min(50, g.dash) / 100;
+  g.charges = T.dash.charges + (g.powers.has('dashCharge') ? 1 : 0) + (g.setN >= 4 ? 1 : 0);
+  return g;
+}
+// Re-apply worn gear to the player (keeps the same share of health).
+function applyGear(fill = false) {
+  G = gearStats();
+  if (!player) return;
+  const share = player.maxHp ? player.hp / player.maxHp : 1;
+  player.maxHp = 100 + G.hp; player.hp = fill ? player.maxHp : Math.max(1, Math.round(player.maxHp * share));
+  player.charges = fill ? G.charges : Math.min(player.charges, G.charges);
+}
+function bagAdd(it) {
+  if (SAVE.bag.length >= BAG_SIZE) return false;
+  it.run = game.scene === 'wound';
+  // An empty slot takes the item straight away.
+  if (!SAVE.equip[it.slot]) { it.run = false; it.isNew = false; SAVE.equip[it.slot] = it; applyGear(); toast(`EQUIPPED ${it.name}`, 2); game.toastColor = RARITY[it.ri].color; persist(); return true; }
+  SAVE.bag.push(it); persist(); return true;
+}
+function equip(it) {
+  const i = SAVE.bag.indexOf(it); if (i < 0) return;
+  const old = SAVE.equip[it.slot];
+  SAVE.bag.splice(i, 1); if (old) SAVE.bag.splice(i, 0, old);
+  it.run = false; it.isNew = false; SAVE.equip[it.slot] = it;
+  applyGear(); persist(); sfx('chain', { rate: 1.4, vol: 0.6 });
+}
+function unequip(slot) {
+  const it = SAVE.equip[slot]; if (!it || SAVE.bag.length >= BAG_SIZE) return false;
+  SAVE.equip[slot] = null; SAVE.bag.push(it); applyGear(); persist(); sfx('tap'); return true;
+}
+function salvage(it) {
+  const i = SAVE.bag.indexOf(it); if (i < 0) return;
+  SAVE.bag.splice(i, 1); const g = SALVAGE[it.ri];
+  if (game.scene === 'wound') game.run.gold += g; else SAVE.gold = (SAVE.gold || 0) + g;
+  persist(); sfx('gold');
+}
+
 let drops = [];
 function dropLoot(x, y, { gold = 0, item = 0, itemBoost = 0, globe = 0 } = {}) {
   const pop = (o) => drops.push({ x, y, z: 6, vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(60, 120), t: 0, ...o });
@@ -1787,11 +1917,13 @@ function updateDrops(dt) {
     const dist = Math.hypot(d.x - player.x, d.y - player.y);
     const magnet = d.kind === 'gold' ? 60 : d.kind === 'globe' ? 40 : 0;
     if (d.t > 0.4 && dist < magnet) { const s = 210 * dt; d.x += (player.x - d.x) / dist * s; d.y += (player.y - d.y) / dist * s; }
-    if (d.t > 0.4 && dist < (d.kind === 'item' ? 14 : 10)) {
+    const full = d.kind === 'item' && SAVE.bag.length >= BAG_SIZE && SAVE.equip[d.item.slot];
+    if (full && d.t > 0.4 && dist < 14 && !(game.toast && game.toast.msg === 'YOUR BAG IS FULL')) toast('YOUR BAG IS FULL', 1.5);
+    if (!full && d.t > 0.4 && dist < (d.kind === 'item' ? 14 : 10)) {
       d.taken = true; sfx(d.kind === 'gold' ? 'gold' : d.kind === 'globe' ? 'heal' : 'pickup', { rate: d.kind === 'item' && d.item.ri >= 3 ? 0.8 : 1 });
-      if (d.kind === 'gold') { game.run.gold += d.amount; nums.push({ x: player.x + rand(-6, 6), y: player.y - 39, v: `+${d.amount}`, t: 0, color: PAL.gold0, small: true }); }
-      if (d.kind === 'globe') { const h = Math.round(player.maxHp * 0.15); player.hp = Math.min(player.maxHp, player.hp + h); nums.push({ x: player.x, y: player.y - 55, v: `+${h}`, t: 0, color: PAL.flame1, small: false }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.3, r: 20, color: '224,32,46' }); }
-      if (d.kind === 'item') { game.run.items.push(d.item); const R = RARITY[d.item.ri]; toast(`${d.item.name}`, 2); game.toastColor = R.color; if (d.item.ri >= 3) { game.flash = 0.06; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: R.rgb }); } }
+      if (d.kind === 'gold') { d.amount = Math.round(d.amount * (1 + G.gold / 100)); game.run.gold += d.amount; nums.push({ x: player.x + rand(-6, 6), y: player.y - 39, v: `+${d.amount}`, t: 0, color: PAL.gold0, small: true }); }
+      if (d.kind === 'globe') { const h = Math.round(player.maxHp * 0.15 * (G.powers.has('globe') ? 2 : 1)); player.hp = Math.min(player.maxHp, player.hp + h); nums.push({ x: player.x, y: player.y - 55, v: `+${h}`, t: 0, color: PAL.flame1, small: false }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.3, r: 20, color: '224,32,46' }); }
+      if (d.kind === 'item') { game.run.items.push(d.item); const R = RARITY[d.item.ri]; const auto = !SAVE.equip[d.item.slot]; bagAdd(d.item); if (!auto) { toast(`${d.item.name}`, 2); game.toastColor = R.color; } if (d.item.ri >= 3) { game.flash = 0.06; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: R.rgb }); } }
     }
   }
   drops = drops.filter((d) => !d.taken);
@@ -1804,8 +1936,22 @@ function drawDrops() {
     if (d.kind === 'item') {
       const ic = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic'].indexOf(d.item.slot);
       sprC('loot', 'item', ic, d.x, y - 10);
-      if (d.z === 0 && (d.item.ri >= 1 || Math.hypot(d.x - player.x, d.y - player.y) < 60)) text(d.item.name, d.x, d.y - 32, RARITY[d.item.ri].color, { align: 'center' });
     }
+  }
+}
+function drawDropLabels() {
+  // Item labels, stacked so they never overlap; a green arrow marks an upgrade.
+  const placed = [];
+  for (const d of drops.filter((q) => q.kind === 'item' && q.z === 0).sort((p, q) => q.y - p.y)) {
+    if (!(d.item.ri >= 1 || Math.hypot(d.x - player.x, d.y - player.y) < 60)) continue;
+    const w = textW(d.item.name) + 6, h = 12;
+    let y = d.y - 34;
+    for (let k = 0; k < 8 && placed.some((r) => Math.abs(r.x - d.x) < (r.w + w) / 2 && Math.abs(r.y - y) < h); k++) y -= h;
+    placed.push({ x: d.x, y, w });
+    ctx.fillStyle = 'rgba(11,7,16,0.6)'; ctx.fillRect(Math.round(d.x - w / 2), Math.round(y - 3), w, h);
+    text(d.item.name, d.x, y, RARITY[d.item.ri].color, { align: 'center' });
+    const worn = SAVE.equip[d.item.slot];
+    if (!worn || itemScore(d.item) > itemScore(worn) + 0.2) { const ax = Math.round(d.x + w / 2 + 3), ay = Math.round(y); ctx.fillStyle = PAL.outline; ctx.fillRect(ax - 1, ay - 1, 7, 9); ctx.fillStyle = PAL.flame1; for (let r = 0; r < 3; r++) ctx.fillRect(ax + 2 - r, ay + r, 1 + r * 2, 1); ctx.fillRect(ax + 1, ay + 3, 3, 4); }
   }
 }
 function drawDropGlow() {
@@ -1818,8 +1964,9 @@ function drawDropGlow() {
       if (d.item.ri >= 2 && d.z === 0) { // the loot beam
         const h = 70 + d.item.ri * 20, g = ctx.createLinearGradient(0, d.y - h, 0, d.y);
         g.addColorStop(0, `rgba(${R.rgb},0)`); g.addColorStop(1, `rgba(${R.rgb},${0.35 + 0.1 * Math.sin(game.real * 5)})`);
-        ctx.fillStyle = g; ctx.fillRect(Math.round(d.x) - 3, d.y - h, 6, h);
-        ctx.fillStyle = `rgba(${R.rgb},0.6)`; ctx.fillRect(Math.round(d.x), d.y - h, 1, h);
+        ctx.fillStyle = g; ctx.fillRect(Math.round(d.x) - 6, d.y - h, 12, h);
+        const g2 = ctx.createLinearGradient(0, d.y - h, 0, d.y); g2.addColorStop(0, `rgba(${R.rgb},0)`); g2.addColorStop(1, `rgba(${R.rgb},0.55)`);
+        ctx.fillStyle = g2; ctx.fillRect(Math.round(d.x) - 1, d.y - h, 3, h);
       }
     }
   }
@@ -1890,14 +2037,14 @@ function updateCrossbow(dt) {
   player.fireCd -= dt;
   player.target = chooseTarget();
   if (!player.target || player.fireCd > 0) return;
-  player.fireCd = T.crossbow.cooldown;
+  player.fireCd = T.crossbow.cooldown * (G.powers.has('fire') ? 0.8 : 1);
   const t = player.target;
   player.face = t.x < player.x ? -1 : 1;
   const sx = player.x + player.face * 21, sy = player.y - 25;
   const tx = t.x + t.kx * 0.05, ty = t.y - t.hy;
   const d = Math.hypot(tx - sx, ty - sy) || 1;
-  const crit = rng() < T.crossbow.crit;
-  bolts.push({ x: sx, y: sy, vx: (tx - sx) / d * T.crossbow.speed, vy: (ty - sy) / d * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce, hit: new Set(), crit, trail: [] }); sfx('shoot');
+  const crit = rng() < T.crossbow.crit + G.crit / 100;
+  bolts.push({ x: sx, y: sy, vx: (tx - sx) / d * T.crossbow.speed, vy: (ty - sy) / d * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0), hit: new Set(), crit, trail: [] }); sfx('shoot');
   playFx('fx', 'impact', sx, sy, 40, { small: true, skip: 2 });
 }
 
@@ -1915,7 +2062,7 @@ function updateBolts(dt) {
         if (Math.abs(b.x - e.x) < hr && Math.abs(b.y - hy) < hr + 2) {
           b.hit.add(e);
           const sp = Math.hypot(b.vx, b.vy), [lo, hi] = T.crossbow.dmg;
-          hurtEnemy(e, Math.round(rand(lo, hi + 1) * (b.crit ? 2 : 1)), b.crit, b.vx / sp, b.vy / sp);
+          hurtEnemy(e, Math.round(rand(lo, hi + 1) * (b.crit ? (G.powers.has('critX') ? 3 : 2) : 1)), b.crit, b.vx / sp, b.vy / sp);
           if (b.pierce-- <= 0) { b.life = 0; break; }
         }
       }
@@ -1981,7 +2128,7 @@ function bestCluster(R) {
 function castFlask() {
   const t = bestCluster(T.flask.range);
   flasks.push({ sx: player.x, sy: player.y - 23, tx: t ? t.x : player.x + player.face * 60, ty: t ? t.y : player.y, t: 0 }); sfx('tap', { rate: 0.6, vol: 0.6 });
-  player.m1cd = T.flask.cd;
+  player.m1cd = T.flask.cd * G.cdrK;
 }
 function castChain() {
   let t = null, bd = Infinity;
@@ -1992,7 +2139,7 @@ function castChain() {
   }
   if (!t) { toast('NOTHING TO BIND'); return; }
   chains.push({ x: player.x + player.face * 14, y: player.y - 25, target: t, links: [], t: 0, phase: 'fly' }); sfx('chain');
-  player.m2cd = T.chain.cd;
+  player.m2cd = T.chain.cd * G.cdrK;
 }
 function castPenance() {
   player.penance = 0; player.rainT = T.penance.time; player.rainTick = 0; sfx('penance');
@@ -2092,7 +2239,7 @@ function updatePlayer(dt) {
     moveCircle(p, (p.pull.x - p.x) * k, (p.pull.y - p.y) * k, p.r);
     p.pull.t -= dt; if (p.pull.t <= 0) p.pull = null;
   }
-  if (p.charges < T.dash.charges) { p.recharge += dt; if (p.recharge >= T.dash.recharge) { p.recharge = 0; p.charges++; } }
+  if (p.charges < G.charges) { p.recharge += dt; if (p.recharge >= T.dash.recharge * G.dashK) { p.recharge = 0; p.charges++; } }
   if (input.dash) {
     input.dash = false;
     if (p.charges > 0 && p.dashT <= 0) {
@@ -2121,7 +2268,7 @@ function updatePlayer(dt) {
     p.anim = 'dash';
   } else {
     const k = (p.slowT > 0 ? 0.55 : 1) * (game.buff && game.buff.kind === 'haste' ? 1.5 : 1) * (p.rootT > 0 ? 0 : 1);
-    vx = input.mx * T.moveSpeed * k; vy = input.my * T.moveSpeed * k;
+    vx = input.mx * T.moveSpeed * (1 + G.speed / 100) * k; vy = input.my * T.moveSpeed * (1 + G.speed / 100) * k;
     p.anim = Math.hypot(vx, vy) > 5 ? 'run' : 'idle';
     if (!p.target && Math.abs(input.mx) > 0.15) p.face = Math.sign(input.mx);
   }
@@ -2175,7 +2322,7 @@ function update(realDt) {
   const dt = realDt * game.timeScale;
   game.time += dt;
   game.fervorT += dt;
-  if (game.fervorT > T.fervor.decayDelay) game.fervor = Math.max(0, game.fervor - T.fervor.decay * dt);
+  if (game.fervorT > T.fervor.decayDelay) game.fervor = Math.max(0, game.fervor - T.fervor.decay * (G.powers.has('decay') ? 0.5 : 1) * dt);
 
   updatePlayer(dt);
   // Nearest thing to talk to or use.
@@ -2269,7 +2416,7 @@ function render() {
     text(label, it.x, ty + Math.round(Math.sin(game.real * 5)), it.who ? PAL.gold1 : PAL.holy1, { align: 'center' });
   }
   drawAbilitiesAir();
-  if (game.scene === 'wound') drawShots();
+  if (game.scene === 'wound') { drawShots(); drawDropLabels(); }
   if (game.scene === 'town') drawTownWorld();
   for (const g of gibs) spr('fx', g.anim, g.i, g.x, g.y - g.z, { ax: 5, ay: 5 });
   for (const p of parts) { ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x), Math.round(p.y - p.z), p.s || 1, p.s || 1); }
@@ -2337,6 +2484,7 @@ function render() {
   renderScreenFx();
   renderHud();
   if (game.state === 'pause') overlay('PAUSED', 'TAP TO RESUME');
+  if (game.state === 'inv') renderInventory();
   if (game.state === 'dead') renderReceipt();
   if (game.state === 'tally') renderReceipt(true);
   if (game.state === 'dialog') renderDialog();
@@ -2571,6 +2719,85 @@ function button(b, { active = true, cd = 0, cdText = '', ring = 0, ringColor = P
   }
 }
 
+// Tiny pixel glyphs for the minimap, 5x5.
+const MAP_ICON = {
+  exit: ['01110', '11011', '10101', '11111', '01010'],      // skull
+  elite: ['10101', '11111', '01110', '11111', '00000'],     // crown
+  shrine: ['00100', '01110', '00100', '00100', '00100'],    // cross
+  treasury: ['01110', '11111', '10101', '11111', '11111'],  // chest
+  start: ['01110', '10001', '00000', '00100', '00100'],     // halo
+};
+function mapIcon(name, x, y, col) {
+  const g = MAP_ICON[name];
+  ctx.fillStyle = PAL.outline;
+  for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) if (g[r][c] === '1') ctx.fillRect(x + c - 1, y + r, 3, 2);
+  ctx.fillStyle = col;
+  for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) if (g[r][c] === '1') ctx.fillRect(x + c, y + r, 1, 1);
+}
+// The minimap: a framed panel left of the pause button. In the Undercroft it
+// shows the room grid (fog over unknown rooms); in Vael, the street.
+function renderMinimap() {
+  const right = HUD.pause.x - HUD.pause.r - 6, my = 8;
+  if (room.rooms) {
+    const cw = 18, chh = 12, gap = 6, pad = 5, cols = GRID.cols, rows = GRID.rows;
+    const mw = cols * cw + (cols - 1) * gap + pad * 2, mh = rows * chh + (rows - 1) * gap + pad * 2, mx = right - mw;
+    gild(mx, my, mw, mh);
+    ctx.fillStyle = 'rgba(11,7,16,0.88)'; ctx.fillRect(mx, my, mw, mh);
+    const cell = (r) => [mx + pad + r.gx * (cw + gap), my + pad + r.gy * (chh + gap)];
+    // Corridors between known rooms.
+    for (const r of room.rooms) for (const id of r.links) {
+      const q = room.rooms[id]; if (id < r.id || !(r.known && q.known) || !(r.visited || q.visited)) continue;
+      const [ax, ay] = cell(r), [bx, by] = cell(q), locked = (r.locked && r.state === 'active') || (q.locked && q.state === 'active');
+      ctx.fillStyle = PAL.outline;
+      if (r.gy === q.gy) { const x0 = Math.min(ax, bx) + cw, y = ay + chh / 2 - 2; ctx.fillRect(x0 - 1, y, gap + 2, 4); ctx.fillStyle = locked ? PAL.blood1 : PAL.stone3; ctx.fillRect(x0, y + 1, gap, 2); }
+      else { const y0 = Math.min(ay, by) + chh, x = ax + cw / 2 - 2; ctx.fillRect(x, y0 - 1, 4, gap + 2); ctx.fillStyle = locked ? PAL.blood1 : PAL.stone3; ctx.fillRect(x + 1, y0, 2, gap); }
+    }
+    for (const r of room.rooms) {
+      if (!r.known) continue;
+      const [x, y] = cell(r), cur = r === game.curRoom;
+      // Body with cut corners and a darker lower lip for depth.
+      ctx.fillStyle = PAL.outline; ctx.fillRect(x, y - 1, cw, chh + 2); ctx.fillRect(x - 1, y, cw + 2, chh);
+      ctx.fillStyle = !r.visited ? PAL.ink3 : r.state === 'clear' ? PAL.stone2 : PAL.stone3;
+      ctx.fillRect(x, y, cw, chh);
+      ctx.fillStyle = !r.visited ? PAL.ink2 : r.state === 'clear' ? PAL.stone3h : PAL.stone4;
+      ctx.fillRect(x, y + chh - 2, cw, 2);
+      if (r.visited) { ctx.fillStyle = r.state === 'clear' ? PAL.stone1 : PAL.stone2h; ctx.fillRect(x, y, cw, 1); }
+      if (cur) {
+        const pulse = Math.floor(game.real * 3) % 2 === 0;
+        ctx.strokeStyle = r.state === 'active' ? PAL.blood0 : pulse ? PAL.gold0 : PAL.gold1; ctx.lineWidth = 1;
+        ctx.strokeRect(x - 1.5, y - 1.5, cw + 3, chh + 3);
+      }
+      const icon = r.type === 'combat' ? null : r.type;
+      const col = { exit: PAL.blood0, elite: PAL.gold0, shrine: PAL.holy1, treasury: PAL.gold1, start: PAL.gold1 }[r.type];
+      const spent = (r.type === 'elite' && r.state === 'clear') || (r.type === 'shrine' && r.shrine && r.shrine.used) || (r.type === 'treasury' && r.chest && r.chest.open);
+      if (icon && !cur && !spent) mapIcon(icon, x + cw / 2 - 2, y + chh / 2 - 3, col);
+      // Inside the current room: enemies and the player.
+      if (cur) {
+        const fx = (wx) => x + 1 + Math.round((wx / TILE - r.x0) / (r.x1 - r.x0 + 1) * (cw - 2)), fy = (wy) => y + 1 + Math.round((wy / TILE - r.y0) / (r.y1 - r.y0 + 1) * (chh - 2));
+        for (const e of enemies) if (!e.dead && e.room === r.id) { ctx.fillStyle = e.tier === 'elite' ? PAL.gold0 : e.tier === 'rare' ? PAL.holy1 : PAL.blood0; ctx.fillRect(fx(e.x), fy(e.y), 1, 1); }
+        const px = Math.max(x, Math.min(x + cw - 2, fx(player.x) - 1)), py = Math.max(y, Math.min(y + chh - 2, fy(player.y) - 1));
+        ctx.fillStyle = PAL.outline; ctx.fillRect(px - 1, py - 1, 4, 4);
+        ctx.fillStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.fillRect(px, py, 2, 2);
+      }
+    }
+    return { mx, my, mw, mh };
+  }
+  // Vael: the street as a strip with district marks.
+  const mw = 104, mh = 18, mx = right - mw;
+  gild(mx, my, mw, mh);
+  ctx.fillStyle = 'rgba(11,7,16,0.88)'; ctx.fillRect(mx, my, mw, mh);
+  const k = (mw - 8) / room.pw, sx = (wx) => mx + 4 + Math.round(wx * k);
+  ctx.fillStyle = PAL.outline; ctx.fillRect(mx + 3, my + 8, mw - 6, 4);
+  ctx.fillStyle = PAL.stone3; ctx.fillRect(mx + 4, my + 9, mw - 8, 2);
+  for (const [dx] of DISTRICTS) { ctx.fillStyle = PAL.stone1; ctx.fillRect(sx(dx), my + 6, 1, 3); }
+  mapIcon('start', sx(2340) - 2, my + 2, PAL.gold1);
+  for (const n of room.npcs) if (n.talk) { ctx.fillStyle = PAL.gold1; ctx.fillRect(sx(n.x), my + 12, 1, 2); }
+  const px = sx(player.x);
+  ctx.fillStyle = PAL.outline; ctx.fillRect(px - 2, my + 7, 5, 6);
+  ctx.fillStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.fillRect(px - 1, my + 8, 3, 4);
+  return { mx, my, mw, mh };
+}
+
 function renderHud() {
   const p = player;
   // Top-left: portrait, HP, Fervor.
@@ -2587,44 +2814,27 @@ function renderHud() {
   text(T.fervor.tiers[tier], 159, 29, PAL[framp + '1']);
   }
   // Top-right: minimap and pause.
-  const mw = game.scene === 'wound' ? 96 : 72, mh = Math.round(mw * room.ph / room.pw), mx = W - 44 - mw, my = 8;
-  gild(mx, my, mw, mh);
-  ctx.fillStyle = PAL.ink1; ctx.fillRect(mx, my, mw, mh);
-  const k = mw / room.pw;
-  if (room.rooms) {
-    for (const r of room.rooms) if (r.known) for (const id of r.links) { const q = room.rooms[id]; if (q.known && id > r.id) { ctx.fillStyle = PAL.ink3; const ax = mx + (r.cx + 0.5) * TILE * k, ay = my + (r.cy + 0.5) * TILE * k, bx = mx + (q.cx + 0.5) * TILE * k, by = my + (q.cy + 0.5) * TILE * k; ctx.fillRect(Math.round(Math.min(ax, bx)), Math.round(Math.min(ay, by)), Math.max(1, Math.round(Math.abs(bx - ax))), Math.max(1, Math.round(Math.abs(by - ay)))); } }
-    for (const r of room.rooms) {
-      if (!r.known) continue;
-      const rx = Math.round(mx + r.x0 * TILE * k), ry = Math.round(my + r.y0 * TILE * k), rw = Math.round((r.x1 - r.x0 + 1) * TILE * k), rh = Math.round((r.y1 - r.y0 + 1) * TILE * k);
-      ctx.fillStyle = r.visited ? (r.state === 'clear' ? PAL.stone3 : PAL.stone4) : PAL.ink3; ctx.fillRect(rx, ry, rw, rh);
-      if (r === game.curRoom) { ctx.strokeStyle = r.state === 'active' ? PAL.blood0 : PAL.gold1; ctx.lineWidth = 1; ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1); }
-      const icx = rx + Math.floor(rw / 2), icy = ry + Math.floor(rh / 2);
-      const icon = { exit: PAL.blood0, elite: PAL.gold0, shrine: PAL.holy1, treasury: PAL.gold1 }[r.type];
-      if (icon && !(r.state === 'clear' && r.type !== 'exit')) { ctx.fillStyle = PAL.outline; ctx.fillRect(icx - 2, icy - 2, 5, 5); ctx.fillStyle = icon; ctx.fillRect(icx - 1, icy - 1, 3, 3); if (r.type === 'exit') { ctx.fillStyle = PAL.outline; ctx.fillRect(icx - 1, icy, 1, 1); ctx.fillRect(icx + 1, icy, 1, 1); } }
-    }
-    for (const e of enemies) if (!e.dead && e.room === (game.curRoom && game.curRoom.id)) { ctx.fillStyle = e.tier === 'elite' ? PAL.gold0 : e.tier === 'rare' ? '#7cc4ff' : PAL.blood0; ctx.fillRect(mx + Math.round(e.x * k), my + Math.round(e.y * k), 1, 1); }
-  } else {
-    ctx.fillStyle = PAL.stone3;
-    for (let y = 0; y < room.h; y++) for (let x = 0; x < room.w; x++) if (!room.solid[y][x]) ctx.fillRect(mx + Math.floor(x * TILE * k), my + Math.floor(y * TILE * k), Math.ceil(TILE * k), Math.ceil(TILE * k));
-  }
-  ctx.fillStyle = PAL.white; ctx.fillRect(mx + Math.round(p.x * k) - 1, my + Math.round(p.y * k) - 1, 2, 2);
+  const { mx, my, mw, mh } = renderMinimap();
   button(HUD.pause);
   HUD.mute.icon = AUDIO.muted ? 'muted' : 'sound'; button(HUD.mute);
+  button(HUD.bag);
+  const fresh = SAVE.bag.filter((it) => it.isNew).length;
+  if (fresh) { ctx.fillStyle = PAL.outline; ctx.fillRect(HUD.bag.x + 4, HUD.bag.y - 13, 11, 10); ctx.fillStyle = PAL.blood1; ctx.fillRect(HUD.bag.x + 5, HUD.bag.y - 12, 9, 8); text(String(Math.min(9, fresh)), HUD.bag.x + 10, HUD.bag.y - 11, PAL.white, { align: 'center', outline: null, small: true }); }
   // Gold, kills, active shrine buff, massacre streak.
   const gold = game.scene === 'wound' ? game.run.gold : SAVE.gold || 0;
-  sprC('loot', 'coin', 0, mx + 3, my + mh + 10);
-  text(String(gold), mx + 9, my + mh + 7, PAL.gold1);
-  if (game.scene === 'wound') text(`${game.kills} SLAIN`, W - 34, my + mh + 17, PAL.stone1, { align: 'right' });
+  sprC('loot', 'coin', 0, mx + 5, my + mh + 11);
+  text(String(gold), mx + 12, my + mh + 7, PAL.gold1);
+  if (game.scene === 'wound') text(`${game.kills} SLAIN`, mx + mw, my + mh + 7, PAL.stone1, { align: 'right' });
   if (game.buff) { const S = SHRINES[game.buff.kind]; text(`${S.name.replace('SHRINE OF ', '')} ${Math.ceil(game.buff.t)}`, 41, 35, `rgb(${S.rgb})`); }
   const ms = game.massacre;
   if (ms && ms.n >= 5 && game.time - ms.last < 1.2) text(`x${ms.n}`, 14, Math.round(H * 0.42), Math.floor(game.real * 8) % 2 ? PAL.blood0 : PAL.gold0, { sc: 2 });
   // Bottom-right: dash, Miracles, Penance.
-  const dashK = p.charges >= T.dash.charges ? 0 : 1 - p.recharge / T.dash.recharge;
+  const dashK = p.charges >= G.charges ? 0 : 1 - p.recharge / (T.dash.recharge * G.dashK);
   button(HUD.dash, { active: p.charges > 0, cd: p.charges === 0 ? dashK : 0 });
-  for (let i = 0; i < T.dash.charges; i++) { const x = HUD.dash.x - 7 + i * 9, y = HUD.dash.y + HUD.dash.r + 3; ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, 7, 4); ctx.fillStyle = i < p.charges ? PAL.gold1 : PAL.ink3; ctx.fillRect(x, y, 5, 2); }
+  for (let i = 0; i < G.charges; i++) { const x = HUD.dash.x - (G.charges - 1) * 4.5 - 2.5 + i * 9, y = HUD.dash.y + HUD.dash.r + 3; ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, 7, 4); ctx.fillStyle = i < p.charges ? PAL.gold1 : PAL.ink3; ctx.fillRect(x, y, 5, 2); }
   if (game.scene === 'wound') {
-  button(HUD.m1, { active: p.m1cd <= 0, cd: p.m1cd / T.flask.cd, cdText: p.m1cd > 0 ? String(Math.ceil(p.m1cd)) : '' });
-  button(HUD.m2, { active: p.m2cd <= 0, cd: p.m2cd / T.chain.cd, cdText: p.m2cd > 0 ? String(Math.ceil(p.m2cd)) : '' });
+  button(HUD.m1, { active: p.m1cd <= 0, cd: p.m1cd / (T.flask.cd * G.cdrK), cdText: p.m1cd > 0 ? String(Math.ceil(p.m1cd)) : '' });
+  button(HUD.m2, { active: p.m2cd <= 0, cd: p.m2cd / (T.chain.cd * G.cdrK), cdText: p.m2cd > 0 ? String(Math.ceil(p.m2cd)) : '' });
   const penReady = p.penance >= T.penance.charge && p.rainT <= 0;
   if (penReady) { ctx.globalCompositeOperation = 'lighter'; glow(HUD.pen.x, HUD.pen.y, 28 + Math.sin(game.real * 6) * 4, 'rgba(224,32,46,0.6)'); ctx.globalCompositeOperation = 'source-over'; }
   button(HUD.pen, { active: penReady, ring: penReady ? 1 : p.penance / T.penance.charge, ringColor: penReady ? PAL.blood0 : PAL.blood2 });
@@ -2729,6 +2939,122 @@ function renderReceipt(survived = false) {
   if (game.deathT > 1.4 && Math.floor(game.real * 2) % 2 === 0) line(survived ? 'TAP TO RETURN TO VAEL' : 'TAP TO WAKE IN THE VESTRY', 158);
 }
 
+// ------------------------------------------------------- the inventory ---
+// Paper doll with eight slots on the left, the bag in the middle, and the
+// chosen item's card on the right. The game is paused while it is open.
+const ICON_OF = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic'];
+function openInventory() { game.state = 'inv'; game.inv = { sel: null }; SAVE.bag.sort((a, b) => b.ri - a.ri || ICON_OF.indexOf(a.slot) - ICON_OF.indexOf(b.slot)); sfx('tap'); }
+function closeInventory() { for (const it of SAVE.bag) it.isNew = false; persist(); game.state = 'play'; game.inv = null; sfx('tap'); }
+function invLayout() {
+  const pw = Math.min(640, W - 16), ph = Math.min(318, H - 16), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
+  const cell = 27, cols = 6, rows = 5;
+  const doll = { x: x0 + 12, y: y0 + 34, w: 186 };
+  const slots = {};
+  SLOT_ORDER.forEach((sl, i) => { const right = i >= 4, row = i % 4; slots[sl] = { x: doll.x + (right ? doll.w - cell : 0), y: doll.y + 4 + row * (cell + 9), w: cell, h: cell }; });
+  const bag = { x: doll.x + doll.w + 14, y: y0 + 46, cell, cols, rows };
+  const card = { x: bag.x + cols * (cell + 3) + 10, y: y0 + 34 }; card.w = x0 + pw - 12 - card.x; card.h = ph - 46;
+  const close = { x: x0 + pw - 14, y: y0 + 14, r: 10 };
+  const btnA = { x: card.x + 6, y: card.y + card.h - 26, w: Math.floor(card.w / 2) - 9, h: 20 }, btnB = { x: btnA.x + btnA.w + 6, y: btnA.y, w: btnA.w, h: 20 };
+  return { pw, ph, x0, y0, doll, slots, bag, card, close, btnA, btnB };
+}
+const inRect = (r, x, y) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
+function selItem() { const s = game.inv && game.inv.sel; if (!s) return null; return s.from === 'bag' ? SAVE.bag[s.i] : SAVE.equip[s.slot]; }
+function invTap(x, y) {
+  const L = invLayout();
+  if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || x < 0 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { closeInventory(); return; }
+  for (const [sl, r] of Object.entries(L.slots)) if (inRect(r, x, y)) { game.inv.sel = SAVE.equip[sl] ? { from: 'equip', slot: sl } : null; sfx('tap', { vol: 0.5 }); return; }
+  const b = L.bag, c = Math.floor((x - b.x) / (b.cell + 3)), r = Math.floor((y - b.y) / (b.cell + 3));
+  if (c >= 0 && c < b.cols && r >= 0 && r < b.rows) {
+    const i = r * b.cols + c, it = SAVE.bag[i];
+    if (!it) { game.inv.sel = null; return; }
+    const again = game.inv.sel && game.inv.sel.from === 'bag' && game.inv.sel.i === i;
+    if (again) { equip(it); game.inv.sel = { from: 'equip', slot: it.slot }; } else { game.inv.sel = { from: 'bag', i }; it.isNew = false; sfx('tap', { vol: 0.5 }); }
+    return;
+  }
+  const it = selItem(); if (!it) return;
+  if (inRect(L.btnA, x, y)) { if (game.inv.sel.from === 'bag') { equip(it); game.inv.sel = { from: 'equip', slot: it.slot }; } else if (unequip(it.slot)) game.inv.sel = { from: 'bag', i: SAVE.bag.length - 1 }; }
+  else if (inRect(L.btnB, x, y) && game.inv.sel.from === 'bag') { salvage(it); game.inv.sel = null; }
+}
+// A framed slot with an item icon, coloured by rarity.
+function itemSlot(r, it, { ghost = null, sel = false } = {}) {
+  ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
+  ctx.fillStyle = it ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.fillStyle = PAL.ink1; ctx.fillRect(r.x, r.y + r.h - 2, r.w, 2);
+  if (it) {
+    const col = RARITY[it.ri].color;
+    ctx.strokeStyle = col; ctx.globalAlpha = it.ri ? 0.9 : 0.35; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1); ctx.globalAlpha = 1;
+    if (it.ri >= 2) { ctx.globalAlpha = 0.18; ctx.fillStyle = col; ctx.fillRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2); ctx.globalAlpha = 1; }
+    sprC('loot', 'item', ICON_OF.indexOf(it.slot), r.x + r.w / 2, r.y + r.h / 2);
+    if (it.isNew) { ctx.fillStyle = PAL.outline; ctx.fillRect(r.x + r.w - 6, r.y + 1, 5, 5); ctx.fillStyle = PAL.gold0; ctx.fillRect(r.x + r.w - 5, r.y + 2, 3, 3); }
+  } else if (ghost) sprC('loot', 'item', ICON_OF.indexOf(ghost), r.x + r.w / 2, r.y + r.h / 2, { alpha: 0.18 });
+  if (sel) { ctx.strokeStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.lineWidth = 1; ctx.strokeRect(r.x - 1.5, r.y - 1.5, r.w + 3, r.h + 3); }
+}
+function invButton(r, label, col, on = true) {
+  ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
+  ctx.fillStyle = on ? col : PAL.ink3; ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(r.x, r.y, r.w, 2);
+  ctx.fillStyle = 'rgba(11,7,16,0.3)'; ctx.fillRect(r.x, r.y + r.h - 3, r.w, 3);
+  text(label, r.x + r.w / 2, r.y + 6, on ? PAL.white : PAL.stone2, { align: 'center' });
+}
+function renderInventory() {
+  const L = invLayout(), it = selItem();
+  ctx.fillStyle = 'rgba(11,7,16,0.72)'; ctx.fillRect(0, 0, W, H);
+  gild(L.x0, L.y0, L.pw, L.ph);
+  ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  text('VESTMENTS AND RELICS', L.x0 + 12, L.y0 + 9, PAL.gold1);
+  const gold = game.scene === 'wound' ? game.run.gold : SAVE.gold || 0;
+  sprC('loot', 'coin', 0, L.close.x - 64, L.y0 + 13); text(String(gold), L.close.x - 57, L.y0 + 9, PAL.gold1);
+  sprC('ui', 'close', 0, L.close.x, L.close.y);
+  // Paper doll.
+  const D = L.doll;
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(D.x + 36, D.y, D.w - 72, 140);
+  ctx.save(); ctx.translate(D.x + D.w / 2, D.y + 134); ctx.scale(2, 2); spr('saint', 'idle', Math.floor(game.real * 3), 0, 0); ctx.restore();
+  for (const [sl, r] of Object.entries(L.slots)) {
+    const sel = game.inv.sel && game.inv.sel.from === 'equip' && game.inv.sel.slot === sl;
+    itemSlot(r, SAVE.equip[sl], { ghost: sl, sel });
+  }
+  // Totals under the doll.
+  const SHORT = { dmg: 'DAMAGE', crit: 'CRIT', hp: 'MAX HP', dash: 'DASH CD', fervor: 'FERVOR', gold: 'GOLD', speed: 'SPEED', cdr: 'MIRACLE CD', armor: 'ARMOR', lok: 'LIFE/KILL' };
+  const lines = Object.keys(STAT).filter((k) => G[k]).map((k) => `+${G[k]}${STAT[k].pct ? '%' : ''} ${SHORT[k]}`);
+  if (G.setN >= 2) lines.push(`SAINT'S SET ${G.setN}/4`);
+  const pw = [...G.powers].map((k) => POWERS[Object.keys(POWERS).find((q) => POWERS[q].key === k)].text);
+  const sy = D.y + 150;
+  text(`HP ${player.maxHp}`, D.x, sy, PAL.blood0, { small: true, outline: null });
+  if (!lines.length) text('NOTHING WORN', D.x, sy + 10, PAL.stone2, { small: true, outline: null });
+  lines.slice(0, 12).forEach((l, i) => text(l, D.x + (i % 2) * 96, sy + 10 + Math.floor(i / 2) * 9, l.startsWith('SAINT') ? RARITY[4].color : PAL.cloth1, { small: true, outline: null }));
+  let py = sy + 12 + Math.ceil(Math.min(12, lines.length) / 2) * 9;
+  for (const t of pw) for (const l of wrap(t, 30)) { if (py < L.y0 + L.ph - 10) text(l, D.x, py, PAL.ember1, { small: true, outline: null }); py += 9; }
+  // The bag.
+  const B = L.bag;
+  text(`BAG ${SAVE.bag.length}/${BAG_SIZE}`, B.x, B.y - 12, PAL.stone1);
+  for (let r = 0; r < B.rows; r++) for (let c = 0; c < B.cols; c++) {
+    const i = r * B.cols + c, sel = game.inv.sel && game.inv.sel.from === 'bag' && game.inv.sel.i === i;
+    itemSlot({ x: B.x + c * (B.cell + 3), y: B.y + r * (B.cell + 3), w: B.cell, h: B.cell }, SAVE.bag[i], { sel });
+  }
+  text('TAP TWICE TO WEAR', B.x, B.y + B.rows * (B.cell + 3) + 4, PAL.stone2, { small: true, outline: null });
+  // The card.
+  const C = L.card;
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(C.x, C.y, C.w, C.h);
+  if (!it) { wrap('CHOOSE A RELIC TO READ IT. WORN RELICS ARE SAFE IF YOU FALL; THE CHOIR TAKES HALF OF WHAT YOU CARRY.', Math.floor((C.w - 12) / 6)).forEach((l, i) => text(l, C.x + 6, C.y + 8 + i * 10, PAL.stone1, { small: true, outline: null })); return; }
+  const R0 = RARITY[it.ri];
+  let y = C.y + 6;
+  for (const l of wrap(it.name, Math.floor((C.w - 12) / 7))) { text(l, C.x + 6, y, R0.color); y += 12; }
+  text(`${R0.name} ${it.slot.toUpperCase()}`, C.x + 6, y, PAL.stone1, { small: true, outline: null }); y += 12;
+  const worn = game.inv.sel.from === 'bag' ? SAVE.equip[it.slot] : null;
+  for (const st of it.stats) {
+    text(statLine(st), C.x + 6, y, PAL.cloth0, { small: true, outline: null });
+    if (worn) { const w0 = (worn.stats.find((q) => q[0] === st[0]) || [0, 0])[1], dv = st[1] - w0; if (dv) text(`${dv > 0 ? '+' : ''}${dv}`, C.x + C.w - 6, y, dv > 0 ? PAL.flame1 : PAL.blood0, { small: true, outline: null, align: 'right' }); }
+    y += 10;
+  }
+  if (worn) for (const st of worn.stats) if (!it.stats.some((q) => q[0] === st[0])) { text(`-${st[1]}${STAT[st[0]].pct ? '%' : ''} ${STAT[st[0]].label}`, C.x + 6, y, PAL.blood0, { small: true, outline: null }); y += 10; }
+  if (it.power) { y += 3; for (const l of wrap(POWERS[it.power].text, Math.floor((C.w - 12) / 6))) { text(l, C.x + 6, y, PAL.ember1, { small: true, outline: null }); y += 9; } }
+  if (it.set) { y += 3; for (const t of SET_TEXT) for (const l of wrap(t, Math.floor((C.w - 12) / 6))) { text(l, C.x + 6, y, R0.color, { small: true, outline: null }); y += 9; } }
+  if (worn) { const d = itemScore(it) - itemScore(worn); text(d > 0.2 ? 'BETTER THAN WORN' : d < -0.2 ? 'WORSE THAN WORN' : 'SIDEGRADE', C.x + 6, C.y + C.h - 40, d > 0.2 ? PAL.flame1 : d < -0.2 ? PAL.blood0 : PAL.stone1, { small: true, outline: null }); }
+  if (game.inv.sel.from === 'bag') { invButton(L.btnA, 'WEAR', PAL.gold3); invButton(L.btnB, `SELL ${SALVAGE[it.ri]}`, PAL.crimson3); }
+  else invButton(L.btnA, 'TAKE OFF', PAL.stone4, SAVE.bag.length < BAG_SIZE);
+}
+
 function onTap(x, y) {
   switch (game.state) {
     case 'title': {
@@ -2740,6 +3066,7 @@ function onTap(x, y) {
       return true;
     }
     case 'pause': sfx('tap'); game.state = 'play'; return true;
+    case 'inv': invTap(x, y); return true;
     case 'loading': return true;
     case 'dialog': {
       const d = game.dialog;
@@ -2770,13 +3097,14 @@ function frame(t) {
 
 addEventListener('resize', resize);
 resize();
+gearInit(); G = gearStats();
 loadAssets().then(() => {
   if (location.search.includes('run')) { tut.on = false; newRun(); }
   else if (location.search.includes('town')) enterTown();
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { game, T, hud: HUD, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; } };
+window.HS = { game, T, hud: HUD, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; } };
 </script>
 </body>
 </html>

@@ -12,7 +12,7 @@ next, and the owner's preferences.
 | `assets/sprites/*.png`, `sprites.json` | Generated sheets (committed). Never edit them by hand |
 | `tools/sprites.mjs` | Builds every sheet. Older hand-drawn art lives here; sculpted models override it by anim name |
 | `tools/sdf.mjs` | The sculpted pixel-art renderer (SDF shapes, smooth union, lighting, palette banding, outlines) |
-| `tools/models/*.mjs` | Model sets: `base` (materials + Saint model), `saint`, `common`, `rare`, `elite`, `townfolk`, `town`, `dungeon`, `floor` (flagstones, water), `vfx` (effects, icons, loot, HUD sound icon) |
+| `tools/models/*.mjs` | Model sets: `base` (materials + Saint model), `saint`, `common`, `rare`, `elite`, `townfolk`, `town`, `dungeon`, `floor` (flagstones, water), `vfx` (effects, icons, loot, HUD sound icon), `props` (3/4-view furniture, pilasters, floor bits, HUD buttons) |
 | `assets/audio/*.mp3` | Sound effects, music and ambience (committed). Rebuilt by `tools/build-audio.sh <src>` from the packs in `docs/CREDITS.md` |
 | `docs/CREDITS.md` | Every asset source and licence. Add to it when you add an asset |
 | `docs/ART_COMPARISON.md` | Otherworld Legends vs our art: the gap list |
@@ -34,7 +34,10 @@ node tools/tests/all.cjs <outDir>     # spawns all 30 monsters with affixes
 node tools/tests/floor.cjs <outDir>   # clears a full floor through the Waystone to the tally
 node tools/tests/town.cjs <outDir>    # tour of Vael's districts
 node tools/tests/e2e.cjs <outDir>     # menu → town → tutorial → dungeon → death
+node tools/tests/maps.cjs [n]         # builds n floors; every room reachable, spawn clear (no screenshots)
+node tools/tests/inv.cjs <outDir>     # bag, wear, sell, loot labels
 node tools/tests/err.cjs              # prints page errors and state
+node tools/sprites.mjs --audit        # lists any animation still drawn by the old hand-drawn code
 ```
 
 Each test writes screenshots to `<outDir>/shots/` and prints `errors 0 []` when clean. Look at the screenshots yourself; the user cares most about how it looks.
@@ -50,6 +53,7 @@ Each test writes screenshots to `<outDir>/shots/` and prints `errors 0 []` when 
   - Every pixel must be on the palette.
   - Characters face right; the engine flips them.
   - Every character frame sets `ax`/`ay` at the feet.
+  - Furniture is drawn in 3/4 view: pass `tilt` (about 0.3 to 0.6), `tiltY` (the ground line) and `tiltLift` to `render()` so the top face shows (see `tools/models/props.mjs`).
 - **Model sets:** a set exports `{ sheetName: { animName: () => frames } }`. `sprites.mjs` loads it automatically if its name is in the list near the top. Monster anims are `<id>_walk` (4 frames) and `<id>_attack` (2 frames, or 3 = windup, windup2, strike).
 - **World units:** distances in `index.html` are world pixels at the v5 scale. Any new size or range should already include the ×1.3 scale. MON stats are written at the old scale and multiplied by `WS` in a loop after the table.
 - **Floor tiles:** stay 16 px (`TILE`). Back walls are 3 tiles tall plus a cap: `hall.wall` = [top, cap, upper, lower, mid].

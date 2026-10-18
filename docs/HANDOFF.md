@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-18, after the Otherworld Legends polish and audio round.
+Last updated 2026-10-18, after round 2: map fixes, minimap, inventory and the last old art.
 
 ## Where the game stands
 
@@ -22,6 +22,11 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
   - Effects, item icons, coins, globes and enemy shots remodelled (`tools/models/vfx.mjs`).
   - New UI font: Kenney High, bold, cap height 9.
   - Saint legs show in the run; golem legs split; leviathan rears; darker Inquisitor hood.
+- **Round 2:**
+  - Map bug fixed: the room grid lookup wrapped across rows, so corridors could join far rooms and leave others unreachable (185 of 200 floors were affected). Loop links are now orthogonal, the spawn and carpet aisles are kept clear of props, and enemies spawn only on open tiles. A room where nothing is hurt for 15 s pulls its survivors into the open. `tools/tests/maps.cjs` checks 300 floors.
+  - Minimap redrawn as a room grid with fog, corridors, locked gates in red, room icons and a blinking marker; the town shows a street strip.
+  - Inventory and equipment: a 30-slot bag and 8 slots (hood, mantle, gloves, girdle, rosary, seal, relic, greaves), saved in localStorage (`SAVE.bag`, `SAVE.equip`). Every item has a slot base stat plus rolls; relic-touched items have a power, Odile's set has 2- and 4-piece bonuses. Stats apply through `G` (see `gearStats()`). Open with the bag button or I. Tap twice to wear; sell for gold. Empty slots auto-equip. On death the Choir takes every other relic picked up that run (worn ones are safe). Floor labels stack and show a green arrow for upgrades; rarer drops have loot beams.
+  - 3/4-view furniture (crate, chest, pew, altar, sarcophagus, shrine, coffin, maiden, cage, statues, columns, urns), stone pilasters on back walls, engraved floor seals, new splats, mounds, candles, gibs, cobwebs and HUD buttons. `node tools/sprites.mjs --audit` reports no old art left.
 - **Audio:** Kenney SFX for every action, OpenGameArt music (town, dungeon) and town wind and crickets. Mute button under pause (or M key), saved in localStorage. iOS 17+ follows the silent switch via `navigator.audioSession.type = 'ambient'`. Sources in `docs/CREDITS.md`.
 - **Graphics v5:**
   - Everything is sculpted with the SDF renderer, and the view is about 360 px tall with a ×1.3 world scale (see `docs/GDD.md` → "Art v5").

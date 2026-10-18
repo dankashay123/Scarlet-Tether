@@ -559,6 +559,7 @@ ends in Martyrdom and a first Vigil. Progress is tracked in `docs/ROADMAP.md`.
 - Effects, item icons, coins, globes and enemy shots are in
   `tools/models/vfx.mjs`: solid things are SDF models, soft things (impacts,
   blood, smoke, orbs) are lit 2D metaball forms. No dithering.
+- Furniture is rendered in 3/4 view (tilted back about the ground line) so tops read lighter than fronts, as in Otherworld Legends.
 - UI font: Kenney High (CC0) as a bitmap with doubled stems, cap height 9.
   `text()` caches each drawn string.
 - Model sets live in `tools/models/`: `base` (materials and the Saint),
@@ -567,3 +568,14 @@ ends in Martyrdom and a first Vigil. Progress is tracked in `docs/ROADMAP.md`.
   set may also add a new sheet.
 - Preview one set without rebuilding the game:
   `node tools/preview.mjs tools/models/<set>.mjs out.png 4`.
+
+
+## Items and equipment (round 2)
+
+- Eight slots: hood, mantle, gloves, girdle, rosary, seal, relic, greaves.
+- Each slot has a base stat (hood and girdle: max HP; mantle: armor; gloves: damage; greaves: move speed; rosary: fervor gain; seal: crit chance; relic: miracle cooldown).
+- Extra rolls by rarity: blessed 1-2, consecrated 2-3, relic-touched and set 3. Values scale x1 to x2.1.
+- Relic-touched items carry one power per slot (pierce, heal on perfect dodge, faster crossbow, double globes, extra dash charge, slower fervor decay, triple crits, faster Penance).
+- Odile's set: 2 pieces +10% damage; 4 pieces +1 dash charge and +15% damage.
+- The bag holds 30. Selling pays 5 / 15 / 40 / 120 / 200 gold by rarity.
+- Death: the Choir takes every other relic found that run; worn relics are safe.

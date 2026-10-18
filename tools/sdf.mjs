@@ -96,7 +96,23 @@ function evalScene(prims, x, y, z) {
 // --------------------------------------------------------------- render ---
 // MATS maps a material name to { ramp, min, max (in 9 fine steps), spec, glow, flat }.
 export const LIGHT = (() => { const v = [-0.55, -0.75, 0.62]; const d = len3(...v); return v.map((c) => c / d); })();
+// 3/4 view: tilt a shape back about the x axis around the ground line, so its
+// top faces turn toward the viewer (Otherworld Legends props show their tops).
+export function tiltX(prim, py, ang) {
+  const c = Math.cos(ang), s = Math.sin(ang), f = prim.f;
+  if (!prim.bb) return { ...prim, f: (x, y, z) => f(x, py + (y - py) * c - z * s, (y - py) * s + z * c) };
+  const [x0, y0, z0, x1, y1, z1] = prim.bb;
+  let lo = [1e9, 1e9], hi = [-1e9, -1e9];
+  for (const y of [y0, y1]) for (const z of [z0, z1]) { const yc = py + (y - py) * c + z * s, zc = -(y - py) * s + z * c; lo = [Math.min(lo[0], yc), Math.min(lo[1], zc)]; hi = [Math.max(hi[0], yc), Math.max(hi[1], zc)]; }
+  return { ...prim, bb: [x0, lo[0], lo[1], x1, hi[0], hi[1]], f: (x, y, z) => f(x, py + (y - py) * c - z * s, (y - py) * s + z * c) };
+}
 export function render(scene, w, h, MATS, opts = {}) {
+  if (opts.tilt) {
+    const lift = opts.tiltLift || 0, t0 = (p) => tiltX(p, opts.tiltY ?? h, opts.tilt);
+    // tiltLift raises the image so a deep base's front edge stays on the frame floor.
+    const t = (p) => { const q = t0(p), f = q.f; return { ...q, bb: q.bb && [q.bb[0], q.bb[1] - lift, q.bb[2], q.bb[3], q.bb[4] - lift, q.bb[5]], f: (x, y, z) => f(x, y + lift, z) }; };
+    const S2 = new Scene(); S2.prims = scene.prims.map((p) => ({ ...t(p), k: p.k, op: p.op })); S2.paints = scene.paints.map(t); scene = S2;
+  }
   const zmax = opts.zmax ?? 60, zmin = opts.zmin ?? -60;
   const px = new Int16Array(w * h).fill(-1), dep = new Float32Array(w * h).fill(-1e9), mid = new Int16Array(w * h).fill(-1), step = new Int8Array(w * h).fill(-1);
   const matNames = [];

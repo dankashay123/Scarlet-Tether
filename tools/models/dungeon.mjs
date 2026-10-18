@@ -162,10 +162,10 @@ function skullWall() {
 
 // ---------------------------------------------------------------- props ---
 const FLAME = { flameCore: { ramp: 'ember', glow: 0 }, flameMid: { ramp: 'ember', glow: 2 }, flameOut: { ramp: 'ember', glow: 4 }, flameEdge: { ramp: 'ember', glow: 6 } };
-const MM = { ...MATS, ...FLAME, statue: { ramp: 'pot', spec: 0.06 }, statueDark: { ramp: 'pot', bias: -0.1 }, plinth: { ramp: 'brick', spec: 0.04 }, wax: { ramp: 'cloth', min: 1, max: 6, spec: 0.2 }, darkIron: { ramp: 'iron', bias: -0.25, spec: 0.5 } };
+export const MM = { ...MATS, ...FLAME, statue: { ramp: 'pot', spec: 0.06 }, statueDark: { ramp: 'pot', bias: -0.1 }, plinth: { ramp: 'brick', spec: 0.04 }, wax: { ramp: 'cloth', min: 1, max: 6, spec: 0.2 }, darkIron: { ramp: 'iron', bias: -0.25, spec: 0.5 } };
 // A tongue of fire rising from (x, y): layered glow shells, swaying.
 // Flames are painted by hand after rendering: a teardrop in four bands.
-function flame(S, x, y, z, size, sway, tall) { (S.flames ||= []).push([x, y, size, sway, tall]); }
+export function flame(S, x, y, z, size, sway, tall) { (S.flames ||= []).push([x, y, size, sway, tall]); }
 function flame2D(fr, x, y, size, sway, tall) {
   const H = size * 2.6 + tall;
   for (let py = Math.floor(y - H - 1); py <= Math.ceil(y + size); py++) for (let px = Math.floor(x - size - 2); px <= Math.ceil(x + size + 2); px++) {
@@ -177,7 +177,7 @@ function flame2D(fr, x, y, size, sway, tall) {
     put(fr, px, py, k < 0.3 ? 'ember0' : k < 0.5 ? 'gold0' : k < 0.72 ? 'ember1' : k < 0.9 ? 'ember2' : 'ember3');
   }
 }
-const R = (S, w, h, M, o) => { const fr = render(S, w, h, M, o); for (const fl of S.flames || []) flame2D(fr, ...fl); return fr; };
+export const R = (S, w, h, M, o) => { const fr = render(S, w, h, M, o); for (const fl of S.flames || []) flame2D(fr, ...fl); return fr; };
 
 function torchStand(i) {
   const S = new Scene(), cx = 12, sway = [0, 1, 0.3, -1][i], tall = [0, 2, 1, 3][i];
@@ -243,7 +243,7 @@ function statue(kind) {
     S.add(sphere([cx, 34.6, 6.2], 1.2, 'gold'), 0);
     S.paint({ f: (x, y, z) => Math.max(Math.abs(x - cx) - 1.6, Math.abs(y - 31) - 3.2, -z + 3), mat: 'crimson' });
   }
-  const fr = R(S, 40, 80, MM, { ground: 79 });
+  const fr = R(S, 40, 80, MM, { ground: 79, tilt: 0.3, tiltY: 79, tiltLift: 2 });
   if (kind === 'saint') { dot(fr, cx + 0.3, 22.5, 'flame2'); dot(fr, cx + 2.2, 22.5, 'flame2'); }
   for (const [x, y] of [[9, 78], [10, 78], [30, 77], [31, 78], [10, 56], [29, 57]]) if (fr.px[y * 40 + x] >= 0) put(fr, x, y, 'moss2');
   return fr;
@@ -277,7 +277,7 @@ function urn(v) {
   S.sub(ellipsoid([cx, 4.4, 0], [2.4, 1.2, 2.4], 'ink'), 0.2);
   S.paint({ f: (x, y) => Math.abs(y - 13) - 1.1, mat: v ? 'brick' : 'teal' });
   S.paint({ f: (x, y, z) => Math.abs(y - 17.5 - Math.sin(x * 1.5) * 0.6) - 0.5 + (z < 0 ? 9 : 0), mat: v ? 'brick' : 'teal' });
-  return R(S, 21, 26, { ...MM, ink: { ramp: 'ink', bias: -0.4, min: 6 } }, { ground: 25 });
+  return R(S, 21, 26, { ...MM, ink: { ramp: 'ink', bias: -0.4, min: 6 } }, { ground: 25, tilt: 0.4, tiltY: 25, tiltLift: 3 });
 }
 
 // Props sheet: columns, sarcophagi, candelabra and floor candles.
@@ -288,7 +288,7 @@ function column() {
   S.add({ mat: 'stone', bb: [cx - 8, 10, -7, cx + 8, 64, 7], f: (x, y, z) => { const a = Math.atan2(z, x - cx); return Math.max(Math.hypot(x - cx, z) - 6.3 - Math.abs(Math.sin(a * 4)) * 0.6, 11 - y, y - 63.5) * 0.8; } }, 0.6);
   S.add(box([cx, 9, 0], [10, 2.5, 6.5], 0.8, 'stone'), 0.6);
   S.add(box([cx, 4, 0], [11.5, 2.6, 7.5], 0.6, 'stone'), 0.3);
-  const fr = R(S, 29, 76, MM, { ground: 75 });
+  const fr = R(S, 29, 76, MM, { ground: 75, tilt: 0.3, tiltY: 75, tiltLift: 2.2 });
   for (const [x, y] of [[6, 72], [7, 73], [22, 70], [11, 8]]) if (fr.px[y * 29 + x] >= 0) put(fr, x, y, 'moss2');
   return fr;
 }
