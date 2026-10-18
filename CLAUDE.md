@@ -11,8 +11,9 @@ next, and the owner's preferences.
 | `index.html` | The whole game (about 2,600 lines, Canvas 2D). The `T` table at the top holds tuning (`T.viewH` = 305, the view height; matches the Otherworld Legends phone camera); `WS = 1.3` is the world scale |
 | `assets/sprites/*.png`, `sprites.json` | Generated sheets (committed). Never edit them by hand |
 | `tools/sprites.mjs` | Builds every sheet. Older hand-drawn art lives here; sculpted models override it by anim name |
-| `tools/sdf.mjs` | The sculpted pixel-art renderer (SDF shapes, smooth union, lighting, palette banding, outlines) |
-| `tools/models/*.mjs` | Model sets: `base` (materials + Saint model), `saint`, `common`, `rare`, `elite`, `townfolk`, `town`, `dungeon`, `floor` (flagstones, water), `vfx` (effects, icons, loot, HUD sound icon), `props` (3/4-view furniture, pilasters, floor bits, HUD buttons), `weapon` (the floating crossbow, 16 angles) |
+| `tools/sdf.mjs` | The sculpted pixel-art renderer (SDF shapes, smooth union, lighting, palette banding, outlines). `setRes(2)` renders on a 2x2 grid |
+| `tools/chunky.mjs` | Snaps any frame to the 2x2 chunky grid (the Otherworld Legends blocky look); run on every sheet except `ui` |
+| `tools/models/*.mjs` | Model sets: `base` (materials + Saint model), `saint`, `common`, `rare`, `elite`, `townfolk`, `town`, `dungeon`, `floor` (flagstones, water), `vfx` (effects, icons, loot, HUD sound icon), `props` (3/4-view furniture, pilasters, floor bits, HUD buttons), `weapon` (the floating crossbow, 16 angles), `street` (town street props and ground decals) |
 | `assets/audio/*.mp3` | Sound effects, music and ambience (committed). Rebuilt by `tools/build-audio.sh <src>` from the packs in `docs/CREDITS.md` |
 | `docs/CREDITS.md` | Every asset source and licence. Add to it when you add an asset |
 | `docs/ART_COMPARISON.md` | Otherworld Legends vs our art: the gap list |
@@ -28,6 +29,7 @@ next, and the owner's preferences.
 ```sh
 node tools/sprites.mjs                                   # rebuild all sheets (~8 s)
 node tools/preview.mjs tools/models/rare.mjs out.png 4   # preview one set at 4x; optional 4th arg filters anim names
+CHUNKY=1 node tools/preview.mjs ...                      # preview as shipped (2x2 chunky pixels); CHUNKY=2 shows fine and chunky
 python3 -m http.server 8123                              # serve; open /?town, /?run, /?fps
 node tools/tests/dun.cjs <outDir>     # dungeon: start room, fight, rare+elite packs
 node tools/tests/all.cjs <outDir>     # spawns all 30 monsters with affixes
@@ -55,6 +57,7 @@ Each test writes screenshots to `<outDir>/shots/` and prints `errors 0 []` when 
   - Use `folds()` on cloth and `bumpy()` on flesh and stone.
   - No dithering mush and nothing that looks AI-made.
   - Every pixel must be on the palette.
+  - Chunky pixels: art ships on a 2x2 grid (each art pixel is 2 world pixels), so details under 2 px vanish. Keep thin parts (halos, strings, rims) at least 2 px thick and check with `CHUNKY=1` previews. The screen always uses a whole-number scale with nearest-neighbour pixels.
   - Characters face right; the engine flips them.
   - Every character frame sets `ax`/`ay` at the feet.
   - Furniture is drawn in 3/4 view: pass `tilt` (about 0.3 to 0.6), `tiltY` (the ground line) and `tiltLift` to `render()` so the top face shows (see `tools/models/props.mjs`).

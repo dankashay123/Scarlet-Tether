@@ -29,7 +29,7 @@ const SKIN = { skin: 'skin', pale: 'skinPale', red: 'skinRed', old: 'skinOld' };
 //     prop, hunch, skin, stole, build
 // pose: bob, step (-1..1), swing, raise, t
 function person(sp, pose = {}) {
-  const { bob = 0, step = 0, swing = 0, t = 0 } = pose;
+  const { bob = 0, step = 0, swing = 0, t = 0, legs = null, lift = [0, 0] } = pose;
   const W = 40, H = 56, G = 51, cx = 18 - (sp.hunch ? 1 : 0), B = bob;
   const S = new Scene();
   const robe = sp.robe, sleeve = sp.sleeve || robe, skin = SKIN[sp.skin || 'skin'];
@@ -38,12 +38,14 @@ function person(sp, pose = {}) {
   const hairM = sp.hair || 'hairDark';
   // Legs and shoes.
   const legM = sp.legs || 'tunic';
-  for (const side of [-1, 1]) {
-    const hz = side * 1.7 * wide, sw = side * step * 3;
-    const hip = [cx + 0.2, G - 15 + B, hz], knee = [cx + sw * 0.55 + 0.4, G - 8.6 + B * 0.5 - Math.max(0, sw) * 0.25, hz + 0.3], ankle = [cx + sw, G - 2.8 - Math.max(0, -sw * side) * 0, hz];
+  for (const [k, side] of [[0, -1], [1, 1]]) {
+    // legs: [back, front] foot offsets from a walk cycle; otherwise a plain scissor.
+    const hz = side * 1.7 * wide, sw = legs ? legs[k] : side * step * 3, up = lift[k];
+    const ankle = [cx + sw, G - 2.8 - up, hz], hip = [cx + 0.2, G - 15 + B, hz];
+    const knee = [(hip[0] + ankle[0]) / 2 + 0.7 + up * 0.5, G - 8.6 + B * 0.5 - up * 0.45, hz + 0.3];
     S.add(capsule(hip, knee, 2.4 * wide, 2, legM), 0.8);
     S.add(capsule(knee, ankle, 2, 1.6, legM), 0.6);
-    S.add(ellipsoid([ankle[0] + 1.2, G - 1.3, hz], [2.4, 1.4, 1.7], sp.shoe || 'leather'), 0.7);
+    S.add(ellipsoid([ankle[0] + 1.2, G - 1.3 - up, hz], [2.4, 1.4, 1.7], sp.shoe || 'leather'), 0.7);
   }
   // Torso, hips and shoulders.
   const ty = G - 23 + B, tx = cx + lean * 0.6;
@@ -243,9 +245,14 @@ const CAST = {
 function idle(id) {
   return [0, 1].map((i) => person(CAST[id], { bob: i, t: i }));
 }
+// An 8-frame walk: planted foot slides back, the other swings forward lifted.
+// Frame 2 (legs passing) doubles as the standing pose.
 function walk(id) {
-  const steps = [-1, 0, 1, 0];
-  return [0, 1, 2, 3].map((i) => person(CAST[id], { step: steps[i], swing: steps[i] * 0.8, bob: i % 2 ? -1 : 0, t: i }));
+  const leg = (p) => { p = ((p % 1) + 1) % 1; if (p < 0.5) return [3.2 - 12.8 * p, 0]; const u = (p - 0.5) * 2, e = u * u * (3 - 2 * u); return [-3.2 + 6.4 * e, 2.6 * Math.sin(Math.PI * u)]; };
+  return [0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+    const t = i / 8, b = leg(t + 0.5), f = leg(t), pass = Math.abs(Math.cos(t * 4 * Math.PI)) > 0.7;
+    return person(CAST[id], { legs: [b[0], f[0]], lift: [b[1], f[1]], swing: Math.sin(t * 2 * Math.PI) * 0.8, bob: pass ? 0 : -1, t: i });
+  });
 }
 
 

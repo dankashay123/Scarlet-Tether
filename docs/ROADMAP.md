@@ -26,6 +26,7 @@ Goal (GDD): one Stratum, a 30-minute run that ends in Martyrdom and a first Vigi
 - [x] 19 affixes, elite names and nameplates
 - [x] Loot: gold, health orbs, items in 5 rarities with beams, shrines, chests, breakables, Collection Imp, Carnage
 - [x] Vael rebuilt: a long twilight street with six districts, townsfolk, chatter, crows, fog, ash, lightning
+- [x] Round 7: chunky 2x2 pixels, 8-frame walks, town street dressing, clean title and loading screens
 - [x] Camera matched to Otherworld Legends phone play (305 px view), rooms resized to OWL proportions
 - [x] Round 6: Otherworld Legends map layouts (mirrored plans, open floors, wall rhythm, south ledge), marble pillars, auto equip, bulk sell, town walk-through, borrowed names removed
 - [x] Round 5: OWL camera (430 px view, sharp scaling), rooms 1–1.3 screens, descent info panel, 4 difficulty tiers, locked town sites, town minimap and full map

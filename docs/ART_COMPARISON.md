@@ -64,3 +64,10 @@ Studied from 18 wiki phone captures and 8 Steam screenshots.
 | Pillars | Narrow, bright, well clear of walls | Pale marble pillar, 1 tile, ~2.5 tiles tall |
 | Clutter | Crates and pots in corner clusters | 1–3 breakables per corner |
 | Hanging things | None | Wall chains removed |
+
+## Pixel size (round 7)
+
+OWL's art pixels are about 1.7x ours on screen and its heroes are ~28 art
+px tall, so its edges read as clear blocks. We now render all art on a 2x2
+grid (the Saint is ~25 art px tall) and scale the screen by whole numbers
+with nearest-neighbour pixels.

@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-18, after round 6 (clean OWL-style maps, auto equip, bulk sell, name purge).
+Last updated 2026-10-18, after round 7 (chunky OWL pixels, street dressing, walk cycles, clean title).
 
 ## Where the game stands
 
@@ -15,6 +15,12 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
 - **Monsters:** 30 of them (10 common; 10 rare, which glow blue; 10 elite, which glow gold), plus the Collection Imp. All attacks are telegraphed. 19 affixes, elite names and a nameplate bar.
 - **Loot:** gold, health orbs, items in 5 rarities, shrines, chests, breakables and a Carnage bonus. Gold saves to localStorage under the key `hollow-saint`.
 - **Vael:** a long twilight street with six districts, 13 talking townsfolk, walkers, kids, crows, fog, ash and lightning.
+- **Round 7:**
+  - Chunky pixels like Otherworld Legends: OWL's art pixels were ~1.7x ours on screen. Every model now renders on a 2x2 grid (`setRes(2)` in `tools/sdf.mjs`), every sheet except `ui` is snapped by `tools/chunky.mjs`, and the baked floor canvas by `chunkCanvas()` in index.html. The screen always uses a whole-number scale with nearest-neighbour pixels (`resize()`), so blocks have hard edges. The Saint is now ~25 art pixels tall, like OWL heroes.
+  - The halo was thickened and tipped up so it survives the 2x2 grid.
+  - Walk cycles: the Saint has an 8-frame walk (planted foot slides back, the other swings forward lifted with the knee bent, body bob at passing; `run` at 16 fps). Townsfolk walks are 8 frames with the same leg logic (frame 2 = standing). Monster walks are unchanged.
+  - Town: `tools/models/street.mjs` adds 16 street props (market booths, benches, hay, sacks, planters, signposts, trough, woodpiles, pots, buckets, wayside shrines, pennants, crate stacks) and flat decals (weeds, leaves, grates). They fill the whole depth of the street by district; a fountain stands in the cathedral square.
+  - Title screen: night sky, cathedral silhouette, warm glow, the Saint, logo and one button (stats and betting line removed). The descent loading screen shows the stratum, difficulty and a thin progress line.
 - **Camera (round 6b):** the view is 305 px tall, so the Saint (50 px head to feet) is about 16.5% of the screen height, measured against the hero in real Otherworld Legends phone captures (round 5's 430 px was based on zoomed Steam promo shots and was too far out). Rooms shrank to 32–40 × 22–28 tiles (`GRID` cells 46×36) to keep OWL's proportions: a room is just under a screen wide and a bit over a screen tall. The descent panel and town map were compacted to fit; the town camera offset is now `H * 0.26`.
 - **Round 6:**
   - Maps follow the Otherworld Legends recipe (studied from wiki and Steam screenshots): most of the floor stays open, each combat room gets one mirrored plan (`r.plan`: empty, grid4, twin, center, sidepools, edgerow, corners, pews), clutter sits in corners, and nothing hangs in mid air (the wall chains are gone).

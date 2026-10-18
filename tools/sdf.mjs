@@ -64,7 +64,12 @@ export function clip(prim, fn) { const f = prim.f; return { ...prim, f: (x, y, z
 
 // --------------------------------------------------------- pixel touch-ups ---
 // Hand-placed pixels drawn after rendering (eyes, strings, glints).
-export function dot(fr, x, y, name) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < fr.w && y < fr.h) fr.px[y * fr.w + x] = IDX[name]; }
+export function dot(fr, x, y, name) {
+  x = Math.round(x); y = Math.round(y);
+  // On the chunky grid a hand-placed pixel fills its whole block.
+  if (RES > 1) { const bx = Math.floor(x / RES) * RES, by = Math.floor(y / RES) * RES; for (let j = 0; j < RES; j++) for (let i = 0; i < RES; i++) { const xx = bx + i, yy = by + j; if (xx >= 0 && yy >= 0 && xx < fr.w && yy < fr.h) fr.px[yy * fr.w + xx] = IDX[name]; } return; }
+  if (x >= 0 && y >= 0 && x < fr.w && y < fr.h) fr.px[y * fr.w + x] = IDX[name];
+}
 export function pline(fr, x0, y0, x1, y1, name) { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (let i = 0; i <= n; i++) dot(fr, x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, name); }
 export function under(fr, x, y) { x = Math.round(x); y = Math.round(y); return x >= 0 && y >= 0 && x < fr.w && y < fr.h ? fr.px[y * fr.w + x] : -1; }
 
@@ -106,7 +111,21 @@ export function tiltX(prim, py, ang) {
   for (const y of [y0, y1]) for (const z of [z0, z1]) { const yc = py + (y - py) * c + z * s, zc = -(y - py) * s + z * c; lo = [Math.min(lo[0], yc), Math.min(lo[1], zc)]; hi = [Math.max(hi[0], yc), Math.max(hi[1], zc)]; }
   return { ...prim, bb: [x0, lo[0], lo[1], x1, hi[0], hi[1]], f: (x, y, z) => f(x, py + (y - py) * c - z * s, (y - py) * s + z * c) };
 }
+// Pixel size of the art. At 2 every model renders on a 2x2 grid (chunky
+// pixels, the Otherworld Legends look) and the frame keeps its size.
+let RES = 1;
+export function setRes(k) { RES = k; }
+export const getRes = () => RES;
 export function render(scene, w, h, MATS, opts = {}) {
+  if (RES > 1 && !opts.fine) {
+    const k = RES, w2 = Math.ceil(w / k), h2 = Math.ceil(h / k);
+    const r = renderGrid(scene, w2, h2, MATS, opts, k), px = new Int16Array(w * h), dep = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const j = Math.floor(y / k) * w2 + Math.floor(x / k); px[y * w + x] = r.px[j]; dep[y * w + x] = r.depth[j]; }
+    return { w, h, px, depth: dep };
+  }
+  return renderGrid(scene, w, h, MATS, opts, 1);
+}
+function renderGrid(scene, w, h, MATS, opts, k) {
   if (opts.tilt) {
     const lift = opts.tiltLift || 0, t0 = (p) => tiltX(p, opts.tiltY ?? h, opts.tilt);
     // tiltLift raises the image so a deep base's front edge stays on the frame floor.
@@ -118,7 +137,7 @@ export function render(scene, w, h, MATS, opts = {}) {
   const matNames = [];
   const matIndex = (m) => { let i = matNames.indexOf(m); if (i < 0) { matNames.push(m); i = matNames.length - 1; } return i; };
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const sx = x + 0.5, sy = y + 0.5;
+    const sx = (x + 0.5) * k, sy = (y + 0.5) * k;
     const prims = scene.prims.filter((p) => sx >= p.bb[0] - p.k - 1 && sx <= p.bb[3] + p.k + 1 && sy >= p.bb[1] - p.k - 1 && sy <= p.bb[4] + p.k + 1);
     if (!prims.some((p) => p.op !== 'sub')) continue;
     let z = Math.min(zmax, Math.max(...prims.map((p) => p.bb[5] + p.k + 1))), hit = false, d, mat;
@@ -129,7 +148,7 @@ export function render(scene, w, h, MATS, opts = {}) {
     }
     if (!hit) continue;
     // Normal from the gradient.
-    const e = 0.35;
+    const e = 0.35 * k;
     const nx = evalScene(prims, sx + e, sy, z)[0] - evalScene(prims, sx - e, sy, z)[0];
     const ny = evalScene(prims, sx, sy + e, z)[0] - evalScene(prims, sx, sy - e, z)[0];
     const nz = evalScene(prims, sx, sy, z + e)[0] - evalScene(prims, sx, sy, z - e)[0];

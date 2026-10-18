@@ -7,14 +7,21 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { png } from './png.mjs';
 import { IDX } from './palette.mjs';
+import { chunkify } from './chunky.mjs';
+import { setRes } from './sdf.mjs';
 
 const [file, out, sc = '4', filter = ''] = process.argv.slice(2);
 const set = (await import(pathToFileURL(resolve(file)).href)).default;
+// CHUNKY=1: render as the game ships (2x2 pixel grid). CHUNKY=2: fine and chunky side by side.
 const rows = [];
 const t0 = Date.now();
 for (const [sheetName, anims] of Object.entries(set)) for (const [anim, fn] of Object.entries(anims)) {
   if (filter && !anim.includes(filter)) continue;
-  rows.push({ name: `${sheetName}.${anim}`, frames: fn() });
+  if (process.env.CHUNKY === '2') { setRes(1); rows.push({ name: `${sheetName}.${anim}`, frames: fn() }); }
+  if (process.env.CHUNKY) setRes(2);
+  const frames = fn();
+  if (process.env.CHUNKY) for (const f of frames) chunkify(f, { outline: false });
+  rows.push({ name: `${sheetName}.${anim}${process.env.CHUNKY ? ' (chunky)' : ''}`, frames });
 }
 const gap = 6, W = Math.max(...rows.map((r) => r.frames.reduce((a, f) => a + f.w + gap, gap))), H = rows.reduce((a, r) => a + Math.max(...r.frames.map((f) => f.h)) + gap, gap);
 const big = { w: W, h: H, px: new Int16Array(W * H).fill(-1) };

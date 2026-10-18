@@ -11,9 +11,15 @@ import { deflateSync } from 'node:zlib';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RGB, IDX, PALETTE, FINE, ramp } from './palette.mjs';
+import { setRes } from './sdf.mjs';
+import { chunkify } from './chunky.mjs';
+// Chunky pixels: every model renders on a 2x2 grid (see tools/chunky.mjs).
+// The HUD sheet stays fine so buttons and icons read crisply.
+const CHUNK = 2, FINE_SHEETS = new Set(['ui']);
+setRes(CHUNK);
 // v5: sculpted models (tools/sdf.mjs) replace hand-drawn animations by name.
 const OVR = {};
-for (const m of ['saint', 'common', 'rare', 'elite', 'town', 'townfolk', 'dungeon', 'floor', 'vfx', 'props', 'weapon']) {
+for (const m of ['saint', 'common', 'rare', 'elite', 'town', 'townfolk', 'dungeon', 'floor', 'vfx', 'props', 'weapon', 'street']) {
   let set;
   try { set = (await import(`./models/${m}.mjs`)).default; } catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') console.warn(`models/${m}.mjs failed to load: ${e.message}`); continue; }
   for (const [sh, anims] of Object.entries(set)) OVR[sh] = { ...OVR[sh], ...anims };
@@ -146,7 +152,10 @@ const P = (f, x, y, c) => f.set(x, y, c);
 
 function sheet(name, anims, extra = {}) {
   if (process.argv.includes('--audit')) { const old = Object.keys(anims).filter((k) => !(OVR[name] && OVR[name][k])); if (old.length) console.log(`old art in ${name}: ${old.join(' ')}`); }
+  setRes(FINE_SHEETS.has(name) ? 1 : CHUNK);
   if (OVR[name]) { anims = { ...anims }; for (const [a, fn] of Object.entries(OVR[name])) anims[a] = fn(); }
+  // Snap every frame (models and the older hand-drawn art) to the chunky grid.
+  if (!FINE_SHEETS.has(name)) for (const [a, fs] of Object.entries(anims)) for (const f of fs) chunkify(f, { outline: OVR[name] && OVR[name][a] ? false : 'auto' });
   // Each row (one animation) gets cells as wide as its widest frame.
   const rows = Object.entries(anims);
   const cellW = rows.map(([, fs]) => Math.max(...fs.map((f) => f.w)));

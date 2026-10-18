@@ -65,10 +65,12 @@ let W = 480, H = 270, SCALE = 1, PRE = 1, darkBase = null;
 function resize() {
   const dpr = window.devicePixelRatio || 1;
   const dw = Math.floor(innerWidth * dpr), dh = Math.floor(innerHeight * dpr);
-  // Snap to a whole scale when one lands close to the target height.
-  const near = Math.round(dh / T.viewH);
-  if (near >= 1 && Math.abs(dh / near - T.viewH) < T.viewH * 0.03) { SCALE = near; H = Math.floor(dh / near); }
-  else { SCALE = dh / T.viewH; H = T.viewH; }
+  // Always a whole-number scale with nearest-neighbour pixels, so every art
+  // pixel is a crisp square block on screen (the Otherworld Legends look).
+  // Pick the whole scale whose view height lands closest to the target.
+  const k = dh / T.viewH, lo = Math.max(1, Math.floor(k)), hi = Math.max(1, Math.ceil(k));
+  SCALE = Math.abs(dh / lo - T.viewH) <= Math.abs(dh / hi - T.viewH) ? lo : hi;
+  H = Math.floor(dh / SCALE);
   W = Math.round(dw / SCALE);
   PRE = Math.max(1, Math.ceil(SCALE - 0.001));
   buf.width = W; buf.height = H;
@@ -618,6 +620,7 @@ function makeDungeon() {
     if (d.kind === 'hangchain') { const f = frameOf('loot', 'hangchain', 0); rc.drawImage(IMG.loot, f.x, f.y, f.w, f.h, Math.round(d.x), Math.round(d.y), f.w, f.h); }
   }
   // Blood soaks straight into the baked floor (one less full-screen layer).
+  chunkCanvas(roomCanvas);
   stain = roomCanvas; sctxStain = rc;
   for (const l of lights) l.r *= WS;
   room = { kind: 'wound', name: 'THE UNDERCROFT', w, h, solid, isSolid, props, lights, decals: decals.filter((d) => d.kind === 'candles'), npcs: [], interact: [], pw: w * TILE, ph: h * TILE, top: 4, ambient: T.ambient, rooms, start, critters, water: waterSet, walls: [] };
@@ -680,6 +683,23 @@ function bakeWallEdges(rc, w, h, isFloor) {
   }
 }
 
+// Chunky pixels for the baked floor: each 2x2 block takes its most common
+// colour (ties go to the darker one), matching the 2x2 sprite grid.
+function chunkCanvas(c) {
+  const g = c.getContext('2d'), im = g.getImageData(0, 0, c.width, c.height), d = im.data, w = c.width, h = c.height;
+  const u32 = new Uint32Array(d.buffer);
+  for (let y = 0; y < h - 1; y += 2) for (let x = 0; x < w - 1; x += 2) {
+    const i0 = y * w + x, q = [u32[i0], u32[i0 + 1], u32[i0 + w], u32[i0 + w + 1]];
+    let best = q[0], bc = 0, bl = 1e9;
+    for (let a = 0; a < 4; a++) {
+      let k = 0; for (let b = 0; b < 4; b++) if (q[b] === q[a]) k++;
+      const v = q[a], l = (v & 255) + ((v >> 8) & 255) + ((v >> 16) & 255);
+      if (k > bc || (k === bc && l < bl)) { best = v; bc = k; bl = l; }
+    }
+    u32[i0] = u32[i0 + 1] = u32[i0 + w] = u32[i0 + w + 1] = best;
+  }
+  g.putImageData(im, 0, 0);
+}
 const roomOf = (px, py, inset = 0) => room.rooms && room.rooms.find((r) => px >= (r.x0 + inset) * TILE && px < (r.x1 + 1 - inset) * TILE && py >= (r.y0 + inset) * TILE && py < (r.y1 + 1 - inset) * TILE);
 function setGates(r, locked) {
   r.locked = locked; r.gateT = 0;
@@ -1031,6 +1051,13 @@ function makeTown() {
   }
   fillTo(w * TILE - 10);
   rc.fillStyle = 'rgba(11,7,16,0.45)'; rc.fillRect(0, base, w * TILE, 6);
+  // Flat ground detail baked into the street: weeds by the kerbs and the
+  // bottom wall, drifts of leaves and straw, sewer grates down the middle.
+  const decal = (anim, x, y, i = 0) => { const f = frameOf('street', anim, i); rc.drawImage(IMG.street, f.x, f.y, f.w, f.h, Math.round(x - f.w / 2), Math.round(y - f.h / 2), f.w, f.h); };
+  const bottom = (h - 1) * TILE;
+  for (let x = 20; x < w * TILE; x += 26 + rng() * 40) { decal('weeds', x, base + 10 + rng() * 6, Math.floor(rng() * 3)); decal('weeds', x + rng() * 20, bottom - 8 - rng() * 6, Math.floor(rng() * 3)); }
+  for (let k = 0; k < 70; k++) decal('leaves', rng() * w * TILE, base + 30 + rng() * (bottom - base - 40), Math.floor(rng() * 3));
+  for (let x = 140; x < w * TILE; x += 260 + rng() * 120) decal('grate', x, base + 150 + rng() * 40);
   chimney(1186 + 34, base - 104);
   // District dressing.
   const lamp = (x, y) => { place('lamp', x, y, 1, { sheet: 'town', anim: 'lamp', ph: rng() * 9 }); lights.push({ x, y: Math.floor(y / TILE) * TILE - 50, r: 104, c: 'ember', a: 0.95, flick: rng() * 9 }); };
@@ -1060,6 +1087,34 @@ function makeTown() {
   for (const [x, y] of [[1560, base + 52], [1924, base + 143], [1807, base + 39]]) { place('tree', x, y, 1); crows.push({ x: x + 10, y: y - 78, hx: x + 10, hy: y - 78, state: 'sit', t: rng() * 3, vx: 0, vy: 0 }); }
   for (let x = 1508; x < 2028; x += 42) if (Math.abs(x - 1664) > 52) place('fence', x, base + 12, 2, { solid: false });
   lights.push({ x: 1664, y: base - 52, r: 65, c: 'holy', a: 0.5 });
+  // Street dressing across the whole depth of the street, so walking south
+  // never shows an empty plaza. Nothing blocks (see place()).
+  const st = (anim, x, y, o = {}) => place(anim, x, y, 1, { sheet: 'street', ...o });
+  const stall = (x, y, v) => st('stall_awning', x, y, { frame: v });
+  // Gate: a carter's yard.
+  st('hay', 120, base + 170); st('hay', 148, base + 176); st('woodpile', 210, base + 230); st('signpost', 300, base + 120); st('bucket', 170, base + 186); st('crate_stack', 60, base + 240); st('sacks', 360, base + 215);
+  // Market: booths in two rows down the street, goods and bunting between.
+  stall(520, base + 140, 0); stall(650, base + 140, 1); stall(780, base + 140, 0);
+  stall(470, base + 235, 1); stall(600, base + 235, 0); stall(730, base + 235, 1);
+  for (const x of [455, 585, 715, 845]) st('bunting_pole', x, base + 92, { frame: (x / 130 | 0) % 2 });
+  st('sacks', 548, base + 186); st('pot', 690, base + 188); st('pot', 702, base + 192); st('crate_stack', 810, base + 196); st('sacks', 420, base + 260);
+  // The Gilded Lamb: benches and planters round the scrying pool.
+  for (const [x, y] of [[900, base + 160], [1076, base + 160], [940, base + 225], [1036, base + 225]]) st('bench', x, y);
+  for (const x of [870, 1106]) st('planter', x, base + 70, { frame: 1 });
+  st('planter', 988, base + 255, { frame: 0 }); st('bunting_pole', 1110, base + 120, { frame: 1 });
+  // The forge: fuel, water and stock.
+  st('woodpile', 1250, base + 120); st('trough', 1300, base + 175); st('crate_stack', 1150, base + 200); st('sacks', 1210, base + 238); st('hay', 1420, base + 230); st('bucket', 1326, base + 196); st('woodpile', 1460, base + 150);
+  // The Quiet Acre: a wayside shrine and the odd planter of dead flowers.
+  st('shrine_small', 1590, base + 175); lights.push({ x: 1590, y: base + 140, r: 44, c: 'flame', a: 0.7, flick: 3 });
+  st('shrine_small', 1980, base + 230); lights.push({ x: 1980, y: base + 195, r: 44, c: 'flame', a: 0.7, flick: 5 });
+  st('signpost', 2050, base + 120);
+  // Cathedral square: planters, benches and pennants framing the doors.
+  for (const x of [2230, 2450]) { st('planter', x, base + 90, { frame: 1 }); st('bunting_pole', x, base + 150, { frame: 0 }); }
+  for (const [x, y] of [[2190, base + 200], [2490, base + 200]]) st('bench', x, y);
+  place('fountain', 2340, base + 185, 1, { sheet: 'town', anim: 'fountain', ph: 0 }); lights.push({ x: 2340, y: base + 150, r: 80, c: 'holy', a: 0.5 });
+  for (const [x, y] of [[2270, base + 240], [2410, base + 240]]) st('bench', x, y);
+  for (const x of [2140, 2540]) st('shrine_small', x, base + 250);
+  for (let x = 2560; x < 3060; x += 120) { st('planter', x, base + 110 + (x % 3) * 30, { frame: (x / 120 | 0) % 2 }); st('pot', x + 50, base + 220); }
   // The cathedral steps.
   for (const x of [2197, 2483]) brazier(x, base + 34);
   for (let k = 0; k < 8; k++) { const x = 2262 + k * 16, y = base + 14 + (k % 2) * 4; room_candles.push({ x, y }); }
@@ -1087,6 +1142,7 @@ function makeTown() {
   for (const S of SITES) interact.push({ x: S.x, y: base + S.dy, r: 26, label: siteDone(S) ? 'LOOK' : 'LOCKED', icon: 'lock', site: S, use: () => openSite(S) });
   // Foreground silhouettes (parallax, drawn over everything).
   for (let x = 0; x < w * TILE * 1.25 + 520; x += 78 + rng() * 156) fg.push({ x, kind: pick(['tree', 'fence', 'fence', 'tomb', 'gallows', 'cart']), frame: Math.floor(rng() * 3) });
+  chunkCanvas(roomCanvas);
   stain = roomCanvas; sctxStain = rc;
   room = { kind: 'town', name: 'VAEL', w, h, solid, isSolid, props, lights, decals: room_candles.splice(0).map((c) => ({ kind: 'candles', ...c })), npcs, interact, pw: w * TILE, ph: h * TILE, cx: 146, cy: 13, top: TOP, ambient: 'rgba(16,8,30,0.62)', smoke, crows, fg, sky: makeSky(w * TILE), smokeParts: [], ash: [], lightning: { t: 6 + rng() * 8, flash: 0 } };
   for (const d of room.decals) lights.push({ x: d.x, y: d.y - 8, r: 52, c: 'flame', a: 0.7, flick: rng() * 9 });
@@ -1253,7 +1309,7 @@ function drawTownForeground(cx, cy) {
 }
 function drawNpc(n) {
   const walkAnim = SPR[n.sheet].anims[n.npc] && n.npc.endsWith('_walk');
-  const i = walkAnim ? (n.moving ? Math.floor(game.real * 7 + n.ph) : 1) : Math.floor(game.real * 2 + n.ph);
+  const i = walkAnim ? (n.moving ? Math.floor(game.real * 11 + n.ph) : 2) : Math.floor(game.real * 2 + n.ph);
   spr(n.sheet, n.npc, i, n.x, n.y, { flip: n.face < 0 });
   if (n.say) { const a = Math.min(1, n.say.t * 2); ctx.globalAlpha = a; text(n.say.text, n.x, n.y - 56, PAL.cloth1, { align: 'center' }); ctx.globalAlpha = 1; }
 }
@@ -2896,7 +2952,7 @@ function renderLight(cx, cy) {
 
 function drawPlayer() {
   const p = player;
-  const fps = p.anim === 'dash' ? 18 : p.anim === 'run' ? 12 : 5;
+  const fps = p.anim === 'dash' ? 18 : p.anim === 'run' ? 16 : 5;
   let i = Math.floor(p.animT * fps);
   if (p.anim === 'dash') i = Math.min(2, Math.floor((T.dash.time - p.dashT) / T.dash.time * 3));
   const blink = p.iframes > 0 && p.hurt > 0 && Math.floor(game.real * 30) % 2 === 0;
@@ -3265,31 +3321,39 @@ function overlay(title, sub) {
 const ODDS = ['3 TO 1', '5 TO 2', '7 TO 4', '2 TO 1', 'EVENS', '9 TO 2'];
 // Title menu buttons (internal pixels).
 function menuButtons() {
-  const b = [{ id: 'begin', label: SAVE.descents || SAVE.deaths ? 'CONTINUE' : 'BEGIN', x: W / 2, y: Math.round(H * 0.8), w: 116, h: 22 }];
-  if (SAVE.tutorialDone) b.push({ id: 'tutorial', label: 'REPLAY TUTORIAL', x: W / 2, y: Math.round(H * 0.8) + 28, w: 116, h: 16, small: true });
+  const b = [{ id: 'begin', label: SAVE.descents || SAVE.deaths ? 'CONTINUE' : 'BEGIN', x: W / 2, y: Math.round(H * 0.84), w: 124, h: 24 }];
+  if (SAVE.tutorialDone) b.push({ id: 'tutorial', label: 'REPLAY TUTORIAL', x: W / 2, y: Math.round(H * 0.84) + 24, w: 116, h: 14, small: true });
   return b;
 }
 function renderTitle() {
   if (!PAL) return;
-  const g = ctx.createRadialGradient(W / 2, H * 0.55, 10, W / 2, H * 0.55, H * 0.8);
-  g.addColorStop(0, 'rgba(95,220,108,0.26)'); g.addColorStop(0.5, 'rgba(125,18,51,0.2)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  // A quiet backdrop: night sky, the cathedral in silhouette, one warm glow.
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#120c1e'); sky.addColorStop(0.7, '#0b0710'); sky.addColorStop(1, '#07050b');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  if (IMG.town2) { const f = frameOf('town2', 'cathedral', 0); ctx.globalAlpha = 0.22; spr('town2', 'cathedral', 0, Math.round(W / 2), Math.round(H * 0.74), { tint: null }); ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(11,7,16,0.55)'; ctx.fillRect(Math.round(W / 2 - f.w / 2), Math.round(H * 0.74 - f.h), f.w, f.h); }
+  const g = ctx.createRadialGradient(W / 2, H * 0.62, 6, W / 2, H * 0.62, H * 0.42);
+  g.addColorStop(0, 'rgba(255,170,90,0.20)'); g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  // A slow rain of embers.
-  for (let i = 0; i < 40; i++) { const x = (i * 97 + game.real * (8 + i % 5) * 3) % W, y = (i * 53 + game.real * (12 + i % 7) * 2) % H; ctx.fillStyle = i % 3 ? PAL.ember2 : PAL.gold1; ctx.fillRect(Math.round(x), Math.round(H - y), 1, 1); }
+  ctx.fillStyle = '#07050b'; ctx.fillRect(0, Math.round(H * 0.74), W, H);
+  // A few slow embers.
+  for (let i = 0; i < 14; i++) { const x = (i * 131 + game.real * (5 + i % 4) * 3) % W, y = (i * 71 + game.real * (9 + i % 5) * 2) % H; ctx.globalAlpha = 0.6; ctx.fillStyle = i % 3 ? PAL.ember1 : PAL.gold1; ctx.fillRect(Math.round(x), Math.round(H - y), 2, 2); }
+  ctx.globalAlpha = 1;
   if (IMG.saint) {
-    ctx.save(); ctx.translate(Math.round(W / 2), Math.round(H * 0.68)); ctx.scale(2, 2);
-    ctx.fillStyle = 'rgba(11,7,16,0.5)'; ctx.beginPath(); ctx.ellipse(0, 0, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.save(); ctx.translate(Math.round(W / 2), Math.round(H * 0.74)); ctx.scale(2, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.ellipse(0, 0, 13, 3.5, 0, 0, Math.PI * 2); ctx.fill();
     spr('saint', 'idle', Math.floor(game.real * 4), 0, 0); ctx.restore();
   }
-  text('HOLLOW SAINT', W / 2, H * 0.08, PAL.gold1, { sc: 4, align: 'center' });
-  text('THE WORLD REMEMBERS WHAT YOU FORGET', W / 2, H * 0.08 + 36, PAL.cloth2, { align: 'center' });
+  const ty = Math.round(H * 0.1);
+  text('HOLLOW SAINT', W / 2, ty, PAL.gold1, { sc: 4, align: 'center' });
+  const lw = textW('HOLLOW SAINT', 4) * 0.6;
+  ctx.fillStyle = PAL.gold3; ctx.fillRect(Math.round(W / 2 - lw / 2), ty + 46, Math.round(lw), 1);
+  ctx.fillStyle = PAL.gold1; ctx.fillRect(Math.round(W / 2 - 2), ty + 44, 4, 5);
   for (const b of menuButtons()) {
     const x = Math.round(b.x - b.w / 2), y = Math.round(b.y - b.h / 2);
     if (!b.small) { gild(x, y, b.w, b.h); ctx.fillStyle = PAL.crimson3; ctx.fillRect(x, y, b.w, b.h); ctx.fillStyle = PAL.crimson2; ctx.fillRect(x, y, b.w, Math.ceil(b.h / 2)); }
-    text(b.label, b.x, b.y - (b.small ? 3 : 7), b.small ? PAL.cloth2 : PAL.gold0, { align: 'center', sc: b.small ? 1 : 2 });
+    text(b.label, b.x, b.y - (b.small ? 3 : 7), b.small ? PAL.stone1 : PAL.gold0, { align: 'center', sc: b.small ? 1 : 2, outline: b.small ? null : undefined });
   }
-  if (SAVE.descents || SAVE.deaths) text(`DESCENTS ${SAVE.descents || 0}   DEATHS ${SAVE.deaths || 0}`, 10, H - 14, PAL.stone1);
-  text(`THE GILDED LAMB GIVES ${ODDS[Math.floor(game.real / 4) % ODDS.length]} ON YOUR DEATH TODAY`, W - 10, H - 14, PAL.flame1, { align: 'right' });
   HUD.mute.icon = AUDIO.muted ? 'muted' : 'sound'; button(HUD.mute);
 }
 
@@ -3298,7 +3362,7 @@ function renderDialog() {
   gild(x, y, w, h);
   ctx.fillStyle = 'rgba(21,15,28,0.95)'; ctx.fillRect(x, y, w, h);
   const npc = room.npcs.find((n) => (n.talk || n.npc) === d.id && Math.hypot(n.x - player.x, n.y - player.y) < 60) || room.npcs.find((n) => (n.talk || n.npc) === d.id);
-  if (npc) { ctx.save(); ctx.beginPath(); ctx.rect(x + 4, y + 4, 34, h - 8); ctx.clip(); ctx.fillStyle = PAL.ink2; ctx.fillRect(x + 4, y + 4, 34, h - 8); ctx.translate(x + 21, y + h + 22); ctx.scale(2, 2); spr(npc.sheet || 'town', npc.npc, npc.npc.endsWith('_walk') ? 1 : Math.floor(game.real * 2), 0, 0); ctx.restore(); }
+  if (npc) { ctx.save(); ctx.beginPath(); ctx.rect(x + 4, y + 4, 34, h - 8); ctx.clip(); ctx.fillStyle = PAL.ink2; ctx.fillRect(x + 4, y + 4, 34, h - 8); ctx.translate(x + 21, y + h + 22); ctx.scale(2, 2); spr(npc.sheet || 'town', npc.npc, npc.npc.endsWith('_walk') ? 2 : Math.floor(game.real * 2), 0, 0); ctx.restore(); }
   text(d.name, x + 46, y + 6, PAL.gold1, { outline: null });
   const full = d.lines[d.i], shown = full.slice(0, Math.floor(d.t * 45));
   wrap(shown, Math.floor((w - 56) / 7)).forEach((l, i) => text(l, x + 46, y + 20 + i * 12, PAL.cloth0, { outline: null }));
@@ -3307,12 +3371,16 @@ function renderDialog() {
 
 function renderLoading() {
   const k = Math.min(1, game.loadT * 2);
-  ctx.fillStyle = `rgba(11,7,16,${k})`; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = `rgba(7,5,11,${k})`; ctx.fillRect(0, 0, W, H);
   if (k < 1) return;
-  text('DESCENDING INTO THE UNDERCROFT', W / 2, H / 2 - 24, PAL.gold1, { align: 'center', sc: 2 });
-  text(`THE GILDED LAMB GIVES ${game.loadOdds} ON YOUR DEATH`, W / 2, H / 2 + 4, PAL.flame1, { align: 'center' });
-  const n = Math.floor(game.loadT * 4) % 4;
-  text('.'.repeat(n + 1), W / 2, H / 2 + 20, PAL.cloth1, { align: 'center' });
+  const df = DIFF[game.nextDiff || 0], y = Math.round(H / 2 - 20);
+  text('STRATUM I', W / 2, y - 16, PAL.stone2, { align: 'center', small: true, outline: null });
+  text('THE UNDERCROFT', W / 2, y, PAL.gold1, { align: 'center', sc: 2 });
+  text(df.name, W / 2, y + 28, df.col, { align: 'center', outline: null });
+  // A thin progress line.
+  const bw = 120, p = Math.min(1, game.loadT / 1.8);
+  ctx.fillStyle = PAL.ink3; ctx.fillRect(Math.round(W / 2 - bw / 2), y + 48, bw, 2);
+  ctx.fillStyle = PAL.gold1; ctx.fillRect(Math.round(W / 2 - bw / 2), y + 48, Math.round(bw * p), 2);
 }
 
 function renderReceipt(survived = false) {

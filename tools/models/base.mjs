@@ -24,7 +24,9 @@ export const MATS = {
 // ---------------------------------------------------------- the Saint ---
 // 48x68 frame, feet at y 62, facing right.
 export function saintModel(pose = {}) {
-  const { bob = 0, legs = 0, lift = [0, 0], cape = 0, lean = 0, aim = 0, blink = false, halo = 0 } = pose;
+  const { bob = 0, legs = 0, lift = [0, 0], bend = [0, 0], cape = 0, lean = 0, aim = 0, blink = false, halo = 0 } = pose;
+  // legs: one number (mirrored swing) or [back leg, front leg] foot offsets.
+  const legX = Array.isArray(legs) ? legs : [-legs, legs];
   const S = new Scene(), cx = 22, B = bob, X = lean;
   const hipY = 45 + B, kneeY = 53, footY = 61;
   // Cape behind, flowing back as the Saint moves, with folds.
@@ -32,9 +34,11 @@ export function saintModel(pose = {}) {
   S.add(rotZ(clip(capeSheet, (x, y, z) => z + 1.2), [cx - 1, 27 + B], cape * 0.05), 0);
   S.paint({ f: (x, y, z) => (y > 52.4 + cape * 0.3 && z < -1 ? -1 : 1), mat: 'gold' });
   // Legs: thighs, shins and boots.
-  for (const [side, sw, up] of [[-1, -legs, lift[0]], [1, legs, lift[1]]]) {
+  for (const [side, sw, up, kb] of [[-1, legX[0], lift[0], bend[0]], [1, legX[1], lift[1], bend[1]]]) {
     const hz = side * 1.9, hx = cx + side * 0.4;
-    const knee = [hx + sw * 0.55 + X * 0.4, kneeY + B * 0.5 - up * 0.6, hz + 0.6], ankle = [hx + sw, footY - 1.6 - up, hz];
+    // The knee sits ahead of the hip-ankle line, more so when the leg is lifted.
+    const ankle = [hx + sw, footY - 1.6 - up, hz];
+    const knee = [(hx + ankle[0]) / 2 + 0.8 + kb + X * 0.4, kneeY + B * 0.5 - up * 0.45, hz + 0.6];
     S.add(capsule([hx, hipY, hz], knee, 2.6, 2.2, 'shroud'), 1);
     S.add(capsule(knee, ankle, 2.3, 1.9, 'leather'), 0.8);
     S.add(ellipsoid([ankle[0] + 1.5, ankle[1] + 0.9, hz], [3, 1.7, 2.2], 'leather'), 0.8);
@@ -77,8 +81,8 @@ export function saintModel(pose = {}) {
   S.paint({ f: (x, y, z) => Math.max(Math.abs(y - (41.4 + B)) - 1.1, Math.abs(x - sx) - 1.1, -z + 2), mat: 'gold' });
   S.paint({ f: (x, y) => Math.abs(y - (50.8 + B * 0.4)) - 0.8, mat: 'gold' });
   // The cracked halo, seen from just above.
-  S.add(torus([hx - 1.2, hy - 10 + halo, 0], 5.2, 0.85, 0.38, 'halo'), 0);
-  S.sub(sphere([hx + 3.6, hy - 9.8 + halo, 2.6], 1.15), 0);
+  // Tipped up enough that its hole still shows on the chunky 2x2 grid.
+  S.add(torus([hx - 1, hy - 12 + halo, 0], 4.8, 1.05, 0.55, 'halo'), 0);
   const f = render(S, 48, 68, MATS, { ground: 62 });
   // Hand-placed touches: the two green eyes, the crossbow string.
   if (!blink) for (const ex of [fc[0] - 1.3, fc[0] + 1]) { dot(f, ex, fc[1] - 0.6, 'flame0'); dot(f, ex, fc[1] + 0.4, 'flame2'); }
