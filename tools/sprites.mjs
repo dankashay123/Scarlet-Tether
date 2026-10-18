@@ -1097,13 +1097,14 @@ function townSheet() {
 
 function fiend(spec, pose = {}) {
   const s = spec.scale || 1;
-  const W = Math.ceil(32 * s) + 4, Hh = Math.ceil(36 * s) + 4;
+  const ST = 1.3; // vertical stretch below the head
+  const W = Math.ceil(32 * s) + 4, Hh = Math.ceil((12 + 24 * ST) * s) + 6;
   const f = new Frame(W, Hh);
   const ox = 2 + 3 * s, oy = 2;
   const B = (pose.bob || 0) + (spec.legs === 'float' ? Math.round(Math.sin((pose.t || 0) * Math.PI / 2) * 1.5) : 0);
   const lx = pose.lean || 0, arm = pose.arm || 0;
-  const X = (v) => ox + v * s, Y = (v) => oy + v * s;
-  const E = (cx, cy, rx, ry) => M.ellipse(X(cx), Y(cy), rx * s, ry * s);
+  const X = (v) => ox + v * s, Y = (v) => oy + (v <= 12 ? v : 12 + (v - 12) * ST) * s;
+  const E = (cx, cy, rx, ry) => M.ellipse(X(cx), Y(cy), rx * s, ry * s * (cy > 12 ? ST : 1));
   const L = (a, b, c, d, t = 2) => M.line(X(a), Y(b), X(c), Y(d), Math.max(1, Math.round(t * s)));
   const Pg = (pts) => M.poly(pts.map(([a, b]) => [X(a), Y(b)]));
   const sph = (cx, cy, rx, ry, bias = 0) => sphere(X(cx), Y(cy), rx * s, ry * s, bias);
@@ -1770,6 +1771,252 @@ function town2Sheet() {
   });
 }
 
+// ============================================================ hall v4 ===
+// Warm torch-lit halls in the Otherworld Legends manner: long flagstones,
+// teal walls with a brick moulding, stained glass, statues and torches.
+
+function slab(v) { // 32x16 running-bond flagstone
+  const f = new Frame(32, 16);
+  const m = M.rect(0, 0, 31, 15);
+  const ramp = v === 6 ? 'pot' : 'flag';
+  const tone = (ramp === 'brick' ? 0.5 : 0.46) + (hash(v, 1) - 0.5) * 0.14;
+  f.paint(m, ramp, (x, y) => {
+    let t = tone + (x / 31 - 0.5) * -0.06 + (hash(x, y, v * 13) - 0.5) * 0.05;
+    if (y === 0) t += 0.2; else if (y === 1) t += 0.08;
+    if (x === 0) t += 0.08;
+    if (y === 14) t -= 0.22; if (x === 30) t -= 0.12;
+    return t;
+  }, { min: 1, max: 4, dither: 0.25 });
+  for (let x = 0; x < 32; x++) P(f, x, 15, 'flag4');
+  for (let y = 0; y < 16; y++) P(f, 31, y, 'flag4');
+  if (v === 3) { let x = 6, y = 3; for (let i = 0; i < 10; i++) { P(f, x, y, 'flag4'); P(f, x + 1, y, 'flag3h'); if (hash(i, 9) < 0.5) x += 2; else y++; } }
+  if (v === 4) { P(f, 29, 13, 'flag4'); P(f, 30, 13, 'flag4'); P(f, 30, 12, 'flag4'); P(f, 1, 1, 'flag3'); }
+  if (v === 7) for (const [x, y] of [[3, 3], [27, 3], [3, 11], [27, 11]]) { P(f, x, y, 'iron1'); P(f, x + 1, y + 1, 'iron3'); P(f, x, y + 1, 'iron2'); }
+  if (v === 5) for (let k = 0; k < 6; k++) P(f, 10 + k * 2, 8 + (k % 2), 'flag3');
+  return f;
+}
+
+function hallUpper() { // teal ashlar, 16x16
+  const f = new Frame(16, 16);
+  for (let row = 0; row < 2; row++) {
+    const y0 = row * 8, off = row ? 8 : 0;
+    for (let bx = -16; bx < 16; bx += 16) {
+      const blk = M.and(M.rect(bx + off, y0, 15, 7), M.rect(0, 0, 16, 16));
+      f.paint(blk, 'teal', (x, y) => bevel(blk, 0.4 + hash(bx, row, 3) * 0.1, 0.62, 0.2)(x, y) + (hash(x, y, 5) - 0.5) * 0.05, { min: 1, dither: 0.25 });
+    }
+    for (let x = 0; x < 16; x++) P(f, x, y0 + 7, 'teal4');
+    P(f, (off + 15) % 16, y0, 'teal4'); for (let y = y0; y < y0 + 7; y++) P(f, (off + 15) % 16, y, 'teal4');
+  }
+  return f;
+}
+function hallLower() { // ashlar with the brick moulding ledge
+  const f = hallUpper();
+  const ledge = M.rect(0, 8, 16, 6);
+  f.paint(ledge, 'brick', (x, y) => (y === 8 ? 0.85 : y === 9 ? 0.6 : y === 13 ? 0.15 : 0.42) + ((x % 4 === 0 && y > 9 && y < 13) ? -0.2 : 0), { dither: 0.2 });
+  f.paint(M.rect(0, 14, 16, 2), 'ink', vgrad(14, 15, 0.6, 0.9));
+  return f;
+}
+function hallCap() {
+  const f = new Frame(16, 16);
+  f.paint(M.rect(0, 0, 16, 16), 'teal', flat(0.05), { min: 4, max: 4, dither: 0 });
+  f.paint(M.rect(0, 10, 16, 3), 'teal', vgrad(10, 12, 0.75, 0.45), { dither: 0 });
+  f.paint(M.rect(0, 13, 16, 3), 'brick', vgrad(13, 15, 0.7, 0.3), { dither: 0 });
+  return f;
+}
+function hallTop() { const f = new Frame(16, 16); f.paint(M.rect(0, 0, 16, 16), 'teal', (x, y) => ((x * 7 + y * 3) % 13 === 0 ? 0.12 : 0.02), { min: 4, max: 4, dither: 0 }); f.paint(M.rect(0, 0, 16, 16), 'ink', flat(0.55), { min: 2, max: 2 }); return f; }
+
+function stainedGlass() {
+  const f = new Frame(16, 32);
+  const win = M.union(M.rect(3, 8, 10, 18), M.ellipse(8, 8, 5, 5));
+  f.paint(M.union(M.rect(2, 7, 12, 20), M.ellipse(8, 7.5, 6, 6)), 'stone', bevel(M.union(M.rect(2, 7, 12, 20), M.ellipse(8, 7.5, 6, 6)), 0.5, 0.85, 0.2));
+  const panes = ['violet', 'crimson', 'gold', 'holy', 'moss'];
+  for (const k of win) {
+    const [x, y] = k.split(',').map(Number);
+    const cell = Math.floor((x - 3) / 3) + Math.floor((y - 3) / 4) * 4;
+    const rp = panes[Math.floor(hash(cell, 7) * panes.length)];
+    f.paint(M.pts([[x, y]]), rp, flat(0.75 - (y - 3) / 40 + (hash(x, y, 2) - 0.5) * 0.2), { max: 3, dither: 0.4 });
+  }
+  for (const k of win) { const [x, y] = k.split(',').map(Number); if ((x - 3) % 3 === 2 || (y - 3) % 4 === 3) P(f, x, y, 'ink1'); }
+  f.paint(M.rect(2, 26, 12, 2), 'stone', flat(0.7));
+  return f.outline();
+}
+function swallowBanner() {
+  const f = new Frame(16, 32);
+  f.paint(M.rect(0, 1, 16, 2), 'gold', vgrad(1, 2, 0.95, 0.5));
+  const cloth = M.poly([[1, 3], [15, 3], [15, 28], [8, 23], [1, 28]]);
+  f.paint(cloth, 'crimson', cyl(6.5, 8, 0.05));
+  for (const x of [4, 11]) f.shift(M.and(M.line(x, 4, x, 26), cloth), 1);
+  f.paint(M.and(M.union(M.edge(cloth, -1, 0), M.edge(cloth, 1, 0), M.rows(cloth, 3, 4)), cloth), 'gold', flat(0.6));
+  f.paint(M.and(M.union(M.edge(cloth, 0, 1), M.edge(cloth, -1, 1), M.edge(cloth, 1, 1)), cloth), 'gold', flat(0.45));
+  // Sigil: a gold halo crowning a weeping eye.
+  f.paint(M.minus(M.ellipse(8, 9, 4, 1.6), M.ellipse(8, 9, 2.4, 0.4)), 'gold', (x) => 1 - (x - 4) / 8);
+  f.paint(M.ellipse(8, 14, 3.4, 2), 'gold', sphere(7, 13, 4, 3, 0.1)); f.paint(M.ellipse(8, 14, 1.2, 1.2), 'ink', flat(1));
+  f.paint(M.line(8, 16, 8, 20), 'gold', flat(0.55));
+  return f.outline();
+}
+function wallTorch() {
+  const f = new Frame(16, 32);
+  f.paint(M.union(M.rect(7, 16, 2, 8), M.line(4, 22, 11, 22)), 'iron', flat(0.4), { min: 1 });
+  f.paint(M.poly([[4, 12], [12, 12], [10, 17], [6, 17]]), 'iron', bevel(M.poly([[4, 12], [12, 12], [10, 17], [6, 17]]), 0.45, 0.85, 0.1));
+  return f.outline();
+}
+function torchStand(i) {
+  const f = new Frame(18, 56);
+  f.paint(M.union(M.line(9, 20, 9, 52), M.line(9, 48, 3, 55), M.line(9, 48, 15, 55)), 'iron', cyl(8.5, 3), { min: 1, dither: 0 });
+  f.paint(M.ellipse(9, 34, 2, 1.4), 'gold', flat(0.7));
+  const bowl = M.poly([[3, 15], [15, 15], [12, 21], [6, 21]]);
+  f.paint(bowl, 'iron', bevel(bowl, 0.45, 0.9, 0.12));
+  f.paint(M.rect(3, 15, 12, 1), 'gold', flat(0.7));
+  f.outline();
+  // A big, living flame.
+  const sway = [0, 1, 0, -1][i], tall = [0, 2, 1, 3][i];
+  const flameM = M.union(M.ellipse(9, 11, 4.4, 4), M.poly([[5, 11], [13, 11], [9 + sway, 1 - tall]]), M.poly([[6, 9], [9, 9], [6 - sway, 3 - tall]]));
+  f.paint(flameM, 'ember', (x, y) => 0.25 + Math.max(0, 1 - Math.hypot(x - 9, y - 12) / 7) * 0.9, { dither: 0.6 });
+  f.paint(M.ellipse(9, 12, 1.6, 2), 'ember', flat(1), { dither: 0 }); P(f, 9, 12, 'white');
+  return f;
+}
+function pedestalStatue(kind) {
+  const f = new Frame(30, 62);
+  const ped = M.rect(4, 44, 22, 16);
+  f.paint(ped, 'brick', bevel(ped, 0.32, 0.6, 0.12));
+  f.paint(M.rect(3, 42, 24, 3), 'brick', bevel(M.rect(3, 42, 24, 3), 0.55, 0.85, 0.25));
+  f.paint(M.rect(8, 48, 14, 8), 'brick', bevel(M.rect(8, 48, 14, 8), 0.2, 0.1, 0.5));
+  f.paint(M.ellipse(15, 52, 2, 2), 'gold', sphere(14, 51, 3, 3, 0.1));
+  if (kind === 'saint') {
+    const robe = M.poly([[10, 18], [20, 18], [23, 42], [7, 42]]); f.paint(robe, 'pot', cyl(14, 9), { min: 1 });
+    for (const x of [11, 15, 19]) f.shift(M.and(M.line(x, 24, x + (x - 15) * 0.2, 41), robe), 1);
+    f.paint(M.union(M.ellipse(15, 13, 4.4, 4.8), M.poly([[11, 12], [13, 6], [16, 9]])), 'pot', sphere(13, 11, 6, 6));
+    f.paint(M.line(21, 14, 21, 40, 2), 'iron', flat(0.75)); f.paint(M.line(18, 20, 24, 20), 'gold', flat(0.8));
+    f.paint(M.minus(M.ellipse(14, 5, 6, 1.8), M.ellipse(14, 5, 4, 0.5)), 'gold', (x) => 1 - x / 30);
+  } else if (kind === 'angel') {
+    for (const side of [-1, 1]) f.paint(M.poly([[15, 20], [15 + side * 13, 6], [15 + side * 12, 26]]), 'pot', flat(side < 0 ? 0.72 : 0.42), { min: 1 });
+    const robe = M.poly([[11, 20], [19, 20], [22, 42], [8, 42]]); f.paint(robe, 'pot', cyl(14, 8));
+    f.paint(M.ellipse(15, 15, 4, 4.4), 'pot', sphere(13, 13, 5, 5));
+    f.paint(M.union(M.line(12, 24, 15, 28, 2), M.line(18, 24, 15, 28, 2)), 'pot', flat(0.8));
+  } else { // a mourning knight
+    const body = M.union(M.ellipse(15, 26, 7, 8), M.rect(9, 30, 12, 12)); f.paint(body, 'pot', sphere(13, 22, 9, 10), { min: 1 });
+    f.paint(M.ellipse(15, 15, 4.6, 4.6), 'pot', sphere(13, 13, 5, 5)); f.paint(M.rect(11, 14, 8, 1), 'pot', flat(0.1), { min: 3 });
+    const sh = M.rect(4, 24, 8, 14); f.paint(sh, 'pot', bevel(sh, 0.5, 0.85, 0.2)); f.paint(M.union(M.rect(7, 26, 2, 10), M.rect(5, 29, 6, 2)), 'gold', flat(0.7));
+  }
+  for (const [x, y] of [[6, 59], [7, 59], [22, 58], [23, 59]]) P(f, x, y, 'moss2');
+  return f.outline();
+}
+function skullCandle(i) {
+  const f = new Frame(14, 18);
+  f.paint(M.ellipse(7, 13, 4.4, 3.8), 'bone', sphere(6, 12, 5, 5)); P(f, 5, 13, 'ink0'); P(f, 8, 13, 'ink0'); P(f, 7, 15, 'ink1');
+  f.paint(M.rect(5, 5, 4, 7), 'pot', cyl(6, 2.5)); f.paint(M.rect(4, 9, 2, 3), 'pot', flat(0.8));
+  f.outline();
+  for (const [x, y, c] of [[7, 1 + (i ? 1 : 0), 'ember0'], [7, 2, 'ember0'], [7, 3, 'ember1'], [6, 3, 'ember2'], [7, 4, 'ember1']]) P(f, x, y, c);
+  return f;
+}
+function crate2() {
+  const f = new Frame(26, 26);
+  const top = M.poly([[1, 6], [25, 6], [25, 9], [1, 9]]);
+  const front = M.rect(1, 9, 24, 15);
+  f.paint(front, 'wood', bevel(front, 0.38, 0.7, 0.12));
+  f.paint(top, 'wood', flat(0.78));
+  for (let x = 1; x < 25; x += 6) f.shift(M.rect(x, 10, 1, 14), 1);
+  f.paint(M.union(M.line(2, 10, 24, 22), M.line(24, 10, 2, 22)), 'wood', flat(0.55));
+  for (const [x, y] of [[1, 9], [22, 9], [1, 21], [22, 21]]) f.paint(M.rect(x, y, 3, 3), 'iron', flat(0.6));
+  return f.outline();
+}
+function urn2(v) {
+  const f = new Frame(16, 20);
+  const body = M.union(M.ellipse(8, 12, 6, 6.5), M.rect(5, 2, 6, 4));
+  f.paint(body, 'pot', sphere(6, 9, 7, 8), { min: v ? 1 : 0 });
+  f.paint(M.rect(4, 2, 8, 1), 'pot', flat(0.85)); f.paint(M.ellipse(8, 2.5, 2.5, 0.8), 'ink', flat(1));
+  f.paint(M.rect(2, 10, 12, 2), v ? 'brick' : 'teal', (x) => 0.8 - x / 16);
+  for (let x = 3; x < 13; x += 3) P(f, x, 14, 'pot3');
+  return f.outline();
+}
+
+function hallSheet() {
+  return sheet('hall', {
+    slab: [0, 1, 2, 3, 4, 5, 6, 7].map(slab),
+    wall: [hallTop(), hallCap(), hallUpper(), hallLower()],
+    decor: [stainedGlass(), swallowBanner(), wallTorch()],
+    torch: [0, 1, 2, 3].map(torchStand),
+    statue_saint: [pedestalStatue('saint')], statue_angel: [pedestalStatue('angel')], statue_knight: [pedestalStatue('knight')],
+    skullcandle: [skullCandle(0), skullCandle(1)], crate: [crate2()], urn: [urn2(0), urn2(1)],
+  });
+}
+
+// ========================================================== Saint v2 ===
+// Taller and less chibi: visible legs and boots, a doublet, a knee-length
+// tabard, a long cape, the hollow hood and the cracked halo.
+function saint2({ bob = 0, halo = 0, legs = [0, 0], lift = [0, 0], cape = 0, lean = 0, sway = 0, blink = false }) {
+  const f = new Frame(34, 50, 3);
+  const B = bob, X = lean;
+  // Cape.
+  const capeM = M.poly([[11 + X, 15 + B], [21 + X, 15 + B], [23 + cape, 40], [16 + cape, 42], [8 + cape, 41]]);
+  f.paint(capeM, 'crimson', cyl(15 + X, 8, -0.3), { min: 2, dither: 0.3 });
+  f.shift(M.and(M.line(13 + X, 20 + B, 11 + cape, 40), capeM), 1);
+  // Legs and boots (back leg first).
+  for (const [hx, l, up, back] of [[14, legs[0], lift[0], true], [18, legs[1], lift[1], false]]) {
+    const knee = [hx + l * 0.5 + X * 0.3, 35 + B - up * 0.5], foot = [hx + l, 42 - up];
+    const leg = M.union(M.line(hx + X * 0.5, 29 + B, knee[0], knee[1], 3), M.line(knee[0], knee[1], foot[0], foot[1], 3));
+    f.paint(leg, 'shroud', cyl(hx + l * 0.5, 2.5, back ? -0.25 : 0), { min: 1 });
+    const boot = M.union(M.rect(Math.round(foot[0]) - 1, Math.round(foot[1]) - 2, 4, 3), M.rect(Math.round(foot[0]) + 3, Math.round(foot[1]), 1, 1));
+    f.paint(boot, 'wood', (x, y) => (y < foot[1] - 1 ? 0.55 : 0.25) - (back ? 0.2 : 0), { min: 2 });
+  }
+  // Back arm.
+  f.paint(M.line(12 + X, 17 + B, 11 + X, 24 + B, 3), 'crimson', flat(0.2), { min: 2 });
+  // Doublet.
+  const torso = M.union(M.ellipse(16 + X, 20 + B, 5.5, 6), M.rect(11 + X, 21 + B, 11, 6));
+  f.paint(torso, 'crimson', sphere(14 + X, 17 + B, 7, 8));
+  // Tabard skirt with the gold stole and crosses.
+  const tab = M.poly([[12 + X, 26 + B], [21 + X, 26 + B], [23 + sway, 37], [17 + sway, 38], [11 + sway, 37]]);
+  f.paint(tab, 'cloth', cyl(16.5 + X * 0.5, 6), { max: 3, dither: 0.25 });
+  const stole = M.and(M.poly([[15 + X, 15 + B], [18 + X, 15 + B], [18.5 + sway, 37], [15.5 + sway, 37]]), M.union(torso, tab));
+  f.paint(stole, 'gold', cyl(16.5 + X * 0.6, 2.2));
+  for (const y of [22, 31]) { const cx = 16.5 + X * 0.6 + (y > 26 ? sway * 0.6 : 0); P(f, cx, y + B, 'crimson2'); P(f, cx, y + B - 1, 'crimson3'); P(f, cx - 1, y + B, 'crimson3'); P(f, cx + 1, y + B, 'crimson3'); P(f, cx, y + B + 1, 'crimson3'); }
+  f.paint(M.and(M.rows(tab, 36, 38), tab), 'gold', flat(0.55));
+  // Belt with a buckle.
+  f.paint(M.and(M.rect(10 + X, 26 + B, 13, 2), M.union(torso, tab)), 'wood', vgrad(26 + B, 27 + B, 0.6, 0.3));
+  f.paint(M.rect(16 + X, 26 + B, 2, 2), 'gold', flat(0.9));
+  // Mantle.
+  const mantle = M.union(M.ellipse(16 + X, 16 + B, 7, 3.5), M.rect(10 + X, 15 + B, 13, 2));
+  f.paint(mantle, 'crimson', sphere(14 + X, 14 + B, 8, 6, 0.05));
+  f.paint(M.and(M.edge(mantle, 0, 1), mantle), 'gold', flat(0.5));
+  // Front arm and the Nail Crossbow at the hip.
+  const cy = 24 + B;
+  f.paint(M.line(21 + X, 17 + B, 23 + X, cy - 1, 3), 'crimson', sphere(21 + X, 17 + B, 4, 6));
+  f.paint(M.rect(20 + X, cy, 11, 2), 'wood', (x, y) => (y === cy ? 0.8 : 0.35) - ((x * 7) % 5 === 0 ? 0.15 : 0));
+  const prod = []; for (let y = cy - 6; y <= cy + 7; y++) prod.push([30 + X - Math.round(((y - cy - 0.5) / 6.5) ** 2 * 2.5), y]);
+  f.paint(M.pts(prod), 'iron', (x, y) => 0.95 - (y - cy + 6) / 14 * 0.7, { dither: 0 });
+  f.paint(M.union(M.line(28 + X, cy - 5, 24 + X, cy), M.line(28 + X, cy + 6, 24 + X, cy + 1)), 'bone', flat(0.4), { dither: 0 });
+  P(f, 31 + X, cy, 'gold0'); P(f, 32 + X, cy, 'white');
+  f.paint(M.rect(23 + X, cy - 1, 2, 3), 'wood', flat(0.4));
+  // Hood and the hollow face.
+  const hx = 16 + X, hy = 9 + B;
+  const hood = M.union(M.ellipse(hx, hy, 4.8, 4.8), M.poly([[hx - 5, hy - 1], [hx - 3, hy - 7], [hx, hy - 4]]));
+  f.paint(hood, 'crimson', sphere(hx - 1.5, hy - 2, 6, 6));
+  const face = M.ellipse(hx + 2, hy + 1, 2.2, 2.6);
+  for (const k of face) { const [x, y] = k.split(',').map(Number); if (hood.has(k)) P(f, x, y, y <= hy ? 'ink2' : 'ink0'); }
+  for (const k of face) { const [x, y] = k.split(',').map(Number); for (const [dx, dy] of [[-1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1]]) { const n = `${x + dx},${y + dy}`; if (hood.has(n) && !face.has(n)) P(f, x + dx, y + dy, dy < 0 ? 'gold1' : 'gold2'); } }
+  // Halo.
+  const ry = hy - 9 + halo;
+  f.paint(M.minus(M.minus(M.ellipse(hx - 0.5, ry, 5.5, 2.1), M.ellipse(hx - 0.5, ry, 3.8, 0.9)), M.pts([[hx + 2, Math.round(ry) + 2], [hx + 3, Math.round(ry) + 2]])), 'gold', (x, y) => 0.95 - (x - hx + 6) / 12 * 0.6 - (y > ry ? 0.25 : 0), { dither: 0.3 });
+  f.outline();
+  if (!blink) { P(f, hx + 1, hy + 1, 'flame0'); P(f, hx + 3, hy + 1, 'flame1'); P(f, hx + 1, hy + 2, 'flame3'); P(f, hx + 3, hy + 2, 'flame4'); }
+  else { P(f, hx + 1, hy + 1, 'flame3'); P(f, hx + 3, hy + 1, 'flame3'); }
+  P(f, hx - 5, Math.round(ry) - 1, 'white');
+  return f;
+}
+function saint2Sheet() {
+  const idle = [0, 1, 2, 3].map((i) => saint2({ bob: i >= 2 ? 1 : 0, halo: [0, -1, -1, 0][i], cape: [0, -1, -1, 0][i], blink: i === 3 }));
+  const run = [0, 1, 2, 3, 4, 5].map((i) => {
+    const ph = i / 6 * Math.PI * 2, s = Math.sin(ph), c = Math.cos(ph);
+    return saint2({ bob: Math.abs(s) > 0.5 ? -1 : 0, halo: Math.abs(s) > 0.5 ? 0 : 1, legs: [Math.round(s * 4), Math.round(-s * 4)], lift: [c > 0.3 ? 2 : 0, c < -0.3 ? 2 : 0], cape: -3 - (Math.abs(s) > 0.5 ? 1 : 0), lean: 1, sway: s > 0 ? -1 : 0 });
+  });
+  const dash = [
+    saint2({ lean: 2, legs: [-4, 3], lift: [1, 0], cape: -6, halo: 1, sway: -2 }),
+    saint2({ lean: 3, legs: [-6, 4], lift: [2, 1], cape: -8, halo: 2, sway: -3 }),
+    saint2({ lean: 1, legs: [-3, 2], lift: [0, 1], cape: -5, halo: 1, sway: -1 }),
+  ];
+  return sheet('saint', { idle, run, dash }, { anchorX: 17, anchorY: 45 });
+}
+
 // ================================================================= png ===
 
 const CRC = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
@@ -1801,7 +2048,7 @@ function png(frame, scale = 1, bg = null) {
 
 // ================================================================ main ===
 
-const sheets = [saintSheet(), risenSheet(), wardenSheet(), tilesSheet(), wallDecorSheet(), propsSheet(), fxSheet(), uiSheet(), townSheet(), town2Sheet(), ...monsterSheets(), lootSheet()];
+const sheets = [saint2Sheet(), hallSheet(), risenSheet(), wardenSheet(), tilesSheet(), wallDecorSheet(), propsSheet(), fxSheet(), uiSheet(), townSheet(), town2Sheet(), ...monsterSheets(), lootSheet()];
 mkdirSync(OUT, { recursive: true });
 const manifest = { palette: PALETTE };
 for (const s of sheets) {

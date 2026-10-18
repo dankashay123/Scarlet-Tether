@@ -24,6 +24,11 @@ const R = {
   sand: ['#f2dcb6', '#cfae86', '#a28166', '#755c4f', '#4b3a3a'],
   skin: ['#ffdcbf', '#f0aa84', '#c97b60', '#8f5048', '#57303a'],
   roof: ['#c36a5a', '#93453f', '#6a2e33', '#47202a', '#2a1420'],
+  // v4: warm torch-lit flagstones, brick mouldings and teal-grey walls.
+  flag: ['#dcc8b2', '#b8a08e', '#937d73', '#6e5a58', '#4b3c42'],
+  brick: ['#e8a27a', '#bf7056', '#8f4c42', '#613234', '#3c2028'],
+  teal: ['#8eaeab', '#67888a', '#4a6670', '#334956', '#22323f'],
+  pot: ['#f0d9b5', '#d0ae86', '#a6806a', '#7a5a52', '#4f3a3c'],
 };
 
 // v3: each 5-step ramp gains in-between tones, giving 9 shades per material.

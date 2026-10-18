@@ -40,7 +40,7 @@ const T = {
   fervor: { decayDelay: 2, decay: 2.5, tiers: ['MURMUR', 'CHANT', 'RAPTURE', 'FRENZY'] },
   wave: { start: 16, max: 40, ramp: 100, rate: 10, eliteEvery: 20, elitesMax: 3, cap: 46, finaleBonus: 10 },
   descent: { time: 180, finale: 30 },  // seconds the candle burns; the last stretch surges
-  ambient: 'rgba(10,8,26,0.5)',  // Undercroft darkness
+  ambient: 'rgba(12,6,18,0.3)',  // Undercroft darkness: torchlit, not pitch black
 };
 // ------------------------------------------------------------ display ---
 const screen = document.getElementById('screen');
@@ -329,33 +329,44 @@ function makeDungeon() {
     if (r.theme === 'crypt') {
       for (let y = r.y0 + 2; y < r.y1 - 1; y += 4) for (const x of [r.x0 + 3, r.x1 - 3]) if (roomFree(r, x, y, 1, 1, 0)) place(r, 'column', x, y);
       tryPlace(r, 'sarcophagus', 2, 1, 2);
-      tryPlace(r, 'candelabra', 1, 1, 2, () => ({ ph: rng() * 9, light: true }));
+      tryPlace(r, 'torch', 1, 1, 1, () => ({ sheet: 'hall', anim: 'torch', ph: rng() * 9 }), 2);
     } else if (r.theme === 'ossuary') {
       tryPlace(r, 'cage', 1, 1, 2, () => ({ sheet: 'loot', anim: 'cage' }));
       tryPlace(r, 'maiden', 1, 1, 1, () => ({ sheet: 'loot', anim: 'maiden' }));
       tryPlace(r, 'coffin', 1, 1, 3, () => ({ sheet: 'loot', anim: 'coffin', breakable: 2 }), 0);
       for (let k = 0; k < 8; k++) decals.push({ kind: 'bonepile', x: rand(r.x0 + 1, r.x1) * TILE, y: rand(r.y0 + 1, r.y1) * TILE });
-      tryPlace(r, 'candelabra', 1, 1, 1, () => ({ ph: rng() * 9, light: true }));
+      tryPlace(r, 'torch', 1, 1, 1, () => ({ sheet: 'hall', anim: 'torch', ph: rng() * 9 }), 2);
     } else if (r.theme === 'flooded') {
       for (let k = 0; k < 4; k++) { const wx = Math.floor(rand(r.x0 + 1, r.x1 - 4)), wy = Math.floor(rand(r.y0 + 1, r.y1 - 3)); for (let yy = wy; yy < wy + 3; yy++) for (let xx = wx; xx < wx + 5; xx++) if (!isSolid(xx, yy) && Math.hypot(xx - wx - 2, (yy - wy - 1) * 1.6) < 3) water.push([xx, yy]); }
       for (let y = r.y0 + 3; y < r.y1 - 1; y += 5) for (const x of [r.x0 + 4, r.x1 - 4]) if (roomFree(r, x, y, 1, 1, 0)) place(r, 'column', x, y);
       lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 90, c: 'holy', a: 0.35 });
     } else if (r.theme === 'chapel') {
       for (let y = r.y0 + 4; y < r.y1 - 1; y += 3) for (const x of [cx - 4, cx + 3]) if (roomFree(r, x, y, 2, 1, 0)) place(r, 'pew', x, y, 2, 1, { sheet: 'loot', anim: 'pew' });
-      tryPlace(r, 'candelabra', 1, 1, 2, () => ({ ph: rng() * 9, light: true }));
+      tryPlace(r, 'torch', 1, 1, 1, () => ({ sheet: 'hall', anim: 'torch', ph: rng() * 9 }), 2);
     }
-    tryPlace(r, 'urn', 1, 1, Math.floor(rand(2, 5)), () => ({ breakable: 1 }), 0);
+    // Statues on pedestals stand along the back wall, flanked by torches.
+    if (r.type !== 'treasury') for (let x = r.x0 + 2; x < r.x1 - 1; x += 5) if (!r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - x) <= 2)) && !isSolid(x, r.y0 + 1) && !isSolid(x, r.y0 + 2)) {
+      place(r, pick(['statue_saint', 'statue_angel', 'statue_knight']), x, r.y0 + 1, 1, 1, { sheet: 'hall' });
+      if (rng() < 0.6) decals.push({ kind: 'skullcandle', x: (x + 0.5) * TILE + 12, y: (r.y0 + 2) * TILE + 2 });
+    }
+    for (const [x, y] of [[r.x0 + 1, r.y1 - 1], [r.x1 - 1, r.y1 - 1]]) if (!isSolid(x, y) && !nearGate(r, x, y, 2)) place(r, 'torch', x, y, 1, 1, { sheet: 'hall', anim: 'torch', ph: rng() * 9 });
+    tryPlace(r, 'urn', 1, 1, Math.floor(rand(2, 5)), () => ({ sheet: 'hall', anim: 'urn', frame: Math.floor(rng() * 2), breakable: 1 }), 0);
+    tryPlace(r, 'crate', 1, 1, Math.floor(rand(0, 3)), () => ({ sheet: 'hall', anim: 'crate', breakable: 2 }), 0);
+    for (let k = 0; k < 3; k++) { const x = rand(r.x0 + 1, r.x1) * TILE, y = rand(r.y0 + 2, r.y1) * TILE; if (!isSolid(Math.floor(x / TILE), Math.floor(y / TILE))) decals.push({ kind: 'skullcandle', x, y }); }
     // Cobwebs in the top corners and hanging chains on the wall.
     decals.push({ kind: 'web', x: r.x0 * TILE, y: r.y0 * TILE }, { kind: 'web', x: (r.x1 + 1) * TILE, y: r.y0 * TILE, flip: true });
     for (let k = 0; k < 3; k++) decals.push({ kind: 'hangchain', x: rand(r.x0 + 1, r.x1) * TILE, y: (r.y0 - 3) * TILE + 12 });
     for (let k = 0; k < (r.theme === 'ossuary' ? 6 : 3); k++) critters.push({ x: rand(r.x0 + 1, r.x1) * TILE, y: rand(r.y0 + 1, r.y1) * TILE, room: r.id, t: rng() * 5, vx: 0, vy: 0, hide: 0 });
   }
   for (const p of props) if (p.kind === 'candelabra') lights.push({ x: p.x, y: p.y - 30, r: 72, c: 'flame', a: 0.95, flick: rng() * 9 });
+  for (const p of props) if (p.kind === 'torch') lights.push({ x: p.x, y: p.y - 44, r: 110, c: 'ember', a: 1, flick: rng() * 9, torch: true });
+  for (const d of decals) if (d.kind === 'skullcandle') lights.push({ x: d.x, y: d.y - 14, r: 36, c: 'ember', a: 0.7, flick: rng() * 9 });
 
   // Bake floor, walls and flat decor.
   roomCanvas = document.createElement('canvas'); roomCanvas.width = w * TILE; roomCanvas.height = h * TILE;
   const rc = roomCanvas.getContext('2d');
-  const t = SPR.tiles.anims, I = IMG.tiles;
+  const t = SPR.tiles.anims, I = IMG.tiles, HA = SPR.hall.anims;
+  const h2 = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0) % 1000 / 1000;
   const tile = (f, x, y, img = I) => rc.drawImage(img, f.x, f.y, 16, 16, x * TILE, y * TILE, 16, 16);
   const roomAt = (x, y) => rooms.find((r) => x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1);
   const waterSet = new Set(water.map(([x, y]) => `${x},${y}`));
@@ -366,13 +377,18 @@ function makeDungeon() {
       const r = roomAt(x, y), key = `${x},${y}`;
       if (waterSet.has(key)) { const wf = frameOf('loot', 'water', (x + y) % 4); rc.drawImage(IMG.loot, wf.x, wf.y, 16, 16, x * TILE, y * TILE, 16, 16); }
       else if (r && (r.type === 'start' || r.type === 'exit' || r.theme === 'chapel') && Math.abs(x - r.cx) <= 1) tile(t.carpet[x - r.cx === -1 ? 1 : x - r.cx === 1 ? 2 : (rng() < 0.1 ? 3 : 0)], x, y);
-      else { const n = rng(); tile(n < 0.02 ? t.misc[0] : t.floor[n < 0.45 ? 0 : Math.floor(rng() * 8)], x, y); }
+      else { // running-bond flagstones, two tiles per slab
+        const sx = x * TILE + (y % 2) * 16, si = Math.floor(sx / 32), n = h2(si, y);
+        const sf = HA.slab[n < 0.6 ? Math.floor(n * 5) : n < 0.74 ? 3 : n < 0.84 ? 4 : n < 0.93 ? 5 : n < 0.96 ? 6 : 7];
+        rc.drawImage(IMG.hall, sf.x + (sx % 32), sf.y, 16, 16, x * TILE, y * TILE, 16, 16);
+        if (rng() < 0.012) tile(t.misc[0], x, y);
+      }
       if (!isFloor(x, y - 1)) { rc.fillStyle = 'rgba(11,7,16,0.5)'; rc.fillRect(x * TILE, y * TILE, 16, 4); rc.fillStyle = 'rgba(11,7,16,0.22)'; rc.fillRect(x * TILE, y * TILE + 4, 16, 3); }
       continue;
     }
-    let f = t.wall[0];
-    if (isFloor(x, y + 1)) f = t.wall[3]; else if (isFloor(x, y + 2)) f = t.wall[2]; else if (isFloor(x, y + 3)) f = t.wall[1];
-    tile(f, x, y);
+    let f = HA.wall[0];
+    if (isFloor(x, y + 1)) f = HA.wall[3]; else if (isFloor(x, y + 2)) f = HA.wall[2]; else if (isFloor(x, y + 3)) f = HA.wall[1];
+    tile(f, x, y, IMG.hall);
   }
   // Wall decor above each room's top edge.
   const D = SPR.walldecor.anims.decor;
@@ -381,11 +397,13 @@ function makeDungeon() {
     if (isSolid(x, r.y0) || !isSolid(x, r.y0 - 1)) continue;
     const n = rng();
     if (r.theme === 'ossuary' && n < 0.45) { const sf = frameOf('loot', 'skullwall', 0); rc.drawImage(IMG.loot, sf.x, sf.y, sf.w, sf.h, x * TILE, (r.y0 - 2) * TILE, sf.w, sf.h); continue; }
-    const k = n < 0.45 ? -1 : n < 0.6 ? 0 : n < 0.75 ? 1 : n < 0.9 ? 2 : 3;
-    if (k < 0) continue;
-    rc.drawImage(IMG.walldecor, D[k].x, D[k].y, D[k].w, D[k].h, x * TILE, (r.y0 - 2) * TILE, D[k].w, D[k].h);
-    if (k === 2) lights.push({ x: x * TILE + 8, y: (r.y0 - 2) * TILE + 4, r: 56, c: 'flame', a: 0.9, flick: rng() * 9, sconce: true });
-    if (k === 0) lights.push({ x: x * TILE + 8, y: (r.y0 - 2) * TILE + 16, r: 26, c: 'flame', a: 0.45, flick: rng() * 9 });
+    const k = n < 0.3 ? -1 : n < 0.55 ? 'glass' : n < 0.73 ? 'banner' : n < 0.9 ? 'torch' : 'alcove';
+    if (k === -1) continue;
+    const HD = HA.decor, df = k === 'glass' ? HD[0] : k === 'banner' ? HD[1] : k === 'torch' ? HD[2] : D[0];
+    rc.drawImage(k === 'alcove' ? IMG.walldecor : IMG.hall, df.x, df.y, df.w, df.h, x * TILE, (r.y0 - 2) * TILE, df.w, df.h);
+    if (k === 'torch') lights.push({ x: x * TILE + 8, y: (r.y0 - 2) * TILE + 8, r: 80, c: 'ember', a: 1, flick: rng() * 9, sconce: true });
+    if (k === 'glass') lights.push({ x: x * TILE + 8, y: (r.y0 - 2) * TILE + 16, r: 34, c: pick(['violet', 'blood', 'gold']), a: 0.5 });
+    if (k === 'alcove') lights.push({ x: x * TILE + 8, y: (r.y0 - 2) * TILE + 16, r: 26, c: 'flame', a: 0.45, flick: rng() * 9 });
     x++;
   }
   for (const d of decals) {
@@ -1377,7 +1395,16 @@ function drawTelegraphs() {
       const len = a.type === 'cone' ? a.len : a.reach, arc = a.type === 'cone' ? a.arc : 1.6;
       ctx.fillStyle = red(0.12 + 0.2 * k); ctx.beginPath(); ctx.moveTo(e.x, e.y - 6); ctx.arc(e.x, e.y - 6, len, e.ang - arc / 2, e.ang + arc / 2); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = red(0.5 * pulse + 0.2); ctx.lineWidth = 1; ctx.stroke();
-    } else if (a.type === 'lunge' || a.type === 'multidash' || a.type === 'beam' || a.type === 'pull') {
+    } else if (a.type === 'lunge' || a.type === 'multidash') {
+      // Red chevrons marching along the charge path.
+      const len = a.speed * a.time, n = Math.max(2, Math.floor(len / 14)), ca = Math.cos(e.ang), sa = Math.sin(e.ang);
+      for (let c = 0; c < n; c++) {
+        const d = 12 + c * 14, px = e.x + ca * d, py = e.y - 2 + sa * d * 0.8;
+        const lit = (Math.floor(game.real * 14) - c) % n === 0 ? 1 : 0;
+        ctx.strokeStyle = `rgba(224,32,46,${0.25 + 0.45 * k + 0.3 * lit})`; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(px - ca * 4 - sa * 5, py - sa * 4 + ca * 5); ctx.lineTo(px + ca * 2, py + sa * 2); ctx.lineTo(px - ca * 4 + sa * 5, py - sa * 4 - ca * 5); ctx.stroke();
+      }
+    } else if (a.type === 'beam' || a.type === 'pull') {
       const len = a.len || a.speed * a.time;
       const n = a.n && a.type === 'beam' ? a.n : 1;
       for (let i = 0; i < n; i++) {
@@ -1692,7 +1719,7 @@ function updateCrossbow(dt) {
   player.fireCd = T.crossbow.cooldown;
   const t = player.target;
   player.face = t.x < player.x ? -1 : 1;
-  const sx = player.x + player.face * 13, sy = player.y - 15;
+  const sx = player.x + player.face * 16, sy = player.y - 18;
   const tx = t.x + t.kx * 0.05, ty = t.y - t.hy;
   const d = Math.hypot(tx - sx, ty - sy) || 1;
   const crit = rng() < T.crossbow.crit;
@@ -2027,8 +2054,8 @@ function render() {
   if (game.scene === 'town') drawTownBack(cx, cy);
   ctx.save(); ctx.translate(-cx, -cy);
   ctx.drawImage(roomCanvas, 0, 0); ctx.drawImage(stain, 0, 0);
-  for (const d of room.decals) spr('props', 'candles', Math.floor(game.real * 6 + d.x), d.x, d.y);
-  for (const l of room.lights) if (l.sconce) flame(l.x, l.y, l.flick);
+  for (const d of room.decals) d.kind === 'skullcandle' ? spr('hall', 'skullcandle', Math.floor(game.real * 6 + d.x), d.x, d.y) : spr('props', 'candles', Math.floor(game.real * 6 + d.x), d.x, d.y);
+  for (const l of room.lights) if (l.sconce) bigFlame(l.x, l.y, l.flick);
   if (game.scene === 'wound') { drawGates(); drawTelegraphs(); drawDrops(); drawCritters(cx, cy); }
   drawAbilitiesGround();
   for (const e of enemies) {
@@ -2044,7 +2071,7 @@ function render() {
   for (const e of enemies) if (e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0)) shadow(e.x, e.y, e.r * 1.3 * (e.def.fly ? 0.7 : 1));
   shadow(player.x, player.y, 8);
   for (const g of gibs) shadow(g.x, g.y, 3);
-  const SHADOW = { gallows: 22, cart: 20, well: 15, tomb: 6, tree: 10, stocks: 14, board: 8, brazier: 6, sarcophagus: 18, candelabra: 6, column: 11, statue: 11, lamp: 5, barrel: 6, crate: 7, anvil: 8, waystone: 10, pew: 15, coffin: 7, cage: 7, maiden: 8, altar: 17, shrine: 10, chest: 10, urn: 5 };
+  const SHADOW = { torch: 6, statue_saint: 12, statue_angel: 12, statue_knight: 12, crate: 13, gallows: 22, cart: 20, well: 15, tomb: 6, tree: 10, stocks: 14, board: 8, brazier: 6, sarcophagus: 18, candelabra: 6, column: 11, statue: 11, lamp: 5, barrel: 6, crate: 7, anvil: 8, waystone: 10, pew: 15, coffin: 7, cage: 7, maiden: 8, altar: 17, shrine: 10, chest: 10, urn: 5 };
   for (const p of room.props) if (SHADOW[p.kind] && onScreen(p.x, p.y, cx, cy, 40)) shadow(p.x, p.y - 2, SHADOW[p.kind]);
   for (const n of room.npcs) shadow(n.x, n.y, 6);
   for (const g of ghosts) spr('saint', 'dash', g.i, g.x, g.y, { flip: g.face < 0, white: true, alpha: 0.45 * (1 - g.t / 0.2) });
@@ -2087,13 +2114,14 @@ function render() {
   ctx.restore();
 
   if (game.scene === 'town') drawTownOverlay(cx, cy);
+  if (game.scene === 'wound') { ctx.globalCompositeOperation = 'soft-light'; ctx.fillStyle = 'rgba(255,150,80,0.35)'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over'; }
   renderLight(cx, cy);
   if (game.scene === 'town') drawTownForeground(cx, cy);
 
   // Additive glow (VFX layer).
   ctx.save(); ctx.translate(-cx, -cy); ctx.globalCompositeOperation = 'lighter';
-  for (const l of room.lights) if (onScreen(l.x, l.y, cx, cy, 80)) glow(l.x, l.y, l.r * 0.45 + Math.sin(game.real * 9 + (l.flick || 0)) * 2, `rgba(${LIGHT_RGB[l.c]},0.22)`);
-  glow(player.x, player.y - 37, 16, 'rgba(255,209,85,0.25)');
+  for (const l of room.lights) if (onScreen(l.x, l.y, cx, cy, 120)) glow(l.x, l.y + (l.torch ? 30 : 0), (l.torch ? l.r * 0.8 : l.r * 0.45) + Math.sin(game.real * 9 + (l.flick || 0)) * 2, `rgba(${LIGHT_RGB[l.c]},${l.torch || l.sconce ? 0.16 : 0.22})`);
+  glow(player.x, player.y - 42, 16, 'rgba(255,209,85,0.25)');
   if (game.scene === 'wound') {
     drawDropGlow(); drawAmbientGlow(cx, cy);
     for (const e of enemies) if (!e.dead && e.elite && !e.under && e.state !== 'spawn') glow(e.x, e.y - e.hy, e.hr * 2.2, e.tier === 'elite' ? 'rgba(255,209,85,0.22)' : e.tier === 'rare' ? 'rgba(90,180,255,0.22)' : 'rgba(255,209,85,0.2)');
@@ -2133,6 +2161,12 @@ function render() {
   blit();
 }
 
+function bigFlame(x, y, ph = 0) {
+  const k = Math.floor(game.real * 10 + ph) % 4, s = [0, 1, 0, -1][k], t = [0, 2, 1, 3][k];
+  ctx.fillStyle = PAL.ember2; ctx.beginPath(); ctx.ellipse(x, y, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = PAL.ember1; ctx.beginPath(); ctx.moveTo(x - 3, y); ctx.lineTo(x + s, y - 8 - t); ctx.lineTo(x + 3, y); ctx.fill();
+  ctx.fillStyle = PAL.ember0; ctx.fillRect(x - 1, y - 3, 2, 3); ctx.fillStyle = PAL.white; ctx.fillRect(x, y - 1, 1, 1);
+}
 function flame(x, y, ph = 0) {
   const k = Math.floor(game.real * 10 + ph) % 3;
   ctx.fillStyle = PAL.flame3; ctx.fillRect(x - 2, y - 1, 3, 3);
