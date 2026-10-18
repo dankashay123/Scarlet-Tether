@@ -138,18 +138,18 @@ const P = (f, x, y, c) => f.set(x, y, c);
 // ----------------------------------------------------------------- sheets ---
 
 function sheet(name, anims, extra = {}) {
+  // Each row (one animation) gets cells as wide as its widest frame.
   const rows = Object.entries(anims);
-  const cellW = Math.max(...rows.flatMap(([, fs]) => fs.map((f) => f.w)));
+  const cellW = rows.map(([, fs]) => Math.max(...fs.map((f) => f.w)));
   const cellH = rows.map(([, fs]) => Math.max(...fs.map((f) => f.h)));
-  const cols = Math.max(...rows.map(([, fs]) => fs.length));
-  const W = cols * cellW, H = cellH.reduce((a, b) => a + b, 0);
+  const W = Math.max(...rows.map(([, fs], r) => fs.length * cellW[r])), H = cellH.reduce((a, b) => a + b, 0);
   const big = new Frame(W, H);
   const json = { image: `${name}.png`, ...extra, anims: {} };
   let oy = 0;
   rows.forEach(([anim, frames], r) => {
     json.anims[anim] = frames.map((f, c) => {
-      for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) big.px[(oy + y) * W + c * cellW + x] = f.px[y * f.w + x];
-      return f.ax !== undefined ? { x: c * cellW, y: oy, w: f.w, h: f.h, ax: f.ax, ay: f.ay } : { x: c * cellW, y: oy, w: f.w, h: f.h };
+      for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) big.px[(oy + y) * W + c * cellW[r] + x] = f.px[y * f.w + x];
+      return f.ax !== undefined ? { x: c * cellW[r], y: oy, w: f.w, h: f.h, ax: f.ax, ay: f.ay } : { x: c * cellW[r], y: oy, w: f.w, h: f.h };
     });
     oy += cellH[r];
   });
@@ -986,7 +986,8 @@ function npc({ robe, robeMin = 0, head = 'bald', apron = null, hat = null, beard
   f.paint(body, robe, cyl(10.5, 7.5), { min: robeMin });
   f.shift(M.and(M.line(8, 18 + B, 7, 30), body), 1); f.shift(M.and(M.line(14, 18 + B, 15, 30), body), 1);
   if (apron) { const a = M.and(M.poly([[8, 18 + B], [14, 18 + B], [15, 30], [7, 30]]), body); f.paint(a, apron, cyl(11, 4)); }
-  f.paint(M.rect(5, 31, 4, 2), 'shroud', flat(0.2)); f.paint(M.rect(13, 31, 4, 2), 'shroud', flat(0.2));
+  const st = arguments[0].step || [0, 0];
+  f.paint(M.rect(5 + st[0], 31, 4, 2), 'shroud', flat(0.2)); f.paint(M.rect(13 + st[1], 31, 4, 2), 'shroud', flat(0.2));
   // Arms.
   f.paint(M.line(6, 16 + B, 5, 23 + B, 2), robe, flat(0.3), { min: robeMin });
   f.paint(M.line(16, 16 + B, 17, 23 + B, 2), robe, flat(0.55), { min: robeMin });
@@ -1007,6 +1008,8 @@ function npc({ robe, robeMin = 0, head = 'bald', apron = null, hat = null, beard
   if (!beard) P(f, 13, hy + 2, 'skin3');
   if (prop === 'hammer') { f.paint(M.line(18, 22 + B, 18, 14 + B), 'wood', flat(0.5)); f.paint(M.rect(16, 11 + B, 5, 3), 'iron', bevel(M.rect(16, 11 + B, 5, 3), 0.5, 0.9, 0.2)); }
   if (prop === 'bell') { f.paint(M.line(17, 24 + B, 18, 18 + B), 'wood', flat(0.5)); f.paint(M.union(M.ellipse(18.5, 17 + B, 2.6, 2.4), M.rect(16, 18 + B, 6, 1)), 'gold', sphere(17.5, 16 + B, 3, 3)); }
+  if (prop === 'spear') { f.paint(M.line(18, 30, 18, 2 + B), 'wood', flat(0.5)); f.paint(M.poly([[17, 3 + B], [19, 3 + B], [18, -1 + B]]), 'iron', flat(0.9)); }
+  if (prop === 'whip') { for (let k = 0; k < 6; k++) P(f, 18 + k, 24 + B + Math.round(Math.sin(k + i) * 1.5), 'blood1'); P(f, 9, 18 + B, 'blood1'); P(f, 12, 20 + B, 'blood2'); }
   if (prop === 'mug') f.paint(M.rect(17, 21 + B, 3, 4), 'wood', bevel(M.rect(17, 21 + B, 3, 4), 0.5, 0.9, 0.2));
   if (prop === 'rosary') for (let y = 17; y < 26; y += 2) P(f, 11, y + B, y === 25 ? 'gold0' : 'bone1');
   return f.outline();
@@ -1478,6 +1481,295 @@ function lootSheet() {
   });
 }
 
+// ============================================================ Vael v2 ===
+// The long town: gate, market, tavern square, forge, graveyard, cathedral.
+
+function stoneWall(f, m, seed, base = 0.45) {
+  f.paint(m, 'stone', (x, y) => base + (hash(x, y, seed) - 0.5) * 0.07 + ((x + (Math.floor(y / 6) % 2) * 6) % 12 === 0 || y % 6 === 0 ? -0.18 : 0), { min: 1, dither: 0.3 });
+}
+function gothicWindow(f, x, y, w, h, ramp = 'violet', lit = true) {
+  const m = M.union(M.rect(x, y + Math.floor(w / 2), w, h - Math.floor(w / 2)), M.ellipse(x + (w - 1) / 2, y + w / 2, (w - 1) / 2, w / 2));
+  f.paint(M.union(M.rect(x - 1, y + Math.floor(w / 2), w + 2, h - Math.floor(w / 2) + 1), M.ellipse(x + (w - 1) / 2, y + w / 2, (w + 1) / 2, w / 2 + 1)), 'stone', flat(0.7), { dither: 0 });
+  f.paint(m, lit ? ramp : 'ink', (px, py) => lit ? 0.85 - (py - y) / h * 0.5 + (hash(px, py, 77) - 0.5) * 0.3 : 0.6, { dither: 0.5 });
+  if (w >= 5) f.paint(M.and(M.union(M.rect(x + Math.floor(w / 2), y + 2, 1, h), M.rect(x, y + Math.floor(h * 0.55), w, 1)), m), 'ink', flat(0.8));
+}
+
+function cathedral() {
+  const f = new Frame(272, 200);
+  const base = 199;
+  // Towers with spires.
+  for (const tx of [10, 214]) {
+    const tw = M.rect(tx, 40, 48, 160); stoneWall(f, tw, tx, 0.4);
+    f.paint(M.poly([[tx - 2, 42], [tx + 24, -2 + 0], [tx + 50, 42]]), 'slate', sphere(tx + 14, 10, 40, 40), { min: 1 });
+    f.paint(M.line(tx + 24, 0, tx + 24, 4), 'gold', flat(0.9));
+    for (let y = 60; y < 180; y += 40) gothicWindow(f, tx + 18, y, 12, 26, y < 100 ? 'crimson' : 'violet', hash(tx, y) < 0.7);
+    f.paint(M.rect(tx - 2, 40, 52, 3), 'gold', flat(0.5));
+  }
+  // Nave front with gable.
+  const nave = M.rect(56, 60, 160, 140); stoneWall(f, nave, 3, 0.48);
+  f.paint(M.poly([[52, 62], [136, 6], [220, 62]]), 'stone', sphere(110, 20, 110, 80), { min: 1 });
+  f.paint(M.minus(M.poly([[48, 64], [136, 2], [224, 64]]), M.poly([[54, 64], [136, 8], [218, 64]])), 'gold', (x) => 1 - x / 272);
+  // Rose window.
+  const rose = M.ellipse(136, 56, 22, 22);
+  f.paint(M.ellipse(136, 56, 25, 25), 'gold', sphere(130, 50, 26, 26));
+  f.paint(rose, 'violet', (x, y) => 0.7 + Math.sin(Math.atan2(y - 56, x - 136) * 6) * 0.15 + (Math.hypot(x - 136, y - 56) < 8 ? 0.3 : 0), { dither: 0.6 });
+  for (let a = 0; a < 12; a++) f.paint(M.line(136 + Math.cos(a * Math.PI / 6) * 7, 56 + Math.sin(a * Math.PI / 6) * 7, 136 + Math.cos(a * Math.PI / 6) * 22, 56 + Math.sin(a * Math.PI / 6) * 22), 'gold', flat(0.6), { dither: 0 });
+  f.paint(M.ellipse(136, 56, 6, 6), 'crimson', flat(0.85));
+  // Great door: the Vestry.
+  const arch = M.union(M.rect(116, 140, 40, 60), M.ellipse(136, 140, 20, 18));
+  f.paint(M.union(M.rect(110, 136, 52, 64), M.ellipse(136, 136, 26, 24)), 'gold', bevel(M.union(M.rect(110, 136, 52, 64), M.ellipse(136, 136, 26, 24)), 0.45, 0.95, 0.2));
+  for (let k = 1; k <= 3; k++) f.paint(M.minus(M.ellipse(136, 136, 26 - k * 2, 24 - k * 2), M.ellipse(136, 136, 25 - k * 2, 23 - k * 2)), 'stone', flat(0.4 + k * 0.1));
+  f.paint(arch, 'wood', (x, y) => 0.4 - (y - 122) / 100 + (x === 136 ? -0.4 : 0) + ((x - 116) % 6 === 0 ? -0.1 : 0), { min: 1 });
+  for (const hx of [126, 145]) for (let y = 150; y < 196; y += 10) f.paint(M.rect(hx, y, 4, 2), 'iron', flat(0.5));
+  f.paint(M.ellipse(136, 172, 2, 2), 'gold', flat(1));
+  // Statues in niches either side of the door and lancet windows above.
+  for (const nx of [70, 186]) {
+    f.paint(M.union(M.rect(nx, 120, 16, 50), M.ellipse(nx + 8, 120, 8, 7)), 'ink', vgrad(112, 170, 0.6, 0.15));
+    f.paint(M.union(M.ellipse(nx + 8, 128, 3.4, 3.6), M.poly([[nx + 3, 133], [nx + 13, 133], [nx + 15, 168], [nx + 1, 168]])), 'stone', cyl(nx + 6, 7, 0.1));
+    f.paint(M.minus(M.ellipse(nx + 8, 122, 5, 1.6), M.ellipse(nx + 8, 122, 3.2, 0.5)), 'gold', flat(0.8));
+    gothicWindow(f, nx + 2, 84, 12, 28, 'crimson', true);
+  }
+  // Buttress fins and steps.
+  for (const bx of [56, 208]) f.paint(M.rect(bx, 70, 8, 130), 'stone', cyl(bx + 3, 5));
+  for (let k = 0; k < 3; k++) f.paint(M.rect(96 - k * 6, 194 + k * 2, 80 + k * 12, 2), 'stone', flat(0.75 - k * 0.15), { dither: 0 });
+  // Grime and moss streaks.
+  for (let i = 0; i < 40; i++) { const x = Math.floor(hash(i, 1) * 272), y = 60 + Math.floor(hash(i, 2) * 130); if (f.get(x, y) >= 0) f.shift(M.line(x, y, x, y + 4 + Math.floor(hash(i, 3) * 10)), 1); }
+  return f.outline();
+}
+
+function cityGate() {
+  const f = new Frame(136, 160);
+  for (const tx of [4, 92]) {
+    const tw = M.rect(tx, 30, 40, 130); stoneWall(f, tw, tx + 5, 0.38);
+    for (let x = tx; x < tx + 40; x += 8) f.paint(M.rect(x, 22, 5, 8), 'stone', bevel(M.rect(x, 22, 5, 8), 0.5, 0.8, 0.2));
+    gothicWindow(f, tx + 15, 50, 9, 18, 'ember', true);
+    f.paint(M.rect(tx + 4, 90, 32, 40), 'crimson', cyl(tx + 18, 16)); // banner
+    f.paint(M.minus(M.ellipse(tx + 20, 102, 7, 2.5), M.ellipse(tx + 20, 102, 4.5, 0.8)), 'gold', flat(0.8));
+  }
+  const wall = M.rect(44, 52, 48, 108); stoneWall(f, wall, 9, 0.42);
+  for (let x = 44; x < 92; x += 8) f.paint(M.rect(x, 44, 5, 8), 'stone', bevel(M.rect(x, 44, 5, 8), 0.5, 0.8, 0.2));
+  const arch = M.union(M.rect(50, 100, 36, 60), M.ellipse(68, 100, 18, 16));
+  f.paint(arch, 'ink', vgrad(84, 160, 0.7, 0.3));
+  for (let x = 52; x < 86; x += 5) f.paint(M.and(M.rect(x, 84, 2, 34), arch), 'iron', vgrad(84, 118, 0.7, 0.3), { min: 1 });
+  f.paint(M.and(M.rect(50, 116, 36, 2), arch), 'iron', flat(0.6));
+  f.paint(M.minus(M.union(M.rect(47, 100, 42, 60), M.ellipse(68, 100, 21, 19)), arch), 'stone', flat(0.7), { dither: 0 });
+  return f.outline();
+}
+
+function tallHouse(v) {
+  const f = new Frame(68, 132);
+  const plasterR = v % 2 ? 'sand' : 'stone';
+  const floors = 3, fh = 30;
+  for (let k = 0; k < floors; k++) {
+    const y = 132 - (k + 1) * fh, inset = k * 2, wl = M.rect(4 - inset, y, 60 + inset * 2, fh);
+    f.paint(wl, plasterR, (x, yy) => (plasterR === 'sand' ? 0.5 : 0.38) + (hash(x, yy, v + k) - 0.5) * 0.08 - k * 0.04, { min: 1, max: 3, dither: 0.3 });
+    const beams = M.union(M.rect(4 - inset, y, 60 + inset * 2, 2), M.rect(4 - inset, y, 2, fh), M.rect(62 + inset, y, 2, fh), M.rect(33, y, 2, fh));
+    f.paint(beams, 'wood', flat(0.3), { min: 1 });
+    if (k > 0) f.paint(M.rect(4 - inset, y + fh - 2, 60 + inset * 2, 2), 'wood', flat(0.15));
+    for (const wx of [12, 44]) { const lit = hash(v, k, wx) < 0.55; if (k === 0 && wx === 44 && v % 3 === 0) continue; const m = M.rect(wx - inset * 0 , y + 8, 10, 12); f.paint(m, lit ? 'ember' : 'ink', (px, py) => lit ? 0.95 - (py - y - 8) / 14 : 0.6, { dither: 0.4 }); f.paint(M.union(M.rect(wx + 4, y + 8, 1, 12), M.rect(wx, y + 13, 10, 1)), 'wood', flat(0.3)); f.paint(M.rect(wx - 1, y + 20, 12, 1), 'wood', flat(0.7)); }
+    if (k === 0) { const d = M.union(M.rect(24, 132 - 24, 14, 24), M.ellipse(31, 132 - 24, 7, 4)); f.paint(d, 'wood', (x, yy) => 0.35 - (yy - 104) / 50, { min: 1 }); }
+  }
+  // Steep roof with a dormer and chimney.
+  const ry = 132 - floors * fh;
+  const roof = M.poly([[-2 + 2, ry + 1], [34, ry - 34], [70 - 2, ry + 1]]);
+  for (let row = 0; row < 36; row += 3) for (let x = -2; x < 70; x += 6) { const m = M.and(M.rect(x - (row % 6 ? 3 : 0), ry - 34 + row, 6, 3), roof); f.paint(m, 'roof', bevel(m, 0.4 + hash(x, row, v) * 0.15, 0.7, 0.15)); }
+  f.paint(M.rect(48, ry - 30, 8, 18), 'slate', cyl(51, 4)); f.paint(M.rect(47, ry - 32, 10, 2), 'slate', flat(0.8));
+  const dorm = M.union(M.rect(28, ry - 16, 12, 10), M.poly([[26, ry - 16], [34, ry - 24], [42, ry - 16]]));
+  f.paint(dorm, 'wood', bevel(dorm, 0.4, 0.7, 0.2)); f.paint(M.rect(31, ry - 14, 6, 6), hash(v, 9) < 0.5 ? 'ember' : 'ink', flat(0.8));
+  // Hanging shop sign.
+  if (v % 2 === 0) { f.paint(M.rect(62, 132 - 56, 8, 1), 'iron', flat(0.5)); const sg = M.rect(63, 132 - 54, 7, 9); f.paint(sg, 'wood', bevel(sg, 0.45, 0.8, 0.2)); P(f, 66, 132 - 50, v % 4 ? 'gold1' : 'crimson1'); }
+  return f.outline();
+}
+
+function ruin() {
+  const f = new Frame(72, 110);
+  const wall = M.poly([[2, 110], [2, 40], [12, 30], [20, 46], [30, 22], [44, 50], [54, 36], [70, 60], [70, 110]]);
+  stoneWall(f, wall, 21, 0.36);
+  for (const [x, y] of [[14, 62], [44, 66]]) f.paint(M.union(M.rect(x, y, 12, 22), M.ellipse(x + 5.5, y, 6, 5)), 'ink', flat(0.7));
+  f.paint(M.union(M.line(6, 40, 50, 14, 2), M.line(30, 22, 64, 6, 2)), 'wood', flat(0.25), { min: 2 });
+  for (let i = 0; i < 30; i++) { const x = 2 + Math.floor(hash(i, 4) * 68), y = 40 + Math.floor(hash(i, 5) * 70); if (wall.has(`${x},${y}`)) P(f, x, y, hash(i, 6) < 0.5 ? 'moss2' : 'moss3'); }
+  f.paint(M.rect(0, 100, 72, 10), 'stone', (x, y) => 0.3 + hash(x, y, 8) * 0.3, { min: 2 });
+  return f.outline();
+}
+
+function mausoleum() {
+  const f = new Frame(88, 104);
+  const body = M.rect(10, 40, 68, 64); stoneWall(f, body, 31, 0.42);
+  f.paint(M.poly([[4, 42], [44, 14], [84, 42]]), 'stone', sphere(36, 22, 50, 40), { min: 1 });
+  f.paint(M.rect(4, 40, 80, 4), 'stone', bevel(M.rect(4, 40, 80, 4), 0.6, 0.9, 0.3));
+  for (const cx2 of [16, 30, 58, 72]) f.paint(M.rect(cx2 - 3, 44, 6, 56), 'stone', cyl(cx2 - 1, 4, 0.05));
+  const door = M.union(M.rect(36, 66, 16, 38), M.ellipse(44, 66, 8, 6));
+  f.paint(door, 'iron', (x, y) => 0.3 - (y - 60) / 80 + ((x - 36) % 4 === 0 ? -0.15 : 0), { min: 1 });
+  // A grieving angel on the roof.
+  const angel = M.union(M.ellipse(44, 6, 3, 3), M.poly([[40, 9], [48, 9], [50, 18], [38, 18]]));
+  f.paint(angel, 'stone', sphere(42, 5, 6, 8));
+  for (const side of [-1, 1]) f.paint(M.poly([[44, 10], [44 + side * 12, 2], [44 + side * 10, 14]]), 'stone', flat(side < 0 ? 0.7 : 0.45));
+  for (let i = 0; i < 24; i++) { const x = 10 + Math.floor(hash(i, 7) * 68), y = 60 + Math.floor(hash(i, 8) * 44); P(f, x, y, 'moss2'); }
+  return f.outline();
+}
+
+function plushStall() {
+  const f = new Frame(76, 70);
+  const back = M.rect(4, 18, 68, 52); plaster(f, back, 41);
+  f.paint(M.union(M.rect(4, 18, 3, 52), M.rect(69, 18, 3, 52)), 'wood', cyl(5, 2));
+  for (let x = 0; x < 76; x++) for (let y = 6; y < 22; y++) { if (y >= 19 && (x % 8 < 2 || x % 8 > 5)) continue; const st = Math.floor(x / 8) % 2; f.paint(M.pts([[x, y]]), st ? 'gold' : 'violet', flat(0.85 - (y - 6) / 16 * 0.6), { max: 3 }); }
+  // Shelves of plush Saints: little red hoods with halos.
+  for (const sy of [30, 44]) { f.paint(M.rect(8, sy + 8, 60, 2), 'wood', flat(0.6)); for (let k = 0; k < 6; k++) { const x = 12 + k * 10; f.paint(M.ellipse(x, sy + 4, 3, 4), 'crimson', sphere(x - 1, sy + 3, 4, 4)); P(f, x + 1, sy + 4, 'ink0'); f.paint(M.minus(M.ellipse(x, sy - 1, 2.5, 0.9), M.ellipse(x, sy - 1, 1.3, 0.2)), 'gold', flat(0.9)); } }
+  const counter = M.rect(6, 56, 64, 14); f.paint(counter, 'wood', bevel(counter, 0.42, 0.75, 0.15));
+  f.paint(M.rect(26, 59, 24, 6), 'bone', bevel(M.rect(26, 59, 24, 6), 0.7, 0.9, 0.4)); for (let x = 28; x < 48; x += 3) P(f, x, 62, 'ink2');
+  return f.outline();
+}
+
+function gallows(i) {
+  const f = new Frame(56, 76);
+  f.paint(M.rect(2, 62, 52, 6), 'wood', bevel(M.rect(2, 62, 52, 6), 0.45, 0.8, 0.15));
+  for (const x of [4, 48]) f.paint(M.rect(x, 66, 4, 10), 'wood', flat(0.3));
+  f.paint(M.rect(8, 6, 4, 56), 'wood', cyl(9, 3));
+  f.paint(M.rect(8, 4, 40, 4), 'wood', bevel(M.rect(8, 4, 40, 4), 0.5, 0.85, 0.2));
+  f.paint(M.line(12, 20, 24, 8, 2), 'wood', flat(0.4));
+  const sw = i ? 2 : -1;
+  f.paint(M.line(40, 8, 40 + sw, 22), 'wood', flat(0.6), { dither: 0 });
+  const cx = 40 + sw, cy = 22;
+  for (let x = cx - 7; x <= cx + 7; x += 3) f.paint(M.rect(x, cy, 1, 26), 'iron', flat(0.6), { dither: 0 });
+  f.paint(M.ellipse(cx, cy, 7.5, 2), 'iron', flat(0.4)); f.paint(M.rect(cx - 8, cy + 25, 17, 2), 'iron', flat(0.4));
+  f.paint(M.ellipse(cx, cy + 14, 3, 7), 'bone', sphere(cx - 1, cy + 10, 4, 8, -0.1)); P(f, cx - 1, cy + 9, 'ink0'); P(f, cx + 1, cy + 9, 'ink0');
+  f.paint(M.ellipse(cx, cy + 13, 3.5, 4), 'shroud', flat(0.3), { min: 2 });
+  return f.outline();
+}
+
+function cart() {
+  const f = new Frame(52, 34);
+  const bed = M.rect(4, 10, 40, 10); f.paint(bed, 'wood', bevel(bed, 0.42, 0.75, 0.15));
+  for (let x = 6; x < 44; x += 6) f.shift(M.rect(x, 11, 1, 8), 1);
+  f.paint(M.line(44, 15, 52, 20, 2), 'wood', flat(0.5));
+  // Shrouded bodies piled in the cart.
+  for (const [x, y] of [[14, 8], [26, 7], [36, 9]]) f.paint(M.ellipse(x, y, 7, 3.4), 'shroud', sphere(x - 2, y - 2, 8, 5));
+  P(f, 9, 7, 'bone1'); P(f, 41, 8, 'rot1');
+  const wheel = M.minus(M.ellipse(14, 24, 8, 8), M.ellipse(14, 24, 6, 6)); f.paint(wheel, 'wood', flat(0.4), { min: 1 });
+  for (let a = 0; a < 6; a++) f.paint(M.line(14, 24, 14 + Math.cos(a) * 6, 24 + Math.sin(a) * 6), 'wood', flat(0.3), { dither: 0 });
+  f.paint(M.rect(34, 20, 8, 10), 'wood', flat(0.3));
+  return f.outline();
+}
+function brazier(i) {
+  const f = new Frame(18, 30);
+  f.paint(M.union(M.line(4, 29, 8, 16), M.line(13, 29, 9, 16), M.line(9, 29, 9, 16)), 'iron', flat(0.4), { dither: 0 });
+  f.paint(M.ellipse(9, 15, 7, 3), 'iron', bevel(M.ellipse(9, 15, 7, 3), 0.4, 0.8, 0.15));
+  f.outline();
+  const fl = [[5, 11], [7, 7 - i], [9, 4 + i], [11, 8], [13, 11], [8, 11], [10, 10]];
+  for (const [x, y] of fl) for (let yy = y; yy < 13; yy++) P(f, x, yy, yy < y + 2 ? 'ember0' : yy < y + 4 ? 'ember1' : 'ember2');
+  return f;
+}
+function campfire(i) {
+  const f = new Frame(28, 20);
+  f.paint(M.union(M.line(3, 17, 24, 13, 2), M.line(4, 13, 24, 17, 2)), 'wood', flat(0.35), { min: 1 });
+  for (let k = 0; k < 8; k++) f.paint(M.ellipse(4 + k * 2.8, 17 + (k % 2), 1.6, 1.2), 'stone', flat(0.5));
+  f.outline();
+  for (const [x, top] of [[10, 5 + i], [13, 2 - i + 1], [16, 6 - i], [12, 7], [15, 8]]) for (let y = top; y < 15; y++) P(f, x, y, y < top + 2 ? 'ember0' : y < top + 5 ? 'ember1' : 'ember2');
+  return f;
+}
+function tombstone(v) {
+  const f = new Frame(16, 22);
+  let m;
+  if (v === 0) m = M.union(M.rect(6, 2, 4, 18), M.rect(2, 6, 12, 4));
+  else if (v === 1) m = M.union(M.rect(2, 8, 12, 12), M.ellipse(8, 8, 6, 6));
+  else m = M.poly([[2, 20], [2, 9], [6, 5], [9, 8], [11, 4], [14, 9], [14, 20]]);
+  f.paint(m, 'stone', bevel(m, 0.45, 0.8, 0.15), { dither: 0.3 });
+  if (v === 1) { f.paint(M.rect(5, 10, 6, 1), 'stone', flat(0.2)); f.paint(M.rect(5, 13, 6, 1), 'stone', flat(0.2)); }
+  P(f, 3, 19, 'moss2'); P(f, 4, 19, 'moss1'); P(f, 12, 18, 'moss2');
+  return f.outline();
+}
+function deadTree() {
+  const f = new Frame(64, 90);
+  const limbs = [[32, 90, 32, 50, 5], [32, 60, 14, 34, 3], [32, 54, 52, 28, 3], [14, 34, 6, 18, 2], [14, 34, 22, 12, 2], [52, 28, 60, 14, 2], [44, 36, 50, 40, 1], [32, 50, 30, 20, 3], [30, 20, 38, 4, 2], [30, 24, 20, 6, 1]];
+  for (const [a, b, c, d, t] of limbs) f.paint(M.line(a, b, c, d, t), 'shroud', cyl(a, t + 2, -0.2), { min: 2 });
+  return f.outline();
+}
+function fence() {
+  const f = new Frame(32, 26);
+  for (const y of [8, 18]) f.paint(M.rect(0, y, 32, 2), 'iron', flat(0.4), { dither: 0 });
+  for (let x = 1; x < 32; x += 5) { f.paint(M.rect(x, 4, 2, 22), 'iron', cyl(x, 1.5), { min: 1 }); P(f, x, 2, 'iron1'); P(f, x + 1, 3, 'iron2'); }
+  return f.outline();
+}
+function crow(i) {
+  const f = new Frame(12, 10);
+  if (i < 2) { f.paint(M.ellipse(5, 6, 3.5, 2.5), 'ink', sphere(4, 5, 4, 4, 0.4), { max: 3 }); f.paint(M.ellipse(8 + i * 0.5, 4, 1.8, 1.6), 'ink', flat(0.6)); P(f, 10, 4, 'gold2'); P(f, 2, 7, 'ink2'); P(f, 9, 4, 'bone0'); }
+  else { const up = i === 2; f.paint(M.ellipse(6, 5, 2.4, 1.6), 'ink', flat(0.6)); f.paint(M.union(M.line(6, 5, 1, up ? 1 : 8), M.line(6, 5, 11, up ? 1 : 8)), 'ink', flat(0.4)); }
+  return f.outline();
+}
+function well() {
+  const f = new Frame(36, 40);
+  const ring = M.ellipse(18, 30, 15, 7); f.paint(ring, 'stone', sphere(14, 26, 18, 10), { dither: 0.3 });
+  f.paint(M.ellipse(18, 28, 11, 4), 'ink', flat(0.9));
+  for (const x of [4, 30]) f.paint(M.rect(x, 6, 3, 24), 'wood', cyl(x + 1, 2));
+  f.paint(M.poly([[0, 8], [18, 0], [36, 8], [34, 10], [18, 3], [2, 10]]), 'roof', flat(0.45));
+  f.paint(M.line(18, 6, 18, 18), 'shroud', flat(0.5)); f.paint(M.rect(16, 18, 5, 5), 'wood', bevel(M.rect(16, 18, 5, 5), 0.5, 0.8, 0.2));
+  return f.outline();
+}
+function noticeBoard() {
+  const f = new Frame(30, 40);
+  for (const x of [3, 25]) f.paint(M.rect(x, 4, 2, 36), 'wood', flat(0.4));
+  const b = M.rect(1, 4, 28, 22); f.paint(b, 'wood', bevel(b, 0.42, 0.75, 0.15));
+  for (const [x, y, w, h] of [[4, 7, 8, 10], [14, 6, 10, 8], [15, 15, 9, 9], [5, 18, 7, 6]]) { f.paint(M.rect(x, y, w, h), 'bone', flat(0.75)); for (let yy = y + 2; yy < y + h - 1; yy += 2) f.paint(M.rect(x + 1, yy, w - 2, 1), 'bone', flat(0.25)); }
+  // A wanted poster of the Saint.
+  f.paint(M.ellipse(10, 11, 2.5, 2.8), 'crimson', flat(0.6)); P(f, 10, 11, 'ink0'); P(f, 11, 11, 'ink0');
+  return f.outline();
+}
+function stocks() {
+  const f = new Frame(36, 32);
+  for (const x of [4, 30]) f.paint(M.rect(x, 10, 3, 22), 'wood', flat(0.4));
+  const bd = M.rect(2, 10, 32, 7); f.paint(bd, 'wood', bevel(bd, 0.45, 0.8, 0.2));
+  f.paint(M.ellipse(18, 9, 3.5, 3.4), 'skin', sphere(17, 8, 4, 4)); P(f, 18, 9, 'ink0'); P(f, 20, 9, 'ink0');
+  f.paint(M.ellipse(18, 6, 3.6, 1.6), 'shroud', flat(0.3));
+  for (const x of [9, 26]) f.paint(M.rect(x, 12, 3, 3), 'skin', flat(0.6));
+  f.paint(M.poly([[12, 31], [24, 31], [22, 17], [14, 17]]), 'shroud', cyl(18, 6));
+  P(f, 13, 22, 'blood2'); P(f, 21, 25, 'rot2');
+  return f.outline();
+}
+function scryingPool(i) {
+  const f = new Frame(80, 34);
+  const ring = M.ellipse(40, 18, 38, 14); f.paint(ring, 'stone', sphere(34, 12, 44, 20), { dither: 0.3 });
+  const water = M.ellipse(40, 16, 32, 10);
+  f.paint(water, 'violet', (x, y) => 0.55 + Math.sin(x * 0.3 + y * 0.6 + i * 2) * 0.12 + Math.max(0, 0.4 - Math.hypot(x - 40, (y - 16) * 2) / 40), { dither: 0.6 });
+  // The scrying image: a tiny red-hooded Saint, fighting.
+  f.paint(M.ellipse(40 + i, 14, 3, 3.4), 'crimson', flat(0.8)); P(f, 41 + i, 14, 'flame0'); f.paint(M.ellipse(40 + i, 18, 3.2, 2), 'cloth', flat(0.7));
+  for (const [x, y] of [[30, 13], [50, 17], [34, 20]]) P(f, x + i, y, 'rot1');
+  f.paint(M.minus(M.ellipse(40, 16, 33, 11), water), 'gold', flat(0.55));
+  return f.outline();
+}
+function child(t, v) {
+  const f = new Frame(14, 20), B = t % 2;
+  const robe = v ? 'moss' : 'crimson';
+  f.paint(M.poly([[4, 8 + B], [10, 8 + B], [11, 17], [3, 17]]), robe, cyl(7, 4));
+  const l = [[-1, 1], [0, 0], [1, -1], [0, 0]][t];
+  P(f, 5 + l[0], 18, 'shroud1'); P(f, 9 + l[1], 18, 'shroud1'); P(f, 5 + l[0], 19, 'shroud2'); P(f, 9 + l[1], 19, 'shroud2');
+  f.paint(M.ellipse(7, 5 + B, 3.4, 3.4), 'skin', sphere(6, 4 + B, 4, 4));
+  f.paint(M.and(M.ellipse(7, 4 + B, 3.6, 3.4), M.rect(0, 0, 14, 4 + B)), v ? 'wood' : 'gold', flat(0.4));
+  P(f, 8, 5 + B, 'ink0'); P(f, 10, 5 + B, 'ink0');
+  if (!v) { // playing the Saint: a cardboard halo
+    f.paint(M.minus(M.ellipse(7, 0.5 + B, 3.5, 1), M.ellipse(7, 0.5 + B, 2, 0.2)), 'gold', flat(0.9));
+  } else f.paint(M.rect(11, 8 + B, 3, 4), 'gold', flat(0.7)); // the Bellwright's bell
+  return f.outline();
+}
+
+// Walking townsfolk (4 frames) built on the NPC body.
+function walker(spec) { return [0, 1, 2, 3].map((t) => npc({ ...spec, step: [[-1, 1], [0, 0], [1, -1], [0, 0]][t] }, t % 2)); }
+
+function town2Sheet() {
+  return sheet('town2', {
+    cathedral: [cathedral()], gate: [cityGate()], tall: [0, 1, 2, 3, 4, 5].map(tallHouse), ruin: [ruin()], mausoleum: [mausoleum()], plush: [plushStall()],
+    gallows: [gallows(0), gallows(1)], cart: [cart()], brazier: [brazier(0), brazier(1), brazier(2)], campfire: [campfire(0), campfire(1), campfire(2)],
+    tomb: [0, 1, 2].map(tombstone), tree: [deadTree()], fence: [fence()], crow: [0, 1, 2, 3].map(crow), well: [well()], board: [noticeBoard()], stocks: [stocks()],
+    pool: [scryingPool(0), scryingPool(1), scryingPool(2)],
+    kid: [0, 1, 2, 3].map((t) => child(t, 0)), kid2: [0, 1, 2, 3].map((t) => child(t, 1)),
+    peasant_walk: walker({ robe: 'shroud', head: 'hair' }), peasant2_walk: walker({ robe: 'violet', robeMin: 2, head: 'nun' }),
+    guard_walk: walker({ robe: 'iron', robeMin: 1, apron: 'crimson', head: 'bald', hat: 'iron', prop: 'spear' }),
+    penitent_walk: walker({ robe: 'skin', head: 'bald', prop: 'whip' }), priest_walk: walker({ robe: 'violet', robeMin: 1, apron: 'gold', head: 'tonsure', prop: 'rosary' }),
+    plushseller: [npc({ robe: 'violet', head: 'hair', prop: 'mug' }, 0), npc({ robe: 'violet', head: 'hair', prop: 'mug' }, 1)],
+    vane: [npc({ robe: 'cloth', robeMin: 1, apron: 'gold', head: 'bald', hat: 'gold', prop: 'rosary' }, 0), npc({ robe: 'cloth', robeMin: 1, apron: 'gold', head: 'bald', hat: 'gold', prop: 'rosary' }, 1)],
+    beggar: [npc({ robe: 'shroud', robeMin: 2, head: 'hair', beard: true }, 0), npc({ robe: 'shroud', robeMin: 2, head: 'hair', beard: true }, 1)],
+  });
+}
+
 // ================================================================= png ===
 
 const CRC = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
@@ -1509,7 +1801,7 @@ function png(frame, scale = 1, bg = null) {
 
 // ================================================================ main ===
 
-const sheets = [saintSheet(), risenSheet(), wardenSheet(), tilesSheet(), wallDecorSheet(), propsSheet(), fxSheet(), uiSheet(), townSheet(), ...monsterSheets(), lootSheet()];
+const sheets = [saintSheet(), risenSheet(), wardenSheet(), tilesSheet(), wallDecorSheet(), propsSheet(), fxSheet(), uiSheet(), townSheet(), town2Sheet(), ...monsterSheets(), lootSheet()];
 mkdirSync(OUT, { recursive: true });
 const manifest = { palette: PALETTE };
 for (const s of sheets) {

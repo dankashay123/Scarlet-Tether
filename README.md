@@ -4,6 +4,7 @@ A top-down pixel auto-shooter for iPhone (landscape). You play a Saint sent into
 the Wound again and again, for a city that profits from your suffering.
 
 - **Design:** [`docs/GDD.md`](docs/GDD.md) is the source of truth.
+- **Combat, monsters, loot, town:** [`docs/COMBAT.md`](docs/COMBAT.md).
 - **Progress:** [`docs/ROADMAP.md`](docs/ROADMAP.md) tracks the vertical slice.
 
 ## Layout
@@ -35,6 +36,6 @@ Debug URL flags: `?town` starts in Vael, `?run` jumps straight into a descent (n
 | Sun button | R / 3 | Flagellant's Rain (Penance; charges from Fervor) |
 | Tap an enemy | click | Lock target (tap again to release) |
 | Dagger button / tap staggered elite | E | Execute |
-| Talk / Descend button (appears) | E | Talk to townsfolk, take the Vestry doors, use the Waystone |
+| Talk / Descend button (appears) | E | Talk to townsfolk, take the Vestry doors, pray at shrines, open chests, use the Waystone |
 
 The Relic Weapon and the Thurible (an orbiting censer) work on their own; the crossbow fires: elites first, then the nearest enemy.

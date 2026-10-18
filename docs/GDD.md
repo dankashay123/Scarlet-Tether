@@ -93,6 +93,8 @@ Thresholds are first-pass and will be tuned.
 
 ## Core loop and combat
 
+*Room structure, the monster roster, affixes and loot are detailed in `docs/COMBAT.md`, which supersedes this section where they differ.*
+
 Each run is a descent: you steer, dodge and choose fights while your weapons
 fire on their own, then bank loot in town or die and leave a Shade.
 

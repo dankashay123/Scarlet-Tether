@@ -8,7 +8,7 @@ Goal (GDD): one Stratum, a 30-minute run that ends in Martyrdom and a first Vigi
 - [x] **Nail Crossbow, Thurible of Embers, one Penance, two Miracles** — piercing bolts; orbiting censer that burns;
       Holy Water Flask (lobbed at the densest cluster, slowing pool); Chain of Penitence (binds up to 4,
       yanks them together, ignores shields); Flagellant's Rain (charged by Fervor, scourges fall across the view)
-- [ ] Stratum 1: Risen and Gravewarden done; Candle-Mourner caster, procedural rooms, shrine, ability gate
+- [ ] Stratum 1: monsters, procedural rooms and shrines done; ability gate and the Bellwright still to come
 - [ ] Fervor tiers, executions, dismemberment gore — first pass in (tiers, edge tint, elite executions, gibs, floor stains); Inquisitor still to do
 - [ ] Stigmata level-ups with 20 Wounds
 - [ ] Vestments with affixes, salvage and re-consecrate
@@ -21,5 +21,9 @@ Goal (GDD): one Stratum, a 30-minute run that ends in Martyrdom and a first Vigi
 - [ ] Suspend and resume saves
 - [x] Start menu (Begin / Continue, Replay tutorial)
 - [x] Tutorial: 9 guided steps from the town into the first fight, with SKIP TUTORIAL
-- [x] Descent candle: 3-minute timer, a surge in the last 30 s, then the Waystone carries you home
+- [x] ~~Descent candle timer~~ replaced by a floor of 12 linked rooms with locking gates (see docs/COMBAT.md)
+- [x] 30 monsters (10 common, 10 rare/blue, 10 elite/gold) with telegraphed attack patterns
+- [x] 19 Diablo III-inspired affixes, elite names and nameplates
+- [x] Loot: gold, health globes, items in 5 rarities with beams, shrines, chests, breakables, Collection Imp, Massacre
+- [x] Vael rebuilt: a long twilight street with six districts, townsfolk, chatter, crows, fog, ash, lightning
 - [ ] Audio: pick a free sound pack
