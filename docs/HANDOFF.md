@@ -118,6 +118,14 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   each frame. Townfolk cloth folds hold still while walking. The camera
   follows the Saint's rounded position, and monsters have a 6 px dead zone
   before turning to face the Saint.
+- **Round 8c:** freeze guard. A player froze after firing both rites at
+  once (not reproduced). The frame loop now books the next frame first,
+  each system and each actor draw runs inside `safe()`, a monster whose
+  update throws is removed, and errors are kept in localStorage
+  `hollow-saint-errors` (the pause screen shows the latest). Fixed the
+  chain leaving a bound monster in an unknown `'walk'` state (it stood
+  frozen). `tools/tests/rites.cjs` fires both rites together for a while
+  and injects faults to prove the game keeps running.
 - **Round 7:** chunky 2x2 pixels (`setRes(2)` in `tools/sdf.mjs`,
   `tools/chunky.mjs` for every sheet but `ui`, `chunkCanvas()` for the
   baked floor), whole-number nearest-neighbour scaling, thicker halo,
@@ -173,6 +181,7 @@ These hosts are allowed now. Notes: Steam's `api/appdetails` and the App Store p
 - Town `place()` never marks tiles solid (walk-through by request); dungeon `place()` does.
 - Keys: M opens the town map, N mutes, I opens the bag, E interacts, Esc closes panels.
 - Never bob or slide a whole body by 1 px or a fraction: on the 2x2 grid that re-cuts every block and reads as jitter. Move bodies in steps of 2 px (`bobAt()`); elites are scaled by `s` in `shoot()`, so use `2 / s` model units.
+- Errors never stop the loop; they are logged instead. If the owner reports a bug, ask what the pause screen says under BUG LOGGED, or read `localStorage['hollow-saint-errors']`.
 - `text()` caches each string as a small canvas (cleared at 600 entries). Use `small: true` for the old thin 5x7 font.
 - Audio starts on the first tap (iOS rule). Music streams through `<audio>` elements, effects are decoded buffers. `AUDIO.set([...])` picks the loops; `sfx(name)` plays an effect.
 - Rebuild audio with `tools/build-audio.sh <src>` after downloading the packs; the sources are not committed.

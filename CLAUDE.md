@@ -42,6 +42,7 @@ node tools/tests/stig.cjs <outDir>    # level-up cards and every Stigmata skill 
 node tools/tests/descent.cjs <outDir> # town minimap, full map, a locked site, descent panel and difficulty
 node tools/tests/rooms.cjs <outDir> [n] # photographs every room of n floors (layout review)
 SOAK_DEATH=0.04 node tools/tests/soak.cjs <outDir> 300   # 5 min of random play: errors, NaN, stuck states, walls
+node tools/tests/rites.cjs [secs]     # both rites at once in a crowd, plus injected faults: the loop must keep running
 node tools/tests/err.cjs              # prints page errors and state
 node tools/sprites.mjs --audit        # lists any animation still drawn by the old hand-drawn code
 ```

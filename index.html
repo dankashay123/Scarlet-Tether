@@ -2546,7 +2546,7 @@ function updateAbilities(dt) {
         c.links = bound;
         for (const e of bound) {
           e.bound = T.chain.bind;
-          if (e.state === 'windup' || e.state === 'strike') { e.state = 'walk'; e.t = 0; }
+          if (e.state === 'windup') { e.state = 'move'; e.t = 0; }
           const ox = tg.x - e.x, oy = tg.y - e.y, od = Math.hypot(ox, oy) || 1;
           if (e !== tg) { e.kx += ox / od * Math.min(220, od * 4); e.ky += oy / od * Math.min(220, od * 4); }
           hurtEnemy(e, T.chain.dmg * (1 + wound('chains') * 0.4), rng() < 0.15, ox / od, oy / od, 0, { status: true, color: PAL.iron0 });
@@ -2679,7 +2679,7 @@ function update(realDt) {
   game.fervorT += dt;
   if (game.fervorT > T.fervor.decayDelay) game.fervor = Math.max(0, game.fervor - T.fervor.decay * (G.powers.has('decay') ? 0.5 : 1) * dt);
 
-  updatePlayer(dt);
+  safe('player', () => updatePlayer(dt));
   // Nearest thing to talk to or use.
   game.interact = null;
   let bestD = Infinity;
@@ -2687,25 +2687,25 @@ function update(realDt) {
   for (const n of room.npcs) { const d = player.x - n.x; if (!n.walk && !n.circle && !n.still && Math.hypot(d, player.y - n.y) < 40) n.face = d < 0 ? -1 : 1; }
   if (game.scene === 'town') { updateTown(dt); player.target = null; updateFloatBow(dt); }
   if (game.scene === 'wound') {
-    updateCrossbow(dt);
-    updateSkills(dt);
+    safe('crossbow', () => updateCrossbow(dt));
+    safe('skills', () => updateSkills(dt));
     if (game.run.pending > 0 && game.state === 'play' && game.real >= (game.stigAt || 0)) openStigmata();
-    updateFloor(dt);
-    for (const e of enemies) if (!e.dead) updateEnemy(e, dt);
+    safe('floor', () => updateFloor(dt));
+    // A monster whose update throws is removed rather than freezing the game.
+    for (const e of enemies) if (!e.dead) safe(`enemy ${e.type}`, () => updateEnemy(e, dt), () => { e.dead = true; });
     enemies = enemies.filter((e) => !e.dead);
-    updateAbilities(dt);
-    updateHazards(dt);
-    updateWalls(dt);
-    updateDrops(dt);
-    updateMassacre();
-    updateCritters(dt);
+    safe('abilities', () => updateAbilities(dt));
+    safe('hazards', () => updateHazards(dt));
+    safe('walls', () => updateWalls(dt));
+    safe('drops', () => updateDrops(dt));
+    safe('massacre', () => updateMassacre());
+    safe('critters', () => updateCritters(dt));
     if (game.buff) { game.buff.t -= dt; if (game.buff.t <= 0) game.buff = null; }
     // The monster whose name sits atop the screen.
     const f = player.target && player.target.elite && player.target.tier !== 'imp' ? player.target : enemies.filter((e) => e.elite && !e.dead && !e.illusion && e.state !== 'spawn' && Math.hypot(e.x - player.x, e.y - player.y) < 200).sort((a, b) => (b.tier === 'elite') - (a.tier === 'elite'))[0];
     game.focus = f || null;
   }
-  updateBolts(dt);
-  updateParts(dt); updateFalls(dt);
+  safe('bolts', () => updateBolts(dt)); safe('parts', () => updateParts(dt)); safe('falls', () => updateFalls(dt), () => { falls = []; });
   for (const g of ghosts) g.t += realDt;
   ghosts = ghosts.filter((g) => g.t < 0.2);
   for (const r of rings) r.t += realDt;
@@ -2790,13 +2790,18 @@ function render() {
   const actors = [player, ...(player.xb ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0)), ...falls.map((f) => ({ fall: f, y: f.y })), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, 90))];
   actors.sort((a, b) => a.y - b.y);
   for (const a of actors) {
-    if (a === player) drawPlayer();
-    else if (a.bow) drawFloatBow();
-    else if (a.th) drawThurible(thuriblePos(a.ci));
-    else if (a.kind) drawProp(a);
-    else if (a.npc) drawNpc(a);
-    else if (a.fall) drawFall(a.fall);
-    else drawEnemy(a);
+    // One actor that fails to draw is skipped; the canvas state is put back.
+    ctx.save();
+    try {
+      if (a === player) drawPlayer();
+      else if (a.bow) drawFloatBow();
+      else if (a.th) drawThurible(thuriblePos(a.ci));
+      else if (a.kind) drawProp(a);
+      else if (a.npc) drawNpc(a);
+      else if (a.fall) drawFall(a.fall);
+      else drawEnemy(a);
+    } catch (err) { logError('draw', err); }
+    ctx.restore();
   }
   if (game.interact && game.state === 'play') {
     const it = game.interact, ty = it.who ? it.y - 40 : it.door ? it.y - 30 : it.y - 46;
@@ -2882,7 +2887,11 @@ function render() {
   }
   renderScreenFx();
   renderHud();
-  if (game.state === 'pause') overlay('PAUSED', 'TAP TO RESUME');
+  if (game.state === 'pause') {
+    overlay('PAUSED', 'TAP TO RESUME');
+    // The latest caught error, so a player can send it to us.
+    if (ERRS.length) { const e = ERRS[ERRS.length - 1]; text(`BUG LOGGED: ${e.msg}`.slice(0, 70).toUpperCase(), W / 2, H - 14, PAL.iron1, { align: 'center', small: true }); }
+  }
   if (game.state === 'inv') renderInventory();
   if (game.state === 'stig') renderStigmata();
   if (game.state === 'dead') renderReceipt();
@@ -3843,18 +3852,39 @@ function onTap(x, y) {
 
 
 // ---------------------------------------------------------------- loop ---
+// An error must never stop the game: the next frame is booked first, each
+// system runs guarded, and the error is kept (last 8, with its stack) in
+// localStorage 'hollow-saint-errors'. The pause screen shows the latest.
 let last = 0, fpsAvg = 60;
+const ERRS = (() => { try { return JSON.parse(localStorage.getItem('hollow-saint-errors') || '[]'); } catch { return []; } })();
+function logError(where, err) {
+  const msg = `${where}: ${err && err.message || err}`;
+  if (ERRS.length && ERRS[ERRS.length - 1].msg === msg) { ERRS[ERRS.length - 1].n++; return; }
+  console.error(msg, err);
+  ERRS.push({ msg, n: 1, at: new Date().toISOString(), state: `${game.state}/${game.scene}`, stack: String(err && err.stack || '').split('\n').slice(0, 6).join(' | ') });
+  while (ERRS.length > 8) ERRS.shift();
+  try { localStorage.setItem('hollow-saint-errors', JSON.stringify(ERRS)); } catch { /* private mode */ }
+}
+function safe(where, fn, onFail) { try { fn(); } catch (err) { logError(where, err); if (onFail) try { onFail(); } catch { /* give up quietly */ } } }
 function frame(t) {
+  requestAnimationFrame(frame);
   const dt = Math.min(1 / 30, (t - last) / 1000 || 0);
   last = t;
   if (dt > 0) fpsAvg = fpsAvg * 0.95 + (1 / dt) * 0.05;
   const t0 = performance.now();
-  update(dt);
-  render();
+  safe('update', () => update(dt));
+  try { render(); } catch (err) {
+    // Unwind any half-done canvas state and still show the frame.
+    logError('render', err);
+    for (let i = 0; i < 32; i++) ctx.restore();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    safe('blit', () => blit());
+  }
   game.cpu = (game.cpu || 0) * 0.95 + (performance.now() - t0) * 0.05; // ms of our own work per frame
-  requestAnimationFrame(frame);
 }
 
+addEventListener('error', (e) => logError('event', e.error || e.message));
+addEventListener('unhandledrejection', (e) => logError('promise', e.reason));
 addEventListener('resize', resize);
 resize();
 gearInit(); G = gearStats();
@@ -3864,7 +3894,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { game, T, hud: HUD, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; } };
+window.HS = { game, T, hud: HUD, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError };
 </script>
 </body>
 </html>
