@@ -149,7 +149,7 @@ function sheet(name, anims, extra = {}) {
   rows.forEach(([anim, frames], r) => {
     json.anims[anim] = frames.map((f, c) => {
       for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) big.px[(oy + y) * W + c * cellW + x] = f.px[y * f.w + x];
-      return { x: c * cellW, y: oy, w: f.w, h: f.h };
+      return f.ax !== undefined ? { x: c * cellW, y: oy, w: f.w, h: f.h, ax: f.ax, ay: f.ay } : { x: c * cellW, y: oy, w: f.w, h: f.h };
     });
     oy += cellH[r];
   });
@@ -1088,6 +1088,396 @@ function townSheet() {
   });
 }
 
+// ============================================================= monsters ===
+// A parametric fiend builder: body + head + weapon + extras, scaled per tier,
+// plus a few bespoke creatures. Each gets walk (4) and attack (2) frames.
+
+function fiend(spec, pose = {}) {
+  const s = spec.scale || 1;
+  const W = Math.ceil(32 * s) + 4, Hh = Math.ceil(36 * s) + 4;
+  const f = new Frame(W, Hh);
+  const ox = 2 + 3 * s, oy = 2;
+  const B = (pose.bob || 0) + (spec.legs === 'float' ? Math.round(Math.sin((pose.t || 0) * Math.PI / 2) * 1.5) : 0);
+  const lx = pose.lean || 0, arm = pose.arm || 0;
+  const X = (v) => ox + v * s, Y = (v) => oy + v * s;
+  const E = (cx, cy, rx, ry) => M.ellipse(X(cx), Y(cy), rx * s, ry * s);
+  const L = (a, b, c, d, t = 2) => M.line(X(a), Y(b), X(c), Y(d), Math.max(1, Math.round(t * s)));
+  const Pg = (pts) => M.poly(pts.map(([a, b]) => [X(a), Y(b)]));
+  const sph = (cx, cy, rx, ry, bias = 0) => sphere(X(cx), Y(cy), rx * s, ry * s, bias);
+  const cy_ = (cx, rx, bias = 0) => cyl(X(cx), rx * s, bias);
+  const R = spec.ramp || 'shroud', HR = spec.headRamp || 'bone';
+  const ex = new Set(spec.extras || []);
+
+  // Wings behind everything.
+  if (ex.has('wings')) {
+    const flap = pose.t % 2 ? -2 : 0;
+    for (const side of [-1, 1]) {
+      const wx = 13 + side * 2;
+      const wing = Pg([[wx, 12 + B], [wx + side * 15, 2 + B + flap], [wx + side * 17, 12 + B + flap], [wx + side * 12, 20 + B], [wx + side * 4, 20 + B]]);
+      f.paint(wing, spec.wingRamp || 'cloth', sph(wx + side * 6, 6, 14, 14, side < 0 ? -0.15 : 0), { min: side < 0 ? 1 : 0 });
+      for (let k = 1; k < 4; k++) f.shift(M.and(L(wx, 13 + B, wx + side * (4 + k * 4), 4 + k * 3 + B + flap, 1), wing), 1);
+    }
+  }
+  if (ex.has('spikes')) for (const [a, b] of [[8, 10], [6, 14], [7, 18]]) f.paint(L(a + 2, b + B + 2, a - 3, b + B - 3, 2), 'bone', flat(0.7));
+  if (ex.has('tentacles')) for (const k of [0, 1, 2]) f.paint(L(9 + k * 4, 24 + B, 6 + k * 6 + (pose.t % 2 ? 1 : -1), 31, 2), 'rot', flat(0.35 + k * 0.1));
+
+  // Legs.
+  if (spec.legs !== 'robe' && spec.legs !== 'float' && spec.legs !== 'none') {
+    const lg = spec.legRamp || 'rot', l = pose.legs || [0, 0];
+    for (const [hx, li, side] of [[11, l[0], -0.2], [16, l[1], 0]]) {
+      f.paint(M.union(L(hx, 21 + B, hx - 0.5 + li, 26), L(hx - 0.5 + li, 26, hx + li, 30)), lg, cy_(hx + li * 0.5, 2, side), { min: 1 });
+      f.paint(M.rect(Math.round(X(hx - 1 + li)), Math.round(Y(30)), Math.round(3 * s), Math.max(1, Math.round(s))), 'shroud', flat(0.2));
+    }
+  }
+  // Back arm.
+  f.paint(L(10 + lx, 14 + B, 6 + lx, 20 + B - arm * 3, 2), spec.armRamp || R, flat(0.25), { min: 2 });
+
+  // Body.
+  const body = spec.body || 'robe';
+  let torso;
+  if (body === 'robe' || body === 'float') {
+    const bottom = spec.legs === 'float' ? 27 : 30;
+    torso = Pg([[9 + lx, 13 + B], [18 + lx, 13 + B], [21, bottom], [17, bottom - 2], [13, bottom + 1], [9, bottom - 2], [5, bottom]]);
+    f.paint(torso, R, cy_(13.5 + lx * 0.5, 8));
+    for (const fx of [10, 16]) f.shift(M.and(L(fx + lx, 18 + B, fx, bottom - 1, 1), torso), 1);
+    if (spec.legs === 'float') f.paint(Pg([[9, 26], [17, 26], [13, 34]]), R, flat(0.15), { min: 2 });
+  } else if (body === 'fat') {
+    torso = E(13.5, 19 + B, 8.5, 8);
+    f.paint(torso, R, sph(11, 15 + B, 10, 10));
+    f.paint(E(14.5, 21 + B, 4, 3.5), spec.bellyRamp || 'rot', sph(13.5, 20 + B, 5, 5));
+    for (const y of [18, 21, 24]) f.paint(M.pts([[X(14), Y(y + B)], [X(15), Y(y + B + 1)]]), 'ink', flat(0.6));
+  } else if (body === 'armor') {
+    torso = M.union(E(13.5, 17 + B, 6.5, 6), Pg([[9, 20 + B], [18, 20 + B], [19, 28 + B], [8, 28 + B]]));
+    f.paint(torso, R, sph(11.5, 14 + B, 8, 8));
+    f.paint(M.and(Pg([[11, 21 + B], [16, 21 + B], [17, 29 + B], [10, 29 + B]]), torso), spec.tabard || 'crimson', cy_(13.5, 3));
+    f.paint(M.and(M.edge(E(13.5, 17 + B, 6.5, 6), 0, 1), torso), 'gold', flat(0.5));
+    f.paint(E(8.5, 14 + B, 3.5, 3), R, sph(7.5, 13 + B, 4, 4));
+  } else if (body === 'skeleton') {
+    f.paint(L(13.5 + lx * 0.5, 13 + B, 13.5, 22 + B, 1), 'bone', flat(0.5));
+    for (let i = 0; i < 4; i++) f.paint(M.union(L(13.5, 14 + i * 2 + B, 10 + i * 0.3, 15 + i * 2 + B, 1), L(13.5, 14 + i * 2 + B, 17 - i * 0.3, 15 + i * 2 + B, 1)), 'bone', flat(0.75 - i * 0.1), { dither: 0 });
+    f.paint(E(13.5, 22.5 + B, 3.5, 1.6), 'bone', sph(12.5, 22 + B, 4, 2));
+    torso = E(13.5, 18 + B, 4, 5);
+    if (spec.robeOver) { const r = Pg([[10, 19 + B], [17, 19 + B], [20, 30], [7, 30]]); f.paint(r, R, cy_(13.5, 7)); }
+  } else if (body === 'torso') {
+    torso = E(13 + lx * 0.4, 17 + B, 5.5, 5.5);
+    f.paint(torso, R, sph(11, 14 + B, 7, 7));
+  }
+  if (ex.has('chains')) for (const [a, b] of [[9, 16], [17, 18]]) for (let k = 0; k < 5; k++) P(f, X(a + k * 0.4), Y(b + k * 1.5 + B), k % 2 ? 'iron1' : 'iron3');
+  if (ex.has('wound')) { P(f, X(11), Y(16 + B), 'blood2'); P(f, X(12), Y(16 + B), 'blood1'); P(f, X(11), Y(17 + B), 'blood3'); }
+
+  // Head.
+  const hx = 14 + lx + (spec.hunch || 0), hy = 8 + B + (spec.hunch ? 2 : 0), hk = spec.head || 'skull';
+  const eyes = [];
+  if (hk === 'skull' || hk === 'mitre' || hk === 'crown') {
+    f.paint(E(hx, hy, 4.4, 4.4), HR, sph(hx - 1.5, hy - 1.5, 5, 5));
+    f.paint(E(hx + 1, hy + 0.5, 1.2, 1.3), 'ink', flat(1)); f.paint(E(hx + 3.2, hy + 0.5, 1, 1.3), 'ink', flat(1));
+    for (let k = 0; k < 4; k++) P(f, X(hx + k), Y(hy + 3.6), k % 2 ? 'ink1' : 'bone0');
+    eyes.push([hx + 1, hy + 0.5], [hx + 3.2, hy + 0.5]);
+    if (hk === 'mitre') { const m = Pg([[hx - 4, hy - 3], [hx + 4, hy - 3], [hx + 3, hy - 11], [hx, hy - 13], [hx - 3, hy - 11]]); f.paint(m, 'cloth', cy_(hx, 4)); f.paint(M.and(M.union(L(hx, hy - 12, hx, hy - 3, 1), L(hx - 3, hy - 8, hx + 3, hy - 8, 1)), m), 'gold', flat(0.7)); }
+    if (hk === 'crown') f.paint(M.union(M.rect(Math.round(X(hx - 5)), Math.round(Y(hy - 4)), Math.round(10 * s), Math.max(2, Math.round(2 * s))), ...[-4, -1, 2, 5].map((d) => L(hx + d - 0.5, hy - 4, hx + d - 0.5, hy - 7, 1))), spec.crownRamp || 'gold', vgrad(Y(hy - 7), Y(hy - 2), 0.95, 0.3));
+  } else if (hk === 'rot' || hk === 'horned') {
+    f.paint(E(hx, hy, 4, 3.8), 'rot', sph(hx - 1.5, hy - 1.5, 5, 5));
+    f.paint(E(hx + 1.5, hy + 3.4, 2.2, 1.2), 'bone', flat(0.6));
+    eyes.push([hx + 0.5, hy], [hx + 2.5, hy]);
+    if (hk === 'horned') for (const d of [-1, 1]) f.paint(L(hx + d * 2, hy - 3, hx + d * 4.5, hy - 8, 2), 'bone', (x, y) => 0.9 - (Y(hy) - y) * 0.02);
+  } else if (hk === 'hood' || hk === 'sack') {
+    const hood = M.union(E(hx, hy, 5, 5), Pg([[hx - 4, hy - 1], [hx - 2, hy - 7], [hx + 1, hy - 4]]));
+    f.paint(hood, spec.hoodRamp || R, sph(hx - 2, hy - 2, 6, 6));
+    if (hk === 'hood') { f.paint(E(hx + 2, hy + 1, 2.4, 2.8), 'ink', flat(1)); eyes.push([hx + 1.2, hy + 0.5], [hx + 3, hy + 0.5]); }
+    else { for (const [a, b] of [[hx + 1, hy - 1], [hx + 3, hy - 1]]) eyes.push([a, b]); f.paint(L(hx - 1, hy + 2, hx + 4, hy + 3, 1), 'ink', flat(0.8)); }
+  } else if (hk === 'helm') {
+    const hm = E(hx, hy, 4.6, 4.6);
+    f.paint(hm, spec.helmRamp || 'iron', sph(hx - 1.5, hy - 2, 5.5, 5.5));
+    f.paint(M.rect(Math.round(X(hx - 1)), Math.round(Y(hy)), Math.round(6 * s), Math.max(1, Math.round(s))), 'ink', flat(1));
+    eyes.push([hx + 1, hy], [hx + 3, hy]);
+    if (ex.has('plume')) f.paint(L(hx - 2, hy - 4, hx - 6, hy - 9, 2), 'crimson', flat(0.7));
+  } else if (hk === 'candle') {
+    f.paint(M.rect(Math.round(X(hx - 3)), Math.round(Y(hy - 6)), Math.round(7 * s), Math.round(10 * s)), 'bone', cy_(hx, 3.5));
+    for (const d of [-2, 0, 2]) f.paint(L(hx + d, hy - 5, hx + d, hy - 3 + Math.abs(d), 1), 'bone', flat(1), { dither: 0 });
+    f.paint(E(hx + 1.5, hy + 0.5, 1.6, 2), 'ink', flat(1));
+    eyes.push([hx + 1.5, hy + 0.5]);
+  } else if (hk === 'mask') {
+    f.paint(E(hx, hy, 4.4, 4.8), spec.maskRamp || 'cloth', sph(hx - 1.5, hy - 2, 5.5, 5.5), { max: 2 });
+    for (const ee of [[hx + 0.5, hy], [hx + 3, hy]]) { f.paint(E(ee[0], ee[1], 0.9, 1.1), 'ink', flat(1)); f.paint(L(ee[0], ee[1] + 1, ee[0] - 0.3, ee[1] + 4, 1), 'ink', flat(0.6)); eyes.push(ee); }
+    f.paint(E(hx + 1.8, hy + 3, 1.3, 0.9), 'ink', flat(1));
+  } else if (hk === 'cherub') {
+    f.paint(E(hx, hy, 4.4, 4.4), spec.headRamp || 'skin', sph(hx - 1.5, hy - 1.5, 5, 5));
+    for (const ee of [[hx + 0.5, hy], [hx + 3, hy]]) { P(f, X(ee[0]), Y(ee[1]), 'ink0'); f.paint(L(ee[0], ee[1] + 1, ee[0], ee[1] + 4, 1), 'holy', flat(0.7), { dither: 0 }); }
+  } else if (hk === 'eye') {
+    f.paint(E(hx, hy, 4.6, 4.6), 'rot', sph(hx - 1.5, hy - 1.5, 5.5, 5.5));
+    f.paint(E(hx + 1, hy, 2.6, 2.4), 'bone', flat(0.85)); f.paint(E(hx + 1.6, hy, 1.2, 1.4), 'blood', flat(0.4));
+  }
+  if (ex.has('halo')) { const r = M.minus(E(hx, hy - 7, 5.5, 1.8), E(hx, hy - 7, 3.6, 0.6)); f.paint(r, 'gold', (x) => 1 - (x - X(hx - 6)) / (12 * s)); }
+  if (ex.has('candles')) for (const [a, b] of [[8, 11], [19, 11]]) { f.paint(M.rect(Math.round(X(a)), Math.round(Y(b + B)), Math.max(2, Math.round(2 * s)), Math.round(4 * s)), 'bone', flat(0.75)); }
+
+  // Front arm and weapon.
+  const ax = 18 + lx + (pose.reach || 0), ay = 18 + B - arm * 4;
+  f.paint(L(15 + lx, 14 + B, ax, ay, 2), spec.armRamp || R, sph(14 + lx, 13 + B, 6, 6));
+  const wpn = spec.weapon;
+  const wa = pose.swing || 0; // 0 rest, 1 raised, 2 struck
+  if (wpn === 'claws') { P(f, X(ax + 1), Y(ay - 1), 'bone1'); P(f, X(ax + 2), Y(ay), 'bone1'); P(f, X(ax + 1), Y(ay + 1), 'bone2'); }
+  if (wpn === 'sword') { const tip = wa === 1 ? [ax - 3, ay - 14] : wa === 2 ? [ax + 13, ay + 4] : [ax + 3, ay - 12]; f.paint(L(ax, ay, tip[0], tip[1], 2), 'iron', flat(0.85), { dither: 0 }); f.paint(L(ax - 2, ay, ax + 2, ay, 1), 'gold', flat(0.7)); }
+  if (wpn === 'scythe') { const top = [ax + 1, ay - 14 + (wa === 2 ? 8 : 0)]; f.paint(L(ax, ay + 6, top[0], top[1], 1), 'wood', flat(0.5)); f.paint(M.union(L(top[0], top[1], top[0] + 8, top[1] + 3, 2), L(top[0] + 8, top[1] + 3, top[0] + 9, top[1] + 6, 1)), 'iron', flat(0.85)); }
+  if (wpn === 'censer') { const cx2 = ax + (wa === 2 ? 8 : 3), cy2 = ay + (wa === 1 ? -6 : 6); f.paint(L(ax, ay, cx2, cy2, 1), 'iron', flat(0.5)); f.paint(E(cx2, cy2 + 2, 2.6, 2.6), 'gold', sph(cx2 - 1, cy2 + 1, 3, 3)); P(f, X(cx2), Y(cy2 + 2), 'ember0'); }
+  if (wpn === 'whip') { const pts = []; for (let k = 0; k < 10; k++) pts.push([ax + k * (wa === 2 ? 1.6 : 0.8), ay + Math.sin(k * 0.8 + (pose.t || 0)) * 2 + (wa === 1 ? -k : k * 0.5)]); f.paint(M.union(...pts.slice(1).map((p2, k) => L(pts[k][0], pts[k][1], p2[0], p2[1], 1))), 'blood', flat(0.55), { dither: 0 }); }
+  if (wpn === 'staff') { f.paint(L(ax, ay + 8, ax + 1, ay - 12, 1), 'wood', flat(0.5)); f.paint(E(ax + 1, ay - 13, 2, 2), spec.orbRamp || 'flame', flat(0.95)); }
+  if (wpn === 'shovel') { const t2 = wa === 2 ? [ax + 9, ay + 6] : [ax + 2, ay - 12]; f.paint(L(ax - 1, ay + 4, t2[0], t2[1], 1), 'wood', flat(0.5)); f.paint(E(t2[0], t2[1], 2.4, 3), 'iron', sph(t2[0] - 1, t2[1] - 1, 3, 3)); }
+  if (wpn === 'lantern') { f.paint(L(ax, ay, ax + 1, ay + 4, 1), 'iron', flat(0.5)); f.paint(M.rect(Math.round(X(ax - 1)), Math.round(Y(ay + 4)), Math.max(3, Math.round(4 * s)), Math.max(4, Math.round(5 * s))), 'ember', flat(0.95)); }
+  if (wpn === 'bell') { f.paint(L(ax, ay, ax + 1, ay - 3, 1), 'wood', flat(0.5)); f.paint(M.union(E(ax + 2, ay - 6, 3, 3), M.rect(Math.round(X(ax - 1.5)), Math.round(Y(ay - 4)), Math.round(7 * s), Math.max(1, Math.round(s)))), 'gold', sph(ax + 1, ay - 7, 3.5, 3.5)); }
+  if (wpn === 'chain') { for (let k = 0; k < 6; k++) P(f, X(ax + k * 1.5), Y(ay + Math.sin(k) + (wa === 2 ? 0 : k * 0.8)), k % 2 ? 'iron0' : 'iron2'); f.paint(L(ax + 9, ay + 1, ax + 11, ay + 4, 1), 'iron', flat(0.9)); }
+  if (wpn === 'shield') { const sx = ax - 1, sy = ay - 10; const sh = M.rect(Math.round(X(sx)), Math.round(Y(sy)), Math.round(7 * s), Math.round(15 * s)); f.paint(sh, 'iron', bevel(sh, 0.45, 0.9, 0.1)); f.paint(M.union(M.rect(Math.round(X(sx + 3)), Math.round(Y(sy + 2)), Math.max(1, Math.round(s)), Math.round(10 * s)), M.rect(Math.round(X(sx + 1)), Math.round(Y(sy + 5)), Math.round(5 * s), Math.max(1, Math.round(s)))), 'gold', flat(0.8)); }
+  f.outline();
+  // Glowing eyes and lit flames after the outline.
+  const eye = spec.eye || 'flame';
+  for (const [a, b] of eyes) { P(f, X(a), Y(b), `${eye}0`); if (s > 1.2) P(f, X(a) + 1, Y(b), `${eye}1`); }
+  if (hk === 'candle') for (const [a, b, c] of [[hx, hy - 8, 'flame0'], [hx, hy - 9, 'flame1'], [hx + 1, hy - 8, 'flame2'], [hx, hy - 7, 'flame2']]) P(f, X(a), Y(b), spec.flame ? c.replace('flame', spec.flame) : c);
+  if (ex.has('candles')) for (const [a, b] of [[8, 10], [19, 10]]) { P(f, X(a) + 1, Y(b + B), 'flame0'); P(f, X(a) + 1, Y(b + B) - 1, 'flame1'); }
+  f.ax = Math.round(X(13)); f.ay = Math.round(Y(30));
+  return f;
+}
+
+function fiendSet(spec) {
+  const walk = [0, 1, 2, 3].map((t) => fiend(spec, { t, bob: t % 2, legs: [[-1, 1], [0, 0], [1, -1], [0, 0]][t], arm: t === 1 ? 0.3 : t === 3 ? -0.3 : 0 }));
+  const attack = [fiend(spec, { t: 0, lean: -1, arm: 1.2, swing: 1, reach: -2 }), fiend(spec, { t: 1, lean: 2, arm: -0.3, swing: 2, reach: 3, bob: 1 })];
+  return { walk, attack };
+}
+
+// Bespoke creatures.
+function crawler(t, atk = 0) {
+  const f = new Frame(30, 20), B = t % 2;
+  const body = M.union(M.ellipse(12, 13 + B * 0.5, 7, 4.5), M.poly([[4, 14], [7, 10], [8, 17]]));
+  f.paint(body, 'rot', sphere(10, 10, 9, 6));
+  f.paint(M.poly([[3, 15], [7, 12], [9, 18], [5, 18]]), 'blood', flat(0.3), { min: 2 });
+  for (const [a, k] of [[17, -1], [20, 1]]) { const reach = atk ? 6 : (t + (k > 0 ? 2 : 0)) % 4 < 2 ? 2 : 0; f.paint(M.line(a - 2, 12, a + 3 + reach, 16 - k, 2), 'rot', flat(0.5)); P(f, a + 4 + reach, 16 - k, 'bone1'); }
+  const h = M.ellipse(21 + atk * 2, 9, 3.6, 3.4); f.paint(h, 'rot', sphere(20, 8, 4.5, 4.5));
+  P(f, 22 + atk * 2, 9, 'ink0'); P(f, 24 + atk * 2, 9, 'ink0'); f.paint(M.rect(22 + atk * 2, 11, 3, 1), 'bone', flat(0.7));
+  f.outline(); P(f, 22 + atk * 2, 9, 'flame0'); P(f, 24 + atk * 2, 9, 'flame1');
+  f.ax = 13; f.ay = 18; return f;
+}
+function rat(t, atk = 0) {
+  const f = new Frame(16, 10);
+  f.paint(M.ellipse(7, 6, 4.4, 2.6), 'shroud', sphere(6, 5, 5, 3.5));
+  f.paint(M.ellipse(11.5 + atk, 6, 2.2, 1.8), 'shroud', sphere(11, 5, 2.6, 2.6));
+  P(f, 12 + atk, 5, 'blood0'); P(f, 14 + atk, 6, 'skin1');
+  f.paint(M.line(2, 6, 0, 4 + (t % 2) * 2), 'skin', flat(0.4), { dither: 0 });
+  for (const [a, d] of [[5, t % 2], [9, 1 - (t % 2)]]) { P(f, a - d, 9, 'ink1'); P(f, a + d, 9, 'ink1'); }
+  f.outline(); P(f, 12 + atk, 5, 'blood0');
+  f.ax = 7; f.ay = 9; return f;
+}
+function votary(t, atk = 0) {
+  const sw = atk ? 1.5 : 0;
+  const f = new Frame(30, 34), B = t % 2;
+  for (const [hx, l] of [[11, t === 0 ? -1 : t === 2 ? 1 : 0], [17, t === 0 ? 1 : t === 2 ? -1 : 0]]) f.paint(M.line(hx, 25, hx + l, 31, 3), 'rot', cyl(hx, 2), { min: 1 });
+  const belly = M.ellipse(14, 18 + B * 0.5, 9 + sw, 9 + sw);
+  f.paint(belly, 'rot', sphere(11, 14, 11, 11));
+  f.paint(M.ellipse(15, 20, 5 + sw, 4 + sw), atk ? 'blood' : 'moss', sphere(14, 19, 6, 6, atk ? 0.15 : 0));
+  for (let y = 15; y < 26; y += 3) { P(f, 15, y, 'ink1'); P(f, 14, y + 1, 'bone2'); P(f, 16, y + 1, 'bone2'); }
+  f.paint(M.ellipse(16, 7, 3.4, 3.2), 'rot', sphere(15, 6, 4, 4)); P(f, 16, 7, 'ink0'); P(f, 18, 7, 'ink0'); P(f, 17, 9, 'ink1');
+  f.paint(M.line(21, 15, 24, 20, 2), 'rot', flat(0.5));
+  f.outline(); P(f, 16, 7, 'flame1'); P(f, 18, 7, 'flame1');
+  f.ax = 14; f.ay = 31; return f;
+}
+function wisp(t, atk = 0) {
+  const f = new Frame(20, 26), B = Math.round(Math.sin(t * Math.PI / 2) * 1.5);
+  const m = M.union(M.ellipse(10, 9 + B, 5, 5), M.poly([[5, 10 + B], [15, 10 + B], [12, 22 + B], [10, 25], [8, 21 + B]]));
+  f.paint(m, 'holy', sphere(8, 6 + B, 7, 9, -0.1), { min: 1 });
+  f.paint(M.ellipse(11, 9 + B, 2.6, 3), 'ink', flat(1));
+  if (atk) f.paint(M.line(15, 12 + B, 19, 14 + B, 1), 'holy', flat(1), { dither: 0 });
+  f.outline(); P(f, 10, 9 + B, 'holy0'); P(f, 12, 9 + B, 'holy0');
+  f.ax = 10; f.ay = 25; return f;
+}
+function manymouthed(t, atk = 0) {
+  const f = new Frame(64, 58), B = t % 2;
+  const blob = M.union(M.ellipse(32, 32 + B, 24 + atk, 22 - B), M.ellipse(20, 20, 10, 9), M.ellipse(44, 22, 11, 10));
+  f.paint(blob, 'skin', sphere(24, 20, 30, 28, -0.12), { min: 1 });
+  const mouths = [[24, 26], [38, 22], [32, 38], [18, 38], [46, 36], [30, 14], [42, 46]];
+  mouths.forEach(([x, y], i) => {
+    const open = (atk || (t + i) % 3 === 0) ? 1.6 : 0.8;
+    f.paint(M.ellipse(x, y, 3.4, open + 0.6), 'blood', flat(0.1), { min: 3 });
+    for (let k = -2; k <= 2; k += 2) { P(f, x + k, Math.round(y - open), 'bone0'); P(f, x + k + 1, Math.round(y + open), 'bone1'); }
+  });
+  for (const [x, y] of [[14, 30], [50, 28], [28, 48]]) { f.paint(M.ellipse(x, y, 1.6, 1.6), 'bone', flat(0.9)); P(f, x, y, 'ink0'); }
+  f.paint(M.rect(14, 52, 36, 3), 'skin', flat(0.15), { min: 3 });
+  f.outline();
+  f.ax = 32; f.ay = 54; return f;
+}
+function leviathan(t, atk = 0) {
+  const f = new Frame(60, 50);
+  const up = atk ? 6 : 0;
+  for (let i = 4; i >= 0; i--) { const x = 10 + i * 8, y = 38 - Math.sin(i * 0.9 + t * 0.6) * 6 - (i === 0 ? up : 0); f.paint(M.ellipse(x, y, 7 - i * 0.4, 7 - i * 0.4), 'rot', sphere(x - 2, y - 3, 8, 8)); for (const d of [-3, 0, 3]) P(f, x + d, Math.round(y - 6 + i * 0.4), 'bone1'); }
+  const hx = 10, hy = 30 - up;
+  f.paint(M.ellipse(hx, hy, 9, 8), 'rot', sphere(hx - 3, hy - 3, 10, 10));
+  f.paint(M.ellipse(hx + 1, hy + 3, 6, atk ? 4 : 2), 'blood', flat(0.15), { min: 3 });
+  for (let k = -5; k <= 5; k += 2) { P(f, hx + k, hy + (atk ? 0 : 2), 'bone0'); P(f, hx + k + 1, hy + (atk ? 6 : 4), 'bone1'); }
+  for (const d of [-4, 4]) P(f, hx + d, hy - 4, 'ink0');
+  f.paint(M.ellipse(30, 46, 26, 3), 'shroud', flat(0.2), { min: 2 });
+  f.outline(); for (const d of [-4, 4]) P(f, hx + d, hy - 4, 'ember0');
+  f.ax = 24; f.ay = 46; return f;
+}
+function golem(t, atk = 0) {
+  const f = new Frame(60, 64), B = t % 2;
+  for (const [x, l] of [[20, t === 0 ? -2 : t === 2 ? 2 : 0], [38, t === 0 ? 2 : t === 2 ? -2 : 0]]) { const leg = M.rect(x - 4 + l, 44 + B, 9, 16 - B); f.paint(leg, 'wood', bevel(leg, 0.4, 0.75, 0.15)); f.paint(M.rect(x - 4 + l, 50, 9, 1), 'iron', flat(0.6)); }
+  const coffin = M.poly([[18, 14 + B], [40, 14 + B], [44, 26 + B], [40, 48 + B], [18, 48 + B], [14, 26 + B]]);
+  f.paint(coffin, 'wood', bevel(coffin, 0.42, 0.8, 0.15));
+  f.paint(M.union(M.rect(28, 18 + B, 2, 26), M.rect(23, 25 + B, 12, 2)), 'gold', flat(0.7));
+  for (const [x, y] of [[20, 30], [36, 34], [24, 40], [34, 20]]) { f.paint(M.ellipse(x, y + B, 2.4, 2.2), 'bone', sphere(x - 1, y - 1 + B, 3, 3)); P(f, x, y + B, 'ink0'); }
+  for (const side of [-1, 1]) { const ax = 29 + side * 18, ay = 26 + B - (atk ? 10 : 0); f.paint(M.line(29 + side * 12, 20 + B, ax, ay + 10, 5), 'bone', sphere(ax, ay, 6, 10)); f.paint(M.ellipse(ax, ay + 14, 4, 4), 'bone', sphere(ax - 1, ay + 12, 5, 5)); }
+  const hd = M.ellipse(29, 9 + B, 6, 6); f.paint(hd, 'bone', sphere(27, 6 + B, 7, 7));
+  f.paint(M.rect(24, 3 + B, 11, 2), 'iron', flat(0.7));
+  P(f, 27, 9 + B, 'ink0'); P(f, 31, 9 + B, 'ink0');
+  f.outline(); P(f, 27, 9 + B, 'ember0'); P(f, 31, 9 + B, 'ember0');
+  f.ax = 29; f.ay = 60; return f;
+}
+function bespokeSet(fn) { return { walk: [0, 1, 2, 3].map((t) => fn(t, 0)), attack: [fn(0, 1), fn(1, 1)] }; }
+
+// The roster. Each monster gets its own two rows (walk, attack) in its tier sheet.
+const ROSTER = {
+  common: {
+    crawler: () => bespokeSet(crawler),
+    mourner: () => fiendSet({ scale: 0.9, ramp: 'shroud', head: 'candle', weapon: 'claws', legs: 'robe', extras: ['candles'] }),
+    acolyte: () => fiendSet({ scale: 0.9, body: 'skeleton', robeOver: true, ramp: 'slate', head: 'skull', weapon: 'staff', orbRamp: 'flame', legRamp: 'bone' }),
+    rat: () => bespokeSet(rat),
+    votary: () => bespokeSet(votary),
+    flagellant: () => fiendSet({ scale: 0.95, body: 'torso', ramp: 'skin', head: 'sack', hoodRamp: 'shroud', weapon: 'whip', legRamp: 'skin', extras: ['wound', 'chains'] }),
+    cherub: () => fiendSet({ scale: 0.75, body: 'torso', ramp: 'stone', head: 'cherub', headRamp: 'stone', legs: 'float', weapon: 'claws', extras: ['wings', 'halo'], wingRamp: 'stone' }),
+    wisp: () => bespokeSet(wisp),
+  },
+  rare: {
+    knight: () => fiendSet({ scale: 1.35, body: 'armor', ramp: 'iron', tabard: 'violet', head: 'skull', weapon: 'sword', legRamp: 'iron', extras: ['crown'] }),
+    collector: () => fiendSet({ scale: 1.35, body: 'fat', ramp: 'crimson', bellyRamp: 'gold', head: 'mitre', weapon: 'censer', legRamp: 'shroud' }),
+    motherwax: () => fiendSet({ scale: 1.35, ramp: 'cloth', head: 'candle', legs: 'robe', weapon: 'claws', extras: ['candles', 'candles'], hunch: 1 }),
+    bishop: () => fiendSet({ scale: 1.35, ramp: 'violet', head: 'mitre', legs: 'robe', weapon: 'staff', orbRamp: 'violet' }),
+    jailer: () => fiendSet({ scale: 1.35, body: 'armor', ramp: 'slate', tabard: 'shroud', head: 'helm', helmRamp: 'iron', weapon: 'chain', legRamp: 'slate', extras: ['chains'] }),
+    bellringer: () => fiendSet({ scale: 1.35, ramp: 'shroud', head: 'hood', hoodRamp: 'shroud', legs: 'robe', weapon: 'bell', hunch: 2, extras: ['spikes'] }),
+    matron: () => fiendSet({ scale: 1.35, ramp: 'ink', head: 'mask', legs: 'robe', weapon: 'whip', extras: ['chains'] }),
+    choirboy: () => fiendSet({ scale: 1.3, ramp: 'crimson', head: 'mask', maskRamp: 'bone', legs: 'robe', weapon: 'claws', extras: ['halo'] }),
+    gravedigger: () => fiendSet({ scale: 1.4, body: 'torso', ramp: 'shroud', head: 'horned', weapon: 'shovel', legRamp: 'rot', hunch: 1, extras: ['wound'] }),
+    lantern: () => fiendSet({ scale: 1.35, ramp: 'slate', head: 'hood', hoodRamp: 'ink', legs: 'float', body: 'float', weapon: 'lantern', eye: 'ember' }),
+  },
+  elite: {
+    colossus: () => fiendSet({ scale: 2, body: 'fat', ramp: 'skin', bellyRamp: 'blood', head: 'sack', hoodRamp: 'shroud', weapon: 'claws', legRamp: 'skin', extras: ['chains', 'spikes', 'wound'] }),
+    seraph: () => fiendSet({ scale: 1.7, ramp: 'cloth', head: 'mask', maskRamp: 'gold', legs: 'float', body: 'float', weapon: 'sword', extras: ['wings', 'halo'], wingRamp: 'ink', eye: 'holy' }),
+    golem: () => bespokeSet(golem),
+    thrice: () => fiendSet({ scale: 1.7, body: 'skeleton', ramp: 'bone', head: 'skull', weapon: 'scythe', legRamp: 'bone', extras: ['crown', 'tentacles'], crownRamp: 'iron', eye: 'violet' }),
+    abbess: () => fiendSet({ scale: 1.7, ramp: 'moss', head: 'mask', maskRamp: 'cloth', legs: 'robe', weapon: 'staff', orbRamp: 'moss', extras: ['spikes', 'halo'] }),
+    titan: () => fiendSet({ scale: 2, body: 'armor', ramp: 'gold', tabard: 'crimson', head: 'helm', helmRamp: 'gold', weapon: 'censer', legRamp: 'iron', extras: ['plume', 'candles'], eye: 'ember' }),
+    manymouthed: () => bespokeSet(manymouthed),
+    leviathan: () => bespokeSet(leviathan),
+    inquisitor: () => fiendSet({ scale: 1.7, body: 'armor', ramp: 'ink', tabard: 'crimson', head: 'helm', helmRamp: 'ink', weapon: 'sword', legRamp: 'ink', extras: ['plume', 'chains'], eye: 'blood' }),
+    effigy: () => fiendSet({ scale: 1.8, ramp: 'stone', head: 'mask', maskRamp: 'stone', legs: 'float', body: 'float', weapon: 'claws', extras: ['halo', 'wings'], wingRamp: 'stone', eye: 'holy' }),
+  },
+};
+
+function monsterSheets() {
+  return Object.entries(ROSTER).map(([tier, list]) => {
+    const anims = {};
+    for (const [id, make] of Object.entries(list)) { const set = make(); anims[`${id}_walk`] = set.walk; anims[`${id}_attack`] = set.attack; }
+    return sheet(`mon_${tier}`, anims);
+  });
+}
+
+// Enemy projectiles and pickups.
+function shotSprite(kind) {
+  const f = new Frame(12, 12);
+  if (kind === 'wax') { f.paint(M.ellipse(6, 6, 3.6, 3.4), 'ember', sphere(5, 5, 4, 4, 0.15)); P(f, 5, 4, 'white'); }
+  if (kind === 'bone') { f.paint(M.line(2, 7, 9, 4, 2), 'bone', flat(0.85)); P(f, 9, 4, 'white'); }
+  if (kind === 'tear') { f.paint(M.union(M.ellipse(6, 7, 2.6, 2.6), M.poly([[4, 6], [8, 6], [6, 1]])), 'holy', sphere(5, 6, 3, 3, 0.1)); }
+  if (kind === 'feather') { f.paint(M.line(1, 8, 10, 3, 2), 'cloth', flat(0.8)); f.paint(M.line(1, 8, 10, 3, 1), 'ink', flat(0.6)); }
+  if (kind === 'spit') { f.paint(M.ellipse(6, 6, 3.2, 3.2), 'moss', sphere(5, 5, 4, 4, 0.15)); P(f, 5, 5, 'moss0'); }
+  if (kind === 'ember') { f.paint(M.ellipse(6, 6, 2.4, 2.4), 'ember', flat(0.95)); }
+  if (kind === 'violet') { f.paint(M.ellipse(6, 6, 3.2, 3.2), 'violet', sphere(5, 5, 4, 4, 0.2)); P(f, 5, 5, 'white'); }
+  if (kind === 'blood') { f.paint(M.ellipse(6, 6, 3.2, 3.2), 'blood', sphere(5, 5, 4, 4, 0.2)); P(f, 5, 5, 'blood0'); }
+  if (kind === 'frost') { f.paint(M.ellipse(6, 6, 4.4, 4.4), 'holy', sphere(5, 5, 5, 5, 0.1), { min: 1 }); for (const [a, b] of [[6, 1], [6, 11], [1, 6], [11, 6]]) P(f, a, b, 'holy0'); }
+  if (kind === 'bomb') { f.paint(M.ellipse(6, 7, 3.6, 3.6), 'ink', sphere(5, 6, 5, 5, 0.4), { max: 3 }); P(f, 7, 3, 'wood1'); P(f, 8, 2, 'ember0'); }
+  if (kind === 'coffin') { const m = M.rect(3, 1, 6, 10); f.paint(m, 'wood', bevel(m, 0.45, 0.8, 0.2)); f.paint(M.rect(5, 3, 2, 5), 'gold', flat(0.6)); }
+  return f.outline();
+}
+function coin(i) { const f = new Frame(6, 6); f.paint(M.ellipse(2.5, 2.5 + (i ? 0 : 0), i ? 1 : 2.2, 2.2), 'gold', sphere(2, 2, 3, 3, 0.1)); return f.outline(); }
+function goldPile(n) {
+  const f = new Frame(14, 10);
+  for (let k = 0; k < n * 3; k++) { const x = 3 + (k * 37) % 8, y = 5 + (k * 13) % 3; f.paint(M.ellipse(x, y, 1.8, 1.2), 'gold', sphere(x - 1, y - 1, 2.5, 2, 0.1)); }
+  return f.outline();
+}
+function globe(i) { const f = new Frame(12, 12); f.paint(M.ellipse(5.5, 5.5, 4.2 + i * 0.4, 4.2 + i * 0.4), 'blood', sphere(4, 4, 5, 5, 0.25)); P(f, 4, 3, 'white'); P(f, 3, 4, 'blood0'); return f.outline(); }
+function itemIcon(kind) {
+  const f = new Frame(14, 14);
+  const g = { hood: () => f.paint(M.union(M.ellipse(7, 7, 4.5, 4.5), M.poly([[3, 6], [5, 1], [8, 4]])), 'cloth', sphere(5, 5, 6, 6)),
+    mantle: () => f.paint(M.union(M.ellipse(7, 7, 6, 3.5), M.rect(2, 7, 10, 4)), 'cloth', sphere(5, 5, 7, 6)),
+    gloves: () => f.paint(M.union(M.rect(4, 5, 6, 7), M.rect(3, 2, 2, 5), M.rect(6, 1, 2, 5), M.rect(9, 2, 2, 5)), 'cloth', sphere(5, 4, 7, 7)),
+    girdle: () => { f.paint(M.rect(1, 5, 12, 4), 'cloth', bevel(M.rect(1, 5, 12, 4), 0.5, 0.9, 0.2)); f.paint(M.rect(6, 4, 3, 6), 'gold', flat(0.7)); },
+    greaves: () => f.paint(M.union(M.rect(3, 1, 3, 11), M.rect(8, 1, 3, 11), M.rect(2, 11, 4, 2), M.rect(8, 11, 4, 2)), 'cloth', sphere(5, 4, 7, 9)),
+    rosary: () => { for (let a = 0; a < 10; a++) P(f, 7 + Math.round(Math.cos(a * 0.63) * 4), 5 + Math.round(Math.sin(a * 0.63) * 3.5), 'cloth1'); f.paint(M.union(M.rect(6, 9, 2, 5), M.rect(4, 10, 6, 1)), 'gold', flat(0.8)); },
+    seal: () => { f.paint(M.minus(M.ellipse(7, 8, 4.5, 4.5), M.ellipse(7, 8, 2.5, 2.5)), 'gold', sphere(5, 6, 6, 6)); f.paint(M.ellipse(7, 3, 2, 2), 'crimson', flat(0.8)); },
+    relic: () => { f.paint(M.ellipse(7, 7, 4, 5), 'bone', sphere(5, 5, 5, 6)); P(f, 6, 7, 'ink0'); P(f, 8, 7, 'ink0'); },
+  };
+  g[kind](); return f.outline();
+}
+function gate() { // iron portcullis, 16x30
+  const f = new Frame(16, 30);
+  for (let x = 1; x < 16; x += 4) f.paint(M.rect(x, 2, 2, 26), 'iron', cyl(x + 0.5, 1.5), { min: 1 });
+  for (const y of [4, 14, 24]) f.paint(M.rect(0, y, 16, 2), 'iron', vgrad(y, y + 2, 0.8, 0.3), { min: 1 });
+  for (let x = 1; x < 16; x += 4) { P(f, x, 28, 'iron0'); P(f, x + 1, 29, 'iron2'); }
+  f.paint(M.rect(0, 0, 16, 2), 'gold', flat(0.6));
+  return f.outline();
+}
+function chest(open) {
+  const f = new Frame(24, 20);
+  const base = M.rect(2, 8, 20, 11); f.paint(base, 'wood', bevel(base, 0.42, 0.75, 0.15));
+  if (!open) { const lid = M.union(M.rect(2, 3, 20, 6), M.ellipse(12, 4, 10, 2)); f.paint(lid, 'wood', bevel(lid, 0.55, 0.9, 0.25)); f.paint(M.rect(11, 6, 3, 5), 'gold', flat(0.9)); }
+  else { f.paint(M.rect(2, 1, 20, 4), 'wood', flat(0.3)); f.paint(M.rect(4, 8, 16, 3), 'gold', (x) => 1 - (x - 4) / 20); }
+  for (const x of [2, 20]) f.paint(M.rect(x, 3, 2, 16), 'gold', flat(0.5));
+  return f.outline();
+}
+function shrine(kind) {
+  const f = new Frame(26, 38);
+  const ped = M.poly([[5, 37], [21, 37], [18, 22], [8, 22]]); f.paint(ped, 'stone', bevel(ped, 0.45, 0.8, 0.2));
+  f.paint(M.rect(4, 19, 18, 4), 'stone', bevel(M.rect(4, 19, 18, 4), 0.6, 0.95, 0.25));
+  const rmp = { fervor: 'crimson', haste: 'flame', warding: 'holy', plenty: 'gold' }[kind];
+  f.paint(M.ellipse(13, 11, 6, 6), rmp, sphere(11, 9, 7, 7, 0.2), { min: 0 });
+  f.paint(M.minus(M.ellipse(13, 11, 7.5, 7.5), M.ellipse(13, 11, 6, 6)), 'gold', flat(0.6));
+  return f.outline();
+}
+function imp(t, atk = 0) {
+  const f = new Frame(22, 24), B = t % 2;
+  f.paint(M.ellipse(14, 12 + B, 6, 6), 'wood', sphere(12, 10, 7, 7)); // sack
+  P(f, 14, 9 + B, 'gold0'); P(f, 15, 11 + B, 'gold1');
+  f.paint(M.ellipse(8, 14 + B, 4, 4.5), 'crimson', sphere(7, 12, 5, 5));
+  f.paint(M.ellipse(8, 8 + B, 3.6, 3.4), 'crimson', sphere(7, 7, 4, 4)); for (const d of [-2, 2]) f.paint(M.line(8 + d, 5 + B, 8 + d * 1.5, 2 + B), 'bone', flat(0.8));
+  P(f, 9, 8 + B, 'ink0'); P(f, 7, 8 + B, 'ink0');
+  for (const l of [-1, 1]) f.paint(M.line(8 + l * 2, 18, 8 + l * 2 + (t % 2 ? l : -l), 22), 'crimson', flat(0.4));
+  f.paint(M.ellipse(4, 15 + B, 3, 1.2), 'gold', flat(0.8)); // the collection plate
+  f.outline(); P(f, 9, 8 + B, 'gold0'); P(f, 7, 8 + B, 'gold0');
+  f.ax = 10; f.ay = 22; return f;
+}
+function coffinProp(broken) {
+  const f = new Frame(18, 28);
+  const m = M.poly([[5, 1], [13, 1], [16, 8], [13, 27], [5, 27], [2, 8]]);
+  f.paint(m, 'wood', bevel(m, 0.4, 0.75, 0.15));
+  f.paint(M.union(M.rect(8, 4, 2, 16), M.rect(5, 8, 8, 2)), broken ? 'wood' : 'gold', flat(broken ? 0.1 : 0.6));
+  return f.outline();
+}
+function pew() { const f = new Frame(34, 16); const m = M.rect(1, 3, 32, 6); f.paint(m, 'wood', bevel(m, 0.5, 0.85, 0.2)); f.paint(M.rect(1, 9, 32, 4), 'wood', flat(0.25)); for (const x of [2, 30]) f.paint(M.rect(x, 1, 2, 14), 'wood', flat(0.5)); return f.outline(); }
+function altar() { const f = new Frame(36, 24); const top = M.rect(1, 2, 34, 8); f.paint(top, 'stone', bevel(top, 0.6, 0.9, 0.3)); f.paint(M.rect(3, 10, 30, 12), 'stone', flat(0.3)); f.paint(M.rect(4, 2, 28, 3), 'crimson', flat(0.55)); f.paint(M.ellipse(18, 6, 5, 2), 'blood', flat(0.3)); for (const x of [6, 30]) { f.paint(M.rect(x, -2 + 2, 2, 3), 'bone', flat(0.8)); } return f.outline(); }
+function maiden() { const f = new Frame(20, 36); const m = M.union(M.ellipse(10, 8, 7, 7), M.rect(3, 8, 14, 26)); f.paint(m, 'iron', cyl(9, 8)); f.paint(M.ellipse(10, 8, 3.4, 3.4), 'iron', sphere(9, 7, 4, 4, 0.1)); P(f, 9, 8, 'ink0'); P(f, 11, 8, 'ink0'); f.paint(M.line(10, 14, 10, 33), 'ink', flat(0.8)); P(f, 11, 30, 'blood1'); P(f, 11, 31, 'blood2'); return f.outline(); }
+function cage() { const f = new Frame(18, 34); f.paint(M.line(9, 0, 9, 5), 'iron', flat(0.5)); for (let x = 2; x <= 16; x += 3) f.paint(M.rect(x, 6, 1, 24), 'iron', flat(0.6), { dither: 0 }); f.paint(M.ellipse(9, 6, 7.5, 2), 'iron', flat(0.4)); f.paint(M.rect(1, 29, 17, 2), 'iron', flat(0.4)); f.paint(M.ellipse(9, 20, 3, 6), 'bone', sphere(8, 17, 4, 7, -0.1)); P(f, 8, 15, 'ink0'); return f.outline(); }
+function hangChain() { const f = new Frame(6, 30); for (let y = 0; y < 26; y += 2) f.paint(M.rect(y % 4 ? 1 : 2, y, y % 4 ? 3 : 1, 2), 'iron', flat(0.6 - y * 0.01), { dither: 0 }); f.paint(M.line(3, 26, 5, 29), 'iron', flat(0.8)); return f; }
+function web() { const f = new Frame(16, 16); for (let i = 0; i < 16; i++) { P(f, i, 0, 'cloth2'); P(f, 0, i, 'cloth2'); if (i < 12) P(f, i, Math.floor(i * 0.6), 'cloth2'); } for (const r of [5, 10]) for (let a = 0; a <= 8; a++) P(f, Math.round(Math.cos(a * Math.PI / 16) * r), Math.round(Math.sin(a * Math.PI / 16) * r), 'cloth3'); return f; }
+function skullWall() { const f = new Frame(16, 32); f.paint(M.rect(0, 0, 16, 32), 'ink', flat(0.6)); for (let y = 2; y < 30; y += 5) for (let x = (y % 10 ? 2 : 5); x < 16; x += 6) { f.paint(M.ellipse(x, y, 2.6, 2.2), 'bone', sphere(x - 1, y - 1, 3, 3, -0.15)); P(f, x - 1, y, 'ink0'); P(f, x + 1, y, 'ink0'); } return f; }
+function water(v) { const f = new Frame(16, 16); f.paint(M.rect(0, 0, 16, 16), 'holy', (x, y) => 0.12 + Math.sin(x * 0.7 + y * 0.4 + v * 2) * 0.05, { min: 3, max: 4, dither: 0.5 }); for (let i = 0; i < 3; i++) { const x = (v * 5 + i * 6) % 14, y = (v * 3 + i * 5) % 14; P(f, x, y, 'holy2'); P(f, x + 1, y, 'holy2'); } return f; }
+
+function lootSheet() {
+  return sheet('loot', {
+    wax: [shotSprite('wax')], bone: [shotSprite('bone')], tear: [shotSprite('tear')], feather: [shotSprite('feather')], spit: [shotSprite('spit')],
+    ember: [shotSprite('ember')], violet: [shotSprite('violet')], blood: [shotSprite('blood')], frost: [shotSprite('frost')], bomb: [shotSprite('bomb')], coffin: [shotSprite('coffin')],
+    coin: [coin(0), coin(1)], gold: [goldPile(1), goldPile(2), goldPile(3)], globe: [globe(0), globe(1)],
+    item: ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic'].map(itemIcon),
+    gate: [gate()], chest: [chest(false), chest(true)], shrine: ['fervor', 'haste', 'warding', 'plenty'].map(shrine),
+    imp: [0, 1, 2, 3].map((t) => imp(t)),
+    coffin: [coffinProp(false), coffinProp(true)], pew: [pew()], altar: [altar()], maiden: [maiden()], cage: [cage()],
+    hangchain: [hangChain()], web: [web()], skullwall: [skullWall()], water: [0, 1, 2, 3].map(water),
+  });
+}
+
 // ================================================================= png ===
 
 const CRC = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
@@ -1119,7 +1509,7 @@ function png(frame, scale = 1, bg = null) {
 
 // ================================================================ main ===
 
-const sheets = [saintSheet(), risenSheet(), wardenSheet(), tilesSheet(), wallDecorSheet(), propsSheet(), fxSheet(), uiSheet(), townSheet()];
+const sheets = [saintSheet(), risenSheet(), wardenSheet(), tilesSheet(), wallDecorSheet(), propsSheet(), fxSheet(), uiSheet(), townSheet(), ...monsterSheets(), lootSheet()];
 mkdirSync(OUT, { recursive: true });
 const manifest = { palette: PALETTE };
 for (const s of sheets) {

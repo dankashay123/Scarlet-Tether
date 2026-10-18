@@ -42,11 +42,6 @@ const T = {
   descent: { time: 180, finale: 30 },  // seconds the candle burns; the last stretch surges
   ambient: 'rgba(10,8,26,0.5)',  // Undercroft darkness
 };
-const ENEMY = {
-  risen: { sheet: 'risen', hp: 18, r: 5, speed: 28, reach: 17, windup: 0.45, recover: 0.55, dmg: 8, fervor: 3, hy: 12, hr: 8 },
-  gravewarden: { sheet: 'gravewarden', hp: 90, r: 9, speed: 15, reach: 30, windup: 0.6, recover: 0.7, dmg: 16, fervor: 12, elite: true, hy: 17, hr: 12 },
-};
-
 // ------------------------------------------------------------ display ---
 const screen = document.getElementById('screen');
 const sctx = screen.getContext('2d');
@@ -72,7 +67,7 @@ function resize() {
 }
 
 // ------------------------------------------------------------- assets ---
-let SPR, PAL, IMG = {}, WHITE = {};
+let SPR, PAL, IMG = {}, WHITE = {}, TINT = {};
 async function loadAssets() {
   SPR = await (await fetch('assets/sprites/sprites.json')).json();
   PAL = SPR.palette;
@@ -84,7 +79,14 @@ async function loadAssets() {
       const c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
       const x = c.getContext('2d'); x.drawImage(im, 0, 0);
       x.globalCompositeOperation = 'source-in'; x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
-      WHITE[name] = c; ok();
+      WHITE[name] = c;
+      // Coloured silhouettes for the rare (blue) and elite (gold) auras.
+      if (name.startsWith('mon_') || name === 'risen' || name === 'gravewarden') for (const [k, col] of [['blue', '#5ab4ff'], ['gold', '#ffd155'], ['violet', '#b07aff']]) {
+        const t = document.createElement('canvas'); t.width = im.width; t.height = im.height;
+        const tx = t.getContext('2d'); tx.drawImage(im, 0, 0); tx.globalCompositeOperation = 'source-in'; tx.fillStyle = col; tx.fillRect(0, 0, t.width, t.height);
+        (TINT[k] = TINT[k] || {})[name] = t;
+      }
+      ok();
     };
     im.onerror = fail; im.src = `assets/sprites/${SPR[name].image}`;
   })));
@@ -92,10 +94,10 @@ async function loadAssets() {
 
 function frameOf(sheet, anim, i) { const a = SPR[sheet].anims[anim]; return a[((i % a.length) + a.length) % a.length]; }
 // Draw a frame with its anchor at pixel (x, y). Default anchor: sheet anchor, else bottom-centre.
-function spr(sheet, anim, i, x, y, { flip = false, white = false, alpha = 1, ax, ay, c = ctx } = {}) {
+function spr(sheet, anim, i, x, y, { flip = false, white = false, tint = null, alpha = 1, ax, ay, c = ctx } = {}) {
   const s = SPR[sheet], f = frameOf(sheet, anim, i);
-  const axx = ax ?? s.anchorX ?? Math.floor(f.w / 2), ayy = ay ?? s.anchorY ?? f.h - 1;
-  const img = white ? WHITE[sheet] : IMG[sheet];
+  const axx = ax ?? f.ax ?? s.anchorX ?? Math.floor(f.w / 2), ayy = ay ?? f.ay ?? s.anchorY ?? f.h - 1;
+  const img = tint ? TINT[tint][sheet] : white ? WHITE[sheet] : IMG[sheet];
   if (alpha !== 1) c.globalAlpha = alpha;
   x = Math.round(x); y = Math.round(y);
   if (flip) { c.save(); c.translate(x, 0); c.scale(-1, 1); c.drawImage(img, f.x, f.y, f.w, f.h, -(f.w - axx), y - ayy, f.w, f.h); c.restore(); }
@@ -183,7 +185,7 @@ function pointerDown(id, cx, cy) {
   // Tap an enemy to lock it (or execute it if it is staggered).
   const wx = x + cam.x, wy = y + cam.y;
   let best = null, bd = 20;
-  for (const e of enemies) { if (e.dead || e.state === 'spawn') continue; const d = Math.hypot(e.x - wx, e.y - e.def.hy - wy); if (d < bd) { bd = d; best = e; } }
+  for (const e of enemies) { if (e.dead || e.state === 'spawn') continue; const d = Math.hypot(e.x - wx, e.y - e.hy - wy); if (d < bd) { bd = d; best = e; } }
   if (best && best.state === 'stagger') { input.execute = best; return; }
   player.lock = best && player.lock !== best ? best : null;
 }
@@ -239,93 +241,346 @@ let rng = Math.random;
 const rand = (a, b) => a + rng() * (b - a);
 const pick = (a) => a[Math.floor(rng() * a.length)];
 
-// A Stratum 1 hall: three-tile-tall walls, a carpet cross, colonnades and
-// tomb furniture. Props are solid tiles drawn as y-sorted actors.
-function makeRoom() {
-  const w = 46, h = 30, TOP = 4;
-  const solid = [];
-  for (let y = 0; y < h; y++) { solid.push([]); for (let x = 0; x < w; x++) solid[y].push(y < TOP || y >= h - 1 || x < 1 || x >= w - 1); }
-  const isSolid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || solid[y][x];
-  const cx = Math.floor(w / 2), cy = Math.floor((TOP + h) / 2);
-  const carpet = (x, y) => (Math.abs(x - cx) <= 1 && y >= TOP) || (Math.abs(y - cy) <= 1 && x >= 1 && x < w - 1);
-  const props = [], lights = [], decals = [];
-  const free = (x0, y0, ww, hh, m = 1) => {
-    for (let y = y0 - m; y < y0 + hh + m; y++) for (let x = x0 - m; x < x0 + ww + m; x++) if (isSolid(x, y) || carpet(x, y)) return false;
-    return !(Math.abs(x0 - cx) < 5 && Math.abs(y0 - cy) < 4);
-  };
-  const place = (kind, tx, ty, tw = 1, th = 1, extra = {}) => {
-    for (let y = ty; y < ty + th; y++) for (let x = tx; x < tx + tw; x++) solid[y][x] = true;
-    props.push({ kind, x: (tx + tw / 2) * TILE, y: (ty + th) * TILE - 1, ...extra });
-  };
-  // Colonnades flanking the long carpet.
-  for (let y = TOP + 3; y < h - 3; y += 5) {
-    if (Math.abs(y - cy) < 3) continue;
-    for (const x of [cx - 5, cx + 5]) place('column', x, y);
-  }
-  // Statues with votive candles.
-  for (const [x, y] of [[cx - 9, TOP + 2], [cx + 9, TOP + 2]]) { place('statue', x, y); decals.push({ kind: 'candles', x: x * TILE + 8, y: (y + 2) * TILE - 2 }); }
-  for (let n = 0, tries = 0; n < 6 && tries < 400; tries++) {
-    const x = Math.floor(rand(3, w - 5)), y = Math.floor(rand(TOP + 2, h - 3));
-    if (free(x, y, 2, 1)) { place('sarcophagus', x, y, 2, 1); n++; if (rng() < 0.6) decals.push({ kind: 'candles', x: x * TILE + rand(4, 28), y: (y + 1) * TILE + 12 }); }
-  }
-  for (let n = 0, tries = 0; n < 6 && tries < 400; tries++) {
-    const x = Math.floor(rand(2, w - 2)), y = Math.floor(rand(TOP + 1, h - 2));
-    if (free(x, y, 1, 1)) { place('candelabra', x, y, 1, 1, { ph: rng() * 9 }); lights.push({ x: x * TILE + 8, y: (y + 1) * TILE - 30, r: 72, c: 'flame', a: 0.95, flick: rng() * 9 }); n++; }
-  }
-  for (let n = 0, tries = 0; n < 10 && tries < 400; tries++) {
-    const x = rng() < 0.5 ? Math.floor(rand(2, 5)) : Math.floor(rand(w - 5, w - 2)), y = Math.floor(rand(TOP + 1, h - 2));
-    if (free(x, y, 1, 1, 0)) { place('urn', x, y); n++; }
-  }
-  const bones = [];
-  for (let n = 0; n < 12; n++) bones.push({ x: rand(2, w - 2) * TILE, y: rand(TOP + 1, h - 2) * TILE });
+// A Stratum floor: a grid of themed rooms joined by corridors. Entering a
+// combat room drops iron gates behind you until its waves are dead.
+const GRID = { cols: 4, rows: 3, cw: 30, ch: 22 };
+const ROOM_NAMES = { start: 'THE VESTIBULE', combat: 'CRYPT', elite: 'RELIQUARY', shrine: 'SHRINE', treasury: 'TREASURY', exit: "THE WARDEN'S CHAMBER" };
+const THEMES = ['crypt', 'ossuary', 'flooded', 'chapel'];
 
-  // Bake floor, walls and flat decals.
+function makeDungeon() {
+  const { cols, rows, cw, ch } = GRID;
+  const w = cols * cw + 2, h = rows * ch + 4;
+  const solid = [];
+  for (let y = 0; y < h; y++) { solid.push([]); for (let x = 0; x < w; x++) solid[y].push(true); }
+  const isSolid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || solid[y][x];
+  const carve = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (x > 0 && y > 3 && x < w - 1 && y < h - 1) solid[y][x] = false; };
+  // Rooms, one per cell, with small jitter so neighbours always overlap.
+  const rooms = [];
+  for (let gy = 0; gy < rows; gy++) for (let gx = 0; gx < cols; gx++) {
+    const rw = Math.floor(rand(18, 25)), rh = Math.floor(rand(11, 15));
+    const x0 = 1 + gx * cw + Math.floor((cw - rw) / 2) + Math.floor(rand(-1, 2)), y0 = 5 + gy * ch + Math.floor((ch - 4 - rh) / 2) + Math.floor(rand(-1, 1));
+    rooms.push({ id: rooms.length, gx, gy, x0, y0, x1: x0 + rw - 1, y1: y0 + rh - 1, links: [], gates: [], state: 'idle', visited: false, known: false });
+  }
+  const at = (gx, gy) => rooms[gy * cols + gx];
+  // A random spanning tree over the grid, plus two loops.
+  const seen = new Set([0]), edges = [];
+  const frontier = () => rooms.flatMap((r) => seen.has(r.id) ? [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [r, at(r.gx + dx, r.gy + dy)]).filter(([, b]) => b && !seen.has(b.id)) : []);
+  for (let f = frontier(); f.length; f = frontier()) { const [a, b] = pick(f); seen.add(b.id); edges.push([a, b]); }
+  for (let n = 0; n < 2; n++) { const a = pick(rooms), b = at(a.gx + (rng() < 0.5 ? 1 : 0), a.gy + (rng() < 0.5 ? 0 : 1)); if (b && b !== a && !edges.some(([p, q]) => (p === a && q === b) || (p === b && q === a))) edges.push([a, b]); }
+  for (const r of rooms) carve(r.x0, r.y0, r.x1, r.y1);
+  for (const [a, b] of edges) {
+    a.links.push(b.id); b.links.push(a.id);
+    if (a.gy === b.gy) { // horizontal corridor
+      const [L, R] = a.gx < b.gx ? [a, b] : [b, a];
+      const y = Math.floor((Math.max(L.y0, R.y0) + Math.min(L.y1, R.y1)) / 2) - 1;
+      carve(L.x1 + 1, y, R.x0 - 1, y + 2);
+      L.gates.push({ tiles: [[L.x1 + 1, y], [L.x1 + 1, y + 1], [L.x1 + 1, y + 2]], side: 'e', to: R.id });
+      R.gates.push({ tiles: [[R.x0 - 1, y], [R.x0 - 1, y + 1], [R.x0 - 1, y + 2]], side: 'w', to: L.id });
+    } else { // vertical corridor
+      const [U, D] = a.gy < b.gy ? [a, b] : [b, a];
+      const x = Math.floor((Math.max(U.x0, D.x0) + Math.min(U.x1, D.x1)) / 2) - 1;
+      carve(x, U.y1 + 1, x + 2, D.y0 - 1);
+      U.gates.push({ tiles: [[x, U.y1 + 1], [x + 1, U.y1 + 1], [x + 2, U.y1 + 1]], side: 's', to: D.id });
+      D.gates.push({ tiles: [[x, D.y0 - 1], [x + 1, D.y0 - 1], [x + 2, D.y0 - 1]], side: 'n', to: U.id });
+    }
+  }
+  // Room roles: start on an edge, exit farthest away, then elite, shrine, treasury.
+  const start = pick(rooms.filter((r) => r.gx === 0 || r.gx === cols - 1));
+  const dist = new Map([[start.id, 0]]), q = [start];
+  while (q.length) { const r = q.shift(); for (const id of r.links) if (!dist.has(id)) { dist.set(id, dist.get(r.id) + 1); q.push(rooms[id]); } }
+  for (const r of rooms) { r.depth = dist.get(r.id); r.type = 'combat'; r.theme = pick(THEMES); }
+  const byDepth = [...rooms].sort((a, b) => b.depth - a.depth);
+  start.type = 'start'; start.theme = 'chapel';
+  byDepth[0].type = 'exit'; byDepth[0].theme = 'crypt';
+  const pool = rooms.filter((r) => r.type === 'combat' && r.depth >= 2).sort(() => rng() - 0.5);
+  if (pool[0]) pool[0].type = 'elite';
+  const easy = rooms.filter((r) => r.type === 'combat').sort(() => rng() - 0.5);
+  if (easy[0]) easy[0].type = 'shrine';
+  const leaf = rooms.filter((r) => r.type === 'combat' && r.links.length === 1);
+  (leaf[0] || easy[1] || {}).type = 'treasury';
+  start.visited = start.known = true; start.state = 'clear';
+  for (const id of start.links) rooms[id].known = true;
+
+  const props = [], lights = [], decals = [], critters = [];
+  const gateSet = new Set(rooms.flatMap((r) => r.gates.flatMap((g) => g.tiles.map(([x, y]) => `${x},${y}`))));
+  const nearGate = (r, x, y, m = 3) => r.gates.some((g) => g.tiles.some(([gx, gy]) => Math.abs(gx - x) <= m && Math.abs(gy - y) <= m));
+  const roomFree = (r, x, y, tw = 1, th = 1, m = 1) => {
+    if (x < r.x0 + 1 || y < r.y0 + 1 || x + tw > r.x1 || y + th > r.y1) return false;
+    for (let yy = y - m; yy < y + th + m; yy++) for (let xx = x - m; xx < x + tw + m; xx++) if (isSolid(xx, yy)) return false;
+    return !nearGate(r, x, y, 3) && !nearGate(r, x + tw - 1, y + th - 1, 3);
+  };
+  const place = (r, kind, x, y, tw = 1, th = 1, extra = {}) => {
+    for (let yy = y; yy < y + th; yy++) for (let xx = x; xx < x + tw; xx++) solid[yy][xx] = true;
+    const p = { kind, x: (x + tw / 2) * TILE, y: (y + th) * TILE - 1, room: r.id, tiles: [], ...extra };
+    for (let yy = y; yy < y + th; yy++) for (let xx = x; xx < x + tw; xx++) p.tiles.push([xx, yy]);
+    props.push(p); return p;
+  };
+  const tryPlace = (r, kind, tw, th, n, extra = () => ({}), m = 1) => { for (let k = 0, tries = 0; k < n && tries < 120; tries++) { const x = Math.floor(rand(r.x0 + 1, r.x1 - tw)), y = Math.floor(rand(r.y0 + 1, r.y1 - th)); if (roomFree(r, x, y, tw, th, m)) { place(r, kind, x, y, tw, th, extra()); k++; } } };
+  const candle = (x, y, a = 0.75) => { decals.push({ kind: 'candles', x, y }); lights.push({ x, y: y - 8, r: 42, c: 'flame', a, flick: rng() * 9 }); };
+  const water = [];
+  for (const r of rooms) {
+    const cx = Math.floor((r.x0 + r.x1) / 2), cy = Math.floor((r.y0 + r.y1) / 2);
+    r.cx = cx; r.cy = cy;
+    if (r.type === 'shrine') { r.shrine = place(r, 'shrine', cx, cy, 1, 1, { sheet: 'loot', anim: 'shrine', frame: Math.floor(rng() * 4), shrineKind: pick(['fervor', 'haste', 'warding', 'plenty']) }); for (let a = 0; a < 6; a++) candle((cx + 0.5) * TILE + Math.cos(a) * 40, (cy + 1) * TILE + Math.sin(a) * 26); lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 80, c: 'holy', a: 0.9 }); }
+    if (r.type === 'treasury') { r.chest = place(r, 'chest', cx, cy, 1, 1, { sheet: 'loot', anim: 'chest', frame: 0 }); lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 70, c: 'gold', a: 0.8 }); tryPlace(r, 'coffin', 1, 1, 4, () => ({ sheet: 'loot', anim: 'coffin', breakable: 2 }), 0); }
+    if (r.type === 'exit') { place(r, 'altar', cx - 1, r.y0 + 1, 2, 1, { sheet: 'loot', anim: 'altar' }); for (let k = -3; k <= 3; k++) candle((cx + k * 1.3) * TILE, (r.y0 + 3) * TILE, 0.8); }
+    if (r.type === 'start') { place(r, 'statue', cx, r.y0 + 2); candle((cx + 0.5) * TILE, (r.y0 + 4) * TILE - 2, 0.9); }
+    // Theme dressing.
+    if (r.theme === 'crypt') {
+      for (let y = r.y0 + 2; y < r.y1 - 1; y += 4) for (const x of [r.x0 + 3, r.x1 - 3]) if (roomFree(r, x, y, 1, 1, 0)) place(r, 'column', x, y);
+      tryPlace(r, 'sarcophagus', 2, 1, 2);
+      tryPlace(r, 'candelabra', 1, 1, 2, () => ({ ph: rng() * 9, light: true }));
+    } else if (r.theme === 'ossuary') {
+      tryPlace(r, 'cage', 1, 1, 2, () => ({ sheet: 'loot', anim: 'cage' }));
+      tryPlace(r, 'maiden', 1, 1, 1, () => ({ sheet: 'loot', anim: 'maiden' }));
+      tryPlace(r, 'coffin', 1, 1, 3, () => ({ sheet: 'loot', anim: 'coffin', breakable: 2 }), 0);
+      for (let k = 0; k < 8; k++) decals.push({ kind: 'bonepile', x: rand(r.x0 + 1, r.x1) * TILE, y: rand(r.y0 + 1, r.y1) * TILE });
+      tryPlace(r, 'candelabra', 1, 1, 1, () => ({ ph: rng() * 9, light: true }));
+    } else if (r.theme === 'flooded') {
+      for (let k = 0; k < 4; k++) { const wx = Math.floor(rand(r.x0 + 1, r.x1 - 4)), wy = Math.floor(rand(r.y0 + 1, r.y1 - 3)); for (let yy = wy; yy < wy + 3; yy++) for (let xx = wx; xx < wx + 5; xx++) if (!isSolid(xx, yy) && Math.hypot(xx - wx - 2, (yy - wy - 1) * 1.6) < 3) water.push([xx, yy]); }
+      for (let y = r.y0 + 3; y < r.y1 - 1; y += 5) for (const x of [r.x0 + 4, r.x1 - 4]) if (roomFree(r, x, y, 1, 1, 0)) place(r, 'column', x, y);
+      lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 90, c: 'holy', a: 0.35 });
+    } else if (r.theme === 'chapel') {
+      for (let y = r.y0 + 4; y < r.y1 - 1; y += 3) for (const x of [cx - 4, cx + 3]) if (roomFree(r, x, y, 2, 1, 0)) place(r, 'pew', x, y, 2, 1, { sheet: 'loot', anim: 'pew' });
+      tryPlace(r, 'candelabra', 1, 1, 2, () => ({ ph: rng() * 9, light: true }));
+    }
+    tryPlace(r, 'urn', 1, 1, Math.floor(rand(2, 5)), () => ({ breakable: 1 }), 0);
+    // Cobwebs in the top corners and hanging chains on the wall.
+    decals.push({ kind: 'web', x: r.x0 * TILE, y: r.y0 * TILE }, { kind: 'web', x: (r.x1 + 1) * TILE, y: r.y0 * TILE, flip: true });
+    for (let k = 0; k < 3; k++) decals.push({ kind: 'hangchain', x: rand(r.x0 + 1, r.x1) * TILE, y: (r.y0 - 3) * TILE + 12 });
+    for (let k = 0; k < (r.theme === 'ossuary' ? 6 : 3); k++) critters.push({ x: rand(r.x0 + 1, r.x1) * TILE, y: rand(r.y0 + 1, r.y1) * TILE, room: r.id, t: rng() * 5, vx: 0, vy: 0, hide: 0 });
+  }
+  for (const p of props) if (p.kind === 'candelabra') lights.push({ x: p.x, y: p.y - 30, r: 72, c: 'flame', a: 0.95, flick: rng() * 9 });
+
+  // Bake floor, walls and flat decor.
   roomCanvas = document.createElement('canvas'); roomCanvas.width = w * TILE; roomCanvas.height = h * TILE;
   const rc = roomCanvas.getContext('2d');
   const t = SPR.tiles.anims, I = IMG.tiles;
-  const tile = (f, x, y) => rc.drawImage(I, f.x, f.y, 16, 16, x * TILE, y * TILE, 16, 16);
+  const tile = (f, x, y, img = I) => rc.drawImage(img, f.x, f.y, 16, 16, x * TILE, y * TILE, 16, 16);
+  const roomAt = (x, y) => rooms.find((r) => x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1);
+  const waterSet = new Set(water.map(([x, y]) => `${x},${y}`));
+  const propTiles = new Set(props.flatMap((p) => p.tiles.map(([a, b]) => `${a},${b}`)));
+  const isFloor = (x, y) => x >= 0 && y >= 0 && x < w && y < h && (!solid[y][x] || propTiles.has(`${x},${y}`) || gateSet.has(`${x},${y}`));
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const isWall = y < TOP || y >= h - 1 || x < 1 || x >= w - 1;
-    if (!isWall) { // floor (also under props, so tombs and columns sit on stone)
-      if (carpet(x, y)) {
-        const inV = Math.abs(x - cx) <= 1, inH = Math.abs(y - cy) <= 1;
-        let k = rng() < 0.1 ? 3 : 0;
-        if (inV && !inH) k = x - cx === -1 ? 1 : x - cx === 1 ? 2 : k;
-        if (inH && !inV) k = y - cy === -1 ? 4 : y - cy === 1 ? 5 : k;
-        tile(t.carpet[k], x, y);
-      } else {
-        const n = rng();
-        tile(n < 0.02 ? t.misc[0] : t.floor[n < 0.4 ? 0 : Math.floor(rng() * 8)], x, y);
-      }
-      if (y === TOP) { rc.fillStyle = 'rgba(11,7,16,0.5)'; rc.fillRect(x * TILE, y * TILE, 16, 4); rc.fillStyle = 'rgba(11,7,16,0.25)'; rc.fillRect(x * TILE, y * TILE + 4, 16, 3); }
+    if (isFloor(x, y)) {
+      const r = roomAt(x, y), key = `${x},${y}`;
+      if (waterSet.has(key)) { const wf = frameOf('loot', 'water', (x + y) % 4); rc.drawImage(IMG.loot, wf.x, wf.y, 16, 16, x * TILE, y * TILE, 16, 16); }
+      else if (r && (r.type === 'start' || r.type === 'exit' || r.theme === 'chapel') && Math.abs(x - r.cx) <= 1) tile(t.carpet[x - r.cx === -1 ? 1 : x - r.cx === 1 ? 2 : (rng() < 0.1 ? 3 : 0)], x, y);
+      else { const n = rng(); tile(n < 0.02 ? t.misc[0] : t.floor[n < 0.45 ? 0 : Math.floor(rng() * 8)], x, y); }
+      if (!isFloor(x, y - 1)) { rc.fillStyle = 'rgba(11,7,16,0.5)'; rc.fillRect(x * TILE, y * TILE, 16, 4); rc.fillStyle = 'rgba(11,7,16,0.22)'; rc.fillRect(x * TILE, y * TILE + 4, 16, 3); }
       continue;
     }
     let f = t.wall[0];
-    if (y < TOP && x >= 1 && x < w - 1) f = y === TOP - 1 ? t.wall[3] : y === TOP - 2 ? t.wall[2] : y === TOP - 3 ? t.wall[1] : t.wall[0];
+    if (isFloor(x, y + 1)) f = t.wall[3]; else if (isFloor(x, y + 2)) f = t.wall[2]; else if (isFloor(x, y + 3)) f = t.wall[1];
     tile(f, x, y);
   }
-  // Wall decor on the back wall's faces.
+  // Wall decor above each room's top edge.
   const D = SPR.walldecor.anims.decor;
-  for (let x = 2; x < w - 2; x++) {
-    if (Math.abs(x - cx) <= 2) continue;
+  for (const r of rooms) for (let x = r.x0 + 1; x < r.x1; x++) {
+    if (r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - x) <= 1))) continue;
+    if (isSolid(x, r.y0) || !isSolid(x, r.y0 - 1)) continue;
     const n = rng();
-    const k = n < 0.4 ? -1 : n < 0.58 ? 0 : n < 0.72 ? 1 : n < 0.9 ? 2 : 3;
+    if (r.theme === 'ossuary' && n < 0.45) { const sf = frameOf('loot', 'skullwall', 0); rc.drawImage(IMG.loot, sf.x, sf.y, sf.w, sf.h, x * TILE, (r.y0 - 2) * TILE, sf.w, sf.h); continue; }
+    const k = n < 0.45 ? -1 : n < 0.6 ? 0 : n < 0.75 ? 1 : n < 0.9 ? 2 : 3;
     if (k < 0) continue;
-    const f = D[k];
-    rc.drawImage(IMG.walldecor, f.x, f.y, f.w, f.h, x * TILE, (TOP - 2) * TILE, f.w, f.h);
-    if (k === 2) lights.push({ x: x * TILE + 8, y: (TOP - 2) * TILE + 4, r: 56, c: 'flame', a: 0.9, flick: rng() * 9, sconce: true });
-    if (k === 0) lights.push({ x: x * TILE + 8, y: (TOP - 2) * TILE + 16, r: 26, c: 'flame', a: 0.45, flick: rng() * 9 });
-    x++; // keep decor spaced
+    rc.drawImage(IMG.walldecor, D[k].x, D[k].y, D[k].w, D[k].h, x * TILE, (r.y0 - 2) * TILE, D[k].w, D[k].h);
+    if (k === 2) lights.push({ x: x * TILE + 8, y: (r.y0 - 2) * TILE + 4, r: 56, c: 'flame', a: 0.9, flick: rng() * 9, sconce: true });
+    if (k === 0) lights.push({ x: x * TILE + 8, y: (r.y0 - 2) * TILE + 16, r: 26, c: 'flame', a: 0.45, flick: rng() * 9 });
+    x++;
   }
-  // The great banners over the carpet.
-  const bf = D[1];
-  for (const dx of [-2, 2]) rc.drawImage(IMG.walldecor, bf.x, bf.y, bf.w, bf.h, (cx + dx) * TILE, (TOP - 2) * TILE, bf.w, bf.h);
-  const bp = frameOf('props', 'bonepile', 0);
-  for (const b of bones) if (!isSolid(Math.floor(b.x / TILE), Math.floor(b.y / TILE)) && !carpet(Math.floor(b.x / TILE), Math.floor(b.y / TILE))) rc.drawImage(IMG.props, bp.x, bp.y, bp.w, bp.h, Math.round(b.x - bp.w / 2), Math.round(b.y - bp.h / 2), bp.w, bp.h);
+  for (const d of decals) {
+    if (d.kind === 'bonepile') { if (isSolid(Math.floor(d.x / TILE), Math.floor(d.y / TILE))) continue; const f = frameOf('props', 'bonepile', 0); rc.drawImage(IMG.props, f.x, f.y, f.w, f.h, Math.round(d.x - f.w / 2), Math.round(d.y - f.h / 2), f.w, f.h); }
+    if (d.kind === 'web') { const f = frameOf('loot', 'web', 0); rc.save(); rc.translate(d.x, d.y); if (d.flip) rc.scale(-1, 1); rc.drawImage(IMG.loot, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h); rc.restore(); }
+    if (d.kind === 'hangchain') { const f = frameOf('loot', 'hangchain', 0); rc.drawImage(IMG.loot, f.x, f.y, f.w, f.h, Math.round(d.x), Math.round(d.y), f.w, f.h); }
+  }
   stain = document.createElement('canvas'); stain.width = roomCanvas.width; stain.height = roomCanvas.height;
   sctxStain = stain.getContext('2d');
-  for (const d of decals) lights.push({ x: d.x, y: d.y - 8, r: 42, c: 'flame', a: 0.75, flick: rng() * 9 });
-  room = { kind: 'wound', name: 'THE UNDERCROFT', w, h, solid, isSolid, props, lights, decals, npcs: [], interact: [], pw: w * TILE, ph: h * TILE, cx, cy, top: TOP, ambient: T.ambient };
+  room = { kind: 'wound', name: 'THE UNDERCROFT', w, h, solid, isSolid, props, lights, decals: decals.filter((d) => d.kind === 'candles'), npcs: [], interact: [], pw: w * TILE, ph: h * TILE, top: 4, ambient: T.ambient, rooms, start, critters, water: waterSet, walls: [] };
+  room.cx = start.cx; room.cy = start.cy;
+}
+
+const roomOf = (px, py, inset = 0) => room.rooms && room.rooms.find((r) => px >= (r.x0 + inset) * TILE && px < (r.x1 + 1 - inset) * TILE && py >= (r.y0 + inset) * TILE && py < (r.y1 + 1 - inset) * TILE);
+function setGates(r, locked) {
+  r.locked = locked; r.gateT = 0;
+  for (const g of r.gates) for (const [x, y] of g.tiles) room.solid[y][x] = locked;
+}
+
+// Wave plans scale with how deep the room sits.
+const COMMON_POOL = [['risen', 0], ['crawler', 0], ['rat', 0], ['acolyte', 0], ['mourner', 1], ['gravewarden', 1], ['votary', 2], ['flagellant', 2], ['cherub', 2], ['wisp', 3]];
+const RARE_POOL = ['knight', 'collector', 'motherwax', 'bishop', 'jailer', 'bellringer', 'matron', 'choirboy', 'gravedigger', 'lantern'];
+const ELITE_POOL = ['colossus', 'seraph', 'golem', 'thrice', 'abbess', 'titan', 'manymouthed', 'leviathan', 'inquisitor', 'effigy'];
+function planWaves(r) {
+  const d = Math.max(1, r.depth), commons = COMMON_POOL.filter(([, min]) => min <= d).map(([id]) => id);
+  const mix = () => [pick(commons), pick(commons)];
+  const tutorial = tut.on && tut.step <= 8;
+  if (tutorial) return [{ commons: [['risen', 6]] }, { commons: [['risen', 5], ['crawler', 3]] }];
+  const wave = (n, rare = 0, elite = 0) => { const [a, b] = mix(); return { commons: [[a, Math.ceil(n * 0.6)], [b, Math.floor(n * 0.4)]], rare, elite }; };
+  const n = 8 + d * 2;
+  if (r.type === 'elite') return [wave(n), wave(Math.floor(n / 2), 0, 2 + (d >= 4 ? 1 : 0))];
+  if (r.type === 'exit') return [wave(n, 1 + (d >= 4 ? 1 : 0)), wave(Math.floor(n / 2), 0, 3), wave(n + 4)];
+  const waves = [wave(n)];
+  waves.push(wave(n, rng() < 0.45 + d * 0.1 ? 1 + (d >= 4 ? 1 : 0) : 0));
+  if (d >= 3) waves.push(wave(n + 2, rng() < 0.4 ? 1 : 0));
+  return waves;
+}
+function spawnPoint(r, minD = 70) {
+  for (let i = 0; i < 80; i++) {
+    const tx = Math.floor(rand(r.x0 + 1, r.x1)), ty = Math.floor(rand(r.y0 + 1, r.y1));
+    const x = tx * TILE + 8, y = ty * TILE + 8;
+    if (room.isSolid(tx, ty) || room.isSolid(tx + 1, ty) || room.isSolid(tx - 1, ty)) continue;
+    if (Math.hypot(x - player.x, y - player.y) < minD && i < 60) continue;
+    return [x, y];
+  }
+  return [r.cx * TILE + 8, r.cy * TILE + 8];
+}
+function startWave(r) {
+  const wv = r.waves[r.wave];
+  for (const [id, n] of wv.commons) {
+    const per = MON[id].group || 1;
+    for (let k = 0; k < Math.max(1, Math.round(n / per)); k++) { const [x, y] = spawnPoint(r); for (let g = 0; g < per; g++) spawnMonster(id, x + rand(-8, 8), y + rand(-6, 6), { room: r.id }); }
+  }
+  if (wv.rare) { const id = pick(RARE_POOL); const [x, y] = spawnPoint(r, 90); spawnPack(id, 'rare', x, y, wv.rare, r.id); }
+  if (wv.elite) { const id = pick(ELITE_POOL); const [x, y] = spawnPoint(r, 100); spawnPack(id, 'elite', x, y, wv.elite, r.id); }
+  r.waveSize = enemies.filter((e) => e.room === r.id && !e.illusion).length;
+  if (r.wave > 0) toast(`WAVE ${r.wave + 1} OF ${r.waves.length}`, 1.4);
+}
+function updateFloor(dt) {
+  const cur = roomOf(player.x, player.y, 1);
+  game.curRoom = roomOf(player.x, player.y) || game.curRoom;
+  if (game.curRoom && !game.curRoom.visited) { game.curRoom.visited = game.curRoom.known = true; for (const id of game.curRoom.links) room.rooms[id].known = true; }
+  if (cur && cur.state === 'idle') {
+    if (cur.type === 'shrine') cur.state = 'clear';
+    else if (cur.type === 'treasury') { cur.state = 'clear'; if (rng() < 0.75) { const [x, y] = spawnPoint(cur, 60); spawnMonster('imp', x, y, { room: cur.id }); toast('A COLLECTION IMP! CATCH IT!', 2.2); } }
+    else {
+      cur.state = 'active'; cur.wave = 0; cur.waves = planWaves(cur);
+      setGates(cur, true); game.shake = 3;
+      toast(cur.type === 'exit' ? "THE WARDEN'S CHAMBER SEALS" : cur.type === 'elite' ? 'SOMETHING TERRIBLE STIRS' : 'THE GATES FALL', 1.6);
+      startWave(cur);
+    }
+  }
+  for (const r of room.rooms) {
+    r.gateT = Math.min(1, (r.gateT || 0) + dt * 4);
+    if (r.state !== 'active') continue;
+    const alive = enemies.filter((e) => e.room === r.id && !e.dead && !e.illusion && e.type !== 'imp').length;
+    if (alive <= Math.max(1, Math.floor(r.waveSize * 0.15)) && r.wave < r.waves.length - 1) { r.wave++; startWave(r); }
+    else if (alive === 0) clearRoom(r);
+  }
+}
+function clearRoom(r) {
+  r.state = 'clear'; setGates(r, false);
+  game.banner = { text: 'ROOM CLEARED', sub: r.type === 'exit' ? 'THE WAYSTONE WAKES' : `${room.rooms.filter((q) => q.state === 'clear').length} OF ${room.rooms.length} ROOMS`, t: 0 };
+  dropLoot(player.x + rand(-30, 30), player.y + rand(-20, 20), { gold: 2 + r.depth, globe: 0.6, item: 0.35 + r.depth * 0.05 });
+  addFervor(10);
+  if (r.type === 'exit') {
+    const wx = (r.cx + 0.5) * TILE, wy = (r.cy + 1) * TILE;
+    game.waystone = { kind: 'waystone', sheet: 'town', anim: 'waystone', x: wx, y: wy, ph: 0 };
+    room.props.push(game.waystone);
+    room.lights.push({ x: wx, y: wy - 18, r: 80, c: 'holy', a: 0.9 });
+    room.interact.push({ x: wx, y: wy, r: 24, label: 'RETURN', icon: 'descend', use: () => finishDescent() });
+    rings.push({ x: wx, y: wy - 16, t: 0, max: 0.8, r: 70, color: '138,224,255' });
+  }
+}
+function finishDescent() {
+  SAVE.descents = (SAVE.descents || 0) + 1;
+  bankRun(false);
+  game.state = 'tally'; game.deathT = 0;
+}
+// Keep the gold and finds (or tithe half of them on death).
+function bankRun(died) {
+  const R = game.run;
+  R.tithe = died ? Math.floor(R.gold / 2) : 0;
+  const keptItems = died ? R.items.filter((_, i) => i % 2 === 0) : R.items;
+  SAVE.gold = (SAVE.gold || 0) + R.gold - R.tithe;
+  SAVE.stash = (SAVE.stash || []).concat(keptItems.map((it) => ({ name: it.name, rarity: it.rarity, slot: it.slot, affixes: it.affixes }))).slice(-200);
+  R.lostItems = R.items.length - keptItems.length;
+  game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time, gold: R.gold, tithe: R.tithe, items: R.items, lostItems: R.lostItems, rooms: room.rooms.filter((q) => q.state === 'clear').length, total: room.rooms.length };
+  persist();
+}
+function renderRoomStatus() {
+  if (game.scene !== 'wound') return;
+  const r = game.curRoom;
+  if (game.focus) return renderNameplate(game.focus);
+  if (!r) return;
+  let label = ROOM_NAMES[r.type], sub = '';
+  if (r.state === 'active') { const left = enemies.filter((e) => e.room === r.id && !e.dead && !e.illusion).length; sub = `WAVE ${r.wave + 1}/${r.waves.length}   ${left} REMAIN`; }
+  else if (r.type === 'exit' && game.waystone) sub = 'TAKE THE WAYSTONE HOME';
+  else sub = `${room.rooms.filter((q) => q.state === 'clear').length}/${room.rooms.length} ROOMS CLEARED`;
+  text(label, W / 2, 9, r.state === 'active' ? PAL.blood0 : PAL.gold1, { align: 'center', bold: true });
+  text(sub, W / 2, 19, PAL.cloth1, { align: 'center' });
+}
+function renderBanner() {
+  const b = game.banner; if (!b) return;
+  b.t += 1 / 60; if (b.t > 2.4) { game.banner = null; return; }
+  const a = Math.min(1, b.t * 4, (2.4 - b.t) * 2);
+  ctx.globalAlpha = a;
+  const y = Math.round(H * 0.3);
+  ctx.fillStyle = 'rgba(11,7,16,0.6)'; ctx.fillRect(0, y - 6, W, 34);
+  ctx.fillStyle = PAL.gold2; ctx.fillRect(0, y - 6, W, 1); ctx.fillRect(0, y + 27, W, 1);
+  text(b.text, W / 2, y, b.color || PAL.gold0, { align: 'center', sc: 2 });
+  if (b.sub) text(b.sub, W / 2, y + 17, PAL.cloth1, { align: 'center' });
+  ctx.globalAlpha = 1;
+}
+// Points to the Waystone when it is off screen.
+function renderWaystoneArrow() {
+  const ws = game.waystone; if (!ws) return;
+  const sx = ws.x - cam.x, sy = ws.y - 20 - cam.y;
+  if (sx > 10 && sx < W - 10 && sy > 10 && sy < H - 10) return;
+  const a = Math.atan2(sy - H / 2, sx - W / 2), r = Math.min(W, H) / 2 - 24;
+  const px = Math.max(16, Math.min(W - 16, W / 2 + Math.cos(a) * r * (W / H) * 0.9)), py = Math.max(40, Math.min(H - 16, H / 2 + Math.sin(a) * r));
+  ctx.save(); ctx.translate(px, py); ctx.rotate(a);
+  ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-6, -8); ctx.lineTo(-6, 8); ctx.fill();
+  ctx.fillStyle = PAL.holy1; ctx.beginPath(); ctx.moveTo(7, 0); ctx.lineTo(-4, -5); ctx.lineTo(-4, 5); ctx.fill();
+  ctx.restore();
+}
+function drawGates() {
+  for (const r of room.rooms) for (const g of r.gates) {
+    const k = r.locked ? r.gateT : 1 - r.gateT;
+    if (k <= 0) continue;
+    const f = frameOf('loot', 'gate', 0);
+    for (const [x, y] of g.tiles) {
+      const drop = Math.round((1 - k) * 22);
+      ctx.save(); ctx.beginPath(); ctx.rect(x * TILE, y * TILE - 14, 16, 30); ctx.clip();
+      ctx.drawImage(IMG.loot, f.x, f.y, f.w, f.h, x * TILE, y * TILE - 14 - drop, f.w, f.h);
+      ctx.restore();
+    }
+  }
+}
+
+// Ambient life: rats that bolt from the Saint, moths about the candles, dust in the light.
+function updateCritters(dt) {
+  for (const c of room.critters || []) {
+    const d = Math.hypot(c.x - player.x, c.y - player.y);
+    c.t -= dt;
+    if (d < 50 && !c.hide) { const a = Math.atan2(c.y - player.y, c.x - player.x) + rand(-0.5, 0.5); c.vx = Math.cos(a) * 90; c.vy = Math.sin(a) * 90; c.t = 0.8; }
+    else if (c.t <= 0) { c.t = rand(1, 4); const a = rand(0, Math.PI * 2); const s = rng() < 0.5 ? 0 : 25; c.vx = Math.cos(a) * s; c.vy = Math.sin(a) * s; }
+    if (moveCircle(c, c.vx * dt, c.vy * dt, 2)) { c.vx = -c.vx; c.vy = -c.vy; }
+  }
+}
+function drawCritters(cx, cy) {
+  for (const c of room.critters || []) {
+    if (!onScreen(c.x, c.y, cx, cy, 20)) continue;
+    const moving = Math.abs(c.vx) + Math.abs(c.vy) > 1;
+    spr('mon_common', 'rat_walk', moving ? Math.floor(game.real * 12) : 0, c.x, c.y, { flip: c.vx < 0 });
+  }
+}
+function drawAmbientGlow(cx, cy) {
+  // Moths circling the nearest candles.
+  let n = 0;
+  for (const l of room.lights) {
+    if (n > 14 || !onScreen(l.x, l.y, cx, cy, 10)) continue;
+    n++;
+    for (let k = 0; k < 2; k++) {
+      const a = game.real * (2 + k) + l.x * 0.1 + k * 3, rr = 8 + k * 5;
+      ctx.fillStyle = 'rgba(255,244,176,0.7)'; ctx.fillRect(Math.round(l.x + Math.cos(a) * rr), Math.round(l.y + Math.sin(a * 1.3) * rr * 0.6), 1, 1);
+    }
+  }
+  // Dust motes drifting through the Saint's light.
+  for (let k = 0; k < 24; k++) {
+    const x = cx + ((k * 97 + game.real * (3 + (k % 4))) % W), y = cy + ((k * 61 + game.real * (2 + (k % 3)) * (k % 2 ? 1 : -1)) % H + H) % H;
+    const d = Math.hypot(x - player.x, y - player.y);
+    if (d > 110) continue;
+    ctx.fillStyle = `rgba(255,251,234,${0.35 * (1 - d / 110)})`; ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
+  }
 }
 
 const solidAt = (px, py) => room.isSolid(Math.floor(px / TILE), Math.floor(py / TILE));
@@ -346,7 +601,6 @@ function moveCircle(o, dx, dy, r) {
 const game = { state: 'title', time: 0, real: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, toast: null, execTarget: null, flash: 0 };
 let player, enemies = [], bolts = [], parts = [], gibs = [], nums = [], ghosts = [], rings = [], fxs = [];
 let pools = [], flasks = [], chains = [], lashes = [];
-let director;
 
 function makePlayer(x, y) {
   return {
@@ -355,17 +609,26 @@ function makePlayer(x, y) {
     fireCd: 0.6, thAng: 0, m1cd: 0, m2cd: 0, penance: 0, rainT: 0, rainTick: 0, lock: null, target: null, anim: 'idle', animT: 0, hurt: 0, ghostT: 0,
   };
 }
-function newRun() {
-  makeRoom();
-  player = makePlayer(room.cx * TILE + 8, room.cy * TILE + 8);
-  game.scene = 'wound'; game.state = 'play'; game.cardAt = game.real; game.descentT = T.descent.time; game.waystone = null; game.interact = null;
-  if (tutStep() && tutStep().start && tutStep().scene === 'wound') tutStep().start();
+function resetWorld() {
   enemies = []; bolts = []; parts = []; gibs = []; nums = []; ghosts = []; rings = []; fxs = []; pools = []; flasks = []; chains = []; lashes = [];
-  Object.assign(game, { time: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, execTarget: null, flash: 0 });
-  director = { t: 0, eliteT: 12 };
+  hazards = []; shots = []; drops = [];
+}
+function newRun() {
+  makeDungeon();
+  player = makePlayer((room.start.cx + 0.5) * TILE, (room.start.cy + 2) * TILE);
+  resetWorld();
+  game.scene = 'wound'; game.state = 'play'; game.cardAt = game.real; game.waystone = null; game.interact = null;
+  Object.assign(game, { time: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, execTarget: null, flash: 0,
+    run: { gold: 0, items: [] }, curRoom: room.start, buff: null, banner: null, massacre: null, focus: null, reflect: 0 });
+  // Shrines and chests are things to use.
+  for (const r of room.rooms) {
+    if (r.shrine) { const p = r.shrine; room.interact.push({ x: p.x, y: p.y + 4, r: 26, label: 'PRAY', icon: 'talk', use() { useShrine(p); this.done = true; } }); }
+    if (r.chest) { const p = r.chest; room.interact.push({ x: p.x, y: p.y + 4, r: 24, label: 'OPEN', icon: 'talk', use() { openChest(p); this.done = true; } }); }
+  }
+  if (tutStep() && tutStep().start && tutStep().scene === 'wound') tutStep().start();
 }
 
-function toast(msg, t = 2) { game.toast = { msg, t }; }
+function toast(msg, t = 2) { game.toast = { msg, t }; game.toastColor = null; }
 const fervorTier = () => Math.min(3, Math.floor(game.fervor / 25));
 function addFervor(n) { if (player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + n); game.fervor = Math.min(100, game.fervor + n); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
 // One-shot sprite effects.
@@ -441,7 +704,8 @@ function makeTown() {
 function enterTown(wake = true) {
   makeTown();
   player = makePlayer(room.cx * TILE + 8, (room.top + 2) * TILE + 4);
-  enemies = []; bolts = []; parts = []; gibs = []; nums = []; ghosts = []; rings = []; fxs = []; pools = []; flasks = []; chains = []; lashes = [];
+  resetWorld();
+  game.buff = null; game.banner = null; game.focus = null;
   game.scene = 'town'; game.state = 'play'; game.cardAt = game.real; game.time = 0; game.fervor = 0; game.kills = 0; game.waystone = null;
   if (wake && !SAVE.metOdile) { SAVE.metOdile = true; persist(); talk('odile'); }
 }
@@ -471,12 +735,14 @@ const TUT = [
   { scene: 'town', text: 'WELCOME, SAINT. DRAG ON THE LEFT SIDE OF THE SCREEN TO WALK.', target: 'joy', done: () => tut.flags.moved > 60 },
   { scene: 'town', text: 'TALK TO THE TOWNSFOLK. WALK UP TO ANYONE AND TAP TALK.', target: 'act', done: () => tut.flags.talked },
   { scene: 'town', text: 'THE VESTRY DOORS LEAD DOWN INTO THE WOUND. WALK TO THEM AND TAP DESCEND.', target: 'act', done: () => game.scene === 'wound' },
+  { scene: 'wound', text: 'EACH ROOM SEALS ITS GATES UNTIL THE DEAD STAY DEAD. WALK INTO THE NEXT ROOM.', done: () => room.rooms && room.rooms.some((q) => q.state !== 'idle' && q.type !== 'start') },
   { scene: 'wound', text: 'YOUR CROSSBOW FIRES BY ITSELF: ELITES FIRST, THEN THE NEAREST. TAP AN ENEMY TO LOCK ON.', done: () => game.kills >= 4 },
-  { scene: 'wound', text: 'TAP DASH TO DODGE THROUGH ATTACKS. DASH JUST AS A HIT LANDS FOR A PERFECT DODGE.', target: 'dash', done: () => tut.flags.dashed >= 2 },
+  { scene: 'wound', text: 'TAP DASH TO DODGE THROUGH ATTACKS. RED SHAPES ON THE FLOOR WARN YOU WHERE A HIT WILL LAND.', target: 'dash', done: () => tut.flags.dashed >= 2 },
   { scene: 'wound', text: 'TAP HOLY WATER TO THROW A FLASK. IT AIMS ITSELF AT THE THICKEST CROWD.', target: 'm1', done: () => tut.flags.m1 },
-  { scene: 'wound', text: 'TAP THE CHAIN TO BIND UP TO FOUR FOES TOGETHER.', target: 'm2', done: () => tut.flags.m2 },
-  { scene: 'wound', text: "KILLS FEED THE CROWD'S FERVOR AND FILL THE RED RING. IT IS FULL: TAP PENANCE.", target: 'pen', start: () => { player.penance = T.penance.charge; }, done: () => tut.flags.pen },
-  { scene: 'wound', text: 'SURVIVE UNTIL THE CANDLE BURNS DOWN. THEN THE WAYSTONE WILL CARRY YOU HOME.', target: 'timer', done: () => tut.t > 6 },
+  { scene: 'wound', text: 'TAP THE CHAIN TO BIND UP TO FOUR FOES TOGETHER.', target: 'm2', done: () => tut.flags.m2 || tut.t > 12 },
+  { scene: 'wound', text: "KILLS FEED THE CROWD'S FERVOR AND FILL THE RED RING. IT IS FULL: TAP PENANCE.", target: 'pen', start: () => { player.penance = T.penance.charge; }, done: () => tut.flags.pen || tut.t > 15 },
+  { scene: 'wound', text: 'RED GLOBES HEAL. GOLD AND RELICS SPILL FROM THE DEAD. BLUE MONSTERS ARE RARE, GOLD ARE ELITE: READ THEIR CURSES UNDER THEIR NAME.', done: () => tut.t > 8 },
+  { scene: 'wound', text: "CLEAR ROOMS AND FIND THE WARDEN'S CHAMBER, THE RED SKULL ON YOUR MAP. ITS WAYSTONE CARRIES YOU HOME.", target: 'map', done: () => tut.t > 8 },
 ];
 const tut = { on: !SAVE.tutorialDone, step: 0, t: 0, flags: { moved: 0 } };
 function tutStep() { return tut.on ? TUT[tut.step] : null; }
@@ -489,13 +755,10 @@ function updateTutorial(dt) {
   if (s.done()) {
     tut.step++; tut.t = 0;
     if (tut.step >= TUT.length) endTutorial();
+    else if (game.scene === 'wound' && tut.step === TUT.length - 2) { /* lessons done: let full waves come */ }
     else if (TUT[tut.step].start && TUT[tut.step].scene === game.scene) TUT[tut.step].start();
   }
 }
-// The candle only burns once the lesson reaches it.
-const tutHoldsTimer = () => tut.on && game.scene === 'wound' && tut.step < TUT.length - 1;
-// Early lessons keep the horde small.
-const tutWaveCap = () => (tut.on && game.scene === 'wound' && tut.step < 5 ? 8 : Infinity);
 
 function tutRect() { const w = Math.min(300, W - 200), lines = wrap(tutStep().text, Math.floor((w - 16) / 6)); return { x: Math.round(W / 2 - w / 2), y: 48, w, h: 16 + lines.length * 9 + 12, lines }; }
 function renderTutorial() {
@@ -510,7 +773,7 @@ function renderTutorial() {
   text('SKIP TUTORIAL', r.x + r.w - 6, r.y + r.h - 9, PAL.blood0, { outline: null, align: 'right' });
   ctx.fillStyle = PAL.blood0; ctx.fillRect(r.x + r.w - 6 - textW('SKIP TUTORIAL'), r.y + r.h - 1, textW('SKIP TUTORIAL'), 1);
   // Bouncing pointer at the control being taught.
-  const tgt = s.target === 'act' ? (game.interact ? HUD.act : null) : s.target === 'timer' ? { x: W / 2, y: 30, r: 10 } : HUD[s.target];
+  const tgt = s.target === 'act' ? (game.interact ? HUD.act : null) : s.target === 'map' ? { x: W - 70, y: 30, r: 22 } : HUD[s.target];
   if (tgt) {
     const b = Math.round(Math.sin(game.real * 8) * 3), up = tgt.y < H / 2;
     const ax = tgt.x, ay = up ? tgt.y + tgt.r + 6 + b : tgt.y - tgt.r - 6 - b;
@@ -526,139 +789,441 @@ function tutTap(x, y) {
   return false;
 }
 
-// ------------------------------------------------------------- descent ---
-function updateDescent(dt) {
-  if (game.waystone || tutHoldsTimer()) return;
-  const wasFinale = game.descentT <= T.descent.finale;
-  game.descentT -= dt;
-  if (!wasFinale && game.descentT <= T.descent.finale) { toast('THE BELLS TOLL. THE DEAD SURGE.', 2.5); game.shake = 4; director.eliteT = 0; }
-  if (game.descentT <= 0) {
-    game.descentT = 0;
-    // The candle is spent: the dead fall, and the Waystone wakes.
-    for (const e of enemies) if (!e.dead) killEnemy(e, rand(-1, 1), rand(-1, 1));
-    let wx = player.x, wy = player.y - 40;
-    for (let i = 0; i < 30 && (solidAt(wx, wy) || solidAt(wx + 12, wy) || solidAt(wx - 12, wy)); i++) { wx = room.cx * TILE + 8 + rand(-60, 60); wy = room.cy * TILE + rand(-40, 40); }
-    game.waystone = { kind: 'waystone', sheet: 'town', anim: 'waystone', x: wx, y: wy, ph: 0 };
-    room.props.push(game.waystone);
-    room.lights.push({ x: wx, y: wy - 18, r: 70, c: 'holy', a: 0.9 });
-    room.interact.push({ x: wx, y: wy, r: 22, label: 'RETURN', icon: 'descend', use: () => finishDescent() });
-    rings.push({ x: wx, y: wy - 16, t: 0, max: 0.8, r: 70, color: '138,224,255' });
-    toast('THE CANDLE IS SPENT. TAKE THE WAYSTONE HOME.', 3);
-  }
-}
-function finishDescent() {
-  SAVE.descents = (SAVE.descents || 0) + 1; persist();
-  game.state = 'tally'; game.deathT = 0;
-  game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time };
-}
-function renderTimer() {
-  // Location card that fades after arriving.
-  const ct = game.real - (game.cardAt || 0);
-  if (ct < 3.5) { ctx.globalAlpha = Math.min(1, ct * 3, (3.5 - ct) * 1.5); text(room.name, W / 2, Math.round(H * 0.24), PAL.gold1, { align: 'center', sc: 2 }); ctx.globalAlpha = 1; }
-  if (game.scene !== 'wound') return;
-  const k = game.descentT / T.descent.time, x = Math.round(W / 2), y = 8;
-  // A candle that burns down across the top centre.
-  const w = 120, fw = Math.round(w * k), finale = game.descentT <= T.descent.finale && !game.waystone;
-  ctx.fillStyle = PAL.outline; ctx.fillRect(x - w / 2 - 2, y + 4, w + 4, 8);
-  ctx.fillStyle = PAL.ink3; ctx.fillRect(x - w / 2, y + 6, w, 4);
-  ctx.fillStyle = finale ? PAL.blood1 : PAL.bone2; ctx.fillRect(x - w / 2, y + 6, fw, 4);
-  ctx.fillStyle = finale ? PAL.blood0 : PAL.bone0; ctx.fillRect(x - w / 2, y + 6, fw, 1);
-  if (fw > 0 && !game.waystone) flame(x - w / 2 + fw, y + 4, 0);
-  const s = Math.ceil(game.descentT), label = game.waystone ? 'WAYSTONE AWAKE' : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-  const pulse = finale && Math.floor(game.real * 4) % 2 === 0;
-  text(label, x, y + 16, finale ? (pulse ? PAL.blood0 : PAL.cloth0) : PAL.cloth0, { align: 'center', bold: true });
-  if (tutHoldsTimer()) text('CANDLE UNLIT', x, y + 26, PAL.stone1, { align: 'center' });
-}
-// Points to the Waystone when it is off screen.
-function renderWaystoneArrow() {
-  const ws = game.waystone; if (!ws) return;
-  const sx = ws.x - cam.x, sy = ws.y - 20 - cam.y;
-  if (sx > 10 && sx < W - 10 && sy > 10 && sy < H - 10) return;
-  const a = Math.atan2(sy - H / 2, sx - W / 2), r = Math.min(W, H) / 2 - 24;
-  const ax = W / 2 + Math.cos(a) * r * (W / H) * 0.9, ay = H / 2 + Math.sin(a) * r;
-  const px = Math.max(16, Math.min(W - 16, ax)), py = Math.max(40, Math.min(H - 16, ay));
-  ctx.save(); ctx.translate(px, py); ctx.rotate(a);
-  ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-6, -8); ctx.lineTo(-6, 8); ctx.fill();
-  ctx.fillStyle = PAL.holy1; ctx.beginPath(); ctx.moveTo(7, 0); ctx.lineTo(-4, -5); ctx.lineTo(-4, 5); ctx.fill();
-  ctx.restore();
+// ------------------------------------------------------------- monsters ---
+// 10 common, 10 rare (blue) and 10 elite (gold) monsters. Behaviour is data:
+// a movement style plus a list of telegraphed attacks. See docs/COMBAT.md.
+const A = (type, o) => ({ type, windup: 0.5, cd: 2, range: 120, dmg: 8, ...o });
+const MON = {
+  // Common.
+  risen: { name: 'RISEN', tier: 'common', sheet: 'risen', walk: 'walk', attack: 'attack', hp: 18, speed: 28, r: 5, hy: 12, hr: 8, move: 'chase', fervor: 3, attacks: [A('swipe', { range: 18, reach: 18, windup: 0.45, cd: 1.2, dmg: 8 })] },
+  crawler: { name: 'CRAWLING PENITENT', tier: 'common', hp: 10, speed: 46, r: 4, hy: 6, hr: 7, move: 'chase', fervor: 2, group: 3, attacks: [A('swipe', { range: 14, reach: 14, windup: 0.3, cd: 0.9, dmg: 5 })] },
+  mourner: { name: 'CANDLE-MOURNER', tier: 'common', hp: 16, speed: 22, r: 5, hy: 15, hr: 8, move: 'kite', keep: 100, fervor: 3, attacks: [A('lob', { range: 170, min: 30, windup: 0.7, cd: 3, dmg: 10, rad: 18, shot: 'wax', pool: 'fire' })] },
+  acolyte: { name: 'BONE ACOLYTE', tier: 'common', hp: 16, speed: 24, r: 5, hy: 14, hr: 8, move: 'kite', keep: 110, fervor: 3, attacks: [A('shot', { range: 170, windup: 0.5, cd: 2.2, dmg: 7, speed: 120, shot: 'bone' })] },
+  gravewarden: { name: 'GRAVEWARDEN', tier: 'common', sheet: 'gravewarden', walk: 'walk', attack: 'attack', hp: 60, speed: 15, r: 9, hy: 17, hr: 12, move: 'chase', shield: true, fervor: 8, attacks: [A('lunge', { range: 34, windup: 0.6, cd: 2, dmg: 14, speed: 150, time: 0.22 })] },
+  rat: { name: 'TITHE RATS', tier: 'common', hp: 4, speed: 72, r: 3, hy: 3, hr: 5, move: 'chase', fervor: 1, group: 5, attacks: [A('swipe', { range: 10, reach: 10, windup: 0.2, cd: 0.7, dmg: 3 })] },
+  votary: { name: 'BLOATED VOTARY', tier: 'common', hp: 30, speed: 18, r: 7, hy: 14, hr: 10, move: 'chase', fervor: 4, attacks: [A('explode', { range: 22, windup: 0.9, rad: 34, dmg: 20, pool: 'blood' })] },
+  flagellant: { name: 'FLAGELLANT', tier: 'common', hp: 22, speed: 34, r: 5, hy: 14, hr: 8, move: 'circle', keep: 70, fervor: 3, attacks: [A('lunge', { range: 110, min: 36, windup: 0.55, cd: 3, dmg: 10, speed: 230, time: 0.35 }), A('swipe', { range: 18, reach: 18, windup: 0.35, cd: 1, dmg: 7 })] },
+  cherub: { name: 'WEEPING CHERUB', tier: 'common', hp: 14, speed: 30, r: 5, hy: 18, hr: 8, move: 'fly', keep: 90, fervor: 3, attacks: [A('spread', { n: 3, arc: 0.5, range: 160, windup: 0.5, cd: 2.6, dmg: 6, speed: 110, shot: 'tear' })] },
+  wisp: { name: 'CHOIR WISP', tier: 'common', hp: 10, speed: 26, r: 4, hy: 14, hr: 7, move: 'chase', fervor: 2, attacks: [A('blink', { range: 400, min: 70, windup: 0.3, cd: 4 }), A('lunge', { range: 60, windup: 0.4, cd: 2, dmg: 8, speed: 200, time: 0.25 })] },
+  // Rare.
+  knight: { name: 'OSSUARY KNIGHT', tier: 'rare', hp: 200, speed: 22, r: 9, hy: 22, hr: 13, move: 'chase', fervor: 12, attacks: [A('cone', { range: 42, len: 50, arc: 1.7, windup: 0.8, cd: 2.4, dmg: 18 })] },
+  collector: { name: 'TITHE COLLECTOR', tier: 'rare', hp: 220, speed: 16, r: 10, hy: 22, hr: 14, move: 'chase', fervor: 12, attacks: [A('ring', { n: 12, range: 140, windup: 0.7, cd: 3, dmg: 7, speed: 90, shot: 'ember' }), A('summon', { monster: 'rat', n: 5, range: 240, windup: 0.6, cd: 9 })] },
+  motherwax: { name: 'MOTHER WAX', tier: 'rare', hp: 170, speed: 18, r: 9, hy: 22, hr: 13, move: 'kite', keep: 110, fervor: 12, attacks: [A('lob', { n: 3, spreadR: 30, range: 190, windup: 0.8, cd: 3.2, dmg: 12, rad: 20, shot: 'wax', pool: 'fire' })] },
+  bishop: { name: 'HOLLOW BISHOP', tier: 'rare', hp: 160, speed: 18, r: 9, hy: 24, hr: 13, move: 'kite', keep: 120, fervor: 12, attacks: [A('summon', { monster: 'risen', n: 3, range: 260, windup: 0.9, cd: 8 }), A('shot', { range: 190, windup: 0.5, cd: 1.8, dmg: 9, speed: 130, shot: 'violet' })] },
+  jailer: { name: 'CHAIN JAILER', tier: 'rare', hp: 190, speed: 20, r: 9, hy: 22, hr: 13, move: 'kite', keep: 90, fervor: 12, attacks: [A('pull', { range: 160, len: 160, windup: 0.8, cd: 5, dmg: 8 }), A('swipe', { range: 26, reach: 24, windup: 0.5, cd: 1.4, dmg: 12 })] },
+  bellringer: { name: 'BELL RINGER', tier: 'rare', hp: 200, speed: 20, r: 9, hy: 22, hr: 13, move: 'chase', fervor: 12, attacks: [A('shockwave', { range: 120, windup: 0.9, cd: 3.5, dmg: 14, speed: 110, max: 150 })] },
+  matron: { name: 'SCOURGE MATRON', tier: 'rare', hp: 180, speed: 24, r: 9, hy: 22, hr: 13, move: 'chase', fervor: 12, attacks: [A('cone', { range: 60, len: 66, arc: 0.9, windup: 0.6, cd: 2, dmg: 12 })] },
+  choirboy: { name: 'CARRION CHOIRBOY', tier: 'rare', hp: 160, speed: 22, r: 9, hy: 22, hr: 13, move: 'kite', keep: 90, fervor: 12, attacks: [A('cone', { range: 90, len: 96, arc: 0.7, windup: 0.7, cd: 4, dmg: 6, slow: 1.5 }), A('spread', { n: 5, arc: 0.8, range: 170, windup: 0.5, cd: 2.4, dmg: 6, speed: 120, shot: 'spit' })] },
+  gravedigger: { name: 'GRAVEDIGGER', tier: 'rare', hp: 210, speed: 20, r: 10, hy: 22, hr: 14, move: 'chase', fervor: 12, attacks: [A('slam', { range: 40, rad: 26, windup: 0.8, cd: 2.5, dmg: 18 }), A('summon', { monster: 'risen', n: 2, range: 260, windup: 0.7, cd: 9 })] },
+  lantern: { name: 'LANTERN SHADE', tier: 'rare', hp: 150, speed: 22, r: 8, hy: 22, hr: 12, move: 'kite', keep: 110, fly: true, fervor: 12, attacks: [A('blink', { range: 400, min: 140, windup: 0.4, cd: 5 }), A('beam', { range: 200, len: 220, windup: 0.9, cd: 3, dmg: 16 })] },
+  // Elite.
+  colossus: { name: 'PENITENT COLOSSUS', tier: 'elite', hp: 900, speed: 18, r: 14, hy: 30, hr: 20, move: 'chase', fervor: 30, attacks: [A('shockwave', { range: 130, windup: 1, cd: 4, dmg: 18, speed: 120, max: 170 }), A('lunge', { range: 160, min: 50, windup: 0.9, cd: 5, dmg: 22, speed: 220, time: 0.5 })] },
+  seraph: { name: 'SERAPH OF ASH', tier: 'elite', hp: 650, speed: 26, r: 11, hy: 30, hr: 18, move: 'fly', keep: 110, fly: true, fervor: 30, attacks: [A('spread', { n: 7, arc: 1.1, range: 180, windup: 0.6, cd: 2.2, dmg: 9, speed: 130, shot: 'feather' }), A('lunge', { range: 150, min: 40, windup: 0.8, cd: 5, dmg: 18, speed: 240, time: 0.4 })] },
+  golem: { name: 'RELIQUARY GOLEM', tier: 'elite', hp: 950, speed: 16, r: 14, hy: 30, hr: 20, move: 'chase', fervor: 30, attacks: [A('lunge', { range: 170, min: 40, windup: 0.9, cd: 4, dmg: 22, speed: 210, time: 0.5 }), A('lob', { range: 200, windup: 0.8, cd: 3, dmg: 18, rad: 24, shot: 'coffin' })] },
+  thrice: { name: 'THE THRICE-BURIED', tier: 'elite', hp: 600, speed: 24, r: 11, hy: 28, hr: 18, move: 'chase', split: 3, fervor: 30, attacks: [A('cone', { range: 46, len: 54, arc: 1.4, windup: 0.7, cd: 2, dmg: 16 })] },
+  abbess: { name: 'ABBESS OF THORNS', tier: 'elite', hp: 700, speed: 18, r: 11, hy: 28, hr: 18, move: 'kite', keep: 110, fervor: 30, attacks: [A('spikes', { n: 4, rad: 18, range: 200, windup: 0.6, delay: 0.8, cd: 3, dmg: 14 }), A('cone', { range: 70, len: 76, arc: 1, windup: 0.6, cd: 3, dmg: 12 })] },
+  titan: { name: 'CENSER TITAN', tier: 'elite', hp: 950, speed: 16, r: 14, hy: 32, hr: 20, move: 'chase', orbit: { n: 3, r: 50, speed: 2, dmg: 12 }, fervor: 30, attacks: [A('ring', { n: 16, range: 150, windup: 0.7, cd: 4, dmg: 9, speed: 100, shot: 'ember' })] },
+  manymouthed: { name: 'THE MANY-MOUTHED', tier: 'elite', hp: 850, speed: 12, r: 16, hy: 26, hr: 22, move: 'kite', keep: 120, fervor: 30, attacks: [A('spiral', { streams: 4, dur: 2.5, rate: 0.12, range: 200, windup: 0.8, cd: 6, dmg: 8, speed: 95, shot: 'blood' }), A('ring', { n: 20, range: 170, windup: 0.6, cd: 4, dmg: 8, speed: 90, shot: 'spit' })] },
+  leviathan: { name: 'GRAVE LEVIATHAN', tier: 'elite', hp: 800, speed: 30, r: 13, hy: 18, hr: 18, move: 'chase', fervor: 30, attacks: [A('burrow', { range: 260, min: 40, windup: 0.6, cd: 5, dmg: 22, rad: 30 }), A('spread', { n: 5, arc: 0.7, range: 170, windup: 0.6, cd: 2.5, dmg: 9, speed: 120, shot: 'spit' })] },
+  inquisitor: { name: 'THE INQUISITOR', tier: 'elite', hp: 750, speed: 30, r: 11, hy: 28, hr: 18, move: 'chase', fervor: 30, attacks: [A('multidash', { n: 3, range: 170, min: 30, windup: 0.6, cd: 5, dmg: 16, speed: 320, time: 0.22 }), A('swipe', { range: 26, reach: 26, windup: 0.4, cd: 1.2, dmg: 14 })] },
+  effigy: { name: 'WEEPING EFFIGY', tier: 'elite', hp: 700, speed: 10, r: 12, hy: 30, hr: 18, move: 'static', fly: true, fervor: 30, attacks: [A('blink', { range: 400, min: 120, windup: 0.5, cd: 6 }), A('beam', { n: 3, fan: 0.5, range: 230, len: 240, windup: 1, cd: 3.5, dmg: 16 })] },
+  // The treasure goblin of the Wound.
+  imp: { name: 'COLLECTION IMP', tier: 'imp', sheet: 'loot', walk: 'imp', attack: 'imp', hp: 140, speed: 74, r: 5, hy: 10, hr: 9, move: 'flee', fervor: 10, attacks: [] },
+};
+for (const [id, d] of Object.entries(MON)) {
+  d.id = id;
+  if (!d.sheet) { d.sheet = `mon_${d.tier}`; d.walk = `${id}_walk`; d.attack = `${id}_attack`; }
 }
 
-// --------------------------------------------------------------- enemies ---
-function spawnEnemy(type) {
-  const def = ENEMY[type];
-  for (let i = 0; i < 60; i++) {
-    const x = rand(TILE * 2, room.pw - TILE * 2), y = rand(TILE * (room.top + 1), room.ph - TILE * 2);
-    const d = Math.hypot(x - player.x, y - player.y);
-    if (d < 90 || d > 260) continue;
-    if (solidAt(x - 10, y - 10) || solidAt(x + 10, y + 10) || solidAt(x + 10, y - 10) || solidAt(x - 10, y + 10)) continue;
-    enemies.push({ type, def, x, y, hp: def.hp, maxHp: def.hp, r: def.r, state: 'spawn', t: 0, animT: rng(), face: x < player.x ? 1 : -1, flash: 0, kx: 0, ky: 0, elite: !!def.elite, staggered: false, hitDone: false, slowK: 1, bound: 0 });
-    return;
+// ---------------------------------------------------------------- affixes ---
+const AFFIX = {
+  hale: { label: 'HALE', init: (e) => { e.maxHp = e.hp = Math.round(e.hp * 1.6); } },
+  swift: { label: 'SWIFT', init: (e) => { e.speedK *= 1.4; e.cdK *= 0.75; } },
+  horde: { label: 'HORDE' },
+  smoldering: { label: 'SMOLDERING', every: 0.35, tick: (e) => { if (e.state === 'move' && Math.hypot(e.vx || 0, e.vy || 0) > 3) addPool(e.x, e.y, 12, 2.5, 8, 'fire', e); }, death: (e) => { hazards.push({ kind: 'circle', x: e.x, y: e.y, r: 38, t: 0, delay: 1.2, dmg: 22, pool: 'fire', src: e }); } },
+  defiled: { label: 'DEFILED', every: 5.5, tick: (e) => { if (near(e, 220)) hazards.push({ kind: 'circle', x: player.x, y: player.y, r: 22, t: 0, delay: 0.7, dmg: 4, pool: 'blood', poolDps: 12, src: e }); } },
+  hoarfrost: { label: 'HOARFROST', every: 7, tick: (e) => { if (near(e, 220)) for (let k = 0; k < 3; k++) hazards.push({ kind: 'circle', x: player.x + rand(-34, 34), y: player.y + rand(-22, 22), r: 24, t: 0, delay: 1.4, dmg: 10, slow: 2, style: 'frost', src: e }); } },
+  venomous: { label: 'VENOMOUS', every: 6, tick: (e) => { if (!near(e, 200)) return; for (let a = 0; a < 4; a++) for (let k = 1; k <= 4; k++) hazards.push({ kind: 'circle', x: e.x + Math.cos(a * Math.PI / 2) * k * 20, y: e.y + Math.sin(a * Math.PI / 2) * k * 14, r: 10, t: 0, delay: 0.5 + k * 0.08, dmg: 5, pool: 'poison', poolLife: 3, src: e }); } },
+  mortar: { label: 'MORTAR', every: 4.5, tick: (e) => { if (near(e, 240) && !near(e, 60)) hazards.push({ kind: 'circle', x: player.x, y: player.y, r: 24, t: 0, delay: 0.9, dmg: 14, from: [e.x, e.y - e.hy], shot: 'bomb', src: e }); } },
+  tolling: { label: 'TOLLING', every: 2.6, tick: (e) => { if (near(e, 240)) hazards.push({ kind: 'circle', x: player.x + rand(-30, 30), y: player.y + rand(-20, 20), r: 16, t: 0, delay: 1, dmg: 12, style: 'bell', src: e }); } },
+  shackling: { label: 'SHACKLING', every: 8, tick: (e) => { if (near(e, 220)) hazards.push({ kind: 'circle', x: player.x, y: player.y, r: 24, t: 0, delay: 1, dmg: 4, root: 1.2, style: 'chain', src: e }); } },
+  beckoning: { label: 'BECKONING', every: 7, tick: (e) => { if (near(e, 220) && !near(e, 50)) hazards.push({ kind: 'line', x: e.x, y: e.y - e.hy, ang: Math.atan2(player.y - 12 - (e.y - e.hy), player.x - e.x), len: Math.hypot(player.x - e.x, player.y - e.y) + 20, w: 12, t: 0, delay: 0.6, dur: 0.1, dmg: 0, pull: e, style: 'pull', src: e }); } },
+  blinking: { label: 'BLINKING', every: 5, tick: (e) => { if (!near(e, 90)) blinkTo(e, player.x + rand(-40, 40), player.y + rand(-30, 30)); } },
+  warded: { label: 'WARDED', every: 9, tick: (e) => { e.ward = 2.5; } },
+  vengeful: { label: 'VENGEFUL' },
+  mirrored: { label: 'MIRRORED' },
+  smiting: { label: 'SMITING' },
+  walling: { label: 'WALLING', every: 9, tick: (e) => { if (near(e, 200)) raiseWall(e); } },
+  chained: { label: 'CHAINED' },
+  penitent: { label: 'PENITENT' },
+};
+const AFFIX_POOL = Object.keys(AFFIX);
+const near = (e, d) => Math.hypot(e.x - player.x, e.y - player.y) < d;
+const ELITE_NAMES = ['MARROWGAUNT', 'VESPERINE', 'GRISHOLM', 'ASHKETTLE', 'SALLOWMERE', 'OTTILIE', 'BROTHER ULM', 'MOTHER CARRION', 'DEACON VOSS', 'THE ABBOT RUE', 'SISTER MOTH', 'OLD TALLOW', 'SAINT VERITY', 'GRAVELOCK', 'HUSH'];
+const ELITE_EPITHETS = ['THE UNSHRIVEN', 'THE THRICE-TOLLED', 'OF THE LAST PEW', 'THE HUNGRY', 'WHO WEEPS', 'THE TITHE-TAKER', 'OF THE WAX', 'THE BELL-DEAF', 'THE UNBURIED', 'THE PENITENT', 'OF MANY TEETH', 'THE CHOIR-FED'];
+
+function spawnMonster(id, x, y, o = {}) {
+  const d = MON[id];
+  const e = { type: id, def: d, x, y, hp: d.hp, maxHp: d.hp, r: d.r, hy: d.hy, state: 'spawn', t: 0, animT: rng(), face: x < player.x ? 1 : -1, flash: 0, kx: 0, ky: 0,
+    tier: o.tier || d.tier, elite: d.tier !== 'common' && d.tier !== 'imp', staggered: false, slowK: 1, bound: 0, speedK: 1, cdK: 1, dmgK: 1, scaleK: o.scaleK || 1,
+    cds: d.attacks.map(() => rand(0.5, 1.5)), affixes: o.affixes || [], affT: {}, room: o.room, pack: o.pack, minion: o.minion, name: o.name || d.name, illusion: o.illusion, life: o.life, spawnDelay: o.spawnDelay || 0 };
+  if (o.hpK) e.maxHp = e.hp = Math.round(e.hp * o.hpK);
+  for (const a of e.affixes) AFFIX[a].init && AFFIX[a].init(e);
+  for (const a of e.affixes) e.affT[a] = rand(1, AFFIX[a].every || 1);
+  if (o.scaleK) { e.hy *= o.scaleK; e.r = Math.max(4, e.r * o.scaleK); }
+  e.hr = d.hr * (o.scaleK || 1);
+  if (d.orbit) e.orbA = 0;
+  enemies.push(e);
+  return e;
+}
+// A blue rare pack (2-3 of a kind sharing affixes) or a gold elite with minions.
+function spawnPack(id, tier, x, y, nAff, roomId) {
+  const affixes = [...AFFIX_POOL].sort(() => rng() - 0.5).filter((a) => tier === 'rare' ? a !== 'chained' || true : true).slice(0, nAff);
+  const pack = { id: Math.random(), affixes, tier, members: [] };
+  if (tier === 'rare') {
+    const n = 2 + (rng() < 0.5 ? 1 : 0) + (affixes.includes('horde') ? 1 : 0);
+    for (let k = 0; k < n; k++) pack.members.push(spawnMonster(id, x + rand(-20, 20), y + rand(-14, 14), { tier, affixes, pack, room: roomId, spawnDelay: k * 0.15 }));
+  } else {
+    const name = `${pick(ELITE_NAMES)} ${pick(ELITE_EPITHETS)}`;
+    pack.members.push(spawnMonster(id, x, y, { tier, affixes, pack, room: roomId, name, hpK: 1 }));
+    const minion = pick(['risen', 'acolyte', 'crawler', 'cherub', 'flagellant']);
+    const n = 3 + Math.floor(rng() * 3) + (affixes.includes('horde') ? 3 : 0);
+    for (let k = 0; k < n; k++) pack.members.push(spawnMonster(minion, x + rand(-30, 30), y + rand(-20, 20), { pack, room: roomId, minion: true, spawnDelay: 0.2 + k * 0.1 }));
   }
+  return pack;
 }
 
-function updateDirector(dt) {
-  director.t += dt;
-  const alive = enemies.filter((e) => !e.dead);
-  const want = Math.min(T.wave.max, Math.round(T.wave.start + (T.wave.max - T.wave.start) * Math.min(1, director.t / T.wave.ramp)));
-  const fodder = alive.filter((e) => !e.elite).length;
-  const surge = game.descentT <= T.descent.finale ? T.wave.finaleBonus : 0;
-  if (fodder < Math.min(want + surge, tutWaveCap()) && alive.length < T.wave.cap && rng() < dt * T.wave.rate) spawnEnemy('risen');
-  director.eliteT -= dt;
-  if (director.eliteT <= 0) {
-    director.eliteT = T.wave.eliteEvery;
-    if (alive.filter((e) => e.elite).length < T.wave.elitesMax && tutWaveCap() === Infinity) spawnEnemy('gravewarden');
+function blinkTo(e, x, y) {
+  for (let i = 0; i < 10; i++) {
+    const tx = x + rand(-10, 10), ty = y + rand(-10, 10);
+    if (!solidAt(tx - e.r, ty - e.r) && !solidAt(tx + e.r, ty + e.r) && !solidAt(tx + e.r, ty - e.r) && !solidAt(tx - e.r, ty + e.r) && roomOf(tx, ty)) {
+      playFx('fx', 'smoke', e.x, e.y - 8, 16); e.x = tx; e.y = ty; playFx('fx', 'smoke', e.x, e.y - 8, 16); return true;
+    }
   }
+  return false;
 }
 
+function raiseWall(e) {
+  const a = Math.atan2(e.y - player.y, e.x - player.x), px = -Math.sin(a), py = Math.cos(a);
+  const cx = player.x + Math.cos(a) * 26, cy = player.y + Math.sin(a) * 26;
+  const tiles = [];
+  for (let k = -2; k <= 2; k++) {
+    const tx = Math.floor((cx + px * k * 16) / TILE), ty = Math.floor((cy + py * k * 16) / TILE);
+    if (room.isSolid(tx, ty)) continue;
+    const wx = tx * TILE + 8, wy = ty * TILE + 8;
+    if (Math.hypot(wx - player.x, wy - player.y) < 14 || enemies.some((o) => !o.dead && Math.hypot(o.x - wx, o.y - wy) < 12)) continue;
+    if (room.rooms && room.rooms.some((r) => r.gates.some((g) => g.tiles.some(([gx, gy]) => gx === tx && gy === ty)))) continue;
+    room.solid[ty][tx] = true; tiles.push([tx, ty]);
+  }
+  if (tiles.length) room.walls.push({ tiles, life: 4, t: 0 });
+}
+function updateWalls(dt) {
+  for (const w of room.walls) { w.t += dt; if (w.t > w.life) { for (const [x, y] of w.tiles) { room.solid[y][x] = false; sparks(x * TILE + 8, y * TILE + 8, PAL.bone1, 3); } w.done = true; } }
+  room.walls = room.walls.filter((w) => !w.done);
+}
+
+// ------------------------------------------------------- monster brains ---
 function updateEnemy(e, dt) {
   const d = e.def;
   e.t += dt; e.animT += dt; e.flash = Math.max(0, e.flash - dt);
+  if (e.spawnDelay > 0) { e.spawnDelay -= dt; e.t = 0; return; }
   updateStatus(e, dt);
   if (e.dead) return;
+  if (e.ward > 0) e.ward -= dt;
+  if (e.illusion) { e.life -= dt; if (e.life <= 0) { e.dead = true; playFx('fx', 'smoke', e.x, e.y - 8, 14); return; } }
   if (e.kx || e.ky) { moveCircle(e, e.kx * dt, e.ky * dt, e.r); e.kx *= Math.pow(0.001, dt); e.ky *= Math.pow(0.001, dt); if (Math.abs(e.kx) + Math.abs(e.ky) < 2) e.kx = e.ky = 0; }
-  const dx = player.x - e.x, dy = player.y - e.y, dist = Math.hypot(dx, dy) || 1;
   if (e.state === 'spawn') {
-    if (e.t > (e.elite ? 1.2 : 0.8)) { e.state = 'walk'; e.t = 0; playFx('fx', 'smoke', e.x, e.y - 6, 14, { alpha: 0.8 }); }
+    if (e.t > (e.elite ? 1.1 : 0.7)) { e.state = 'move'; e.t = 0; playFx('fx', 'smoke', e.x, e.y - 6, 14, { alpha: 0.8 }); if (e.tier === 'elite') { rings.push({ x: e.x, y: e.y - 12, t: 0, max: 0.6, r: 60, color: '255,209,85' }); game.shake = 4; } }
     return;
   }
-  if (e.bound > 0) return; // chained in place
+  if (e.under && e.state !== 'act') e.under = false;
+  // Affix timers.
+  if (!e.illusion) for (const a of e.affixes) { const af = AFFIX[a]; if (!af.tick) continue; e.affT[a] -= dt; if (e.affT[a] <= 0) { e.affT[a] = af.every * rand(0.85, 1.15); af.tick(e); } }
+  if (d.orbit) { e.orbA += d.orbit.speed * dt; for (let k = 0; k < d.orbit.n; k++) { const a = e.orbA + k * Math.PI * 2 / d.orbit.n, ox = e.x + Math.cos(a) * d.orbit.r, oy = e.y - 10 + Math.sin(a) * d.orbit.r * 0.6; if (Math.hypot(ox - player.x, oy - (player.y - 12)) < 10 && (e.orbHit || 0) <= game.time) { e.orbHit = game.time + 0.6; damagePlayer(e, d.orbit.dmg * e.dmgK, [[player.x, player.y]]); } if (rng() < dt * 8) parts.push({ kind: 'spark', x: ox, y: oy, z: 0, vx: rand(-10, 10), vy: rand(5, 20), vz: 0, c: PAL.ember1, life: 0.3 }); } }
+  if (e.bound > 0) return;
+  for (let i = 0; i < e.cds.length; i++) e.cds[i] -= dt / e.cdK;
+  const dx = player.x - e.x, dy = player.y - e.y, dist = Math.hypot(dx, dy) || 1;
   switch (e.state) {
-    case 'walk': {
-      e.face = dx < 0 ? -1 : 1;
-      let vx = dx / dist * d.speed * e.slowK, vy = dy / dist * d.speed * e.slowK;
-      for (const o of enemies) {
-        if (o === e || o.dead || o.state === 'spawn') continue;
-        const ox = e.x - o.x, oy = e.y - o.y, od = Math.hypot(ox, oy), min = e.r + o.r + 3;
-        if (od > 0 && od < min) { vx += ox / od * 80 * (1 - od / min); vy += oy / od * 80 * (1 - od / min); }
+    case 'move': {
+      moveEnemy(e, dt, dx, dy, dist);
+      if (e.type === 'imp') break;
+      for (let i = 0; i < d.attacks.length; i++) {
+        const a = d.attacks[i];
+        if (e.cds[i] > 0 || dist > a.range || dist < (a.min || 0)) continue;
+        e.state = 'windup'; e.t = 0; e.atk = a; e.cds[i] = a.cd * rand(0.85, 1.2);
+        e.ang = Math.atan2(player.y - e.y, player.x - e.x); e.tx = player.x; e.ty = player.y; e.face = dx < 0 ? -1 : 1; e.hitDone = false;
+        break;
       }
-      moveCircle(e, vx * dt, vy * dt, e.r);
-      if (dist < d.reach * 0.85) { e.state = 'windup'; e.t = 0; e.hitDone = false; }
       break;
     }
     case 'windup':
-      if (e.t >= d.windup) { e.state = 'strike'; e.t = 0; if (!e.elite) resolveStrike(e); }
+      if (['lunge', 'multidash', 'beam', 'pull', 'cone'].includes(e.atk.type) && e.t < e.atk.windup * 0.6) e.ang = Math.atan2(player.y - e.y, player.x - e.x); // tracks until it commits
+      if (e.t >= e.atk.windup * (e.cdK < 1 ? 0.8 : 1)) performAttack(e);
       break;
-    case 'strike':
-      if (e.elite) { // shield-bash lunge
-        moveCircle(e, e.face * 150 * dt, 0, e.r);
-        if (!e.hitDone && Math.abs(player.x - (e.x + e.face * 10)) < 14 && Math.abs(player.y - e.y) < 12) { e.hitDone = true; damagePlayer(e, d.dmg, [[player.x, player.y]]); }
-        if (e.t > 0.22) { e.state = 'recover'; e.t = 0; }
-      } else if (e.t > 0.12) { e.state = 'recover'; e.t = 0; }
-      break;
-    case 'recover': if (e.t > d.recover) { e.state = 'walk'; e.t = 0; } break;
-    case 'stagger': if (e.t > 3) { e.state = 'walk'; e.t = 0; } break;
+    case 'act': actUpdate(e, dt); break;
+    case 'recover': if (e.t > (e.atk && e.atk.recover || 0.45)) { e.state = 'move'; e.t = 0; } break;
+    case 'stagger': if (e.t > 3) { e.state = 'move'; e.t = 0; } break;
   }
 }
 
-function resolveStrike(e) {
-  // The claw covers the space in front of the Risen. The check also covers
-  // where the Saint dashed from, so dashing away at the last instant still
-  // counts as a perfect dodge.
-  const hx = e.x + e.face * 9, hy = e.y - 2;
-  const near = (x, y) => Math.hypot(x - hx, y - hy) < 11;
-  damagePlayer(e, e.def.dmg, [[player.x, player.y], [player.dashX ?? player.x, player.dashY ?? player.y]].filter(([x, y]) => near(x, y)));
+function moveEnemy(e, dt, dx, dy, dist) {
+  const d = e.def, sp = d.speed * e.speedK * e.slowK;
+  let vx = 0, vy = 0;
+  const to = (k) => { vx = dx / dist * sp * k; vy = dy / dist * sp * k; };
+  if (d.move === 'chase') to(1);
+  else if (d.move === 'kite' || d.move === 'fly') {
+    if (dist < d.keep - 15) to(-0.9); else if (dist > d.keep + 25) to(1);
+    else { const s = Math.sin(e.animT * 0.7 + e.x) > 0 ? 1 : -1; vx = -dy / dist * sp * 0.6 * s; vy = dx / dist * sp * 0.6 * s; }
+  } else if (d.move === 'circle') {
+    const k = dist > d.keep + 10 ? 1 : dist < d.keep - 10 ? -0.6 : 0;
+    vx = dx / dist * sp * k - dy / dist * sp * 0.9; vy = dy / dist * sp * k + dx / dist * sp * 0.9;
+  } else if (d.move === 'flee') {
+    if (dist < 160) to(-1.1); else { vx = Math.cos(e.animT) * sp * 0.4; vy = Math.sin(e.animT * 1.3) * sp * 0.4; }
+    if (e.hp < e.maxHp) { e.escape = (e.escape ?? 12) - dt; if (e.escape <= 0) { rings.push({ x: e.x, y: e.y - 10, t: 0, max: 0.6, r: 30, color: '154,106,230' }); playFx('fx', 'smoke', e.x, e.y - 8, 12); e.dead = true; e.escaped = true; toast('THE IMP ESCAPED WITH YOUR TITHE', 2); return; } }
+  }
+  if (!d.fly) for (const o of enemies) {
+    if (o === e || o.dead || o.state === 'spawn') continue;
+    const ox = e.x - o.x, oy = e.y - o.y, od = Math.hypot(ox, oy), min = e.r + o.r + 3;
+    if (od > 0 && od < min) { vx += ox / od * 80 * (1 - od / min); vy += oy / od * 80 * (1 - od / min); }
+  }
+  e.vx = vx; e.vy = vy;
+  if (Math.abs(vx) > 2) e.face = (d.move === 'flee' ? vx : dx) < 0 ? -1 : 1;
+  const ox = e.x, oy = e.y;
+  moveCircle(e, vx * dt, vy * dt, e.r);
+  // Keep monsters inside their room.
+  const r = e.room !== undefined && room.rooms && room.rooms[e.room];
+  if (r && !roomOf(e.x, e.y)) { e.x = ox; e.y = oy; }
 }
 
+const shotAt = (e, ang, a) => shots.push({ x: e.x + Math.cos(ang) * 6, y: e.y - e.hy, vx: Math.cos(ang) * a.speed, vy: Math.sin(ang) * a.speed, kind: a.shot, dmg: a.dmg * e.dmgK, life: 3, src: e });
+function performAttack(e) {
+  const a = e.atk, d = e.def, k = e.dmgK;
+  e.state = 'recover'; e.t = 0;
+  const ang = e.ang;
+  switch (a.type) {
+    case 'swipe': {
+      const hx = e.x + Math.cos(ang) * a.reach * 0.6, hy = e.y + Math.sin(ang) * a.reach * 0.6;
+      const near2 = (x, y) => Math.hypot(x - hx, y - hy) < a.reach * 0.7;
+      damagePlayer(e, a.dmg * k, [[player.x, player.y], [player.dashX ?? player.x, player.dashY ?? player.y]].filter(([x, y]) => near2(x, y)));
+      break;
+    }
+    case 'cone': {
+      const pdx = player.x - e.x, pdy = player.y - e.y, pd = Math.hypot(pdx, pdy);
+      let da = Math.atan2(pdy, pdx) - ang; da = Math.atan2(Math.sin(da), Math.cos(da));
+      if (pd < a.len && Math.abs(da) < a.arc / 2) { damagePlayer(e, a.dmg * k, [[player.x, player.y]]); if (a.slow) player.slowT = a.slow; }
+      else if (game.time - player.dashStart < T.dash.perfectWindow + 0.05 && player.dashX !== undefined && Math.hypot(player.dashX - e.x, player.dashY - e.y) < a.len) damagePlayer(e, a.dmg * k, [[player.dashX, player.dashY]]);
+      hazards.push({ kind: 'flash', x: e.x, y: e.y - 6, ang, len: a.len, arc: a.arc, t: 0, dur: 0.18, color: a.slow ? '200,240,255' : '255,90,74' });
+      break;
+    }
+    case 'slam': {
+      const hx = e.x + Math.cos(ang) * 22, hy = e.y + Math.sin(ang) * 14;
+      hazards.push({ kind: 'circle', x: hx, y: hy, r: a.rad, t: 0, delay: 0, dmg: a.dmg * k, src: e });
+      game.shake = Math.max(game.shake, 3);
+      break;
+    }
+    case 'lunge': case 'multidash':
+      e.state = 'act'; e.t = 0; e.dashes = a.type === 'multidash' ? a.n : 1; e.actT = a.time; e.hitDone = false; e.subWind = 0;
+      break;
+    case 'shot': shotAt(e, Math.atan2(player.y - 12 - (e.y - e.hy), player.x - e.x), a); break;
+    case 'spread': { const base = Math.atan2(player.y - 12 - (e.y - e.hy), player.x - e.x); for (let i = 0; i < a.n; i++) shotAt(e, base + (i - (a.n - 1) / 2) * (a.arc / Math.max(1, a.n - 1)), a); break; }
+    case 'ring': { const off = rng() * Math.PI; for (let i = 0; i < a.n; i++) shotAt(e, off + i * Math.PI * 2 / a.n, a); break; }
+    case 'spiral': e.state = 'act'; e.t = 0; e.actT = a.dur; e.spinA = rng() * 6; e.fireT = 0; break;
+    case 'lob': for (let i = 0; i < (a.n || 1); i++) { const ox = i ? rand(-a.spreadR, a.spreadR) : 0, oy = i ? rand(-a.spreadR, a.spreadR) * 0.7 : 0; hazards.push({ kind: 'circle', x: e.tx + ox, y: e.ty + oy, r: a.rad, t: 0, delay: 0.75, dmg: a.dmg * k, pool: a.pool, from: [e.x, e.y - e.hy], shot: a.shot, src: e }); } break;
+    case 'spikes': for (let i = 0; i < a.n; i++) hazards.push({ kind: 'circle', x: player.x + (i ? rand(-40, 40) : 0), y: player.y + (i ? rand(-28, 28) : 0), r: a.rad, t: 0, delay: a.delay, dmg: a.dmg * k, style: 'thorn', src: e }); break;
+    case 'shockwave': hazards.push({ kind: 'ring', x: e.x, y: e.y, R: 6, speed: a.speed, max: a.max, dmg: a.dmg * k, src: e, t: 0 }); game.shake = Math.max(game.shake, 3); break;
+    case 'beam': for (let i = 0; i < (a.n || 1); i++) hazards.push({ kind: 'line', x: e.x, y: e.y - e.hy, ang: ang + (i - ((a.n || 1) - 1) / 2) * (a.fan || 0), len: a.len, w: 10, t: 0, delay: 0, dur: 0.3, dmg: a.dmg * k, src: e, style: 'beam' }); break;
+    case 'pull': hazards.push({ kind: 'line', x: e.x, y: e.y - e.hy, ang, len: a.len, w: 12, t: 0, delay: 0, dur: 0.12, dmg: a.dmg * k, pull: e, src: e, style: 'chain' }); break;
+    case 'summon': {
+      const alive = enemies.filter((o) => !o.dead).length;
+      for (let i = 0; i < a.n && alive + i < 55; i++) { const m = spawnMonster(a.monster, e.x + rand(-30, 30), e.y + rand(-20, 20), { room: e.room, minion: true }); if (!roomOf(m.x, m.y)) { m.x = e.x; m.y = e.y; } }
+      rings.push({ x: e.x, y: e.y - 10, t: 0, max: 0.5, r: 36, color: '154,106,230' });
+      break;
+    }
+    case 'blink': blinkTo(e, player.x + rand(-50, 50), player.y + rand(-36, 36)); e.state = 'move'; break;
+    case 'explode':
+      hazards.push({ kind: 'circle', x: e.x, y: e.y, r: a.rad, t: 0, delay: 0, dmg: a.dmg * k, pool: a.pool, src: e });
+      killEnemy(e, 0, 0); break;
+    case 'burrow': e.state = 'act'; e.t = 0; e.actT = 1.1; e.under = true; playFx('fx', 'smoke', e.x, e.y - 6, 14); break;
+  }
+}
+
+function actUpdate(e, dt) {
+  const a = e.atk;
+  if (a.type === 'lunge' || a.type === 'multidash') {
+    if (e.subWind > 0) { e.subWind -= dt; e.ang = Math.atan2(player.y - e.y, player.x - e.x); return; }
+    e.actT -= dt;
+    const bumped = moveCircle(e, Math.cos(e.ang) * a.speed * dt, Math.sin(e.ang) * a.speed * dt, e.r);
+    if (!e.hitDone && Math.hypot(player.x - e.x, player.y - e.y) < e.r + 10) { e.hitDone = true; damagePlayer(e, a.dmg * e.dmgK, [[player.x, player.y]]); }
+    if (rng() < 0.5) parts.push({ kind: 'spark', x: e.x, y: e.y - 4, z: 0, vx: rand(-20, 20), vy: rand(-20, 20), vz: 0, c: PAL.stone1, life: 0.25 });
+    if (e.actT <= 0 || bumped) {
+      if (bumped && e.def.tier === 'elite') { game.shake = 4; e.flash = 0.1; }
+      e.dashes--;
+      if (e.dashes > 0) { e.actT = a.time; e.hitDone = false; e.subWind = 0.32; }
+      else { e.state = 'recover'; e.t = 0; }
+    }
+  } else if (a.type === 'spiral') {
+    e.actT -= dt; e.fireT -= dt; e.spinA += dt * 2.2;
+    if (e.fireT <= 0) { e.fireT = a.rate; for (let s = 0; s < a.streams; s++) shotAt(e, e.spinA + s * Math.PI * 2 / a.streams, a); }
+    if (e.actT <= 0) { e.state = 'recover'; e.t = 0; }
+  } else if (a.type === 'burrow') {
+    e.actT -= dt;
+    const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 1;
+    if (e.actT > 0) { moveCircle(e, dx / d * 110 * dt, dy / d * 110 * dt, e.r); if (rng() < 0.6) parts.push({ kind: 'spark', x: e.x + rand(-6, 6), y: e.y, z: 0, vx: rand(-15, 15), vy: rand(-10, 0), vz: 0, c: PAL.shroud1, life: 0.4 }); }
+    else if (!e.emerge) { e.emerge = { x: player.x, y: player.y }; hazards.push({ kind: 'circle', x: player.x, y: player.y, r: a.rad, t: 0, delay: 0.6, dmg: a.dmg * e.dmgK, src: e, style: 'burrow' }); e.emergeT = 0.6; }
+    else { e.emergeT -= dt; if (e.emergeT <= 0) { e.x = e.emerge.x; e.y = e.emerge.y; e.emerge = null; e.under = false; e.state = 'recover'; e.t = 0; game.shake = 5; playFx('fx', 'burst', e.x, e.y - 8, 18, { big: true }); } }
+  }
+}
+
+// ------------------------------------------------------ hazards & shots ---
+let hazards = [], shots = [];
+function addPool(x, y, r, life, dps, kind, src) { hazards.push({ kind: 'pool', x, y, r, life, t: 0, dps, pool: kind, src, tick: 0 }); }
+const POOL_RGB = { fire: '255,122,31', blood: '168,16,42', poison: '127,165,72', frost: '138,224,255' };
+function updateHazards(dt) {
+  const px = player.x, py = player.y;
+  for (const h of hazards) {
+    h.t += dt;
+    if (h.kind === 'circle') {
+      if (h.t >= h.delay && !h.done) {
+        h.done = true;
+        const inside = Math.hypot(px - h.x, (py - h.y) / 0.7) < h.r;
+        if (inside && h.dmg) damagePlayer(h.src || {}, h.dmg, [[px, py]]);
+        if (inside && h.slow) player.slowT = h.slow;
+        if (inside && h.root && !(player.iframes > 0)) player.rootT = h.root;
+        if (h.pool) addPool(h.x, h.y, h.r * 0.9, h.poolLife || 4, h.poolDps || 10, h.pool, h.src);
+        const big = h.r > 20;
+        playFx('fx', h.style === 'frost' ? 'impact' : 'burst', h.x, h.y - 4, 22, { big });
+        if (h.style === 'bell') rings.push({ x: h.x, y: h.y, t: 0, max: 0.3, r: h.r, color: '255,209,85', flat: true });
+        game.shake = Math.max(game.shake, big ? 2.5 : 1.5);
+        h.gone = h.t + 0.15;
+      }
+      if (h.done && h.t > h.gone) h.dead = true;
+    } else if (h.kind === 'pool') {
+      h.tick -= dt;
+      if (Math.hypot(px - h.x, (py - h.y) / 0.6) < h.r && h.tick <= 0) { h.tick = 0.5; if (player.iframes <= 0) hurtPlayerRaw(h.dps * 0.5, PAL.ember1); if (h.pool === 'frost') player.slowT = 0.6; }
+      if (h.t > h.life) h.dead = true;
+    } else if (h.kind === 'ring') {
+      h.R += h.speed * dt;
+      const dd = Math.hypot(px - h.x, (py - h.y) / 0.6);
+      if (!h.hit && Math.abs(dd - h.R) < 7) { h.hit = true; damagePlayer(h.src, h.dmg, [[px, py]]); }
+      if (h.R > h.max) h.dead = true;
+    } else if (h.kind === 'line') {
+      if (h.t >= h.delay && h.t < h.delay + h.dur && !h.hit) {
+        const ex = h.x + Math.cos(h.ang) * h.len, ey = h.y + Math.sin(h.ang) * h.len;
+        if (segDist(px, py - 12, h.x, h.y, ex, ey) < h.w / 2 + 5) {
+          h.hit = true;
+          if (h.pull && !(player.iframes > 0)) { const s = h.pull; player.pull = { x: s.x + Math.cos(Math.atan2(py - s.y, px - s.x)) * 22, y: s.y + Math.sin(Math.atan2(py - s.y, px - s.x)) * 16, t: 0.35 }; }
+          if (h.dmg) damagePlayer(h.src, h.dmg, [[px, py]]);
+        }
+      }
+      if (h.t > h.delay + h.dur + 0.15) h.dead = true;
+    } else if (h.kind === 'flash') { if (h.t > h.dur) h.dead = true; }
+  }
+  hazards = hazards.filter((h) => !h.dead);
+  // Burning chains between Chained pack members.
+  for (const e of enemies) {
+    if (e.dead || !e.pack || !e.affixes.includes('chained') || e.state === 'spawn') continue;
+    const mates = e.pack.members.filter((m) => !m.dead && m !== e && m.affixes.includes('chained') && m.state !== 'spawn');
+    for (const m of mates) if (m.x > e.x && segDist(px, py, e.x, e.y - 10, m.x, m.y - 10) < 6 && (player.chainT || 0) <= game.time) { player.chainT = game.time + 0.4; hurtPlayerRaw(8, PAL.ember1); }
+  }
+  for (const s of shots) {
+    s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt;
+    if (solidAt(s.x, s.y + 12)) { s.life = 0; sparks(s.x, s.y, PAL.stone1, 2); continue; }
+    if (Math.hypot(s.x - px, s.y - (py - 12)) < 7) { s.life = 0; damagePlayer(s.src, s.dmg, [[px, py]]); }
+  }
+  shots = shots.filter((s) => s.life > 0);
+}
+function segDist(px, py, x0, y0, x1, y1) {
+  const dx = x1 - x0, dy = y1 - y0, L = dx * dx + dy * dy || 1;
+  const t = Math.max(0, Math.min(1, ((px - x0) * dx + (py - y0) * dy) / L));
+  return Math.hypot(px - (x0 + dx * t), py - (y0 + dy * t));
+}
+function hurtPlayerRaw(dmg, color) {
+  if (game.buff && game.buff.kind === 'warding') dmg *= 0.5;
+  dmg = Math.max(1, Math.round(dmg));
+  player.hp -= dmg; player.hurt = Math.max(player.hurt, 0.15);
+  nums.push({ x: player.x + rand(-4, 4), y: player.y - 40, v: dmg, t: 0, color, small: true });
+  if (player.hp <= 0) { player.hp = 0; die(); }
+}
+
+function drawTelegraphs() {
+  const pulse = 0.5 + 0.5 * Math.sin(game.real * 18);
+  const red = (a) => `rgba(224,32,46,${a})`;
+  for (const h of hazards) {
+    if (h.kind === 'circle' && !h.done) {
+      const k = Math.min(1, h.t / Math.max(0.01, h.delay));
+      const col = h.style === 'frost' ? '138,224,255' : h.style === 'bell' ? '255,209,85' : h.style === 'chain' ? '178,188,203' : h.style === 'thorn' ? '127,165,72' : '224,32,46';
+      ctx.fillStyle = `rgba(${col},${0.12 + 0.18 * k})`; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r, h.r * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(${col},${0.5 + 0.4 * pulse})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r, h.r * 0.7, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = `rgba(${col},0.35)`; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * k, h.r * 0.7 * k, 0, 0, Math.PI * 2); ctx.fill();
+      if (h.from && h.shot) { // the lobbed projectile in flight
+        const fk = Math.min(1, h.t / h.delay), x = h.from[0] + (h.x - h.from[0]) * fk, y = h.from[1] + (h.y - h.from[1]) * fk - Math.sin(fk * Math.PI) * 50;
+        sprC('loot', h.shot, 0, x, y);
+      }
+      if (h.style === 'bell' && h.t > h.delay - 0.12) { ctx.fillStyle = 'rgba(255,244,176,0.9)'; ctx.fillRect(Math.round(h.x) - 1, Math.round(h.y) - 120, 3, 120); }
+    } else if (h.kind === 'pool') {
+      const fade = Math.min(1, (h.life - h.t) / 0.6, h.t * 4), c = POOL_RGB[h.pool] || POOL_RGB.blood;
+      ctx.fillStyle = `rgba(${c},${0.4 * fade})`; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r, h.r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(${c},${0.7 * fade})`;
+      for (let i = 0; i < 3; i++) { const a = game.real * 2 + i * 2 + h.x; ctx.fillRect(Math.round(h.x + Math.cos(a) * h.r * 0.5), Math.round(h.y + Math.sin(a * 1.4) * h.r * 0.3), 1, 1); }
+    } else if (h.kind === 'ring') {
+      ctx.strokeStyle = `rgba(255,192,74,${0.9 * (1 - h.R / h.max) + 0.1})`; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(h.x, h.y, h.R, h.R * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,244,176,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.R - 2, h.R * 0.6 - 1, 0, 0, Math.PI * 2); ctx.stroke();
+    } else if (h.kind === 'line') {
+      const ex = h.x + Math.cos(h.ang) * h.len, ey = h.y + Math.sin(h.ang) * h.len;
+      if (h.t < h.delay) { ctx.strokeStyle = red(0.3 + 0.4 * pulse); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(ex, ey); ctx.stroke(); }
+      else if (h.style === 'beam') { const k = 1 - (h.t - h.delay) / (h.dur + 0.15); ctx.strokeStyle = `rgba(216,247,255,${k})`; ctx.lineWidth = h.w; ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(ex, ey); ctx.stroke(); ctx.strokeStyle = `rgba(255,255,255,${k})`; ctx.lineWidth = 3; ctx.stroke(); }
+      else drawChainLine(h.x, h.y, ex, ey);
+    } else if (h.kind === 'flash') {
+      const k = 1 - h.t / h.dur;
+      ctx.fillStyle = `rgba(${h.color},${0.5 * k})`; ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.arc(h.x, h.y, h.len, h.ang - h.arc / 2, h.ang + h.arc / 2); ctx.closePath(); ctx.fill();
+    }
+  }
+  // Windup tells on the monsters themselves.
+  for (const e of enemies) {
+    if (e.dead || e.state !== 'windup') continue;
+    const a = e.atk, k = Math.min(1, e.t / a.windup);
+    if (a.type === 'swipe' || a.type === 'cone') {
+      const len = a.type === 'cone' ? a.len : a.reach, arc = a.type === 'cone' ? a.arc : 1.6;
+      ctx.fillStyle = red(0.12 + 0.2 * k); ctx.beginPath(); ctx.moveTo(e.x, e.y - 6); ctx.arc(e.x, e.y - 6, len, e.ang - arc / 2, e.ang + arc / 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = red(0.5 * pulse + 0.2); ctx.lineWidth = 1; ctx.stroke();
+    } else if (a.type === 'lunge' || a.type === 'multidash' || a.type === 'beam' || a.type === 'pull') {
+      const len = a.len || a.speed * a.time;
+      const n = a.n && a.type === 'beam' ? a.n : 1;
+      for (let i = 0; i < n; i++) {
+        const an = e.ang + (i - (n - 1) / 2) * (a.fan || 0);
+        ctx.strokeStyle = a.type === 'beam' ? `rgba(216,247,255,${0.3 + 0.5 * k})` : red(0.3 + 0.5 * k); ctx.lineWidth = a.type === 'beam' ? 1 + k * 3 : 2 + k * 6;
+        ctx.beginPath(); ctx.moveTo(e.x, e.y - (a.type === 'lunge' || a.type === 'multidash' ? 4 : e.hy)); ctx.lineTo(e.x + Math.cos(an) * len, e.y - (a.type === 'lunge' || a.type === 'multidash' ? 4 : e.hy) + Math.sin(an) * len); ctx.stroke();
+      }
+    } else if (a.type === 'slam') {
+      const hx = e.x + Math.cos(e.ang) * 22, hy = e.y + Math.sin(e.ang) * 14;
+      ctx.fillStyle = red(0.15 + 0.25 * k); ctx.beginPath(); ctx.ellipse(hx, hy, a.rad * k, a.rad * 0.7 * k, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = red(0.6); ctx.beginPath(); ctx.ellipse(hx, hy, a.rad, a.rad * 0.7, 0, 0, Math.PI * 2); ctx.stroke();
+    } else if (a.type === 'explode' || a.type === 'shockwave') {
+      const r = a.rad || 30;
+      ctx.strokeStyle = red(0.3 + 0.5 * pulse); ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(e.x, e.y, r * (a.type === 'shockwave' ? k : 1), r * 0.7 * (a.type === 'shockwave' ? k : 1), 0, 0, Math.PI * 2); ctx.stroke();
+    } else if (a.type === 'summon') {
+      ctx.strokeStyle = `rgba(154,106,230,${0.4 + 0.4 * pulse})`; ctx.beginPath(); ctx.ellipse(e.x, e.y, 20 * k + 6, 12 * k + 4, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+  // Chained affix: burning chains between pack members.
+  for (const e of enemies) {
+    if (e.dead || !e.pack || !e.affixes.includes('chained') || e.state === 'spawn') continue;
+    for (const m of e.pack.members) if (!m.dead && m !== e && m.x > e.x && m.affixes.includes('chained') && m.state !== 'spawn') {
+      ctx.strokeStyle = `rgba(255,122,31,${0.6 + 0.3 * pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(e.x, e.y - 10); ctx.lineTo(m.x, m.y - 10); ctx.stroke();
+    }
+  }
+  // Bone walls.
+  for (const w of room.walls || []) for (const [x, y] of w.tiles) { const f = frameOf('loot', 'skullwall', 0); const rise = Math.min(1, w.t * 6); ctx.drawImage(IMG.loot, f.x, f.y, 16, 20, x * TILE, y * TILE + 12 - 20 * rise, 16, 20 * rise); }
+}
+function drawShots() {
+  for (const s of shots) {
+    const f = frameOf('loot', s.kind, 0);
+    ctx.save(); ctx.translate(Math.round(s.x), Math.round(s.y)); ctx.rotate(Math.atan2(s.vy, s.vx)); ctx.drawImage(IMG.loot, f.x, f.y, f.w, f.h, -6, -6, f.w, f.h); ctx.restore();
+  }
+}
+
+// --------------------------------------------------------- taking damage ---
 function damagePlayer(src, dmg, contacts) {
   if (!contacts.length) return;
   const dashing = game.time - player.dashStart <= T.dash.iframes;
@@ -666,12 +1231,15 @@ function damagePlayer(src, dmg, contacts) {
   if (player.iframes > 0) return;
   const [cx, cy] = contacts[0];
   if (Math.hypot(cx - player.x, cy - player.y) > 1) return; // only the dash origin was in reach: a plain miss
+  if (game.buff && game.buff.kind === 'warding') dmg *= 0.5;
+  dmg = Math.max(1, Math.round(dmg));
   player.hp -= dmg; player.iframes = T.hurtIframes; player.hurt = 0.3; game.lastHit = src.type;
   game.shake = Math.max(game.shake, 4); game.hitstop = 0.05;
   game.fervor = Math.max(0, game.fervor - 8);
-  bleed(player.x, player.y - 16, 6, src.x < player.x ? 1 : -1);
+  bleed(player.x, player.y - 16, 6, (src.x || 0) < player.x ? 1 : -1);
   playFx('fx', 'burst', player.x, player.y - 16, 20);
   nums.push({ x: player.x, y: player.y - 40, v: dmg, t: 0, color: PAL.blood0, crit: false });
+  if (src.affixes && src.affixes.includes('smiting')) { const a = Math.atan2(player.y - src.y, player.x - src.x); player.pull = { x: player.x + Math.cos(a) * 46, y: player.y + Math.sin(a) * 32, t: 0.2 }; }
   if (player.hp <= 0) { player.hp = 0; die(); }
 }
 
@@ -685,28 +1253,49 @@ function perfectDodge() {
 }
 
 function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
-  if (e.dead) return;
+  if (e.dead || e.state === 'spawn' || e.spawnDelay > 0 || e.under) return;
+  if (e.ward > 0) { nums.push({ x: e.x, y: e.y - e.hy * 2 - 4, v: 'WARDED', t: 0, color: PAL.holy1, small: true }); return; }
   let blocked = false;
-  // Gravewarden: the tower shield takes most of a frontal hit.
-  if (!opts.status && !(e.bound > 0) && e.elite && e.state !== 'stagger' && Math.sign(dirx) === -e.face && Math.abs(dirx) > Math.abs(diry) * 0.6) { dmg = Math.max(1, Math.round(dmg * 0.35)); blocked = true; crit = false; }
-  dmg = Math.round(dmg * (1 + fervorTier() * 0.1));
+  if (!opts.status && !(e.bound > 0) && e.def.shield && e.state !== 'stagger' && Math.sign(dirx) === -e.face && Math.abs(dirx) > Math.abs(diry) * 0.6) { dmg = Math.max(1, Math.round(dmg * 0.35)); blocked = true; crit = false; }
+  dmg = Math.round(dmg * (1 + fervorTier() * 0.1) * (game.buff && game.buff.kind === 'fervor' ? 2 : 1));
+  const before = e.hp / e.maxHp;
   e.hp -= dmg; e.flash = 0.05;
-  if (!blocked) { e.kx += dirx * kb * (e.elite ? 0.2 : 1); e.ky += diry * kb * (e.elite ? 0.2 : 1); }
-  nums.push({ x: e.x + rand(-5, 5), y: e.y - e.def.hy * 2 - 4, v: dmg, t: 0, color: blocked ? PAL.iron1 : crit ? PAL.gold1 : opts.color || PAL.cloth0, crit, small: !!opts.status && !crit });
-  const hy = e.y - e.def.hy;
+  const heavy = e.tier === 'elite' ? 0.15 : e.tier === 'rare' ? 0.4 : 1;
+  if (!blocked) { e.kx += dirx * kb * heavy; e.ky += diry * kb * heavy; }
+  nums.push({ x: e.x + rand(-5, 5), y: e.y - e.hy * 2 - 4, v: dmg, t: 0, color: blocked ? PAL.iron1 : crit ? PAL.gold1 : opts.color || PAL.cloth0, crit, small: !!opts.status && !crit });
+  const hy = e.y - e.hy;
   if (blocked) { sparks(e.x + e.face * 10, hy, PAL.gold0, 5); playFx('fx', 'impact', e.x + e.face * 10, hy, 30); }
   else if (dirx || diry) { bleed(e.x, hy, crit ? 5 : 2, dirx); if (!opts.status) playFx('fx', 'impact', e.x - dirx * 4, hy, 30, { small: !crit }); }
-  if (e.elite && !e.staggered && e.hp > 0 && e.hp <= e.maxHp * 0.15) { e.staggered = true; e.state = 'stagger'; e.t = 0; toast('STAGGERED: EXECUTE IT', 1.5); }
+  if (e.affixes.includes('penitent') && !e.illusion) { game.reflect = (game.reflect || 0) + dmg * 0.04; if (game.reflect >= 2) { hurtPlayerRaw(game.reflect, PAL.violet1); game.reflect = 0; } }
+  if (e.affixes.includes('mirrored') && !e.illusion) for (const th of [0.75, 0.4]) if (before > th && e.hp / e.maxHp <= th) for (let k = 0; k < 2; k++) {
+    const m = spawnMonster(e.type, e.x + rand(-20, 20), e.y + rand(-14, 14), { tier: e.tier, illusion: true, life: 9, room: e.room, hpK: 0.15 });
+    m.state = 'move'; m.dmgK = 0.3; playFx('fx', 'smoke', m.x, m.y - 8, 14);
+  }
+  if (e.type === 'imp' && !e.alarmed) { e.alarmed = true; toast('IT FLEES. KILL IT BEFORE IT ESCAPES!', 1.6); }
+  const st = e.tier === 'elite' ? 0.08 : 0.15;
+  if (e.elite && !e.illusion && !e.staggered && e.hp > 0 && e.hp <= e.maxHp * st && e.tier !== 'imp') { e.staggered = true; e.state = 'stagger'; e.t = 0; e.under = false; toast('STAGGERED: EXECUTE IT', 1.5); }
   if (e.hp <= 0) killEnemy(e, dirx, diry);
 }
 
 function killEnemy(e, dirx, diry, executed = false) {
-  e.dead = true; game.kills++;
+  if (e.dead) return;
+  e.dead = true;
   if (player.lock === e) player.lock = null;
-  addFervor(e.def.fervor + 1); // +1 for the gore
-  game.shake = Math.max(game.shake, e.elite ? 5 : 1.5);
-  game.hitstop = Math.max(game.hitstop, e.elite ? 0.07 : 0.025);
+  if (e.illusion) { playFx('fx', 'smoke', e.x, e.y - 8, 14); return; }
+  game.kills++;
+  addFervor(e.def.fervor + 1);
+  game.shake = Math.max(game.shake, e.tier === 'elite' ? 7 : e.elite ? 4 : 1.5);
+  game.hitstop = Math.max(game.hitstop, e.tier === 'elite' ? 0.12 : e.elite ? 0.06 : 0.025);
   dismember(e, dirx, diry, executed);
+  massacre();
+  for (const a of e.affixes) AFFIX[a].death && AFFIX[a].death(e);
+  if (e.pack && e.affixes.includes('vengeful')) for (const m of e.pack.members) if (!m.dead && m !== e && m.affixes.includes('vengeful')) { m.dmgK *= 1.25; m.scaleK *= 1.12; m.hp = Math.min(m.maxHp, m.hp + m.maxHp * 0.2); rings.push({ x: m.x, y: m.y - 12, t: 0, max: 0.4, r: 30, color: '224,32,46' }); }
+  if (e.def.split && e.scaleK > 0.7) for (let k = 0; k < e.def.split; k++) { const c = spawnMonster(e.type, e.x + rand(-16, 16), e.y + rand(-10, 10), { tier: e.tier, affixes: e.affixes.filter((a) => a !== 'hale'), room: e.room, scaleK: 0.6, hpK: 0.25, name: e.name }); c.state = 'move'; }
+  // Loot.
+  if (e.type === 'imp') { dropLoot(e.x, e.y, { gold: 22, item: 3, itemBoost: 2, globe: 1 }); game.banner = { text: 'THE IMP IS SLAIN', sub: 'ITS SACK SPLITS OPEN', t: 0, color: PAL.gold0 }; }
+  else if (e.tier === 'elite') { dropLoot(e.x, e.y, { gold: 10, item: 3 + (rng() < 0.5 ? 1 : 0), itemBoost: 1.5, globe: 2 }); game.banner = { text: `${e.name} FALLS`, sub: '', t: 0, color: PAL.gold0 }; }
+  else if (e.tier === 'rare') dropLoot(e.x, e.y, { gold: 3, item: rng() < 0.6 ? 1 : 0, itemBoost: 1, globe: rng() < 0.4 ? 1 : 0 });
+  else dropLoot(e.x, e.y, { gold: rng() < 0.3 ? 1 : 0, item: rng() < 0.025 ? 1 : 0, globe: rng() < (e.minion ? 0.1 : 0.06) ? 1 : 0 });
 }
 
 // ---------------------------------------------------------------- gore ---
@@ -717,11 +1306,13 @@ function sparks(x, y, c, n) {
   for (let i = 0; i < n; i++) parts.push({ kind: 'spark', x, y, z: 0, vx: rand(-90, 90), vy: rand(-90, 90), vz: 0, c, life: rand(0.1, 0.3) });
 }
 function dismember(e, dirx, diry, executed) {
-  const n = e.elite ? 4 : 2 + Math.floor(rng() * 3);
+  const armored = e.def.shield || ['knight', 'jailer', 'inquisitor', 'titan', 'golem'].includes(e.type), big = e.tier === 'elite';
+  const n = big ? 4 : e.elite ? 3 : 2 + Math.floor(rng() * 3);
   const kinds = [0, 1, 2, 3].sort(() => rng() - 0.5).slice(0, n);
-  for (const k of kinds) gibs.push({ anim: e.elite ? 'wardenGib' : 'gib', i: k, x: e.x, y: e.y - 6, z: 10, vx: dirx * rand(30, 100) + rand(-45, 45), vy: diry * rand(30, 100) + rand(-45, 45), vz: rand(50, 120), settled: false });
-  bleed(e.x, e.y - e.def.hy, executed ? 34 : e.elite ? 24 : 12, dirx);
-  playFx('fx', 'burst', e.x, e.y - e.def.hy, 18, { big: e.elite || executed });
+  for (const k of kinds) gibs.push({ anim: armored ? 'wardenGib' : 'gib', i: k, x: e.x, y: e.y - 6, z: 10, vx: dirx * rand(30, 100) + rand(-45, 45), vy: diry * rand(30, 100) + rand(-45, 45), vz: rand(50, 120), settled: false });
+  bleed(e.x, e.y - e.hy, executed ? 34 : e.elite ? 24 : 12, dirx);
+  playFx('fx', 'burst', e.x, e.y - e.hy, 18, { big: e.elite || executed });
+  if (big) { playFx('fx', 'burst', e.x - 10, e.y - e.hy * 1.4, 14, { big: true }); playFx('fx', 'burst', e.x + 10, e.y - e.hy * 0.6, 12, { big: true }); rings.push({ x: e.x, y: e.y - 12, t: 0, max: 0.6, r: 70, color: '255,209,85' }); }
   splat(e.x + dirx * 6, e.y, e.elite || executed);
 }
 function splat(x, y, big = false) {
@@ -766,10 +1357,134 @@ function updateParts(dt) {
   fxs = fxs.filter((f) => f.t * f.fps < f.n);
 }
 
+// ------------------------------------------------------------------ loot ---
+// Gold, health globes and Vestments with rarity beams (GDD rarities).
+const RARITY = [
+  { id: 'common', name: 'COMMON', color: '#e8e0d2', rgb: '232,224,210', w: 50 },
+  { id: 'blessed', name: 'BLESSED', color: '#8ae0ff', rgb: '138,224,255', w: 32 },
+  { id: 'consecrated', name: 'CONSECRATED', color: '#ffd155', rgb: '255,209,85', w: 14 },
+  { id: 'relic', name: 'RELIC-TOUCHED', color: '#ff7a1f', rgb: '255,122,31', w: 3.5 },
+  { id: 'set', name: "SAINT'S SET", color: '#7fdc6c', rgb: '127,220,108', w: 0.6 },
+];
+const SLOTS = { hood: ['HOOD', 'COWL', 'VEIL'], mantle: ['MANTLE', 'SHROUD', 'PALL'], gloves: ['GLOVES', 'GAUNTLETS', 'MITTS'], girdle: ['GIRDLE', 'CINCTURE', 'CORD'], greaves: ['GREAVES', 'SABATONS', 'SANDALS'], rosary: ['ROSARY', 'BEADS', 'CHAPLET'], seal: ['SEAL', 'SIGNET', 'BAND'], relic: ['RELIC', 'KNUCKLEBONE', 'TOOTH'] };
+const ADJ = ['WORN', 'FRAYED', 'MOTHEATEN', 'PLAIN', 'STAINED'];
+const SUFFIX = ['OF THE FOX', 'OF PENANCE', 'OF THE VIGIL', 'OF EMBERS', 'OF TALLOW', 'OF THE CROW', 'OF SORROW', 'OF THE LAMB'];
+const RARE_A = ['SORROW', 'GALL', 'MARROW', 'ASHEN', 'HOLLOW', 'VESPER', 'GRAVE', 'TITHE', 'CANDLE', 'SAINT'];
+const LEGENDARIES = { hood: 'HOOD OF ASH-CHOIR', mantle: 'MANTLE OF THE NINTH WOUND', girdle: 'GIRDLE OF THE UNFED', gloves: 'HANDS THAT COUNTED COINS', greaves: 'THE LONG DESCENT', rosary: 'ROSARY OF UNSAID PRAYERS', seal: 'SEAL OF THE FIRST TITHE', relic: 'THE WEEPING KNUCKLE' };
+const AFFIX_STATS = ['+DAMAGE', '+CRIT CHANCE', '+MAX HP', '+DASH RECHARGE', '+FERVOR GAIN', '+GOLD FIND', '+MOVE SPEED', '+MIRACLE COOLDOWN', '+ARMOR', '+LIFE ON KILL'];
+function rollItem(boost = 0) {
+  let total = 0; const w = RARITY.map((r, i) => r.w * (i ? 1 + boost * i : Math.max(0.2, 1 - boost * 0.5)));
+  for (const x of w) total += x;
+  let roll = rng() * total, ri = 0;
+  for (; ri < w.length - 1 && roll > w[ri]; ri++) roll -= w[ri];
+  const rarity = RARITY[ri], slot = pick(Object.keys(SLOTS)), base = pick(SLOTS[slot]);
+  const name = ri === 0 ? `${pick(ADJ)} ${base}` : ri === 1 ? `${base} ${pick(SUFFIX)}` : ri === 2 ? `${pick(RARE_A)} ${base}` : ri === 3 ? LEGENDARIES[slot] : `ODILE'S ${base}`;
+  const n = [0, 1 + Math.floor(rng() * 2), 3 + Math.floor(rng() * 2), 4, 4][ri];
+  return { name, rarity: rarity.id, ri, slot, affixes: [...AFFIX_STATS].sort(() => rng() - 0.5).slice(0, n) };
+}
+let drops = [];
+function dropLoot(x, y, { gold = 0, item = 0, itemBoost = 0, globe = 0 } = {}) {
+  const pop = (o) => drops.push({ x, y, z: 6, vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(60, 120), t: 0, ...o });
+  for (let k = 0; k < gold; k++) pop({ kind: 'gold', amount: Math.round(rand(3, 9) * (1 + room.rooms.length * 0) * (game.buff && game.buff.kind === 'plenty' ? 2 : 1)) });
+  for (let k = 0; k < Math.floor(globe) + (rng() < globe % 1 ? 1 : 0); k++) pop({ kind: 'globe' });
+  for (let k = 0; k < Math.floor(item) + (rng() < item % 1 ? 1 : 0); k++) pop({ kind: 'item', item: rollItem(itemBoost) });
+}
+function updateDrops(dt) {
+  for (const d of drops) {
+    d.t += dt;
+    if (d.z > 0 || d.vz > 0) { d.vz -= 300 * dt; d.z += d.vz * dt; moveCircle(d, d.vx * dt, d.vy * dt, 2); if (d.z <= 0) { d.z = 0; if (Math.abs(d.vz) > 40) { d.vz = -d.vz * 0.35; d.vx *= 0.5; d.vy *= 0.5; } else { d.vz = 0; d.vx = d.vy = 0; } } }
+    const dist = Math.hypot(d.x - player.x, d.y - player.y);
+    const magnet = d.kind === 'gold' ? 46 : d.kind === 'globe' ? 30 : 0;
+    if (d.t > 0.4 && dist < magnet) { const s = 160 * dt; d.x += (player.x - d.x) / dist * s; d.y += (player.y - d.y) / dist * s; }
+    if (d.t > 0.4 && dist < (d.kind === 'item' ? 14 : 10)) {
+      d.taken = true;
+      if (d.kind === 'gold') { game.run.gold += d.amount; nums.push({ x: player.x + rand(-6, 6), y: player.y - 30, v: `+${d.amount}`, t: 0, color: PAL.gold0, small: true }); }
+      if (d.kind === 'globe') { const h = Math.round(player.maxHp * 0.15); player.hp = Math.min(player.maxHp, player.hp + h); nums.push({ x: player.x, y: player.y - 42, v: `+${h}`, t: 0, color: PAL.flame1, small: false }); rings.push({ x: player.x, y: player.y - 12, t: 0, max: 0.3, r: 20, color: '224,32,46' }); }
+      if (d.kind === 'item') { game.run.items.push(d.item); const R = RARITY[d.item.ri]; toast(`${d.item.name}`, 2); game.toastColor = R.color; if (d.item.ri >= 3) { game.flash = 0.06; rings.push({ x: player.x, y: player.y - 12, t: 0, max: 0.5, r: 40, color: R.rgb }); } }
+    }
+  }
+  drops = drops.filter((d) => !d.taken);
+}
+function drawDrops() {
+  for (const d of drops) {
+    const y = d.y - d.z - (d.z === 0 ? Math.round(Math.sin(game.real * 4 + d.x) * 1) : 0);
+    if (d.kind === 'gold') spr('loot', 'gold', d.amount > 7 ? 2 : d.amount > 4 ? 1 : 0, d.x, y + 4);
+    if (d.kind === 'globe') sprC('loot', 'globe', Math.floor(game.real * 3) % 2, d.x, y - 4);
+    if (d.kind === 'item') {
+      const ic = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic'].indexOf(d.item.slot);
+      sprC('loot', 'item', ic, d.x, y - 6);
+      if (d.z === 0 && (d.item.ri >= 1 || Math.hypot(d.x - player.x, d.y - player.y) < 60)) text(d.item.name, d.x, d.y - 26, RARITY[d.item.ri].color, { align: 'center' });
+    }
+  }
+}
+function drawDropGlow() {
+  for (const d of drops) {
+    if (d.kind === 'globe') glow(d.x, d.y - d.z - 4, 12, 'rgba(224,32,46,0.45)');
+    if (d.kind === 'gold') glow(d.x, d.y - d.z, 7, 'rgba(255,209,85,0.25)');
+    if (d.kind === 'item') {
+      const R = RARITY[d.item.ri];
+      glow(d.x, d.y - d.z - 6, 14, `rgba(${R.rgb},0.45)`);
+      if (d.item.ri >= 2 && d.z === 0) { // the loot beam
+        const h = 70 + d.item.ri * 20, g = ctx.createLinearGradient(0, d.y - h, 0, d.y);
+        g.addColorStop(0, `rgba(${R.rgb},0)`); g.addColorStop(1, `rgba(${R.rgb},${0.35 + 0.1 * Math.sin(game.real * 5)})`);
+        ctx.fillStyle = g; ctx.fillRect(Math.round(d.x) - 3, d.y - h, 6, h);
+        ctx.fillStyle = `rgba(${R.rgb},0.6)`; ctx.fillRect(Math.round(d.x), d.y - h, 1, h);
+      }
+    }
+  }
+}
+
+// Massacre: kills chained within 1.2 s of each other.
+function massacre() {
+  const m = game.massacre || (game.massacre = { n: 0, last: -9 });
+  if (game.time - m.last < 1.2) m.n++; else m.n = 1;
+  m.last = game.time;
+}
+function updateMassacre() {
+  const m = game.massacre;
+  if (!m || m.n === 0 || game.time - m.last < 1.2) return;
+  if (m.n >= 10) {
+    const bonus = m.n * 3;
+    game.run.gold += bonus; addFervor(m.n);
+    game.banner = { text: `MASSACRE!  ${m.n} KILLS`, sub: `+${bonus} GOLD`, t: 0, color: PAL.blood0 };
+  }
+  m.n = 0;
+}
+
+// Breakables: urns and coffins.
+function breakProp(p) {
+  if (p.broken) return;
+  p.broken = true;
+  for (const [x, y] of p.tiles) room.solid[y][x] = false;
+  room.props = room.props.filter((q) => q !== p);
+  for (let k = 0; k < 8; k++) parts.push({ kind: 'blood', x: p.x, y: p.y - 6, z: 6, vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(30, 90), c: pick(p.kind === 'urn' ? [PAL.wood0, PAL.wood1, PAL.gold2] : [PAL.wood1, PAL.wood2, PAL.bone2]), s: 2, clean: false });
+  playFx('fx', 'smoke', p.x, p.y - 8, 16, { alpha: 0.7 });
+  dropLoot(p.x, p.y - 4, { gold: rng() < 0.6 ? 1 + (p.kind === 'coffin' ? 1 : 0) : 0, globe: rng() < 0.08 ? 1 : 0, item: rng() < (p.kind === 'coffin' ? 0.06 : 0.02) ? 1 : 0 });
+  if (p.kind === 'coffin' && rng() < 0.25) { const m = spawnMonster('risen', p.x, p.y + 6, { room: roomOf(p.x, p.y)?.id }); m.t = 0.4; }
+}
+function hitBreakables(x, y, r) { for (const p of room.props) if (p.breakable && Math.hypot(p.x - x, p.y - 6 - y) < r + 8) breakProp(p); }
+
+// Shrines (temporary buffs) and treasury chests.
+const SHRINES = { fervor: { name: 'SHRINE OF FERVOR', sub: 'DOUBLE DAMAGE', t: 25, rgb: '224,32,46' }, haste: { name: 'SHRINE OF HASTE', sub: 'SWIFTER FEET AND FASTER MIRACLES', t: 25, rgb: '95,220,108' }, warding: { name: 'SHRINE OF WARDING', sub: 'HALF DAMAGE TAKEN', t: 25, rgb: '138,224,255' }, plenty: { name: 'SHRINE OF PLENTY', sub: 'A RAIN OF GOLD', t: 20, rgb: '255,209,85' } };
+function useShrine(p) {
+  if (p.used) return;
+  p.used = true; p.frame = p.frame; const S = SHRINES[p.shrineKind];
+  game.buff = { kind: p.shrineKind, t: S.t, max: S.t };
+  game.banner = { text: S.name, sub: S.sub, t: 0, color: `rgb(${S.rgb})` };
+  rings.push({ x: p.x, y: p.y - 14, t: 0, max: 0.7, r: 70, color: S.rgb });
+  if (p.shrineKind === 'plenty') dropLoot(p.x, p.y, { gold: 18 });
+}
+function openChest(p) {
+  if (p.open) return;
+  p.open = true; p.frame = 1;
+  dropLoot(p.x, p.y + 6, { gold: 10, item: 2, itemBoost: 1, globe: 1 });
+  rings.push({ x: p.x, y: p.y - 8, t: 0, max: 0.5, r: 40, color: '255,209,85' });
+}
+
 // -------------------------------------------------------------- weapons ---
 function chooseTarget() {
   const R = T.crossbow.range;
-  const ok = (e) => !e.dead && e.state !== 'spawn' && Math.hypot(e.x - player.x, e.y - player.y) <= R;
+  const ok = (e) => !e.dead && e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0) && Math.hypot(e.x - player.x, e.y - player.y) <= R;
   if (player.lock && ok(player.lock)) return player.lock;
   let best = null, bd = Infinity;
   for (const e of enemies) {
@@ -788,7 +1503,7 @@ function updateCrossbow(dt) {
   const t = player.target;
   player.face = t.x < player.x ? -1 : 1;
   const sx = player.x + player.face * 13, sy = player.y - 15;
-  const tx = t.x + t.kx * 0.05, ty = t.y - t.def.hy;
+  const tx = t.x + t.kx * 0.05, ty = t.y - t.hy;
   const d = Math.hypot(tx - sx, ty - sy) || 1;
   const crit = rng() < T.crossbow.crit;
   bolts.push({ x: sx, y: sy, vx: (tx - sx) / d * T.crossbow.speed, vy: (ty - sy) / d * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce, hit: new Set(), crit, trail: [] });
@@ -801,10 +1516,11 @@ function updateBolts(dt) {
     b.trail.unshift([b.x, b.y]); if (b.trail.length > 6) b.trail.pop();
     for (let s = 0; s < 3 && b.life > 0; s++) {
       b.x += b.vx * dt / 3; b.y += b.vy * dt / 3;
+      if (room.props.some((q) => q.breakable && Math.hypot(q.x - b.x, q.y - 8 - b.y) < 9)) { hitBreakables(b.x, b.y + 2, 4); b.life = 0; break; }
       if (solidAt(b.x, b.y + 10)) { b.life = 0; sparks(b.x, b.y, PAL.iron0, 4); playFx('fx', 'impact', b.x, b.y, 30, { small: true }); break; }
       for (const e of enemies) {
         if (e.dead || e.state === 'spawn' || b.hit.has(e)) continue;
-        const hy = e.y - e.def.hy, hr = e.def.hr;
+        const hy = e.y - e.hy, hr = e.hr;
         if (Math.abs(b.x - e.x) < hr && Math.abs(b.y - hy) < hr + 2) {
           b.hit.add(e);
           const sp = Math.hypot(b.vx, b.vy), [lo, hi] = T.crossbow.dmg;
@@ -831,7 +1547,7 @@ function updateThurible(dt) {
   const t = thuriblePos();
   for (const e of enemies) {
     if (e.dead || e.state === 'spawn' || (e.thCd ?? 0) > game.time) continue;
-    if (Math.hypot(e.x - t.x, e.y - e.def.hy - t.y) < e.def.hr + 3) {
+    if (Math.hypot(e.x - t.x, e.y - e.hy - t.y) < e.hr + 3) {
       e.thCd = game.time + T.thurible.hitCd;
       const dx = e.x - player.x, dy = e.y - player.y, d = Math.hypot(dx, dy) || 1;
       e.burn = T.thurible.burn.time;
@@ -839,6 +1555,7 @@ function updateThurible(dt) {
       sparks(t.x, t.y, PAL.ember0, 4);
     }
   }
+  if (room.props) hitBreakables(t.x, t.y + 6, 5);
   if (rng() < dt * 30) parts.push({ kind: 'spark', x: t.x + rand(-2, 2), y: t.y + 4, z: 0, vx: rand(-8, 8), vy: rand(5, 20), vz: 0, c: pick([PAL.ember0, PAL.ember1, PAL.ember2]), life: rand(0.2, 0.45) });
 }
 
@@ -894,7 +1611,8 @@ function castPenance() {
 
 function updateAbilities(dt) {
   const p = player;
-  p.m1cd = Math.max(0, p.m1cd - dt); p.m2cd = Math.max(0, p.m2cd - dt);
+  const hk = game.buff && game.buff.kind === 'haste' ? 1.5 : 1;
+  p.m1cd = Math.max(0, p.m1cd - dt * hk); p.m2cd = Math.max(0, p.m2cd - dt * hk);
   if (input.m1) { input.m1 = false; if (p.m1cd <= 0) { castFlask(); tut.flags.m1 = true; } }
   if (input.m2) { input.m2 = false; if (p.m2cd <= 0) { castChain(); if (p.m2cd > 0) tut.flags.m2 = true; } }
   if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) { castPenance(); tut.flags.pen = true; } }
@@ -905,6 +1623,7 @@ function updateAbilities(dt) {
     if (f.t >= T.flask.flight) {
       f.done = true;
       pools.push({ x: f.tx, y: f.ty, r: T.flask.radius, t: 0 });
+      hitBreakables(f.tx, f.ty, T.flask.radius);
       for (let i = 0; i < 14; i++) parts.push({ kind: 'blood', x: f.tx, y: f.ty, z: 4, vx: rand(-70, 70), vy: rand(-45, 45), vz: rand(20, 80), c: pick([PAL.holy0, PAL.holy1, PAL.holy2]), s: rng() < 0.4 ? 2 : 1, clean: true });
       rings.push({ x: f.tx, y: f.ty, t: 0, max: 0.35, r: 34, color: '138,224,255', flat: true });
       playFx('fx', 'impact', f.tx, f.ty - 4, 24);
@@ -922,7 +1641,7 @@ function updateAbilities(dt) {
   for (const c of chains) {
     c.t += dt;
     if (c.phase === 'fly') {
-      const tg = c.target, ty = tg.y - tg.def.hy;
+      const tg = c.target, ty = tg.y - tg.hy;
       const dx = tg.x - c.x, dy = ty - c.y, d = Math.hypot(dx, dy), step = T.chain.speed * dt;
       if (tg.dead) { c.phase = 'done'; continue; }
       if (d <= step) {
@@ -939,7 +1658,7 @@ function updateAbilities(dt) {
           const ox = tg.x - e.x, oy = tg.y - e.y, od = Math.hypot(ox, oy) || 1;
           if (e !== tg) { e.kx += ox / od * Math.min(220, od * 4); e.ky += oy / od * Math.min(220, od * 4); }
           hurtEnemy(e, T.chain.dmg, rng() < 0.15, ox / od, oy / od, 0, { status: true, color: PAL.iron0 });
-          playFx('fx', 'impact', e.x, e.y - e.def.hy, 24);
+          playFx('fx', 'impact', e.x, e.y - e.hy, 24);
         }
         sparks(tg.x, ty, PAL.iron0, 8);
         game.shake = Math.max(game.shake, 3); game.hitstop = Math.max(game.hitstop, 0.04);
@@ -964,7 +1683,7 @@ function updateAbilities(dt) {
     if (!l.hit && l.t >= 0.12) {
       l.hit = true;
       for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - l.x, (e.y - l.y) / 0.7) < T.penance.radius) hurtEnemy(e, T.penance.dmg, rng() < 0.2, rand(-1, 1), 1, 30, { status: true });
-      sparks(l.x, l.y, PAL.blood0, 4); splat(l.x, l.y);
+      sparks(l.x, l.y, PAL.blood0, 4); splat(l.x, l.y); hitBreakables(l.x, l.y, 12);
       playFx('fx', 'burst', l.x, l.y - 4, 26);
       game.shake = Math.max(game.shake, 1.5);
     }
@@ -976,6 +1695,12 @@ function updateAbilities(dt) {
 function updatePlayer(dt) {
   const p = player;
   p.iframes = Math.max(0, p.iframes - dt); p.hurt = Math.max(0, p.hurt - dt);
+  p.slowT = Math.max(0, (p.slowT || 0) - dt); p.rootT = Math.max(0, (p.rootT || 0) - dt);
+  if (p.pull) { // dragged by a chain or knocked back
+    const k = Math.min(1, dt / Math.max(0.01, p.pull.t));
+    moveCircle(p, (p.pull.x - p.x) * k, (p.pull.y - p.y) * k, p.r);
+    p.pull.t -= dt; if (p.pull.t <= 0) p.pull = null;
+  }
   if (p.charges < T.dash.charges) { p.recharge += dt; if (p.recharge >= T.dash.recharge) { p.recharge = 0; p.charges++; } }
   if (input.dash) {
     input.dash = false;
@@ -1004,7 +1729,8 @@ function updatePlayer(dt) {
     if (p.ghostT <= 0) { p.ghostT = 0.025; ghosts.push({ x: p.x, y: p.y, face: p.face, i: Math.floor((T.dash.time - p.dashT) / T.dash.time * 3), t: 0 }); }
     p.anim = 'dash';
   } else {
-    vx = input.mx * T.moveSpeed; vy = input.my * T.moveSpeed;
+    const k = (p.slowT > 0 ? 0.55 : 1) * (game.buff && game.buff.kind === 'haste' ? 1.5 : 1) * (p.rootT > 0 ? 0 : 1);
+    vx = input.mx * T.moveSpeed * k; vy = input.my * T.moveSpeed * k;
     p.anim = Math.hypot(vx, vy) > 5 ? 'run' : 'idle';
     if (!p.target && Math.abs(input.mx) > 0.15) p.face = Math.sign(input.mx);
   }
@@ -1032,8 +1758,9 @@ function die() {
   game.state = 'dead'; game.deathT = 0;
   SAVE.deaths = (SAVE.deaths || 0) + 1;
   SAVE.lastDeath = rng() < 0.25 ? 'A STAIRCASE' : game.lastHit === 'gravewarden' ? "A GRAVEWARDEN'S SHIELD" : 'A RISEN WITH NO LOWER JAW';
-  persist();
-  game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time };
+  const mon = MON[game.lastHit];
+  if (mon && rng() > 0.25) SAVE.lastDeath = `A ${mon.name}`;
+  bankRun(true);
 }
 
 // --------------------------------------------------------------- update ---
@@ -1060,15 +1787,23 @@ function update(realDt) {
   // Nearest thing to talk to or use.
   game.interact = null;
   let bestD = Infinity;
-  for (const it of room.interact) { const d = Math.hypot(it.x - player.x, it.y - player.y); if (d < it.r && d < bestD) { bestD = d; game.interact = it; } }
+  for (const it of room.interact) { if (it.done) continue; const d = Math.hypot(it.x - player.x, it.y - player.y); if (d < it.r && d < bestD) { bestD = d; game.interact = it; } }
   for (const n of room.npcs) { const d = player.x - n.x; if (Math.hypot(d, player.y - n.y) < 40) n.face = d < 0 ? -1 : 1; }
   if (game.scene === 'wound') {
     updateCrossbow(dt);
-    if (!game.waystone) updateDirector(dt);
+    updateFloor(dt);
     for (const e of enemies) if (!e.dead) updateEnemy(e, dt);
     enemies = enemies.filter((e) => !e.dead);
     updateAbilities(dt);
-    updateDescent(dt);
+    updateHazards(dt);
+    updateWalls(dt);
+    updateDrops(dt);
+    updateMassacre();
+    updateCritters(dt);
+    if (game.buff) { game.buff.t -= dt; if (game.buff.t <= 0) game.buff = null; }
+    // The monster whose name sits atop the screen.
+    const f = player.target && player.target.elite && player.target.tier !== 'imp' ? player.target : enemies.filter((e) => e.elite && !e.dead && !e.illusion && e.state !== 'spawn' && Math.hypot(e.x - player.x, e.y - player.y) < 200).sort((a, b) => (b.tier === 'elite') - (a.tier === 'elite'))[0];
+    game.focus = f || null;
   }
   updateBolts(dt);
   updateParts(dt);
@@ -1102,21 +1837,28 @@ function render() {
   ctx.drawImage(roomCanvas, 0, 0); ctx.drawImage(stain, 0, 0);
   for (const d of room.decals) spr('props', 'candles', Math.floor(game.real * 6 + d.x), d.x, d.y);
   for (const l of room.lights) if (l.sconce) flame(l.x, l.y, l.flick);
+  if (game.scene === 'wound') { drawGates(); drawTelegraphs(); drawDrops(); drawCritters(cx, cy); }
   drawAbilitiesGround();
-  for (const e of enemies) if (e.state === 'spawn') spr('fx', 'mound', Math.min(2, Math.floor(e.t / (e.elite ? 0.4 : 0.27))), e.x, e.y + 3);
+  for (const e of enemies) {
+    if (e.spawnDelay > 0) continue;
+    if (e.state === 'spawn') {
+      if (e.elite) { const k = Math.min(1, e.t / 1.1), col = e.tier === 'elite' ? '255,209,85' : '90,176,255'; ctx.strokeStyle = `rgba(${col},${0.8})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, e.y, 6 + 16 * k, 4 + 10 * k, 0, 0, Math.PI * 2); ctx.stroke(); }
+      else spr('fx', 'mound', Math.min(2, Math.floor(e.t / 0.24)), e.x, e.y + 3);
+    } else if (e.under) spr('fx', 'mound', 1 + (Math.floor(game.real * 8) % 2), e.x, e.y + 3);
+  }
   // Shadows.
   ctx.fillStyle = 'rgba(11,7,16,0.45)';
   const shadow = (x, y, rx) => { ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y), rx, Math.max(2, rx * 0.4), 0, 0, Math.PI * 2); ctx.fill(); };
-  for (const e of enemies) if (e.state !== 'spawn') shadow(e.x, e.y, e.elite ? 12 : 7);
+  for (const e of enemies) if (e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0)) shadow(e.x, e.y, e.r * 1.3 * (e.def.fly ? 0.7 : 1));
   shadow(player.x, player.y, 8);
   for (const g of gibs) shadow(g.x, g.y, 3);
-  const SHADOW = { sarcophagus: 18, candelabra: 6, column: 11, statue: 11, lamp: 5, barrel: 6, crate: 7, anvil: 8, waystone: 10 };
+  const SHADOW = { sarcophagus: 18, candelabra: 6, column: 11, statue: 11, lamp: 5, barrel: 6, crate: 7, anvil: 8, waystone: 10, pew: 15, coffin: 7, cage: 7, maiden: 8, altar: 17, shrine: 10, chest: 10, urn: 5 };
   for (const p of room.props) if (SHADOW[p.kind] && onScreen(p.x, p.y, cx, cy, 40)) shadow(p.x, p.y - 2, SHADOW[p.kind]);
   for (const n of room.npcs) shadow(n.x, n.y, 6);
   for (const g of ghosts) spr('saint', 'dash', g.i, g.x, g.y, { flip: g.face < 0, white: true, alpha: 0.45 * (1 - g.t / 0.2) });
   // Y-sorted actors and props.
   const th = thuriblePos();
-  const actors = [player, ...(game.scene === 'wound' ? [{ th: true, y: th.y + 12 }] : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn'), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, 90))];
+  const actors = [player, ...(game.scene === 'wound' ? [{ th: true, y: th.y + 12 }] : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0)), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, 90))];
   actors.sort((a, b) => a.y - b.y);
   for (const a of actors) {
     if (a === player) drawPlayer();
@@ -1131,6 +1873,7 @@ function render() {
     text(label, it.x, ty + Math.round(Math.sin(game.real * 5)), it.who ? PAL.gold1 : PAL.holy1, { align: 'center' });
   }
   drawAbilitiesAir();
+  if (game.scene === 'wound') drawShots();
   for (const g of gibs) spr('fx', g.anim, g.i, g.x, g.y - g.z, { ax: 5, ay: 5 });
   for (const p of parts) { ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x), Math.round(p.y - p.z), p.s || 1, p.s || 1); }
   for (const b of bolts) {
@@ -1156,6 +1899,13 @@ function render() {
   ctx.save(); ctx.translate(-cx, -cy); ctx.globalCompositeOperation = 'lighter';
   for (const l of room.lights) if (onScreen(l.x, l.y, cx, cy, 80)) glow(l.x, l.y, l.r * 0.45 + Math.sin(game.real * 9 + (l.flick || 0)) * 2, `rgba(${LIGHT_RGB[l.c]},0.22)`);
   glow(player.x, player.y - 37, 16, 'rgba(255,209,85,0.25)');
+  if (game.scene === 'wound') {
+    drawDropGlow(); drawAmbientGlow(cx, cy);
+    for (const e of enemies) if (!e.dead && e.elite && !e.under && e.state !== 'spawn') glow(e.x, e.y - e.hy, e.hr * 2.2, e.tier === 'elite' ? 'rgba(255,209,85,0.22)' : e.tier === 'rare' ? 'rgba(90,180,255,0.22)' : 'rgba(255,209,85,0.2)');
+    for (const s of shots) glow(s.x, s.y, 8, s.kind === 'tear' || s.kind === 'frost' ? 'rgba(138,224,255,0.5)' : s.kind === 'spit' ? 'rgba(127,165,72,0.5)' : s.kind === 'violet' ? 'rgba(154,106,230,0.6)' : 'rgba(255,122,31,0.5)');
+    for (const h of hazards) if (h.kind === 'pool') glow(h.x, h.y, h.r * 1.2, `rgba(${POOL_RGB[h.pool] || POOL_RGB.blood},0.18)`);
+    for (const r of room.rooms) if (r.shrine && !r.shrine.used) glow(r.shrine.x, r.shrine.y - 26, 26, `rgba(${SHRINES[r.shrine.shrineKind].rgb},0.4)`);
+  }
   drawAbilitiesGlow();
   for (const b of bolts) {
     ctx.strokeStyle = b.crit ? 'rgba(255,209,85,0.8)' : 'rgba(255,244,176,0.55)'; ctx.lineWidth = 2;
@@ -1197,7 +1947,9 @@ function flame(x, y, ph = 0) {
 
 function drawProp(p) {
   const sheet = p.sheet || 'props', anim = p.anim || p.kind, n = SPR[sheet].anims[anim].length;
-  spr(sheet, anim, n > 1 ? Math.floor(game.real * (anim === 'fountain' ? 3 : 8) + (p.ph || 0)) : 0, p.x, p.y);
+  const i = p.frame !== undefined ? p.frame : n > 1 ? Math.floor(game.real * (anim === 'fountain' ? 3 : anim === 'waystone' ? 5 : 8) + (p.ph || 0)) : 0;
+  spr(sheet, anim, i, p.x, p.y);
+  if (p.kind === 'shrine' && !p.used) glow(p.x, p.y - 26, 0, 'rgba(0,0,0,0)');
 }
 
 function renderLight(cx, cy) {
@@ -1219,6 +1971,9 @@ function renderLight(cx, cy) {
   for (const pl of pools) hole(pl.x, pl.y, pl.r * 1.6, 0.7);
   for (const l of lashes) if (l.hit) hole(l.x, l.y, 28, 0.7);
   for (const b of bolts) hole(b.x, b.y, 24, 0.6);
+  for (const s of shots) hole(s.x, s.y, 16, 0.5);
+  for (const d of drops) if (d.kind === 'item' && d.item.ri >= 2) hole(d.x, d.y - 20, 30, 0.6);
+  for (const e of enemies) if (e.tier === 'elite' && !e.dead) hole(e.x, e.y - e.hy, 40, 0.5);
   for (const f of fxs) if (f.anim === 'impact' || f.anim === 'burst') hole(f.x, f.y, 26, 0.6);
   dctx.globalCompositeOperation = 'source-over';
   ctx.drawImage(dark, 0, 0);
@@ -1234,29 +1989,56 @@ function drawPlayer() {
 }
 
 function drawEnemy(e) {
-  const flip = e.face < 0;
-  let anim = 'walk', i = Math.floor(e.animT * (e.elite ? 6 : 8));
-  if (e.state === 'windup') { anim = 'attack'; i = e.t < e.def.windup / 2 ? 0 : 1; }
-  else if (e.state === 'strike') { anim = 'attack'; i = 2; }
-  else if (e.state === 'recover') { anim = 'attack'; i = e.t < 0.15 ? 2 : 3; }
-  else if (e.state === 'stagger') { anim = 'attack'; i = 3; }
-  if (e.bound > 0) i = 0;
-  const tele = e.state === 'windup' && e.t > e.def.windup - 0.18 && Math.floor(game.real * 24) % 2 === 0;
+  const d = e.def, flip = e.face < 0;
+  const nAtk = SPR[d.sheet].anims[d.attack].length;
+  let anim = d.walk, i = Math.floor(e.animT * (e.tier === 'elite' ? 7 : 9));
+  if (e.state === 'windup') { anim = d.attack; i = nAtk > 2 ? (e.t < e.atk.windup / 2 ? 0 : 1) : 0; }
+  else if (e.state === 'act' || (e.state === 'recover' && e.t < 0.2)) { anim = d.attack; i = nAtk > 2 ? 2 : 1; }
+  else if (e.state === 'stagger') { anim = d.attack; i = 0; }
+  if (e.bound > 0) { anim = d.walk; i = 0; }
+  const tele = e.state === 'windup' && e.t > e.atk.windup - 0.18 && Math.floor(game.real * 24) % 2 === 0;
   const shake = e.state === 'stagger' || e.bound > 0 ? Math.round(Math.sin(game.real * 60)) : 0;
-  spr(e.def.sheet, anim, i, e.x + shake, e.y, { flip, white: e.flash > 0 });
-  if (tele) spr(e.def.sheet, anim, i, e.x + shake, e.y, { flip, white: true, alpha: 0.45 });
-  if (e.elite) {
-    const w = 26, x = Math.round(e.x - w / 2), y = Math.round(e.y - 44), fw = Math.max(0, Math.round(w * e.hp / e.maxHp));
-    ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, 5);
-    ctx.fillStyle = PAL.blood4; ctx.fillRect(x, y, w, 3);
-    ctx.fillStyle = e.state === 'stagger' ? PAL.gold1 : PAL.blood1; ctx.fillRect(x, y, fw, 3);
-    ctx.fillStyle = e.state === 'stagger' ? PAL.gold0 : PAL.blood0; ctx.fillRect(x, y, fw, 1);
+  const lift = d.fly ? -6 + Math.round(Math.sin(game.real * 3 + e.x) * 2) : 0;
+  const x = Math.round(e.x + shake), y = Math.round(e.y + lift), k = e.scaleK;
+  const draw = (o, ox = 0, oy = 0) => {
+    if (k !== 1) { ctx.save(); ctx.translate(x + ox, y + oy); ctx.scale(k, k); spr(d.sheet, anim, i, 0, 0, { flip, ...o }); ctx.restore(); }
+    else spr(d.sheet, anim, i, x + ox, y + oy, { flip, ...o });
+  };
+  // Rare monsters glow blue, elites gold (illusions a ghostly violet).
+  const aura = e.illusion ? 'violet' : e.tier === 'rare' ? 'blue' : e.tier === 'elite' ? 'gold' : null;
+  if (aura) { const a = e.illusion ? 0.5 : 0.6 + 0.4 * Math.sin(game.real * 5 + e.x); for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) draw({ tint: aura, alpha: a }, ox, oy); }
+  draw({ white: e.flash > 0, alpha: e.illusion ? 0.6 : 1 });
+  if (tele) draw({ white: true, alpha: 0.45 });
+  if (e.ward > 0) { ctx.strokeStyle = `rgba(216,247,255,${0.6 + 0.3 * Math.sin(game.real * 12)})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y - e.hy, e.hr + 6, e.hy + 6, 0, 0, Math.PI * 2); ctx.stroke(); }
+  if (d.orbit) for (let n = 0; n < d.orbit.n; n++) { const a = e.orbA + n * Math.PI * 2 / d.orbit.n; sprC('fx', 'thurible', Math.floor(game.real * 6), e.x + Math.cos(a) * d.orbit.r, e.y - 10 + Math.sin(a) * d.orbit.r * 0.6); }
+  if (e.elite && !e.illusion) {
+    const w = e.tier === 'elite' ? 34 : 26, bx = Math.round(e.x - w / 2), by = Math.round(e.y + lift - e.hy * 2 - 8), fw = Math.max(0, Math.round(w * e.hp / e.maxHp));
+    const ramp = e.tier === 'elite' ? 'gold' : e.tier === 'rare' ? 'holy' : 'blood';
+    ctx.fillStyle = PAL.outline; ctx.fillRect(bx - 1, by - 1, w + 2, 5);
+    ctx.fillStyle = PAL.blood4; ctx.fillRect(bx, by, w, 3);
+    ctx.fillStyle = e.state === 'stagger' ? PAL.gold1 : PAL[ramp + '2']; ctx.fillRect(bx, by, fw, 3);
+    ctx.fillStyle = e.state === 'stagger' ? PAL.gold0 : PAL[ramp + '1']; ctx.fillRect(bx, by, fw, 1);
   }
-  if (e.state === 'stagger') spr('fx', 'dagger', 0, e.x, e.y - 48 + Math.round(Math.sin(game.real * 8) * 2));
+  if (e.state === 'stagger') spr('fx', 'dagger', 0, e.x, e.y - e.hy * 2 - 14 + Math.round(Math.sin(game.real * 8) * 2));
+}
+
+// The name, health and curses of the Rare or Elite you are fighting.
+function renderNameplate(e) {
+  const col = e.tier === 'elite' ? PAL.gold0 : e.tier === 'imp' ? PAL.gold1 : '#7cc4ff', w = 170, x = Math.round(W / 2 - w / 2), y = 20;
+  text(e.name, W / 2, 7, col, { align: 'center', bold: true });
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, 8);
+  ctx.fillStyle = e.tier === 'elite' ? PAL.gold4 : PAL.holy4; ctx.fillRect(x - 1, y - 1, w + 2, 6);
+  ctx.fillStyle = PAL.blood4; ctx.fillRect(x, y, w, 4);
+  const fw = Math.max(0, Math.round(w * e.hp / e.maxHp));
+  ctx.fillStyle = PAL.blood1; ctx.fillRect(x, y, fw, 4); ctx.fillStyle = PAL.blood0; ctx.fillRect(x, y, fw, 1);
+  const mates = e.pack ? e.pack.members.filter((m) => !m.dead && !m.minion && m !== e).length : 0;
+  const aff = e.affixes.map((a) => AFFIX[a].label).join('  ');
+  if (aff) text(aff, W / 2, y + 8, PAL.cloth1, { align: 'center' });
+  if (mates) text(`+${mates} MORE`, x + w + 6, y - 2, col);
 }
 
 function drawMarker(e, locked) {
-  const h = e.def.hy * 2 + 4, w = e.elite ? 28 : 18;
+  const h = e.hy * 2 + 4, w = e.elite ? 28 : 18;
   const x = Math.round(e.x - w / 2), y = Math.round(e.y - h - 2), s = 4;
   const pulse = locked ? Math.round(Math.sin(game.real * 10)) : 0;
   const draw = (col, o) => {
@@ -1305,12 +2087,12 @@ function drawAbilitiesAir() {
   for (const c of chains) {
     if (c.phase === 'fly') {
       drawChainLine(player.x + player.face * 8, player.y - 18, c.x, c.y);
-      const a = Math.atan2(c.target.y - c.target.def.hy - c.y, c.target.x - c.x), f = frameOf('fx', 'hook', 0);
+      const a = Math.atan2(c.target.y - c.target.hy - c.y, c.target.x - c.x), f = frameOf('fx', 'hook', 0);
       ctx.save(); ctx.translate(Math.round(c.x), Math.round(c.y)); ctx.rotate(a); ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -5, -5, f.w, f.h); ctx.restore();
     } else if (c.phase === 'bind') {
       const live = c.links.filter((e) => !e.dead);
-      for (let i = 1; i < live.length; i++) drawChainLine(live[0].x, live[0].y - live[0].def.hy, live[i].x, live[i].y - live[i].def.hy);
-      for (const e of live) { const y = Math.round(e.y - e.def.hy + 2); ctx.fillStyle = PAL.iron0; ctx.fillRect(Math.round(e.x - 6), y, 12, 1); ctx.fillStyle = PAL.iron3; ctx.fillRect(Math.round(e.x - 6), y + 1, 12, 1); }
+      for (let i = 1; i < live.length; i++) drawChainLine(live[0].x, live[0].y - live[0].hy, live[i].x, live[i].y - live[i].hy);
+      for (const e of live) { const y = Math.round(e.y - e.hy + 2); ctx.fillStyle = PAL.iron0; ctx.fillRect(Math.round(e.x - 6), y, 12, 1); ctx.fillStyle = PAL.iron3; ctx.fillRect(Math.round(e.x - 6), y + 1, 12, 1); }
     }
   }
   for (const l of lashes) {
@@ -1391,18 +2173,36 @@ function renderHud() {
   text(T.fervor.tiers[tier], 127, 25, PAL[framp + '1']);
   }
   // Top-right: minimap and pause.
-  const mw = 54, mh = Math.round(54 * room.ph / room.pw), mx = W - 34 - mw, my = 8;
+  const mw = game.scene === 'wound' ? 72 : 54, mh = Math.round(mw * room.ph / room.pw), mx = W - 34 - mw, my = 8;
   gild(mx, my, mw, mh);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(mx, my, mw, mh);
+  ctx.fillStyle = PAL.ink1; ctx.fillRect(mx, my, mw, mh);
   const k = mw / room.pw;
-  ctx.fillStyle = PAL.stone3;
-  for (let y = 0; y < room.h; y++) for (let x = 0; x < room.w; x++) if (!room.solid[y][x]) ctx.fillRect(mx + Math.floor(x * TILE * k), my + Math.floor(y * TILE * k), Math.ceil(TILE * k), Math.ceil(TILE * k));
-  ctx.strokeStyle = 'rgba(255,244,176,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(Math.round(mx + cam.x * k) + 0.5, Math.round(my + cam.y * k) + 0.5, Math.round(W * k), Math.round(H * k));
-  for (const e of enemies) { ctx.fillStyle = e.elite ? PAL.gold0 : PAL.blood0; ctx.fillRect(mx + Math.round(e.x * k), my + Math.round(e.y * k), 1, 1); }
+  if (room.rooms) {
+    for (const r of room.rooms) if (r.known) for (const id of r.links) { const q = room.rooms[id]; if (q.known && id > r.id) { ctx.fillStyle = PAL.ink3; const ax = mx + (r.cx + 0.5) * TILE * k, ay = my + (r.cy + 0.5) * TILE * k, bx = mx + (q.cx + 0.5) * TILE * k, by = my + (q.cy + 0.5) * TILE * k; ctx.fillRect(Math.round(Math.min(ax, bx)), Math.round(Math.min(ay, by)), Math.max(1, Math.round(Math.abs(bx - ax))), Math.max(1, Math.round(Math.abs(by - ay)))); } }
+    for (const r of room.rooms) {
+      if (!r.known) continue;
+      const rx = Math.round(mx + r.x0 * TILE * k), ry = Math.round(my + r.y0 * TILE * k), rw = Math.round((r.x1 - r.x0 + 1) * TILE * k), rh = Math.round((r.y1 - r.y0 + 1) * TILE * k);
+      ctx.fillStyle = r.visited ? (r.state === 'clear' ? PAL.stone3 : PAL.stone4) : PAL.ink3; ctx.fillRect(rx, ry, rw, rh);
+      if (r === game.curRoom) { ctx.strokeStyle = r.state === 'active' ? PAL.blood0 : PAL.gold1; ctx.lineWidth = 1; ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1); }
+      const icx = rx + Math.floor(rw / 2), icy = ry + Math.floor(rh / 2);
+      const icon = { exit: PAL.blood0, elite: PAL.gold0, shrine: PAL.holy1, treasury: PAL.gold1 }[r.type];
+      if (icon && !(r.state === 'clear' && r.type !== 'exit')) { ctx.fillStyle = PAL.outline; ctx.fillRect(icx - 2, icy - 2, 5, 5); ctx.fillStyle = icon; ctx.fillRect(icx - 1, icy - 1, 3, 3); if (r.type === 'exit') { ctx.fillStyle = PAL.outline; ctx.fillRect(icx - 1, icy, 1, 1); ctx.fillRect(icx + 1, icy, 1, 1); } }
+    }
+    for (const e of enemies) if (!e.dead && e.room === (game.curRoom && game.curRoom.id)) { ctx.fillStyle = e.tier === 'elite' ? PAL.gold0 : e.tier === 'rare' ? '#7cc4ff' : PAL.blood0; ctx.fillRect(mx + Math.round(e.x * k), my + Math.round(e.y * k), 1, 1); }
+  } else {
+    ctx.fillStyle = PAL.stone3;
+    for (let y = 0; y < room.h; y++) for (let x = 0; x < room.w; x++) if (!room.solid[y][x]) ctx.fillRect(mx + Math.floor(x * TILE * k), my + Math.floor(y * TILE * k), Math.ceil(TILE * k), Math.ceil(TILE * k));
+  }
   ctx.fillStyle = PAL.white; ctx.fillRect(mx + Math.round(p.x * k) - 1, my + Math.round(p.y * k) - 1, 2, 2);
   button(HUD.pause);
-  if (game.scene === 'wound') text(`${game.kills}`, W - 34, my + mh + 7, PAL.cloth1, { align: 'right', bold: true });
-  if (game.scene === 'wound') text('SLAIN', W - 34 - textW(String(game.kills), 1, true) - 5, my + mh + 7, PAL.stone1, { align: 'right' });
+  // Gold, kills, active shrine buff, massacre streak.
+  const gold = game.scene === 'wound' ? game.run.gold : SAVE.gold || 0;
+  sprC('loot', 'coin', 0, mx + 3, my + mh + 10);
+  text(String(gold), mx + 9, my + mh + 7, PAL.gold1, { bold: true });
+  if (game.scene === 'wound') text(`${game.kills} SLAIN`, W - 34, my + mh + 17, PAL.stone1, { align: 'right' });
+  if (game.buff) { const S = SHRINES[game.buff.kind]; text(`${S.name.replace('SHRINE OF ', '')} ${Math.ceil(game.buff.t)}`, 41, 35, `rgb(${S.rgb})`); }
+  const ms = game.massacre;
+  if (ms && ms.n >= 5 && game.time - ms.last < 1.2) text(`x${ms.n}`, 14, Math.round(H * 0.42), Math.floor(game.real * 8) % 2 ? PAL.blood0 : PAL.gold0, { sc: 2, bold: true });
   // Bottom-right: dash, Miracles, Penance.
   const dashK = p.charges >= T.dash.charges ? 0 : 1 - p.recharge / T.dash.recharge;
   button(HUD.dash, { active: p.charges > 0, cd: p.charges === 0 ? dashK : 0 });
@@ -1420,9 +2220,11 @@ function renderHud() {
   const jx = stick.active ? stick.ox : HUD.joy.x, jy = stick.active ? stick.oy : HUD.joy.y;
   sprC('ui', 'ring', 0, jx, jy, { alpha: stick.active ? 0.85 : 0.4 });
   sprC('ui', 'knob', 0, stick.active ? stick.x : jx, stick.active ? stick.y : jy, { alpha: stick.active ? 1 : 0.6 });
-  renderTimer();
+  renderRoomStatus();
   renderWaystoneArrow();
-  if (game.toast) text(game.toast.msg, W / 2, Math.round(H * 0.3), PAL.cloth0, { align: 'center' });
+  renderBanner();
+  if (game.toast) text(game.toast.msg, W / 2, Math.round(H * 0.3) + (game.banner ? 40 : 0), game.toastColor || PAL.cloth0, { align: 'center' });
+  if (game.toast && game.toast.t < 0.05) game.toastColor = null;
   renderTutorial();
   if (location.search.includes('fps')) text(`${Math.round(fpsAvg)} FPS ${enemies.length}`, 8, 44, PAL.flame1);
 }
@@ -1489,7 +2291,7 @@ function renderReceipt(survived = false) {
   const k = Math.min(1, game.deathT * 1.5);
   ctx.fillStyle = `rgba(11,7,16,${0.8 * k})`; ctx.fillRect(0, 0, W, H);
   if (k < 1) return;
-  const r = game.receipt, w = 210, h = 150, x = Math.round(W / 2 - w / 2), y = Math.round(H / 2 - h / 2);
+  const r = game.receipt, w = 230, h = 150, x = Math.round(W / 2 - w / 2), y = Math.round(H / 2 - h / 2);
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
   ctx.fillStyle = PAL.bone1; ctx.fillRect(x, y, w, h);
   ctx.fillStyle = PAL.bone0; ctx.fillRect(x, y, w, 2);
@@ -1500,10 +2302,14 @@ function renderReceipt(survived = false) {
   ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 30, w - 20, 1);
   const m = Math.floor(r.time / 60), s = String(Math.floor(r.time % 60)).padStart(2, '0');
   const row = (a, b, yy) => { line(a, yy, PAL.ink1, 'left'); text(b, x + w - 10, y + yy, PAL.ink1, { outline: null, align: 'right' }); };
-  row('TIME IN THE WOUND', `${m}:${s}`, 37); row('RISEN LAID TO REST', String(r.kills), 48); row('BEST FERVOR', `${r.fervor}%`, 59); row('PERFECT DODGES', String(r.perfects), 70);
-  ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 82, w - 20, 1);
-  if (survived) { line('THE CROWD IS SATISFIED.', 90, PAL.crimson3); line('FOR NOW.', 100, PAL.crimson3); }
-  else { line('YOUR TITHE HAS BEEN', 90, PAL.crimson3); line('GRATEFULLY RECEIVED.', 100, PAL.crimson3); }
+  row('TIME IN THE WOUND', `${m}:${s}`, 37); row('ROOMS CLEARED', `${r.rooms}/${r.total}`, 47); row('DEAD LAID TO REST', String(r.kills), 57); row('GOLD GATHERED', String(r.gold), 67);
+  row(survived ? 'RELICS FOUND' : 'TITHED TO THE CHOIR', survived ? String(r.items.length) : `${r.tithe} GOLD, ${r.lostItems} RELICS`, 77);
+  const best = [...r.items].sort((a, b) => b.ri - a.ri)[0];
+  if (best) text(best.name, W / 2, y + 112, RARITY[best.ri].color, { align: 'center', outline: PAL.ink1, shadow: false });
+  ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 86, w - 20, 1);
+  if (survived) { line('THE CROWD IS SATISFIED. FOR NOW.', 92, PAL.crimson3); }
+  else { line('YOUR TITHE HAS BEEN GRATEFULLY RECEIVED.', 92, PAL.crimson3); }
+  if (best) line('FINEST FIND', 103, PAL.stone1);
   if (game.deathT > 1.4 && Math.floor(game.real * 2) % 2 === 0) line(survived ? 'TAP TO RETURN TO VAEL' : 'TAP TO WAKE IN THE VESTRY', 128);
 }
 
@@ -1552,7 +2358,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { game, T, hud: HUD, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnEnemy, enterTown, tut, SAVE, get room() { return room; } };
+window.HS = { game, T, hud: HUD, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; } };
 </script>
 </body>
 </html>
