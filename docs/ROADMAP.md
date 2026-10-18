@@ -26,5 +26,6 @@ Goal (GDD): one Stratum, a 30-minute run that ends in Martyrdom and a first Vigi
 - [x] 19 Diablo III-inspired affixes, elite names and nameplates
 - [x] Loot: gold, health globes, items in 5 rarities with beams, shrines, chests, breakables, Collection Imp, Massacre
 - [x] Vael rebuilt: a long twilight street with six districts, townsfolk, chatter, crows, fog, ash, lightning
+- [x] Round 5: OWL camera (430 px view, sharp scaling), rooms 1–1.3 screens, descent info panel, 4 difficulty tiers, locked town sites, town minimap and full map
 - [x] Graphics v5: sculpted SDF pixel art for every sprite, 360 px view, ×1.3 world
 - [x] Audio: Kenney SFX, OpenGameArt music and ambience, mute toggle (see `docs/CREDITS.md`)

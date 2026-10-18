@@ -535,9 +535,17 @@ ends in Martyrdom and a first Vigil. Progress is tracked in `docs/ROADMAP.md`.
 - [ ] Vigil tiers 1 to 10, unlocked early for testing
 - [ ] Suspend and resume saves
 
+## Difficulty and town sites (round 5)
+
+- **Tiers:** Penitent, Zealot, Martyr, Saint. Monster health ×1 / 1.7 / 2.8 / 4.5, damage ×1 / 1.35 / 1.8 / 2.4. Gold ×1 / 1.5 / 2.2 / 3.2, relic count ×1 / 1.3 / 1.6 / 2, rarity boost +0 / 0.5 / 1 / 1.8, XP ×1 / 1.4 / 1.9 / 2.5. Martyr and Saint add one curse to rares and elites.
+- **Unlocks:** Zealot after one finished descent; Martyr and Saint after finishing a descent on the tier before.
+- **Descent panel:** shown at the cathedral doors before every descent (skipped during the tutorial).
+- **Town sites still to build:** Pilgrim Road (Stratum II), Pell's relic stall, plush stall (cosmetics), bounty board, scrying pool wagers, the Forge (reforge and temper), the Bleeding Vigil (Greater Rifts), Martyrdom (one life, double rewards), the Reliquary (Canonization). Each shows what opens it.
+- **Rooms:** 1 to 1.3 screens across, 9 per floor, waves scale with room area.
+
 ## Art v5: sculpted pixel art at 360 px
 
-- The game renders about 360 px tall (`T.viewH`). Every world distance is
+- The game renders about 430 px tall (`T.viewH`, was 360 before round 5). Every world distance is
   scaled by `WS = 1.3` so the larger sprites keep the same feel.
 - Characters, monsters, props and buildings are modelled as signed-distance
   shapes (`tools/sdf.mjs`) that melt together with smooth unions, so no body

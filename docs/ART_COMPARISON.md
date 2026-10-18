@@ -6,8 +6,9 @@ Reddit posts. The reference images stay out of the repo (they are not ours).
 
 Scale note: OWL draws its art at 4x on a 1080p screen, so its view is about
 270 art pixels tall. Heroes are about 40 px tall, item icons about 26 px.
-Our view is 360 px tall and the Saint is 52 px, so our proportions already
-match; the gaps are in surfaces, light and finish.
+Our view was 360 px tall with a 52 px Saint (15% of the screen). Round 5
+moved to a 430 px view so the Saint is about 12%, matching OWL's camera
+distance, and rooms grew to 1 to 1.3 screens like OWL's.
 
 ## Differences (before this round)
 

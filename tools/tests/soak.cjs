@@ -38,6 +38,8 @@ const S = process.argv[2], SECS = +(process.argv[3] || 180);
     if (sec % 15 === 0) console.log(sec, JSON.stringify(st));
     // Act on the current state.
     if (st.state === 'title') await tap(W / 2, Math.round(H * 0.8));
+    else if (st.state === 'descent') { if (Math.random() < 0.3) await p.keyboard.press('ArrowRight'); await p.keyboard.press(Math.random() < 0.85 ? 'Enter' : 'Escape'); }
+    else if (st.state === 'site' || st.state === 'map') { await tap(W / 2, H / 2); }
     else if (st.state === 'dialog' || st.state === 'pause' || st.state === 'dead' || st.state === 'tally') { await tap(W / 2, H / 2); await p.waitForTimeout(300); }
     else if (st.state === 'stig') { const r = await p.evaluate(() => HS.stigLayout()[Math.floor(Math.random() * HS.stigLayout().length)]); await tap(r.x + r.w / 2, r.y + r.h / 2); }
     else if (st.state === 'inv') {
@@ -50,6 +52,7 @@ const S = process.argv[2], SECS = +(process.argv[3] || 180);
       if (Math.random() < 0.4) await p.keyboard.press('Space');
       if (Math.random() < 0.3) await p.keyboard.press(['KeyQ', 'KeyF', 'KeyR'][Math.floor(Math.random() * 3)]);
       if (Math.random() < 0.05) await p.keyboard.press('KeyI');
+      if (st.scene === 'town' && Math.random() < 0.05) await p.keyboard.press('KeyM');
       if (Math.random() < 0.03) await p.keyboard.press('Escape');
       await p.waitForTimeout(500); await p.keyboard.up(k);
       // Nudge progress: in town walk into the Descent; in the dungeon hop to a neighbouring room now and then.

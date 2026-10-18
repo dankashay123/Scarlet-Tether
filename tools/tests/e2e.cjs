@@ -26,7 +26,7 @@ const S = process.argv[2];
   await p.waitForTimeout(3000); console.log('room', JSON.stringify(await st()), await p.evaluate(() => HS.enemies.length));
   await p.screenshot({ path: `${S}/shots/e-room.png` });
   // Die on purpose to check the death loop back to town.
-  await p.evaluate(() => { HS.player.hp = 1; HS.player.iframes = 0; });
+  await p.evaluate(() => { HS.player.hp = 1; HS.player.iframes = 0; for (let k = 0; k < 4; k++) { const e = HS.spawnMonster('risen', HS.player.x + 14 * Math.cos(k * 1.6), HS.player.y + 10 * Math.sin(k * 1.6), { room: HS.game.curRoom.id }); e.state = 'move'; } });
   await p.waitForTimeout(6000); console.log('after hits', JSON.stringify(await st()));
   if ((await st()).state === 'dead') { await p.waitForTimeout(1500); await p.screenshot({ path: `${S}/shots/e-dead.png` }); await tap(W / 2, H / 2); await p.waitForTimeout(600); await closeDialog(); }
   console.log('end', JSON.stringify(await st()), 'gold', await p.evaluate(() => HS.SAVE.gold));

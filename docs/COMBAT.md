@@ -5,7 +5,7 @@ Adapted from Diablo III's battle design and made our own. This file extends
 
 ## The descent: a floor of locked rooms
 
-There is no timer. Each Stratum floor is a large map of 10–12 rooms joined by
+There is no timer. Each Stratum floor is a large map of 9 big rooms (1 to 1.3 screens each; earlier drafts said 10–12) joined by
 corridors (Otherworld Legends style):
 
 | Room | What happens |

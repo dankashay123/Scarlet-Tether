@@ -324,6 +324,38 @@ const GLYPH = {
   close: (u, v) => seg(u, v, -0.38, -0.38, 0.38, 0.38, 0.13) || seg(u, v, -0.38, 0.38, 0.38, -0.38, 0.13),
   knob: (u, v) => (Math.abs(u) < 0.13 && Math.abs(v) < 0.5) || (Math.abs(v) < 0.13 && Math.abs(u) < 0.5),
 };
+// Map badges for the town map: a small coloured disc, lit from the top-left,
+// with a pale glyph and a heavy outline. Order matches MAP_BADGES in index.html.
+export const MAP_BADGES = [
+  ['gate', 'stone'], ['market', 'gold'], ['plush', 'crimson'], ['tavern', 'wood'], ['forge', 'ember'], ['acre', 'moss'], ['descend', 'violet'],
+  ['rift', 'blood'], ['lock', 'iron'], ['npc', 'teal'], ['board', 'sand'], ['relic', 'slate'], ['pool', 'violet'], ['saint', 'crimson'],
+];
+const BADGE_GLYPH = {
+  gate: (u, v) => Math.abs(u) < 0.55 && v > -0.45 && v < 0.55 && !(Math.abs(u) < 0.28 && (v > 0 || Math.hypot(u, v) < 0.28)),
+  market: (u, v) => Math.hypot(u, v) < 0.54 && !(Math.abs(u) < 0.13 && Math.abs(v) < 0.13),
+  plush: (u, v) => Math.hypot(u + 0.22, v + 0.12) < 0.27 || Math.hypot(u - 0.22, v + 0.12) < 0.27 || (v > -0.12 && v < 0.55 && Math.abs(u) < (0.55 - v) * 0.95),
+  tavern: (u, v) => (Math.abs(u + 0.1) < 0.34 && v > -0.4 && v < 0.5) || (Math.hypot(u - 0.36, v - 0.05) < 0.24 && Math.hypot(u - 0.36, v - 0.05) > 0.1),
+  forge: (u, v) => (Math.abs(v + 0.05) < 0.14 && Math.abs(u) < 0.55) || (Math.abs(u + 0.15) < 0.24 && v > -0.05 && v < 0.35) || (Math.abs(v - 0.45) < 0.1 && Math.abs(u + 0.15) < 0.4) || (Math.abs(v + 0.24) < 0.08 && u > 0.1 && u < 0.6),
+  acre: (u, v) => (Math.abs(u) < 0.36 && v > -0.2 && v < 0.5) || (Math.hypot(u, v + 0.2) < 0.36 && v < -0.2) || (Math.abs(v - 0.52) < 0.07 && Math.abs(u) < 0.55),
+  descend: (u, v) => (Math.abs(u) < 0.12 && v > -0.55 && v < 0.1) || (v > -0.08 && v < 0.5 && Math.abs(u) < (0.5 - v) * 1.05),
+  rift: (u, v) => { const d = Math.hypot(u * 0.85, v); return (d < 0.56 && d > 0.38) || d < 0.14 || (d < 0.42 && d > 0.3 && Math.atan2(v, u) > 0.4 && Math.atan2(v, u) < 2.4); },
+  lock: (u, v) => (Math.abs(u) < 0.46 && v > -0.08 && v < 0.56 && !(Math.abs(u) < 0.09 && v > 0.1 && v < 0.36)) || (v < -0.02 && Math.hypot(u, v + 0.08) < 0.42 && Math.hypot(u, v + 0.08) > 0.2),
+  npc: (u, v) => (Math.hypot(u / 1.2, v + 0.08) < 0.48 && ![-0.24, 0, 0.24].some((x) => Math.hypot(u - x, v + 0.08) < 0.08)) || seg(u, v, -0.25, 0.3, -0.42, 0.58, 0.09),
+  board: (u, v) => (Math.abs(u) < 0.42 && Math.abs(v) < 0.52) && !([-0.18, 0.18].some((y) => Math.abs(v - y) < 0.06 && Math.abs(u) < 0.24)),
+  relic: (u, v) => (Math.abs(u) < 0.11 && Math.abs(v) < 0.56) || (Math.abs(v + 0.16) < 0.11 && Math.abs(u) < 0.42),
+  pool: (u, v) => { const d = Math.hypot(u, v * 1.8); return (d < 0.55 && d > 0.36) || (Math.abs(v + 0.02) < 0.05 && Math.abs(u) < 0.2); },
+  saint: (u, v) => (Math.abs(Math.hypot(u / 1.6, v + 0.5) - 0.2) < 0.08) || Math.hypot(u, v + 0.12) < 0.2 || (v > 0.08 && v < 0.58 && Math.abs(u) < 0.1 + (v - 0.08) * 0.75),
+};
+function badge(size, ramp, glyph) {
+  const S = new Scene(), r = size / 2 - 1.2, c = size / 2;
+  S.add(ellipsoid([c, c, 0], [r, r, r * 0.5], 'disc'), 0);
+  const f = R(S, size, size, { disc: { ramp, spec: 0.3, min: 2, max: 6 } }, { contrast: 1.2 });
+  const g = BADGE_GLYPH[glyph];
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) { const u = (x + 0.5 - c) / (r - 0.6), v = (y + 0.5 - c) / (r - 0.6); if (g(u, v)) { put(f, x, y, 'bone0'); if (!g((x + 1.5 - c) / (r - 0.6), (y + 1.5 - c) / (r - 0.6))) put(f, x + 1, y + 1, 'ink2'); } }
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) { const d = Math.hypot(x + 0.5 - c, y + 0.5 - c); if (d >= r - 0.3 && d < r + 1.2) put(f, x, y, 'outline'); }
+  return f;
+}
+
 // The joystick ring: a thin pale circle with four direction ticks.
 function ring() {
   const S = 78, f = { w: S, h: S, px: new Int16Array(S * S).fill(-1) }, c = S / 2;
@@ -361,6 +393,8 @@ export default {
   ui: {
     dash: () => [button(50, GLYPH.dash)], flask: () => [button(40, GLYPH.flask)], chain: () => [button(40, GLYPH.chain)], penance: () => [button(44, GLYPH.penance)],
     dagger: () => [button(40, GLYPH.dagger)], pause: () => [button(28, GLYPH.pause)], talk: () => [button(50, GLYPH.talk)], descend: () => [button(50, GLYPH.descend)],
+    lock: () => [button(50, BADGE_GLYPH.lock)], map: () => [button(26, BADGE_GLYPH.board)],
+    badge: () => MAP_BADGES.map(([g, ramp]) => badge(15, ramp, g)), badgeBig: () => MAP_BADGES.map(([g, ramp]) => badge(21, ramp, g)),
     ring: () => [ring()], knob: () => [button(32, GLYPH.knob)], bag: () => [button(26, GLYPH.bag)], close: () => [button(22, GLYPH.close)],
   },
 };

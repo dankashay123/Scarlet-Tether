@@ -8,7 +8,7 @@ next, and the owner's preferences.
 
 | Path | What |
 |---|---|
-| `index.html` | The whole game (about 2,600 lines, Canvas 2D). The `T` table at the top holds tuning; `WS = 1.3` is the world scale |
+| `index.html` | The whole game (about 2,600 lines, Canvas 2D). The `T` table at the top holds tuning (`T.viewH` = 430, the view height); `WS = 1.3` is the world scale |
 | `assets/sprites/*.png`, `sprites.json` | Generated sheets (committed). Never edit them by hand |
 | `tools/sprites.mjs` | Builds every sheet. Older hand-drawn art lives here; sculpted models override it by anim name |
 | `tools/sdf.mjs` | The sculpted pixel-art renderer (SDF shapes, smooth union, lighting, palette banding, outlines) |
@@ -37,6 +37,7 @@ node tools/tests/e2e.cjs <outDir>     # menu → town → tutorial → dungeon �
 node tools/tests/maps.cjs [n]         # builds n floors; every room reachable, spawn clear (no screenshots)
 node tools/tests/inv.cjs <outDir>     # bag, wear, sell, loot labels
 node tools/tests/stig.cjs <outDir>    # level-up cards and every Stigmata skill at once
+node tools/tests/descent.cjs <outDir> # town minimap, full map, a locked site, descent panel and difficulty
 SOAK_DEATH=0.04 node tools/tests/soak.cjs <outDir> 300   # 5 min of random play: errors, NaN, stuck states, walls
 node tools/tests/err.cjs              # prints page errors and state
 node tools/sprites.mjs --audit        # lists any animation still drawn by the old hand-drawn code

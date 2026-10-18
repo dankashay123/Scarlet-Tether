@@ -1,13 +1,13 @@
 # Handoff
 
-Last updated 2026-10-18, after the optimisation and bug pass.
+Last updated 2026-10-18, after round 5 (bigger rooms, OWL camera, descent panel, town map).
 
 ## Where the game stands
 
 Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page errors in any test.
 
 - **Start:** a start menu, then the town of Vael. A dismissible 11-step tutorial (SKIP TUTORIAL) runs from the town into the first fight.
-- **The descent:** a floor of 12 rooms on a 4×3 grid.
+- **The descent:** a floor of 9 large rooms on a 3×3 grid (each 1 to 1.3 screens across).
   - Gates lock behind you and waves spawn.
   - Room types: vestibule, crypts, a reliquary with an elite, a shrine, a treasury and the Warden's chamber.
   - Clearing the Warden's chamber wakes the Waystone home, which leads to the tally screen.
@@ -15,7 +15,16 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
 - **Monsters:** 30 of them (10 common; 10 rare, which glow blue; 10 elite, which glow gold), plus the Collection Imp. All attacks are telegraphed. 19 Diablo III-style affixes, elite names and a nameplate bar.
 - **Loot:** gold, health globes, items in 5 rarities, shrines, chests, breakables and a Massacre bonus. Gold saves to localStorage under the key `hollow-saint`.
 - **Vael:** a long twilight street with six districts, 13 talking townsfolk, walkers, kids, crows, fog, ash and lightning.
-- **OWL polish (this round, see `docs/ART_COMPARISON.md`):**
+- **Round 5:**
+  - Camera: the view is 430 px tall like Otherworld Legends (heroes about 12% of screen height). `resize()` draws into an offscreen buffer, copies it to the screen canvas at the next whole scale, and CSS shrinks it with smoothing, so pixels stay even at any height. `PRE` is that whole scale.
+  - Rooms are 54–67 × 26–32 tiles (`GRID` = 3×3, cells 74×40, corridors 5 wide). Wave sizes grow with room area (`r.ak`, power 0.55) and props, decals and critters with power 0.85 (`many()`). The baked floor canvas is about 3.6k × 2k px, under iOS canvas limits.
+  - Descent panel (`renderDescent`): before going down it shows the stratum, difficulty picker, floor makeup, monster health and damage, waves, curse counts, gold per coin/kill/rare/elite/room, relic odds per kill/rare/elite/room, rarity odds for foes and elites (`rarityOdds`, the same sums as `rollItem`), XP rate, death penalty and your stats.
+  - Difficulty tiers (`DIFF`): Penitent, Zealot, Martyr, Saint. They scale monster health and damage (`spawnMonster`, `damagePlayer`, `hurtPlayerRaw`), gold, relic count and rarity (`dropLoot`), XP (`gainXp`) and add a curse to rares and elites from Martyr. Zealot opens after one descent; each next tier after finishing a descent on the one before (`SAVE.cleared`). The choice is saved in `SAVE.diff`.
+  - Town sites (`SITES`): Pilgrim Road (Stratum II), Pell's stall, plush stall, bounty board, scrying pool wagers, the Forge, the Bleeding Vigil (Greater Rifts), Martyrdom and the Reliquary (Canonization). Each has a floating badge and a LOCKED prompt; the panel says "UNLOCKED WHEN …" with a progress bar. When the condition is met it says the feature comes in a later build. New counters: `SAVE.eliteKills`, `SAVE.bestLevel`.
+  - Town minimap: a small picture of the street around you with badges for every site and named townsperson (`NPC_BADGE`). Tap it (or press M) for the full map with district names and a legend.
+  - Map badges: `ui.badge` / `ui.badgeBig` in `tools/models/props.mjs` (`MAP_BADGES`, same order in `index.html`). The small font gained ( ) < > ~ =.
+  - `tools/tests/descent.cjs` covers the minimap, map, a site panel and the descent panel.
+- **OWL polish (round 1, see `docs/ART_COMPARISON.md`):**
   - Large mixed-size flagstone floors per theme, and in the town street.
   - Walls on every side with lit tops, and soft cast shadows.
   - Darker ambient, warm torch pools and bloom, no orange wash.
@@ -37,8 +46,8 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
   - 3/4-view furniture (crate, chest, pew, altar, sarcophagus, shrine, coffin, maiden, cage, statues, columns, urns), stone pilasters on back walls, engraved floor seals, new splats, mounds, candles, gibs, cobwebs and HUD buttons. `node tools/sprites.mjs --audit` reports no old art left.
 - **Audio:** Kenney SFX for every action, OpenGameArt music (town, dungeon) and town wind and crickets. Mute button under pause (or M key), saved in localStorage. iOS 17+ follows the silent switch via `navigator.audioSession.type = 'ambient'`. Sources in `docs/CREDITS.md`.
 - **Graphics v5:**
-  - Everything is sculpted with the SDF renderer, and the view is about 360 px tall with a ×1.3 world scale (see `docs/GDD.md` → "Art v5").
-  - Rooms are 24–32 × 14–20 tiles, corridors 4 wide, back walls 3 tiles tall.
+  - Everything is sculpted with the SDF renderer with a ×1.3 world scale (see `docs/GDD.md` → "Art v5"). The view is now 430 px tall (round 5).
+  - Back walls are 3 tiles tall.
 
 ## The owner's preferences
 
