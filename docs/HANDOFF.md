@@ -137,6 +137,8 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   shrink) and `townY()` (depth past the kerb x0.6) squeeze them at the end.
   `CATHEDRAL_X` is the descent door. The minimap draws a keeper's badge
   once (at their site), and Sister Odile has the plain townsperson badge.
+- **Round 8g:** the shrine blessing label (e.g. WARDING 9) sits on its own
+  line under the portrait instead of over the portrait corner.
 - **Round 7:** chunky 2x2 pixels (`setRes(2)` in `tools/sdf.mjs`,
   `tools/chunky.mjs` for every sheet but `ui`, `chunkCanvas()` for the
   baked floor), whole-number nearest-neighbour scaling, thicker halo,
