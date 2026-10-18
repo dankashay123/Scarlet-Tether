@@ -37,11 +37,12 @@ node tools/tests/e2e.cjs <outDir>     # menu → town → tutorial → dungeon �
 node tools/tests/maps.cjs [n]         # builds n floors; every room reachable, spawn clear (no screenshots)
 node tools/tests/inv.cjs <outDir>     # bag, wear, sell, loot labels
 node tools/tests/stig.cjs <outDir>    # level-up cards and every Stigmata skill at once
+SOAK_DEATH=0.04 node tools/tests/soak.cjs <outDir> 300   # 5 min of random play: errors, NaN, stuck states, walls
 node tools/tests/err.cjs              # prints page errors and state
 node tools/sprites.mjs --audit        # lists any animation still drawn by the old hand-drawn code
 ```
 
-Each test writes screenshots to `<outDir>/shots/` and prints `errors 0 []` when clean. Look at the screenshots yourself; the user cares most about how it looks.
+Each test writes screenshots to `<outDir>/shots/` and prints `errors 0 []` when clean. `?fps` shows frames per second and the ms our own code takes per frame. Look at the screenshots yourself; the user cares most about how it looks.
 
 ## Conventions
 

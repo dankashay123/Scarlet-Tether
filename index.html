@@ -50,19 +50,22 @@ T.flask.radius *= WS; T.flask.range *= WS; T.flask.splash *= WS; T.chain.range *
 // ------------------------------------------------------------ display ---
 const screen = document.getElementById('screen');
 const sctx = screen.getContext('2d');
-const buf = document.createElement('canvas');
-const ctx = buf.getContext('2d');
+// The game draws straight into the screen canvas at its small internal size;
+// CSS scales it up by a whole number with pixelated sampling (no blit).
+const buf = screen;
+const ctx = sctx;
 const dark = document.createElement('canvas');
 const dctx = dark.getContext('2d');
-let W = 480, H = 270, SCALE = 1;
+let W = 480, H = 270, SCALE = 1, darkBase = null;
 
 function resize() {
   const dpr = window.devicePixelRatio || 1;
   const dw = Math.floor(innerWidth * dpr), dh = Math.floor(innerHeight * dpr);
   SCALE = Math.max(1, Math.round(dh / T.viewH));
   W = Math.floor(dw / SCALE); H = Math.floor(dh / SCALE);
-  buf.width = dark.width = W; buf.height = dark.height = H;
-  screen.width = W * SCALE; screen.height = H * SCALE;
+  buf.width = W; buf.height = H;
+  // The darkness is a soft gradient: render it at half size and scale it up.
+  dark.width = Math.ceil(W / 2); dark.height = Math.ceil(H / 2); darkBase = null;
   screen.style.width = (W * SCALE / dpr) + 'px';
   screen.style.height = (H * SCALE / dpr) + 'px';
   screen.style.left = ((innerWidth - W * SCALE / dpr) / 2) + 'px';
@@ -280,7 +283,7 @@ const hitBtn = (b, x, y, pad = 6) => b && Math.hypot(x - b.x, y - b.y) <= b.r + 
 
 function pointerDown(id, cx, cy) {
   const [x, y] = toLocal(cx, cy);
-  if (hitBtn(HUD.mute, x, y)) { AUDIO.unlock(); AUDIO.setMuted(!AUDIO.muted); sfx('tap'); return; }
+  if (['play', 'title', 'pause'].includes(game.state) && hitBtn(HUD.mute, x, y)) { AUDIO.unlock(); AUDIO.setMuted(!AUDIO.muted); sfx('tap'); return; }
   if (onTap(x, y)) return;
   if (game.state !== 'play') return;
   if (hitBtn(HUD.pause, x, y)) { sfx('tap'); game.state = 'pause'; return; }
@@ -316,6 +319,7 @@ addEventListener('mousemove', (e) => { if (stick.id === 'm') pointerMove('m', e.
 addEventListener('mouseup', () => pointerUp('m'));
 addEventListener('keydown', (e) => {
   keys.add(e.code);
+  if (game.state === 'stig') { if (game.stig.t > 0.35 && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) pickStigma(+e.code.slice(5) - 1); return; }
   if (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyK') input.dash = true;
   if (e.code === 'KeyE' || e.code === 'KeyJ') { if (game.state === 'play' && game.interact && !game.execTarget) game.interact.use(); else input.execute = true; }
   if (e.code === 'KeyQ' || e.code === 'Digit1') input.m1 = true;
@@ -323,7 +327,6 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyR' || e.code === 'Digit3') input.pen = true;
   if (e.code === 'Escape' || e.code === 'KeyP') { if (game.state === 'play') game.state = 'pause'; else if (game.state === 'pause') game.state = 'play'; }
   if (e.code === 'KeyM') AUDIO.setMuted(!AUDIO.muted);
-  if (game.state === 'stig' && game.stig.t > 0.35 && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { pickStigma(+e.code.slice(5) - 1); return; }
   if (e.code === 'KeyI' || e.code === 'KeyB') { if (game.state === 'play') openInventory(); else if (game.state === 'inv') closeInventory(); }
   if (e.code === 'Escape' && game.state === 'inv') { closeInventory(); return; }
   if (e.code === 'Enter' || (e.code === 'Space' && game.state !== 'play')) onTap(-1, -1);
@@ -533,7 +536,8 @@ function makeDungeon() {
     const groove = (x, y) => { x = Math.round(x); y = Math.round(y); if (isSolid(Math.floor(x / TILE), Math.floor(y / TILE))) return; rc.fillStyle = PAL.stone4h; rc.fillRect(x, y, 1, 1); rc.fillStyle = PAL.stone2h; rc.fillRect(x + 1, y + 1, 1, 1); };
     const circle = (rr) => { for (let a = 0; a < Math.PI * 2; a += 0.5 / rr) groove(ox + Math.cos(a) * rr, oy + Math.sin(a) * rr * 0.62); };
     circle(R0); circle(R0 - 5);
-    for (let k = 0; k < 6; k++) { const a0 = k * Math.PI / 3 - Math.PI / 2, a1 = a0 + Math.PI * 2 / 3 * 2; for (let t = 0; t <= 1; t += 0.012) { const a = a0 + (a1 - a0) * 0, x0 = ox + Math.cos(a0) * (R0 - 5), y0 = oy + Math.sin(a0) * (R0 - 5) * 0.62, x1 = ox + Math.cos(a0 + Math.PI * 2 / 3) * (R0 - 5), y1 = oy + Math.sin(a0 + Math.PI * 2 / 3) * (R0 - 5) * 0.62; groove(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t); } }
+    // A hexagram: two triangles joining every second point of six.
+    for (let k = 0; k < 6; k++) { const a0 = k * Math.PI / 3 - Math.PI / 2, a1 = a0 + Math.PI * 2 / 3, rr = R0 - 5, x0 = ox + Math.cos(a0) * rr, y0 = oy + Math.sin(a0) * rr * 0.62, x1 = ox + Math.cos(a1) * rr, y1 = oy + Math.sin(a1) * rr * 0.62; for (let t = 0; t <= 1; t += 0.012) groove(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t); }
     for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6, x = ox + Math.cos(a) * (R0 - 2.5), y = oy + Math.sin(a) * (R0 - 2.5) * 0.62; groove(x - 1, y); groove(x + 1, y); groove(x, y - 1); }
   }
   // Wall decor above each room's top edge.
@@ -558,8 +562,8 @@ function makeDungeon() {
     if (d.kind === 'web') { const f = frameOf('loot', 'web', 0); rc.save(); rc.translate(d.x, d.y); if (d.flip) rc.scale(-1, 1); rc.drawImage(IMG.loot, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h); rc.restore(); }
     if (d.kind === 'hangchain') { const f = frameOf('loot', 'hangchain', 0); rc.drawImage(IMG.loot, f.x, f.y, f.w, f.h, Math.round(d.x), Math.round(d.y), f.w, f.h); }
   }
-  stain = document.createElement('canvas'); stain.width = roomCanvas.width; stain.height = roomCanvas.height;
-  sctxStain = stain.getContext('2d');
+  // Blood soaks straight into the baked floor (one less full-screen layer).
+  stain = roomCanvas; sctxStain = rc;
   for (const l of lights) l.r *= WS;
   room = { kind: 'wound', name: 'THE UNDERCROFT', w, h, solid, isSolid, props, lights, decals: decals.filter((d) => d.kind === 'candles'), npcs: [], interact: [], pw: w * TILE, ph: h * TILE, top: 4, ambient: T.ambient, rooms, start, critters, water: waterSet, walls: [] };
   room.cx = start.cx; room.cy = start.cy;
@@ -688,6 +692,8 @@ function updateFloor(dt) {
 }
 function clearRoom(r) {
   r.state = 'clear'; setGates(r, false);
+  // Gold and relics left on the floor fly to the Saint.
+  for (const d of drops) if (d.kind !== 'globe' && roomOf(d.x, d.y) === r) d.vac = true;
   game.banner = { text: 'ROOM CLEARED', sub: r.type === 'exit' ? 'THE WAYSTONE WAKES' : `${room.rooms.filter((q) => q.state === 'clear').length} OF ${room.rooms.length} ROOMS`, t: 0 };
   dropLoot(player.x + rand(-30, 30), player.y + rand(-20, 20), { gold: 2 + r.depth, globe: 0.6, item: 0.35 + r.depth * 0.05 });
   addFervor(10);
@@ -810,6 +816,17 @@ function drawAmbientGlow(cx, cy) {
 }
 
 const solidAt = (px, py) => room.isSolid(Math.floor(px / TILE), Math.floor(py / TILE));
+// If a body ends up overlapping solid tiles (a raised wall, a gate, a bad
+// spawn), move it to the nearest clear spot.
+const boxSolid = (x, y, r) => solidAt(x - r, y - r) || solidAt(x + r, y - r) || solidAt(x - r, y + r) || solidAt(x + r, y + r);
+function unstick(o, r) {
+  if (!boxSolid(o.x, o.y, r)) return false;
+  for (let d = 2; d <= 48; d += 2) for (let k = 0; k < 16; k++) {
+    const a = k * Math.PI / 8, x = o.x + Math.cos(a) * d, y = o.y + Math.sin(a) * d;
+    if (!boxSolid(x, y, r)) { o.x = x; o.y = y; return true; }
+  }
+  return false;
+}
 function moveCircle(o, dx, dy, r) {
   let bumped = false;
   const tryAxis = (ax, d) => {
@@ -841,11 +858,12 @@ function resetWorld() {
 }
 function newRun() {
   makeDungeon();
-  player = makePlayer((room.start.cx + 0.5) * TILE, (room.start.cy + 2) * TILE); applyGear(true);
+  player = makePlayer((room.start.cx + 0.5) * TILE, (room.start.cy + 2) * TILE);
   resetWorld();
   game.scene = 'wound'; game.state = 'play'; game.cardAt = game.real; game.waystone = null; game.interact = null;
   Object.assign(game, { time: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, execTarget: null, flash: 0,
     run: { gold: 0, items: [], level: 1, xp: 0, pending: 0, wounds: {} }, skill: null, stig: null, curRoom: room.start, buff: null, banner: null, massacre: null, focus: null, reflect: 0 });
+  applyGear(true); // after the run reset, so last run's Stigmata are gone
   // Shrines and chests are things to use.
   for (const r of room.rooms) {
     if (r.shrine) { const p = r.shrine; room.interact.push({ x: p.x, y: p.y + 4, r: 26, label: 'PRAY', icon: 'talk', use() { useShrine(p); this.done = true; } }); }
@@ -998,7 +1016,7 @@ function makeTown() {
   interact.push({ x: 2340, y: base + 8, r: 36, label: 'DESCEND', icon: 'descend', door: true, use: () => startDescent() });
   // Foreground silhouettes (parallax, drawn over everything).
   for (let x = 0; x < w * TILE * 1.25 + 520; x += 78 + rng() * 156) fg.push({ x, kind: pick(['tree', 'fence', 'fence', 'tomb', 'gallows', 'cart']), frame: Math.floor(rng() * 3) });
-  stain = document.createElement('canvas'); stain.width = roomCanvas.width; stain.height = roomCanvas.height; sctxStain = stain.getContext('2d');
+  stain = roomCanvas; sctxStain = rc;
   room = { kind: 'town', name: 'VAEL', w, h, solid, isSolid, props, lights, decals: room_candles.splice(0).map((c) => ({ kind: 'candles', ...c })), npcs, interact, pw: w * TILE, ph: h * TILE, cx: 146, cy: 13, top: TOP, ambient: 'rgba(16,8,30,0.62)', smoke, crows, fg, sky: makeSky(w * TILE), smokeParts: [], ash: [], lightning: { t: 6 + rng() * 8, flash: 0 } };
   for (const d of room.decals) lights.push({ x: d.x, y: d.y - 8, r: 52, c: 'flame', a: 0.7, flick: rng() * 9 });
 }
@@ -1121,6 +1139,7 @@ function drawNpc(n) {
 
 function enterTown(wake = true) {
   makeTown();
+  if (game.run) game.run.wounds = {}; // Stigmata last only for the run
   player = makePlayer(2340, (room.top + 3) * TILE); applyGear(true);
   game.district = null;
   resetWorld();
@@ -1334,7 +1353,9 @@ function raiseWall(e) {
     const tx = Math.floor((cx + px * k * 16) / TILE), ty = Math.floor((cy + py * k * 16) / TILE);
     if (room.isSolid(tx, ty)) continue;
     const wx = tx * TILE + 8, wy = ty * TILE + 8;
-    if (Math.hypot(wx - player.x, wy - player.y) < 14 || enemies.some((o) => !o.dead && Math.hypot(o.x - wx, o.y - wy) < 12)) continue;
+    // Never raise a wall on anyone: compare the tile's box with each body's box.
+    const overlaps = (o, r) => Math.abs(wx - o.x) < 8 + r + 2 && Math.abs(wy - o.y) < 8 + r + 2;
+    if (overlaps(player, player.r) || enemies.some((o) => !o.dead && overlaps(o, o.r))) continue;
     if (room.rooms && room.rooms.some((r) => r.gates.some((g) => g.tiles.some(([gx, gy]) => gx === tx && gy === ty)))) continue;
     room.solid[ty][tx] = true; tiles.push([tx, ty]);
   }
@@ -1348,6 +1369,7 @@ function updateWalls(dt) {
 // ------------------------------------------------------- monster brains ---
 function updateEnemy(e, dt) {
   const d = e.def;
+  if (!e.under && e.state !== 'spawn') unstick(e, Math.min(e.r, 7));
   e.t += dt; e.animT += dt; e.flash = Math.max(0, e.flash - dt);
   if (e.spawnDelay > 0) { e.spawnDelay -= dt; e.t = 0; return; }
   updateStatus(e, dt);
@@ -1686,9 +1708,9 @@ function perfectDodge() {
 }
 
 function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
+  if (e.dead || e.state === 'spawn' || e.spawnDelay > 0 || e.under) return;
   dmg = Math.max(1, Math.round(dmg * G.dmgMul));
   if (e.room !== undefined && room.rooms && room.rooms[e.room]) room.rooms[e.room].lastHurt = game.time;
-  if (e.dead || e.state === 'spawn' || e.spawnDelay > 0 || e.under) return;
   if (e.ward > 0) { nums.push({ x: e.x, y: e.y - e.hy * 2 - 4, v: 'WARDED', t: 0, color: PAL.holy1, small: true }); return; }
   let blocked = false;
   if (!opts.status && !(e.bound > 0) && e.def.shield && e.state !== 'stagger' && Math.sign(dirx) === -e.face && Math.abs(dirx) > Math.abs(diry) * 0.6) { dmg = Math.max(1, Math.round(dmg * 0.35)); blocked = true; crit = false; }
@@ -1717,7 +1739,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   e.dead = true; sfx(rng() < 0.5 ? 'kill0' : 'kill1', { vol: e.elite ? 1.3 : 1, rate: e.tier === 'elite' ? 0.8 : 1 });
   if (player.lock === e) player.lock = null;
   if (e.illusion) { playFx('fx', 'smoke', e.x, e.y - 8, 14); return; }
-  if (G.lok) player.hp = Math.min(player.maxHp, player.hp + G.lok);
+  if (G.lok && player.hp > 0 && game.state === 'play') player.hp = Math.min(player.maxHp, player.hp + G.lok);
   game.kills++;
   if (!e.minion || rng() < 0.5) gainXp(e.tier === 'elite' ? 15 : e.tier === 'rare' ? 4 : e.type === 'imp' ? 6 : 1);
   onWoundKill();
@@ -1856,6 +1878,7 @@ const BAG_SIZE = 30;
 function gearInit() {
   SAVE.equip = SAVE.equip || {};
   SAVE.bag = SAVE.bag || [];
+  for (const it of SAVE.bag) it.run = false; // a run left unfinished keeps what it found
   // Old saves kept a flat stash of names; turn them into real items once.
   if (SAVE.stash && SAVE.stash.length) {
     const map = { '+DAMAGE': 'dmg', '+CRIT CHANCE': 'crit', '+MAX HP': 'hp', '+DASH RECHARGE': 'dash', '+FERVOR GAIN': 'fervor', '+GOLD FIND': 'gold', '+MOVE SPEED': 'speed', '+MIRACLE COOLDOWN': 'cdr', '+ARMOR': 'armor', '+LIFE ON KILL': 'lok' };
@@ -1884,10 +1907,10 @@ function applyGear(fill = false) {
   player.charges = fill ? G.charges : Math.min(player.charges, G.charges);
 }
 function bagAdd(it) {
+  // An empty slot takes the item straight away, even with a full bag.
+  if (!SAVE.equip[it.slot]) { it.run = false; it.isNew = false; SAVE.equip[it.slot] = it; applyGear(); toast(`EQUIPPED ${it.name}`, 2); game.toastColor = RARITY[it.ri].color; persist(); return true; }
   if (SAVE.bag.length >= BAG_SIZE) return false;
   it.run = game.scene === 'wound';
-  // An empty slot takes the item straight away.
-  if (!SAVE.equip[it.slot]) { it.run = false; it.isNew = false; SAVE.equip[it.slot] = it; applyGear(); toast(`EQUIPPED ${it.name}`, 2); game.toastColor = RARITY[it.ri].color; persist(); return true; }
   SAVE.bag.push(it); persist(); return true;
 }
 function equip(it) {
@@ -1921,8 +1944,8 @@ function updateDrops(dt) {
     if (d.z > 0 || d.vz > 0) { d.vz -= 300 * dt; d.z += d.vz * dt; moveCircle(d, d.vx * dt, d.vy * dt, 2); if (d.z <= 0) { d.z = 0; if (Math.abs(d.vz) > 40) { d.vz = -d.vz * 0.35; d.vx *= 0.5; d.vy *= 0.5; } else { d.vz = 0; d.vx = d.vy = 0; } } }
     const dist = Math.hypot(d.x - player.x, d.y - player.y);
     const magnet = d.kind === 'gold' ? 60 : d.kind === 'globe' ? 40 : 0;
-    if (d.t > 0.4 && dist < magnet) { const s = 210 * dt; d.x += (player.x - d.x) / dist * s; d.y += (player.y - d.y) / dist * s; }
     const full = d.kind === 'item' && SAVE.bag.length >= BAG_SIZE && SAVE.equip[d.item.slot];
+    if (d.t > 0.4 && dist > 0.5 && (dist < magnet || (d.vac && !full))) { const s = (d.vac ? 330 : 210) * dt; d.x += (player.x - d.x) / dist * Math.min(dist, s); d.y += (player.y - d.y) / dist * Math.min(dist, s); }
     if (full && d.t > 0.4 && dist < 14 && !(game.toast && game.toast.msg === 'YOUR BAG IS FULL')) toast('YOUR BAG IS FULL', 1.5);
     if (!full && d.t > 0.4 && dist < (d.kind === 'item' ? 14 : 10)) {
       d.taken = true; sfx(d.kind === 'gold' ? 'gold' : d.kind === 'globe' ? 'heal' : 'pickup', { rate: d.kind === 'item' && d.item.ri >= 3 ? 0.8 : 1 });
@@ -2087,7 +2110,9 @@ function updateCrossbow(dt) {
   const d = Math.hypot(tx - sx, ty - sy) || 1;
   const crit = rng() < T.crossbow.crit + G.crit / 100;
   const base = Math.atan2(ty - sy, tx - sx), n = 1 + wound('split');
-  for (let k = 0; k < n; k++) { const a = base + (k - (n - 1) / 2) * 0.16; bolts.push({ x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce'), hit: new Set(), crit, trail: [] }); }
+  // Height above the floor: starts at the bow, sinks to the target's chest (walls are tested at floor level).
+  const z0 = player.y - sy, zv = (t.hy - z0) / (d / T.crossbow.speed);
+  for (let k = 0; k < n; k++) { const a = base + (k - (n - 1) / 2) * 0.16; bolts.push({ z: z0, zv, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce'), hit: new Set(), crit, trail: [] }); }
   sfx('shoot');
   xb.recoil = 1; xb.flash = 1;
   playFx('fx', 'impact', sx, sy, 40, { small: true, skip: 2 });
@@ -2100,7 +2125,8 @@ function updateBolts(dt) {
     for (let s = 0; s < 3 && b.life > 0; s++) {
       b.x += b.vx * dt / 3; b.y += b.vy * dt / 3;
       if (room.props.some((q) => q.breakable && Math.hypot(q.x - b.x, q.y - 8 - b.y) < 9)) { hitBreakables(b.x, b.y + 2, 4); b.life = 0; break; }
-      if (solidAt(b.x, b.y + 10)) { b.life = 0; sparks(b.x, b.y, PAL.iron0, 4); playFx('fx', 'impact', b.x, b.y, 30, { small: true }); break; }
+      b.z = Math.max(4, (b.z ?? 10) + (b.zv || 0) * dt / 3);
+      if (solidAt(b.x, b.y + b.z)) { b.life = 0; sparks(b.x, b.y, PAL.iron0, 4); playFx('fx', 'impact', b.x, b.y, 30, { small: true }); break; }
       for (const e of enemies) {
         if (e.dead || e.state === 'spawn' || b.hit.has(e)) continue;
         const hy = e.y - e.hy, hr = e.hr;
@@ -2281,6 +2307,7 @@ function updateAbilities(dt) {
 // --------------------------------------------------------------- player ---
 function updatePlayer(dt) {
   const p = player;
+  unstick(p, p.r);
   p.iframes = Math.max(0, p.iframes - dt); p.hurt = Math.max(0, p.hurt - dt);
   p.slowT = Math.max(0, (p.slowT || 0) - dt); p.rootT = Math.max(0, (p.rootT || 0) - dt);
   if (p.pull) { // dragged by a chain or knocked back
@@ -2414,10 +2441,33 @@ function update(realDt) {
 }
 
 // --------------------------------------------------------------- render ---
-function glow(x, y, r, c, g2 = ctx) {
-  const g = g2.createRadialGradient(x, y, 0, x, y, r);
-  g.addColorStop(0, c); g.addColorStop(1, 'rgba(0,0,0,0)');
-  g2.fillStyle = g; g2.fillRect(x - r, y - r, r * 2, r * 2);
+// Soft radial glows, pre-rendered once per colour and size and drawn as
+// sprites (building gradients every frame was a hot spot). Alpha is applied
+// with globalAlpha so fading glows share one sprite.
+const GLOW_CACHE = new Map(), COLOR_SPLIT = new Map();
+function glowSprite(rgb, r) {
+  const key = rgb + '|' + r; let c = GLOW_CACHE.get(key);
+  if (!c) {
+    c = document.createElement('canvas'); c.width = c.height = r * 2;
+    const x = c.getContext('2d'), g = x.createRadialGradient(r, r, 0, r, r, r);
+    g.addColorStop(0, `rgba(${rgb},1)`); g.addColorStop(1, `rgba(${rgb},0)`);
+    x.fillStyle = g; x.fillRect(0, 0, r * 2, r * 2);
+    if (GLOW_CACHE.size > 300) GLOW_CACHE.clear();
+    GLOW_CACHE.set(key, c);
+  }
+  return c;
+}
+let GLOW_TO = null;
+const glowLayer = document.createElement('canvas'), gctx = glowLayer.getContext('2d');
+function glow(x, y, r, c, g2 = GLOW_TO || ctx) {
+  if (!(r > 0.5)) return;
+  let sp = COLOR_SPLIT.get(c);
+  if (!sp) { const m = /rgba?\(([^)]+)\)/.exec(c), v = m ? m[1].split(',').map((q) => q.trim()) : ['255', '255', '255', '1']; sp = [v.slice(0, 3).join(','), v[3] === undefined ? 1 : +v[3]]; if (COLOR_SPLIT.size > 2000) COLOR_SPLIT.clear(); COLOR_SPLIT.set(c, sp); }
+  if (sp[1] <= 0.003) return;
+  const R = Math.max(2, Math.round(r / 2) * 2), img = glowSprite(sp[0], R), a0 = g2.globalAlpha;
+  g2.globalAlpha = a0 * Math.min(1, sp[1]);
+  g2.drawImage(img, x - r, y - r, r * 2, r * 2);
+  g2.globalAlpha = a0;
 }
 const LIGHT_RGB = { flame: '95,220,108', ember: '255,122,31', holy: '138,224,255', gold: '255,209,85', blood: '224,32,46', violet: '154,106,230' };
 const onScreen = (x, y, cx, cy, m) => x > cx - m && x < cx + W + m && y > cy - m && y < cy + H + m;
@@ -2429,7 +2479,9 @@ function render() {
   const cx = Math.round(cam.x) + sx, cy = Math.round(cam.y) + sy;
   if (game.scene === 'town') drawTownBack(cx, cy);
   ctx.save(); ctx.translate(-cx, -cy);
-  ctx.drawImage(roomCanvas, 0, 0); ctx.drawImage(stain, 0, 0);
+  // Only the visible part of the baked floor and the stain layer.
+  { const x0 = Math.max(0, cx), y0 = Math.max(0, cy), x1 = Math.min(roomCanvas.width, cx + W), y1 = Math.min(roomCanvas.height, cy + H);
+    if (x1 > x0 && y1 > y0) ctx.drawImage(roomCanvas, x0, y0, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0); }
   for (const d of room.decals) d.kind === 'skullcandle' ? spr('hall', 'skullcandle', Math.floor(game.real * 6 + d.x), d.x, d.y) : spr('props', 'candles', Math.floor(game.real * 6 + d.x), d.x, d.y);
   for (const l of room.lights) if (l.sconce) bigFlame(l.x, l.y, l.flick);
   if (game.scene === 'wound') { drawGates(); drawTelegraphs(); drawDrops(); drawCritters(cx, cy); }
@@ -2495,7 +2547,12 @@ function render() {
   renderLight(cx, cy);
   if (game.scene === 'town') drawTownForeground(cx, cy);
 
-  // Additive glow (VFX layer).
+  // Additive glow (VFX layer). Soft glows go to a half-size layer that is
+  // added to the screen once; additive blending does not care about order.
+  if (glowLayer.width !== dark.width || glowLayer.height !== dark.height) { glowLayer.width = dark.width; glowLayer.height = dark.height; }
+  gctx.setTransform(1, 0, 0, 1, 0, 0); gctx.clearRect(0, 0, glowLayer.width, glowLayer.height);
+  gctx.setTransform(0.5, 0, 0, 0.5, -cx * 0.5, -cy * 0.5); gctx.globalCompositeOperation = 'lighter';
+  GLOW_TO = gctx;
   ctx.save(); ctx.translate(-cx, -cy); ctx.globalCompositeOperation = 'lighter';
   for (const l of room.lights) if (onScreen(l.x, l.y, cx, cy, 140)) {
     const fl = Math.sin(game.real * 9 + (l.flick || 0)) * 2;
@@ -2529,6 +2586,10 @@ function render() {
     ctx.beginPath(); ctx.ellipse(r.x, r.y, 6 + r.r * k, (6 + r.r * k) * (r.flat ? 0.6 : 1), 0, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.restore();
+  GLOW_TO = null;
+  ctx.globalCompositeOperation = 'lighter'; ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(glowLayer, 0, 0, glowLayer.width * 2, glowLayer.height * 2);
+  ctx.imageSmoothingEnabled = false; ctx.globalCompositeOperation = 'source-over';
 
   for (const n of nums) {
     const rise = 16 * Math.min(1, n.t * 6) + n.t * 8, pop = n.t < 0.08;
@@ -2569,19 +2630,36 @@ function drawProp(p) {
   if (p.kind === 'shrine' && !p.used) glow(p.x, p.y - 26, 0, 'rgba(0,0,0,0)');
 }
 
+// A light's cut-out in the darkness, cached per size.
+const HOLE_CACHE = new Map();
+function holeSprite(r) {
+  let c = HOLE_CACHE.get(r);
+  if (!c) {
+    c = document.createElement('canvas'); c.width = c.height = r * 2;
+    const x = c.getContext('2d'), g = x.createRadialGradient(r, r, r * 0.15, r, r, r);
+    g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.55, 'rgba(0,0,0,0.65)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = g; x.fillRect(0, 0, r * 2, r * 2); HOLE_CACHE.set(r, c);
+  }
+  return c;
+}
 function renderLight(cx, cy) {
   // Darkness with light radii cut out (GDD: darkness per Stratum, candle radii).
-  dctx.globalCompositeOperation = 'source-over';
-  dctx.clearRect(0, 0, W, H);
-  dctx.fillStyle = room.ambient; dctx.fillRect(0, 0, W, H);
-  const v = dctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.7);
-  v.addColorStop(0, 'rgba(11,7,16,0)'); v.addColorStop(1, 'rgba(11,7,16,0.55)');
-  dctx.fillStyle = v; dctx.fillRect(0, 0, W, H);
+  // Ambient darkness plus vignette, built once per size and ambient.
+  if (!darkBase || darkBase.amb !== room.ambient) {
+    darkBase = document.createElement('canvas'); darkBase.width = dark.width; darkBase.height = dark.height; darkBase.amb = room.ambient;
+    const b = darkBase.getContext('2d'); b.scale(0.5, 0.5);
+    b.fillStyle = room.ambient; b.fillRect(0, 0, W, H);
+    const v = b.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.7);
+    v.addColorStop(0, 'rgba(11,7,16,0)'); v.addColorStop(1, 'rgba(11,7,16,0.55)');
+    b.fillStyle = v; b.fillRect(0, 0, W, H);
+  }
+  dctx.setTransform(1, 0, 0, 1, 0, 0);
+  dctx.globalCompositeOperation = 'copy'; dctx.drawImage(darkBase, 0, 0);
+  dctx.setTransform(0.5, 0, 0, 0.5, 0, 0);
   dctx.globalCompositeOperation = 'destination-out';
   const hole = (x, y, r, a = 1) => {
-    const g = dctx.createRadialGradient(x - cx, y - cy, r * 0.15, x - cx, y - cy, r);
-    g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(0.55, `rgba(0,0,0,${a * 0.65})`); g.addColorStop(1, 'rgba(0,0,0,0)');
-    dctx.fillStyle = g; dctx.fillRect(x - cx - r, y - cy - r, r * 2, r * 2);
+    if (r < 1 || x - cx + r < 0 || y - cy + r < 0 || x - cx - r > W || y - cy - r > H) return;
+    dctx.globalAlpha = Math.min(1, a); dctx.drawImage(holeSprite(Math.max(4, Math.round(r / 4) * 4)), x - cx - r, y - cy - r, r * 2, r * 2); dctx.globalAlpha = 1;
   };
   hole(player.x, player.y - 18, 150 + fervorTier() * 10);
   for (const l of room.lights) if (onScreen(l.x, l.y, cx, cy, 100)) hole(l.x, l.y, l.r + Math.sin(game.real * 7 + (l.flick || 0)) * 3, l.a);
@@ -2592,8 +2670,8 @@ function renderLight(cx, cy) {
   for (const d of drops) if (d.kind === 'item' && d.item.ri >= 2) hole(d.x, d.y - 20, 30, 0.6);
   for (const e of enemies) if (e.tier === 'elite' && !e.dead) hole(e.x, e.y - e.hy, 40, 0.5);
   for (const f of fxs) if (f.anim === 'impact' || f.anim === 'burst') hole(f.x, f.y, 26, 0.6);
-  dctx.globalCompositeOperation = 'source-over';
-  ctx.drawImage(dark, 0, 0);
+  dctx.globalCompositeOperation = 'source-over'; dctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = true; ctx.drawImage(dark, 0, 0, dark.width * 2, dark.height * 2); ctx.imageSmoothingEnabled = false;
 }
 
 function drawPlayer() {
@@ -2720,8 +2798,7 @@ function drawAbilitiesAir() {
   }
 }
 function drawAbilitiesGlow() {
-  const t = thuriblePos();
-  glow(t.x, t.y, 18, 'rgba(255,122,31,0.4)');
+  for (let ci = 0; ci < censers(); ci++) { const t = thuriblePos(ci); glow(t.x, t.y, 18, 'rgba(255,122,31,0.4)'); }
   for (const pl of pools) glow(pl.x, pl.y, pl.r * 1.3, `rgba(63,164,240,${0.3 * Math.min(1, (T.flask.time - pl.t) / 0.5)})`);
   for (const f of flasks) { const k = f.t / T.flask.flight; glow(f.sx + (f.tx - f.sx) * k, f.sy + (f.ty - f.sy) * k - Math.sin(k * Math.PI) * 36, 10, 'rgba(216,247,255,0.5)'); }
   for (const l of lashes) if (l.hit) glow(l.x, l.y, 18, `rgba(224,32,46,${0.6 * (1 - (l.t - 0.12) / 0.18)})`);
@@ -2909,7 +2986,7 @@ function renderHud() {
   if (game.toast) text(game.toast.msg, W / 2, Math.round(H * 0.3) + (game.banner ? 40 : 0), game.toastColor || PAL.cloth0, { align: 'center' });
   if (game.toast && game.toast.t < 0.05) game.toastColor = null;
   renderTutorial();
-  if (location.search.includes('fps')) text(`${Math.round(fpsAvg)} FPS ${enemies.length}`, 8, 44, PAL.flame1);
+  if (location.search.includes('fps')) text(`${Math.round(fpsAvg)} FPS ${(game.cpu || 0).toFixed(1)}MS ${enemies.length}`, 8, 44, PAL.flame1);
 }
 
 function overlay(title, sub) {
@@ -3354,7 +3431,7 @@ function onTap(x, y) {
   return false;
 }
 
-function blit() { sctx.drawImage(buf, 0, 0, W * SCALE, H * SCALE); }
+function blit() { /* CSS does the scaling */ }
 
 // ---------------------------------------------------------------- loop ---
 let last = 0, fpsAvg = 60;
@@ -3362,8 +3439,10 @@ function frame(t) {
   const dt = Math.min(1 / 30, (t - last) / 1000 || 0);
   last = t;
   if (dt > 0) fpsAvg = fpsAvg * 0.95 + (1 / dt) * 0.05;
+  const t0 = performance.now();
   update(dt);
   render();
+  game.cpu = (game.cpu || 0) * 0.95 + (performance.now() - t0) * 0.05; // ms of our own work per frame
   requestAnimationFrame(frame);
 }
 

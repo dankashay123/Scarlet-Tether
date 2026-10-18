@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-18, after round 3: the floating crossbow and Stigmata level-ups.
+Last updated 2026-10-18, after the optimisation and bug pass.
 
 ## Where the game stands
 
@@ -22,6 +22,11 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
   - Effects, item icons, coins, globes and enemy shots remodelled (`tools/models/vfx.mjs`).
   - New UI font: Kenney High, bold, cap height 9.
   - Saint legs show in the run; golem legs split; leviathan rears; darker Inquisitor hood.
+- **Optimisation and bug pass:**
+  - Rendering: the game draws straight into the screen canvas and CSS scales it (pixelated); only the visible part of the baked floor is drawn; blood soaks into the floor canvas; darkness and soft glows render at half size; glows and light holes are cached sprites. About 11 to 18 fps in the heaviest crowd at 4x CPU throttle in headless Chromium (software rendering), 44+ in town; our own code is 3 to 6 ms per frame at real speed.
+  - Fixed: raised walls could trap the Saint (box test plus an `unstick` safety net for the Saint and enemies); last run's Stigmata leaked into town and the next run; a full bag could destroy an item for an empty slot; bolts fizzled against the back wall (they now track height above the floor); vacuumed drops could turn NaN; 1/2/3 on the card screen also cast a miracle; stale run flags on items after a closed tab; the mute button took taps meant for overlays; useless hits delayed the stuck-room rescue; the second censer had no glow; life on kill could heal a dead Saint.
+  - Cleared rooms pull their gold and relics to the Saint.
+  - `tools/tests/soak.cjs` plays at random for minutes and checks for errors, NaN, stuck states and the Saint inside walls.
 - **Round 3 (inspired by Pixel Hunter Idle, see `docs/ART_COMPARISON.md`):**
   - The Nail Crossbow floats: `tools/models/weapon.mjs` renders it at 16 angles; `updateFloatBow`/`drawFloatBow` in `index.html` hover, aim, recoil and glow. Bolts leave from its tip. The Saint now raises a glowing palm instead of holding it.
   - Stigmata (GDD in-run talents): kills give XP (`gainXp`), each level offers 3 of 20 Wounds (`WOUNDS`). Plain boons fold into `gearStats()`; six skills run in `updateSkills` with big smooth effects (`drawSkillsGlow`). The pause screen lists what you bear. Tests set `window.HS_AUTOSTIG` so cards pick themselves.
@@ -79,6 +84,7 @@ These hosts are allowed now. Notes: Steam's `api/appdetails` and the App Store p
 - The test server is a plain `python3 -m http.server 8123`. Background servers in cloud sessions time out after about 2 h.
 - Town coordinates in `makeTown()` are already at the ×1.3 scale. The player starts at x 2340 (the cathedral), and the Vestry door is there too.
 - Elite HP bars sit at `spriteTop(e)`, the height of the sprite's first walk frame, not `hy`.
+- `glow()` draws cached sprites; inside the glow pass it writes to a half-size layer (`GLOW_TO`). Pass rgba colours.
 - `text()` caches each string as a small canvas (cleared at 600 entries). Use `small: true` for the old thin 5x7 font.
 - Audio starts on the first tap (iOS rule). Music streams through `<audio>` elements, effects are decoded buffers. `AUDIO.set([...])` picks the loops; `sfx(name)` plays an effect.
 - Rebuild audio with `tools/build-audio.sh <src>` after downloading the packs; the sources are not committed.
