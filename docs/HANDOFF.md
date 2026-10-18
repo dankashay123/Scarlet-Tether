@@ -126,6 +126,9 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   chain leaving a bound monster in an unknown `'walk'` state (it stood
   frozen). `tools/tests/rites.cjs` fires both rites together for a while
   and injects faults to prove the game keeps running.
+- **Round 8d:** coffins no longer flicker to their broken frame (`drawProp`
+  animated any multi-frame prop placed without a `frame`; breakables now
+  always show frame 0).
 - **Round 7:** chunky 2x2 pixels (`setRes(2)` in `tools/sdf.mjs`,
   `tools/chunky.mjs` for every sheet but `ui`, `chunkCanvas()` for the
   baked floor), whole-number nearest-neighbour scaling, thicker halo,

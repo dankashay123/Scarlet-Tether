@@ -2919,7 +2919,9 @@ function flame(x, y, ph = 0) {
 
 function drawProp(p) {
   const sheet = p.sheet || 'props', anim = p.anim || p.kind, n = SPR[sheet].anims[anim].length;
-  const i = p.frame !== undefined ? p.frame : n > 1 ? Math.floor(game.real * (anim === 'fountain' || anim === 'pool' ? 3 : anim === 'gallows' ? 1.2 : anim === 'waystone' ? 5 : 8) + (p.ph || 0)) : 0;
+  // Breakables are removed when broken, so they always show their whole frame
+  // (a coffin's second frame is its broken lid, not an animation).
+  const i = p.frame !== undefined ? p.frame : p.breakable ? 0 : n > 1 ? Math.floor(game.real * (anim === 'fountain' || anim === 'pool' ? 3 : anim === 'gallows' ? 1.2 : anim === 'waystone' ? 5 : 8) + (p.ph || 0)) : 0;
   spr(sheet, anim, i, p.x, p.y);
   if (p.kind === 'shrine' && !p.used) glow(p.x, p.y - 26, 0, 'rgba(0,0,0,0)');
 }
