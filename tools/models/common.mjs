@@ -15,10 +15,10 @@ const MM = {
   plate: { ramp: 'iron', spec: 0.7, max: 7 }, plateDark: { ramp: 'iron', spec: 0.5, bias: -0.15, min: 3 },
   red: { ramp: 'crimson', spec: 0.06 }, redDark: { ramp: 'crimson', bias: -0.14, min: 2 },
   fur: { ramp: 'shroud', spec: 0.05, bias: 0.05 }, pink: { ramp: 'skin', spec: 0.2, bias: -0.05 },
-  bare: { ramp: 'skin', spec: 0.14 }, wing: { ramp: 'stone', spec: 0.15, bias: 0.15 }, wingDark: { ramp: 'stone', bias: -0.15, min: 3 }, bloat: { ramp: 'rot', spec: 0.35, bias: -0.16 }, shieldFace: { ramp: 'iron', spec: 0.4, bias: -0.22, min: 3 }, wound: { ramp: 'blood', spec: 0.5, min: 1 },
+  bare: { ramp: 'skin', spec: 0.14 }, wing: { ramp: 'stone', spec: 0.15, bias: 0.15 }, wingDark: { ramp: 'stone', bias: -0.15, min: 3 }, bloat: { ramp: 'rot', spec: 0.35, bias: -0.16 }, shieldFace: { ramp: 'iron', spec: 0.4, bias: -0.22, min: 3 }, wound: { ramp: 'blood', spec: 0.5, min: 1 }, lash: { ramp: 'blood', spec: 0.3, bias: -0.1, min: 2, max: 5 },
   sack: { ramp: 'shroud', bias: -0.05 }, rope: { ramp: 'wood', spec: 0.1, bias: 0.1 },
   marble: { ramp: 'bone', spec: 0.15, bias: -0.1 }, marbleDark: { ramp: 'bone', bias: -0.25, min: 3 },
-  spirit: { ramp: 'holy', spec: 0.5, bias: 0.12, max: 7 }, spiritDeep: { ramp: 'holy', bias: -0.05, min: 2 },
+  spirit: { ramp: 'holy', spec: 0.4, bias: -0.02, min: 1, max: 7 }, spiritDeep: { ramp: 'holy', bias: -0.05, min: 2 },
   hollow: { ramp: 'ink', bias: -0.5, min: 5 }, belly: { ramp: 'moss', spec: 0.25 }, bellyHot: { ramp: 'blood', spec: 0.55, bias: 0.05 },
 };
 
@@ -347,7 +347,7 @@ function flagellant(t = 0, atk = -1) {
   S.add(rotZ(ellipsoid([tx, ty, 0], [4.2, 6.6, 3.2], 'bare'), [tx, ty + 6], 0.1 + lean * 0.04), 0);
   S.add(ellipsoid([tx - 0.4, ty - 4, 0], [5.2, 2.6, 3.4], 'bare'), 1.6);
   // Wounds: lash marks across the back and side.
-  for (let i = 0; i < 4; i++) S.paint({ f: (x, y, z) => (x < tx + 1 ? Math.abs((y - (ty - 4 + i * 2.6)) + (x - tx) * 0.7) - 0.4 : 1), mat: 'wound' });
+  for (let i = 0; i < 3; i++) S.paint({ f: (x, y, z) => (x < tx - 0.5 ? Math.abs((y - (ty - 3 + i * 3.2)) + (x - tx) * 0.55) - 0.75 : 1), mat: 'lash' });
   // Chain wound round the waist.
   S.paint({ f: (x, y) => Math.abs(y - (31 + B)) - 0.6, mat: 'iron' });
   // Arms: the scourge hand and the back hand.
@@ -363,9 +363,9 @@ function flagellant(t = 0, atk = -1) {
   S.add(capsule([hx - 1, hy - 4, -0.4], [hx - 3.4, hy - 7, -1.4], 2.4, 0.9, 'sack'), 1.4);
   S.paint({ f: (x, y) => Math.abs(y - (hy + 3.4)) - 0.55, mat: 'rope' });
   S.sub(sphere([hx + 2.4, hy - 0.4, 3.9], 1.05, 'hollow'), 0.3);
-  S.sub(sphere([hx + 4.1, hy - 0.2, 2.4], 0.9, 'hollow'), 0.3);
+  S.sub(sphere([hx + 3.9, hy - 0.2, 2.6], 0.9, 'hollow'), 0.3);
   const f = R(S, w, h, gy);
-  eye(f, hx + 2.4, hy - 0.6, 'bone0', null); D(f, hx + 4.1, hy - 0.4, 'bone1');
+  eye(f, hx + 2.4, hy - 0.6, 'bone0', null); D(f, hx + 3.9, hy - 0.4, 'bone2');
   // The scourge: three knotted cords.
   const cords = atk === 0 ? [[-3, -6], [-5, -3], [-6, 1]] : atk === 1 ? [[9, 4], [10, 6.5], [8, 8.5]] : [[0, 8], [1.5, 9], [-1.5, 8.5]];
   for (const [dx, dy] of cords) { const ex = hand[0] + dx, ey = hand[1] + dy; pline(f, hand[0] + 0.5, hand[1] + 0.5, ex, ey, 'crimson3'); D(f, ex, ey, 'blood1'); D(f, (hand[0] + ex) / 2, (hand[1] + ey) / 2, 'blood2'); }
@@ -423,26 +423,30 @@ function cherub(t = 0, atk = -1) {
 }
 
 // ================================================================= wisp ===
-// A blue choir-spirit: a guttering flame with a dark singing face.
+// A blue choir-spirit: a guttering soul-flame with hollow eyes and a mouth
+// open in an endless note.
 function wisp(t = 0, atk = -1) {
-  const S = new Scene(), w = 30, h = 38, gy = 35, cx = 13;
+  const S = new Scene(), w = 32, h = 40, gy = 37, cx = 15;
   const bob = atk >= 0 ? 0 : sin(ph(t)) * 1.2, stretch = atk === 1 ? 5 : atk === 0 ? -1.5 : 0;
-  const hx = cx + 1 + stretch * 0.6, hy = 12 + bob;
-  // Head/flame bulb and the tapering tail that whips behind.
-  S.add(sphere([hx, hy, 0], 6.4 - (atk === 0 ? -0.4 : 0), 'spirit'), 0);
+  const hx = cx + 1 + stretch * 0.6, hy = 14 + bob;
+  // Bulb and a tail that whips behind it.
+  S.add(sphere([hx, hy, 0], 6.2, 'spirit'), 0);
   const sway = atk >= 0 ? -stretch * 0.6 : sin(ph(t) + 1) * 2;
-  const tail = [[hx - 1, hy + 6, 0], [hx - 3 + sway * 0.5, hy + 12, -0.5], [hx - 1.5 + sway, hy + 18, -1]];
-  S.add(capsule([hx, hy + 1, 0], tail[0], 5.6, 4.6, 'spirit'), 1.6);
-  S.add(capsule(tail[0], tail[1], 4.6, 2.6, 'spirit'), 1.4);
-  S.add(capsule(tail[1], tail[2], 2.6, 0.6, 'spiritDeep'), 1);
-  // Flame licks off the crown.
-  for (const [dx, L, z] of [[-3, 5, -1], [-0.6, 6.5, 0.5], [2.2, 4, 1]]) S.add(capsule([hx + dx, hy - 3.5, z], [hx + dx - 2.4 - stretch * 0.4, hy - 3.5 - L, z], 2, 0.4, 'spirit'), 1.4);
-  // Face: a dark mask with a singing mouth.
-  S.sub(ellipsoid([hx + 2.6, hy + 0.6, 5.6], [3.6, 4, 2.4], 'hollow'), 0.6);
+  const tail = [[hx - 1.6, hy + 6.5, 0], [hx - 4 + sway * 0.5, hy + 12, -0.5], [hx - 2.5 + sway, hy + 18, -1]];
+  S.add(capsule([hx, hy + 2, 0], tail[0], 4.6, 3.6, 'spirit'), 1.6);
+  S.add(capsule(tail[0], tail[1], 3.6, 2.2, 'spiritDeep'), 1.4);
+  S.add(capsule(tail[1], tail[2], 2.4, 0.5, 'spiritDeep'), 1);
+  // Flame licks streaming off the crown.
+  const lick = (t % 2) * 0.8;
+  for (const [dx, L, z] of [[-3.8, 4 + lick, -1], [-1, 6.5 - lick, 0.5], [1.8, 4 + lick, 1]]) S.add(capsule([hx + dx, hy - 3.4, z], [hx + dx - 3.6 - stretch * 0.4, hy - 3.4 - L, z], 1.9, 0.4, 'spirit'), 1.2);
+  // Face: two sunken eyes and a round singing mouth.
+  S.sub(ellipsoid([hx + 1.6, hy - 0.6, 5.6], [1.3, 1.7, 1.6], 'hollow'), 0.5);
+  S.sub(ellipsoid([hx + 4.6, hy - 0.4, 3.8], [1.1, 1.6, 1.6], 'hollow'), 0.5);
+  S.sub(ellipsoid([hx + 3.4, hy + 3.2, 5], [1.1, atk === 1 ? 1.9 : 1.3, 1.6], 'hollow'), 0.5);
   const f = R(S, w, h, gy, { contourDepth: 7 });
-  eye(f, hx + 1.4, hy - 0.8, 'holy0', 'holy2'); eye(f, hx + 4, hy - 0.6, 'holy0', 'holy2');
-  const mo = atk === 1 ? 2 : 1;
-  for (let k = 0; k < mo; k++) D(f, hx + 2.8, hy + 2.6 + k, 'holy3');
+  D(f, hx + 1.6, hy - 0.8, 'holy0'); D(f, hx + 4.6, hy - 0.6, 'holy1');
+  // Sparks shed from the tail.
+  if (atk < 0) { D(f, tail[2][0] - 2 + t, tail[2][1] - 4 + (t % 2), 'holy1'); D(f, tail[1][0] - 4, tail[1][1] + t % 3, 'holy2'); }
   return A(f, cx, gy);
 }
 

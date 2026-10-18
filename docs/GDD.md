@@ -534,3 +534,23 @@ ends in Martyrdom and a first Vigil. Progress is tracked in `docs/ROADMAP.md`.
 - [ ] Martyrdom, Ash, six relics, Death Masks
 - [ ] Vigil tiers 1 to 10, unlocked early for testing
 - [ ] Suspend and resume saves
+
+## Art v5: sculpted pixel art at 360 px
+
+- The game renders about 360 px tall (`T.viewH`). Every world distance is
+  scaled by `WS = 1.3` so the larger sprites keep the same feel.
+- Characters, monsters, props and buildings are modelled as signed-distance
+  shapes (`tools/sdf.mjs`) that melt together with smooth unions, so no body
+  part ever reads as a separate piece. Each pixel is ray-marched, lit from the
+  top-left (diffuse, occlusion, rim, specular), and banded onto the 9-step
+  palette ramps. Coloured sel-out outlines and depth contours are added, and a
+  cleanup pass removes stray pixels. Eyes, strings and glints are placed by
+  hand afterwards. This is the 3D-to-pixel approach Dead Cells used, done
+  offline.
+- Floors, walls and water are height fields lit the same way
+  (`tools/models/dungeon.mjs`).
+- Model sets live in `tools/models/`: `base` (materials and the Saint),
+  `saint`, `common`, `rare`, `elite`, `townfolk`, `town` and `dungeon`. Each
+  replaces animations by name inside `tools/sprites.mjs`.
+- Preview one set without rebuilding the game:
+  `node tools/preview.mjs tools/models/<set>.mjs out.png 4`.

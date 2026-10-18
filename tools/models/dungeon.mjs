@@ -18,7 +18,7 @@ const shade = (ramp, s) => FINE[ramp][clamp(Math.round(s), 0, 8)];
 // Light comes from the same top-left as the SDF models; tone shifts the band.
 function relief(w, h, field, { k = 1.4, contrast = 1.25 } = {}) {
   const f = frame(w, h);
-  const H = (x, y) => { const c = field(x, y); return c ? c.h : 0; };
+  const H = (x, y) => { const c = field(x, y); return c && c.h !== undefined ? c.h : 0; };
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const c = field(x + 0.5, y + 0.5); if (!c) continue;
     if (c.name) { f.px[y * w + x] = IDX[c.name]; continue; }
@@ -437,6 +437,55 @@ function carpet(kind) { // 16x16 woven runner tiles: 0 centre, 1 left edge, 2 ri
   });
 }
 
+
+// ------------------------------------------------------ pickups and shots ---
+function water(v) { // 16x16, tiles seamlessly; ripples drift with v
+  const T = Math.PI * 2 / 16;
+  return relief(16, 16, (x, y) => {
+    const h = Math.sin(x * T + v * 1.57) * Math.sin(y * T * 2 - v * 1.57) * 0.5 + Math.sin((x - y) * T + v * 1.57) * 0.15;
+    if (h > 0.42) return { name: h > 0.48 ? 'teal1' : 'teal2' };
+    return { h, ramp: 'teal', tone: -0.3, min: 4, max: 8 };
+  }, { k: 1.2, contrast: 1.2 });
+}
+function coin(i) {
+  const S = new Scene();
+  S.add(i ? box([4, 4, 0], [0.9, 3, 3], 0.6, 'gold') : { mat: 'gold', bb: [0, 0, -2, 8, 8, 2], f: (x, y, z) => Math.max(Math.hypot(x - 4, y - 4) - 3.2, Math.abs(z) - 0.9) - 0.4 }, 0);
+  return R(S, 8, 8, MM, {});
+}
+function goldPile(n) {
+  const S = new Scene();
+  for (let k = 0; k < n * 3; k++) { const x = 4 + (k * 37) % 10, y = 7 + (k * 13) % 4 - (k > 4 ? 2 : 0); S.add({ mat: 'gold', bb: [x - 3, y - 3, -3, x + 3, y + 3, 3], f: (px, py, pz) => Math.max(Math.hypot(px - x, (pz - k * 0.3) * 1.1) - 2.2, Math.abs(py - y) - 0.5) - 0.3 }, 0); }
+  const fr = R(S, 18, 13, MM, {});
+  dot(fr, 6, 5, 'white');
+  return fr;
+}
+function globe(i) {
+  const S = new Scene();
+  S.add(sphere([8, 8, 0], 5.4 + i * 0.5, 'blood'), 0);
+  const fr = R(S, 16, 16, { ...MM, blood: { ramp: 'blood', spec: 0.9, bias: 0.1 } }, {});
+  dot(fr, 6, 5, 'white'); dot(fr, 5, 6, 'blood0');
+  return fr;
+}
+function shot(kind) {
+  const S = new Scene(), M2 = { ...MM, glowE: { ramp: 'ember', glow: 1 }, glowV: { ramp: 'violet', glow: 1 }, glowB: { ramp: 'blood', glow: 1 }, glowM: { ramp: 'moss', glow: 1 } };
+  const c = [8, 8, 0];
+  if (kind === 'wax') { S.add(bumpy(sphere(c, 4.4, 'emberLit'), 0.4, 1), 0); }
+  if (kind === 'bone') S.add(rotZ(capsule([3, 8, 0], [13, 8, 0], 1.3, 0.6, 'bone'), c, -0.4), 0);
+  if (kind === 'tear') { S.add(capsule([8, 3, 0], [8, 9, 0], 0.4, 3.2, 'holy'), 0.4); }
+  if (kind === 'feather') { S.add(rotZ(ellipsoid(c, [6, 1.6, 0.8], 'cloth'), c, -0.5), 0); S.add(rotZ(capsule([2, 8, 1], [13, 8, 1], 0.4, 0.3, 'ink'), c, -0.5), 0); }
+  if (kind === 'spit') S.add(bumpy(sphere(c, 3.8, 'rot'), 0.4, 1.1), 0);
+  if (kind === 'ember') S.add(sphere(c, 3, 'glowE'), 0);
+  if (kind === 'violet') S.add(sphere(c, 4, 'violet'), 0);
+  if (kind === 'blood') S.add(sphere(c, 4, 'blood'), 0);
+  if (kind === 'frost') { S.add(sphere(c, 4.8, 'holy'), 0); for (const a of [0, 1.57, 3.14, 4.71]) S.add(capsule(c, [8 + Math.cos(a) * 7, 8 + Math.sin(a) * 7, 0], 1.1, 0.3, 'holy'), 0.4); }
+  if (kind === 'bomb') { S.add(sphere([8, 9, 0], 4.6, 'darkIron'), 0); S.add(capsule([10, 5, 0], [11.5, 3, 0], 0.7, 0.6, 'wood'), 0.3); }
+  if (kind === 'coffin') S.add(box(c, [3, 6.5, 1.6], 0.6, 'wood'), 0);
+  const fr = R(S, 16, 16, M2, {});
+  if (['wax', 'violet', 'blood', 'frost'].includes(kind)) dot(fr, 6, 6, 'white');
+  if (kind === 'bomb') dot(fr, 12, 2, 'ember0');
+  return fr;
+}
+
 export default {
   hall: {
     slab: slabSet,
@@ -453,7 +502,8 @@ export default {
   },
   loot: {
     skullwall: () => [skullWall()], gate: () => [gate()], chest: () => [chest(false), chest(true)], shrine: () => ['fervor', 'haste', 'warding', 'plenty'].map(shrine),
-    coffin: () => [coffin(false), coffin(true)], pew: () => [pew()], altar: () => [altar()], maiden: () => [maiden()], cage: () => [cage()], hangchain: () => [hangChain()],
+    coffin: () => [coffin(false), coffin(true)], water: () => [0, 1, 2, 3].map(water), coin: () => [coin(0), coin(1)], gold: () => [goldPile(1), goldPile(2), goldPile(3)], globe: () => [globe(0), globe(1)],
+    ...Object.fromEntries(['wax', 'bone', 'tear', 'feather', 'spit', 'ember', 'violet', 'blood', 'frost', 'bomb'].map((k) => [k, () => [shot(k)]])), pew: () => [pew()], altar: () => [altar()], maiden: () => [maiden()], cage: () => [cage()], hangchain: () => [hangChain()],
   },
   tiles: { carpet: () => [carpet(0), carpet(1), carpet(2), carpet(3), carpet(0), carpet(3)] },
 };

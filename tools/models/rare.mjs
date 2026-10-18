@@ -14,15 +14,16 @@ const MM = {
   ...MATS,
   plate: { ramp: 'iron', spec: 0.7, bias: -0.06 }, helm: { ramp: 'iron', spec: 0.6, bias: -0.22, min: 1 }, plateDark: { ramp: 'iron', spec: 0.5, bias: -0.2, min: 2 },
   slateArmor: { ramp: 'slate', spec: 0.55, bias: 0.06 }, slateDark: { ramp: 'slate', bias: -0.1, min: 2 },
-  violetDark: { ramp: 'violet', bias: -0.14, min: 2, spec: 0.05 }, violetDeep: { ramp: 'violet', bias: -0.3, min: 4 },
-  bronze: { ramp: 'gold', spec: 0.65, bias: -0.16, min: 1 }, bronzeIn: { ramp: 'gold', bias: -0.5, min: 5 },
+  violetDark: { ramp: 'violet', bias: -0.14, min: 2, spec: 0.05 }, violetDeep: { ramp: 'violet', bias: -0.3, min: 4 }, widow: { ramp: 'violet', bias: -0.5, min: 5, spec: 0.15 }, widowLit: { ramp: 'violet', bias: -0.35, min: 4 },
+  bronze: { ramp: 'gold', spec: 0.65, bias: -0.3, min: 2 }, bronzeIn: { ramp: 'gold', bias: -0.5, min: 5 },
   wax: { ramp: 'bone', spec: 0.35, bias: -0.06 }, waxDrip: { ramp: 'cloth', spec: 0.5, bias: 0.05, max: 6 },
   crimsonDeep: { ramp: 'crimson', bias: -0.22, min: 3 }, bloodWet: { ramp: 'blood', spec: 0.7, bias: -0.05 },
   shroudDark: { ramp: 'shroud', bias: -0.12, min: 2 }, rotDark: { ramp: 'rot', bias: -0.15, min: 2, spec: 0.1 },
   skullBone: { ramp: 'bone', bias: -0.1, spec: 0.25 },
+  rotFlesh: { ramp: 'rot', bias: -0.2, spec: 0.15, min: 1 },
   boneDark: { ramp: 'bone', bias: -0.15, spec: 0.15 }, mask: { ramp: 'bone', spec: 0.35, bias: 0.05 },
   sootCloth: { ramp: 'slate', bias: -0.18, min: 3 }, ash: { ramp: 'stone', bias: -0.05 },
-  lanternGlass: { ramp: 'ember', glow: 1 }, lanternCore: { ramp: 'ember', glow: 0 },
+  lanternGlass: { ramp: 'ember', glow: 2 }, lanternCore: { ramp: 'ember', glow: 0 },
 };
 
 // ---------------------------------------------------------------- helpers ---
@@ -246,7 +247,6 @@ function motherwax({ bob = 0, sw = 0, lift = [0, 0], t = 0, pose = 'walk' }) {
   // The hunched, poured body leaning forward.
   S.add(bumpy(ellipsoid([cx, 43 + B, 0], [9.6, 9.6, 7.6], 'wax'), 0.6, 0.38, 3), 2);
   S.add(bumpy(ellipsoid([cx + 2.5, 35 + B, 0], [10.4, 7.6, 7.6], 'sootCloth'), 0.35, 0.5, 7), 2);
-  S.add(folds(clip(skirt(cx - 1, 34 + B, 54 + B, 8, 9.4, -1, 0.9, 'sootCloth'), (x, y, z) => z + 1.5), { cx: cx - 1, cz: -1, n: 8, amp: 0.6, y0: 36, y1: 54 }), 1);
   // Shawl fringe.
   // Candles in her back and shoulders.
   const cands = [[cx - 5, 29 + B, -3, 6], [cx - 1, 26 + B, -4.5, 5], [cx - 8.5, 34 + B, -1, 4], [cx + 3, 27 + B, -3, 3.5]];
@@ -411,14 +411,14 @@ function bellringer({ bob = 0, sw = 0, lift = [0, 0], t = 0, pose = 'walk' }) {
   S.paint({ f: (x, y) => Math.abs(y - (Bc[1] + 8)) - 0.5, mat: 'gold' });
   // The hood.
   const hx = cx + 3, hy = 30 + B;
-  const fc = hood(S, [hx, hy, 1], 5, 'shroudDark', { point: [hx - 8, hy - 4, -2], fx: 0.6 });
+  const fc = hood(S, [hx, hy, 1], 5.8, 'shroudDark', { point: [hx - 8, hy - 4, -2], fx: 0.5, fz: 0.8, cut: 0.66 });
   const f = frame(S);
   eye(f, fc[0] - 1, fc[1] - 0.3, 'ember0', 'ember2'); eye(f, fc[0] + 1.2, fc[1] - 0.2, 'ember1');
   // The clapper.
   const cy = Math.round(Bc[1] + 12);
   dot(f, Bc[0], cy, 'iron3'); dot(f, Bc[0], cy + 1, 'iron4');
   if (pose === 'strike') { // the toll: a flattened ring at the bell's lip
-    for (let i = 0; i < 40; i++) { const a = i / 40 * Math.PI * 2, x = Math.round(Bc[0] + Math.cos(a) * 17), y = Math.round(GY - 2 + Math.sin(a) * 5); if (under(f, x, y) < 0) dot(f, x, y, i % 4 === 0 ? 'gold0' : 'gold1'); }
+    for (let i = 0; i < 120; i++) { const a = i / 120 * Math.PI * 2; for (const [rr, c] of [[17, 'gold0'], [16, 'gold1'], [18, 'gold2']]) { const x = Math.round(Bc[0] + Math.cos(a) * rr), y = Math.round(GY - 2 + Math.sin(a) * rr * 0.3); if (under(f, x, y) < 0) dot(f, x, y, c); } }
     sparks(f, [[Bc[0] - 10, Bc[1] - 2], [Bc[0] + 11, Bc[1] - 1], [Bc[0] - 8, Bc[1] - 6], [Bc[0] + 9, Bc[1] - 7]], ['gold0', 'gold1']);
   }
   return f;
@@ -430,29 +430,29 @@ function bellringer({ bob = 0, sw = 0, lift = [0, 0], t = 0, pose = 'walk' }) {
 function matron({ bob = 0, sw = 0, lift = [0, 0], t = 0, pose = 'walk' }) {
   const S = new Scene(), cx = CX - 4, B = bob;
   boots(S, cx, sw, lift, 'leather', 2.2);
-  robe(S, { cx, top: 40 + B, ra: 5.4, rb: 9.6, mat: 'violetDeep', n: 9, amp: 0.6, sway: -sw * 0.3, hem: 'crimsonDeep' });
+  robe(S, { cx, top: 40 + B, ra: 5.4, rb: 9.6, mat: 'widow', n: 9, amp: 0.6, sway: -sw * 0.3, hem: 'crimsonDeep' });
   // Corseted bodice and narrow waist.
-  S.add(ellipsoid([cx + 0.5, 34 + B, 0], [5.4, 7.6, 4], 'violetDeep'), 0);
-  S.add(ellipsoid([cx + 0.5, 41 + B, 0], [4.4, 3, 3.4], 'violetDark'), 1.4);
+  S.add(ellipsoid([cx + 0.5, 34 + B, 0], [5.4, 7.6, 4], 'widow'), 0);
+  S.add(ellipsoid([cx + 0.5, 41 + B, 0], [4.4, 3, 3.4], 'widowLit'), 1.4);
   S.paint({ f: (x, y, z) => Math.max(Math.abs(x - (cx + 2)) - 2 + (y - 34 - B) * 0.12, 30 + B - y, y - 42 - B, -z + 2), mat: 'crimsonDeep' });
   for (const yy of [33, 35.5, 38]) S.paint({ f: (x, y, z) => Math.max(Math.abs(y - yy - B) - 0.35, Math.abs(x - (cx + 2)) - 1.6, -z + 2.5), mat: 'bone' });
   // Shoulders and a high collar.
-  S.add(ellipsoid([cx, 27.5 + B, 0], [6.6, 3, 4.2], 'violetDeep'), 1.6);
-  S.add(skirt(cx + 0.5, 21 + B, 27 + B, 4.6, 3.6, 0, 1, 'violetDark'), 0.8);
+  S.add(ellipsoid([cx, 27.5 + B, 0], [6.6, 3, 4.2], 'widow'), 1.6);
+  S.add(skirt(cx + 0.5, 21 + B, 27 + B, 4.6, 3.6, 0, 1, 'widowLit'), 0.8);
   // Arms.
   let hand;
   if (pose === 'windup') hand = [cx - 4, 16 + B, 4];
   else if (pose === 'strike') hand = [cx + 15, 31 + B, 5];
   else hand = [cx + 8, 42 + B, 5];
   const el = pose === 'windup' ? [cx + 3, 21 + B, 4] : pose === 'strike' ? [cx + 10, 30 + B, 5] : [cx + 7.4, 35 + B, 4.6];
-  arm(S, [cx + 4.6, 28.5 + B, 3.4], el, hand, [2.2, 1.9, 1.7], 'violetDeep', 1.2, 'mask', 1.5);
-  arm(S, [cx - 4.6, 28.5 + B, -3.4], [cx - 6.5, 36 + B, -3], [cx - 4.5, 41 + B, 0], [2.1, 1.8, 1.6], 'violetDeep', 1.2, 'mask', 1.4);
+  arm(S, [cx + 4.6, 28.5 + B, 3.4], el, hand, [2.2, 1.9, 1.7], 'widow', 1.2, 'mask', 1.5);
+  arm(S, [cx - 4.6, 28.5 + B, -3.4], [cx - 6.5, 36 + B, -3], [cx - 4.5, 41 + B, 0], [2.1, 1.8, 1.6], 'widow', 1.2, 'mask', 1.4);
   // A bone mask under a veil and tall cornette.
   const hx = cx + 1.2, hy = 17 + B;
-  S.add(ellipsoid([hx - 0.6, hy, 0], [5, 5.4, 4.6], 'violetDeep'), 1.2);
-  S.add(ellipsoid([hx + 2, hy + 0.6, 2.6], [3, 4.2, 2.6], 'mask'), 0.4);
-  S.add(capsule([hx - 2, hy - 3, -0.5], [hx - 7, hy + 14, -3.5], 4, 3, 'violetDeep'), 2);
-  S.add(clip(ellipsoid([hx - 1.4, hy - 6, 0], [5.4, 5.4, 3.6], 'violetDeep'), (x, y) => y - (hy - 3)), 1);
+  S.add(ellipsoid([hx - 0.6, hy, 0], [5, 5.4, 4.6], 'widow'), 1.2);
+  S.add(ellipsoid([hx + 2.2, hy + 0.8, 2.8], [3.4, 4.6, 2.8], 'mask'), 0.4);
+  S.add(capsule([hx - 2, hy - 3, -0.5], [hx - 7, hy + 14, -3.5], 4, 3, 'widow'), 2);
+  S.add(clip(ellipsoid([hx - 1.4, hy - 6, 0], [5.4, 5.4, 3.6], 'widow'), (x, y) => y - (hy - 3)), 1);
   for (const [ex, ey] of [[hx + 1.2, hy - 0.4], [hx + 3.6, hy - 0.4]]) S.sub(ellipsoid([ex, ey, 5], [0.9, 0.6, 1.6], 'void'), 0.2);
   const f = frame(S);
   eye(f, hx + 1.2, hy - 0.4, 'blood0'); eye(f, hx + 3.6, hy - 0.4, 'blood1');
@@ -475,7 +475,7 @@ function matron({ bob = 0, sw = 0, lift = [0, 0], t = 0, pose = 'walk' }) {
 // A crimson cassock and lace surplice, a cracked rotten halo, a screaming bone
 // mask and long clawed hands. Attack: rears back, then screams.
 function choirboy({ bob = 0, sw = 0, lift = [0, 0], t = 0, pose = 'walk' }) {
-  const S = new Scene(), cx = CX - 2, B = bob, X = pose === 'strike' ? 2.5 : pose === 'windup' ? -2 : 0;
+  const S = new Scene(), cx = CX - 2, B = bob, X = pose === 'strike' ? 3 : pose === 'windup' ? -2 : 1.5;
   boots(S, cx, sw, lift, 'leather', 2.4);
   robe(S, { cx, top: 42 + B, ra: 6, rb: 9, mat: 'crimson', n: 8, amp: 0.55, sway: -sw * 0.3 });
   // Surplice: white, lace-edged, falling to the knees.
@@ -488,25 +488,26 @@ function choirboy({ bob = 0, sw = 0, lift = [0, 0], t = 0, pose = 'walk' }) {
   if (pose === 'windup') { hand = [cx + 4, 21 + B, 6]; hand2 = [cx - 9, 22 + B, -2]; }
   else if (pose === 'strike') { hand = [cx + 16, 38 + B, 6]; hand2 = [cx + 13, 44 + B, -2]; }
   else { hand = [cx + 9, 45 + B + (t % 2), 5]; hand2 = [cx - 6, 46 + B, 1]; }
-  arm(S, [cx + 4.4 + X, 28 + B, 3.4], [(cx + 4 + X + hand[0]) / 2 + 1.5, (28 + B + hand[1]) / 2 + 1, 5], hand, [2.2, 2, 1.8], 'cloth', 1.2, 'bone', 1.6);
-  arm(S, [cx - 4.4 + X, 28 + B, -3.4], [(cx - 4 + hand2[0]) / 2 - 1.5, (28 + B + hand2[1]) / 2 + 1, -2.4], hand2, [2.1, 1.8, 1.6], 'cloth', 1.2, 'bone', 1.5);
+  arm(S, [cx + 4.4 + X, 28 + B, 3.4], [(cx + 4 + X + hand[0]) / 2 + 1.5, (28 + B + hand[1]) / 2 + 1, 5], hand, [2.4, 2.1, 1.9], 'crimson', 1.2, 'bone', 1.7);
+  arm(S, [cx - 4.4 + X, 28 + B, -3.4], [(cx - 4 + hand2[0]) / 2 - 1.5, (28 + B + hand2[1]) / 2 + 1, -2.4], hand2, [2.2, 1.9, 1.7], 'crimsonDark', 1.2, 'bone', 1.6);
+  for (const H of [hand, hand2]) S.paint({ f: (x, y, z) => Math.hypot(x - H[0] + 1.8, y - H[1] + 1, z - H[2]) - 2.3, mat: 'cloth' });
   for (const H of [hand, hand2]) for (let k = 0; k < 3; k++) S.add(capsule(H, [H[0] + 3.2 - k * 0.4, H[1] + 2.2 + k * 1.4, H[2]], 0.6, 0.25, 'boneDark'), 0.5);
   // The mask.
   const hx = cx + 2 + X * 1.6, hy = 20 + B + (pose === 'windup' ? -1 : 0);
   S.add(capsule([cx + X, 27 + B, 0], [hx - 0.6, hy + 3, 0], 2.6, 2.6, 'skin'), 1);
-  S.add(ellipsoid([hx, hy, 0.6], [5, 5.4, 4.6], 'mask'), 0.8);
-  S.add(ellipsoid([hx - 2, hy - 0.8, -0.8], [4.4, 5, 4.2], 'crimsonDark'), 1);
+  S.add(ellipsoid([hx, hy, 0.6], [5.6, 6, 5.2], 'mask'), 0.8);
+  S.add(ellipsoid([hx - 2.2, hy - 1, -0.8], [4.8, 5.6, 4.8], 'crimsonDark'), 1);
   const open = pose === 'strike' ? 2.6 : pose === 'windup' ? 1.2 : 1.6;
-  S.sub(ellipsoid([hx + 3.4, hy + 2.6, 3.6], [1.3, open, 2], 'void'), 0.4);
-  for (const ex of [hx + 1.6, hx + 4]) S.sub(ellipsoid([ex, hy - 1, 4.5], [0.9, 1.3, 1.6], 'void'), 0.3);
+  S.sub(ellipsoid([hx + 2, hy + 3, 5.4], [1.6, open + 0.4, 2.2], 'void'), 0.4);
+  for (const ex of [hx + 0.4, hx + 3.2]) S.sub(ellipsoid([ex, hy - 1, 5.4], [1.1, 1.5, 1.8], 'void'), 0.3);
   // The rotten halo.
   S.add(torus([hx - 1.2, hy - 9 + (pose === 'windup' ? -1 : 0), 0], 4.6, 0.8, 0.38, 'bronze'), 0);
   S.sub(sphere([hx + 2, hy - 8.6, 3], 1.1), 0);
   const f = frame(S);
-  eye(f, hx + 1.6, hy - 1.4, 'ember1'); eye(f, hx + 4, hy - 1.4, 'ember2');
+  eye(f, hx + 0.4, hy - 1.2, 'ember0', 'ember2'); eye(f, hx + 3.2, hy - 1.2, 'ember1');
   // A crack down the mask.
   pline(f, Math.floor(hx + 2.6), Math.floor(hy - 4.2), Math.floor(hx + 2), Math.floor(hy - 2.6), 'bone4');
-  if (pose === 'strike') for (let r = 6; r <= 22; r += 4) for (let a = -0.5; a <= 0.5; a += 0.5 / (r / 6)) { const x = Math.round(hx + 4 + Math.cos(a) * r), y = Math.round(hy + 2.6 + Math.sin(a) * r * 0.9); if (under(f, x, y) < 0) dot(f, x, y, r < 14 ? 'rot0' : 'rot1'); }
+  if (pose === 'strike') for (const [r, c] of [[8, 'rot0'], [14, 'rot1'], [20, 'rot2']]) for (let a = -0.45; a <= 0.45; a += 0.6 / r) { const x = Math.round(hx + 3 + Math.cos(a) * r), y = Math.round(hy + 2.8 + Math.sin(a) * r); if (under(f, x, y) < 0) dot(f, x, y, c); }
   return f;
 }
 
@@ -515,22 +516,24 @@ function choirboy({ bob = 0, sw = 0, lift = [0, 0], t = 0, pose = 'walk' }) {
 // a spade. Attack: raises the spade overhead, then slams it into the earth.
 function gravedigger({ bob = 0, sw = 0, lift = [0, 0], t = 0, pose = 'walk' }) {
   const S = new Scene(), cx = CX - 3, B = bob, hipY = 51 + B;
-  for (const [side, s, up] of [[-1, -sw, lift[0]], [1, sw, lift[1]]]) leg(S, { x: cx + side * 0.6, hipY, z: side * 3.3, sw: s, up, mats: ['shroud', 'shroudDark', 'leather'], r: [4, 3.4, 2.8], foot: [4.4, 2.4, 3] });
+  for (const [side, s, up] of [[-1, -sw, lift[0]], [1, sw, lift[1]]]) leg(S, { x: cx + side * 0.6, hipY, z: side * 3.6, sw: s, up, mats: ['shroud', 'shroudDark', 'leather'], r: [4.6, 3.9, 3.1], foot: [4.4, 2.4, 3] });
   // Breeches and belly.
   S.add(ellipsoid([cx + 1, 49 + B, 0], [8.2, 5, 6.4], 'shroud'), 1.6);
-  S.add(bumpy(ellipsoid([cx + 2, 41 + B, 1], [9, 8, 7], 'rot'), 0.5, 0.45, 2), 1.4);
+  S.add(bumpy(ellipsoid([cx + 2, 41 + B, 1], [9, 8, 7], 'rotFlesh'), 0.5, 0.45, 2), 1.4);
   // Hunched, massive shoulders.
-  S.add(bumpy(ellipsoid([cx - 1, 32 + B, 0], [10.5, 7.4, 7.4], 'rot'), 0.55, 0.42, 5), 2);
+  S.add(bumpy(ellipsoid([cx - 1, 32 + B, 0], [10.5, 7.4, 7.4], 'rotFlesh'), 0.55, 0.42, 5), 2);
   S.paint({ f: (x, y) => Math.abs(y - (47.4 + B)) - 1, mat: 'sand' });
   // Wounds and stitched gashes.
-  S.paint({ f: (x, y, z) => Math.max(Math.hypot(x - (cx + 5), y - (41 + B)) - 2.2, -z + 3), mat: 'bloodWet' });
+  const gash = (x, y, z, r) => Math.max(Math.hypot((x - (cx + 5)) / 1.9, (y - (42 + B) + (x - cx - 5) * 0.5) / 0.8) - r, -z + 3);
+  S.paint({ f: (x, y, z) => gash(x, y, z, 1.8), mat: 'rotDark' });
+  S.paint({ f: (x, y, z) => gash(x, y, z, 1.1), mat: 'bloodWet' });
   S.paint({ f: (x, y, z) => Math.max(Math.abs(x - (cx - 3) - (y - 33) * 0.6) - 0.5, Math.abs(y - (35 + B)) - 3, -z + 4), mat: 'rotDark' });
   // Arms.
   let h1, h2, shaftA, shaftB;
   if (pose === 'windup') { h1 = [cx + 5, 14 + B, 5]; h2 = [cx + 1, 18 + B, -3]; shaftA = [cx - 6, 24 + B]; shaftB = [cx + 10, 4 + B]; }
   else if (pose === 'strike') { h1 = [cx + 15, 42 + B, 5]; h2 = [cx + 9, 38 + B, -3]; shaftA = [cx + 4, 32 + B]; shaftB = [cx + 22, GY - 6]; }
   else { h1 = [cx + 9, 32 + B, 5]; h2 = [cx - 4, 41 + B, -3]; shaftA = [cx + 15, 44 + B]; shaftB = [cx - 13, 19 + B]; }
-  arm(S, [cx + 6.5, 30 + B, 4.4], [cx + 11, (30 + h1[1]) / 2 + 3 + B, 5], h1, [3.8, 3.3, 3], 'rot', 1.6, 'rotDark', 3);
+  arm(S, [cx + 6.5, 30 + B, 4.4], [cx + 11, (30 + h1[1]) / 2 + 3 + B, 5], h1, [3.8, 3.3, 3], 'rotFlesh', 1.6, 'rotDark', 3);
   arm(S, [cx - 7, 30 + B, -4.4], [cx - 9, (30 + h2[1]) / 2 + 3 + B, -3], h2, [3.6, 3, 2.8], 'rotDark', 1.4, 'rotDark', 2.8);
   S.add(capsule([shaftA[0], shaftA[1], 6], [shaftB[0], shaftB[1], 6], 1, 1, 'wood'), 0);
   // Spade blade at shaftB end.
@@ -538,13 +541,13 @@ function gravedigger({ bob = 0, sw = 0, lift = [0, 0], t = 0, pose = 'walk' }) {
   S.add(blade([shaftB[0] - ux * 1, shaftB[1] - uy * 1, 6.2], [shaftB[0] + ux * 9, shaftB[1] + uy * 9, 6.2], 7, 1, 'iron', 0.55), 0.4);
   S.add(capsule([shaftA[0] - ux * 1.5 - uy * 2, shaftA[1] - uy * 1.5 + ux * 2, 6], [shaftA[0] - ux * 1.5 + uy * 2, shaftA[1] - uy * 1.5 - ux * 2, 6], 0.8, 0.8, 'wood'), 0.5);
   // The head, low between the shoulders, with curling horns.
-  const hx = cx + 6, hy = 27 + B;
-  S.add(bumpy(ellipsoid([hx, hy, 2], [4.4, 4.6, 4.2], 'rot'), 0.3, 0.7, 9), 1.6);
-  S.add(ellipsoid([hx + 3, hy + 2.6, 3], [2.6, 2, 2.6], 'rot'), 1);
-  for (const [z, s] of [[-1.5, 'boneDark'], [4, 'bone']]) {
-    S.add(capsule([hx - 1, hy - 3.4, z], [hx - 5, hy - 7.6, z - 0.3], 1.8, 1.3, s), 0.6);
-    S.add(capsule([hx - 5, hy - 7.6, z - 0.3], [hx - 7.6, hy - 4, z - 0.5], 1.3, 0.8, s), 0.5);
-    S.add(capsule([hx - 7.6, hy - 4, z - 0.5], [hx - 6, hy - 1.4, z - 0.6], 0.8, 0.3, s), 0.4);
+  const hx = cx + 9, hy = 28.5 + B;
+  S.add(bumpy(ellipsoid([hx, hy, 2], [5, 5, 4.6], 'rotFlesh'), 0.3, 0.7, 9), 1.6);
+  S.add(ellipsoid([hx + 3.4, hy + 2.6, 3], [3, 2.3, 3], 'rotFlesh'), 1);
+  for (const [ox, oy, z, s] of [[-1.2, -1, -1.6, 'boneDark'], [0, 0, 4, 'bone']]) {
+    const P = [[hx - 0.5 + ox, hy - 4.2 + oy], [hx - 4.4 + ox, hy - 6 + oy], [hx - 7 + ox, hy - 2.4 + oy], [hx - 5.6 + ox, hy + 1.4 + oy], [hx - 3 + ox, hy + 1.6 + oy]];
+    const R = [2.3, 2, 1.6, 1.1, 0.5];
+    for (let i = 0; i < 4; i++) S.add(capsule([P[i][0], P[i][1], z + i * 0.3], [P[i + 1][0], P[i + 1][1], z + (i + 1) * 0.3], R[i], R[i + 1], s), i ? 0.3 : 0.6);
   }
   const f = frame(S);
   eye(f, hx + 1.8, hy - 0.4, 'flame0', 'flame2'); eye(f, hx + 3.8, hy - 0.4, 'flame1');
@@ -574,10 +577,10 @@ function lantern({ bob = 0, t = 0, pose = 'walk' }) {
   // The lantern, hanging from its ring.
   const Lc = [hand[0] + 0.5, hand[1] + 8, 6];
   S.add(box(Lc, [2.6, 3.4, 2.6], 0.4, 'lanternGlass'), 0);
-  for (const [dx, dz] of [[-2.6, 2.6], [2.6, 2.6], [-2.6, -2.6], [2.6, -2.6]]) S.add(box([Lc[0] + dx, Lc[1], Lc[2] + dz], [0.45, 3.6, 0.45], 0.1, 'iron'), 0);
-  S.add(box([Lc[0], Lc[1] - 3.9, Lc[2]], [3.2, 0.7, 3.2], 0.3, 'iron'), 0);
-  S.add(ellipsoid([Lc[0], Lc[1] - 5.2, Lc[2]], [2, 1.2, 2], 'iron'), 0.5);
-  S.add(box([Lc[0], Lc[1] + 3.9, Lc[2]], [3, 0.6, 3], 0.3, 'iron'), 0);
+  for (const [dx, dz] of [[-2.6, 2.6], [2.6, 2.6], [-2.6, -2.6], [2.6, -2.6]]) S.add(box([Lc[0] + dx, Lc[1], Lc[2] + dz], [0.45, 3.6, 0.45], 0.1, 'helm'), 0);
+  S.add(box([Lc[0], Lc[1] - 3.9, Lc[2]], [3.2, 0.7, 3.2], 0.3, 'helm'), 0);
+  S.add(ellipsoid([Lc[0], Lc[1] - 5.2, Lc[2]], [2, 1.2, 2], 'helm'), 0.5);
+  S.add(box([Lc[0], Lc[1] + 3.9, Lc[2]], [3, 0.6, 3], 0.3, 'helm'), 0);
   // The hood.
   const hx = cx + 1.5, hy = 19 + B;
   const fc = hood(S, [hx, hy, 0.5], 5.4, 'slateDark', { point: [hx - 7, hy - 7, -2], fx: 0.55, cut: 0.66 });
@@ -585,7 +588,7 @@ function lantern({ bob = 0, t = 0, pose = 'walk' }) {
   eye(f, fc[0] - 1.2, fc[1] - 0.5, 'ember0', 'ember2'); eye(f, fc[0] + 1, fc[1] - 0.5, 'ember0', 'ember2');
   pline(f, Math.floor(hand[0] + 0.5), Math.floor(hand[1] + 1), Math.floor(Lc[0]), Math.floor(Lc[1] - 6), 'iron3');
   // Light: the core and a few motes.
-  px(f, Lc[0], Lc[1], 'ember0'); px(f, Lc[0], Lc[1] - 1, 'ember0');
+  for (const [dx, dy] of [[0, 0], [0, -1], [-1, 0], [0, 1], [1, -1]]) px(f, Lc[0] + dx, Lc[1] + dy, dx || dy > 0 ? 'ember1' : 'ember0');
   if (pose === 'windup') sparks(f, [[Lc[0] - 5, Lc[1] - 2], [Lc[0] + 5, Lc[1] - 3], [Lc[0] - 4, Lc[1] + 4], [Lc[0] + 5, Lc[1] + 4], [Lc[0], Lc[1] - 9]], ['ember0', 'ember1']);
   if (pose === 'strike') { for (let x = Math.round(Lc[0] + 4); x < W - 1; x++) { dot(f, x, Math.round(Lc[1]), 'ember0'); if (under(f, x, Math.round(Lc[1]) - 1) < 0) dot(f, x, Math.round(Lc[1]) - 1, x % 3 ? 'ember1' : 'ember2'); if (under(f, x, Math.round(Lc[1]) + 1) < 0) dot(f, x, Math.round(Lc[1]) + 1, 'ember2'); } }
   return f;

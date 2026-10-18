@@ -686,7 +686,7 @@ const NPC_INFO = {
 
 // A long street in permanent twilight: gate, market, tavern square, forge,
 // graveyard and the cathedral, with townsfolk, crows, smoke, fog and ash.
-const DISTRICTS = [[0, "THE PENITENTS' GATE"], [330, 'THE RELIC MARKET'], [640, 'THE GILDED LAMB'], [860, 'THE FORGE OF PENANCE'], [1150, 'THE QUIET ACRE'], [1600, 'CATHEDRAL OF THE WOUND']];
+const DISTRICTS = [[0, "THE PENITENTS' GATE"], [429, 'THE RELIC MARKET'], [832, 'THE GILDED LAMB'], [1118, 'THE FORGE OF PENANCE'], [1495, 'THE QUIET ACRE'], [2080, 'CATHEDRAL OF THE WOUND']];
 const BARKS = {
   peasant: ['THEY SAY THE LAST SAINT FELL TO A STAIRCASE.', 'TWO COPPERS ON THE BELLWRIGHT.', 'MY BOY WANTS TO BE A SAINT. I HIT HIM.', 'THE DEAD GOT UP AGAIN IN THE BAKERY.', 'BLESSED BE THE DESCENT. PASS THE BREAD.'],
   peasant2: ['PRAY FOR US, SAINT. OR DON\'T. IT\'S ALL THE SAME.', 'THE POOL SHOWED HIM CRYING LAST YEAR. SUCH A GOOD SHOW.', 'MIND THE CART, IT\'S FULL OF THE LAST ONES.', 'DID YOU HEAR THE BELLS? NEITHER DID I.'],
@@ -709,7 +709,7 @@ Object.assign(NPC_INFO, {
 });
 
 function makeTown() {
-  const w = 150, h = 24, TOP = 10, base = TOP * TILE;
+  const w = 195, h = 35, TOP = 17, base = TOP * TILE;
   const solid = [];
   for (let y = 0; y < h; y++) { solid.push([]); for (let x = 0; x < w; x++) solid[y].push(y < TOP || y >= h - 1 || x < 1 || x >= w - 1); }
   const isSolid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || solid[y][x];
@@ -722,16 +722,16 @@ function makeTown() {
   for (let y = TOP; y < h; y++) for (let x = 0; x < w; x++) { const f = cob[rng() < 0.6 ? 0 : Math.floor(rng() * 4)]; rc.drawImage(IMG.town, f.x, f.y, 16, 16, x * TILE, y * TILE, 16, 16); }
   rc.fillStyle = 'rgba(11,7,16,0.25)'; rc.fillRect(0, (h - 4) * TILE, w * TILE, 3 * TILE);
   // Mud, filth and puddles that catch the lamplight.
-  for (let k = 0; k < 140; k++) { const px = rng() * w * TILE, py = (TOP + 1 + rng() * (h - TOP - 2)) * TILE; rc.fillStyle = `rgba(34,24,31,${0.25 + rng() * 0.3})`; rc.beginPath(); rc.ellipse(px, py, 10 + rng() * 30, 4 + rng() * 8, 0, 0, Math.PI * 2); rc.fill(); }
-  for (let k = 0; k < 40; k++) { const px = rng() * w * TILE, py = (TOP + 2 + rng() * (h - TOP - 3)) * TILE, rx = 6 + rng() * 14; rc.fillStyle = 'rgba(42,92,192,0.22)'; rc.beginPath(); rc.ellipse(px, py, rx, rx * 0.35, 0, 0, Math.PI * 2); rc.fill(); rc.fillStyle = 'rgba(216,247,255,0.25)'; rc.fillRect(Math.round(px - rx * 0.4), Math.round(py - 1), Math.round(rx * 0.5), 1); }
+  for (let k = 0; k < 182; k++) { const px = rng() * w * TILE, py = (TOP + 1 + rng() * (h - TOP - 2)) * TILE; rc.fillStyle = `rgba(34,24,31,${0.25 + rng() * 0.3})`; rc.beginPath(); rc.ellipse(px, py, 10 + rng() * 39, 4 + rng() * 8, 0, 0, Math.PI * 2); rc.fill(); }
+  for (let k = 0; k < 52; k++) { const px = rng() * w * TILE, py = (TOP + 2 + rng() * (h - TOP - 3)) * TILE, rx = 6 + rng() * 14; rc.fillStyle = 'rgba(42,92,192,0.22)'; rc.beginPath(); rc.ellipse(px, py, rx, rx * 0.35, 0, 0, Math.PI * 2); rc.fill(); rc.fillStyle = 'rgba(216,247,255,0.25)'; rc.fillRect(Math.round(px - rx * 0.4), Math.round(py - 1), Math.round(rx * 0.5), 1); }
   const lw = SPR.tiles.anims.wall[3];
   for (let x = 0; x < w; x++) rc.drawImage(IMG.tiles, lw.x, lw.y, 16, 16, x * TILE, (h - 1) * TILE, 16, 16);
   // Building fronts along the north side, packed with houses between landmarks.
   const front = (sheetName, anim, cx, i = 0) => { const f = frameOf(sheetName, anim, i); rc.drawImage(IMG[sheetName], f.x, f.y, f.w, f.h, Math.round(cx - f.w / 2), base - f.h + 2, f.w, f.h); return { l: cx - f.w / 2, r: cx + f.w / 2, f }; };
-  const landmarks = [['town2', 'gate', 70], ['town', 'stall', 452], ['town2', 'plush', 532], ['town', 'tavern', 700], ['town', 'forge', 912], ['town2', 'mausoleum', 1280], ['town2', 'cathedral', 1800]];
+  const landmarks = [['town2', 'gate', 91], ['town', 'stall', 588], ['town2', 'plush', 692], ['town', 'tavern', 910], ['town', 'forge', 1186], ['town2', 'mausoleum', 1664], ['town2', 'cathedral', 2340]];
   const chimney = (x, y) => smoke.push({ x, y, t: rng() * 2 });
-  let cursor = 140, hv = 0;
-  const fillTo = (end) => { while (cursor + 64 <= end) { const v = hv++ % 6; const ruinHere = hv % 7 === 3; const fr = front('town2', ruinHere ? 'ruin' : 'tall', cursor + 34, ruinHere ? 0 : v); if (!ruinHere) { chimney(cursor + 52, base - 128); if (rng() < 0.6) lights.push({ x: cursor + 18, y: base - 30, r: 34, c: 'ember', a: 0.55, flick: rng() * 9 }); } cursor += 68; } };
+  let cursor = 182, hv = 0;
+  const fillTo = (end) => { while (cursor + 83 <= end) { const v = hv++ % 6; const ruinHere = hv % 7 === 3; const fr = front('town2', ruinHere ? 'ruin' : 'tall', cursor + 44, ruinHere ? 0 : v); if (!ruinHere) { chimney(cursor + 68, base - 166); if (rng() < 0.6) lights.push({ x: cursor + 18, y: base - 39, r: 44, c: 'ember', a: 0.55, flick: rng() * 9 }); } cursor += 88; } };
   for (const [sh, anim, cx] of landmarks) {
     const fw = frameOf(sh, anim, 0).w;
     fillTo(cx - fw / 2);
@@ -740,70 +740,70 @@ function makeTown() {
   }
   fillTo(w * TILE - 10);
   rc.fillStyle = 'rgba(11,7,16,0.45)'; rc.fillRect(0, base, w * TILE, 6);
-  chimney(912 + 26, base - 80);
+  chimney(1186 + 34, base - 104);
   // District dressing.
-  const lamp = (x, y) => { place('lamp', x, y, 1, { sheet: 'town', anim: 'lamp', ph: rng() * 9 }); lights.push({ x, y: Math.floor(y / TILE) * TILE - 22, r: 80, c: 'ember', a: 0.95, flick: rng() * 9 }); };
-  const brazier = (x, y) => { place('brazier', x, y, 1, { ph: rng() * 9 }); lights.push({ x, y: Math.floor(y / TILE) * TILE - 6, r: 70, c: 'ember', a: 0.95, flick: rng() * 9 }); };
+  const lamp = (x, y) => { place('lamp', x, y, 1, { sheet: 'town', anim: 'lamp', ph: rng() * 9 }); lights.push({ x, y: Math.floor(y / TILE) * TILE - 50, r: 104, c: 'ember', a: 0.95, flick: rng() * 9 }); };
+  const brazier = (x, y) => { place('brazier', x, y, 1, { ph: rng() * 9 }); lights.push({ x, y: Math.floor(y / TILE) * TILE - 24, r: 91, c: 'ember', a: 0.95, flick: rng() * 9 }); };
   // The Penitents' Gate.
-  lights.push({ x: 70, y: base - 100, r: 50, c: 'ember', a: 0.7, flick: 2 });
-  place('gallows', 190, base + 40, 3, { ph: rng() * 3 });
-  brazier(130, base + 30); brazier(250, base + 30);
-  place('stocks', 300, base + 60, 2);
+  lights.push({ x: 91, y: base - 130, r: 65, c: 'ember', a: 0.7, flick: 2 });
+  place('gallows', 247, base + 52, 3, { ph: rng() * 3 });
+  brazier(169, base + 39); brazier(325, base + 39);
+  place('stocks', 390, base + 78, 2);
   // The market.
-  for (const [x, y] of [[380, 250], [600, 262]]) place('cart', x, y, 3);
-  place('board', 610, base + 26, 1);
-  for (const [x, y] of [[410, 186], [426, 186], [580, 190], [496, 300]]) place(rng() < 0.5 ? 'barrel' : 'crate', x, y, 1, { sheet: 'town', anim: rng() < 0.5 ? 'barrel' : 'crate' });
-  lamp(350, base + 120); lamp(640, base + 120);
+  for (const [x, y] of [[494, 325], [780, 341]]) place('cart', x, y, 3);
+  place('board', 793, base + 34, 1);
+  for (const [x, y] of [[533, 242], [554, 242], [754, 247], [645, 390]]) place(rng() < 0.5 ? 'barrel' : 'crate', x, y, 1, { sheet: 'town', anim: rng() < 0.5 ? 'barrel' : 'crate' });
+  lamp(455, base + 156); lamp(832, base + 156);
   // The Gilded Lamb and the scrying pool.
-  place('pool', 760, base + 80, 5, { ph: 0 });
-  lights.push({ x: 760, y: base + 70, r: 90, c: 'violet', a: 0.9 });
-  place('campfire', 680, base + 140, 1, { solid: false, ph: 0 });
-  lights.push({ x: 680, y: base + 130, r: 80, c: 'ember', a: 1, flick: 3 });
+  place('pool', 988, base + 104, 5, { ph: 0 });
+  lights.push({ x: 988, y: base + 91, r: 117, c: 'violet', a: 0.9 });
+  place('campfire', 884, base + 182, 1, { solid: false, ph: 0 });
+  lights.push({ x: 884, y: base + 169, r: 104, c: 'ember', a: 1, flick: 3 });
   // The forge.
-  lights.push({ x: 912, y: base - 16, r: 100, c: 'ember', a: 1, flick: 1 });
-  place('anvil', 940, base + 22, 1, { sheet: 'town', anim: 'anvil' });
-  place('well', 1060, base + 80, 2);
-  brazier(1000, base + 24); lamp(1110, base + 130);
+  lights.push({ x: 1186, y: base - 16, r: 130, c: 'ember', a: 1, flick: 1 });
+  place('anvil', 1222, base + 29, 1, { sheet: 'town', anim: 'anvil' });
+  place('well', 1378, base + 104, 2);
+  brazier(1300, base + 31); lamp(1443, base + 169);
   // The Quiet Acre: tombs, dead trees, crows and fog.
-  for (let k = 0; k < 18; k++) { const x = 1170 + rng() * 380, y = base + 30 + rng() * 150; if (Math.abs(x - 1280) < 50 && y < base + 60) continue; const t = place('tomb', x, y, 1, { frame: Math.floor(rng() * 3) }); if (rng() < 0.4) crows.push({ x: t.x, y: t.y - 14, hx: t.x, hy: t.y - 14, state: 'sit', t: rng() * 3, vx: 0, vy: 0 }); }
-  for (const [x, y] of [[1200, base + 40], [1480, base + 110], [1390, base + 30]]) { place('tree', x, y, 1); crows.push({ x: x + 10, y: y - 60, hx: x + 10, hy: y - 60, state: 'sit', t: rng() * 3, vx: 0, vy: 0 }); }
-  for (let x = 1160; x < 1560; x += 32) if (Math.abs(x - 1280) > 40) place('fence', x, base + 12, 2, { solid: false });
-  lights.push({ x: 1280, y: base - 40, r: 50, c: 'holy', a: 0.5 });
+  for (let k = 0; k < 18; k++) { const x = 1521 + rng() * 494, y = base + 39 + rng() * 195; if (Math.abs(x - 1664) < 65 && y < base + 78) continue; const t = place('tomb', x, y, 1, { frame: Math.floor(rng() * 3) }); if (rng() < 0.4) crows.push({ x: t.x, y: t.y - 14, hx: t.x, hy: t.y - 14, state: 'sit', t: rng() * 3, vx: 0, vy: 0 }); }
+  for (const [x, y] of [[1560, base + 52], [1924, base + 143], [1807, base + 39]]) { place('tree', x, y, 1); crows.push({ x: x + 10, y: y - 78, hx: x + 10, hy: y - 78, state: 'sit', t: rng() * 3, vx: 0, vy: 0 }); }
+  for (let x = 1508; x < 2028; x += 42) if (Math.abs(x - 1664) > 52) place('fence', x, base + 12, 2, { solid: false });
+  lights.push({ x: 1664, y: base - 52, r: 65, c: 'holy', a: 0.5 });
   // The cathedral steps.
-  for (const x of [1690, 1910]) brazier(x, base + 26);
-  for (let k = 0; k < 8; k++) { const x = 1740 + k * 16, y = base + 14 + (k % 2) * 4; room_candles.push({ x, y }); }
-  lights.push({ x: 1800, y: base - 140, r: 70, c: 'violet', a: 0.8 }, { x: 1800, y: base - 30, r: 70, c: 'gold', a: 0.8 });
-  for (const x of [1736, 1864]) lights.push({ x, y: base - 100, r: 40, c: 'blood', a: 0.6 });
+  for (const x of [2197, 2483]) brazier(x, base + 34);
+  for (let k = 0; k < 8; k++) { const x = 2262 + k * 16, y = base + 14 + (k % 2) * 4; room_candles.push({ x, y }); }
+  lights.push({ x: 2340, y: base - 182, r: 91, c: 'violet', a: 0.8 }, { x: 2340, y: base - 39, r: 91, c: 'gold', a: 0.8 });
+  for (const x of [2207, 2473]) lights.push({ x, y: base - 130, r: 52, c: 'blood', a: 0.6 });
   // Townsfolk.
-  const person = (sheet, id, x, y, o = {}) => { const n = { sheet, npc: id, x, y, face: o.face || 1, ph: rng() * 3, ...o }; npcs.push(n); if (o.talk) interact.push({ x: n.x, y: n.y, r: 26, label: 'TALK', icon: 'talk', who: n, use: () => { talk(o.talk); tut.flags.talked = true; } }); return n; };
-  person('town', 'odile', 1760, base + 34, { talk: 'odile' });
-  person('town2', 'vane', 1852, base + 30, { talk: 'vane', face: -1 });
-  person('town', 'pell', 452, base + 26, { talk: 'pell' });
-  person('town2', 'plushseller', 532, base + 26, { talk: 'plushseller' });
-  person('town', 'barkeep', 676, base + 28, { talk: 'barkeep' });
-  person('town', 'hollis', 890, base + 24, { talk: 'hollis' });
-  person('town2', 'beggar', 120, base + 70, { talk: 'beggar', bark: 'beggar' });
-  person('town', 'crier', 500, base + 110, { talk: 'crier', walk: { x0: 360, x1: 640, speed: 18 } });
+  const person = (sheet, id, x, y, o = {}) => { const n = { sheet, npc: id, x, y, face: o.face || 1, ph: rng() * 3, ...o }; npcs.push(n); if (o.talk) interact.push({ x: n.x, y: n.y, r: 34, label: 'TALK', icon: 'talk', who: n, use: () => { talk(o.talk); tut.flags.talked = true; } }); return n; };
+  person('town', 'odile', 2288, base + 44, { talk: 'odile' });
+  person('town2', 'vane', 2408, base + 39, { talk: 'vane', face: -1 });
+  person('town', 'pell', 588, base + 34, { talk: 'pell' });
+  person('town2', 'plushseller', 692, base + 34, { talk: 'plushseller' });
+  person('town', 'barkeep', 879, base + 36, { talk: 'barkeep' });
+  person('town', 'hollis', 1157, base + 31, { talk: 'hollis' });
+  person('town2', 'beggar', 156, base + 91, { talk: 'beggar', bark: 'beggar' });
+  person('town', 'crier', 650, base + 143, { talk: 'crier', walk: { x0: 468, x1: 832, speed: 18 } });
   // Walkers along the street, each with their own lane.
   const kinds = [['peasant', 'peasant'], ['peasant2', 'peasant2'], ['guard', 'guard'], ['penitent', 'penitent'], ['priest', 'priest']];
-  for (let k = 0; k < 14; k++) { const [id, bark] = kinds[k % kinds.length]; const x0 = 60 + rng() * 1900, span = 150 + rng() * 300; person('town2', `${id}_walk`, x0 + rng() * span, base + 40 + rng() * 150, { walk: { x0, x1: Math.min(2350, x0 + span), speed: id === 'penitent' ? 10 : 14 + rng() * 10 }, bark, talk: id }); }
+  for (let k = 0; k < 14; k++) { const [id, bark] = kinds[k % kinds.length]; const x0 = 78 + rng() * 2470, span = 195 + rng() * 390; person('town2', `${id}_walk`, x0 + rng() * span, base + 52 + rng() * 195, { walk: { x0, x1: Math.min(3055, x0 + span), speed: id === 'penitent' ? 10 : 14 + rng() * 10 }, bark, talk: id }); }
   // The crowd at the scrying pool.
-  for (let k = 0; k < 6; k++) { const a = Math.PI * (0.15 + k * 0.14); person('town2', k % 2 ? 'peasant2_walk' : 'peasant_walk', 760 + Math.cos(a) * 56, base + 82 + Math.sin(a) * 26, { face: Math.cos(a) > 0 ? -1 : 1, bark: 'crowd', still: true }); }
+  for (let k = 0; k < 6; k++) { const a = Math.PI * (0.15 + k * 0.14); person('town2', k % 2 ? 'peasant2_walk' : 'peasant_walk', 988 + Math.cos(a) * 73, base + 107 + Math.sin(a) * 34, { face: Math.cos(a) > 0 ? -1 : 1, bark: 'crowd', still: true }); }
   // Children playing Saint and Bellwright round the well.
-  person('town2', 'kid', 1060, base + 120, { circle: { cx: 1060, cy: base + 110, r: 34, a: 0, speed: 1.6 }, bark: 'kid' });
-  person('town2', 'kid2', 1060, base + 120, { circle: { cx: 1060, cy: base + 110, r: 34, a: 1.2, speed: 1.6 }, bark: 'kid' });
-  interact.push({ x: 1800, y: base + 8, r: 28, label: 'DESCEND', icon: 'descend', door: true, use: () => startDescent() });
+  person('town2', 'kid', 1378, base + 156, { circle: { cx: 1378, cy: base + 143, r: 44, a: 0, speed: 1.6 }, bark: 'kid' });
+  person('town2', 'kid2', 1378, base + 156, { circle: { cx: 1378, cy: base + 143, r: 44, a: 1.2, speed: 1.6 }, bark: 'kid' });
+  interact.push({ x: 2340, y: base + 8, r: 36, label: 'DESCEND', icon: 'descend', door: true, use: () => startDescent() });
   // Foreground silhouettes (parallax, drawn over everything).
-  for (let x = 0; x < w * TILE * 1.25 + 400; x += 60 + rng() * 120) fg.push({ x, kind: pick(['tree', 'fence', 'fence', 'tomb', 'gallows', 'cart']), frame: Math.floor(rng() * 3) });
+  for (let x = 0; x < w * TILE * 1.25 + 520; x += 78 + rng() * 156) fg.push({ x, kind: pick(['tree', 'fence', 'fence', 'tomb', 'gallows', 'cart']), frame: Math.floor(rng() * 3) });
   stain = document.createElement('canvas'); stain.width = roomCanvas.width; stain.height = roomCanvas.height; sctxStain = stain.getContext('2d');
-  room = { kind: 'town', name: 'VAEL', w, h, solid, isSolid, props, lights, decals: room_candles.splice(0).map((c) => ({ kind: 'candles', ...c })), npcs, interact, pw: w * TILE, ph: h * TILE, cx: 112, cy: 13, top: TOP, ambient: 'rgba(16,8,30,0.62)', smoke, crows, fg, sky: makeSky(w * TILE), smokeParts: [], ash: [], lightning: { t: 6 + rng() * 8, flash: 0 } };
-  for (const d of room.decals) lights.push({ x: d.x, y: d.y - 8, r: 40, c: 'flame', a: 0.7, flick: rng() * 9 });
+  room = { kind: 'town', name: 'VAEL', w, h, solid, isSolid, props, lights, decals: room_candles.splice(0).map((c) => ({ kind: 'candles', ...c })), npcs, interact, pw: w * TILE, ph: h * TILE, cx: 146, cy: 13, top: TOP, ambient: 'rgba(16,8,30,0.62)', smoke, crows, fg, sky: makeSky(w * TILE), smokeParts: [], ash: [], lightning: { t: 6 + rng() * 8, flash: 0 } };
+  for (const d of room.decals) lights.push({ x: d.x, y: d.y - 8, r: 52, c: 'flame', a: 0.7, flick: rng() * 9 });
 }
 const room_candles = [];
 
 // The sky behind Vael: moon, clouds and a distant city of spires.
 function makeSky(townW) {
-  const c = document.createElement('canvas'), wpx = Math.ceil(townW * 0.35 + 700), hpx = 200;
+  const c = document.createElement('canvas'), wpx = Math.ceil(townW * 0.35 + 900), hpx = 300;
   c.width = wpx; c.height = hpx;
   const x = c.getContext('2d');
   const g = x.createLinearGradient(0, 0, 0, hpx); g.addColorStop(0, PAL.violet4); g.addColorStop(0.6, PAL.ink3); g.addColorStop(1, PAL.ink2);
@@ -895,7 +895,7 @@ function drawTownOverlay(cx, cy) {
     const sp = [6, 10, 15][layer], yb = (R.top + 4 + layer * 3) * TILE - cy;
     for (let k = -1; k < W / 90 + 2; k++) {
       const fx = ((k * 90 - (game.real * sp + layer * 50 + cx * (0.9 + layer * 0.05)) % 90) + 90) % (W + 180) - 90;
-      const wx = fx + cx, dense = wx > 1150 && wx < 1560 ? 2.2 : 1;
+      const wx = fx + cx, dense = wx > 1495 && wx < 2028 ? 2.2 : 1;
       ctx.fillStyle = `rgba(138,118,170,${0.09 * dense})`; ctx.beginPath(); ctx.ellipse(fx, yb + Math.sin(k + game.real * 0.3) * 6, 80, 14, 0, 0, Math.PI * 2); ctx.fill();
     }
   }
@@ -918,7 +918,7 @@ function drawNpc(n) {
 
 function enterTown(wake = true) {
   makeTown();
-  player = makePlayer(1800, (room.top + 3) * TILE);
+  player = makePlayer(2340, (room.top + 3) * TILE);
   game.district = null;
   resetWorld();
   game.buff = null; game.banner = null; game.focus = null;
@@ -2043,7 +2043,7 @@ function update(realDt) {
   for (const n of nums) n.t += realDt;
   nums = nums.filter((n) => n.t < 0.85);
 
-  const tx = player.x - W / 2, ty = player.y - (game.scene === 'town' ? 70 : 14) - H / 2;
+  const tx = player.x - W / 2, ty = player.y - (game.scene === 'town' ? 120 : 20) - H / 2;
   cam.x = room.pw <= W ? (room.pw - W) / 2 : Math.max(0, Math.min(room.pw - W, tx));
   cam.y = room.ph <= H ? (room.ph - H) / 2 : Math.max(0, Math.min(room.ph - H, ty));
 }
@@ -2228,6 +2228,8 @@ function drawPlayer() {
   spr('saint', p.anim, i, p.x, p.y, { flip: p.face < 0, white: p.hurt > 0.25 || blink });
 }
 
+// Height of a monster's sprite above its feet, from its first walk frame.
+function spriteTop(e) { const s = SPR[e.def.sheet], f = s.anims[e.def.walk][0]; return Math.round((f.ay ?? s.anchorY ?? f.h) * (e.scaleK || 1)); }
 function drawEnemy(e) {
   const d = e.def, flip = e.face < 0;
   const nAtk = SPR[d.sheet].anims[d.attack].length;
@@ -2252,14 +2254,14 @@ function drawEnemy(e) {
   if (e.ward > 0) { ctx.strokeStyle = `rgba(216,247,255,${0.6 + 0.3 * Math.sin(game.real * 12)})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y - e.hy, e.hr + 6, e.hy + 6, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (d.orbit) for (let n = 0; n < d.orbit.n; n++) { const a = e.orbA + n * Math.PI * 2 / d.orbit.n; sprC('fx', 'thurible', Math.floor(game.real * 6), e.x + Math.cos(a) * d.orbit.r, e.y - 10 + Math.sin(a) * d.orbit.r * 0.6); }
   if (e.elite && !e.illusion) {
-    const w = e.tier === 'elite' ? 34 : 26, bx = Math.round(e.x - w / 2), by = Math.round(e.y + lift - e.hy * 2 - 8), fw = Math.max(0, Math.round(w * e.hp / e.maxHp));
+    const w = e.tier === 'elite' ? 44 : 34, bx = Math.round(e.x - w / 2), by = Math.round(e.y + lift - spriteTop(e) - 5), fw = Math.max(0, Math.round(w * e.hp / e.maxHp));
     const ramp = e.tier === 'elite' ? 'gold' : e.tier === 'rare' ? 'holy' : 'blood';
     ctx.fillStyle = PAL.outline; ctx.fillRect(bx - 1, by - 1, w + 2, 5);
     ctx.fillStyle = PAL.blood4; ctx.fillRect(bx, by, w, 3);
     ctx.fillStyle = e.state === 'stagger' ? PAL.gold1 : PAL[ramp + '2']; ctx.fillRect(bx, by, fw, 3);
     ctx.fillStyle = e.state === 'stagger' ? PAL.gold0 : PAL[ramp + '1']; ctx.fillRect(bx, by, fw, 1);
   }
-  if (e.state === 'stagger') spr('fx', 'dagger', 0, e.x, e.y - e.hy * 2 - 14 + Math.round(Math.sin(game.real * 8) * 2));
+  if (e.state === 'stagger') spr('fx', 'dagger', 0, e.x, e.y - spriteTop(e) - 10 + Math.round(Math.sin(game.real * 8) * 2));
 }
 
 // The name, health and curses of the Rare or Elite you are fighting.

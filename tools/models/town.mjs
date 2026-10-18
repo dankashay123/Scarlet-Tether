@@ -8,6 +8,7 @@
 //
 // World axes: x right, y down, z toward the viewer. A building's street face
 // sits at z = 0 and its foot on the frame's bottom row.
+import { rotZ } from '../sdf.mjs';
 import { Scene, sphere, ellipsoid, capsule, box, skirt, folds, render, clip, noise3, dot, pline, under } from '../sdf.mjs';
 import { MATS } from './base.mjs';
 import { IDX, FINE } from '../palette.mjs';
@@ -27,10 +28,11 @@ const TM = {
   timber: { ramp: 'wood', bias: -0.12, min: 2 }, wood: { ramp: 'wood', spec: 0.08 }, woodB: { ramp: 'wood', bias: -0.07 },
   iron: { ramp: 'iron', spec: 0.7, bias: -0.12, min: 1 }, ironDark: { ramp: 'iron', spec: 0.5, bias: -0.3, min: 3 },
   gold: { ramp: 'gold', spec: 0.6 }, goldDim: { ramp: 'gold', spec: 0.5, bias: -0.14 }, brick: { ramp: 'brick', spec: 0.03 }, brickB: { ramp: 'brick', bias: -0.08 },
-  hole: { ramp: 'ink', bias: -0.5, min: 5 }, moss: { ramp: 'moss', min: 1 }, bark: { ramp: 'shroud', spec: 0.05, min: 1 },
+  hole: { ramp: 'ink', bias: -0.5, min: 5 }, moss: { ramp: 'moss', min: 2, bias: -0.2 }, bark: { ramp: 'shroud', spec: 0.05, min: 1 },
   cloth: { ramp: 'cloth', max: 6 }, canvasR: { ramp: 'crimson', spec: 0.04 }, canvasV: { ramp: 'violet', spec: 0.04 }, canvasG: { ramp: 'gold', spec: 0.04 },
   bannerR: { ramp: 'crimson', spec: 0.05, bias: -0.05 }, bone: { ramp: 'bone', spec: 0.2 }, shroud: { ramp: 'shroud' },
-  water: { ramp: 'violet', spec: 0.9, bias: 0.05 }, coal: { ramp: 'ink', bias: -0.1, min: 2 },
+  water: { ramp: 'violet', spec: 0.9, bias: 0.05 },
+  glass_flame: { ramp: 'flame', spec: 0.9 }, glass_holy: { ramp: 'holy', spec: 0.9, min: 1 }, glass_crimson: { ramp: 'crimson', spec: 0.9 }, glass_violet: { ramp: 'violet', spec: 0.9 }, coal: { ramp: 'ink', bias: -0.1, min: 2 },
 };
 
 // ------------------------------------------------------------- 3/4 view ---
@@ -114,7 +116,7 @@ function tileTones(S, p, { ch = 3.4, bw = 5, seed = 2, mats = ['tileB', 'tileC']
 // Planks: grooves running vertically every w px.
 function planked(p, w = 4, depth = 0.35, seed = 3) {
   const f = p.f;
-  return { ...p, f: (x, y, z) => { const d = f(x, y, z); if (d > 2) return d; const fx = ((x % w) + w) % w; return d + (Math.min(fx, w - fx) < 0.6 ? depth : 0) + 0.15 * noise3(x * 0.3 + seed, y * 1.2, z); } };
+  return { ...p, f: (x, y, z) => { const d = f(x, y, z); if (d > 2) return d; const fx = ((x % w) + w) % w; return d + (Math.min(fx, w - fx) < 0.6 ? depth : 0) + 0.06 * noise3(x * 0.3 + seed, y * 0.4, z); } };
 }
 // A box with the near face at z = zf, the far one at zf - depth.
 const slabBox = (x0, y0, x1, y1, zf, depth, mat, round = 0.3) => box([(x0 + x1) / 2, (y0 + y1) / 2, zf - depth / 2], [(x1 - x0) / 2 - round, (y1 - y0) / 2 - round, depth / 2 - round], round, mat);
@@ -158,13 +160,16 @@ function litWindow(fr, mask, x0, y0, x1, y1, { ramp = 'ember', lit = true, mull 
 }
 // Moss and grime: a few hand-placed clumps on the top-facing parts of stone.
 function moss(fr, seed, n, region = null) {
+  n = Math.round(n * 0.35);
   for (let i = 0; i < n; i++) {
     const x = Math.floor(hash(i, 1, seed) * fr.w), y = Math.floor(hash(i, 2, seed) * fr.h);
     if (region && !region(x, y)) continue;
     const c = under(fr, x, y); if (c < 0 || c === IDX.outline) continue;
     const nm = Object.keys(IDX).find((k) => IDX[k] === c);
     if (!nm || !/^stone|^flag|^slate/.test(nm)) continue;
-    dot(fr, x, y, 'moss3'); if (hash(i, 3, seed) < 0.6 && under(fr, x + 1, y) >= 0) dot(fr, x + 1, y, 'moss2'); if (hash(i, 4, seed) < 0.4 && under(fr, x, y + 1) >= 0) dot(fr, x, y + 1, 'moss4');
+    // A small clump: lit on top, dark beneath.
+    const w = 2 + Math.floor(hash(i, 3, seed) * 3);
+    for (let k = 0; k < w; k++) { if (under(fr, x + k, y) < 0 || under(fr, x + k, y) === IDX.outline) break; dot(fr, x + k, y, k === 0 ? 'moss2' : 'moss3'); if (k > 0 && k < w - 1) { dot(fr, x + k, y - 1, 'moss1h'); if (under(fr, x + k, y + 1) >= 0) dot(fr, x + k, y + 1, 'moss4'); } }
   }
 }
 // Hanging grime streaks below sills.
@@ -345,6 +350,7 @@ function pyramid(cx, ya, zc, hw, yb, mat) {
 const tri = (cx, hw, ya, yb, z0, z1, mat) => { const rise = yb - ya; return planes([[-rise, -hw, 0, -rise * (cx - hw) - hw * yb], [rise, -hw, 0, rise * (cx + hw) - hw * yb], [0, 1, 0, yb], [0, 0, 1, z1], [0, 0, -1, -z0]], [cx - hw, ya, z0, cx + hw, yb, z1], mat); };
 const ringXY = (c, Rr, r, mat) => ({ mat, bb: [c[0] - Rr - r, c[1] - Rr - r, c[2] - r, c[0] + Rr + r, c[1] + Rr + r, c[2] + r], f: (x, y, z) => Math.hypot(Math.hypot(x - c[0], y - c[1]) - Rr, z - c[2]) - r });
 const disc = (cx, cy, r, z0, z1, mat) => ({ mat, bb: [cx - r, cy - r, z0, cx + r, cy + r, z1], f: (x, y, z) => Math.max(Math.hypot(x - cx, y - cy) - r, Math.abs(z - (z0 + z1) / 2) - (z1 - z0) / 2) });
+const torusY = (c, Rr, r, mat) => ({ mat, bb: [c[0] - Rr - r, c[1] - r, c[2] - Rr - r, c[0] + Rr + r, c[1] + r, c[2] + Rr + r], f: (x, y, z) => Math.hypot(Math.hypot(x - c[0], z - c[2]) - Rr, y - c[1]) - r });
 const slateTest = (fr, x, y, src) => /^slate/.test(NAME[src[y * fr.w + x]] || '');
 
 // A gothic lancet: recess carved in a wall, glass painted after rendering.
@@ -599,27 +605,495 @@ function mausoleum() {
   S.sub(archPrism(cx, 78, 24, G - 9, -6, 1, 'stoneDark', false), 0);
   S.add(planked(archPrism(cx, 78, 22, G - 9, -9, -4, 'ironDark', false), 4, 0.4), 0);
   // A grieving angel kneels on the ridge, wings folded about her.
-  const ax = cx, ay = 20;
-  S.add(folds(skirt(ax, ay + 2, ay + 13, 3.2, 6.2, -10, 0.9, 'stoneC'), { cx: ax, cz: -10, n: 7, amp: 0.4, y0: ay + 2, y1: ay + 13 }), 0);
-  S.add(ellipsoid([ax, ay, -10], [3.4, 4.6, 3], 'stoneC'), 1.4);
-  S.add(sphere([ax + 0.8, ay - 6.2, -9], 2.8, 'stoneC'), 1);
-  S.add(capsule([ax + 2.4, ay - 1.5, -8], [ax + 1.6, ay - 4.6, -6.6], 1.1, 1, 'stoneC'), 0.8);
-  for (const side of [-1, 1]) {
-    S.add(ellipsoid([ax + side * 6.5, ay - 1, -12], [4.2, 9, 1.6], 'stoneB'), 1.2);
-    S.add(capsule([ax + side * 4, ay - 8, -12], [ax + side * 10, ay - 12, -12.5], 2, 1, 'stoneB'), 1.6);
-  }
+  const ax = cx, ay = 13;
+  S.add(folds(skirt(ax, ay + 2, ay + 12, 3.2, 6.4, 0, 0.9, 'stoneC'), { cx: ax, cz: 0, n: 7, amp: 0.4, y0: ay + 2, y1: ay + 12 }), 0);
+  S.add(ellipsoid([ax, ay, 0], [3.4, 4.6, 3], 'stoneC'), 1.4);
+  S.add(sphere([ax + 1, ay - 5.8, 1], 2.7, 'stoneC'), 1);
+  S.add(capsule([ax + 2.4, ay - 1.2, 2], [ax + 1.8, ay - 4.2, 3.4], 1.1, 1, 'stoneC'), 0.8);
+  for (const side of [-1, 1]) S.add(rotZ(ellipsoid([ax + side * 5.5, ay + 1, -2.5], [3, 10, 1.5], 'stoneB'), [ax + side * 5.5, ay - 8], side * -0.18), 1.2);
   const fr = R(S, W, H, { ground: H - 1 });
   grime(fr, 30, 9); moss(fr, 41, 150, (x, y) => y > 40);
   for (let i = 0; i < 10; i++) streak(fr, 16 + Math.floor(hash(i, 4, 9) * 82), 58, 6 + Math.floor(hash(i, 6, 9) * 16), i);
   return fr;
 }
 
+// ============================================================ street props ===
+// Small props stand on a ground line; their front-most z sits on the bottom row.
+const groundY = (H, zf) => H - 0.5 - zf * TILT;
+
+function plushStall() {
+  const W = 99, H = 91, S = new View(), G = groundY(H, 7);
+  S.add(slabBox(5, 22, 94, G, -6, 6, 'plaster', 0.4), 0);
+  for (const px of [6, 93]) S.add(rod([px, 14, 4], [px, G, 4], 2.2, 'wood'), 0);
+  // Striped awning sloping out over the counter.
+  const ay = 10, aw = planes([[0, -10, 12, -10 * ay + 12 * -4], [0, 1, 0, ay + 12], [0, -1, 0, -ay], [-1, 0, 0, -1], [1, 0, 0, 98], [0, 0, -1, 6]], [1, ay, -6, 98, ay + 12, 10], 'canvasV');
+  S.add(aw, 0);
+  S.paint({ f: (x, y, z) => (y < ay + 13 && y > ay - 1 && Math.floor((x - 1) / 8) % 2 ? -1 : 1), mat: 'canvasG' });
+  // Two shelves of plush Saints.
+  for (const sy0 of [40, 58]) {
+    S.add(slabBox(8, sy0 + 6, 91, sy0 + 8.5, -1, 5, 'woodB', 0.4), 0);
+    for (let k = 0; k < 7; k++) {
+      const x = 15 + k * 11.5, z = -3;
+      S.add(skirt(x, sy0 - 1, sy0 + 6, 2.2, 3.8, z, 0.8, 'crimson'), 0.6);
+      S.add(sphere([x + 0.4, sy0 - 2.6, z + 0.4], 3, 'crimson'), 1);
+      S.add(capsule([x - 1, sy0 - 4.5, z - 1], [x - 3, sy0 - 7, z - 2], 1.6, 0.5, 'crimson'), 0.8);
+    }
+  }
+  // The counter, with a ledger.
+  S.add(planked(slabBox(7, 68, 92, G, 7, 9, 'wood', 0.5), 6), 0);
+  S.add(slabBox(5, 66, 94, 69.5, 8, 11, 'woodB', 0.5), 0);
+  S.add(slabBox(36, 63.5, 60, 66.5, 4.5, 6, 'bone', 0.5), 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  for (const sy0 of [40, 58]) for (let k = 0; k < 7; k++) {
+    const x = Math.round(15 + k * 11.5 + 1.6), y = Math.round(sy(sy0 - 2.6, -3));
+    dot(fr, x, y, 'ink1'); dot(fr, x + 1, y, 'ink1'); dot(fr, x, y + 1, 'ink1'); dot(fr, x + 1, y + 1, 'ink2');
+    dot(fr, x, y, 'flame1'); dot(fr, x + 1, y, k % 3 ? 'flame1' : 'ink1');
+    const hy = Math.round(sy(sy0 - 7.5, -3)); pline(fr, x - 3, hy, x + 1, hy, 'gold1'); dot(fr, x - 4, hy + 1, 'gold3'); dot(fr, x + 2, hy + 1, 'gold3');
+  }
+  { const y = Math.round(sy(65, 6)); for (let x = 39; x < 58; x += 3) dot(fr, x, y, 'ink4'); dot(fr, 54, y - 1, 'crimson2'); }
+  return fr;
+}
+
+function gallows(i) {
+  const W = 73, H = 99, S = new View(), G = groundY(H, 9);
+  S.add(planked(slabBox(2, G - 16, 71, G - 9, 9, 18, 'wood', 0.5), 6), 0);
+  for (const x of [6, 67]) for (const z of [6, -6]) S.add(rod([x, G - 10, z], [x, G, z], 1.8, 'timber'), 0);
+  S.add(rod([12, 6, 0], [12, G - 16, 0], 2.6, 'timber'), 0);
+  S.add(rod([8, 6, 0], [60, 6, 0], 2.4, 'timber'), 0.3);
+  S.add(rod([13, 26, 0], [30, 7, 0], 1.5, 'timber'), 0.3);
+  const sw = i ? 2.5 : -1.5, cx = 52 + sw, cy = 28;
+  // The gibbet cage with its occupant.
+  for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2; S.add(rod([cx + Math.cos(a) * 7, cy, Math.sin(a) * 7], [cx + Math.cos(a) * 7, cy + 34, Math.sin(a) * 7], 0.6, 'ironDark'), 0); }
+  for (const yy of [cy, cy + 17, cy + 34]) S.add({ ...torusY([cx, yy, 0], 7.2, 0.8, 'ironDark') }, 0);
+  S.add(rod([cx, cy - 1, 0], [cx, cy - 3, 0], 2, 'ironDark'), 0);
+  S.add(rod([cx, cy + 34, 0], [cx, cy + 35.5, 0], 7.6, 'ironDark'), 0);
+  S.add(sphere([cx + 0.5, cy + 9, 1], 3.2, 'bone'), 0.5);
+  S.sub(sphere([cx + 2, cy + 9.6, 4], 1.1, 'hole'), 0.3);
+  S.add(folds(skirt(cx, cy + 12, cy + 30, 3, 5, 0, 0.9, 'shroud'), { cx, n: 5, amp: 0.4, y0: cy + 12, y1: cy + 30 }), 0.8);
+  const fr = R(S, W, H, { ground: H - 1 });
+  pline(fr, 52, 8, cx, cy - 7, 'shroud3');
+  dot(fr, cx + 1, Math.round(cy + 9), 'ink0'); dot(fr, cx + 3, Math.round(cy + 9), 'ink0');
+  return fr;
+}
+
+function cart() {
+  const W = 68, H = 44, S = new View(), G = groundY(H, 8);
+  S.add(planked(slabBox(5, 14, 56, 25, 7, 16, 'wood', 0.5), 5), 0);
+  S.add(rod([56, 20, 4], [68, 27, 4], 1.2, 'woodB'), 0);
+  S.add(rod([56, 20, -6], [68, 27, -6], 1.2, 'woodB'), 0);
+  for (const [x, y, z] of [[17, 12, 2], [33, 11, -1], [46, 13, 3]]) S.add(folds(ellipsoid([x, y, z], [9, 4.2, 5], 'shroud'), { cx: x, cz: z, n: 10, amp: 0.35, y0: y - 4, y1: y + 4 }), 1.4);
+  S.add(sphere([8, 10.5, 3], 2.3, 'bone'), 0.5);
+  // The wheel: rim, spokes, hub.
+  const wc = [18, G - 9, 8];
+  S.add(ringXY(wc, 8.4, 1.3, 'woodB'), 0);
+  for (let a = 0; a < 8; a++) S.add(rod(wc, [wc[0] + Math.cos(a * Math.PI / 4) * 8, wc[1] + Math.sin(a * Math.PI / 4) * 8, wc[2]], 0.6, 'woodB'), 0);
+  S.add(sphere(wc, 1.8, 'iron'), 0);
+  return R(S, W, H, { ground: H - 1 });
+}
+
+function brazier(i) {
+  const W = 23, H = 39, S = new View(), G = groundY(H, 3);
+  for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2 + 0.5; S.add(rod([11.5 + Math.cos(a) * 6, G, Math.sin(a) * 3.5], [11.5 + Math.cos(a) * 2, 20, Math.sin(a) * 1.5], 0.9, 'iron'), 0.4); }
+  S.add(clip(sphere([11.5, 14, 0], 8, 'iron'), (x, y) => 15.5 - y), 0);
+  S.add(clip(sphere([11.5, 14, 0], 6.5, 'iron'), (x, y) => 15.5 - y), 0, 'sub');
+  S.add(lump([11.5, 16.5, 0], 5.6, 'coal', 3, 0.7), 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  flame(fr, 11.5, Math.round(sy(15, 2)), 13, 11, i * 2.1);
+  for (let k = 0; k < 4; k++) dot(fr, 6 + Math.floor(hash(k, i, 4) * 11), Math.round(sy(15.5, 2)) + (k & 1), k % 2 ? 'ember2' : 'ember1');
+  return outlineAll(fr);
+}
+
+function campfire(i) {
+  const W = 36, H = 26, S = new View(), G = groundY(H, 7);
+  for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2; S.add(lump([18 + Math.cos(a) * 12, G - 2, Math.sin(a) * 6], 2.4, k % 2 ? 'stoneC' : 'stoneB', k, 0.6), 0.6); }
+  S.add(rod([7, G - 3, 2], [29, G - 6, -2], 1.8, 'woodB'), 0.3);
+  S.add(rod([8, G - 6, -3], [28, G - 3, 2], 1.8, 'wood'), 0.3);
+  const fr = R(S, W, H, { ground: H - 1 });
+  flame(fr, 18, Math.round(G - 4), 15 + (i === 1 ? 2 : 0), 12, i * 2.3);
+  return outlineAll(fr);
+}
+
+function tombstone(v) {
+  const W = 21, H = 29, S = new View(), G = groundY(H, 3);
+  let p;
+  if (v === 0) { S.add(bumpy2(slabBox(8, 3, 13, G, 2, 4, 'stone', 0.6), v)); S.add(bumpy2(slabBox(3, 8, 18, 13, 2, 4, 'stone', 0.6), v + 1), 0.4); }
+  else if (v === 1) { p = archPrism(10.5, 6, 15, G, -2, 2, 'stone'); S.add(bumpy2(p, v)); }
+  else { p = jagged(slabBox(3, 6, 18, G, 2, 4, 'stone', 0.4), (x) => 9 + Math.abs(Math.sin(x * 0.9)) * 4 + (x > 12 ? 3 : 0)); S.add(bumpy2(p, v)); }
+  S.add(lump([10.5, G, 0], 7, 'moss', v, 1), 1);
+  S.add(clip(sphere([10.5, G + 3, 0], 9, 'bark'), (x, y) => (G - 1) - y), 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  if (v === 1) for (const y of [12, 15, 18]) pline(fr, 7, Math.round(sy(y, 2)), 14, Math.round(sy(y, 2)), 'stone5');
+  return fr;
+}
+function bumpy2(p, seed) { const f = p.f; return { ...p, f: (x, y, z) => f(x, y, z) + 0.35 * noise3(x * 0.6 + seed * 7, y * 0.6, z * 0.6) }; }
+
+function deadTree() {
+  const W = 83, H = 117, S = new View(), G = groundY(H, 5);
+  const grow = (a, ang, len, r, depth, seed) => {
+    const b = [a[0] + Math.sin(ang) * len, a[1] - Math.cos(ang) * len, a[2] + (hash(seed, 1) - 0.5) * 4];
+    S.add(capsule(a, b, r, r * 0.68, 'bark'), r > 2 ? 1.6 : 0.8);
+    if (depth <= 0 || r < 0.7) return;
+    const n = depth > 2 ? 2 : 2 + (hash(seed, 2) < 0.4 ? 1 : 0);
+    for (let k = 0; k < n; k++) grow(b, ang + (k - (n - 1) / 2) * (0.6 + hash(seed, k + 3) * 0.4) + (hash(seed, 9) - 0.5) * 0.3, len * (0.62 + hash(seed, k + 5) * 0.2), r * 0.66, depth - 1, seed * 3 + k + 1);
+  };
+  // Roots, trunk with a twist, then branches.
+  for (const [dx, dz] of [[-9, 2], [8, 3], [2, -4], [-3, 5]]) S.add(capsule([41.5, G - 7, 0], [41.5 + dx, G, dz], 3.4, 1.2, 'bark'), 1.5);
+  S.add(capsule([41.5, G, 0], [40, G - 34, 0], 5.6, 4.2, 'bark'), 2);
+  S.sub(ellipsoid([42.5, G - 20, 4], [1.8, 3.4, 2], 'hole'), 0.5);
+  grow([40, G - 34, 0], -0.15, 30, 4.2, 4, 7);
+  grow([40.5, G - 42, 0], 0.95, 18, 2.8, 3, 11);
+  grow([40, G - 28, 0], -1.1, 16, 2.6, 3, 13);
+  const bark = { ...S }; void bark;
+  const fr = R(S, W, H, { ground: H - 1 });
+  return fr;
+}
+
+function fence() {
+  const W = 42, H = 34, S = new View(), G = groundY(H, 1);
+  for (const y of [10, 22]) S.add(rod([0, y, 0], [42, y, 0], 0.9, 'iron'), 0);
+  for (let k = 0; k < 6; k++) { const x = 3.5 + k * 7; S.add(rod([x, 6, 0], [x, G, 0], 1, 'iron'), 0); S.add(pyramid(x, 0.5, 0, 1.6, 6.5, 'iron'), 0); }
+  const fr = R(S, W, H, { ground: H - 1, noOutline: true });
+  return outlineAll(fr);
+}
+
+function well() {
+  const W = 47, H = 52, S = new View(), G = groundY(H, 12);
+  const ring = ashlar({ ...rod([23.5, 34, 0], [23.5, G, 0], 12, 'stone'), mat: 'stone' }, { ch: 4.5, bw: 6, seed: 8, chip: 0.4 });
+  S.add({ ...ring, f: (x, y, z) => Math.max(ring.f(x, y, z), -(Math.hypot(x - 23.5, z) - 9.5)) }, 0);
+  S.add({ ...rod([23.5, 36, 0], [23.5, G, 0], 9.6, 'hole') }, 0);
+  for (const x of [8, 39]) S.add(rod([x, 6, 0], [x, 36, 0], 1.6, 'timber'), 0);
+  S.add(rod([6, 12, 0], [41, 12, 0], 1.3, 'timber'), 0);
+  S.add(tri(23.5, 22, 0, 7, -8, 8, 'tile'), 0);
+  S.add(slabBox(20, 22, 27, 28, 2, 5, 'wood', 0.6), 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  tilePass(fr, { ch: 3, bw: 4, seed: 4 });
+  pline(fr, 23, Math.round(sy(12, 0)) + 1, 23, Math.round(sy(22, 2)) - 1, 'shroud3');
+  return fr;
+}
+
+function noticeBoard() {
+  const W = 39, H = 52, S = new View(), G = groundY(H, 2);
+  for (const x of [5, 34]) S.add(rod([x, 4, 0], [x, G, 0], 1.6, 'timber'), 0);
+  S.add(planked(slabBox(1, 6, 38, 33, 1.5, 3, 'wood', 0.5), 5), 0);
+  S.add(tri(19.5, 21, -2, 6, -3, 3, 'tile'), 0);
+  const papers = [[8, 10, 11, 9, 0.08], [20, 9, 9, 12, -0.06], [10, 21, 12, 9, -0.04], [24, 22, 9, 8, 0.1]];
+  for (const [x, y, w, h, a] of papers) S.add(rotZ(slabBox(x, y, x + w, y + h, 2.6, 0.8, 'bone', 0.1), [x + w / 2, y + h / 2], a), 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  tilePass(fr, { ch: 3, bw: 4, seed: 2 });
+  for (const [x, y, w, h] of papers) for (let r = y + 2; r < y + h - 1; r += 2) pline(fr, x + 1.5, Math.round(sy(r, 2.6)), x + w - 2, Math.round(sy(r, 2.6)), 'bone4');
+  dot(fr, 13, Math.round(sy(16, 2.6)), 'crimson1'); dot(fr, 14, Math.round(sy(16, 2.6)), 'crimson2');
+  dot(fr, 28, Math.round(sy(27, 2.6)), 'crimson1');
+  return fr;
+}
+
+function stocks() {
+  const W = 47, H = 42, S = new View(), G = groundY(H, 6);
+  S.add(planked(slabBox(2, G - 5, 45, G, 6, 12, 'woodB', 0.5), 6), 0);
+  for (const x of [6, 41]) S.add(rod([x, 6, 0], [x, G - 4, 0], 2, 'timber'), 0);
+  S.add(slabBox(4, 12, 43, 18, 2, 4, 'wood', 0.5), 0);
+  S.add(slabBox(4, 18.4, 43, 24, 2, 4, 'wood', 0.5), 0);
+  for (const [x, r] of [[14, 2], [23.5, 3.1], [33, 2]]) S.sub(rod([x, 18.2, -3], [x, 18.2, 4], r, 'hole'), 0);
+  S.add(rod([2, 7, 1], [45, 7, 1], 1.2, 'iron'), 0);
+  return R(S, W, H, { ground: H - 1 });
+}
+
+function pool(i) {
+  const W = 104, H = 44, S = new View(), cx = 52, zr = 24, G = groundY(H, zr + 1);
+  const rim = ashlar({ ...rod([cx, G - 6, 0], [cx, G, 0], 1, 'stone'), bb: [cx - 50, G - 6, -zr, cx + 50, G, zr], f: (x, y, z) => Math.max(Math.hypot((x - cx) / 50, z / zr) * zr - zr, Math.abs(y - (G - 3)) - 3) }, { ch: 3, bw: 7, seed: 5, chip: 0.4 });
+  S.add({ ...rim, mat: 'stoneC' }, 0);
+  S.sub({ mat: 'hole', bb: [cx - 44, G - 8, -zr, cx + 44, G + 1, zr], f: (x, y, z) => Math.max(Math.hypot((x - cx) / 44, z / (zr - 5)) * (zr - 5) - (zr - 5), Math.abs(y - (G - 5)) - 2.5) }, 0.4);
+  S.add({ mat: 'water', bb: [cx - 44, G - 4.5, -zr, cx + 44, G - 2, zr], f: (x, y, z) => Math.max(Math.hypot((x - cx) / 44, z / (zr - 5)) * (zr - 5) - (zr - 5), Math.abs(y - (G - 3.2)) - 0.6) }, 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  // Shimmer on the scrying water and the drowned eye at its heart.
+  const wy = sy(G - 3.8, 0);
+  fill(fr, (x, y) => /^violet/.test(NAME[fr.px[y * W + x]] || ''), (x, y) => {
+    const dx = (x + 0.5 - cx) / 44, dz = (y + 0.5 - wy) / ((zr - 5) * TILT), r = Math.hypot(dx, dz);
+    const wave = Math.sin(r * 18 - i * 2.1) * 0.5 + 0.5;
+    if (r < 0.1) return C('blood', r < 0.05 ? 0 : 1);
+    if (r < 0.14) return C('violet', 5);
+    return C('violet', 2.2 + r * 3 + (wave > 0.82 ? -1.6 : 0) + (dz < 0 ? 0.6 : 0));
+  });
+  for (let k = 0; k < 6; k++) { const a = k + i * 0.7; dot(fr, Math.round(cx + Math.cos(a) * 30), Math.round(wy + Math.sin(a * 1.7) * 5), 'holy1'); }
+  return fr;
+}
+
+// ============================================================ town sheet ===
+// Cobbles, 16x16. Every variant shares the same stones along its borders so
+// they tile seamlessly in any order; variants differ by cracks, moss and wet.
+function cobble(v) {
+  const N = 16, pts = [];
+  for (let gy = 0; gy < 3; gy++) for (let gx = 0; gx < 3; gx++) pts.push([(gx + 0.5 + (hash(gx, gy, 71) - 0.5) * 0.5 + (gy % 2) * 0.5) * N / 3, (gy + 0.5 + (hash(gx, gy, 72) - 0.5) * 0.4) * N / 3]);
+  const cell = (x, y) => { let d1 = 1e9, d2 = 1e9, id = -1; for (const [i, [px, py]] of pts.entries()) for (const ox of [-N, 0, N]) for (const oy of [-N, 0, N]) { const d = Math.hypot(x - px - ox, (y - py - oy) * 1.15); if (d < d1) { d2 = d1; d1 = d; id = i; } else if (d < d2) d2 = d; } return [d2 - d1, id]; };
+  const hgt = (x, y) => { const [e] = cell(x, y); return Math.sqrt(clamp(e / 2.6, 0, 1)) * 2; };
+  const fr = { w: N, h: N, px: new Int16Array(N * N) };
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const X = x + 0.5, Y = y + 0.5, [e, id] = cell(X, Y);
+    if (e < 0.9) { fr.px[y * N + x] = IDX[C('stone', 7.4 + (e < 0.45 ? 0.6 : 0))]; continue; }
+    const gx = hgt(X + 0.5, Y) - hgt(X - 0.5, Y), gy = hgt(X, Y + 0.5) - hgt(X, Y - 0.5);
+    const lit = clamp(0.5 - gx * 0.5 - gy * 0.6, 0, 1);
+    const tone = hash(id, 9, 77) * 1.2 - 0.3;
+    let ramp = 'stone', st = 6.2 - lit * 4.4 + tone;
+    if (v === 2 && Math.hypot(X - 8, Y - 8) < 5.2) { ramp = 'slate'; st -= 0.6; if ((x + y * 3) % 7 === 0) st = 1; } // a puddle catching the sky
+    fr.px[y * N + x] = IDX[C(ramp, st)];
+  }
+  if (v === 1) for (const [x, y] of [[5, 6], [6, 7], [7, 7], [8, 8], [9, 8]]) dot(fr, x, y, 'ink3');
+  if (v === 3) for (let k = 0; k < 9; k++) { const x = Math.floor(hash(k, 3, 5) * 16), y = Math.floor(hash(k, 4, 5) * 16); if (NAME[fr.px[y * N + x]].startsWith('stone4') || NAME[fr.px[y * N + x]].startsWith('stone3h')) dot(fr, x, y, k % 2 ? 'moss3' : 'moss4'); }
+  return fr;
+}
+
+// The Vestry: a small chapel with a lift down into the Wound.
+function vestry() {
+  const W = 146, H = 125, S = new View(), G = H - 0.5, cx = 73;
+  const body = ashlar(slabBox(12, 46, 134, G, 0, 30, 'stone', 0.4), { ch: 6, bw: 12, seed: 51 });
+  S.add(body); blockTones(S, body, { ch: 6, bw: 12, seed: 51 });
+  S.add(tri(cx, 76, 6, 48, -40, -2, 'slate'), 0);
+  const gab = ashlar(tri(cx, 70, 10, 47, -4, 0, 'stone'), { ch: 6, bw: 12, seed: 52 }); S.add(gab, 0);
+  { const o = tri(cx, 75, 5, 48, -5, 2, 'goldDim'), i = tri(cx, 70, 8.5, 50, -7, 4, 'gold'); S.add({ ...o, f: (x, y, z) => Math.max(o.f(x, y, z), -i.f(x, y, z)) }, 0); }
+  S.sub(disc(cx, 34, 10, -3, 4, 'stoneDark'), 0.3);
+  S.add(ringXY([cx, 34, 0.4], 11, 1.6, 'gold'), 0);
+  for (const bx of [16, 130]) { S.add(ashlar(slabBox(bx - 5, 52, bx + 5, G, 6, 9, 'stoneC', 0.5), { ch: 6, bw: 10, seed: bx }), 0.4); S.add(pyramid(bx, 34, 1, 5, 53, 'stone'), 0); }
+  for (const lx of [36, 110]) lancetCut(S, lx, 62, 12, 92, 0);
+  const dt = 70, dw = 34;
+  S.add(archPrism(cx, dt - 6, dw + 12, G, -1, 4, 'gold', true), 0.4);
+  S.sub(archPrism(cx, dt - 2, dw + 4, G + 2, -1, 6, 'stone', true), 0.2);
+  S.add(archPrism(cx, dt - 2, dw + 4, G, -6, -1, 'stoneC', true), 0);
+  S.sub(archPrism(cx, dt + 3, dw - 6, G + 2, -5.5, 0, 'woodB', true), 0.2);
+  S.add(planked(archPrism(cx, dt + 3, dw - 6, G, -10, -5, 'woodB', true), 4), 0);
+  for (let k = 0; k < 2; k++) S.add(slabBox(cx - 26 - k * 6, G - 5 + k * 3, cx + 26 + k * 6, G - 2 + k * 3, 4 + k * 4, 6 + k * 4, 'slab', 0.4), 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  tilePass(fr, { ch: 3, bw: 4, seed: 6, test: slateTest });
+  for (const lx of [36, 110]) lancetGlass(fr, lx, 62, 12, 92, 0, 'violet');
+  const rc = sy(34, -2);
+  fill(fr, (x, y) => Math.hypot(x + 0.5 - cx, y + 0.5 - rc) < 9, (x, y) => { const dx = x + 0.5 - cx, dy = y + 0.5 - rc, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx), seg = ((a / (Math.PI * 2) * 8) % 1 + 1) % 1; if (r < 2.5) return C('blood', 1); if (Math.abs(seg - 0.5) > 0.4) return C('gold', 3); return C(Math.floor(a / Math.PI * 4 + 8) % 2 ? 'violet' : 'crimson', 2.2 + dy / 9); });
+  const dTop = Math.round(sy(dt + 3, -10));
+  for (let y = dTop + 10; y < H - 6; y += 12) { pline(fr, cx - 12, y, cx - 2, y, 'iron4'); pline(fr, cx + 1, y, cx + 11, y, 'iron4'); }
+  pline(fr, cx - 0.5, dTop + 4, cx - 0.5, H - 6, 'holy3');
+  grime(fr, 22, 51); moss(fr, 52, 120, (x, y) => y > 40);
+  return fr;
+}
+
+// The Forge of Penance: a sooty brick smithy with a roaring hearth.
+function forge() {
+  const W = 114, H = 104, S = new View(), G = H - 0.5;
+  const body = ashlar(slabBox(6, 38, 108, G, 0, 22, 'brick', 0.4), { ch: 4, bw: 8, depth: 0.4, chip: 0.25, seed: 61 });
+  S.add(body); blockTones(S, body, { ch: 4, bw: 8, seed: 61, mats: ['brickB', 'stoneB'], frac: 0.25 });
+  S.add(roofPrism(0, 114, -26, 7, 40, 14, 'tile', 0), 0);
+  // The chimney stack rising from the ridge.
+  S.add(ashlar(slabBox(78, 0, 96, 30, -8, 12, 'stone', 0.5), { ch: 5, bw: 9, seed: 62 }), 0);
+  S.add(slabBox(76, -2, 98, 3, -6, 15, 'stoneDark', 0.4), 0);
+  // The hearth arch: deep, round, glowing.
+  S.sub(archPrism(52, 56, 54, G + 2, -14, 4, 'coal', false), 0);
+  S.add(archPrism(52, 52, 62, G, -1, 1.8, 'stoneC', false), 0);
+  S.sub(archPrism(52, 56, 54, G + 2, -14, 4, 'coal', false), 0);
+  S.add(slabBox(26, G - 6, 78, G, -6, 10, 'coal', 0.5), 0);
+  // Window and a hammer sign.
+  S.sub(slabBox(88, 50, 100, 64, 2, 3, 'timber', 0.2), 0);
+  S.add(slabBox(86.5, 63.5, 101.5, 66, 1.6, 3, 'stoneC', 0.4), 0);
+  S.add(slabBox(8, 46, 22, 58, 2.2, 1.6, 'wood', 0.4), 0);
+  S.add(rod([12, 54.5, 3.4], [18, 49, 3.4], 0.8, 'woodB'), 0);
+  S.add(slabBox(14, 47, 21, 51, 3.6, 1.6, 'iron', 0.4), 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  tilePass(fr, { ch: 4, bw: 6, seed: 3 });
+  // Fire inside: white-hot coals, flame tongues, light spilling on the reveal.
+  const top = Math.round(sy(56, -12));
+  fill(fr, (x, y) => inArch(x + 0.5, y + 0.5 - sy(0, -12), 52, 56, 50, G - 4) && fr.px[y * W + x] >= 0 && /^ink/.test(NAME[fr.px[y * W + x]]), (x, y) => C('ember', 7.6 - Math.pow((y - top) / (G - top), 1.6) * 6.2 + (hash(x >> 1, y >> 1, 3) - 0.5) * 0.8));
+  for (let k = 0; k < 4; k++) flame(fr, 34 + k * 12, H - 6, 12 + (k % 2) * 6, 10, k * 1.9);
+  for (let x = 28; x < 77; x++) dot(fr, x, H - 4 - (x % 3 === 0 ? 1 : 0), hash(x, 1, 2) < 0.5 ? 'ember0' : 'ember1');
+  shade(fr, (x, y) => (Math.abs(x - 52) > 25 && Math.abs(x - 52) < 33 && y > 54), -1);
+  litWindow(fr, (x, y) => x >= 89 && x < 99 && y >= 51 && y < 63, 89, 51, 99, 63, {});
+  grime(fr, 20, 62);
+  return fr;
+}
+
+// A market stall with potions, bones and a gold ingot.
+function stall() {
+  const W = 94, H = 83, S = new View(), G = groundY(H, 7);
+  S.add(planked(slabBox(5, 18, 89, G, -6, 4, 'woodB', 0.4), 6), 0);
+  for (const px of [6, 88]) S.add(rod([px, 10, 4], [px, G, 4], 2, 'wood'), 0);
+  const ay = 6, aw = planes([[0, -10, 12, -10 * ay + 12 * -4], [0, 1, 0, ay + 13], [0, -1, 0, -ay], [-1, 0, 0, -1], [1, 0, 0, 93], [0, 0, -1, 6]], [1, ay, -6, 93, ay + 13, 11], 'canvasR');
+  S.add(wavy(aw, 0.4, 0.8), 0);
+  S.paint({ f: (x, y, z) => (y < ay + 14 && y > ay - 2 && Math.floor((x - 1) / 9) % 2 ? -1 : 1), mat: 'cloth' });
+  S.add(slabBox(8, 38, 86, 40.5, -1, 5, 'wood', 0.4), 0);
+  const pot = [['flame', 18], ['holy', 30], ['flame', 42], ['crimson', 54], ['holy', 66], ['violet', 78]];
+  for (const [m, x] of pot) { S.add(sphere([x, 33, -2], 3.4, 'glass_' + m), 0.6); S.add(rod([x, 26.5, -2], [x, 30.5, -2], 1.3, 'glass_' + m), 0.5); S.add(rod([x, 25, -2], [x, 27, -2], 1.5, 'wood'), 0); }
+  S.add(planked(slabBox(7, 58, 87, G, 7, 9, 'wood', 0.5), 6), 0);
+  S.add(slabBox(5, 56, 89, 59.5, 8, 11, 'woodB', 0.5), 0);
+  S.add(sphere([24, 52.5, 3], 4, 'bone'), 0.5); S.sub(sphere([26.5, 53, 6.6], 1.2, 'hole'), 0.3); S.sub(sphere([22.5, 53, 6.6], 1.2, 'hole'), 0.3);
+  S.add(rod([38, 54.5, 4], [56, 52.5, 3], 1.3, 'bone'), 0.3); S.add(sphere([38, 54.5, 4], 1.9, 'bone'), 0.5); S.add(sphere([56, 52.5, 3], 1.9, 'bone'), 0.5);
+  S.add(slabBox(66, 51, 78, 55.5, 4, 6, 'gold', 0.6), 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  for (const [, x] of pot) { dot(fr, x - 1.5, Math.round(sy(31.5, -2)), 'white'); }
+  return fr;
+}
+
+// The Gilded Lamb: a broad timbered inn with a gilt sign.
+function tavern() {
+  const W = 135, H = 109, S = new View(), G = H - 0.5, D = 22;
+  const gw = ashlar(slabBox(6, 64, 129, G, 0, D, 'stone', 0.4), { ch: 6, bw: 11, seed: 71 });
+  S.add(gw); blockTones(S, gw, { ch: 6, bw: 11, seed: 71 });
+  const up = slabBox(4, 30, 131, 64, 2, D + 2, 'plaster', 0.2);
+  S.add({ ...up, f: (x, y, z) => up.f(x, y, z) + 0.18 * noise3(x * 0.5, y * 0.5, z * 0.5) });
+  S.add(slabBox(3, 61, 132, 65, 3, 4, 'timber', 0.4), 0.3);
+  S.add(slabBox(3, 30, 132, 32.5, 2.8, 4, 'timber', 0.4), 0.3);
+  for (const px of [5, 36, 67.5, 99, 130]) S.add(slabBox(px - 1.5, 30, px + 1.5, 64, 2.8, 2, 'timber', 0.4), 0.3);
+  for (const [a, b] of [[7, 34], [34, 7], [101, 128], [128, 101]]) S.add(capsule([a, 62, 2.6], [b, 34, 2.6], 1.1, 1.1, 'timber'), 0.2);
+  for (const wx of [51, 83]) { S.sub(slabBox(wx - 7, 38, wx + 7, 55, 4, 2.6, 'timber', 0.1), 0); S.add(slabBox(wx - 8.5, 54.5, wx + 8.5, 57, 3.8, 3, 'timber', 0.4), 0.2); }
+  S.add(roofPrism(0, 135, -D - 4, 8, 31, 4, 'tile', 26), 0);
+  for (const dmx of [40, 95]) { S.add(slabBox(dmx - 7, 12, dmx + 7, 26, 0, 8, 'plaster', 0.3), 0.4); S.add(roofPrism(dmx - 9, dmx + 9, -8, 2.5, 14, 5, 'tile', 0), 0); S.sub(slabBox(dmx - 3.5, 15, dmx + 3.5, 24, 1.5, 2.5, 'timber', 0.1), 0); }
+  // Door and the bay of the common room.
+  S.sub(archPrism(67.5, 78, 16, G + 1, -3, 2, 'woodB'), 0);
+  S.add(planked(slabBox(59.5, 78, 75.5, G, -2.2, 2, 'woodB', 0.1), 3.2), 0);
+  for (const wx of [26, 109]) S.sub(slabBox(wx - 12, 76, wx + 12, 96, 2, 3, 'timber', 0.1), 0);
+  // The sign of the Gilded Lamb.
+  S.add(rod([96, 70, 4], [118, 70, 4], 0.7, 'iron'), 0);
+  S.add(slabBox(104, 71.5, 118, 82, 4.4, 1.4, 'wood', 0.4), 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  tilePass(fr, { seed: 5 });
+  for (const wx of [51, 83]) litWindow(fr, (x, y) => x >= wx - 6 && x < wx + 6 && y >= Math.round(sy(39, 4)) && y < Math.round(sy(54, 4)), wx - 6, Math.round(sy(39, 4)), wx + 6, Math.round(sy(54, 4)), {});
+  for (const dmx of [40, 95]) litWindow(fr, (x, y) => x >= dmx - 3 && x < dmx + 3 && y >= Math.round(sy(15.5, 1)) && y < Math.round(sy(23.5, 1)), dmx - 3, Math.round(sy(15.5, 1)), dmx + 3, Math.round(sy(23.5, 1)), { cols: 0, crossY: 0, lit: dmx === 40 });
+  for (const wx of [26, 109]) litWindow(fr, (x, y) => x >= wx - 11 && x < wx + 11 && y >= Math.round(sy(77, 1)) && y < Math.round(sy(95, 1)), wx - 11, Math.round(sy(77, 1)), wx + 11, Math.round(sy(95, 1)), { cols: 4, crossY: 0.45 });
+  for (const wx of [26, 109]) for (const xx of [wx - 6, wx + 5]) pline(fr, xx, Math.round(sy(77, 1)), xx, Math.round(sy(95, 1)) - 1, 'wood6'.replace('6', '4'));
+  // A little golden lamb on the sign.
+  const ly = Math.round(sy(76, 4.4));
+  for (const [x, y, c] of [[108, 0, 'gold1'], [109, 0, 'gold1'], [110, 0, 'gold1'], [111, 0, 'gold2'], [112, 0, 'gold2'], [107, 1, 'gold2'], [108, 1, 'gold1'], [109, 1, 'gold1'], [110, 1, 'gold2'], [111, 1, 'gold2'], [112, 1, 'gold3'], [113, -1, 'gold1'], [114, -1, 'gold2'], [113, -2, 'gold2'], [108, 2, 'gold3'], [112, 2, 'gold3'], [108, 3, 'gold4'], [112, 3, 'gold4']]) dot(fr, x, ly + y, c);
+  dot(fr, 68 + 4, H - 14, 'gold1');
+  grime(fr, 20, 72); moss(fr, 73, 60, (x, y) => y > 70);
+  return fr;
+}
+
+function smallHouse(v) {
+  const W = 62, H = 94, S = new View(), G = H - 0.5, D = 14;
+  const gw = ashlar(slabBox(5, 58, 57, G, 0, D, 'stone', 0.4), { ch: 6, bw: 10, seed: 81 + v });
+  S.add(gw); blockTones(S, gw, { ch: 6, bw: 10, seed: 81 + v });
+  const up = slabBox(4, 30, 58, 58, 1.6, D + 1.6, v ? 'plasterG' : 'plaster', 0.2);
+  S.add({ ...up, f: (x, y, z) => up.f(x, y, z) + 0.18 * noise3(x * 0.5, y * 0.5 + v, z * 0.5) });
+  S.add(slabBox(3, 55, 59, 58.5, 2.6, 3, 'timber', 0.4), 0.3);
+  for (const px of [5, 31, 57]) S.add(slabBox(px - 1.4, 30, px + 1.4, 58, 2.4, 2, 'timber', 0.4), 0.3);
+  for (const wx of [18, 44]) { S.sub(slabBox(wx - 5, 36, wx + 5, 50, 3.6, 2.6, 'timber', 0.1), 0); S.add(slabBox(wx - 6.5, 49.5, wx + 6.5, 52, 3.4, 3, 'timber', 0.4), 0.2); }
+  S.add(roofPrism(0, 62, -D - 3, 7, 31, 2, 'tile', v ? 0 : 16), 0);
+  if (v) S.add(slabBox(46, -2, 54, 16, -6, 6, 'brick', 0.4), 0);
+  const dx = v ? 42 : 20;
+  S.sub(archPrism(dx, 68, 12, G + 1, -3, 2, 'woodB'), 0);
+  S.add(planked(slabBox(dx - 6, 68, dx + 6, G, -2.2, 2, 'woodB', 0.1), 3), 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  tilePass(fr, { seed: v + 7 });
+  for (const wx of [18, 44]) { const t = Math.round(sy(37, 3.6)), b = Math.round(sy(49, 3.6)); litWindow(fr, (x, y) => x >= wx - 4 && x < wx + 4 && y >= t && y < b, wx - 4, t, wx + 4, b, { lit: hash(v, wx) < 0.6 }); }
+  { const wx = v ? 18 : 44, t = H - 28, b = H - 16; litWindow(fr, (x, y) => x >= wx - 5 && x < wx + 5 && y >= t && y < b, wx - 5, t, wx + 5, b, { lit: v === 0 }); }
+  grime(fr, 18, v); moss(fr, 90 + v, 30, (x, y) => y > 50);
+  return fr;
+}
+
+function lamp(i) {
+  const W = 18, H = 60, S = new View(), G = groundY(H, 3);
+  S.add(rod([9, G - 4, 0], [9, G, 0], 3, 'ironDark'), 0);
+  S.add(rod([9, 16, 0], [9, G - 3, 0], 1.2, 'ironDark'), 0);
+  S.add(rod([9, 15, 0], [9, 16.5, 0], 3.6, 'ironDark'), 0);
+  for (const [dx, dz] of [[-3.4, 2.4], [3.4, 2.4], [-3.4, -2.4], [3.4, -2.4]]) S.add(rod([9 + dx, 5, dz], [9 + dx * 0.8, 15, dz * 0.8], 0.55, 'ironDark'), 0);
+  S.add(pyramid(9, -0.5, 0, 5, 5, 'ironDark'), 0);
+  S.add(sphere([9, -1, 0], 1.1, 'ironDark'), 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  // The lantern's glass and flame.
+  const top = Math.round(sy(5, 2.4)), bot = Math.round(sy(15, 2.4));
+  for (let y = top + 1; y < bot; y++) for (let x = 6; x <= 12; x++) { const c = NAME[fr.px[y * W + x]] || ''; if (/^iron/.test(c) && (x === 6 || x === 12)) continue; const t = (y - top) / (bot - top), u = Math.abs(x - 9) / 3.5; dot(fr, x, y, C('ember', (i ? 1.2 : 0.8) + u * 2 + Math.abs(t - 0.6) * 3)); }
+  dot(fr, 9, Math.round((top + bot) / 2) + 1, 'ember0'); dot(fr, 9, Math.round((top + bot) / 2), i ? 'ember0' : 'white');
+  return outlineAll(fr);
+}
+
+function fountain(i) {
+  const W = 78, H = 65, S = new View(), cx = 39, zr = 16, G = groundY(H, zr + 1);
+  const basin = ashlar({ mat: 'stoneC', bb: [cx - 38, G - 9, -zr, cx + 38, G, zr], f: (x, y, z) => Math.max(Math.hypot((x - cx) / 38, z / zr) * zr - zr, Math.abs(y - (G - 4.5)) - 4.5) }, { ch: 4.5, bw: 7, seed: 9, chip: 0.4 });
+  S.add(basin, 0);
+  S.sub({ mat: 'hole', bb: [cx - 34, G - 11, -zr, cx + 34, G, zr], f: (x, y, z) => Math.max(Math.hypot((x - cx) / 34, z / (zr - 3)) * (zr - 3) - (zr - 3), Math.abs(y - (G - 8)) - 3) }, 0.4);
+  S.add({ mat: 'water', bb: [cx - 34, G - 6.5, -zr, cx + 34, G - 4, zr], f: (x, y, z) => Math.max(Math.hypot((x - cx) / 34, z / (zr - 3)) * (zr - 3) - (zr - 3), Math.abs(y - (G - 5.4)) - 0.6) }, 0);
+  // Central column and a small weeping saint holding a bowl.
+  S.add(rod([cx, 34, 0], [cx, G - 5, 0], 4.4, 'stoneC'), 0);
+  S.add(rod([cx, 32, 0], [cx, 35, 0], 6.4, 'stoneC'), 0.6);
+  // A hooded saint with a bowl held out before her.
+  S.add(folds(skirt(cx, 17, 34, 3.4, 6.4, 0, 0.9, 'stoneC'), { cx, n: 7, amp: 0.5, y0: 17, y1: 34 }), 0);
+  S.add(ellipsoid([cx, 16, 0], [4.6, 5.4, 3.4], 'stoneC'), 1.6);
+  S.add(sphere([cx + 1, 8.6, 0.8], 3.2, 'stoneC'), 1.2);
+  S.add(capsule([cx - 1, 7.5, -1.5], [cx - 2.5, 12, -2.8], 3.6, 2.6, 'stoneC'), 1.4);
+  S.sub(ellipsoid([cx + 2.6, 9.6, 3.6], [1.6, 2.2, 1.4], 'stoneDark'), 0.4);
+  for (const side of [-1, 1]) S.add(capsule([cx + side * 4, 14, 0.5], [cx + side * 1.6, 19, 4], 1.5, 1.3, 'stoneC'), 0.8);
+  S.add(clip(ellipsoid([cx, 19.5, 5], [5.4, 3, 3.4], 'stoneC'), (x, y) => 19 - y), 0.6);
+  const fr = R(S, W, H, { ground: H - 1 });
+  const wy = sy(G - 5.6, 0);
+  fill(fr, (x, y) => /^violet/.test(NAME[fr.px[y * W + x]] || ''), (x, y) => { const dx = (x + 0.5 - cx) / 34, dz = (y + 0.5 - wy) / ((zr - 3) * TILT), r = Math.hypot(dx, dz); return C('holy', 2.4 + r * 1.8 + (Math.sin(r * 16 - i * 3) > 0.7 ? -1.2 : 0) + (dz < 0 ? 0.5 : 0)); });
+  // Water trickling from the bowl.
+  for (const side of [-1, 1]) for (let k = 0; k < 12; k++) { const t = k / 11, x = cx + side * (5 + t * 9), y = 20 + t * t * 19 + (i && k % 3 === 0 ? 1 : 0); dot(fr, x, Math.round(sy(y, 3)), k % 2 ? 'holy2' : 'holy1'); }
+  pline(fr, cx - 2, Math.round(sy(4, 0.5)), cx + 4, Math.round(sy(4, 0.5)), 'gold1'); dot(fr, cx - 3, Math.round(sy(4, 0.5)) + 1, 'gold3'); dot(fr, cx + 5, Math.round(sy(4, 0.5)) + 1, 'gold3');
+  return fr;
+}
+
+function barrel() {
+  const W = 18, H = 23, S = new View(), G = groundY(H, 7);
+  const st = { mat: 'wood', bb: [2, 3, -7, 16, G, 7], f: (x, y, z) => { const t = (y - (G + 3) / 2) / ((G - 3) / 2); const r = 7 - t * t * 1.4; return Math.max(Math.hypot(x - 9, z) - r, Math.abs(y - (G + 3) / 2) - (G - 3) / 2); } };
+  S.add(planked(st, 3, 0.25), 0);
+  for (const y of [6, G - 3]) S.add(torusY([9, y, 0], 6.6 - (y > 10 ? 0.2 : 0), 0.7, 'iron'), 0);
+  return R(S, W, H, { ground: H - 1 });
+}
+function crate() {
+  const W = 21, H = 21, S = new View(), G = groundY(H, 6);
+  S.add(planked(slabBox(2, 6, 19, G, 6, 12, 'wood', 0.4), 4.25), 0);
+  S.add(rotZ(slabBox(1, 12, 20, 14.5, 6.6, 1, 'woodB', 0.3), [10.5, 12], 0.72), 0);
+  for (const y of [6, G - 2]) S.add(slabBox(1.5, y - 0.5, 19.5, y + 2, 6.8, 1.2, 'woodB', 0.3), 0);
+  return R(S, W, H, { ground: H - 1 });
+}
+function anvil() {
+  const W = 26, H = 18, S = new View(), G = groundY(H, 4);
+  S.add(slabBox(5, G - 4, 21, G, 4, 8, 'iron', 0.5), 0);
+  S.add(slabBox(9, 7, 17, G - 3.5, 2.5, 5, 'iron', 0.5), 0.6);
+  S.add(slabBox(4, 2, 21, 7.5, 3, 6, 'iron', 0.6), 0.5);
+  S.add(capsule([21, 4, 0], [25.5, 3.5, 0], 2.6, 0.6, 'iron'), 1);
+  return R(S, W, H, { ground: H - 1 });
+}
+function waystone(i) {
+  const W = 36, H = 52, S = new View(), G = groundY(H, 5);
+  const st = { mat: 'slate', bb: [8, 2, -6, 28, G, 6], f: (x, y, z) => { const t = (y - 2) / (G - 2), hw = 5 + t * 4, top = Math.hypot((x - 18) / hw, (y - 10) / 8); const body = Math.max(Math.abs(x - 18 + t * 0.5) - hw, Math.abs(z) - 4.2 - t, y - G, 2 - y); return y < 10 ? Math.max(Math.max(top - 1, Math.abs(z) - 4.2) * 3, body) : body; } };
+  S.add(bumpy2(st, 4), 0);
+  for (let k = 0; k < 6; k++) S.add(lump([7 + k * 4.4, G - 1, 4 + (k % 2) * 2], 2.2, k % 2 ? 'stoneB' : 'moss', k, 0.5), 0.8);
+  const fr = R(S, W, H, { ground: H - 1 });
+  // Runes, pulsing with the Wound's light, and a faint halo round the stone.
+  const glow = [2.4, 1.4, 0.4, 1.4][i];
+  const runes = [[18, 12], [17, 13], [19, 13], [18, 14], [18, 18], [16, 19], [17, 19], [18, 19], [19, 19], [20, 19], [18, 20], [17, 25], [18, 24], [19, 25], [18, 26], [18, 27], [16, 31], [17, 32], [18, 31], [19, 32], [20, 31], [18, 36], [17, 37], [19, 37]];
+  for (const [x, y] of runes) dot(fr, x, Math.round(sy(y, 4.2)), C('holy', glow));
+  for (const [x, y] of runes) { const yy = Math.round(sy(y, 4.2)); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nm = NAME[under(fr, x + dx, yy + dy)] || ''; if (/^slate/.test(nm)) dot(fr, x + dx, yy + dy, C('holy', glow + 3.5)); } }
+  if (i === 2) for (let k = 0; k < 6; k++) dot(fr, 8 + Math.floor(hash(k, 1, i) * 20), 4 + Math.floor(hash(k, 2, i) * 30), 'holy1');
+  return fr;
+}
+
 export default {
+  town: {
+    cobble: () => [0, 1, 2, 3].map(cobble),
+    vestry: () => [vestry()],
+    forge: () => [forge()],
+    stall: () => [stall()],
+    tavern: () => [tavern()],
+    house: () => [smallHouse(0), smallHouse(1)],
+    lamp: () => [lamp(0), lamp(1)],
+    fountain: () => [fountain(0), fountain(1)],
+    barrel: () => [barrel()],
+    crate: () => [crate()],
+    anvil: () => [anvil()],
+    waystone: () => [0, 1, 2, 3].map(waystone),
+  },
   town2: {
     cathedral: () => [cathedral()],
     gate: () => [cityGate()],
     ruin: () => [ruin()],
     mausoleum: () => [mausoleum()],
+    plush: () => [plushStall()],
+    gallows: () => [gallows(0), gallows(1)],
+    cart: () => [cart()],
+    brazier: () => [0, 1, 2].map(brazier),
+    campfire: () => [0, 1, 2].map(campfire),
+    tomb: () => [0, 1, 2].map(tombstone),
+    tree: () => [deadTree()],
+    fence: () => [fence()],
+    well: () => [well()],
+    board: () => [noticeBoard()],
+    stocks: () => [stocks()],
+    pool: () => [0, 1, 2].map(pool),
     tall: () => [0, 1, 2, 3, 4, 5].map(tallHouse),
   },
 };

@@ -2,6 +2,9 @@
 // Every model faces right; ax/ay mark where the feet meet the ground.
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, folds, bumpy, clip, render, dot, pline, under } from '../sdf.mjs';
 import { MATS, torus } from './base.mjs';
+import { NAMES } from '../palette.mjs';
+// Hand-placed pixel only where the sculpt shows a dark cavity (mouths).
+const inMaw = (fr, x, y) => { const v = under(fr, x, y); return v >= 0 && /^(ink|blood)/.test(NAMES[v]); };
 
 const PI = Math.PI;
 const MM = {
@@ -25,12 +28,13 @@ const MM = {
   statue: { ramp: 'stone', spec: 0.08, bias: 0.04 },
   statueDark: { ramp: 'stone', spec: 0.05, bias: -0.12, min: 1 },
   flesh: { ramp: 'skin', spec: 0.2, bias: -0.2, min: 1 },
+  fleshMound: { ramp: 'skin', spec: 0.3, bias: -0.3, min: 2 },
   fleshDark: { ramp: 'skin', spec: 0.1, bias: -0.32, min: 2 },
   hoodRed: { ramp: 'crimson', bias: -0.3, min: 3, spec: 0.05 },
   ironDark: { ramp: 'iron', spec: 0.6, bias: -0.25, min: 2 },
   gum: { ramp: 'blood', spec: 0.35, bias: -0.1, min: 1 },
   maw: { ramp: 'ink', bias: -0.4, min: 3 },
-  worm: { ramp: 'rot', spec: 0.35, bias: 0.02 },
+  worm: { ramp: 'rot', spec: 0.35, bias: -0.1, min: 1 },
   wormBelly: { ramp: 'bone', spec: 0.2, bias: -0.08, min: 1 },
   dirt: { ramp: 'shroud', spec: 0, bias: -0.04 },
   boneDark: { ramp: 'bone', bias: -0.14, spec: 0.15, min: 1 },
@@ -50,12 +54,12 @@ function limb(S, a, j, b, r0, r1, r2, mat, k = 1, mat2 = mat) {
   S.add(capsule(j, b, r1, r2, mat2), k * 0.7);
 }
 // Walking legs: side -1 is the far leg, +1 the near one.
-function legs(S, { x, hipY, footY, z = 3, thigh = 3, shin = 2.6, mt = 'shroud', ms = mt, mf = 'leather', foot = [3.5, 2, 2.5], t = 0, stride = 4, lift = 2, k = 1, knee = 1.2 }) {
+function legs(S, { x, hipY, footY, z = 3, thigh = 3, shin = 2.6, mt = 'shroud', ms = mt, mf = 'leather', foot = [3.5, 2, 2.5], t = 0, stride = 4, lift = 2, k = 1, knee = 1.2, xs = 0.4 }) {
   const out = [];
   for (const side of [-1, 1]) {
     const ph = t * PI / 2 + (side > 0 ? 0 : PI);
     const sw = Math.sin(ph) * stride, up = Math.max(0, Math.cos(ph)) * lift;
-    const hip = [x + side * 0.4, hipY, side * z];
+    const hip = [x + side * xs, hipY, side * z];
     const ankle = [x + sw, footY - foot[1] - up, side * z];
     const kn = [(hip[0] + ankle[0]) / 2 + knee, (hip[1] + ankle[1]) / 2 - up * 0.3, side * z + 0.3];
     S.add(capsule(hip, kn, thigh, thigh * 0.82, mt), k);
@@ -422,7 +426,7 @@ function abbess(t = 0, atk = 0) {
 // arms of fused bone ending in grave-stone fists.
 function golem(t = 0, atk = 0) {
   const S = new Scene(), B = atk ? 0 : t % 2, cx = 42;
-  legs(S, { x: cx, hipY: 72 + B, footY: 100, z: 6.5, thigh: 5.4, shin: 5, mt: 'statueDark', ms: 'statue', mf: 'statueDark', foot: [5.6, 3, 4.4], t: atk ? 0.3 : t, stride: atk ? 2 : 3.6, lift: 2, k: 2, knee: 1 });
+  legs(S, { x: cx, hipY: 72 + B, footY: 100, z: 6.5, thigh: 5.4, shin: 5, mt: 'statueDark', ms: 'statue', mf: 'statueDark', foot: [5.6, 3, 4.4], t: atk ? 0.3 : t, stride: atk ? 2 : 3.6, lift: 2, k: 2, knee: 1, xs: -4 });
   // Coffin chest: a tapered hexagonal casket.
   const top = 36 + B, bot = 74 + B, mid = 46 + B;
   S.add({ mat: 'wood', bb: [cx - 14, top - 1, -9, cx + 14, bot + 1, 9], f: (x, y, z) => {
@@ -478,7 +482,7 @@ function thrice(t = 0, atk = 0) {
   const rc = [cx + lean * 0.8, 48 + B, 0.2];
   S.add(ellipsoid(rc, [6.6, 8.6, 5.4], 'bone'), 1);
   S.sub(ellipsoid([rc[0], rc[1] + 1.4, rc[2] + 0.6], [5.2, 7.6, 4.2], 'maw'), 0.3);
-  for (let i = 0; i < 5; i++) S.sub(box([rc[0] + 2, rc[1] - 5 + i * 3.1, 5], [6, 0.55, 3], 0.2, 'maw'), 0.4);
+  for (let i = 0; i < 4; i++) S.sub(box([rc[0] + 2.5, rc[1] - 4 + i * 3.4, 5], [5, 0.35, 2.6], 0.15, 'maw'), 0.3);
   // Rot tentacles spilling from the ribcage.
   for (let k = 0; k < 3; k++) {
     const pts = []; for (let i = 0; i <= 7; i++) { const u = i / 7; pts.push([rc[0] - 2 + k * 2.2 + Math.sin(u * 4 + t + k) * 2.4 + u * (k - 1) * 4, rc[1] + 5 + u * 26, 1 + k - u * 2]); }
@@ -519,9 +523,9 @@ function manymouthed(t = 0, atk = 0) {
   const S = new Scene(), cx = 48, sq = atk ? 1.06 : 1 + Math.sin(t * PI / 2) * 0.035;
   const open = atk === 1 ? 1.6 : atk === 2 ? 2.4 : 1 + (t % 2) * 0.3;
   const body = [cx, 76 - 22 * sq, 0];
-  S.add(bumpy(ellipsoid(body, [30 / Math.sqrt(sq), 24 * sq, 22 / Math.sqrt(sq)], 'flesh'), 1.1, 0.16, 2), 0);
+  S.add(bumpy(ellipsoid(body, [30 / Math.sqrt(sq), 24 * sq, 22 / Math.sqrt(sq)], 'fleshMound'), 1.1, 0.16, 2), 0);
   S.add(bumpy(ellipsoid([cx - 12, 62, -4], [14, 14, 13], 'fleshDark'), 0.8, 0.2, 6), 6);
-  S.add(bumpy(ellipsoid([cx + 10, 40 * sq + 18 * (1 - sq), 2], [13, 12, 12], 'flesh'), 0.7, 0.22, 9), 6);
+  S.add(bumpy(ellipsoid([cx + 10, 40 * sq + 18 * (1 - sq), 2], [13, 12, 12], 'fleshMound'), 0.7, 0.22, 9), 6);
   S.add(ellipsoid([cx, 77, 0], [28, 3.4, 20], 'fleshDark'), 4);
   const mouths = [[cx + 14, 50, 13, 6, 1], [cx - 4, 62, 19, 5, 0.85], [cx + 18, 68, 13, 4.4, 0.8], [cx - 18, 46, 10, 3.8, 0.7], [cx + 2, 36, 14, 3.4, 0.7]];
   for (const [mx, my, mz, w, k] of mouths) {
@@ -534,7 +538,7 @@ function manymouthed(t = 0, atk = 0) {
   const o = shoot(S, { w: 96, h: 86, s: 1.26, gx: cx, gy: 78, ax: 48, ay: 82 });
   for (const [mx, my, mz, w, k] of mouths) {
     const h = w * 0.36 * open * k;
-    for (let x = -w + 1.2; x <= w - 1.2; x += 1.8) { o.dot(mx + x, my - h + 0.8, 'bone1'); o.dot(mx + x + 0.9, my + h - 0.8, 'bone3'); }
+    for (let x = -w + 1.2; x <= w - 1.2; x += 1.8) for (const [yy, c] of [[my - h + 0.8, 'bone1'], [my + h - 0.8, 'bone3']]) { const q = o.P(mx + x, yy); if (inMaw(o.f, ...q)) dot(o.f, ...q, c); }
   }
   for (const [ex, ey] of eyesAt) { o.dot(ex + 0.6, ey, 'blood1'); o.dot(ex + 0.6, ey + 0.8, 'ink0'); }
   return o.f;
@@ -544,31 +548,32 @@ function manymouthed(t = 0, atk = 0) {
 // A bone-ridged grave worm arching out of churned earth.
 function leviathan(t = 0, atk = 0) {
   const S = new Scene(), cx = 34;
-  const up = atk === 1 ? 7 : atk === 2 ? 10 : 0, gape = atk ? (atk === 2 ? 4 : 2.6) : 1;
+  const up = atk === 1 ? 7 : atk === 2 ? 10 : 0, gape = atk ? (atk === 2 ? 4.6 : 3.4) : 2;
   S.add(bumpy(ellipsoid([cx + 6, 49, 0], [30, 4, 12], 'dirt'), 1, 0.35, 3), 0);
   const segs = [];
   for (let i = 0; i < 7; i++) {
-    const u = i / 6, x = cx - 16 + u * 44;
+    const u = i / 6, x = cx + 28 - u * 44;
     const arch = Math.sin(u * PI * 1.15 + 0.2) * 14 + Math.sin(u * 6 + t * PI / 2) * 1.8;
     segs.push([x, 46 - arch - (1 - u) * up * (1 - u), 0, 7.4 - u * 2.6]);
   }
   for (let i = 0; i < segs.length; i++) {
     const [x, y, z, r] = segs[i];
     S.add(sphere([x, y, z], r, 'worm'), 2.2);
-    S.paint({ mat: 'wormBelly', f: (px, py, pz) => (py > y + r * 0.35 && Math.hypot(px - x, py - y) < r + 1 ? -1 : 1) });
-    S.add(capsule([x - 1, y - r + 0.6, 0], [x - 3, y - r - 3.4, 0], 1.4, 0.3, 'bone'), 0.4);
-    S.sub(box([x + r * 0.62, y, z], [0.5, r + 1, r + 1], 0.2), 0.6);
+    S.paint({ mat: 'wormBelly', f: (px, py, pz) => (py > y + r * 0.6 && Math.hypot(px - x, py - y) < r + 1 ? -1 : 1) });
+    S.add(capsule([x + 1, y - r + 0.6, 0], [x - 2, y - r - 3.4, 0], 1.4, 0.3, 'bone'), 0.4);
+    S.sub(box([x - r * 0.62, y, z], [0.5, r + 1, r + 1], 0.2), 0.6);
   }
   // Head with jaws, at the front (right) end, rearing on the attack.
   const [hx0, hy0] = [segs[0][0], segs[0][1]];
-  const hx = hx0 - 4, hy = hy0 - 6 - up * 0.4;
+  const hx = hx0 + 4, hy = hy0 - 6 - up * 0.4;
   S.add(bumpy(ellipsoid([hx, hy, 0], [8, 7, 7], 'worm'), 0.4, 0.5, 1), 2);
-  S.sub(ellipsoid([hx - 6, hy + 1, 0], [6, gape, 6], 'maw'), 0.8);
-  S.add(capsule([hx - 1, hy - 6, -2], [hx + 4, hy - 11, -3], 1.6, 0.3, 'bone'), 0.4);
-  S.add(capsule([hx - 3, hy - 6, 2], [hx + 1, hy - 11.5, 2.5], 1.6, 0.3, 'bone'), 0.4);
-  const o = shoot(S, { w: 88, h: 62, s: 1.2, gx: cx + 6, gy: 49, ax: 46, ay: 56 });
-  for (let k = 0; k < 5; k++) { o.dot(hx - 11 + k * 1.6, hy + 1 - gape + 0.6, 'bone1'); o.dot(hx - 10.4 + k * 1.6, hy + 1 + gape - 0.6, 'bone2'); }
-  o.dot(hx - 2, hy - 3, 'ember0'); o.dot(hx + 1, hy - 3.4, 'ember1');
+  S.sub(ellipsoid([hx + 7.4, hy + 1.6, 1], [5.4, gape, 7], 'maw'), 0.6);
+  S.paint({ mat: 'gum', f: (x, y, z) => ellipsoid([hx + 7.4, hy + 1.6, 1], [6.8, gape + 1.2, 8]).f(x, y, z) });
+  S.add(capsule([hx + 1, hy - 6, -2], [hx - 4, hy - 11, -3], 1.6, 0.3, 'bone'), 0.4);
+  S.add(capsule([hx + 3, hy - 6, 2], [hx - 1, hy - 11.5, 2.5], 1.6, 0.3, 'bone'), 0.4);
+  const o = shoot(S, { w: 88, h: 62, s: 1.2, gx: cx + 6, gy: 49, ax: 42, ay: 56 });
+  for (let k = 0; k < 5; k++) for (const [xx, yy, c] of [[hx + 3.4 + k * 1.4, hy + 1.6 - gape + 0.7, 'bone1'], [hx + 4 + k * 1.4, hy + 1.6 + gape - 0.7, 'bone2']]) { const q = o.P(xx, yy); if (inMaw(o.f, ...q)) dot(o.f, ...q, c); }
+  o.dot(hx + 2, hy - 3, 'ember0'); o.dot(hx - 1, hy - 3.4, 'ember1');
   return o.f;
 }
 
