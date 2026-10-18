@@ -12,7 +12,10 @@ next, and the owner's preferences.
 | `assets/sprites/*.png`, `sprites.json` | Generated sheets (committed). Never edit them by hand |
 | `tools/sprites.mjs` | Builds every sheet. Older hand-drawn art lives here; sculpted models override it by anim name |
 | `tools/sdf.mjs` | The sculpted pixel-art renderer (SDF shapes, smooth union, lighting, palette banding, outlines) |
-| `tools/models/*.mjs` | Model sets: `base` (materials + Saint model), `saint`, `common`, `rare`, `elite`, `townfolk`, `town`, `dungeon` |
+| `tools/models/*.mjs` | Model sets: `base` (materials + Saint model), `saint`, `common`, `rare`, `elite`, `townfolk`, `town`, `dungeon`, `floor` (flagstones, water), `vfx` (effects, icons, loot, HUD sound icon) |
+| `assets/audio/*.mp3` | Sound effects, music and ambience (committed). Rebuilt by `tools/build-audio.sh <src>` from the packs in `docs/CREDITS.md` |
+| `docs/CREDITS.md` | Every asset source and licence. Add to it when you add an asset |
+| `docs/ART_COMPARISON.md` | Otherworld Legends vs our art: the gap list |
 | `tools/palette.mjs` | Master palette: 24 ramps × 9 steps. Every pixel must be on it |
 | `tools/preview.mjs` | Render one model set to a PNG for review |
 | `tools/tests/*.cjs` | Playwright checks (see below) |

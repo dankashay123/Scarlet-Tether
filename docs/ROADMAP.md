@@ -27,4 +27,4 @@ Goal (GDD): one Stratum, a 30-minute run that ends in Martyrdom and a first Vigi
 - [x] Loot: gold, health globes, items in 5 rarities with beams, shrines, chests, breakables, Collection Imp, Massacre
 - [x] Vael rebuilt: a long twilight street with six districts, townsfolk, chatter, crows, fog, ash, lightning
 - [x] Graphics v5: sculpted SDF pixel art for every sprite, 360 px view, ×1.3 world
-- [ ] Audio: pick a free sound pack
+- [x] Audio: Kenney SFX, OpenGameArt music and ambience, mute toggle (see `docs/CREDITS.md`)

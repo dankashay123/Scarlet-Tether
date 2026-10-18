@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-18, after the v5 graphics overhaul (commit `3b45b4c` on master).
+Last updated 2026-10-18, after the Otherworld Legends polish and audio round.
 
 ## Where the game stands
 
@@ -15,6 +15,14 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
 - **Monsters:** 30 of them (10 common; 10 rare, which glow blue; 10 elite, which glow gold), plus the Collection Imp. All attacks are telegraphed. 19 Diablo III-style affixes, elite names and a nameplate bar.
 - **Loot:** gold, health globes, items in 5 rarities, shrines, chests, breakables and a Massacre bonus. Gold saves to localStorage under the key `hollow-saint`.
 - **Vael:** a long twilight street with six districts, 13 talking townsfolk, walkers, kids, crows, fog, ash and lightning.
+- **OWL polish (this round, see `docs/ART_COMPARISON.md`):**
+  - Large mixed-size flagstone floors per theme, and in the town street.
+  - Walls on every side with lit tops, and soft cast shadows.
+  - Darker ambient, warm torch pools and bloom, no orange wash.
+  - Effects, item icons, coins, globes and enemy shots remodelled (`tools/models/vfx.mjs`).
+  - New UI font: Kenney High, bold, cap height 9.
+  - Saint legs show in the run; golem legs split; leviathan rears; darker Inquisitor hood.
+- **Audio:** Kenney SFX for every action, OpenGameArt music (town, dungeon) and town wind and crickets. Mute button under pause (or M key), saved in localStorage. iOS 17+ follows the silent switch via `navigator.audioSession.type = 'ambient'`. Sources in `docs/CREDITS.md`.
 - **Graphics v5:**
   - Everything is sculpted with the SDF renderer, and the view is about 360 px tall with a ×1.3 world scale (see `docs/GDD.md` → "Art v5").
   - Rooms are 24–32 × 14–20 tiles, corridors 4 wide, back walls 3 tiles tall.
@@ -43,7 +51,7 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
 
 ## Network access
 
-Store pages (Steam, App Store, TapTap) were blocked, so no Otherworld Legends screenshots could be downloaded. The owner may add these under the environment's Network access → Allowed domains:
+These hosts are allowed now. Notes: Steam's `api/appdetails` and the App Store page give screenshot URLs; the fandom wiki works through `api.php`; Reddit works through `svc/shreddit/...`; YouTube search is blocked but `i.ytimg.com` thumbnails load. Freesound downloads need an account.
 
 - Reference art:
   - `store.steampowered.com`, `cdn.akamai.steamstatic.com`, `shared.akamai.steamstatic.com`, `cdn.cloudflare.steamstatic.com`
@@ -63,3 +71,6 @@ Store pages (Steam, App Store, TapTap) were blocked, so no Otherworld Legends sc
 - The test server is a plain `python3 -m http.server 8123`. Background servers in cloud sessions time out after about 2 h.
 - Town coordinates in `makeTown()` are already at the ×1.3 scale. The player starts at x 2340 (the cathedral), and the Vestry door is there too.
 - Elite HP bars sit at `spriteTop(e)`, the height of the sprite's first walk frame, not `hy`.
+- `text()` caches each string as a small canvas (cleared at 600 entries). Use `small: true` for the old thin 5x7 font.
+- Audio starts on the first tap (iOS rule). Music streams through `<audio>` elements, effects are decoded buffers. `AUDIO.set([...])` picks the loops; `sfx(name)` plays an effect.
+- Rebuild audio with `tools/build-audio.sh <src>` after downloading the packs; the sources are not committed.

@@ -7,7 +7,7 @@ export default {
     idle: () => [0, 1, 2, 3].map((i) => A(saintModel({ bob: i >= 2 ? 1 : 0, halo: [0, -1, -1, 0][i], cape: [0, -1, -1, 0][i], blink: i === 3 }))),
     run: () => [0, 1, 2, 3, 4, 5].map((i) => {
       const ph = i / 6 * Math.PI * 2, s = Math.sin(ph), c = Math.cos(ph);
-      return A(saintModel({ bob: Math.abs(s) > 0.5 ? -1 : 0, halo: Math.abs(s) > 0.5 ? 0 : 1, legs: s * 4.5, lift: [c > 0.3 ? 2.2 * c : 0, c < -0.3 ? -2.2 * c : 0], cape: -3 - Math.abs(s) * 1.5, lean: 1 }));
+      return A(saintModel({ bob: Math.abs(s) > 0.5 ? -1 : 0, halo: Math.abs(s) > 0.5 ? 0 : 1, legs: s * 5.5, lift: [c > 0.2 ? 3 * c : 0, c < -0.2 ? -3 * c : 0], cape: -3 - Math.abs(s) * 1.5, lean: 1 }));
     }),
     dash: () => [
       A(saintModel({ lean: 2, legs: -4, lift: [1, 0], cape: -6, halo: 1 })),

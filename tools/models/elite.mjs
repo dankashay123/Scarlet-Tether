@@ -30,7 +30,7 @@ const MM = {
   flesh: { ramp: 'skin', spec: 0.2, bias: -0.2, min: 1 },
   fleshMound: { ramp: 'skin', spec: 0.3, bias: -0.3, min: 2 },
   fleshDark: { ramp: 'skin', spec: 0.1, bias: -0.32, min: 2 },
-  hoodRed: { ramp: 'crimson', bias: -0.3, min: 3, spec: 0.05 },
+  hoodRed: { ramp: 'blood', bias: -0.32, min: 4, spec: 0.04 },
   ironDark: { ramp: 'iron', spec: 0.6, bias: -0.25, min: 2 },
   gum: { ramp: 'blood', spec: 0.35, bias: -0.1, min: 1 },
   maw: { ramp: 'ink', bias: -0.4, min: 3 },
@@ -54,13 +54,13 @@ function limb(S, a, j, b, r0, r1, r2, mat, k = 1, mat2 = mat) {
   S.add(capsule(j, b, r1, r2, mat2), k * 0.7);
 }
 // Walking legs: side -1 is the far leg, +1 the near one.
-function legs(S, { x, hipY, footY, z = 3, thigh = 3, shin = 2.6, mt = 'shroud', ms = mt, mf = 'leather', foot = [3.5, 2, 2.5], t = 0, stride = 4, lift = 2, k = 1, knee = 1.2, xs = 0.4 }) {
+function legs(S, { x, hipY, footY, z = 3, thigh = 3, shin = 2.6, mt = 'shroud', ms = mt, mf = 'leather', foot = [3.5, 2, 2.5], t = 0, stride = 4, lift = 2, k = 1, knee = 1.2, xs = 0.4, spread = 0 }) {
   const out = [];
   for (const side of [-1, 1]) {
     const ph = t * PI / 2 + (side > 0 ? 0 : PI);
     const sw = Math.sin(ph) * stride, up = Math.max(0, Math.cos(ph)) * lift;
     const hip = [x + side * xs, hipY, side * z];
-    const ankle = [x + sw, footY - foot[1] - up, side * z];
+    const ankle = [x + side * spread + sw, footY - foot[1] - up, side * z];
     const kn = [(hip[0] + ankle[0]) / 2 + knee, (hip[1] + ankle[1]) / 2 - up * 0.3, side * z + 0.3];
     S.add(capsule(hip, kn, thigh, thigh * 0.82, mt), k);
     S.add(capsule(kn, ankle, thigh * 0.8, shin, ms), k * 0.8);
@@ -426,7 +426,7 @@ function abbess(t = 0, atk = 0) {
 // arms of fused bone ending in grave-stone fists.
 function golem(t = 0, atk = 0) {
   const S = new Scene(), B = atk ? 0 : t % 2, cx = 42;
-  legs(S, { x: cx, hipY: 72 + B, footY: 100, z: 6.5, thigh: 5.4, shin: 5, mt: 'statueDark', ms: 'statue', mf: 'statueDark', foot: [5.6, 3, 4.4], t: atk ? 0.3 : t, stride: atk ? 2 : 3.6, lift: 2, k: 2, knee: 1, xs: -4 });
+  legs(S, { x: cx, hipY: 72 + B, footY: 100, z: 6.5, thigh: 5.4, shin: 5, mt: 'statueDark', ms: 'statue', mf: 'statueDark', foot: [5.6, 3, 4.4], t: atk ? 0.3 : t, stride: atk ? 1.5 : 2.6, lift: 3, k: 1.2, knee: 0.6, xs: 6, spread: 6.5 });
   // Coffin chest: a tapered hexagonal casket.
   const top = 36 + B, bot = 74 + B, mid = 46 + B;
   S.add({ mat: 'wood', bb: [cx - 14, top - 1, -9, cx + 14, bot + 1, 9], f: (x, y, z) => {
@@ -548,13 +548,13 @@ function manymouthed(t = 0, atk = 0) {
 // A bone-ridged grave worm arching out of churned earth.
 function leviathan(t = 0, atk = 0) {
   const S = new Scene(), cx = 34;
-  const up = atk === 1 ? 7 : atk === 2 ? 10 : 0, gape = atk ? (atk === 2 ? 4.6 : 3.4) : 2;
+  const up = atk === 1 ? 12 : atk === 2 ? 18 : 0, gape = atk ? (atk === 2 ? 4.6 : 3.4) : 2;
   S.add(bumpy(ellipsoid([cx + 6, 49, 0], [30, 4, 12], 'dirt'), 1, 0.35, 3), 0);
   const segs = [];
   for (let i = 0; i < 7; i++) {
     const u = i / 6, x = cx + 28 - u * 44;
     const arch = Math.sin(u * PI * 1.15 + 0.2) * 14 + Math.sin(u * 6 + t * PI / 2) * 1.8;
-    segs.push([x, 46 - arch - (1 - u) * up * (1 - u), 0, 7.4 - u * 2.6]);
+    segs.push([x - (1 - u) * (1 - u) * up * 0.35, 46 - arch - (1 - u) * up * (1 - u), 0, 7.4 - u * 2.6]);
   }
   for (let i = 0; i < segs.length; i++) {
     const [x, y, z, r] = segs[i];

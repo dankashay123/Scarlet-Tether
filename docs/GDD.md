@@ -547,10 +547,23 @@ ends in Martyrdom and a first Vigil. Progress is tracked in `docs/ROADMAP.md`.
   cleanup pass removes stray pixels. Eyes, strings and glints are placed by
   hand afterwards. This is the 3D-to-pixel approach Dead Cells used, done
   offline.
-- Floors, walls and water are height fields lit the same way
-  (`tools/models/dungeon.mjs`).
+- Floors follow Otherworld Legends: large, calm flagstones in mixed sizes
+  (1x1 to 3x3 tiles), a flat body, a lit top-left bevel and a dark gap, one
+  material per room theme (`tools/models/floor.mjs`). The bake packs them per
+  room. The town street uses the same slabs.
+- Rooms have walls on every side: side and bottom walls show a lit teal top
+  with a brick lip, and walls above and to the left cast soft shadows on the
+  floor (`bakeWallEdges` in `index.html`).
+- Light: a dim ambient with warm pools under torches and a bloom around each
+  flame. No full-screen colour wash.
+- Effects, item icons, coins, globes and enemy shots are in
+  `tools/models/vfx.mjs`: solid things are SDF models, soft things (impacts,
+  blood, smoke, orbs) are lit 2D metaball forms. No dithering.
+- UI font: Kenney High (CC0) as a bitmap with doubled stems, cap height 9.
+  `text()` caches each drawn string.
 - Model sets live in `tools/models/`: `base` (materials and the Saint),
-  `saint`, `common`, `rare`, `elite`, `townfolk`, `town` and `dungeon`. Each
-  replaces animations by name inside `tools/sprites.mjs`.
+  `saint`, `common`, `rare`, `elite`, `townfolk`, `town`, `dungeon`, `floor`
+  and `vfx`. Each replaces animations by name inside `tools/sprites.mjs`; a
+  set may also add a new sheet.
 - Preview one set without rebuilding the game:
   `node tools/preview.mjs tools/models/<set>.mjs out.png 4`.

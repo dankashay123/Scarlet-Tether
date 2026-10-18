@@ -43,7 +43,7 @@ const T = {
   fervor: { decayDelay: 2, decay: 2.5, tiers: ['MURMUR', 'CHANT', 'RAPTURE', 'FRENZY'] },
   wave: { start: 16, max: 40, ramp: 100, rate: 10, eliteEvery: 20, elitesMax: 3, cap: 46, finaleBonus: 10 },
   descent: { time: 180, finale: 30 },  // seconds the candle burns; the last stretch surges
-  ambient: 'rgba(12,6,18,0.3)',  // Undercroft darkness: torchlit, not pitch black
+  ambient: 'rgba(8,5,14,0.52)',  // Undercroft darkness: torchlit, not pitch black
 };
 T.moveSpeed *= WS; T.dash.speed *= WS; T.crossbow.range *= WS; T.crossbow.speed *= WS; T.thurible.radius *= WS;
 T.flask.radius *= WS; T.flask.range *= WS; T.flask.splash *= WS; T.chain.range *= WS; T.chain.linkRange *= WS; T.chain.speed *= WS; T.penance.radius *= WS;
@@ -132,28 +132,126 @@ const GLYPHS = {
   '-': '00000000000000011111000000000000000', '%': '11000110010001000100010001001100011', '/': '00001000010001000100010001000010000',
   '+': '00000001000010011111001000010000000', '"': '01010010100000000000000000000000000', ' ': '00000000000000000000000000000000000',
 };
-const textW = (s, sc = 1, bold = false) => String(s).length * (6 + (bold ? 1 : 0)) * sc - sc;
-// Draw pixel text. `bold` doubles strokes horizontally (damage numbers).
-function text(s, x, y, color, { sc = 1, outline = PAL ? PAL.outline : '#000', align = 'left', bold = false, shadow = true } = {}) {
+// UI font: Kenney High (CC0, kenney.nl), caps 5x9, drawn with doubled
+// vertical stems so it reads chunky and crisp at 360 px. Each glyph is
+// [advance, x offset, width, rows as hex bitmasks, top row first].
+const FONT = {" ":[2,0,0,'0.0.0.0.0.0.0.0.0'],"!":[2,0,1,'1.1.1.1.1.1.1.0.1'],"\"":[4,0,3,'5.5.0.0.0.0.0.0.0'],"#":[6,0,5,'a.a.a.1f.a.1f.a.a.a'],"$":[6,0,5,'e.15.14.e.5.5.5.15.e.4'],"%":[6,0,5,'19.1a.2.4.4.8.8.13.13'],"&":[7,0,6,'18.24.24.18.28.25.22.23.1d'],"'":[2,0,1,'1.1.0.0.0.0.0.0.0'],"(":[4,0,3,'1.2.2.4.4.4.2.2.1'],")":[4,0,3,'4.2.2.1.1.1.2.2.4'],"*":[4,0,3,'2.7.2.5.0.0.0.0.0'],"+":[6,0,5,'0.0.4.4.1f.4.4.0.0'],",":[2,0,1,'0.0.0.0.0.0.0.0.1.1'],"-":[6,0,5,'0.0.0.0.1f.0.0.0.0'],".":[2,0,1,'0.0.0.0.0.0.0.0.1'],"/":[5,0,4,'0.1.1.2.2.4.4.8.8'],"0":[6,0,5,'e.11.11.11.11.11.11.11.e'],"1":[4,0,3,'6.1.1.1.1.1.1.1.1'],"2":[6,0,5,'1e.1.1.e.10.10.10.10.1f'],"3":[6,0,5,'1e.1.1.1f.1.1.1.1.1e'],"4":[6,0,5,'11.11.11.f.1.1.1.1.1'],"5":[6,0,5,'1f.10.10.1e.1.1.1.1.1e'],"6":[6,0,5,'e.11.10.1e.11.11.11.11.e'],"7":[6,0,5,'1f.1.1.2.4.4.4.4.4'],"8":[6,0,5,'e.11.11.e.11.11.11.11.e'],"9":[6,0,5,'e.11.11.f.1.1.1.11.e'],":":[2,0,1,'0.0.1.0.0.0.1.0.0'],";":[2,0,1,'0.0.1.0.0.0.1.1.0'],"<":[5,0,4,'0.1.2.4.8.4.2.1.0'],"=":[6,0,5,'0.0.0.1f.0.1f.0.0.0'],">":[5,0,4,'0.8.4.2.1.2.4.8.0'],"?":[6,0,5,'e.11.1.2.4.4.4.0.4'],"@":[6,0,5,'e.11.15.15.15.12.10.11.e'],"A":[6,0,5,'e.11.11.1f.11.11.11.11.11'],"B":[6,0,5,'1e.11.11.1e.11.11.11.11.1f'],"C":[6,0,5,'e.11.10.10.10.10.10.11.e'],"D":[6,0,5,'1e.11.11.11.11.11.11.11.1e'],"E":[6,0,5,'f.10.10.1f.10.10.10.10.f'],"F":[6,0,5,'f.10.10.1f.10.10.10.10.10'],"G":[6,0,5,'f.10.10.17.11.11.11.11.e'],"H":[6,0,5,'11.11.11.1f.11.11.11.11.11'],"I":[2,0,1,'1.1.1.1.1.1.1.1.1'],"J":[5,0,4,'f.1.1.1.1.1.1.1.e'],"K":[6,0,5,'11.11.11.1e.11.11.11.11.11'],"L":[6,0,5,'10.10.10.10.10.10.10.10.f'],"M":[8,0,7,'7e.49.49.49.49.49.49.49.49'],"N":[6,0,5,'1e.11.11.11.11.11.11.11.11'],"O":[6,0,5,'e.11.11.11.11.11.11.11.e'],"P":[6,0,5,'1e.11.11.1e.10.10.10.10.10'],"Q":[6,0,5,'e.11.11.11.11.11.11.15.e.4'],"R":[6,0,5,'1e.11.11.1e.11.11.11.11.11'],"S":[6,0,5,'f.10.10.e.1.1.1.1.1e'],"T":[6,0,5,'1f.4.4.4.4.4.4.4.4'],"U":[6,0,5,'11.11.11.11.11.11.11.11.e'],"V":[6,0,5,'11.11.11.11.11.11.11.a.4'],"W":[8,0,7,'49.49.49.49.49.49.49.49.7e'],"X":[6,0,5,'11.11.11.e.11.11.11.11.11'],"Y":[6,0,5,'11.11.11.e.4.4.4.4.4'],"Z":[6,0,5,'1f.1.1.2.4.8.10.10.1f'],"[":[4,0,3,'7.4.4.4.4.4.4.4.7'],"\\":[5,0,4,'0.8.8.4.4.2.2.1.1'],"]":[4,0,3,'7.1.1.1.1.1.1.1.7'],"^":[6,0,5,'4.a.11.0.0.0.0.0.0'],"_":[6,0,5,'0.0.0.0.0.0.0.0.1f'],"`":[6,0,5,'1.1.0.0.0.0.0.0.0'],"{":[4,0,3,'1.2.2.2.4.2.2.2.1'],"|":[2,0,1,'1.1.1.1.1.1.1.1.1'],"}":[4,0,3,'4.2.2.2.1.2.2.2.4'],"~":[7,0,6,'0.0.0.19.26.0.0.0.0']};
+for (const k in FONT) FONT[k][3] = FONT[k][3].split('.').map((v) => parseInt(v, 16));
+FONT[' '][0] = 4;
+FONT['1'] = [4, 0, 3, [2, 6, 2, 2, 2, 2, 2, 2, 7]]; // a plain 1 (the original reads as a 7)
+const glyphOf = (ch) => FONT[ch] || FONT['?'];
+// Width in pixels; `small` uses the old thin 5x7 font for dense labels.
+const textW = (s, sc = 1, small = false) => {
   s = String(s).toUpperCase();
-  const w = textW(s, sc, bold);
+  if (small) return s.length * 6 * sc - sc;
+  let w = 0; for (const ch of s) w += glyphOf(ch)[0] + 1; return Math.max(0, w - 1) * sc;
+};
+const TEXT_CACHE = new Map();
+// Draw pixel text with an ink outline and drop shadow. Strings are rendered
+// once into a small canvas and cached.
+function text(s, x, y, color, { sc = 1, outline = PAL ? PAL.outline : '#000', align = 'left', small = false, shadow = true } = {}) {
+  s = String(s).toUpperCase();
+  const key = `${s}|${color}|${sc}|${outline}|${small}|${shadow}`;
+  let c = TEXT_CACHE.get(key);
+  if (!c) {
+    const w = textW(s, sc, small), gh = small ? 7 : 10, pad = 2;
+    c = document.createElement('canvas'); c.width = w + pad * 2 + 1; c.height = gh * sc + pad * 2 + sc + 1;
+    const g = c.getContext('2d');
+    const pass = (ox, oy, col) => {
+      g.fillStyle = col;
+      let cx = pad;
+      for (const ch of s) {
+        if (small) {
+          const gl = GLYPHS[ch] || GLYPHS['?'];
+          for (let r = 0; r < 7; r++) for (let q = 0; q < 5; q++) if (gl[r * 5 + q] === '1') g.fillRect(cx + q * sc + ox, pad + r * sc + oy, sc, sc);
+          cx += 6 * sc; continue;
+        }
+        const [adv, x0, gw, rows] = glyphOf(ch);
+        rows.forEach((bits, r) => { for (let q = 0; q < gw; q++) if (bits & (1 << (gw - 1 - q))) g.fillRect(cx + (x0 + q) * sc + ox, pad + r * sc + oy, sc * 2, sc); });
+        cx += (adv + 1) * sc;
+      }
+    };
+    if (outline) {
+      if (shadow) pass(0, sc + 1, outline);
+      for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) pass(ox, oy, outline);
+    }
+    pass(0, 0, color);
+    if (TEXT_CACHE.size > 600) TEXT_CACHE.clear();
+    TEXT_CACHE.set(key, c);
+  }
+  const w = c.width - 5;
   if (align === 'center') x -= Math.floor(w / 2); else if (align === 'right') x -= w;
-  x = Math.round(x); y = Math.round(y);
-  const adv = (6 + (bold ? 1 : 0)) * sc;
-  const pass = (ox, oy, c) => {
-    ctx.fillStyle = c;
-    for (let i = 0; i < s.length; i++) {
-      const g = GLYPHS[s[i]] || GLYPHS['?'];
-      for (let r = 0; r < 7; r++) for (let q = 0; q < 5; q++)
-        if (g[r * 5 + q] === '1') ctx.fillRect(x + i * adv + q * sc + ox, y + r * sc + oy, sc * (bold ? 2 : 1), sc);
+  // The tall font sits one pixel higher so old layouts stay centred.
+  ctx.drawImage(c, Math.round(x) - 2, Math.round(y) - 2 - (small ? 0 : sc));
+}
+
+// -------------------------------------------------------------- audio ---
+// Effects are decoded Web Audio buffers. Music and ambience stream from
+// <audio> elements routed through the same context, so memory stays low.
+// iOS 17+: audioSession 'ambient' makes the game follow the silent switch.
+const AUDIO = (() => {
+  const SFX = ['shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'execute', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap'];
+  const VOL = { shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, execute: 0.8, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.35 };
+  const A = { ctx: null, buf: {}, last: {}, muted: false, master: null, sfxBus: null, musicBus: null, tracks: {}, want: [] };
+  try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch { /* not supported */ }
+  try { A.muted = !!JSON.parse(localStorage.getItem('hollow-saint') || '{}').muted; } catch { /* private mode */ }
+  // Create or resume the context inside a user gesture (iOS requires it).
+  A.unlock = () => {
+    if (!A.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      A.ctx = new AC();
+      A.master = A.ctx.createGain(); A.master.connect(A.ctx.destination); A.master.gain.value = A.muted ? 0 : 1;
+      A.sfxBus = A.ctx.createGain(); A.sfxBus.connect(A.master);
+      A.musicBus = A.ctx.createGain(); A.musicBus.gain.value = 0.55; A.musicBus.connect(A.master);
+      for (const n of SFX) fetch(`assets/audio/${n}.mp3`).then((r) => r.arrayBuffer()).then((b) => new Promise((ok, no) => A.ctx.decodeAudioData(b, ok, no))).then((d) => { A.buf[n] = d; }).catch(() => {});
+      // The dash whoosh is synthesised: a swept band of noise.
+      const sr = A.ctx.sampleRate, len = Math.floor(sr * 0.22), wb = A.ctx.createBuffer(1, len, sr), ch = wb.getChannelData(0);
+      let lp = 0; for (let i = 0; i < len; i++) { const t = i / len, k = 0.04 + 0.5 * t; lp += (Math.random() * 2 - 1 - lp) * k; ch[i] = lp * Math.sin(Math.PI * t) ** 1.5 * 1.8; }
+      A.buf.dash = wb;
+    }
+    if (A.ctx.state === 'suspended') A.ctx.resume();
+    for (const t of Object.values(A.tracks)) if (t.on && t.el.paused) t.el.play().catch(() => {});
+  };
+  // Play an effect. Repeats of one sound are spaced at least `gap` seconds.
+  A.play = (name, { vol = 1, rate = 1, gap = 0.045, vary = 0.06 } = {}) => {
+    if (!A.ctx || A.muted || !A.buf[name]) return;
+    const now = A.ctx.currentTime; if (now - (A.last[name] || 0) < gap) return; A.last[name] = now;
+    const src = A.ctx.createBufferSource(), g = A.ctx.createGain();
+    src.buffer = A.buf[name]; src.playbackRate.value = rate * (1 + (Math.random() * 2 - 1) * vary);
+    g.gain.value = (VOL[name] ?? 0.5) * vol; src.connect(g); g.connect(A.sfxBus); src.start();
+  };
+  // Looping streams: music and ambience. `set` fades the named ones in and the rest out.
+  const track = (name, vol) => {
+    if (A.tracks[name]) return A.tracks[name];
+    const el = new Audio(`assets/audio/${name}.mp3`); el.loop = true; el.preload = 'auto'; el.crossOrigin = 'anonymous';
+    const t = { el, vol, on: false, g: null };
+    try { const src = A.ctx.createMediaElementSource(el); t.g = A.ctx.createGain(); t.g.gain.value = 0; src.connect(t.g); t.g.connect(A.musicBus); } catch { el.volume = 0; }
+    return (A.tracks[name] = t);
+  };
+  const LOOPS = { music_town: 0.8, music_dungeon: 0.75, amb_town: 0.5, amb_crickets: 0.18 };
+  A.set = (names) => {
+    A.want = names; if (!A.ctx) return;
+    const now = A.ctx.currentTime;
+    for (const n of new Set([...Object.keys(A.tracks), ...names])) {
+      const on = names.includes(n), t = on ? track(n, LOOPS[n]) : A.tracks[n]; if (!t) continue;
+      if (on && !t.on) { t.on = true; t.el.play().catch(() => {}); }
+      if (!on && t.on) { t.on = false; setTimeout(() => { if (!t.on) t.el.pause(); }, 1600); }
+      if (t.g) { t.g.gain.cancelScheduledValues(now); t.g.gain.setValueAtTime(t.g.gain.value, now); t.g.gain.linearRampToValueAtTime(on ? t.vol : 0, now + 1.5); } else t.el.volume = on ? t.vol * 0.55 : 0;
     }
   };
-  if (outline) {
-    if (shadow) pass(0, sc + 1, outline);
-    for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) pass(ox, oy, outline);
-  }
-  pass(0, 0, color);
-}
+  A.setMuted = (m) => {
+    A.muted = m;
+    try { const s = JSON.parse(localStorage.getItem('hollow-saint') || '{}'); s.muted = m; localStorage.setItem('hollow-saint', JSON.stringify(s)); } catch { /* private mode */ }
+    if (typeof SAVE !== 'undefined') SAVE.muted = m;
+    if (A.master) A.master.gain.setTargetAtTime(m ? 0 : 1, A.ctx.currentTime, 0.05);
+    for (const t of Object.values(A.tracks)) if (!t.g) t.el.muted = m;
+  };
+  // Pause everything while the page is hidden.
+  document.addEventListener('visibilitychange', () => { if (!A.ctx) return; if (document.hidden) A.ctx.suspend(); else A.ctx.resume(); });
+  for (const ev of ['touchend', 'mousedown', 'keydown']) addEventListener(ev, () => { A.unlock(); if (A.want.length) A.set(A.want); }, { passive: true });
+  return A;
+})();
+const sfx = (name, o) => AUDIO.play(name, o);
 
 // -------------------------------------------------------------- input ---
 const keys = new Set();
@@ -169,6 +267,7 @@ function layoutHud() {
   HUD.exec = { x: W - 122 * k, y: H - 80 * k, r: 15 * k, icon: 'dagger' };
   HUD.act = { x: W - 122 * k, y: H - 38 * k, r: 19 * k, icon: 'talk' };
   HUD.pause = { x: W - 15 * k, y: 15 * k, r: 11 * k, icon: 'pause' };
+  HUD.mute = { x: W - 15 * k, y: 42 * k, r: 10 * k, icon: 'sound' };
   HUD.joy = { x: 48 * k, y: H - 48 * k };
   for (const b of Object.values(HUD)) if (b && b.x !== undefined) { b.x = Math.round(b.x); b.y = Math.round(b.y); }
 }
@@ -180,9 +279,10 @@ const hitBtn = (b, x, y, pad = 6) => b && Math.hypot(x - b.x, y - b.y) <= b.r + 
 
 function pointerDown(id, cx, cy) {
   const [x, y] = toLocal(cx, cy);
+  if (hitBtn(HUD.mute, x, y)) { AUDIO.unlock(); AUDIO.setMuted(!AUDIO.muted); sfx('tap'); return; }
   if (onTap(x, y)) return;
   if (game.state !== 'play') return;
-  if (hitBtn(HUD.pause, x, y)) { game.state = 'pause'; return; }
+  if (hitBtn(HUD.pause, x, y)) { sfx('tap'); game.state = 'pause'; return; }
   if (tutTap(x, y)) return;
   if (game.interact && hitBtn(HUD.act, x, y)) { game.interact.use(); return; }
   if (hitBtn(HUD.dash, x, y, 10)) { input.dash = true; HUD.dash.pressed = 0.12; return; }
@@ -220,6 +320,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyF' || e.code === 'Digit2') input.m2 = true;
   if (e.code === 'KeyR' || e.code === 'Digit3') input.pen = true;
   if (e.code === 'Escape' || e.code === 'KeyP') { if (game.state === 'play') game.state = 'pause'; else if (game.state === 'pause') game.state = 'play'; }
+  if (e.code === 'KeyM') AUDIO.setMuted(!AUDIO.muted);
   if (e.code === 'Enter' || (e.code === 'Space' && game.state !== 'play')) onTap(-1, -1);
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
@@ -379,24 +480,34 @@ function makeDungeon() {
   const waterSet = new Set(water.map(([x, y]) => `${x},${y}`));
   const propTiles = new Set(props.flatMap((p) => p.tiles.map(([a, b]) => `${a},${b}`)));
   const isFloor = (x, y) => x >= 0 && y >= 0 && x < w && y < h && (!solid[y][x] || propTiles.has(`${x},${y}`) || gateSet.has(`${x},${y}`));
+  // Large flagstones in mixed sizes, packed per room (corridors get their own stone).
+  const plain = (x, y) => { if (!isFloor(x, y) || waterSet.has(`${x},${y}`)) return false; const r = roomAt(x, y); return !(r && (r.type === 'start' || r.type === 'exit' || r.theme === 'chapel') && Math.abs(x - r.cx) <= 1); };
+  const taken = new Set(), FS = SPR.floor.anims;
+  const SIZES = [[3, 3, 2], [3, 2, 3], [2, 3, 3], [2, 2, 6], [2, 1, 4], [1, 2, 4], [1, 1, 2]];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (taken.has(`${x},${y}`) || !plain(x, y)) continue;
+    const r = roomAt(x, y), th = r ? r.theme : 'corridor';
+    const fits = ([sw, sh]) => { for (let j = 0; j < sh; j++) for (let i = 0; i < sw; i++) { const k = `${x + i},${y + j}`; if (taken.has(k) || !plain(x + i, y + j) || roomAt(x + i, y + j) !== r) return false; } return true; };
+    const opts = SIZES.filter((z) => (r || z[0] * z[1] <= 2) && fits(z));
+    let roll = rng() * opts.reduce((a, z) => a + z[2], 0), pickz = opts[opts.length - 1];
+    for (const z of opts) { roll -= z[2]; if (roll <= 0) { pickz = z; break; } }
+    const [sw, sh] = pickz;
+    for (let j = 0; j < sh; j++) for (let i = 0; i < sw; i++) taken.add(`${x + i},${y + j}`);
+    const sf = FS[`${th}${sw}${sh}`][Math.floor(rng() * 3)];
+    rc.drawImage(IMG.floor, sf.x, sf.y, sf.w, sf.h, x * TILE, y * TILE, sf.w, sf.h);
+  }
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (isFloor(x, y)) {
       const r = roomAt(x, y), key = `${x},${y}`;
-      if (waterSet.has(key)) { const wf = frameOf('loot', 'water', (x + y) % 4); rc.drawImage(IMG.loot, wf.x, wf.y, 16, 16, x * TILE, y * TILE, 16, 16); }
-      else if (r && (r.type === 'start' || r.type === 'exit' || r.theme === 'chapel') && Math.abs(x - r.cx) <= 1) tile(t.carpet[x - r.cx === -1 ? 1 : x - r.cx === 1 ? 2 : (rng() < 0.1 ? 3 : 0)], x, y);
-      else { // running-bond flagstones, two tiles per slab
-        const sx = x * TILE + (y % 2) * 16, si = Math.floor(sx / 32), n = h2(si, y);
-        const sf = HA.slab[n < 0.6 ? Math.floor(n * 5) : n < 0.74 ? 3 : n < 0.84 ? 4 : n < 0.93 ? 5 : n < 0.96 ? 6 : 7];
-        rc.drawImage(IMG.hall, sf.x + (sx % 32), sf.y, 16, 16, x * TILE, y * TILE, 16, 16);
-        if (rng() < 0.012) tile(t.misc[0], x, y);
-      }
-      if (!isFloor(x, y - 1)) { rc.fillStyle = 'rgba(11,7,16,0.5)'; rc.fillRect(x * TILE, y * TILE, 16, 4); rc.fillStyle = 'rgba(11,7,16,0.22)'; rc.fillRect(x * TILE, y * TILE + 4, 16, 3); }
+      if (waterSet.has(key)) { const wf = frameOf('floor', 'water', (x * 3 + y) % 4); rc.drawImage(IMG.floor, wf.x, wf.y, 16, 16, x * TILE, y * TILE, 16, 16); if (!waterSet.has(`${x},${y - 1}`)) { rc.fillStyle = PAL.ink2; rc.fillRect(x * TILE, y * TILE, 16, 2); rc.fillStyle = PAL.teal4h; rc.fillRect(x * TILE, y * TILE + 2, 16, 1); } }
+      else if (!taken.has(key)) tile(t.carpet[x - r.cx === -1 ? 1 : x - r.cx === 1 ? 2 : (rng() < 0.1 ? 3 : 0)], x, y);
       continue;
     }
     let f = HA.wall[0];
     if (isFloor(x, y + 1)) f = HA.wall[3]; else if (isFloor(x, y + 2)) f = HA.wall[4]; else if (isFloor(x, y + 3)) f = HA.wall[2]; else if (isFloor(x, y + 4)) f = HA.wall[1];
     tile(f, x, y, IMG.hall);
   }
+  bakeWallEdges(rc, w, h, isFloor);
   // Wall decor above each room's top edge.
   const D = SPR.walldecor.anims.decor;
   for (const r of rooms) for (let x = r.x0 + 1; x < r.x1; x++) {
@@ -425,9 +536,54 @@ function makeDungeon() {
   room.cx = start.cx; room.cy = start.cy;
 }
 
+// Walls on every side, Otherworld Legends style: side and bottom walls show a
+// lit stone top with a brick lip, and the top and left walls cast soft
+// shadows onto the floor (light comes from the top-left).
+function bakeWallEdges(rc, w, h, isFloor) {
+  const P = PAL, solid = (x, y) => !isFloor(x, y);
+  const face = (x, y) => solid(x, y) && [1, 2, 3, 4].some((k) => isFloor(x, y + k));
+  const hh = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0) % 1000 / 1000;
+  const px = (x, y, c, ww = 1, hgt = 1) => { rc.fillStyle = c; rc.fillRect(x, y, ww, hgt); };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!solid(x, y) || face(x, y)) continue;
+    let near = false;
+    for (let dy = -1; dy <= 4 && !near; dy++) for (let dx = -1; dx <= 1; dx++) if (isFloor(x + dx, y + dy) && (dy <= 1 || !face(x + dx, y))) { near = true; break; }
+    if (!near) continue;
+    const X = x * TILE, Y = y * TILE;
+    // Top surface: dark teal stone laid in courses.
+    px(X, Y, P.teal2h, 16, 16);
+    for (let r = 0; r < 2; r++) {
+      const off = (y * 2 + r) % 2 ? 8 : 0;
+      px(X, Y + r * 8 + 7, P.teal3h, 16, 1);
+      for (let bx = -off; bx < 16; bx += 16) { if (bx + 15 >= 0 && bx + 15 < 16) px(X + bx + 15, Y + r * 8, P.teal3h, 1, 7); }
+      for (let bx = -off; bx < 16; bx += 16) { const a = Math.max(0, bx), b = Math.min(15, bx + 14); if (b > a) px(X + a, Y + r * 8, P.teal1h, b - a, 1); }
+      if (hh(x * 3 + r, y) < 0.3) px(X + 3 + Math.floor(hh(x, y + r) * 9), Y + r * 8 + 3, P.teal3, 2, 1);
+    }
+    // Lips on the sides that face the room.
+    const L = isFloor(x - 1, y), R = isFloor(x + 1, y), U = isFloor(x, y - 1);
+    if (R) { px(X + 11, Y, P.brick3, 5, 16); px(X + 11, Y, P.brick2, 1, 16); px(X + 15, Y, P.brick4, 1, 16); for (let k = 3; k < 16; k += 5) px(X + 12, Y + k, P.brick3h, 3, 1); }
+    if (L) { px(X, Y, P.brick1h, 5, 16); px(X, Y, P.brick0, 1, 16); px(X + 4, Y, P.brick3, 1, 16); for (let k = 3; k < 16; k += 5) px(X + 1, Y + k, P.brick2h, 3, 1); }
+    if (U) { px(X, Y, P.brick2, 16, 5); px(X, Y, P.brick1, 16, 1); px(X, Y + 4, P.brick3h, 16, 1); for (let k = 2; k < 16; k += 6) px(X + k, Y + 1, P.brick3, 1, 3); }
+    // Outer edge into the void.
+    if (!isFloor(x, y + 1) && solid(x, y + 1) && !face(x, y + 1)) {
+      let edge = true; for (let dy = 0; dy <= 4; dy++) for (let dx = -1; dx <= 1; dx++) if (isFloor(x + dx, y + 1 + dy) && (dy <= 1 || !face(x + dx, y + 1))) edge = false;
+      if (edge) { px(X, Y + 13, P.teal3h, 16, 1); px(X, Y + 14, P.teal4h, 16, 2); }
+    }
+  }
+  // Soft cast shadows on the floor from walls above and to the left.
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!isFloor(x, y)) continue;
+    const X = x * TILE, Y = y * TILE;
+    if (solid(x, y - 1)) { rc.fillStyle = 'rgba(11,7,16,0.55)'; rc.fillRect(X, Y, 16, 4); rc.fillStyle = 'rgba(11,7,16,0.3)'; rc.fillRect(X, Y + 4, 16, 4); rc.fillStyle = 'rgba(11,7,16,0.12)'; rc.fillRect(X, Y + 8, 16, 4); }
+    if (solid(x - 1, y)) { rc.fillStyle = 'rgba(11,7,16,0.45)'; rc.fillRect(X, Y, 3, 16); rc.fillStyle = 'rgba(11,7,16,0.22)'; rc.fillRect(X + 3, Y, 4, 16); rc.fillStyle = 'rgba(11,7,16,0.1)'; rc.fillRect(X + 7, Y, 4, 16); }
+    else if (solid(x - 1, y - 1) && !solid(x, y - 1)) { rc.fillStyle = 'rgba(11,7,16,0.3)'; rc.fillRect(X, Y, 4, 6); }
+  }
+}
+
 const roomOf = (px, py, inset = 0) => room.rooms && room.rooms.find((r) => px >= (r.x0 + inset) * TILE && px < (r.x1 + 1 - inset) * TILE && py >= (r.y0 + inset) * TILE && py < (r.y1 + 1 - inset) * TILE);
 function setGates(r, locked) {
   r.locked = locked; r.gateT = 0;
+  if (r.gates.length) sfx(locked ? 'gate_lock' : 'gate_open');
   for (const g of r.gates) for (const [x, y] of g.tiles) room.solid[y][x] = locked;
 }
 
@@ -534,7 +690,7 @@ function renderRoomStatus() {
   if (r.state === 'active') { const left = enemies.filter((e) => e.room === r.id && !e.dead && !e.illusion).length; sub = `WAVE ${r.wave + 1}/${r.waves.length}   ${left} REMAIN`; }
   else if (r.type === 'exit' && game.waystone) sub = 'TAKE THE WAYSTONE HOME';
   else sub = `${room.rooms.filter((q) => q.state === 'clear').length}/${room.rooms.length} ROOMS CLEARED`;
-  text(label, W / 2, 9, r.state === 'active' ? PAL.blood0 : PAL.gold1, { align: 'center', bold: true });
+  text(label, W / 2, 9, r.state === 'active' ? PAL.blood0 : PAL.gold1, { align: 'center' });
   text(sub, W / 2, 19, PAL.cloth1, { align: 'center' });
 }
 function renderBanner() {
@@ -719,7 +875,13 @@ function makeTown() {
   const rc = roomCanvas.getContext('2d');
   // Cobbled street, worn smoother down the middle.
   const cob = SPR.town.anims.cobble;
-  for (let y = TOP; y < h; y++) for (let x = 0; x < w; x++) { const f = cob[rng() < 0.6 ? 0 : Math.floor(rng() * 4)]; rc.drawImage(IMG.town, f.x, f.y, 16, 16, x * TILE, y * TILE, 16, 16); }
+  // Paving slabs in rows two tiles deep, widths mixed (one cobble row at the kerb).
+  for (let x = 0; x < w; x++) { const f = cob[Math.floor(rng() * 4)]; rc.drawImage(IMG.town, f.x, f.y, 16, 16, x * TILE, TOP * TILE, 16, 16); }
+  for (let y = TOP + 1; y < h; y += 2) for (let x = 0; x < w;) {
+    const sh = Math.min(2, h - y), sw = Math.min(w - x, sh === 1 ? 2 : 3, [1, 2, 2, 3, 3][Math.floor(rng() * 5)]);
+    const f = SPR.floor.anims[`street${sw}${sh}`][Math.floor(rng() * 3)];
+    rc.drawImage(IMG.floor, f.x, f.y, f.w, f.h, x * TILE, y * TILE, f.w, f.h); x += sw;
+  }
   rc.fillStyle = 'rgba(11,7,16,0.25)'; rc.fillRect(0, (h - 4) * TILE, w * TILE, 3 * TILE);
   // Mud, filth and puddles that catch the lamplight.
   for (let k = 0; k < 182; k++) { const px = rng() * w * TILE, py = (TOP + 1 + rng() * (h - TOP - 2)) * TILE; rc.fillStyle = `rgba(34,24,31,${0.25 + rng() * 0.3})`; rc.beginPath(); rc.ellipse(px, py, 10 + rng() * 39, 4 + rng() * 8, 0, 0, Math.PI * 2); rc.fill(); }
@@ -976,7 +1138,7 @@ function updateTutorial(dt) {
   }
 }
 
-function tutRect() { const w = Math.min(300, W - 200), lines = wrap(tutStep().text, Math.floor((w - 16) / 6)); return { x: Math.round(W / 2 - w / 2), y: 48, w, h: 16 + lines.length * 9 + 12, lines }; }
+function tutRect() { const w = Math.min(300, W - 200), lines = wrap(tutStep().text, Math.floor((w - 16) / 7)); return { x: Math.round(W / 2 - w / 2), y: 48, w, h: 18 + lines.length * 12 + 12, lines }; }
 function renderTutorial() {
   const s = tutStep();
   if (!s || s.scene !== game.scene || game.state !== 'play') return;
@@ -985,7 +1147,7 @@ function renderTutorial() {
   ctx.fillStyle = PAL.gold2; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
   ctx.fillStyle = 'rgba(21,15,28,0.92)'; ctx.fillRect(r.x, r.y, r.w, r.h);
   text(`${tut.step + 1}/${TUT.length}`, r.x + 6, r.y + 5, PAL.gold1, { outline: null });
-  r.lines.forEach((l, i) => text(l, r.x + 8, r.y + 16 + i * 9, PAL.cloth0, { outline: null }));
+  r.lines.forEach((l, i) => text(l, r.x + 8, r.y + 18 + i * 12, PAL.cloth0, { outline: null }));
   text('SKIP TUTORIAL', r.x + r.w - 6, r.y + r.h - 9, PAL.blood0, { outline: null, align: 'right' });
   ctx.fillStyle = PAL.blood0; ctx.fillRect(r.x + r.w - 6 - textW('SKIP TUTORIAL'), r.y + r.h - 1, textW('SKIP TUTORIAL'), 1);
   // Bouncing pointer at the control being taught.
@@ -1097,6 +1259,7 @@ function spawnMonster(id, x, y, o = {}) {
 }
 // A blue rare pack (2-3 of a kind sharing affixes) or a gold elite with minions.
 function spawnPack(id, tier, x, y, nAff, roomId) {
+  if (tier === 'elite') sfx('elite', { gap: 1 });
   const affixes = [...AFFIX_POOL].sort(() => rng() - 0.5).filter((a) => tier === 'rare' ? a !== 'chained' || true : true).slice(0, nAff);
   const pack = { id: Math.random(), affixes, tier, members: [] };
   if (tier === 'rare') {
@@ -1359,7 +1522,7 @@ function segDist(px, py, x0, y0, x1, y1) {
 function hurtPlayerRaw(dmg, color) {
   if (game.buff && game.buff.kind === 'warding') dmg *= 0.5;
   dmg = Math.max(1, Math.round(dmg));
-  player.hp -= dmg; player.hurt = Math.max(player.hurt, 0.15);
+  player.hp -= dmg; player.hurt = Math.max(player.hurt, 0.15); sfx('hurt', { vol: 0.5, gap: 0.3 });
   nums.push({ x: player.x + rand(-4, 4), y: player.y - 52, v: dmg, t: 0, color, small: true });
   if (player.hp <= 0) { player.hp = 0; die(); }
 }
@@ -1461,7 +1624,7 @@ function damagePlayer(src, dmg, contacts) {
   if (Math.hypot(cx - player.x, cy - player.y) > 1) return; // only the dash origin was in reach: a plain miss
   if (game.buff && game.buff.kind === 'warding') dmg *= 0.5;
   dmg = Math.max(1, Math.round(dmg));
-  player.hp -= dmg; player.iframes = T.hurtIframes; player.hurt = 0.3; game.lastHit = src.type;
+  player.hp -= dmg; player.iframes = T.hurtIframes; player.hurt = 0.3; game.lastHit = src.type; sfx('hurt');
   game.shake = Math.max(game.shake, 4); game.hitstop = 0.05;
   game.fervor = Math.max(0, game.fervor - 8);
   bleed(player.x, player.y - 21, 6, (src.x || 0) < player.x ? 1 : -1);
@@ -1472,7 +1635,7 @@ function damagePlayer(src, dmg, contacts) {
 }
 
 function perfectDodge() {
-  player.perfectUsed = true; game.perfects++;
+  player.perfectUsed = true; game.perfects++; sfx('perfect');
   game.slowmo = T.slowmo.time; game.flash = 0.12;
   addFervor(15);
   rings.push({ x: player.x, y: player.y - 21, t: 0, max: 0.45, r: 48, color: '255,224,138' });
@@ -1492,8 +1655,8 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   if (!blocked) { e.kx += dirx * kb * heavy; e.ky += diry * kb * heavy; }
   nums.push({ x: e.x + rand(-5, 5), y: e.y - e.hy * 2 - 4, v: dmg, t: 0, color: blocked ? PAL.iron1 : crit ? PAL.gold1 : opts.color || PAL.cloth0, crit, small: !!opts.status && !crit });
   const hy = e.y - e.hy;
-  if (blocked) { sparks(e.x + e.face * 10, hy, PAL.gold0, 5); playFx('fx', 'impact', e.x + e.face * 10, hy, 30); }
-  else if (dirx || diry) { bleed(e.x, hy, crit ? 5 : 2, dirx); if (!opts.status) playFx('fx', 'impact', e.x - dirx * 4, hy, 30, { small: !crit }); }
+  if (blocked) { sparks(e.x + e.face * 10, hy, PAL.gold0, 5); sfx('block'); playFx('fx', 'impact', e.x + e.face * 10, hy, 30); }
+  else if (dirx || diry) { bleed(e.x, hy, crit ? 5 : 2, dirx); if (!opts.status) { sfx('hit' + Math.floor(rng() * 3), { vol: crit ? 1.3 : 1 }); } if (!opts.status) playFx('fx', 'impact', e.x - dirx * 4, hy, 30, { small: !crit }); }
   if (e.affixes.includes('penitent') && !e.illusion) { game.reflect = (game.reflect || 0) + dmg * 0.04; if (game.reflect >= 2) { hurtPlayerRaw(game.reflect, PAL.violet1); game.reflect = 0; } }
   if (e.affixes.includes('mirrored') && !e.illusion) for (const th of [0.75, 0.4]) if (before > th && e.hp / e.maxHp <= th) for (let k = 0; k < 2; k++) {
     const m = spawnMonster(e.type, e.x + rand(-20, 20), e.y + rand(-14, 14), { tier: e.tier, illusion: true, life: 9, room: e.room, hpK: 0.15 });
@@ -1507,7 +1670,7 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
 
 function killEnemy(e, dirx, diry, executed = false) {
   if (e.dead) return;
-  e.dead = true;
+  e.dead = true; sfx(rng() < 0.5 ? 'kill0' : 'kill1', { vol: e.elite ? 1.3 : 1, rate: e.tier === 'elite' ? 0.8 : 1 });
   if (player.lock === e) player.lock = null;
   if (e.illusion) { playFx('fx', 'smoke', e.x, e.y - 8, 14); return; }
   game.kills++;
@@ -1625,7 +1788,7 @@ function updateDrops(dt) {
     const magnet = d.kind === 'gold' ? 60 : d.kind === 'globe' ? 40 : 0;
     if (d.t > 0.4 && dist < magnet) { const s = 210 * dt; d.x += (player.x - d.x) / dist * s; d.y += (player.y - d.y) / dist * s; }
     if (d.t > 0.4 && dist < (d.kind === 'item' ? 14 : 10)) {
-      d.taken = true;
+      d.taken = true; sfx(d.kind === 'gold' ? 'gold' : d.kind === 'globe' ? 'heal' : 'pickup', { rate: d.kind === 'item' && d.item.ri >= 3 ? 0.8 : 1 });
       if (d.kind === 'gold') { game.run.gold += d.amount; nums.push({ x: player.x + rand(-6, 6), y: player.y - 39, v: `+${d.amount}`, t: 0, color: PAL.gold0, small: true }); }
       if (d.kind === 'globe') { const h = Math.round(player.maxHp * 0.15); player.hp = Math.min(player.maxHp, player.hp + h); nums.push({ x: player.x, y: player.y - 55, v: `+${h}`, t: 0, color: PAL.flame1, small: false }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.3, r: 20, color: '224,32,46' }); }
       if (d.kind === 'item') { game.run.items.push(d.item); const R = RARITY[d.item.ri]; toast(`${d.item.name}`, 2); game.toastColor = R.color; if (d.item.ri >= 3) { game.flash = 0.06; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: R.rgb }); } }
@@ -1640,8 +1803,8 @@ function drawDrops() {
     if (d.kind === 'globe') sprC('loot', 'globe', Math.floor(game.real * 3) % 2, d.x, y - 4);
     if (d.kind === 'item') {
       const ic = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic'].indexOf(d.item.slot);
-      sprC('loot', 'item', ic, d.x, y - 6);
-      if (d.z === 0 && (d.item.ri >= 1 || Math.hypot(d.x - player.x, d.y - player.y) < 60)) text(d.item.name, d.x, d.y - 26, RARITY[d.item.ri].color, { align: 'center' });
+      sprC('loot', 'item', ic, d.x, y - 10);
+      if (d.z === 0 && (d.item.ri >= 1 || Math.hypot(d.x - player.x, d.y - player.y) < 60)) text(d.item.name, d.x, d.y - 32, RARITY[d.item.ri].color, { align: 'center' });
     }
   }
 }
@@ -1681,7 +1844,7 @@ function updateMassacre() {
 
 // Breakables: urns and coffins.
 function breakProp(p) {
-  if (p.broken) return;
+  if (p.broken) return; sfx('break');
   p.broken = true;
   for (const [x, y] of p.tiles) room.solid[y][x] = false;
   room.props = room.props.filter((q) => q !== p);
@@ -1695,7 +1858,7 @@ function hitBreakables(x, y, r) { for (const p of room.props) if (p.breakable &&
 // Shrines (temporary buffs) and treasury chests.
 const SHRINES = { fervor: { name: 'SHRINE OF FERVOR', sub: 'DOUBLE DAMAGE', t: 25, rgb: '224,32,46' }, haste: { name: 'SHRINE OF HASTE', sub: 'SWIFTER FEET AND FASTER MIRACLES', t: 25, rgb: '95,220,108' }, warding: { name: 'SHRINE OF WARDING', sub: 'HALF DAMAGE TAKEN', t: 25, rgb: '138,224,255' }, plenty: { name: 'SHRINE OF PLENTY', sub: 'A RAIN OF GOLD', t: 20, rgb: '255,209,85' } };
 function useShrine(p) {
-  if (p.used) return;
+  if (p.used) return; sfx('shrine');
   p.used = true; p.frame = p.frame; const S = SHRINES[p.shrineKind];
   game.buff = { kind: p.shrineKind, t: S.t, max: S.t };
   game.banner = { text: S.name, sub: S.sub, t: 0, color: `rgb(${S.rgb})` };
@@ -1703,7 +1866,7 @@ function useShrine(p) {
   if (p.shrineKind === 'plenty') dropLoot(p.x, p.y, { gold: 18 });
 }
 function openChest(p) {
-  if (p.open) return;
+  if (p.open) return; sfx('chest');
   p.open = true; p.frame = 1;
   dropLoot(p.x, p.y + 6, { gold: 10, item: 2, itemBoost: 1, globe: 1 });
   rings.push({ x: p.x, y: p.y - 8, t: 0, max: 0.5, r: 40, color: '255,209,85' });
@@ -1734,7 +1897,7 @@ function updateCrossbow(dt) {
   const tx = t.x + t.kx * 0.05, ty = t.y - t.hy;
   const d = Math.hypot(tx - sx, ty - sy) || 1;
   const crit = rng() < T.crossbow.crit;
-  bolts.push({ x: sx, y: sy, vx: (tx - sx) / d * T.crossbow.speed, vy: (ty - sy) / d * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce, hit: new Set(), crit, trail: [] });
+  bolts.push({ x: sx, y: sy, vx: (tx - sx) / d * T.crossbow.speed, vy: (ty - sy) / d * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce, hit: new Set(), crit, trail: [] }); sfx('shoot');
   playFx('fx', 'impact', sx, sy, 40, { small: true, skip: 2 });
 }
 
@@ -1779,7 +1942,7 @@ function updateThurible(dt) {
       e.thCd = game.time + T.thurible.hitCd;
       const dx = e.x - player.x, dy = e.y - player.y, d = Math.hypot(dx, dy) || 1;
       e.burn = T.thurible.burn.time;
-      hurtEnemy(e, T.thurible.dmg, false, dx / d, dy / d, 50);
+      hurtEnemy(e, T.thurible.dmg, false, dx / d, dy / d, 50); sfx('thurible', { gap: 0.12 });
       sparks(t.x, t.y, PAL.ember0, 4);
     }
   }
@@ -1817,7 +1980,7 @@ function bestCluster(R) {
 }
 function castFlask() {
   const t = bestCluster(T.flask.range);
-  flasks.push({ sx: player.x, sy: player.y - 23, tx: t ? t.x : player.x + player.face * 60, ty: t ? t.y : player.y, t: 0 });
+  flasks.push({ sx: player.x, sy: player.y - 23, tx: t ? t.x : player.x + player.face * 60, ty: t ? t.y : player.y, t: 0 }); sfx('tap', { rate: 0.6, vol: 0.6 });
   player.m1cd = T.flask.cd;
 }
 function castChain() {
@@ -1828,11 +1991,11 @@ function castChain() {
     if (d < bd) { bd = d; t = e; }
   }
   if (!t) { toast('NOTHING TO BIND'); return; }
-  chains.push({ x: player.x + player.face * 14, y: player.y - 25, target: t, links: [], t: 0, phase: 'fly' });
+  chains.push({ x: player.x + player.face * 14, y: player.y - 25, target: t, links: [], t: 0, phase: 'fly' }); sfx('chain');
   player.m2cd = T.chain.cd;
 }
 function castPenance() {
-  player.penance = 0; player.rainT = T.penance.time; player.rainTick = 0;
+  player.penance = 0; player.rainT = T.penance.time; player.rainTick = 0; sfx('penance');
   game.shake = Math.max(game.shake, 3); game.flash = 0.1;
   toast("FLAGELLANT'S RAIN", 1.5);
 }
@@ -1850,7 +2013,7 @@ function updateAbilities(dt) {
     f.t += dt;
     if (f.t >= T.flask.flight) {
       f.done = true;
-      pools.push({ x: f.tx, y: f.ty, r: T.flask.radius, t: 0 });
+      pools.push({ x: f.tx, y: f.ty, r: T.flask.radius, t: 0 }); sfx('flask');
       hitBreakables(f.tx, f.ty, T.flask.radius);
       for (let i = 0; i < 14; i++) parts.push({ kind: 'blood', x: f.tx, y: f.ty, z: 4, vx: rand(-70, 70), vy: rand(-45, 45), vz: rand(20, 80), c: pick([PAL.holy0, PAL.holy1, PAL.holy2]), s: rng() < 0.4 ? 2 : 1, clean: true });
       rings.push({ x: f.tx, y: f.ty, t: 0, max: 0.35, r: 34, color: '138,224,255', flat: true });
@@ -1873,7 +2036,7 @@ function updateAbilities(dt) {
       const dx = tg.x - c.x, dy = ty - c.y, d = Math.hypot(dx, dy), step = T.chain.speed * dt;
       if (tg.dead) { c.phase = 'done'; continue; }
       if (d <= step) {
-        c.phase = 'bind'; c.t = 0;
+        c.phase = 'bind'; c.t = 0; sfx('chain', { rate: 0.8 });
         const bound = [tg];
         for (const e of enemies.filter((o) => !o.dead && o !== tg && o.state !== 'spawn').sort((a, b) => Math.hypot(a.x - tg.x, a.y - tg.y) - Math.hypot(b.x - tg.x, b.y - tg.y))) {
           if (bound.length >= T.chain.links || Math.hypot(e.x - tg.x, e.y - tg.y) > T.chain.linkRange) break;
@@ -1937,7 +2100,7 @@ function updatePlayer(dt) {
       let dx = input.mx, dy = input.my;
       if (Math.hypot(dx, dy) < 0.2) { dx = p.face; dy = 0; }
       const d = Math.hypot(dx, dy); p.dashDx = dx / d; p.dashDy = dy / d;
-      p.dashT = T.dash.time; p.dashStart = game.time; p.dashX = p.x; p.dashY = p.y;
+      p.dashT = T.dash.time; p.dashStart = game.time; p.dashX = p.x; p.dashY = p.y; sfx('dash');
       p.iframes = Math.max(p.iframes, T.dash.iframes); p.perfectUsed = false;
       if (Math.abs(dx) > 0.1) p.face = Math.sign(dx);
       playFx('fx', 'smoke', p.x, p.y - 4, 18, { alpha: 0.6 });
@@ -1970,7 +2133,7 @@ function updatePlayer(dt) {
   if (p.dashT <= 0 && game.time - p.dashStart > 0.3) { p.dashX = undefined; p.dashY = undefined; }
 }
 
-function execute(e) {
+function execute(e) { sfx('execute');
   const p = player, side = p.x < e.x ? -1 : 1;
   p.x = e.x + side * 16; p.y = e.y; moveCircle(p, 0, 0, p.r);
   p.face = -side; p.iframes = Math.max(p.iframes, 0.5);
@@ -1982,7 +2145,7 @@ function execute(e) {
   killEnemy(e, -side, 0, true);
 }
 
-function die() {
+function die() { sfx('death'); AUDIO.set([]);
   game.state = 'dead'; game.deathT = 0;
   SAVE.deaths = (SAVE.deaths || 0) + 1;
   SAVE.lastDeath = rng() < 0.25 ? 'A STAIRCASE' : game.lastHit === 'gravewarden' ? "A GRAVEWARDEN'S SHIELD" : 'A RISEN WITH NO LOWER JAW';
@@ -1994,6 +2157,9 @@ function die() {
 // --------------------------------------------------------------- update ---
 function update(realDt) {
   game.real += realDt;
+  // Music and ambience follow the scene.
+  const mus = game.state === 'dead' ? 'dead' : game.state === 'title' ? 'title' : game.scene;
+  if (mus !== game.music) { game.music = mus; AUDIO.set(mus === 'town' || mus === 'title' ? ['music_town', 'amb_town', 'amb_crickets'] : mus === 'wound' ? ['music_dungeon'] : []); }
   if (game.toast) { game.toast.t -= realDt; if (game.toast.t <= 0) game.toast = null; }
   for (const k of ['dash', 'm1', 'm2', 'pen']) if (HUD[k] && HUD[k].pressed) HUD[k].pressed = Math.max(0, HUD[k].pressed - realDt);
   if (game.state === 'dead' || game.state === 'tally') game.deathT += realDt;
@@ -2110,7 +2276,7 @@ function render() {
   for (const b of bolts) {
     const f = frameOf('fx', 'bolt', 0);
     ctx.save(); ctx.translate(Math.round(b.x), Math.round(b.y)); ctx.rotate(Math.atan2(b.vy, b.vx));
-    ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -8, -3, f.w, f.h); ctx.restore();
+    ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -f.w + 3, -Math.floor(f.h / 2), f.w, f.h); ctx.restore();
   }
   for (const f of fxs) {
     if (f.skip && f.t * f.fps < 1) continue;
@@ -2125,13 +2291,19 @@ function render() {
   ctx.restore();
 
   if (game.scene === 'town') drawTownOverlay(cx, cy);
-  if (game.scene === 'wound') { ctx.globalCompositeOperation = 'soft-light'; ctx.fillStyle = 'rgba(255,150,80,0.35)'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over'; }
   renderLight(cx, cy);
   if (game.scene === 'town') drawTownForeground(cx, cy);
 
   // Additive glow (VFX layer).
   ctx.save(); ctx.translate(-cx, -cy); ctx.globalCompositeOperation = 'lighter';
-  for (const l of room.lights) if (onScreen(l.x, l.y, cx, cy, 120)) glow(l.x, l.y + (l.torch ? 30 : 0), (l.torch ? l.r * 0.8 : l.r * 0.45) + Math.sin(game.real * 9 + (l.flick || 0)) * 2, `rgba(${LIGHT_RGB[l.c]},${l.torch || l.sconce ? 0.16 : 0.22})`);
+  for (const l of room.lights) if (onScreen(l.x, l.y, cx, cy, 140)) {
+    const fl = Math.sin(game.real * 9 + (l.flick || 0)) * 2;
+    if (l.torch || l.sconce) {
+      // A warm pool on the floor and a hot bloom around the flame.
+      if (game.scene === 'wound') glow(l.x, l.y + (l.torch ? 62 : 52), l.r * 0.85 + fl, 'rgba(255,122,31,0.2)');
+      glow(l.x, l.y, 22 + fl, 'rgba(255,192,74,0.38)');
+    } else glow(l.x, l.y, l.r * 0.45 + fl, `rgba(${LIGHT_RGB[l.c]},0.22)`);
+  }
   glow(player.x, player.y - 54, 20, 'rgba(255,209,85,0.25)');
   if (game.scene === 'wound') {
     drawDropGlow(); drawAmbientGlow(cx, cy);
@@ -2159,7 +2331,7 @@ function render() {
     const rise = 16 * Math.min(1, n.t * 6) + n.t * 8, pop = n.t < 0.08;
     const sc = n.crit ? (pop ? 3 : 2) : n.small ? 1 : pop ? 2 : 1;
     ctx.globalAlpha = n.t > 0.65 ? Math.max(0, 1 - (n.t - 0.65) / 0.2) : 1;
-    text(String(n.v) + (n.crit && typeof n.v === 'number' ? '!' : ''), n.x - cx, n.y - cy - rise, n.color, { sc, align: 'center', bold: !n.small });
+    text(String(n.v) + (n.crit && typeof n.v === 'number' ? '!' : ''), n.x - cx, n.y - cy - rise, n.color, { sc, align: 'center', small: n.small });
     ctx.globalAlpha = 1;
   }
   renderScreenFx();
@@ -2267,7 +2439,7 @@ function drawEnemy(e) {
 // The name, health and curses of the Rare or Elite you are fighting.
 function renderNameplate(e) {
   const col = e.tier === 'elite' ? PAL.gold0 : e.tier === 'imp' ? PAL.gold1 : '#7cc4ff', w = 170, x = Math.round(W / 2 - w / 2), y = 20;
-  text(e.name, W / 2, 7, col, { align: 'center', bold: true });
+  text(e.name, W / 2, 7, col, { align: 'center' });
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, 8);
   ctx.fillStyle = e.tier === 'elite' ? PAL.gold4 : PAL.holy4; ctx.fillRect(x - 1, y - 1, w + 2, 6);
   ctx.fillStyle = PAL.blood4; ctx.fillRect(x, y, w, 4);
@@ -2299,11 +2471,11 @@ function drawThurible(t) {
   sprC('fx', 'thurible', Math.floor(game.real * 6), t.x, t.y);
 }
 function drawChainLine(x0, y0, x1, y1) {
-  const d = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.floor(d / 5)), a = Math.atan2(y1 - y0, x1 - x0);
+  const d = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.floor(d / 7)), a = Math.atan2(y1 - y0, x1 - x0);
   for (let i = 0; i <= n; i++) {
     const k = i / n, f = frameOf('fx', 'link', i);
     ctx.save(); ctx.translate(Math.round(x0 + (x1 - x0) * k), Math.round(y0 + (y1 - y0) * k)); ctx.rotate(a);
-    ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -3, -2, f.w, f.h); ctx.restore();
+    ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -Math.floor(f.w / 2), -Math.floor(f.h / 2), f.w, f.h); ctx.restore();
   }
 }
 function drawAbilitiesGround() {
@@ -2324,13 +2496,13 @@ function drawAbilitiesAir() {
   for (const f of flasks) {
     const k = f.t / T.flask.flight, x = f.sx + (f.tx - f.sx) * k, y = f.sy + (f.ty - f.sy) * k - Math.sin(k * Math.PI) * 36;
     const fr = frameOf('fx', 'flask', 0);
-    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(k * 9); ctx.drawImage(IMG.fx, fr.x, fr.y, fr.w, fr.h, -5, -6, fr.w, fr.h); ctx.restore();
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(k * 9); ctx.drawImage(IMG.fx, fr.x, fr.y, fr.w, fr.h, -Math.floor(fr.w / 2), -Math.floor(fr.h / 2), fr.w, fr.h); ctx.restore();
   }
   for (const c of chains) {
     if (c.phase === 'fly') {
       drawChainLine(player.x + player.face * 14, player.y - 25, c.x, c.y);
       const a = Math.atan2(c.target.y - c.target.hy - c.y, c.target.x - c.x), f = frameOf('fx', 'hook', 0);
-      ctx.save(); ctx.translate(Math.round(c.x), Math.round(c.y)); ctx.rotate(a); ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -5, -5, f.w, f.h); ctx.restore();
+      ctx.save(); ctx.translate(Math.round(c.x), Math.round(c.y)); ctx.rotate(a); ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -5, -Math.floor(f.h / 2), f.w, f.h); ctx.restore();
     } else if (c.phase === 'bind') {
       const live = c.links.filter((e) => !e.dead);
       for (let i = 1; i < live.length; i++) drawChainLine(live[0].x, live[0].y - live[0].hy, live[i].x, live[i].y - live[i].hy);
@@ -2395,7 +2567,7 @@ function button(b, { active = true, cd = 0, cdText = '', ring = 0, ringColor = P
   sprC('ui', b.icon, 0, b.x, b.y + pr, { alpha: active ? 1 : 0.55 });
   if (cd > 0) { // dark sweep for the remaining cooldown, plus seconds left
     ctx.fillStyle = 'rgba(11,7,16,0.62)'; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.arc(b.x, b.y, b.r - 1, -Math.PI / 2, -Math.PI / 2 + cd * Math.PI * 2); ctx.closePath(); ctx.fill();
-    if (cdText) text(cdText, b.x, b.y - 3, PAL.cloth0, { align: 'center', bold: true });
+    if (cdText) text(cdText, b.x, b.y - 3, PAL.cloth0, { align: 'center' });
   }
 }
 
@@ -2437,14 +2609,15 @@ function renderHud() {
   }
   ctx.fillStyle = PAL.white; ctx.fillRect(mx + Math.round(p.x * k) - 1, my + Math.round(p.y * k) - 1, 2, 2);
   button(HUD.pause);
+  HUD.mute.icon = AUDIO.muted ? 'muted' : 'sound'; button(HUD.mute);
   // Gold, kills, active shrine buff, massacre streak.
   const gold = game.scene === 'wound' ? game.run.gold : SAVE.gold || 0;
   sprC('loot', 'coin', 0, mx + 3, my + mh + 10);
-  text(String(gold), mx + 9, my + mh + 7, PAL.gold1, { bold: true });
+  text(String(gold), mx + 9, my + mh + 7, PAL.gold1);
   if (game.scene === 'wound') text(`${game.kills} SLAIN`, W - 34, my + mh + 17, PAL.stone1, { align: 'right' });
   if (game.buff) { const S = SHRINES[game.buff.kind]; text(`${S.name.replace('SHRINE OF ', '')} ${Math.ceil(game.buff.t)}`, 41, 35, `rgb(${S.rgb})`); }
   const ms = game.massacre;
-  if (ms && ms.n >= 5 && game.time - ms.last < 1.2) text(`x${ms.n}`, 14, Math.round(H * 0.42), Math.floor(game.real * 8) % 2 ? PAL.blood0 : PAL.gold0, { sc: 2, bold: true });
+  if (ms && ms.n >= 5 && game.time - ms.last < 1.2) text(`x${ms.n}`, 14, Math.round(H * 0.42), Math.floor(game.real * 8) % 2 ? PAL.blood0 : PAL.gold0, { sc: 2 });
   // Bottom-right: dash, Miracles, Penance.
   const dashK = p.charges >= T.dash.charges ? 0 : 1 - p.recharge / T.dash.recharge;
   button(HUD.dash, { active: p.charges > 0, cd: p.charges === 0 ? dashK : 0 });
@@ -2505,17 +2678,18 @@ function renderTitle() {
   }
   if (SAVE.descents || SAVE.deaths) text(`DESCENTS ${SAVE.descents || 0}   DEATHS ${SAVE.deaths || 0}`, 10, H - 14, PAL.stone1);
   text(`THE GILDED LAMB GIVES ${ODDS[Math.floor(game.real / 4) % ODDS.length]} ON YOUR DEATH TODAY`, W - 10, H - 14, PAL.flame1, { align: 'right' });
+  HUD.mute.icon = AUDIO.muted ? 'muted' : 'sound'; button(HUD.mute);
 }
 
 function renderDialog() {
-  const d = game.dialog, x = 70, w = W - 140, h = 58, y = H - h - 12;
+  const d = game.dialog, x = 70, w = W - 140, h = 64, y = H - h - 12;
   gild(x, y, w, h);
   ctx.fillStyle = 'rgba(21,15,28,0.95)'; ctx.fillRect(x, y, w, h);
   const npc = room.npcs.find((n) => (n.talk || n.npc) === d.id && Math.hypot(n.x - player.x, n.y - player.y) < 60) || room.npcs.find((n) => (n.talk || n.npc) === d.id);
   if (npc) { ctx.save(); ctx.beginPath(); ctx.rect(x + 4, y + 4, 34, h - 8); ctx.clip(); ctx.fillStyle = PAL.ink2; ctx.fillRect(x + 4, y + 4, 34, h - 8); ctx.translate(x + 21, y + h + 22); ctx.scale(2, 2); spr(npc.sheet || 'town', npc.npc, npc.npc.endsWith('_walk') ? 1 : Math.floor(game.real * 2), 0, 0); ctx.restore(); }
   text(d.name, x + 46, y + 6, PAL.gold1, { outline: null });
   const full = d.lines[d.i], shown = full.slice(0, Math.floor(d.t * 45));
-  wrap(shown, Math.floor((w - 56) / 6)).forEach((l, i) => text(l, x + 46, y + 19 + i * 9, PAL.cloth0, { outline: null }));
+  wrap(shown, Math.floor((w - 56) / 7)).forEach((l, i) => text(l, x + 46, y + 20 + i * 12, PAL.cloth0, { outline: null }));
   if (shown.length >= full.length && Math.floor(game.real * 2) % 2 === 0) text(d.i < d.lines.length - 1 ? 'TAP' : 'TAP TO CLOSE', x + w - 6, y + h - 10, PAL.stone1, { outline: null, align: 'right' });
 }
 
@@ -2533,26 +2707,26 @@ function renderReceipt(survived = false) {
   const k = Math.min(1, game.deathT * 1.5);
   ctx.fillStyle = `rgba(11,7,16,${0.8 * k})`; ctx.fillRect(0, 0, W, H);
   if (k < 1) return;
-  const r = game.receipt, w = 230, h = 150, x = Math.round(W / 2 - w / 2), y = Math.round(H / 2 - h / 2);
+  const r = game.receipt, w = 260, h = 176, x = Math.round(W / 2 - w / 2), y = Math.round(H / 2 - h / 2);
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
   ctx.fillStyle = PAL.bone1; ctx.fillRect(x, y, w, h);
   ctx.fillStyle = PAL.bone0; ctx.fillRect(x, y, w, 2);
   for (let i = 0; i < w; i += 4) { ctx.fillStyle = PAL.bone1; ctx.fillRect(x + i, y + h, 2, 2); }
   const line = (s, yy, c = PAL.ink1, al = 'center') => text(s, al === 'center' ? W / 2 : x + 10, y + yy, c, { outline: null, align: al });
-  line('THE CHOIR OF VAEL', 9, PAL.crimson3);
-  line(survived ? 'CERTIFICATE OF SURVIVAL' : 'RECEIPT OF DESCENT', 19);
-  ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 30, w - 20, 1);
+  line('THE CHOIR OF VAEL', 10, PAL.crimson3);
+  line(survived ? 'CERTIFICATE OF SURVIVAL' : 'RECEIPT OF DESCENT', 23);
+  ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 36, w - 20, 1);
   const m = Math.floor(r.time / 60), s = String(Math.floor(r.time % 60)).padStart(2, '0');
   const row = (a, b, yy) => { line(a, yy, PAL.ink1, 'left'); text(b, x + w - 10, y + yy, PAL.ink1, { outline: null, align: 'right' }); };
-  row('TIME IN THE WOUND', `${m}:${s}`, 37); row('ROOMS CLEARED', `${r.rooms}/${r.total}`, 47); row('DEAD LAID TO REST', String(r.kills), 57); row('GOLD GATHERED', String(r.gold), 67);
-  row(survived ? 'RELICS FOUND' : 'TITHED TO THE CHOIR', survived ? String(r.items.length) : `${r.tithe} GOLD, ${r.lostItems} RELICS`, 77);
+  row('TIME IN THE WOUND', `${m}:${s}`, 44); row('ROOMS CLEARED', `${r.rooms}/${r.total}`, 57); row('DEAD LAID TO REST', String(r.kills), 70); row('GOLD GATHERED', String(r.gold), 83);
+  row(survived ? 'RELICS FOUND' : 'TITHED TO THE CHOIR', survived ? String(r.items.length) : `${r.tithe} GOLD, ${r.lostItems} RELICS`, 96);
   const best = [...r.items].sort((a, b) => b.ri - a.ri)[0];
-  if (best) text(best.name, W / 2, y + 112, RARITY[best.ri].color, { align: 'center', outline: PAL.ink1, shadow: false });
-  ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 86, w - 20, 1);
-  if (survived) { line('THE CROWD IS SATISFIED. FOR NOW.', 92, PAL.crimson3); }
-  else { line('YOUR TITHE HAS BEEN GRATEFULLY RECEIVED.', 92, PAL.crimson3); }
-  if (best) line('FINEST FIND', 103, PAL.stone1);
-  if (game.deathT > 1.4 && Math.floor(game.real * 2) % 2 === 0) line(survived ? 'TAP TO RETURN TO VAEL' : 'TAP TO WAKE IN THE VESTRY', 128);
+  if (best) text(best.name, W / 2, y + 138, RARITY[best.ri].color, { align: 'center', outline: PAL.ink1, shadow: false });
+  ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 107, w - 20, 1);
+  if (survived) { line('THE CROWD IS SATISFIED. FOR NOW.', 113, PAL.crimson3); }
+  else { line('YOUR TITHE HAS BEEN GRATEFULLY RECEIVED.', 113, PAL.crimson3); }
+  if (best) line('FINEST FIND', 126, PAL.stone1);
+  if (game.deathT > 1.4 && Math.floor(game.real * 2) % 2 === 0) line(survived ? 'TAP TO RETURN TO VAEL' : 'TAP TO WAKE IN THE VESTRY', 158);
 }
 
 function onTap(x, y) {
@@ -2560,14 +2734,16 @@ function onTap(x, y) {
     case 'title': {
       const hit = menuButtons().find((b) => x < 0 || (Math.abs(x - b.x) < b.w / 2 + 6 && Math.abs(y - b.y) < b.h / 2 + 6));
       if (!hit) return true;
+      sfx('tap');
       if (hit.id === 'tutorial') { SAVE.tutorialDone = false; SAVE.metOdile = false; persist(); Object.assign(tut, { on: true, step: 0, t: 0, flags: { moved: 0 } }); }
       enterTown();
       return true;
     }
-    case 'pause': game.state = 'play'; return true;
+    case 'pause': sfx('tap'); game.state = 'play'; return true;
     case 'loading': return true;
     case 'dialog': {
       const d = game.dialog;
+      sfx('tap', { vol: 0.6 });
       if (Math.floor(d.t * 45) < d.lines[d.i].length) d.t = 99;
       else if (d.i < d.lines.length - 1) { d.i++; d.t = 0; }
       else game.state = 'play';

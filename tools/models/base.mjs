@@ -28,9 +28,9 @@ export function saintModel(pose = {}) {
   const S = new Scene(), cx = 22, B = bob, X = lean;
   const hipY = 45 + B, kneeY = 53, footY = 61;
   // Cape behind, flowing back as the Saint moves, with folds.
-  const capeSheet = folds(skirt(cx - 1.2, 27 + B, 57.5, 4.4, 8.2, -2.4, 0.45, 'crimsonDark'), { cx: cx - 1.2, cz: -2.4, n: 9, amp: 0.55, y0: 30, y1: 57 });
+  const capeSheet = folds(skirt(cx - 1.2, 27 + B, 54, 4.4, 7.6, -2.4, 0.45, 'crimsonDark'), { cx: cx - 1.2, cz: -2.4, n: 9, amp: 0.55, y0: 30, y1: 54 });
   S.add(rotZ(clip(capeSheet, (x, y, z) => z + 1.2), [cx - 1, 27 + B], cape * 0.05), 0);
-  S.paint({ f: (x, y, z) => (y > 55.6 + cape * 0.3 && z < -1 ? -1 : 1), mat: 'gold' });
+  S.paint({ f: (x, y, z) => (y > 52.4 + cape * 0.3 && z < -1 ? -1 : 1), mat: 'gold' });
   // Legs: thighs, shins and boots.
   for (const [side, sw, up] of [[-1, -legs, lift[0]], [1, legs, lift[1]]]) {
     const hz = side * 1.9, hx = cx + side * 0.4;
@@ -43,7 +43,7 @@ export function saintModel(pose = {}) {
   // Doublet torso and the knee-length tabard with folds.
   S.add(ellipsoid([cx + X, 35 + B, 0], [4.7, 6.6, 3.6], 'crimson'), 0);
   S.add(ellipsoid([cx + X * 0.5, 43 + B, 0], [4.6, 3, 3.3], 'cloth'), 2);
-  S.add(folds(skirt(cx + 0.5 + X * 0.3, 42 + B, 55 + B * 0.4, 4.7, 6.6, 0, 1.0, 'cloth'), { cx: cx + 0.5, n: 7, amp: 0.5, y0: 43, y1: 55, phase: 0.6 }), 1.2);
+  S.add(folds(skirt(cx + 0.5 + X * 0.3, 42 + B, 51.5 + B * 0.4, 4.7, 6.3, 0, 1.0, 'cloth'), { cx: cx + 0.5, n: 7, amp: 0.5, y0: 43, y1: 51.5, phase: 0.6 }), 1.2);
   // The cowl: hood, mantle and shoulders as one drape.
   S.add(ellipsoid([cx + X, 28.4 + B, 0], [6.6, 3.2, 4.2], 'crimson'), 1.8);
   // Back arm, half hidden.
@@ -77,11 +77,11 @@ export function saintModel(pose = {}) {
   S.paint({ f: (x, y, z) => { const e = cut.f(x, y, z); return Math.max(e - 0.95, -hoodD(x, y, z) - 0.7); }, mat: 'gold' });
   // Gold stole with crimson crosses, belt and hem.
   const sx = cx + 1.1 + X * 0.6;
-  S.paint({ f: (x, y, z) => Math.max(Math.abs(x - sx) - 1.4, 28 + B - y, y - 55, -z + 0.5), mat: 'gold' });
+  S.paint({ f: (x, y, z) => Math.max(Math.abs(x - sx) - 1.4, 28 + B - y, y - 51.5, -z + 0.5), mat: 'gold' });
   for (const yy of [35, 48]) S.paint({ f: (x, y, z) => Math.min(Math.max(Math.abs(x - sx) - 1.1, Math.abs(y - yy - B) - 0.45), Math.max(Math.abs(x - sx) - 0.45, Math.abs(y - yy - B) - 1.4)) + (z < 0 ? 9 : 0), mat: 'crimson' });
   S.paint({ f: (x, y) => Math.abs(y - (41.4 + B)) - 0.85, mat: 'leather' });
   S.paint({ f: (x, y, z) => Math.max(Math.abs(y - (41.4 + B)) - 1.1, Math.abs(x - sx) - 1.1, -z + 2), mat: 'gold' });
-  S.paint({ f: (x, y) => Math.abs(y - (54.3 + B * 0.4)) - 0.8, mat: 'gold' });
+  S.paint({ f: (x, y) => Math.abs(y - (50.8 + B * 0.4)) - 0.8, mat: 'gold' });
   // The cracked halo, seen from just above.
   S.add(torus([hx - 1.2, hy - 10 + halo, 0], 5.2, 0.85, 0.38, 'halo'), 0);
   S.sub(sphere([hx + 3.6, hy - 9.8 + halo, 2.6], 1.15), 0);
