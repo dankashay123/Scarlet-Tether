@@ -1,14 +1,14 @@
 # Hollow Saint: notes for Claude
 
 A top-down pixel auto-shooter for iPhone landscape, in one file with no build
-step. Read `docs/HANDOFF.md` first: it holds the current state, what comes
-next, and the owner's preferences.
+step. Read `docs/HANDOFF.md` first: it holds the current state, the
+owner's preferences and a prioritised list of ideas to tackle next.
 
 ## Where things are
 
 | Path | What |
 |---|---|
-| `index.html` | The whole game (about 2,600 lines, Canvas 2D). The `T` table at the top holds tuning (`T.viewH` = 305, the view height; matches the Otherworld Legends phone camera); `WS = 1.3` is the world scale |
+| `index.html` | The whole game (about 3,850 lines, Canvas 2D). The `T` table at the top holds tuning (`T.viewH` = 305, the view height; matches the Otherworld Legends phone camera); `WS = 1.3` is the world scale |
 | `assets/sprites/*.png`, `sprites.json` | Generated sheets (committed). Never edit them by hand |
 | `tools/sprites.mjs` | Builds every sheet. Older hand-drawn art lives here; sculpted models override it by anim name |
 | `tools/sdf.mjs` | The sculpted pixel-art renderer (SDF shapes, smooth union, lighting, palette banding, outlines). `setRes(2)` renders on a 2x2 grid |
@@ -16,7 +16,7 @@ next, and the owner's preferences.
 | `tools/models/*.mjs` | Model sets: `base` (materials + Saint model), `saint`, `common`, `rare`, `elite`, `townfolk`, `town`, `dungeon`, `floor` (flagstones, water), `vfx` (effects, icons, loot, HUD sound icon), `props` (3/4-view furniture, pilasters, floor bits, HUD buttons), `weapon` (the floating crossbow, 16 angles), `street` (town street props and ground decals) |
 | `assets/audio/*.mp3` | Sound effects, music and ambience (committed). Rebuilt by `tools/build-audio.sh <src>` from the packs in `docs/CREDITS.md` |
 | `docs/CREDITS.md` | Every asset source and licence. Add to it when you add an asset |
-| `docs/ART_COMPARISON.md` | Otherworld Legends vs our art: the gap list |
+| `docs/ART_COMPARISON.md` | Otherworld Legends vs our art: the gap list, map layout recipe, camera and pixel-size measurements |
 | `tools/palette.mjs` | Master palette: 24 ramps × 9 steps. Every pixel must be on it |
 | `tools/preview.mjs` | Render one model set to a PNG for review |
 | `tools/tests/*.cjs` | Playwright checks (see below) |
@@ -30,7 +30,7 @@ next, and the owner's preferences.
 node tools/sprites.mjs                                   # rebuild all sheets (~8 s)
 node tools/preview.mjs tools/models/rare.mjs out.png 4   # preview one set at 4x; optional 4th arg filters anim names
 CHUNKY=1 node tools/preview.mjs ...                      # preview as shipped (2x2 chunky pixels); CHUNKY=2 shows fine and chunky
-python3 -m http.server 8123                              # serve; open /?town, /?run, /?fps
+python3 -m http.server 8123                              # serve; open /?town, /?run, /?fps (keys: WASD, Space dash, E use, I bag, M town map, N mute)
 node tools/tests/dun.cjs <outDir>     # dungeon: start room, fight, rare+elite packs
 node tools/tests/all.cjs <outDir>     # spawns all 30 monsters with affixes
 node tools/tests/floor.cjs <outDir>   # clears a full floor through the Waystone to the tally
@@ -66,4 +66,7 @@ Each test writes screenshots to `<outDir>/shots/` and prints `errors 0 []` when 
 - **Floor tiles:** stay 16 px (`TILE`). Back walls are 3 tiles tall plus a cap: `hall.wall` = [top, cap, upper, lower, mid].
 - **Shipping:** work on a branch, then push to `master`. The owner asked for every finished round to go to master; GitHub Pages deploys from it. End commits with the attribution lines the session asks for.
 - **Names:** never borrow names or terms from other games (the owner removed all Blasphemous and Diablo terms for copyright). Our terms: Zeal (resource), Reckoning (ultimate), Rites (skills), Pilgrim/Zealot/Martyr/Saint (difficulty), Hallowed (top rarity), Vigil Trials (endless mode), health orbs, Carnage bonus.
+- **Layouts:** dungeon rooms follow the Otherworld Legends recipe in `docs/ART_COMPARISON.md`: open floors, one mirrored plan per room, a mirrored back-wall rhythm, clutter in corners, nothing floating. Review with `tools/tests/rooms.cjs`.
+- **UI sizes:** the view height varies a little per device (whole-number scaling), so place UI from `W`/`H` and check panels fit at H ≈ 290.
 - **Writing style:** keep docs and code comments plain and short.
+- **Finishing a round:** run the tests and soak, look at the screenshots, update `docs/HANDOFF.md` (state, history, next ideas) and this file, then push the branch and `master`.
