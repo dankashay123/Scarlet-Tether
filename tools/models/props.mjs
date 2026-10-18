@@ -57,6 +57,27 @@ function crate() {
   return fr;
 }
 
+// ---------------------------------------------------------------- pillar ---
+// A free-standing square pillar, Otherworld Legends style: a wide plinth, a
+// plain square shaft with a few cracks and a capital whose lit top shows.
+// About 2.5 tiles tall, so the floor around it stays readable.
+function pillar(v) {
+  // Pale marble shaft between darker stone plinth and capital: brighter than
+  // the walls and well clear of them, so it reads as a pillar.
+  const S = new Scene(), G = 60, cx = 12, d = 5, T0 = 0.38;
+  S.add(box([cx, G - 2.5, 0], [9.6, 2.5, d + 2.8], 0.6, 'stone'), 0);
+  S.add(box([cx, G - 5.8, 0], [8, 1.2, d + 1.6], 0.5, 'marble'), 0.3);
+  S.add(box([cx, G - 25, 0], [6, 18, d], 0.4, 'marble'), 0.4);
+  for (const x of [cx - 4.4, cx + 4.4]) S.sub(box([x, G - 25, d + 0.1], [0.5, 17, 0.7], 0), 0);
+  S.add(box([cx, G - 44.2, 0], [8, 1.2, d + 1.6], 0.5, 'marble'), 0.3);
+  S.add(box([cx, G - 47.4, 0], [9.6, 2.2, d + 2.8], 0.5, 'stone'), 0.3);
+  if (v === 1) S.sub(box([cx + 7, G - 48.6, d + 2.6], [2.2, 1.6, 2], 0.6), 0.6);
+  const fr = R(S, 24, 62, M, view(G, d + 3, T0));
+  const P = proj(G, d + 3, T0);
+  for (const [x, z] of [[cx - 9, d + 3], [cx - 8, d + 3], [cx + 9, d + 3]]) { const [px, py] = P(x, G - 0.5, z); if (has(fr, px, py)) put(fr, px, py, 'moss2'); }
+  return fr;
+}
+
 // ----------------------------------------------------------------- chest ---
 function chest(open) {
   const S = new Scene(), G = 33, cx = 16, d = 7, top = G - 11;
@@ -379,7 +400,7 @@ function pilaster() {
 }
 
 export default {
-  hall: { crate: () => [crate()], pilaster: () => [pilaster()] },
+  hall: { crate: () => [crate()], pilaster: () => [pilaster()], pillar: () => [0, 1].map(pillar) },
   props: { sarcophagus: () => [sarcophagus()], statue: () => [weepingSaint()] },
   loot: {
     chest: () => [chest(false), chest(true)], pew: () => [pew()], altar: () => [altar()],

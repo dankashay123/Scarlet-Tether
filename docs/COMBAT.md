@@ -1,18 +1,18 @@
 # Hollow Saint — Combat, Monsters, Loot and Town (v1)
 
-Adapted from Diablo III's battle design and made our own. This file extends
+Our own battle design, built for short mobile runs. This file extends
 `GDD.md`; where they differ, this file is newer.
 
 ## The descent: a floor of locked rooms
 
-There is no timer. Each Stratum floor is a large map of 9 big rooms (1 to 1.3 screens each; earlier drafts said 10–12) joined by
+There is no timer. Each Stratum floor is a map of 9 near-square rooms (earlier drafts said 10–12) joined by
 corridors (Otherworld Legends style):
 
 | Room | What happens |
 |---|---|
 | Vestibule | Start. Safe. |
 | Crypt (combat) | Step inside and the iron gates drop behind you. 2–3 waves spawn; the next wave comes when the last is nearly dead. Clear it and the gates rise. |
-| Reliquary (elite) | A yellow Elite and its minions, plus a wave. Skull on the map. |
+| Champion's Hall (elite) | A yellow Elite and its minions, plus a wave. Skull on the map. |
 | Shrine | A shrine with a short buff. Gates never lock. |
 | Treasury | A locked chest and breakables; sometimes a Collection Imp. |
 | Warden's Chamber (exit) | The furthest room. The hardest fight; clearing it wakes the Waystone home. |
@@ -30,21 +30,21 @@ and lighting. The minimap reveals rooms as you enter them.
 | Elite | **gold glow**, 1.6–2× size, unique name ("Marrowgaunt the Unshriven") | 2–4 | one Elite with 3–5 common minions |
 
 An engaged Rare or Elite shows its name, HP bar and affixes at the top of the
-screen, as Diablo III does.
+screen.
 
 ### Common (10)
 
 | Monster | Behaviour |
 |---|---|
 | Risen | Shambles in, claws. |
-| Crawling Penitent | Legless; fast, low, comes in groups. |
+| Crawling Sinner | Legless; fast, low, comes in groups. |
 | Candle-Mourner | Keeps distance, lobs wax fire that lands on a telegraphed circle. |
 | Bone Acolyte | Keeps distance, fires aimed bone shards. |
 | Gravewarden | Tower shield blocks frontal bolts; shield-bash lunge. |
 | Tithe Rats | Tiny, very fast swarm. |
 | Bloated Votary | Waddles close, swells, bursts into a blood pool. |
-| Flagellant | Circles, then charges in a straight line. |
-| Weeping Cherub | Flies, fires a three-tear spread. |
+| Scourger | Circles, then charges in a straight line. |
+| Weeping Putto | Flies, fires a three-tear spread. |
 | Choir Wisp | Blinks next to you and lunges. |
 
 ### Rare (10)
@@ -55,7 +55,7 @@ screen, as Diablo III does.
 | Tithe Collector | Swings a censer that sprays a ring of embers; whistles up rats. |
 | Mother Wax | Lobs three wax bombs that leave fire. |
 | Hollow Bishop | Raises Risen; aimed shots. |
-| Chain Jailer | Throws a chain along a telegraphed line and drags you in. |
+| Chain Turnkey | Throws a chain along a telegraphed line and drags you in. |
 | Bell Ringer | Tolls an expanding shockwave ring: dash through it. |
 | Scourge Matron | Whip barrage in a cone. |
 | Carrion Choirboy | Screams in a cone that slows; spits. |
@@ -66,11 +66,11 @@ screen, as Diablo III does.
 
 | Monster | Behaviour |
 |---|---|
-| Penitent Colossus | Ground-slam shockwave and a charge. |
+| Shackled Colossus | Ground-slam shockwave and a charge. |
 | Seraph of Ash | Flies; feather volleys. |
-| Reliquary Golem | Charges; hurls coffins. |
+| Ossuary Golem | Charges; hurls coffins. |
 | The Thrice-Buried | Splits into three when killed. |
-| Abbess of Thorns | Thorns erupt under you (telegraphed); thorn cone. |
+| Abbess of Brambles | Thorns erupt under you (telegraphed); thorn cone. |
 | Censer Titan | Three burning censers orbit it. |
 | The Many-Mouthed | Spiral bullet patterns. |
 | Grave Leviathan | Burrows and bursts up under you. |
@@ -81,50 +81,50 @@ screen, as Diablo III does.
 
 Every affix is telegraphed and dodgeable ("Learn the fight").
 
-| Affix | Diablo III cousin | Effect |
-|---|---|---|
-| Hale | Extra Health | +60% HP |
-| Swift | Fast | +40% speed, faster attacks |
-| Horde | Horde | Extra minions |
-| Smoldering | Molten | Leaves a burning trail; erupts on death |
-| Defiled | Desecrator | Blood pools open under you |
-| Hoarfrost | Frozen | Frost orbs burst after a delay and slow you |
-| Venomous | Poison Enchanted | Cross-shaped poison bursts |
-| Mortar | Mortar | Lobs bombs from range |
-| Tolling | Thunderstorm | Bell-lightning strikes telegraphed circles |
-| Shackling | Jailer | A circle snaps shut and roots you |
-| Beckoning | Vortex | Drags you to it |
-| Blinking | Teleporter | Teleports near you |
-| Warded | Shielding | Periodically invulnerable |
-| Vengeful | Avenger | Packmates grow stronger as others die |
-| Mirrored | Illusionist | Splits off illusions when hurt |
-| Smiting | Knockback | Hits knock you back |
-| Walling | Waller | Raises bone walls |
-| Chained | Fire Chains | Burning chains link pack members |
-| Penitent | Reflect Damage | Reflects a little damage back |
+| Affix | Effect |
+|---|---|
+| Hale | +60% HP |
+| Swift | +40% speed, faster attacks |
+| Swarming | Extra minions |
+| Smoldering | Leaves a burning trail; erupts on death |
+| Defiled | Blood pools open under you |
+| Hoarfrost | Frost orbs burst after a delay and slow you |
+| Venomous | Cross-shaped poison bursts |
+| Shelling | Lobs bombs from range |
+| Tolling | Bell-lightning strikes telegraphed circles |
+| Shackling | A circle snaps shut and roots you |
+| Beckoning | Drags you to it |
+| Blinking | Teleports near you |
+| Warded | Periodically invulnerable |
+| Vengeful | Packmates grow stronger as others die |
+| Mirrored | Splits off illusions when hurt |
+| Smiting | Hits knock you back |
+| Stonebound | Raises bone walls |
+| Chained | Burning chains link pack members |
+| Remorseful | Reflects a little damage back |
 
 ## Drops and pickups
 
 - **Gold** spills from kills and breakables and is pulled in when near.
   Death tithes half the run's gold to the Choir.
-- **Health globes**: red orbs, heal 15% of max HP. Elites drop them more often.
+- **Health orbs**: red orbs, heal 15% of max HP. Elites drop them more often.
 - **Items** with rarity colours and light beams: Common (white), Blessed (blue),
-  Consecrated (yellow), Relic-touched (orange), Saint's Set (green). Found items
+  Consecrated (yellow), Hallowed (orange), Saint's Set (green). Found items
   go to the stash for the Vestment slice item.
-- **Shrines**: Fervor (double damage), Haste (+50% speed), Warding (half damage
+- **Shrines**: Zeal (double damage), Haste (+50% speed), Warding (half damage
   taken), Plenty (a rain of gold). 20–30 s each.
-- **Breakables**: urns and coffins burst into gold and the odd globe.
+- **Breakables**: urns and coffins burst into gold and the odd orb.
 - **Collection Imp** (treasure goblin): flees with a sack; kill it before it
   opens a portal for a shower of gold and items.
-- **Massacre**: chain kills within a second of each other for a gold bonus.
+- **Carnage**: chain kills within a second of each other for a gold bonus.
 
 ## Vael
 
 A long, horizontal town in permanent twilight, built over older ruins, dark
-and ominous but alive. Left to right: the Penitents' Gate with gallows and
+and ominous but alive. Left to right: the Pilgrims' Gate with gallows and
 cages; the market (Pell's Stall, the plush-Saint souvenir stand, carts); the
 Gilded Lamb and the scrying pool, where a crowd watches the Saint; the Forge of
-Penance; the graveyard with crows; then the cathedral steps and the Vestry,
+Reckoning; the graveyard with crows; then the cathedral steps and the Vestry,
 whose lift takes you down. Fog, drifting ash, chimney smoke, flickering
 windows, wandering townsfolk, children playing, crows that scatter, and dark
 foreground silhouettes for depth.

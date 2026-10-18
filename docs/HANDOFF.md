@@ -1,26 +1,36 @@
 # Handoff
 
-Last updated 2026-10-18, after round 5 (bigger rooms, OWL camera, descent panel, town map).
+Last updated 2026-10-18, after round 6 (clean OWL-style maps, auto equip, bulk sell, name purge).
 
 ## Where the game stands
 
 Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page errors in any test.
 
 - **Start:** a start menu, then the town of Vael. A dismissible 11-step tutorial (SKIP TUTORIAL) runs from the town into the first fight.
-- **The descent:** a floor of 9 large rooms on a 3×3 grid (each 1 to 1.3 screens across).
+- **The descent:** a floor of 9 near-square rooms on a 3×3 grid (40–50 × 28–34 tiles).
   - Gates lock behind you and waves spawn.
   - Room types: vestibule, crypts, a reliquary with an elite, a shrine, a treasury and the Warden's chamber.
   - Clearing the Warden's chamber wakes the Waystone home, which leads to the tally screen.
   - There is no timer.
-- **Monsters:** 30 of them (10 common; 10 rare, which glow blue; 10 elite, which glow gold), plus the Collection Imp. All attacks are telegraphed. 19 Diablo III-style affixes, elite names and a nameplate bar.
-- **Loot:** gold, health globes, items in 5 rarities, shrines, chests, breakables and a Massacre bonus. Gold saves to localStorage under the key `hollow-saint`.
+- **Monsters:** 30 of them (10 common; 10 rare, which glow blue; 10 elite, which glow gold), plus the Collection Imp. All attacks are telegraphed. 19 affixes, elite names and a nameplate bar.
+- **Loot:** gold, health orbs, items in 5 rarities, shrines, chests, breakables and a Carnage bonus. Gold saves to localStorage under the key `hollow-saint`.
 - **Vael:** a long twilight street with six districts, 13 talking townsfolk, walkers, kids, crows, fog, ash and lightning.
+- **Round 6:**
+  - Maps follow the Otherworld Legends recipe (studied from wiki and Steam screenshots): most of the floor stays open, each combat room gets one mirrored plan (`r.plan`: empty, grid4, twin, center, sidepools, edgerow, corners, pews), clutter sits in corners, and nothing hangs in mid air (the wall chains are gone).
+  - Back walls follow a 7-tile rhythm mirrored about the room centre (`bay()`): pilaster, torch stand, statue on a plinth, window or banner.
+  - New pale marble pillar (`hall.pillar` in `tools/models/props.mjs`), short and narrow so it never reads as a wall. The old 76 px column is unused.
+  - The south side of a room has no wall: the floor ends in a stone ledge over black (`bakeWallEdges`).
+  - Rooms are near-square (40–50 × 28–34 tiles, `GRID` cells 56×42).
+  - Bag: AUTO EQUIP wears the best piece per slot by `itemScore`; SELL MANY offers four rules (worse than worn, common and blessed, all but hallowed and set, everything) with counts and gold shown first.
+  - Town props and townsfolk no longer block the Saint.
+  - Names: every Blasphemous or Diablo term is gone from the game and docs (see CLAUDE.md, "Names").
+  - `tools/tests/rooms.cjs` photographs every room of a floor for layout review.
 - **Round 5:**
   - Camera: the view is 430 px tall like Otherworld Legends (heroes about 12% of screen height). `resize()` draws into an offscreen buffer, copies it to the screen canvas at the next whole scale, and CSS shrinks it with smoothing, so pixels stay even at any height. `PRE` is that whole scale.
   - Rooms are 54–67 × 26–32 tiles (`GRID` = 3×3, cells 74×40, corridors 5 wide). Wave sizes grow with room area (`r.ak`, power 0.55) and props, decals and critters with power 0.85 (`many()`). The baked floor canvas is about 3.6k × 2k px, under iOS canvas limits.
-  - Descent panel (`renderDescent`): before going down it shows the stratum, difficulty picker, floor makeup, monster health and damage, waves, curse counts, gold per coin/kill/rare/elite/room, relic odds per kill/rare/elite/room, rarity odds for foes and elites (`rarityOdds`, the same sums as `rollItem`), XP rate, death penalty and your stats.
-  - Difficulty tiers (`DIFF`): Penitent, Zealot, Martyr, Saint. They scale monster health and damage (`spawnMonster`, `damagePlayer`, `hurtPlayerRaw`), gold, relic count and rarity (`dropLoot`), XP (`gainXp`) and add a curse to rares and elites from Martyr. Zealot opens after one descent; each next tier after finishing a descent on the one before (`SAVE.cleared`). The choice is saved in `SAVE.diff`.
-  - Town sites (`SITES`): Pilgrim Road (Stratum II), Pell's stall, plush stall, bounty board, scrying pool wagers, the Forge, the Bleeding Vigil (Greater Rifts), Martyrdom and the Reliquary (Canonization). Each has a floating badge and a LOCKED prompt; the panel says "UNLOCKED WHEN …" with a progress bar. When the condition is met it says the feature comes in a later build. New counters: `SAVE.eliteKills`, `SAVE.bestLevel`.
+  - Descent panel (`renderDescent`): before going down it shows the stratum, difficulty picker, floor makeup, monster health and damage, waves, curse counts, gold per coin/kill/rare/elite/room, item odds per kill/rare/elite/room, rarity odds for foes and elites (`rarityOdds`, the same sums as `rollItem`), XP rate, death penalty and your stats.
+  - Difficulty tiers (`DIFF`): Pilgrim, Zealot, Martyr, Saint. They scale monster health and damage (`spawnMonster`, `damagePlayer`, `hurtPlayerRaw`), gold, item count and rarity (`dropLoot`), XP (`gainXp`) and add a curse to rares and elites from Martyr. Zealot opens after one descent; each next tier after finishing a descent on the one before (`SAVE.cleared`). The choice is saved in `SAVE.diff`.
+  - Town sites (`SITES`): Pilgrim Road (Stratum II), Pell's stall, plush stall, bounty board, scrying pool wagers, the Forge, the Bleeding Vigil (Vigil Trials), Martyrdom and the Canonry (Canonization). Each has a floating badge and a LOCKED prompt; the panel says "UNLOCKED WHEN …" with a progress bar. When the condition is met it says the feature comes in a later build. New counters: `SAVE.eliteKills`, `SAVE.bestLevel`.
   - Town minimap: a small picture of the street around you with badges for every site and named townsperson (`NPC_BADGE`). Tap it (or press M) for the full map with district names and a legend.
   - Map badges: `ui.badge` / `ui.badgeBig` in `tools/models/props.mjs` (`MAP_BADGES`, same order in `index.html`). The small font gained ( ) < > ~ =.
   - `tools/tests/descent.cjs` covers the minimap, map, a site panel and the descent panel.
@@ -28,13 +38,13 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
   - Large mixed-size flagstone floors per theme, and in the town street.
   - Walls on every side with lit tops, and soft cast shadows.
   - Darker ambient, warm torch pools and bloom, no orange wash.
-  - Effects, item icons, coins, globes and enemy shots remodelled (`tools/models/vfx.mjs`).
+  - Effects, item icons, coins, orbs and enemy shots remodelled (`tools/models/vfx.mjs`).
   - New UI font: Kenney High, bold, cap height 9.
   - Saint legs show in the run; golem legs split; leviathan rears; darker Inquisitor hood.
 - **Optimisation and bug pass:**
   - Rendering: the game draws straight into the screen canvas and CSS scales it (pixelated); only the visible part of the baked floor is drawn; blood soaks into the floor canvas; darkness and soft glows render at half size; glows and light holes are cached sprites. About 11 to 18 fps in the heaviest crowd at 4x CPU throttle in headless Chromium (software rendering), 44+ in town; our own code is 3 to 6 ms per frame at real speed.
-  - Fixed: raised walls could trap the Saint (box test plus an `unstick` safety net for the Saint and enemies); last run's Stigmata leaked into town and the next run; a full bag could destroy an item for an empty slot; bolts fizzled against the back wall (they now track height above the floor); vacuumed drops could turn NaN; 1/2/3 on the card screen also cast a miracle; stale run flags on items after a closed tab; the mute button took taps meant for overlays; useless hits delayed the stuck-room rescue; the second censer had no glow; life on kill could heal a dead Saint.
-  - Cleared rooms pull their gold and relics to the Saint.
+  - Fixed: raised walls could trap the Saint (box test plus an `unstick` safety net for the Saint and enemies); last run's Stigmata leaked into town and the next run; a full bag could destroy an item for an empty slot; bolts fizzled against the back wall (they now track height above the floor); vacuumed drops could turn NaN; 1/2/3 on the card screen also cast a rite; stale run flags on items after a closed tab; the mute button took taps meant for overlays; useless hits delayed the stuck-room rescue; the second censer had no glow; heal on kill could heal a dead Saint.
+  - Cleared rooms pull their gold and gear to the Saint.
   - `tools/tests/soak.cjs` plays at random for minutes and checks for errors, NaN, stuck states and the Saint inside walls.
 - **Round 3 (inspired by Pixel Hunter Idle, see `docs/ART_COMPARISON.md`):**
   - The Nail Crossbow floats: `tools/models/weapon.mjs` renders it at 16 angles; `updateFloatBow`/`drawFloatBow` in `index.html` hover, aim, recoil and glow. Bolts leave from its tip. The Saint now raises a glowing palm instead of holding it.
@@ -42,7 +52,7 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
 - **Round 2:**
   - Map bug fixed: the room grid lookup wrapped across rows, so corridors could join far rooms and leave others unreachable (185 of 200 floors were affected). Loop links are now orthogonal, the spawn and carpet aisles are kept clear of props, and enemies spawn only on open tiles. A room where nothing is hurt for 15 s pulls its survivors into the open. `tools/tests/maps.cjs` checks 300 floors.
   - Minimap redrawn as a room grid with fog, corridors, locked gates in red, room icons and a blinking marker; the town shows a street strip.
-  - Inventory and equipment: a 30-slot bag and 8 slots (hood, mantle, gloves, girdle, rosary, seal, relic, greaves), saved in localStorage (`SAVE.bag`, `SAVE.equip`). Every item has a slot base stat plus rolls; relic-touched items have a power, Odile's set has 2- and 4-piece bonuses. Stats apply through `G` (see `gearStats()`). Open with the bag button or I. Tap twice to wear; sell for gold. Empty slots auto-equip. On death the Choir takes every other relic picked up that run (worn ones are safe). Floor labels stack and show a green arrow for upgrades; rarer drops have loot beams.
+  - Inventory and equipment: a 30-slot bag and 8 slots (hood, mantle, gloves, girdle, pendant, seal, item, greaves), saved in localStorage (`SAVE.bag`, `SAVE.equip`). Every item has a slot base stat plus rolls; hallowed items have a power, Odile's set has 2- and 4-piece bonuses. Stats apply through `G` (see `gearStats()`). Open with the bag button or I. Tap twice to wear; sell for gold. Empty slots auto-equip. On death the Choir takes every other item picked up that run (worn ones are safe). Floor labels stack and show a green arrow for upgrades; rarer drops have loot beams.
   - 3/4-view furniture (crate, chest, pew, altar, sarcophagus, shrine, coffin, maiden, cage, statues, columns, urns), stone pilasters on back walls, engraved floor seals, new splats, mounds, candles, gibs, cobwebs and HUD buttons. `node tools/sprites.mjs --audit` reports no old art left.
 - **Audio:** Kenney SFX for every action, OpenGameArt music (town, dungeon) and town wind and crickets. Mute button under pause (or M key), saved in localStorage. iOS 17+ follows the silent switch via `navigator.audioSession.type = 'ambient'`. Sources in `docs/CREDITS.md`.
 - **Graphics v5:**
@@ -52,7 +62,7 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
 ## The owner's preferences
 
 - Graphics matter most right now. The target is Otherworld Legends (the owner shared six screenshots): warm torch-lit stone halls, crisp hue-shifted pixel art with 7–10 shades per material, and nothing that looks AI-made.
-- Inspiration for systems is Diablo III: elite affixes, loot showers and a lively town.
+- Systems lean on classic action-RPG ideas (elite affixes, loot showers, a lively town), with our own names. Never use names or terms from other games (the owner asked for no Blasphemous or Diablo terminology).
 - Ship each finished round to `master`.
 - They read on a phone, so keep updates short and lead with the outcome.
 
@@ -66,7 +76,7 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
    - The Inquisitor's hood is too bright.
    - Sarcophagus lid is plain.
    - The Saint's legs barely show in the run cycle.
-   - The fx sheet (bolt, impacts, smoke, thurible, flask, chain links) and the item icons are still the older hand-drawn style at the old size.
+   - The fx sheet (bolt, impacts, smoke, thurible, vial, chain links) and the item icons are still the older hand-drawn style at the old size.
    - The 5×7 pixel font is small at 360 px; consider a larger or bolder UI font.
 2. **Audio:** the owner wants a free sound pack. Kenney (CC0) is the easiest. The network must allow the host first (see below). Sounds can also be synthesised with WebAudio.
 5. **Roadmap items** (`docs/ROADMAP.md`): Stigmata level-ups, Vestments and crafting, the Bellwright boss, death/Shade, Martyrdom, Vigil tiers, suspend/resume.

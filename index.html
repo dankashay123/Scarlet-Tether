@@ -374,11 +374,12 @@ const pick = (a) => a[Math.floor(rng() * a.length)];
 
 // A Stratum floor: a grid of themed rooms joined by corridors. Entering a
 // combat room drops iron gates behind you until its waves are dead.
-// Rooms are 1 to 1.3 screens across, like Otherworld Legends. Nine of them
-// keep the baked floor canvas under iOS size limits (about 3.6k x 2k px).
-const GRID = { cols: 3, rows: 3, cw: 74, ch: 40, hall: 5 };
+// Rooms are near-square like Otherworld Legends: under a screen wide and a
+// little over a screen tall. Nine of them keep the baked floor canvas small
+// (about 2.7k x 2.1k px).
+const GRID = { cols: 3, rows: 3, cw: 56, ch: 42, hall: 5 };
 const ROOM_AREA0 = 476; // average room area before v6; content scales from it
-const ROOM_NAMES = { start: 'THE VESTIBULE', combat: 'CRYPT', elite: 'RELIQUARY', shrine: 'SHRINE', treasury: 'TREASURY', exit: "THE WARDEN'S CHAMBER" };
+const ROOM_NAMES = { start: 'THE VESTIBULE', combat: 'CRYPT', elite: "CHAMPION'S HALL", shrine: 'SHRINE', treasury: 'TREASURY', exit: "THE WARDEN'S CHAMBER" };
 const THEMES = ['crypt', 'ossuary', 'flooded', 'chapel'];
 
 function makeDungeon() {
@@ -391,7 +392,7 @@ function makeDungeon() {
   // Rooms, one per cell, with small jitter so neighbours always overlap.
   const rooms = [];
   for (let gy = 0; gy < rows; gy++) for (let gx = 0; gx < cols; gx++) {
-    const rw = Math.floor(rand(54, 68)), rh = Math.floor(rand(26, 33));
+    const rw = Math.floor(rand(40, 51)), rh = Math.floor(rand(28, 35));
     const x0 = 1 + gx * cw + Math.floor((cw - rw) / 2) + Math.floor(rand(-1, 2)), y0 = 5 + gy * ch + Math.floor((ch - 4 - rh) / 2) + Math.floor(rand(-1, 1));
     rooms.push({ id: rooms.length, gx, gy, x0, y0, x1: x0 + rw - 1, y1: y0 + rh - 1, ak: rw * rh / ROOM_AREA0, links: [], gates: [], state: 'idle', visited: false, known: false });
   }
@@ -460,41 +461,79 @@ function makeDungeon() {
     const cx = Math.floor((r.x0 + r.x1) / 2), cy = Math.floor((r.y0 + r.y1) / 2);
     r.cx = cx; r.cy = cy;
     if (r.type === 'shrine') { r.shrine = place(r, 'shrine', cx, cy, 1, 1, { sheet: 'loot', anim: 'shrine', frame: Math.floor(rng() * 4), shrineKind: pick(['fervor', 'haste', 'warding', 'plenty']) }); for (let a = 0; a < 6; a++) candle((cx + 0.5) * TILE + Math.cos(a) * 40, (cy + 1) * TILE + Math.sin(a) * 26); lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 80, c: 'holy', a: 0.9 }); }
-    if (r.type === 'treasury') { r.chest = place(r, 'chest', cx, cy, 1, 1, { sheet: 'loot', anim: 'chest', frame: 0 }); lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 70, c: 'gold', a: 0.8 }); tryPlace(r, 'coffin', 1, 1, many(r, 4), () => ({ sheet: 'loot', anim: 'coffin', breakable: 2 }), 0); }
+    if (r.type === 'treasury') { r.chest = place(r, 'chest', cx, cy, 1, 1, { sheet: 'loot', anim: 'chest', frame: 0 }); lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 70, c: 'gold', a: 0.8 }); for (const dx of [-8, -6, 6, 8]) for (const dy of [-2, 2]) if (roomFree(r, cx + dx, cy + dy, 1, 1, 0)) place(r, 'coffin', cx + dx, cy + dy, 1, 1, { sheet: 'loot', anim: 'coffin', breakable: 2 }); }
     if (r.type === 'exit') { place(r, 'altar', cx - 1, r.y0 + 1, 2, 1, { sheet: 'loot', anim: 'altar' }); for (let k = -3; k <= 3; k++) candle((cx + k * 1.3) * TILE, (r.y0 + 3) * TILE, 0.8); }
-    if (r.type === 'start') { place(r, 'statue', cx, r.y0 + 2); candle((cx + 0.5) * TILE, (r.y0 + 4) * TILE - 2, 0.9); }
-    // Theme dressing.
-    if (r.theme === 'crypt') {
-      for (let y = r.y0 + 2; y < r.y1 - 1; y += 4) for (const x of [r.x0 + 3, r.x1 - 3]) if (roomFree(r, x, y, 1, 1, 0)) place(r, 'column', x, y);
-      tryPlace(r, 'sarcophagus', 2, 1, many(r, 2));
-      tryPlace(r, 'torch', 1, 1, many(r, 1), () => ({ sheet: 'hall', anim: 'torch', ph: rng() * 9 }), 2);
-    } else if (r.theme === 'ossuary') {
-      tryPlace(r, 'cage', 1, 1, many(r, 2), () => ({ sheet: 'loot', anim: 'cage' }));
-      tryPlace(r, 'maiden', 1, 1, many(r, 1), () => ({ sheet: 'loot', anim: 'maiden' }));
-      tryPlace(r, 'coffin', 1, 1, many(r, 3), () => ({ sheet: 'loot', anim: 'coffin', breakable: 2 }), 0);
-      for (let k = 0; k < many(r, 8); k++) decals.push({ kind: 'bonepile', x: rand(r.x0 + 1, r.x1) * TILE, y: rand(r.y0 + 1, r.y1) * TILE });
-      tryPlace(r, 'torch', 1, 1, many(r, 1), () => ({ sheet: 'hall', anim: 'torch', ph: rng() * 9 }), 2);
-    } else if (r.theme === 'flooded') {
-      for (let k = 0; k < many(r, 4); k++) { const wx = Math.floor(rand(r.x0 + 1, r.x1 - 4)), wy = Math.floor(rand(r.y0 + 1, r.y1 - 3)); for (let yy = wy; yy < wy + 3; yy++) for (let xx = wx; xx < wx + 5; xx++) if (!isSolid(xx, yy) && Math.hypot(xx - wx - 2, (yy - wy - 1) * 1.6) < 3) water.push([xx, yy]); }
-      for (let y = r.y0 + 3; y < r.y1 - 1; y += 5) for (const x of [r.x0 + 4, r.x1 - 4]) if (roomFree(r, x, y, 1, 1, 0)) place(r, 'column', x, y);
-      lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 90, c: 'holy', a: 0.35 });
-    } else if (r.theme === 'chapel') {
-      for (let y = r.y0 + 4; y < r.y1 - 1; y += 3) for (const x of [cx - 4, cx + 3]) if (roomFree(r, x, y, 2, 1, 0)) place(r, 'pew', x, y, 2, 1, { sheet: 'loot', anim: 'pew' });
-      tryPlace(r, 'torch', 1, 1, many(r, 1), () => ({ sheet: 'hall', anim: 'torch', ph: rng() * 9 }), 2);
+    if (r.type === 'start') { const door = r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - cx) <= 3)); place(r, 'statue', cx, door ? r.y1 - 3 : r.y0 + 2); candle((cx + 0.5) * TILE, (door ? r.y1 - 1 : r.y0 + 4) * TILE - 2, 0.9); }
+    // Layout, the Otherworld Legends way: 70-85% open floor, one deliberate
+    // mirrored feature, most dressing in a steady rhythm along the back wall,
+    // clutter in the corners and nothing hanging in mid air.
+    const W0 = r.x1 - r.x0 + 1, H0 = r.y1 - r.y0 + 1;
+    const fx = (f) => r.x0 + Math.round(f * (W0 - 1)), fy = (f) => r.y0 + Math.round(f * (H0 - 1));
+    const mirror = (f, g, fn) => { const xs = [...new Set([fx(f), fx(1 - f)])], ys = [...new Set([fy(g), fy(1 - g)])]; for (const x of xs) for (const y of ys) fn(x, y); };
+    const pillar = (x, y) => { if (roomFree(r, x - 1, y - 1, 3, 3, 0)) place(r, 'pillar', x, y, 1, 1, { sheet: 'hall', anim: 'pillar', frame: Math.floor(rng() * 2) }); };
+    const stand = (x, y) => { if (roomFree(r, x, y, 1, 1, 0)) place(r, 'torch', x, y, 1, 1, { sheet: 'hall', anim: 'torch', ph: rng() * 9 }); };
+    const urn = (x, y) => { if (roomFree(r, x, y, 1, 1, 0)) place(r, 'urn', x, y, 1, 1, { sheet: 'hall', anim: 'urn', frame: (x + y) % 2, breakable: 1 }); };
+    const pool = (x0, y0, x1, y1) => { const mx = (x0 + x1) / 2, my = (y0 + y1) / 2, rx = (x1 - x0) / 2 + 0.5, ry = (y1 - y0) / 2 + 0.5; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (((x - mx) / rx) ** 2 + ((y - my) / ry) ** 2 < 1 && !isSolid(x, y) && !nearGate(r, x, y, 3)) water.push([x, y]); };
+    const sarco = (x, y) => { if (roomFree(r, x - 1, y, 2, 1, 1)) place(r, 'sarcophagus', x - 1, y, 2, 1); };
+    const cage = (x, y) => { const k = rng() < 0.7 ? 'cage' : 'maiden'; if (roomFree(r, x, y, 1, 1, 1)) place(r, k, x, y, 1, 1, { sheet: 'loot', anim: k }); };
+    const special = r.type === 'shrine' || r.type === 'treasury';
+    if (r.type === 'start') {
+      for (let y = r.y0 + 6; y < r.y1 - 2; y += 3) for (const x of [cx - 4, cx + 3]) if (roomFree(r, x, y, 2, 1, 0)) place(r, 'pew', x, y, 2, 1, { sheet: 'loot', anim: 'pew' });
+      mirror(0.25, 0.4, pillar);
+    } else if (r.type === 'exit') {
+      for (const f of [0.3, 0.55, 0.8]) { pillar(cx - 6, fy(f)); pillar(cx + 6, fy(f)); }
+    } else if (r.type === 'elite') {
+      mirror(0.33, 0.35, pillar); mirror(0.33, 0.7, pillar);
+    } else if (special) {
+      for (const [dx, dy] of r.type === 'treasury' ? [[-11, -4], [11, -4], [-11, 5], [11, 5]] : [[-5, -3], [5, -3], [-5, 4], [5, 4]]) pillar(cx + dx, cy + dy);
+    } else {
+      const plans = {
+        crypt: ['empty', 'grid4', 'twin', 'center', 'edgerow'],
+        ossuary: ['empty', 'grid4', 'twin', 'corners'],
+        flooded: ['sidepools', 'center', 'grid4'],
+        chapel: ['pews', 'grid4', 'edgerow'],
+      }[r.theme];
+      r.plan = pick(plans);
+      // Four pillars in a 2x2 grid.
+      if (r.plan === 'grid4') mirror(0.33, 0.35, pillar);
+      // Two matching objects either side of a clear centre lane.
+      if (r.plan === 'twin') { if (r.theme === 'ossuary') { cage(fx(0.33), fy(0.55)); cage(fx(0.67), fy(0.55)); } else { sarco(fx(0.33), fy(0.55)); sarco(fx(0.67), fy(0.55)); } }
+      // One central feature with urns on its corners.
+      if (r.plan === 'center') {
+        if (r.theme === 'flooded') { pool(cx - 4, cy - 3, cx + 4, cy + 1); pillar(cx - 6, cy + 3); pillar(cx + 6, cy + 3); }
+        else { sarco(cx, cy - 2); for (const [dx, dy] of [[-3, -3], [2, -3], [-3, -1], [2, -1]]) urn(cx + dx, cy + dy); }
+      }
+      // Pools hugging the side walls, lanterns below them.
+      if (r.plan === 'sidepools') { pool(r.x0 + 2, fy(0.2), r.x0 + 8, fy(0.48)); pool(r.x1 - 8, fy(0.2), r.x1 - 2, fy(0.48)); mirror(0.27, 0.65, stand); lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 90, c: 'holy', a: 0.35 }); }
+      // A row of urns and torches along the open south edge, gap at the door.
+      if (r.plan === 'edgerow') for (let x = r.x0 + 3; x <= r.x1 - 3; x += 3) { if (r.gates.some((g) => g.side === 's' && g.tiles.some(([gx]) => Math.abs(gx - x) <= 3))) continue; ((x - r.x0) / 3) % 4 === 0 ? stand(x, r.y1 - 1) : urn(x, r.y1 - 1); }
+      // Clutter in all four corners and a sparse diagonal of skull candles.
+      if (r.plan === 'corners') for (let k = -2; k <= 2; k++) decals.push({ kind: 'skullcandle', x: (cx + k * 4 + 0.5) * TILE, y: (cy + k * 2 + 0.5) * TILE });
+      if (r.plan === 'pews') for (let y = r.y0 + 6; y < r.y1 - 2; y += 3) for (const x of [cx - 8, cx - 5, cx + 4, cx + 7]) if (roomFree(r, x, y, 2, 1, 0)) place(r, 'pew', x, y, 2, 1, { sheet: 'loot', anim: 'pew' });
     }
-    // Statues on pedestals stand along the back wall, flanked by torches.
-    if (r.type !== 'treasury') for (let x = r.x0 + 2; x < r.x1 - 1; x += 5) if (!r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - x) <= 2)) && !isSolid(x, r.y0 + 1) && !isSolid(x, r.y0 + 2)) {
-      place(r, pick(['statue_saint', 'statue_angel', 'statue_knight']), x, r.y0 + 1, 1, 1, { sheet: 'hall' });
-      if (rng() < 0.6) decals.push({ kind: 'skullcandle', x: (x + 0.5) * TILE + 12, y: (r.y0 + 2) * TILE + 2 });
+    // The back wall: statues on plinths in a steady rhythm mirrored about the
+    // centre, a torch stand flanking each statue pair, and two guardian
+    // statues either side of a north door.
+    const northDoor = r.gates.find((g) => g.side === 'n');
+    const doorX = northDoor ? northDoor.tiles.map(([x]) => x) : [];
+    const nearDoor = (x, m) => doorX.some((gx) => Math.abs(gx - x) <= m);
+    if (r.type !== 'treasury') for (let dx = 4; cx - dx > r.x0 + 2; dx += 7) for (const x of [cx - dx, cx + dx]) {
+      if (nearDoor(x, 2) || isSolid(x, r.y0 + 1) || isSolid(x, r.y0 + 2)) continue;
+      place(r, ['statue_saint', 'statue_angel', 'statue_knight'][Math.floor(dx / 7) % 3], x, r.y0 + 1, 1, 1, { sheet: 'hall' });
+      const sx = x + (x < cx ? 2 : -2); if (!nearDoor(sx, 1)) stand(sx, r.y0 + 1);
     }
-    for (const [x, y] of [[r.x0 + 1, r.y1 - 1], [r.x1 - 1, r.y1 - 1]]) if (!isSolid(x, y) && !nearGate(r, x, y, 2)) place(r, 'torch', x, y, 1, 1, { sheet: 'hall', anim: 'torch', ph: rng() * 9 });
-    tryPlace(r, 'urn', 1, 1, many(r, rand(2, 5)), () => ({ sheet: 'hall', anim: 'urn', frame: Math.floor(rng() * 2), breakable: 1 }), 0);
-    tryPlace(r, 'crate', 1, 1, many(r, rand(0, 3)), () => ({ sheet: 'hall', anim: 'crate', breakable: 2 }), 0);
-    for (let k = 0; k < many(r, 3); k++) { const x = rand(r.x0 + 1, r.x1) * TILE, y = rand(r.y0 + 2, r.y1) * TILE; if (!isSolid(Math.floor(x / TILE), Math.floor(y / TILE))) decals.push({ kind: 'skullcandle', x, y }); }
-    // Cobwebs in the top corners and hanging chains on the wall.
+    if (northDoor) for (const x of [Math.min(...doorX) - 2, Math.max(...doorX) + 2]) if (!isSolid(x, r.y0 + 1) && !isSolid(x, r.y0 + 2)) place(r, 'statue_knight', x, r.y0 + 1, 1, 1, { sheet: 'hall' });
+    // Torch stands in the bottom corners.
+    for (const [x, y] of [[r.x0 + 1, r.y1 - 1], [r.x1 - 1, r.y1 - 1]]) if (!nearGate(r, x, y, 2)) stand(x, y);
+    // Breakables: one to three in each corner, tucked against the walls.
+    for (const [x, y, dx, dy] of [[r.x0 + 1, r.y0 + 3, 1, 0], [r.x1 - 1, r.y0 + 3, -1, 0], [r.x0 + 2, r.y1 - 1, 1, 0], [r.x1 - 2, r.y1 - 1, -1, 0]]) {
+      if (rng() < (r.plan === 'corners' ? 0 : 0.3)) continue;
+      const n = 1 + Math.floor(rng() * 3), kind = r.theme === 'ossuary' && rng() < 0.5 ? 'coffin' : rng() < 0.6 ? 'urn' : 'crate';
+      for (let k = 0; k < n; k++) { const tx = x + dx * k, ty = y + (k === 2 ? (y < cy ? 1 : -1) : 0), ox = k === 2 ? x : tx; if (!roomFree(r, ox, ty, 1, 1, 0)) continue; place(r, kind, ox, ty, 1, 1, kind === 'urn' ? { sheet: 'hall', anim: 'urn', frame: k % 2, breakable: 1 } : kind === 'crate' ? { sheet: 'hall', anim: 'crate', breakable: 2 } : { sheet: 'loot', anim: 'coffin', breakable: 2 }); }
+    }
+    if (r.theme === 'ossuary') for (const [x, y] of [[r.x0 + 2, r.y1 - 2], [r.x1 - 2, r.y1 - 2]]) decals.push({ kind: 'bonepile', x: x * TILE, y: y * TILE });
     decals.push({ kind: 'web', x: r.x0 * TILE, y: r.y0 * TILE }, { kind: 'web', x: (r.x1 + 1) * TILE, y: r.y0 * TILE, flip: true });
-    for (let k = 0; k < many(r, 3); k++) decals.push({ kind: 'hangchain', x: rand(r.x0 + 1, r.x1) * TILE, y: (r.y0 - 4) * TILE + 12 });
-    for (let k = 0; k < many(r, r.theme === 'ossuary' ? 6 : 3); k++) critters.push({ x: rand(r.x0 + 1, r.x1) * TILE, y: rand(r.y0 + 1, r.y1) * TILE, room: r.id, t: rng() * 5, vx: 0, vy: 0, hide: 0 });
+    for (let k = 0; k < (r.theme === 'ossuary' ? 3 : 1); k++) critters.push({ x: rand(r.x0 + 1, r.x1) * TILE, y: rand(r.y0 + 1, r.y1) * TILE, room: r.id, t: rng() * 5, vx: 0, vy: 0, hide: 0 });
   }
   for (const p of props) if (p.kind === 'candelabra') lights.push({ x: p.x, y: p.y - 38, r: 72, c: 'flame', a: 0.95, flick: rng() * 9 });
   for (const p of props) if (p.kind === 'torch') lights.push({ x: p.x, y: p.y - 58, r: 110, c: 'ember', a: 1, flick: rng() * 9, torch: true });
@@ -540,8 +579,12 @@ function makeDungeon() {
   bakeWallEdges(rc, w, h, isFloor);
   // Stone pilasters break up each back wall: at both ends and every few tiles.
   const PL = SPR.hall.anims.pilaster[0], pil = new Set();
-  for (const r of rooms) for (let x = r.x0; x <= r.x1; x += 7) {
-    const px = x === r.x0 ? r.x0 : Math.min(x, r.x1);
+  // Back walls follow a 7-tile rhythm mirrored about the room centre:
+  // pilaster (0), torch stand (2), statue (4), window or banner (6).
+  const bay = (r, x) => Math.abs(x - r.cx) % 7;
+  for (const r of rooms) for (let x = r.x0; x <= r.x1; x++) {
+    if (x !== r.x0 && x !== r.x1 && bay(r, x) !== 0) continue;
+    const px = x;
     if (r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - px) <= 1))) continue;
     if (isSolid(px, r.y0) || !isSolid(px, r.y0 - 1)) continue;
     rc.drawImage(IMG.hall, PL.x, PL.y, PL.w, PL.h, px * TILE, (r.y0 - 4) * TILE, PL.w, PL.h); pil.add(`${r.id},${px}`);
@@ -560,21 +603,14 @@ function makeDungeon() {
     for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6, x = ox + Math.cos(a) * (R0 - 2.5), y = oy + Math.sin(a) * (R0 - 2.5) * 0.62; groove(x - 1, y); groove(x + 1, y); groove(x, y - 1); }
   }
   // Wall decor above each room's top edge.
-  const D = SPR.walldecor.anims.decor;
   for (const r of rooms) for (let x = r.x0 + 1; x < r.x1; x++) {
+    if (bay(r, x) !== 6) continue;
     if (r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - x) <= 1))) continue;
     if (isSolid(x, r.y0) || !isSolid(x, r.y0 - 1)) continue;
-    if ([-1, 0, 1].some((d) => pil.has(`${r.id},${x + d}`))) continue;
-    const n = rng();
-    if (r.theme === 'ossuary' && n < 0.45) { const sf = frameOf('loot', 'skullwall', 0); rc.drawImage(IMG.loot, sf.x, sf.y, sf.w, sf.h, x * TILE, (r.y0 - 3) * TILE, sf.w, sf.h); continue; }
-    const k = n < 0.3 ? -1 : n < 0.55 ? 'glass' : n < 0.73 ? 'banner' : n < 0.9 ? 'torch' : 'alcove';
-    if (k === -1) continue;
-    const HD = HA.decor, df = k === 'glass' ? HD[0] : k === 'banner' ? HD[1] : k === 'torch' ? HD[2] : D[0];
-    rc.drawImage(k === 'alcove' ? IMG.walldecor : IMG.hall, df.x, df.y, df.w, df.h, x * TILE + 8 - df.w / 2, (r.y0 - 3) * TILE, df.w, df.h);
-    if (k === 'torch') lights.push({ x: x * TILE + 8, y: (r.y0 - 3) * TILE + 17, r: 80, c: 'ember', a: 1, flick: rng() * 9, sconce: true });
-    if (k === 'glass') lights.push({ x: x * TILE + 8, y: (r.y0 - 3) * TILE + 26, r: 34, c: pick(['violet', 'blood', 'gold']), a: 0.5 });
-    if (k === 'alcove') lights.push({ x: x * TILE + 8, y: (r.y0 - 3) * TILE + 34, r: 26, c: 'flame', a: 0.45, flick: rng() * 9 });
-    x++;
+    if (r.theme === 'ossuary') { const sf = frameOf('loot', 'skullwall', 0); rc.drawImage(IMG.loot, sf.x, sf.y, sf.w, sf.h, x * TILE, (r.y0 - 3) * TILE, sf.w, sf.h); continue; }
+    const glass = Math.floor(Math.abs(x - r.cx) / 7) % 2 === 0, df = HA.decor[glass ? 0 : 1];
+    rc.drawImage(IMG.hall, df.x, df.y, df.w, df.h, x * TILE + 8 - df.w / 2, (r.y0 - 3) * TILE, df.w, df.h);
+    if (glass) lights.push({ x: x * TILE + 8, y: (r.y0 - 3) * TILE + 26, r: 34, c: r.type === 'elite' ? 'gold' : 'violet', a: 0.5 });
   }
   for (const d of decals) {
     if (d.kind === 'bonepile') { if (isSolid(Math.floor(d.x / TILE), Math.floor(d.y / TILE))) continue; const f = frameOf('props', 'bonepile', 0); rc.drawImage(IMG.props, f.x, f.y, f.w, f.h, Math.round(d.x - f.w / 2), Math.round(d.y - f.h / 2), f.w, f.h); }
@@ -602,6 +638,18 @@ function bakeWallEdges(rc, w, h, isFloor) {
     for (let dy = -1; dy <= 4 && !near; dy++) for (let dx = -1; dx <= 1; dx++) if (isFloor(x + dx, y + dy) && (dy <= 1 || !face(x + dx, y))) { near = true; break; }
     if (!near) continue;
     const X = x * TILE, Y = y * TILE;
+    const L0 = isFloor(x - 1, y), R0 = isFloor(x + 1, y), U0 = isFloor(x, y - 1);
+    // The south side of a room has no wall, as in Otherworld Legends: the
+    // floor ends in a stone ledge and drops into black.
+    if (U0 && !L0 && !R0) { px(X, Y, P.ink0, 16, 16); px(X, Y, P.stone3, 16, 4); px(X, Y, P.stone2, 16, 1); px(X, Y + 4, P.stone4, 16, 2); for (let k = 3 + (x % 3) * 2; k < 16; k += 7) px(X + k, Y + 1, P.stone4, 1, 3); continue; }
+    if (!U0 && !L0 && !R0 && !isFloor(x, y + 1) && (isFloor(x - 1, y - 1) || isFloor(x + 1, y - 1))) {
+      // Under the end of a side wall: the block's front face, then black.
+      const left = isFloor(x + 1, y - 1);
+      px(X, Y, P.ink0, 16, 16);
+      if (solid(x, y - 1)) { px(X, Y, P.teal3h, 16, 9); px(X, Y, P.teal2h, 16, 1); for (let k = 2; k < 16; k += 5) px(X + k + (left ? 0 : 1), Y + 2, P.teal4h, 1, 6); px(X, Y + 9, P.outline, 16, 1); }
+      px(X + (left ? 15 : 0), Y, P.stone3, 1, 4);
+      continue;
+    }
     // Top surface: dark teal stone laid in courses.
     px(X, Y, P.teal2h, 16, 16);
     for (let r = 0; r < 2; r++) {
@@ -922,25 +970,25 @@ const NPC_INFO = {
 
 // A long street in permanent twilight: gate, market, tavern square, forge,
 // graveyard and the cathedral, with townsfolk, crows, smoke, fog and ash.
-const DISTRICTS = [[0, "THE PENITENTS' GATE"], [429, 'THE RELIC MARKET'], [832, 'THE GILDED LAMB'], [1118, 'THE FORGE OF PENANCE'], [1495, 'THE QUIET ACRE'], [2080, 'CATHEDRAL OF THE WOUND']];
+const DISTRICTS = [[0, "THE PILGRIMS' GATE"], [429, 'THE CURIO MARKET'], [832, 'THE GILDED LAMB'], [1118, 'THE EMBER FORGE'], [1495, 'THE QUIET ACRE'], [2080, 'CATHEDRAL OF THE WOUND']];
 const BARKS = {
   peasant: ['THEY SAY THE LAST SAINT FELL TO A STAIRCASE.', 'TWO COPPERS ON THE BELLWRIGHT.', 'MY BOY WANTS TO BE A SAINT. I HIT HIM.', 'THE DEAD GOT UP AGAIN IN THE BAKERY.', 'BLESSED BE THE DESCENT. PASS THE BREAD.'],
   peasant2: ['PRAY FOR US, SAINT. OR DON\'T. IT\'S ALL THE SAME.', 'THE POOL SHOWED HIM CRYING LAST YEAR. SUCH A GOOD SHOW.', 'MIND THE CART, IT\'S FULL OF THE LAST ONES.', 'DID YOU HEAR THE BELLS? NEITHER DID I.'],
   guard: ['MOVE ALONG, SAINT.', 'NO BLEEDING IN THE MARKET.', 'GATE STAYS SHUT TILL THE CHOIR SAYS.', 'I SAW YOU DIE. YOU LOOKED TALLER.'],
-  penitent: ['MEA CULPA. MEA CULPA.', 'THE WHIP REMEMBERS WHAT I FORGET.', 'PRAISE THE WOUND THAT FEEDS US.'],
+  penitent: ['FORGIVE ME. FORGIVE ME.', 'THE WHIP REMEMBERS WHAT I FORGET.', 'PRAISE THE WOUND THAT FEEDS US.'],
   priest: ['THE CHOIR THANKS YOU FOR YOUR SERVICE.', 'TICKETS FOR THE FRONT POOL ARE SOLD OUT.', 'SUFFER WELL, CHILD.'],
   crowd: ['AGAIN! AGAIN!', 'LOOK AT HIM GO!', 'HE DIED THERE LAST TIME!', 'I\'VE GOT MONEY ON THE RATS!'],
   kid: ['I\'M THE SAINT! YOU BE THE BELLWRIGHT!', 'BONG! BONG! YOU\'RE DEAD!', 'NOW YOU DIE ON THE STAIRS!'],
   beggar: ['ALMS FOR AN OLD SAINT?', 'I WAS CHOSEN ONCE, YOU KNOW.'],
 };
 Object.assign(NPC_INFO, {
-  vane: { name: 'ARCHDEACON VANE', lines: () => ['THE RELIQUARY IS NOT YET OPEN TO YOU, SAINT.', 'BRING ME ASH FROM YOUR MARTYRDOM AND WE SHALL SPEAK OF RELICS.', 'THE CROWD ADORES YOU. KEEP DYING BEAUTIFULLY.'] },
+  vane: { name: 'ARCHDEACON VANE', lines: () => ['THE CANONRY IS NOT YET OPEN TO YOU, SAINT.', 'BRING ME ASH FROM YOUR MARTYRDOM AND WE SHALL SPEAK OF VIRTUES.', 'THE CROWD ADORES YOU. KEEP DYING BEAUTIFULLY.'] },
   plushseller: { name: 'THE PLUSH SELLER', lines: () => ['GENUINE PLUSH SAINTS! HAND STITCHED!', `THIS YEAR'S ONE HAS YOUR SCARS. ALL ${(SAVE.deaths || 0) + 3} OF THEM.`] },
   beggar: { name: 'OLD BARNABY', lines: () => ['I WAS A SAINT ONCE. THEY LET ME KEEP THE HALO.', 'IT BURNS, AT NIGHT. LIKE A CANDLE THAT WON\'T GO OUT.', 'DON\'T LET THEM PUT YOU IN THE POOL.'] },
   guard: { name: 'GATE GUARD', lines: () => [pick(BARKS.guard)] },
   peasant: { name: 'TOWNSFOLK', lines: () => [pick(BARKS.peasant)] },
   peasant2: { name: 'TOWNSWOMAN', lines: () => [pick(BARKS.peasant2)] },
-  penitent: { name: 'PENITENT', lines: () => [pick(BARKS.penitent)] },
+  penitent: { name: 'HERMIT', lines: () => [pick(BARKS.penitent)] },
   priest: { name: 'CHOIR PRIEST', lines: () => [pick(BARKS.priest)] },
 });
 
@@ -950,7 +998,8 @@ function makeTown() {
   for (let y = 0; y < h; y++) { solid.push([]); for (let x = 0; x < w; x++) solid[y].push(y < TOP || y >= h - 1 || x < 1 || x >= w - 1); }
   const isSolid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || solid[y][x];
   const props = [], lights = [], npcs = [], interact = [], smoke = [], crows = [], fg = [];
-  const place = (anim, px, py, tw = 1, extra = {}) => { const tx = Math.floor(px / TILE - tw / 2 + 0.5), ty = Math.floor(py / TILE); if (extra.solid !== false) for (let x = tx; x < tx + tw; x++) if (ty < h - 1) solid[ty][x] = true; const p = { kind: anim, sheet: extra.sheet || 'town2', anim, x: px, y: (ty + 1) * TILE - 1, ...extra }; props.push(p); return p; };
+  // Nothing on the street blocks the Saint: props are scenery you walk past.
+  const place = (anim, px, py, tw = 1, extra = {}) => { const ty = Math.floor(py / TILE); const p = { kind: anim, sheet: extra.sheet || 'town2', anim, x: px, y: (ty + 1) * TILE - 1, ...extra }; props.push(p); return p; };
   roomCanvas = document.createElement('canvas'); roomCanvas.width = w * TILE; roomCanvas.height = h * TILE;
   const rc = roomCanvas.getContext('2d');
   // Cobbled street, worn smoother down the middle.
@@ -1049,15 +1098,15 @@ const room_candles = [];
 const MAP_BADGES = ['gate', 'market', 'plush', 'tavern', 'forge', 'acre', 'descend', 'rift', 'lock', 'npc', 'board', 'relic', 'pool', 'saint'];
 const badge = (name, x, y, big = false, o = {}) => sprC('ui', big ? 'badgeBig' : 'badge', MAP_BADGES.indexOf(name), x, y, o);
 const SITES = [
-  { id: 'road', name: 'THE PILGRIM ROAD', badge: 'gate', x: 91, dy: 30, what: 'STRATUM II: THE DROWNED NAVE. A NEW FLOOR WITH NEW MONSTERS, BOSSES AND RELICS.', need: 'FINISH A DESCENT ON SAINT', prog: () => [(SAVE.cleared ?? -1) >= 3 ? 1 : 0, 1] },
-  { id: 'stall', name: "PELL'S RELIC STALL", badge: 'market', x: 540, dy: 34, what: 'BUY RELICS WITH GOLD. THE STOCK CHANGES AFTER EVERY DESCENT.', need: 'FINISH 1 DESCENT', prog: () => [SAVE.descents || 0, 1] },
+  { id: 'road', name: 'THE PILGRIM ROAD', badge: 'gate', x: 91, dy: 30, what: 'STRATUM II: THE DROWNED NAVE. A NEW FLOOR WITH NEW MONSTERS, BOSSES AND TREASURE.', need: 'FINISH A DESCENT ON SAINT', prog: () => [(SAVE.cleared ?? -1) >= 3 ? 1 : 0, 1] },
+  { id: 'stall', name: "PELL'S CURIO STALL", badge: 'market', x: 540, dy: 34, what: 'BUY GEAR WITH GOLD. THE STOCK CHANGES AFTER EVERY DESCENT.', need: 'FINISH 1 DESCENT', prog: () => [SAVE.descents || 0, 1] },
   { id: 'plush', name: 'THE PLUSH STALL', badge: 'plush', x: 740, dy: 34, what: "NEW VESTMENT COLOURS AND HALOS FOR THE SAINT. LOOKS ONLY.", need: 'FALL 5 TIMES', prog: () => [SAVE.deaths || 0, 5] },
-  { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 793, dy: 64, what: 'HUNT NAMED ELITES FOR GOLD AND A GUARANTEED CONSECRATED RELIC.', need: 'SLAY 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
+  { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 793, dy: 64, what: 'HUNT NAMED ELITES FOR GOLD AND A GUARANTEED CONSECRATED PIECE OF GEAR.', need: 'SLAY 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
   { id: 'pool', name: 'THE SCRYING POOL', badge: 'pool', x: 1060, dy: 110, what: 'WAGERS. BET YOUR GOLD ON HOW DEEP YOU GET. THE CROWD PAYS OUT.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
-  { id: 'forge', name: 'THE FORGE OF PENANCE', badge: 'forge', x: 1250, dy: 50, what: 'REFORGE A RELIC TO REROLL ONE STAT, OR TEMPER IT TO RAISE ITS RARITY.', need: 'FINISH A DESCENT ON ZEALOT', prog: () => [(SAVE.cleared ?? -1) >= 1 ? 1 : 0, 1] },
-  { id: 'vigil', name: 'THE BLEEDING VIGIL', badge: 'rift', x: 1664, dy: 60, what: 'GREATER RIFTS. ONE ENDLESS, TIMED DESCENT THAT GROWS HARDER EACH LEVEL. BEAT THE CLOCK FOR BETTER RELICS.', need: 'FINISH A DESCENT ON MARTYR', prog: () => [(SAVE.cleared ?? -1) >= 2 ? 1 : 0, 1] },
-  { id: 'martyr', name: 'MARTYRDOM', badge: 'saint', x: 2215, dy: 70, what: 'ONE LIFE. IF YOU FALL, EVERYTHING YOU CARRY IS LOST, BUT GOLD AND RELICS ARE DOUBLED.', need: 'FINISH 10 DESCENTS', prog: () => [SAVE.descents || 0, 10] },
-  { id: 'reliquary', name: 'THE RELIQUARY', badge: 'relic', x: 2470, dy: 40, what: 'CANONIZATION. SPEND ASH FROM YOUR DEATHS ON PERMANENT VIRTUES: HEALTH, DAMAGE, LUCK.', need: 'REACH LEVEL 20 IN ONE DESCENT', prog: () => [SAVE.bestLevel || 1, 20] },
+  { id: 'forge', name: 'THE EMBER FORGE', badge: 'forge', x: 1250, dy: 50, what: 'REFORGE A PIECE OF GEAR TO REROLL ONE STAT, OR TEMPER IT TO RAISE ITS RARITY.', need: 'FINISH A DESCENT ON ZEALOT', prog: () => [(SAVE.cleared ?? -1) >= 1 ? 1 : 0, 1] },
+  { id: 'vigil', name: 'THE BLEEDING VIGIL', badge: 'rift', x: 1664, dy: 60, what: 'VIGIL TRIALS. ONE ENDLESS, TIMED DESCENT THAT GROWS HARDER WITH EVERY LEVEL. BEAT THE CANDLE BEFORE IT BURNS OUT FOR BETTER GEAR.', need: 'FINISH A DESCENT ON MARTYR', prog: () => [(SAVE.cleared ?? -1) >= 2 ? 1 : 0, 1] },
+  { id: 'martyr', name: 'MARTYRDOM', badge: 'saint', x: 2215, dy: 70, what: 'ONE LIFE. IF YOU FALL, EVERYTHING YOU CARRY IS LOST, BUT GOLD AND GEAR ARE DOUBLED.', need: 'FINISH 10 DESCENTS', prog: () => [SAVE.descents || 0, 10] },
+  { id: 'canonry', name: 'THE CANONRY', badge: 'relic', x: 2470, dy: 40, what: 'CANONIZATION. SPEND ASH FROM YOUR DEATHS ON PERMANENT VIRTUES: HEALTH, DAMAGE, LUCK.', need: 'REACH LEVEL 20 IN ONE DESCENT', prog: () => [SAVE.bestLevel || 1, 20] },
 ];
 const siteDone = (s) => { const [a, b] = s.prog(); return a >= b; };
 function openSite(s) { game.site = { s, t: 0 }; game.state = 'site'; sfx('tap'); }
@@ -1230,7 +1279,7 @@ function talk(id) {
 // back in gold, relics and better rarity. A tier opens when you finish a
 // descent on the one before it.
 const DIFF = [
-  { id: 'penitent', name: 'PENITENT', col: '#c2b6aa', hp: 1, dmg: 1, gold: 1, drop: 1, boost: 0, xp: 1, aff: 0, lv: 1, text: 'THE FIRST STEPS DOWN. FOR THE NEWLY SHRIVEN.' },
+  { id: 'pilgrim', name: 'PILGRIM', col: '#c2b6aa', hp: 1, dmg: 1, gold: 1, drop: 1, boost: 0, xp: 1, aff: 0, lv: 1, text: 'THE FIRST STEPS DOWN. FOR THE NEWLY SHRIVEN.' },
   { id: 'zealot', name: 'ZEALOT', col: '#8ae0ff', hp: 1.7, dmg: 1.35, gold: 1.5, drop: 1.3, boost: 0.5, xp: 1.4, aff: 0, lv: 6, text: 'THE DEAD REMEMBER YOU NOW. THEY HIT HARDER.' },
   { id: 'martyr', name: 'MARTYR', col: '#ffd155', hp: 2.8, dmg: 1.8, gold: 2.2, drop: 1.6, boost: 1, xp: 1.9, aff: 1, lv: 12, text: 'RARES AND ELITES WEAR ONE MORE CURSE.' },
   { id: 'saint', name: 'SAINT', col: '#ff7a1f', hp: 4.5, dmg: 2.4, gold: 3.2, drop: 2, boost: 1.8, xp: 2.5, aff: 1, lv: 20, text: 'ONLY THE CANONIZED COME BACK FROM HERE.' },
@@ -1295,14 +1344,14 @@ function renderDescent() {
   const head = (c, t) => { ctx.fillStyle = PAL.ink2; ctx.fillRect(cx(c), top, cw, 172); ctx.fillStyle = PAL.ink3; ctx.fillRect(cx(c), top, cw, 13); text(t, cx(c) + 6, top + 3, PAL.gold1, { small: true, outline: null }); };
   const x = (v) => `X${+v.toFixed(2)}`;
   head(0, 'THE FLOOR');
-  [['ROOMS', '9'], ['  COMBAT', '5'], ['  RELIQUARY (ELITE)', '1'], ['  SHRINE / TREASURY', '1 / 1'], ["  WARDEN'S CHAMBER", '1'], ['MONSTER LEVEL', `${df.lv}-${df.lv + 4}`], ['MONSTER HEALTH', x(df.hp), df.hp > 1 ? PAL.blood0 : PAL.cloth0], ['MONSTER DAMAGE', x(df.dmg), df.dmg > 1 ? PAL.blood0 : PAL.cloth0], ['WAVES PER ROOM', '2-3'], ['FOES PER WAVE', '17-30'], ['RARE PACK CHANCE', '55-85%'], ['CURSES ON RARES', `${1 + df.aff}-${2 + df.aff}`], ['CURSES ON ELITES', `${2 + df.aff}-${3 + df.aff}`], ['COLLECTION IMP', '75% IN TREASURY']]
+  [['ROOMS', '9'], ['  COMBAT', '5'], ["  CHAMPION'S HALL (ELITE)", '1'], ['  SHRINE / TREASURY', '1 / 1'], ["  WARDEN'S CHAMBER", '1'], ['MONSTER LEVEL', `${df.lv}-${df.lv + 4}`], ['MONSTER HEALTH', x(df.hp), df.hp > 1 ? PAL.blood0 : PAL.cloth0], ['MONSTER DAMAGE', x(df.dmg), df.dmg > 1 ? PAL.blood0 : PAL.cloth0], ['WAVES PER ROOM', '2-3'], ['FOES PER WAVE', '17-30'], ['RARE PACK CHANCE', '55-85%'], ['CURSES ON RARES', `${1 + df.aff}-${2 + df.aff}`], ['CURSES ON ELITES', `${2 + df.aff}-${3 + df.aff}`], ['COLLECTION IMP', '75% IN TREASURY']]
     .forEach(([a, b, c], i) => row(0, i, a, b, c));
   head(1, 'REWARDS');
   const iK = df.drop;
   [['GOLD PER COIN', `${Math.round(3 * goldK)}-${Math.round(9 * goldK)}`, PAL.gold1], ['GOLD PER KILL', `~${(0.3 * avg).toFixed(1)}`, PAL.gold1], ['GOLD PER RARE', `~${Math.round(3 * avg)}`, PAL.gold1], ['GOLD PER ELITE', `~${Math.round(10 * avg)}`, PAL.gold1], ['GOLD FIND (GEAR)', `+${G.gold}%`, G.gold ? PAL.flame1 : PAL.cloth0],
-    ['RELIC PER KILL', pct(2.5 * iK)], ['RELIC PER RARE', pct(Math.min(100, 60 * iK))], ['RELICS PER ELITE', `${(3.5 * iK).toFixed(1)}`], ['RELIC ON ROOM CLEAR', `${pct(Math.min(100, 40 * iK))}+`], ['TREASURY CHEST', 'GUARANTEED'], ['HEALTH GLOBE', `${pct(6)}-${pct(10)}`], ['EXPERIENCE', x(df.xp), df.xp > 1 ? PAL.flame1 : PAL.cloth0], ['GOLD PER ROOM CLEAR', `~${Math.round(4 * avg)}`, PAL.gold1], ['LEVEL CAP', 'NONE']]
+    ['GEAR PER KILL', pct(2.5 * iK)], ['GEAR PER RARE', pct(Math.min(100, 60 * iK))], ['GEAR PER ELITE', `${(3.5 * iK).toFixed(1)}`], ['GEAR ON ROOM CLEAR', `${pct(Math.min(100, 40 * iK))}+`], ['TREASURY CHEST', 'GUARANTEED'], ['HEALTH ORB', `${pct(6)}-${pct(10)}`], ['EXPERIENCE', x(df.xp), df.xp > 1 ? PAL.flame1 : PAL.cloth0], ['GOLD PER ROOM CLEAR', `~${Math.round(4 * avg)}`, PAL.gold1], ['LEVEL CAP', 'NONE']]
     .forEach(([a, b, c], i) => row(1, i, a, b, c));
-  head(2, 'RELIC RARITY');
+  head(2, 'GEAR RARITY');
   const base = rarityOdds(df.boost), elite = rarityOdds(df.boost + 1.5);
   text('FOES', cx(2) + cw - 54, top + 16, PAL.stone2, { small: true, outline: null, align: 'right' }); text('ELITES', cx(2) + cw - 6, top + 16, PAL.stone2, { small: true, outline: null, align: 'right' });
   RARITY.forEach((R0, i) => {
@@ -1317,8 +1366,8 @@ function renderDescent() {
   text(`CRIT ${Math.round(T.crossbow.crit * 100) + G.crit}%  ARMOR ${G.armor}%`, cx(2) + 6, top + 154, PAL.cloth0, { small: true, outline: null });
   // The price of falling, and the buttons.
   const fy = top + 178;
-  text('IF YOU FALL: THE CHOIR TITHES HALF YOUR GOLD AND EVERY OTHER RELIC YOU CARRY.', L.x0 + 12, fy, PAL.blood0, { small: true, outline: null });
-  text('WORN RELICS ARE SAFE. RETURN BY THE WAYSTONE TO KEEP IT ALL.', L.x0 + 12, fy + 10, PAL.stone1, { small: true, outline: null });
+  text('IF YOU FALL: THE CHOIR TITHES HALF YOUR GOLD AND EVERY OTHER PIECE OF GEAR YOU CARRY.', L.x0 + 12, fy, PAL.blood0, { small: true, outline: null });
+  text('WORN GEAR IS SAFE. RETURN BY THE WAYSTONE TO KEEP IT ALL.', L.x0 + 12, fy + 10, PAL.stone1, { small: true, outline: null });
   text(`DESCENTS ${SAVE.descents || 0}   BEST CLEAR ${(SAVE.cleared ?? -1) >= 0 ? DIFF[SAVE.cleared].name : 'NONE'}`, L.x0 + 12, L.go.y + 8, PAL.stone2, { small: true, outline: null });
   invButton(L.back, 'CANCEL', PAL.stone4);
   invButton(L.go, open ? 'DESCEND' : 'LOCKED', PAL.crimson3, open);
@@ -1341,10 +1390,10 @@ const TUT = [
   { scene: 'wound', text: 'EACH ROOM SEALS ITS GATES UNTIL THE DEAD STAY DEAD. WALK INTO THE NEXT ROOM.', done: () => room.rooms && room.rooms.some((q) => q.state !== 'idle' && q.type !== 'start') },
   { scene: 'wound', text: 'YOUR CROSSBOW FIRES BY ITSELF: ELITES FIRST, THEN THE NEAREST. TAP AN ENEMY TO LOCK ON.', done: () => game.kills >= 4 },
   { scene: 'wound', text: 'TAP DASH TO DODGE THROUGH ATTACKS. RED SHAPES ON THE FLOOR WARN YOU WHERE A HIT WILL LAND.', target: 'dash', done: () => tut.flags.dashed >= 2 },
-  { scene: 'wound', text: 'TAP HOLY WATER TO THROW A FLASK. IT AIMS ITSELF AT THE THICKEST CROWD.', target: 'm1', done: () => tut.flags.m1 },
+  { scene: 'wound', text: 'TAP HOLY WATER TO THROW A VIAL. IT AIMS ITSELF AT THE THICKEST CROWD.', target: 'm1', done: () => tut.flags.m1 },
   { scene: 'wound', text: 'TAP THE CHAIN TO BIND UP TO FOUR FOES TOGETHER.', target: 'm2', done: () => tut.flags.m2 || tut.t > 12 },
-  { scene: 'wound', text: "KILLS FEED THE CROWD'S FERVOR AND FILL THE RED RING. IT IS FULL: TAP PENANCE.", target: 'pen', start: () => { player.penance = T.penance.charge; }, done: () => tut.flags.pen || tut.t > 15 },
-  { scene: 'wound', text: 'RED GLOBES HEAL. GOLD AND RELICS SPILL FROM THE DEAD. BLUE MONSTERS ARE RARE, GOLD ARE ELITE: READ THEIR CURSES UNDER THEIR NAME.', done: () => tut.t > 8 },
+  { scene: 'wound', text: "KILLS FEED THE CROWD'S ZEAL AND FILL THE RED RING. IT IS FULL: TAP RECKONING.", target: 'pen', start: () => { player.penance = T.penance.charge; }, done: () => tut.flags.pen || tut.t > 15 },
+  { scene: 'wound', text: 'RED ORBS HEAL. GOLD AND GEAR SPILL FROM THE DEAD. BLUE MONSTERS ARE RARE, GOLD ARE ELITE: READ THEIR CURSES UNDER THEIR NAME.', done: () => tut.t > 8 },
   { scene: 'wound', text: "CLEAR ROOMS AND FIND THE WARDEN'S CHAMBER, THE RED SKULL ON YOUR MAP. ITS WAYSTONE CARRIES YOU HOME.", target: 'map', done: () => tut.t > 8 },
 ];
 const tut = { on: !SAVE.tutorialDone, step: 0, t: 0, flags: { moved: 0 } };
@@ -1399,32 +1448,32 @@ const A = (type, o) => ({ type, windup: 0.5, cd: 2, range: 120, dmg: 8, ...o });
 const MON = {
   // Common.
   risen: { name: 'RISEN', tier: 'common', sheet: 'risen', walk: 'walk', attack: 'attack', hp: 18, speed: 28, r: 5, hy: 12, hr: 8, move: 'chase', fervor: 3, attacks: [A('swipe', { range: 18, reach: 18, windup: 0.45, cd: 1.2, dmg: 8 })] },
-  crawler: { name: 'CRAWLING PENITENT', tier: 'common', hp: 10, speed: 46, r: 4, hy: 6, hr: 7, move: 'chase', fervor: 2, group: 3, attacks: [A('swipe', { range: 14, reach: 14, windup: 0.3, cd: 0.9, dmg: 5 })] },
+  crawler: { name: 'CRAWLING SINNER', tier: 'common', hp: 10, speed: 46, r: 4, hy: 6, hr: 7, move: 'chase', fervor: 2, group: 3, attacks: [A('swipe', { range: 14, reach: 14, windup: 0.3, cd: 0.9, dmg: 5 })] },
   mourner: { name: 'CANDLE-MOURNER', tier: 'common', hp: 16, speed: 22, r: 5, hy: 15, hr: 8, move: 'kite', keep: 100, fervor: 3, attacks: [A('lob', { range: 170, min: 30, windup: 0.7, cd: 3, dmg: 10, rad: 18, shot: 'wax', pool: 'fire' })] },
   acolyte: { name: 'BONE ACOLYTE', tier: 'common', hp: 16, speed: 24, r: 5, hy: 14, hr: 8, move: 'kite', keep: 110, fervor: 3, attacks: [A('shot', { range: 170, windup: 0.5, cd: 2.2, dmg: 7, speed: 120, shot: 'bone' })] },
   gravewarden: { name: 'GRAVEWARDEN', tier: 'common', sheet: 'gravewarden', walk: 'walk', attack: 'attack', hp: 60, speed: 15, r: 9, hy: 17, hr: 12, move: 'chase', shield: true, fervor: 8, attacks: [A('lunge', { range: 34, windup: 0.6, cd: 2, dmg: 14, speed: 150, time: 0.22 })] },
   rat: { name: 'TITHE RATS', tier: 'common', hp: 4, speed: 72, r: 3, hy: 3, hr: 5, move: 'chase', fervor: 1, group: 5, attacks: [A('swipe', { range: 10, reach: 10, windup: 0.2, cd: 0.7, dmg: 3 })] },
   votary: { name: 'BLOATED VOTARY', tier: 'common', hp: 30, speed: 18, r: 7, hy: 14, hr: 10, move: 'chase', fervor: 4, attacks: [A('explode', { range: 22, windup: 0.9, rad: 34, dmg: 20, pool: 'blood' })] },
-  flagellant: { name: 'FLAGELLANT', tier: 'common', hp: 22, speed: 34, r: 5, hy: 14, hr: 8, move: 'circle', keep: 70, fervor: 3, attacks: [A('lunge', { range: 110, min: 36, windup: 0.55, cd: 3, dmg: 10, speed: 230, time: 0.35 }), A('swipe', { range: 18, reach: 18, windup: 0.35, cd: 1, dmg: 7 })] },
-  cherub: { name: 'WEEPING CHERUB', tier: 'common', hp: 14, speed: 30, r: 5, hy: 18, hr: 8, move: 'fly', keep: 90, fervor: 3, attacks: [A('spread', { n: 3, arc: 0.5, range: 160, windup: 0.5, cd: 2.6, dmg: 6, speed: 110, shot: 'tear' })] },
+  flagellant: { name: 'SCOURGER', tier: 'common', hp: 22, speed: 34, r: 5, hy: 14, hr: 8, move: 'circle', keep: 70, fervor: 3, attacks: [A('lunge', { range: 110, min: 36, windup: 0.55, cd: 3, dmg: 10, speed: 230, time: 0.35 }), A('swipe', { range: 18, reach: 18, windup: 0.35, cd: 1, dmg: 7 })] },
+  cherub: { name: 'WEEPING PUTTO', tier: 'common', hp: 14, speed: 30, r: 5, hy: 18, hr: 8, move: 'fly', keep: 90, fervor: 3, attacks: [A('spread', { n: 3, arc: 0.5, range: 160, windup: 0.5, cd: 2.6, dmg: 6, speed: 110, shot: 'tear' })] },
   wisp: { name: 'CHOIR WISP', tier: 'common', hp: 10, speed: 26, r: 4, hy: 14, hr: 7, move: 'chase', fervor: 2, attacks: [A('blink', { range: 400, min: 70, windup: 0.3, cd: 4 }), A('lunge', { range: 60, windup: 0.4, cd: 2, dmg: 8, speed: 200, time: 0.25 })] },
   // Rare.
   knight: { name: 'OSSUARY KNIGHT', tier: 'rare', hp: 200, speed: 22, r: 9, hy: 22, hr: 13, move: 'chase', fervor: 12, attacks: [A('cone', { range: 42, len: 50, arc: 1.7, windup: 0.8, cd: 2.4, dmg: 18 })] },
   collector: { name: 'TITHE COLLECTOR', tier: 'rare', hp: 220, speed: 16, r: 10, hy: 22, hr: 14, move: 'chase', fervor: 12, attacks: [A('ring', { n: 12, range: 140, windup: 0.7, cd: 3, dmg: 7, speed: 90, shot: 'ember' }), A('summon', { monster: 'rat', n: 5, range: 240, windup: 0.6, cd: 9 })] },
   motherwax: { name: 'MOTHER WAX', tier: 'rare', hp: 170, speed: 18, r: 9, hy: 22, hr: 13, move: 'kite', keep: 110, fervor: 12, attacks: [A('lob', { n: 3, spreadR: 30, range: 190, windup: 0.8, cd: 3.2, dmg: 12, rad: 20, shot: 'wax', pool: 'fire' })] },
   bishop: { name: 'HOLLOW BISHOP', tier: 'rare', hp: 160, speed: 18, r: 9, hy: 24, hr: 13, move: 'kite', keep: 120, fervor: 12, attacks: [A('summon', { monster: 'risen', n: 3, range: 260, windup: 0.9, cd: 8 }), A('shot', { range: 190, windup: 0.5, cd: 1.8, dmg: 9, speed: 130, shot: 'violet' })] },
-  jailer: { name: 'CHAIN JAILER', tier: 'rare', hp: 190, speed: 20, r: 9, hy: 22, hr: 13, move: 'kite', keep: 90, fervor: 12, attacks: [A('pull', { range: 160, len: 160, windup: 0.8, cd: 5, dmg: 8 }), A('swipe', { range: 26, reach: 24, windup: 0.5, cd: 1.4, dmg: 12 })] },
+  jailer: { name: 'CHAIN TURNKEY', tier: 'rare', hp: 190, speed: 20, r: 9, hy: 22, hr: 13, move: 'kite', keep: 90, fervor: 12, attacks: [A('pull', { range: 160, len: 160, windup: 0.8, cd: 5, dmg: 8 }), A('swipe', { range: 26, reach: 24, windup: 0.5, cd: 1.4, dmg: 12 })] },
   bellringer: { name: 'BELL RINGER', tier: 'rare', hp: 200, speed: 20, r: 9, hy: 22, hr: 13, move: 'chase', fervor: 12, attacks: [A('shockwave', { range: 120, windup: 0.9, cd: 3.5, dmg: 14, speed: 110, max: 150 })] },
   matron: { name: 'SCOURGE MATRON', tier: 'rare', hp: 180, speed: 24, r: 9, hy: 22, hr: 13, move: 'chase', fervor: 12, attacks: [A('cone', { range: 60, len: 66, arc: 0.9, windup: 0.6, cd: 2, dmg: 12 })] },
   choirboy: { name: 'CARRION CHOIRBOY', tier: 'rare', hp: 160, speed: 22, r: 9, hy: 22, hr: 13, move: 'kite', keep: 90, fervor: 12, attacks: [A('cone', { range: 90, len: 96, arc: 0.7, windup: 0.7, cd: 4, dmg: 6, slow: 1.5 }), A('spread', { n: 5, arc: 0.8, range: 170, windup: 0.5, cd: 2.4, dmg: 6, speed: 120, shot: 'spit' })] },
   gravedigger: { name: 'GRAVEDIGGER', tier: 'rare', hp: 210, speed: 20, r: 10, hy: 22, hr: 14, move: 'chase', fervor: 12, attacks: [A('slam', { range: 40, rad: 26, windup: 0.8, cd: 2.5, dmg: 18 }), A('summon', { monster: 'risen', n: 2, range: 260, windup: 0.7, cd: 9 })] },
   lantern: { name: 'LANTERN SHADE', tier: 'rare', hp: 150, speed: 22, r: 8, hy: 22, hr: 12, move: 'kite', keep: 110, fly: true, fervor: 12, attacks: [A('blink', { range: 400, min: 140, windup: 0.4, cd: 5 }), A('beam', { range: 200, len: 220, windup: 0.9, cd: 3, dmg: 16 })] },
   // Elite.
-  colossus: { name: 'PENITENT COLOSSUS', tier: 'elite', hp: 900, speed: 18, r: 14, hy: 30, hr: 20, move: 'chase', fervor: 30, attacks: [A('shockwave', { range: 130, windup: 1, cd: 4, dmg: 18, speed: 120, max: 170 }), A('lunge', { range: 160, min: 50, windup: 0.9, cd: 5, dmg: 22, speed: 220, time: 0.5 })] },
+  colossus: { name: 'SHACKLED COLOSSUS', tier: 'elite', hp: 900, speed: 18, r: 14, hy: 30, hr: 20, move: 'chase', fervor: 30, attacks: [A('shockwave', { range: 130, windup: 1, cd: 4, dmg: 18, speed: 120, max: 170 }), A('lunge', { range: 160, min: 50, windup: 0.9, cd: 5, dmg: 22, speed: 220, time: 0.5 })] },
   seraph: { name: 'SERAPH OF ASH', tier: 'elite', hp: 650, speed: 26, r: 11, hy: 30, hr: 18, move: 'fly', keep: 110, fly: true, fervor: 30, attacks: [A('spread', { n: 7, arc: 1.1, range: 180, windup: 0.6, cd: 2.2, dmg: 9, speed: 130, shot: 'feather' }), A('lunge', { range: 150, min: 40, windup: 0.8, cd: 5, dmg: 18, speed: 240, time: 0.4 })] },
-  golem: { name: 'RELIQUARY GOLEM', tier: 'elite', hp: 950, speed: 16, r: 14, hy: 30, hr: 20, move: 'chase', fervor: 30, attacks: [A('lunge', { range: 170, min: 40, windup: 0.9, cd: 4, dmg: 22, speed: 210, time: 0.5 }), A('lob', { range: 200, windup: 0.8, cd: 3, dmg: 18, rad: 24, shot: 'coffin' })] },
+  golem: { name: 'OSSUARY GOLEM', tier: 'elite', hp: 950, speed: 16, r: 14, hy: 30, hr: 20, move: 'chase', fervor: 30, attacks: [A('lunge', { range: 170, min: 40, windup: 0.9, cd: 4, dmg: 22, speed: 210, time: 0.5 }), A('lob', { range: 200, windup: 0.8, cd: 3, dmg: 18, rad: 24, shot: 'coffin' })] },
   thrice: { name: 'THE THRICE-BURIED', tier: 'elite', hp: 600, speed: 24, r: 11, hy: 28, hr: 18, move: 'chase', split: 3, fervor: 30, attacks: [A('cone', { range: 46, len: 54, arc: 1.4, windup: 0.7, cd: 2, dmg: 16 })] },
-  abbess: { name: 'ABBESS OF THORNS', tier: 'elite', hp: 700, speed: 18, r: 11, hy: 28, hr: 18, move: 'kite', keep: 110, fervor: 30, attacks: [A('spikes', { n: 4, rad: 18, range: 200, windup: 0.6, delay: 0.8, cd: 3, dmg: 14 }), A('cone', { range: 70, len: 76, arc: 1, windup: 0.6, cd: 3, dmg: 12 })] },
+  abbess: { name: 'ABBESS OF BRAMBLES', tier: 'elite', hp: 700, speed: 18, r: 11, hy: 28, hr: 18, move: 'kite', keep: 110, fervor: 30, attacks: [A('spikes', { n: 4, rad: 18, range: 200, windup: 0.6, delay: 0.8, cd: 3, dmg: 14 }), A('cone', { range: 70, len: 76, arc: 1, windup: 0.6, cd: 3, dmg: 12 })] },
   titan: { name: 'CENSER TITAN', tier: 'elite', hp: 950, speed: 16, r: 14, hy: 32, hr: 20, move: 'chase', orbit: { n: 3, r: 50, speed: 2, dmg: 12 }, fervor: 30, attacks: [A('ring', { n: 16, range: 150, windup: 0.7, cd: 4, dmg: 9, speed: 100, shot: 'ember' })] },
   manymouthed: { name: 'THE MANY-MOUTHED', tier: 'elite', hp: 850, speed: 12, r: 16, hy: 26, hr: 22, move: 'kite', keep: 120, fervor: 30, attacks: [A('spiral', { streams: 4, dur: 2.5, rate: 0.12, range: 200, windup: 0.8, cd: 6, dmg: 8, speed: 95, shot: 'blood' }), A('ring', { n: 20, range: 170, windup: 0.6, cd: 4, dmg: 8, speed: 90, shot: 'spit' })] },
   leviathan: { name: 'GRAVE LEVIATHAN', tier: 'elite', hp: 800, speed: 30, r: 13, hy: 18, hr: 18, move: 'chase', fervor: 30, attacks: [A('burrow', { range: 260, min: 40, windup: 0.6, cd: 5, dmg: 22, rad: 30 }), A('spread', { n: 5, arc: 0.7, range: 170, windup: 0.6, cd: 2.5, dmg: 9, speed: 120, shot: 'spit' })] },
@@ -1445,12 +1494,12 @@ for (const [id, d] of Object.entries(MON)) {
 const AFFIX = {
   hale: { label: 'HALE', init: (e) => { e.maxHp = e.hp = Math.round(e.hp * 1.6); } },
   swift: { label: 'SWIFT', init: (e) => { e.speedK *= 1.4; e.cdK *= 0.75; } },
-  horde: { label: 'HORDE' },
+  horde: { label: 'SWARMING' },
   smoldering: { label: 'SMOLDERING', every: 0.35, tick: (e) => { if (e.state === 'move' && Math.hypot(e.vx || 0, e.vy || 0) > 3) addPool(e.x, e.y, 12, 2.5, 8, 'fire', e); }, death: (e) => { hazards.push({ kind: 'circle', x: e.x, y: e.y, r: 38, t: 0, delay: 1.2, dmg: 22, pool: 'fire', src: e }); } },
   defiled: { label: 'DEFILED', every: 5.5, tick: (e) => { if (near(e, 220)) hazards.push({ kind: 'circle', x: player.x, y: player.y, r: 22, t: 0, delay: 0.7, dmg: 4, pool: 'blood', poolDps: 12, src: e }); } },
   hoarfrost: { label: 'HOARFROST', every: 7, tick: (e) => { if (near(e, 220)) for (let k = 0; k < 3; k++) hazards.push({ kind: 'circle', x: player.x + rand(-34, 34), y: player.y + rand(-22, 22), r: 24, t: 0, delay: 1.4, dmg: 10, slow: 2, style: 'frost', src: e }); } },
   venomous: { label: 'VENOMOUS', every: 6, tick: (e) => { if (!near(e, 200)) return; for (let a = 0; a < 4; a++) for (let k = 1; k <= 4; k++) hazards.push({ kind: 'circle', x: e.x + Math.cos(a * Math.PI / 2) * k * 20, y: e.y + Math.sin(a * Math.PI / 2) * k * 14, r: 10, t: 0, delay: 0.5 + k * 0.08, dmg: 5, pool: 'poison', poolLife: 3, src: e }); } },
-  mortar: { label: 'MORTAR', every: 4.5, tick: (e) => { if (near(e, 240) && !near(e, 60)) hazards.push({ kind: 'circle', x: player.x, y: player.y, r: 24, t: 0, delay: 0.9, dmg: 14, from: [e.x, e.y - e.hy], shot: 'bomb', src: e }); } },
+  mortar: { label: 'SHELLING', every: 4.5, tick: (e) => { if (near(e, 240) && !near(e, 60)) hazards.push({ kind: 'circle', x: player.x, y: player.y, r: 24, t: 0, delay: 0.9, dmg: 14, from: [e.x, e.y - e.hy], shot: 'bomb', src: e }); } },
   tolling: { label: 'TOLLING', every: 2.6, tick: (e) => { if (near(e, 240)) hazards.push({ kind: 'circle', x: player.x + rand(-30, 30), y: player.y + rand(-20, 20), r: 16, t: 0, delay: 1, dmg: 12, style: 'bell', src: e }); } },
   shackling: { label: 'SHACKLING', every: 8, tick: (e) => { if (near(e, 220)) hazards.push({ kind: 'circle', x: player.x, y: player.y, r: 24, t: 0, delay: 1, dmg: 4, root: 1.2, style: 'chain', src: e }); } },
   beckoning: { label: 'BECKONING', every: 7, tick: (e) => { if (near(e, 220) && !near(e, 50)) hazards.push({ kind: 'line', x: e.x, y: e.y - e.hy, ang: Math.atan2(player.y - 16 - (e.y - e.hy), player.x - e.x), len: Math.hypot(player.x - e.x, player.y - e.y) + 20, w: 12, t: 0, delay: 0.6, dur: 0.1, dmg: 0, pull: e, style: 'pull', src: e }); } },
@@ -1459,14 +1508,14 @@ const AFFIX = {
   vengeful: { label: 'VENGEFUL' },
   mirrored: { label: 'MIRRORED' },
   smiting: { label: 'SMITING' },
-  walling: { label: 'WALLING', every: 9, tick: (e) => { if (near(e, 200)) raiseWall(e); } },
+  walling: { label: 'STONEBOUND', every: 9, tick: (e) => { if (near(e, 200)) raiseWall(e); } },
   chained: { label: 'CHAINED' },
-  penitent: { label: 'PENITENT' },
+  penitent: { label: 'REMORSEFUL' },
 };
 const AFFIX_POOL = Object.keys(AFFIX);
 const near = (e, d) => Math.hypot(e.x - player.x, e.y - player.y) < d;
 const ELITE_NAMES = ['MARROWGAUNT', 'VESPERINE', 'GRISHOLM', 'ASHKETTLE', 'SALLOWMERE', 'OTTILIE', 'BROTHER ULM', 'MOTHER CARRION', 'DEACON VOSS', 'THE ABBOT RUE', 'SISTER MOTH', 'OLD TALLOW', 'SAINT VERITY', 'GRAVELOCK', 'HUSH'];
-const ELITE_EPITHETS = ['THE UNSHRIVEN', 'THE THRICE-TOLLED', 'OF THE LAST PEW', 'THE HUNGRY', 'WHO WEEPS', 'THE TITHE-TAKER', 'OF THE WAX', 'THE BELL-DEAF', 'THE UNBURIED', 'THE PENITENT', 'OF MANY TEETH', 'THE CHOIR-FED'];
+const ELITE_EPITHETS = ['THE UNSHRIVEN', 'THE THRICE-TOLLED', 'OF THE LAST PEW', 'THE HUNGRY', 'WHO WEEPS', 'THE TITHE-TAKER', 'OF THE WAX', 'THE BELL-DEAF', 'THE UNBURIED', 'THE REMORSEFUL', 'OF MANY TEETH', 'THE CHOIR-FED'];
 
 function spawnMonster(id, x, y, o = {}) {
   const d = MON[id];
@@ -1991,22 +2040,22 @@ const RARITY = [
   { id: 'common', name: 'COMMON', color: '#e8e0d2', rgb: '232,224,210', w: 50 },
   { id: 'blessed', name: 'BLESSED', color: '#8ae0ff', rgb: '138,224,255', w: 32 },
   { id: 'consecrated', name: 'CONSECRATED', color: '#ffd155', rgb: '255,209,85', w: 14 },
-  { id: 'relic', name: 'RELIC-TOUCHED', color: '#ff7a1f', rgb: '255,122,31', w: 3.5 },
+  { id: 'relic', name: 'HALLOWED', color: '#ff7a1f', rgb: '255,122,31', w: 3.5 },
   { id: 'set', name: "SAINT'S SET", color: '#7fdc6c', rgb: '127,220,108', w: 0.6 },
 ];
-const SLOTS = { hood: ['HOOD', 'COWL', 'VEIL'], mantle: ['MANTLE', 'SHROUD', 'PALL'], gloves: ['GLOVES', 'GAUNTLETS', 'MITTS'], girdle: ['GIRDLE', 'CINCTURE', 'CORD'], greaves: ['GREAVES', 'SABATONS', 'SANDALS'], rosary: ['ROSARY', 'BEADS', 'CHAPLET'], seal: ['SEAL', 'SIGNET', 'BAND'], relic: ['RELIC', 'KNUCKLEBONE', 'TOOTH'] };
+const SLOTS = { hood: ['HOOD', 'COWL', 'VEIL'], mantle: ['MANTLE', 'SHROUD', 'PALL'], gloves: ['GLOVES', 'GAUNTLETS', 'MITTS'], girdle: ['GIRDLE', 'CINCTURE', 'CORD'], greaves: ['GREAVES', 'SABATONS', 'SANDALS'], rosary: ['PENDANT', 'LOCKET', 'TALISMAN'], seal: ['SEAL', 'SIGNET', 'BAND'], relic: ['CHARM', 'KNUCKLEBONE', 'TOOTH'] };
 const ADJ = ['WORN', 'FRAYED', 'MOTHEATEN', 'PLAIN', 'STAINED'];
-const SUFFIX = ['OF THE FOX', 'OF PENANCE', 'OF THE VIGIL', 'OF EMBERS', 'OF TALLOW', 'OF THE CROW', 'OF SORROW', 'OF THE LAMB'];
-const RARE_A = ['SORROW', 'GALL', 'MARROW', 'ASHEN', 'HOLLOW', 'VESPER', 'GRAVE', 'TITHE', 'CANDLE', 'SAINT'];
-const LEGENDARIES = { hood: 'HOOD OF ASH-CHOIR', mantle: 'MANTLE OF THE NINTH WOUND', girdle: 'GIRDLE OF THE UNFED', gloves: 'HANDS THAT COUNTED COINS', greaves: 'THE LONG DESCENT', rosary: 'ROSARY OF UNSAID PRAYERS', seal: 'SEAL OF THE FIRST TITHE', relic: 'THE WEEPING KNUCKLE' };
+const SUFFIX = ['OF THE FOX', 'OF THE WICK', 'OF THE VIGIL', 'OF EMBERS', 'OF TALLOW', 'OF THE CROW', 'OF ASHES', 'OF THE LAMB'];
+const RARE_A = ['DOLOR', 'GALL', 'MARROW', 'ASHEN', 'HOLLOW', 'VESPER', 'GRAVE', 'TITHE', 'CANDLE', 'SAINT'];
+const LEGENDARIES = { hood: 'HOOD OF ASH-CHOIR', mantle: 'MANTLE OF THE NINTH WOUND', girdle: 'GIRDLE OF THE UNFED', gloves: 'HANDS THAT COUNTED COINS', greaves: 'THE LONG DESCENT', rosary: 'LOCKET OF UNSAID WORDS', seal: 'SEAL OF THE FIRST TITHE', relic: 'THE WEEPING KNUCKLE' };
 // Item stats. Each slot has a base stat; extra rolls come from the pool.
 // Values are per roll at common; rarer tiers multiply them.
 const STAT = {
   dmg: { label: 'DAMAGE', lo: 3, hi: 7, pct: true }, crit: { label: 'CRIT CHANCE', lo: 1, hi: 3, pct: true },
   hp: { label: 'MAX HP', lo: 5, hi: 12 }, dash: { label: 'DASH RECHARGE', lo: 4, hi: 8, pct: true },
-  fervor: { label: 'FERVOR GAIN', lo: 5, hi: 12, pct: true }, gold: { label: 'GOLD FIND', lo: 8, hi: 18, pct: true },
-  speed: { label: 'MOVE SPEED', lo: 2, hi: 5, pct: true }, cdr: { label: 'MIRACLE COOLDOWN', lo: 4, hi: 8, pct: true },
-  armor: { label: 'ARMOR', lo: 2, hi: 5, pct: true }, lok: { label: 'LIFE ON KILL', lo: 1, hi: 2 },
+  fervor: { label: 'ZEAL GAIN', lo: 5, hi: 12, pct: true }, gold: { label: 'GOLD BONUS', lo: 8, hi: 18, pct: true },
+  speed: { label: 'MOVE SPEED', lo: 2, hi: 5, pct: true }, cdr: { label: 'RITE COOLDOWN', lo: 4, hi: 8, pct: true },
+  armor: { label: 'ARMOR', lo: 2, hi: 5, pct: true }, lok: { label: 'HEAL ON KILL', lo: 1, hi: 2 },
 };
 const SLOT_BASE = { hood: 'hp', mantle: 'armor', gloves: 'dmg', girdle: 'hp', greaves: 'speed', rosary: 'fervor', seal: 'crit', relic: 'cdr' };
 const SLOT_ORDER = ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'seal', 'relic', 'greaves'];
@@ -2014,9 +2063,9 @@ const TIER_K = [1, 1.25, 1.55, 1.9, 2.1];
 // Relic-touched (legendary) powers, one per slot.
 const POWERS = {
   hood: { key: 'pierce', text: 'BOLTS PIERCE ONE MORE FOE.' }, mantle: { key: 'perfectHeal', text: 'PERFECT DODGES HEAL 10.' },
-  gloves: { key: 'fire', text: 'THE CROSSBOW FIRES 20% FASTER.' }, girdle: { key: 'globe', text: 'HEALTH GLOBES HEAL TWICE AS MUCH.' },
-  greaves: { key: 'dashCharge', text: '+1 DASH CHARGE.' }, rosary: { key: 'decay', text: 'FERVOR FADES HALF AS FAST.' },
-  seal: { key: 'critX', text: 'CRITICAL BOLTS DEAL TRIPLE DAMAGE.' }, relic: { key: 'penance', text: 'PENANCE CHARGES 40% FASTER.' },
+  gloves: { key: 'fire', text: 'THE CROSSBOW FIRES 20% FASTER.' }, girdle: { key: 'globe', text: 'HEALTH ORBS HEAL TWICE AS MUCH.' },
+  greaves: { key: 'dashCharge', text: '+1 DASH CHARGE.' }, rosary: { key: 'decay', text: 'ZEAL FADES HALF AS FAST.' },
+  seal: { key: 'critX', text: 'CRITICAL BOLTS DEAL TRIPLE DAMAGE.' }, relic: { key: 'penance', text: 'RECKONING CHARGES 40% FASTER.' },
 };
 const SET_TEXT = ["2 PIECES: +10% DAMAGE.", '4 PIECES: +1 DASH CHARGE, +15% DAMAGE.'];
 const SALVAGE = [5, 15, 40, 120, 200];
@@ -2181,7 +2230,7 @@ function updateMassacre() {
   if (m.n >= 10) {
     const bonus = m.n * 3;
     game.run.gold += bonus; addFervor(m.n);
-    game.banner = { text: `MASSACRE!  ${m.n} KILLS`, sub: `+${bonus} GOLD`, t: 0, color: PAL.blood0 };
+    game.banner = { text: `CARNAGE!  ${m.n} KILLS`, sub: `+${bonus} GOLD`, t: 0, color: PAL.blood0 };
   }
   m.n = 0;
 }
@@ -2200,7 +2249,7 @@ function breakProp(p) {
 function hitBreakables(x, y, r) { for (const p of room.props) if (p.breakable && Math.hypot(p.x - x, p.y - 6 - y) < r + 8) breakProp(p); }
 
 // Shrines (temporary buffs) and treasury chests.
-const SHRINES = { fervor: { name: 'SHRINE OF FERVOR', sub: 'DOUBLE DAMAGE', t: 25, rgb: '224,32,46' }, haste: { name: 'SHRINE OF HASTE', sub: 'SWIFTER FEET AND FASTER MIRACLES', t: 25, rgb: '95,220,108' }, warding: { name: 'SHRINE OF WARDING', sub: 'HALF DAMAGE TAKEN', t: 25, rgb: '138,224,255' }, plenty: { name: 'SHRINE OF PLENTY', sub: 'A RAIN OF GOLD', t: 20, rgb: '255,209,85' } };
+const SHRINES = { fervor: { name: 'SHRINE OF ZEAL', sub: 'DOUBLE DAMAGE', t: 25, rgb: '224,32,46' }, haste: { name: 'SHRINE OF HASTE', sub: 'SWIFTER FEET AND FASTER RITES', t: 25, rgb: '95,220,108' }, warding: { name: 'SHRINE OF WARDING', sub: 'HALF DAMAGE TAKEN', t: 25, rgb: '138,224,255' }, plenty: { name: 'SHRINE OF PLENTY', sub: 'A RAIN OF GOLD', t: 20, rgb: '255,209,85' } };
 function useShrine(p) {
   if (p.used) return; sfx('shrine');
   p.used = true; p.frame = p.frame; const S = SHRINES[p.shrineKind];
@@ -2388,7 +2437,7 @@ function castChain() {
 function castPenance() {
   player.penance = 0; player.rainT = T.penance.time; player.rainTick = 0; sfx('penance');
   game.shake = Math.max(game.shake, 3); game.flash = 0.1;
-  toast("FLAGELLANT'S RAIN", 1.5);
+  toast('RAIN OF RECKONING', 1.5);
 }
 
 function updateAbilities(dt) {
@@ -2520,7 +2569,6 @@ function updatePlayer(dt) {
   const ox = p.x, oy = p.y;
   moveCircle(p, vx * dt, vy * dt, p.r);
   tut.flags.moved += Math.hypot(p.x - ox, p.y - oy);
-  for (const n of room.npcs) { const dx = p.x - n.x, dy = p.y - n.y, d = Math.hypot(dx, dy); if (d < 9 && d > 0) moveCircle(p, dx / d * (9 - d), dy / d * (9 - d), p.r); }
   p.animT += dt;
   if (p.dashT <= 0 && game.time - p.dashStart > 0.3) { p.dashX = undefined; p.dashY = undefined; }
 }
@@ -2669,7 +2717,7 @@ function render() {
   for (const e of enemies) if (e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0)) shadow(e.x, e.y, e.r * 1.3 * (e.def.fly ? 0.7 : 1));
   shadow(player.x, player.y, 8);
   for (const g of gibs) shadow(g.x, g.y, 3);
-  const SHADOW = { torch: 6, statue_saint: 12, statue_angel: 12, statue_knight: 12, crate: 13, gallows: 22, cart: 20, well: 15, tomb: 6, tree: 10, stocks: 14, board: 8, brazier: 6, sarcophagus: 18, candelabra: 6, column: 11, statue: 11, lamp: 5, barrel: 6, crate: 7, anvil: 8, waystone: 10, pew: 15, coffin: 7, cage: 7, maiden: 8, altar: 17, shrine: 10, chest: 10, urn: 5 };
+  const SHADOW = { pillar: 10, torch: 6, statue_saint: 12, statue_angel: 12, statue_knight: 12, crate: 13, gallows: 22, cart: 20, well: 15, tomb: 6, tree: 10, stocks: 14, board: 8, brazier: 6, sarcophagus: 18, candelabra: 6, column: 11, statue: 11, lamp: 5, barrel: 6, crate: 7, anvil: 8, waystone: 10, pew: 15, coffin: 7, cage: 7, maiden: 8, altar: 17, shrine: 10, chest: 10, urn: 5 };
   for (const p of room.props) if (SHADOW[p.kind] && onScreen(p.x, p.y, cx, cy, 40)) shadow(p.x, p.y - 2, SHADOW[p.kind]);
   for (const n of room.npcs) shadow(n.x, n.y, 6);
   for (const g of ghosts) spr('saint', 'dash', g.i, g.x, g.y, { flip: g.face < 0, white: true, alpha: 0.45 * (1 - g.t / 0.2) });
@@ -3112,7 +3160,7 @@ function renderMinimap() {
 }
 // Named townsfolk on the map.
 const NPC_BADGE = { odile: 'saint', vane: 'relic', pell: 'market', plushseller: 'plush', barkeep: 'tavern', hollis: 'forge', beggar: 'npc', crier: 'npc' };
-const NPC_ROLE = { odile: 'SISTER ODILE, YOUR KEEPER', vane: 'ARCHDEACON VANE', pell: 'BROTHER PELL, RELIC SELLER', plushseller: 'THE PLUSH SELLER', barkeep: 'THE BOOKIE, WAGERS', hollis: 'HOLLIS THE SMITH', beggar: 'OLD BARNABY', crier: 'THE TOWN CRIER' };
+const NPC_ROLE = { odile: 'SISTER ODILE, YOUR KEEPER', vane: 'ARCHDEACON VANE', pell: 'BROTHER PELL, CURIO SELLER', plushseller: 'THE PLUSH SELLER', barkeep: 'THE BOOKIE, WAGERS', hollis: 'HOLLIS THE SMITH', beggar: 'OLD BARNABY', crier: 'THE TOWN CRIER' };
 // The full town map: the whole street, every site and person, and a legend.
 function renderTownMap() {
   ctx.fillStyle = 'rgba(11,7,16,0.82)'; ctx.fillRect(0, 0, W, H);
@@ -3283,7 +3331,7 @@ function renderReceipt(survived = false) {
   const m = Math.floor(r.time / 60), s = String(Math.floor(r.time % 60)).padStart(2, '0');
   const row = (a, b, yy) => { line(a, yy, PAL.ink1, 'left'); text(b, x + w - 10, y + yy, PAL.ink1, { outline: null, align: 'right' }); };
   row('TIME IN THE WOUND', `${m}:${s}`, 44); row('ROOMS CLEARED', `${r.rooms}/${r.total}`, 57); row('DEAD LAID TO REST', String(r.kills), 70); row('GOLD GATHERED', String(r.gold), 83);
-  row(survived ? 'RELICS FOUND' : 'TITHED TO THE CHOIR', survived ? String(r.items.length) : `${r.tithe} GOLD, ${r.lostItems} RELICS`, 96);
+  row(survived ? 'GEAR FOUND' : 'TITHED TO THE CHOIR', survived ? String(r.items.length) : `${r.tithe} GOLD, ${r.lostItems} GEAR`, 96);
   const best = [...r.items].sort((a, b) => b.ri - a.ri)[0];
   if (best) text(best.name, W / 2, y + 138, RARITY[best.ri].color, { align: 'center', outline: PAL.ink1, shadow: false });
   ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 107, w - 20, 1);
@@ -3301,18 +3349,18 @@ const WOUNDS = [
   { id: 'wrath', name: 'NAIL OF WRATH', r: 0, max: 5, icon: 'xbow', text: (n) => `+15% DAMAGE, ${n * 15}% IN ALL.` },
   { id: 'quick', name: 'QUICKENED FAITH', r: 0, max: 5, icon: 'xbow', text: () => 'THE CROSSBOW FIRES 15% FASTER.' },
   { id: 'split', name: 'SPLIT NAIL', r: 1, max: 3, icon: 'xbow', text: (n) => `FIRES ${n + 1} NAILS IN A SPREAD.` },
-  { id: 'pierce', name: 'PIERCING PRAYER', r: 0, max: 3, icon: 'xbow', text: () => 'NAILS PIERCE ONE MORE FOE.' },
+  { id: 'pierce', name: 'PIERCING FAITH', r: 0, max: 3, icon: 'xbow', text: () => 'NAILS PIERCE ONE MORE FOE.' },
   { id: 'vigil', name: "VIGIL'S BLOOD", r: 0, max: 5, icon: 'globe', text: () => '+25 MAX HP, AND HEAL IT.' },
   { id: 'swift', name: 'SWIFT SANDALS', r: 0, max: 3, icon: 'greaves', text: () => '+10% MOVE SPEED.' },
   { id: 'ember', name: 'EMBER CENSER', r: 0, max: 3, icon: 'thurible', text: () => 'THE THURIBLE HITS 50% HARDER.' },
   { id: 'censer2', name: 'SECOND CENSER', r: 1, max: 2, icon: 'thurible', text: () => 'ONE MORE THURIBLE SWINGS ROUND YOU.' },
-  { id: 'flask', name: 'DEEP FLASK', r: 0, max: 3, icon: 'flask', text: () => 'HOLY WATER POOLS 30% WIDER AND RETURNS SOONER.' },
+  { id: 'flask', name: 'DEEP VIAL', r: 0, max: 3, icon: 'flask', text: () => 'HOLY WATER POOLS 30% WIDER AND RETURNS SOONER.' },
   { id: 'chains', name: 'LONGER CHAINS', r: 0, max: 3, icon: 'link', text: () => 'THE CHAIN BINDS 2 MORE AND HITS 40% HARDER.' },
   { id: 'luck', name: "MARTYR'S LUCK", r: 0, max: 5, icon: 'seal', text: () => '+8% CRIT CHANCE.' },
   { id: 'heavy', name: 'HEAVY NAILS', r: 1, max: 3, icon: 'seal', text: () => 'CRITICAL NAILS DEAL 50% MORE.' },
-  { id: 'fervent', name: 'FERVENT', r: 0, max: 3, icon: 'rosary', text: () => '+30% FERVOR GAIN.' },
+  { id: 'fervent', name: 'ZEALOUS', r: 0, max: 3, icon: 'rosary', text: () => '+30% ZEAL GAIN.' },
   { id: 'letting', name: 'BLOODLETTING', r: 1, max: 3, icon: 'relic', text: () => '+2 HP FOR EVERY KILL.' },
-  { id: 'crescent', name: 'CRESCENT OF MERCY', r: 2, max: 3, icon: 'crescent', text: (n) => `A GREAT CRESCENT SWEEPS AROUND YOU EVERY ${(3.2 - (n - 1) * 0.5).toFixed(1)} S.` },
+  { id: 'crescent', name: 'CRESCENT OF GRACE', r: 2, max: 3, icon: 'crescent', text: (n) => `A GREAT CRESCENT SWEEPS AROUND YOU EVERY ${(3.2 - (n - 1) * 0.5).toFixed(1)} S.` },
   { id: 'pillar', name: 'PILLARS OF LIGHT', r: 2, max: 3, icon: 'pillar', text: (n) => `LIGHT STRIKES ${n + 1} FOES FROM ABOVE EVERY 4 S.` },
   { id: 'orbit', name: 'ORBITING NAILS', r: 1, max: 3, icon: 'orbit', text: (n) => `${2 + n * 2} HOLY NAILS CIRCLE YOU.` },
   { id: 'arc', name: "SAINT'S LIGHTNING", r: 2, max: 3, icon: 'arc', text: (n) => `CRITS ARC TO ${n + 1} MORE FOES.` },
@@ -3516,13 +3564,54 @@ function invLayout() {
   const card = { x: bag.x + cols * (cell + 3) + 10, y: y0 + 34 }; card.w = x0 + pw - 12 - card.x; card.h = ph - 46;
   const close = { x: x0 + pw - 14, y: y0 + 14, r: 10 };
   const btnA = { x: card.x + 6, y: card.y + card.h - 26, w: Math.floor(card.w / 2) - 9, h: 20 }, btnB = { x: btnA.x + btnA.w + 6, y: btnA.y, w: btnA.w, h: 20 };
-  return { pw, ph, x0, y0, doll, slots, bag, card, close, btnA, btnB };
+  const by = bag.y + rows * (cell + 3) + 16, bw = Math.floor((cols * (cell + 3) - 9) / 2);
+  const auto = { x: bag.x, y: by, w: bw, h: 20 }, sell = { x: bag.x + bw + 6, y: by, w: bw, h: 20 };
+  // Bulk-sell choices fill the card while open.
+  const opts = [0, 1, 2, 3].map((i) => ({ x: card.x + 6, y: card.y + 40 + i * 36, w: card.w - 12, h: 22 }));
+  return { pw, ph, x0, y0, doll, slots, bag, card, close, btnA, btnB, auto, sell, opts };
+}
+// Auto equip: for each slot, wear the best piece from the bag if it beats
+// what is worn. Pieces are compared by itemScore (every stat against its
+// usual roll, plus powers and set pieces).
+function autoEquip() {
+  let n = 0;
+  for (const slot of SLOT_ORDER) {
+    const worn = SAVE.equip[slot];
+    let best = null, bs = itemScore(worn) + 0.2;
+    for (const it of SAVE.bag) if (it.slot === slot && itemScore(it) > bs) { best = it; bs = itemScore(it); }
+    if (best) { equip(best); n++; }
+  }
+  game.inv.sel = null;
+  toast(n ? `WORE ${n} UPGRADE${n > 1 ? 'S' : ''}` : 'NOTHING IN THE BAG BEATS WHAT YOU WEAR', 2);
+  if (!n) sfx('tap');
+}
+// Bulk sell. Each rule picks bag items; the panel shows count and gold first.
+const SELL_RULES = [
+  { label: 'WORSE THAN WORN', pick: (it) => SAVE.equip[it.slot] && itemScore(it) < itemScore(SAVE.equip[it.slot]) - 0.2 && it.ri < 3 },
+  { label: 'COMMON AND BLESSED', pick: (it) => it.ri <= 1 },
+  { label: 'ALL BUT HALLOWED AND SET', pick: (it) => it.ri <= 2 },
+  { label: 'EVERYTHING IN THE BAG', pick: () => true },
+];
+const sellPreview = (rule) => { const l = SAVE.bag.filter(rule.pick); return { n: l.length, gold: l.reduce((a, it) => a + SALVAGE[it.ri], 0) }; };
+function bulkSell(rule) {
+  const l = SAVE.bag.filter(rule.pick), g = l.reduce((a, it) => a + SALVAGE[it.ri], 0);
+  if (!l.length) { toast('NOTHING TO SELL', 1.5); return; }
+  SAVE.bag = SAVE.bag.filter((it) => !l.includes(it));
+  if (game.scene === 'wound') game.run.gold += g; else SAVE.gold = (SAVE.gold || 0) + g;
+  persist(); sfx('gold'); toast(`SOLD ${l.length} FOR ${g} GOLD`, 2); game.toastColor = PAL.gold1;
 }
 const inRect = (r, x, y) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
 function selItem() { const s = game.inv && game.inv.sel; if (!s) return null; return s.from === 'bag' ? SAVE.bag[s.i] : SAVE.equip[s.slot]; }
 function invTap(x, y) {
   const L = invLayout();
   if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || x < 0 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { closeInventory(); return; }
+  if (game.inv.selling) {
+    const i = L.opts.findIndex((r) => inRect(r, x, y));
+    if (i >= 0) bulkSell(SELL_RULES[i]);
+    game.inv.selling = false; game.inv.sel = null; return;
+  }
+  if (inRect(L.auto, x, y)) { autoEquip(); return; }
+  if (inRect(L.sell, x, y)) { game.inv.selling = true; game.inv.sel = null; sfx('tap', { vol: 0.5 }); return; }
   for (const [sl, r] of Object.entries(L.slots)) if (inRect(r, x, y)) { game.inv.sel = SAVE.equip[sl] ? { from: 'equip', slot: sl } : null; sfx('tap', { vol: 0.5 }); return; }
   const b = L.bag, c = Math.floor((x - b.x) / (b.cell + 3)), r = Math.floor((y - b.y) / (b.cell + 3));
   if (c >= 0 && c < b.cols && r >= 0 && r < b.rows) {
@@ -3563,7 +3652,7 @@ function renderInventory() {
   gild(L.x0, L.y0, L.pw, L.ph);
   ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
   ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
-  text('VESTMENTS AND RELICS', L.x0 + 12, L.y0 + 9, PAL.gold1);
+  text('VESTMENTS AND GEAR', L.x0 + 12, L.y0 + 9, PAL.gold1);
   const gold = game.scene === 'wound' ? game.run.gold : SAVE.gold || 0;
   sprC('loot', 'coin', 0, L.close.x - 64, L.y0 + 13); text(String(gold), L.close.x - 57, L.y0 + 9, PAL.gold1);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
@@ -3576,7 +3665,7 @@ function renderInventory() {
     itemSlot(r, SAVE.equip[sl], { ghost: sl, sel });
   }
   // Totals under the doll.
-  const SHORT = { dmg: 'DAMAGE', crit: 'CRIT', hp: 'MAX HP', dash: 'DASH CD', fervor: 'FERVOR', gold: 'GOLD', speed: 'SPEED', cdr: 'MIRACLE CD', armor: 'ARMOR', lok: 'LIFE/KILL' };
+  const SHORT = { dmg: 'DAMAGE', crit: 'CRIT', hp: 'MAX HP', dash: 'DASH CD', fervor: 'ZEAL', gold: 'GOLD', speed: 'SPEED', cdr: 'RITE CD', armor: 'ARMOR', lok: 'HEAL/KILL' };
   const lines = Object.keys(STAT).filter((k) => G[k]).map((k) => `+${G[k]}${STAT[k].pct ? '%' : ''} ${SHORT[k]}`);
   if (G.setN >= 2) lines.push(`SAINT'S SET ${G.setN}/4`);
   const pw = [...G.powers].map((k) => POWERS[Object.keys(POWERS).find((q) => POWERS[q].key === k)].text);
@@ -3594,10 +3683,22 @@ function renderInventory() {
     itemSlot({ x: B.x + c * (B.cell + 3), y: B.y + r * (B.cell + 3), w: B.cell, h: B.cell }, SAVE.bag[i], { sel });
   }
   text('TAP TWICE TO WEAR', B.x, B.y + B.rows * (B.cell + 3) + 4, PAL.stone2, { small: true, outline: null });
+  const ups = SLOT_ORDER.filter((sl) => SAVE.bag.some((it) => it.slot === sl && itemScore(it) > itemScore(SAVE.equip[sl]) + 0.2)).length;
+  invButton(L.auto, ups ? `AUTO EQUIP ${ups}` : 'AUTO EQUIP', PAL.gold3, SAVE.bag.length > 0);
+  invButton(L.sell, 'SELL MANY', PAL.crimson3, SAVE.bag.length > 0);
+  if (game.inv.selling) {
+    const C = L.card;
+    ctx.fillStyle = PAL.ink2; ctx.fillRect(C.x, C.y, C.w, C.h);
+    text('SELL WHICH?', C.x + 6, C.y + 8, PAL.gold1);
+    text('WORN PIECES ARE NEVER SOLD.', C.x + 6, C.y + 22, PAL.stone1, { small: true, outline: null });
+    SELL_RULES.forEach((rule, i) => { const r = L.opts[i], pv = sellPreview(rule); invButton(r, rule.label, PAL.crimson3, pv.n > 0); text(`${pv.n} ITEMS  +${pv.gold} GOLD`, r.x + r.w / 2, r.y + r.h + 1, pv.n ? PAL.gold1 : PAL.stone2, { align: 'center', small: true, outline: null }); });
+    text('TAP ELSEWHERE TO CANCEL', C.x + 6, C.y + C.h - 12, PAL.stone2, { small: true, outline: null });
+    return;
+  }
   // The card.
   const C = L.card;
   ctx.fillStyle = PAL.ink2; ctx.fillRect(C.x, C.y, C.w, C.h);
-  if (!it) { wrap('CHOOSE A RELIC TO READ IT. WORN RELICS ARE SAFE IF YOU FALL; THE CHOIR TAKES HALF OF WHAT YOU CARRY.', Math.floor((C.w - 12) / 6)).forEach((l, i) => text(l, C.x + 6, C.y + 8 + i * 10, PAL.stone1, { small: true, outline: null })); return; }
+  if (!it) { wrap('CHOOSE A PIECE TO READ IT. WORN GEAR IS SAFE IF YOU FALL; THE CHOIR TAKES HALF OF WHAT YOU CARRY.', Math.floor((C.w - 12) / 6)).forEach((l, i) => text(l, C.x + 6, C.y + 8 + i * 10, PAL.stone1, { small: true, outline: null })); return; }
   const R0 = RARITY[it.ri];
   let y = C.y + 6;
   for (const l of wrap(it.name, Math.floor((C.w - 12) / 7))) { text(l, C.x + 6, y, R0.color); y += 12; }

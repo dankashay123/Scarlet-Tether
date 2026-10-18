@@ -27,6 +27,16 @@ const S = process.argv[2];
   await tap(L.btnB.x + 10, L.btnB.y + 10); // salvage
   const after = await p.evaluate(() => ({ hp: HS.player.maxHp, worn: Object.values(HS.SAVE.equip).filter(Boolean).length, bag: HS.SAVE.bag.length, gold: HS.game.run.gold, dmg: HS.G.dmg, state: HS.game.state }));
   console.log('after wear+salvage', JSON.stringify(after));
+  // Auto equip, then bulk sell.
+  await p.evaluate(() => { for (let i = 0; i < 10; i++) HS.SAVE.bag.push(HS.rollItem(1.5)); });
+  await p.waitForTimeout(150); await p.screenshot({ path: `${S}/shots/i3-auto.png` });
+  const sc = () => p.evaluate(() => Object.values(HS.SAVE.equip).filter(Boolean).reduce((a, it) => a + it.stats.length, 0));
+  const s0 = await sc(); await tap(L.auto.x + 10, L.auto.y + 10); const s1 = await sc();
+  console.log('auto equip', s0, '->', s1, await p.evaluate(() => HS.game.toast && HS.game.toast.msg));
+  await tap(L.sell.x + 10, L.sell.y + 10); await p.waitForTimeout(100);
+  await p.screenshot({ path: `${S}/shots/i4-sell.png` });
+  const n0 = await p.evaluate(() => HS.SAVE.bag.length); await tap(L.opts[1].x + 10, L.opts[1].y + 10);
+  console.log('bulk sell', n0, '->', await p.evaluate(() => HS.SAVE.bag.length), await p.evaluate(() => HS.game.toast && HS.game.toast.msg));
   await p.keyboard.press('KeyI'); await p.waitForTimeout(100);
   console.log('closed', await p.evaluate(() => HS.game.state));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();

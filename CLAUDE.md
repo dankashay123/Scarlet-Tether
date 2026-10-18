@@ -38,6 +38,7 @@ node tools/tests/maps.cjs [n]         # builds n floors; every room reachable, s
 node tools/tests/inv.cjs <outDir>     # bag, wear, sell, loot labels
 node tools/tests/stig.cjs <outDir>    # level-up cards and every Stigmata skill at once
 node tools/tests/descent.cjs <outDir> # town minimap, full map, a locked site, descent panel and difficulty
+node tools/tests/rooms.cjs <outDir> [n] # photographs every room of n floors (layout review)
 SOAK_DEATH=0.04 node tools/tests/soak.cjs <outDir> 300   # 5 min of random play: errors, NaN, stuck states, walls
 node tools/tests/err.cjs              # prints page errors and state
 node tools/sprites.mjs --audit        # lists any animation still drawn by the old hand-drawn code
@@ -61,4 +62,5 @@ Each test writes screenshots to `<outDir>/shots/` and prints `errors 0 []` when 
 - **World units:** distances in `index.html` are world pixels at the v5 scale. Any new size or range should already include the ×1.3 scale. MON stats are written at the old scale and multiplied by `WS` in a loop after the table.
 - **Floor tiles:** stay 16 px (`TILE`). Back walls are 3 tiles tall plus a cap: `hall.wall` = [top, cap, upper, lower, mid].
 - **Shipping:** work on a branch, then push to `master`. The owner asked for every finished round to go to master; GitHub Pages deploys from it. End commits with the attribution lines the session asks for.
+- **Names:** never borrow names or terms from other games (the owner removed all Blasphemous and Diablo terms for copyright). Our terms: Zeal (resource), Reckoning (ultimate), Rites (skills), Pilgrim/Zealot/Martyr/Saint (difficulty), Hallowed (top rarity), Vigil Trials (endless mode), health orbs, Carnage bonus.
 - **Writing style:** keep docs and code comments plain and short.

@@ -19,10 +19,10 @@ city watches through scrying pools. You don't remember being chosen. The town do
    world reveals more with each Cycle.
 2. **Learn the fight.** Bosses are solved with bullet-hell patterns and armored
    melee puzzles, not out-statted.
-3. **Diablo-deep loot.** Gear, crafting and builds are worth theorycrafting.
-4. **An infinite climb.** Numbered Vigil tiers, infinite paragon and relic
+3. **Deep loot.** Gear, crafting and builds are worth theorycrafting.
+4. **An infinite climb.** Numbered Vigil tiers, infinite Litany and gear
    anointing mean there is always a next goal.
-5. **Bleak, with a grin.** Grotesque religion in the Blasphemous vein, plus
+5. **Bleak, with a grin.** Grotesque, gilded religion of our own, plus
    Black Mirror dark humor.
 
 ### Locked decisions
@@ -51,14 +51,14 @@ economy running.
 - **Vael:** A cathedral city built over the Wound and cursed by the Plague of
   the Risen, where the dead get back up.
 - **The Choir:** The church. It runs the Descent, the scrying pools in every
-  tavern and the relic market.
+  tavern and the item market.
 - **The Wound:** A pit of 8 Strata. Each deeper Stratum is older, and its
   architecture shows the eras of earlier Saints.
 - **The Saint:** Silent. Wakes in the Vestry each Cycle with no memory.
 
-### Lore delivery (Blasphemous-level)
+### Lore delivery
 
-- **Item descriptions:** Every relic, Vestment and weapon carries 2 to 4 sentences of lore.
+- **Item descriptions:** Every item, Vestment and weapon carries 2 to 4 sentences of lore.
 - **Shrines in the Wound:** Scratched wall messages, corpses with notes and murals.
 - **Town NPCs:** Dialogue changes every Cycle, and some NPCs slowly start to recognize you.
 
@@ -69,14 +69,14 @@ economy running.
 | 1 | The holy quest seems real. One wall message deep in Stratum 1 is in your handwriting. |
 | 2 | NPCs act oddly familiar. The tavern posts odds on your death. More messages in your hand. |
 | 3 | Warden bosses wear scraps of Saint vestments. Shrines name earlier Saints. |
-| 4 | Bones at the relic market match your scars. Gospel pages reveal the Choir's ledgers of each Descent. |
-| 5 (about 10 hours) | You reach the bottom. The thing there is the First Saint, and the miracle needs a suffering Saint forever. First ending. |
+| 4 | Bones at the item market match your scars. Gospel pages reveal the Choir's ledgers of each Descent. |
+| 5 (about 10 hours) | You reach the bottom. The thing there is the First Saint, and the rite needs a suffering Saint forever. First ending. |
 | 6+ and Canonizations | Hidden Strata, the full history of the Choir and the other endings. |
 
 ### The Unwritten Gospel
 
 A book in the Vestry with blank pages. Pages fill from new Cycles, shrines, boss
-kills and completed relic sets, and the book shows a "% transcribed" figure.
+kills and completed item sets, and the book shows a "% transcribed" figure.
 That number is the player's constant signal that the world holds more to find,
 and it gates the endings. The UI line under it reads: *The world remembers what you forget.*
 
@@ -87,9 +87,9 @@ Thresholds are first-pass and will be tuned.
 | Ending | How to reach it | Result |
 |---|---|---|
 | Keep the Vigil | Default on first reaching the bottom | You take the First Saint's place and the loop continues. Unlocks Vigils. |
-| Break the Bell | Gospel 60%+, spare the First Saint | The miracle fails and the dead rise. NG+ where the Choir hunts you. |
-| The Laughing Saint | Canonized as The Saint Who Laughed, top Fervor record | Dark-humor ending: you take over the Choir and start selling tickets. |
-| The Unremembered | Gospel 100%, every Saint's Name earned | True ending: the miracle ends and the dead stay dead, you included. |
+| Break the Bell | Gospel 60%+, spare the First Saint | The rite fails and the dead rise. NG+ where the Choir hunts you. |
+| The Laughing Saint | Canonized as The Saint Who Laughed, top Zeal record | Dark-humor ending: you take over the Choir and start selling tickets. |
+| The Unremembered | Gospel 100%, every Saint's Name earned | True ending: the rite ends and the dead stay dead, you included. |
 
 ## Core loop and combat
 
@@ -98,7 +98,7 @@ Thresholds are first-pass and will be tuned.
 Each run is a descent: you steer, dodge and choose fights while your weapons
 fire on their own, then bank loot in town or die and leave a Shade.
 
-1. Prepare in Vael: gear, crafting, relics, respec.
+1. Prepare in Vael: gear, crafting, gear, respec.
 2. Take the Vestry lift to any unlocked Stratum.
 3. Clear procedural combat rooms, level up and pick Stigmata.
 4. Reach the set pieces: shrines, ability gates, the boss.
@@ -107,8 +107,8 @@ fire on their own, then bank loot in town or die and leave a Shade.
 ### Controls (landscape, auto-target)
 
 - **Left thumb:** Virtual joystick to move.
-- **Right side:** Dash, two Miracles (cooldown skills) and the Penance ultimate.
-- **Auto-fire:** The Relic Weapon and Censer fire at the best target in range.
+- **Right side:** Dash, two Rites (cooldown skills) and the Reckoning ultimate.
+- **Auto-fire:** The Item Weapon and Censer fire at the best target in range.
   Priority is elites first, then nearest.
 - **Optional lock:** Tap an enemy to focus it.
 
@@ -116,7 +116,7 @@ fire on their own, then bank loot in town or die and leave a Shade.
 
 - 2 charges, about 1.5 s recharge each, about 0.25 s of i-frames.
 - **Perfect dodge:** Dashing within about 0.15 s of a hit landing triggers a
-  brief slow-mo and a Fervor spike.
+  brief slow-mo and a Zeal spike.
 
 ### Enemy density
 
@@ -124,18 +124,18 @@ fire on their own, then bank loot in town or die and leave a Shade.
 - Waves feel survivors-like but are capped so the screen never becomes soup.
 - Mix per room: fodder swarms, shielded elites and casters.
 
-### Fervor
+### Zeal
 
 - The crowd's bloodlust, shown as a bar. Kills, gore, executions, perfect
   dodges and no-hit streaks fill it, and it decays over time.
 - Four tiers: Murmur, Chant, Rapture, Frenzy. Higher tiers add damage and drop bonuses.
 - Sitting at the bottom tier too long summons an Inquisitor to "encourage" you.
-- Fervor also charges the Penance ultimate.
+- Zeal also charges the Reckoning ultimate.
 
 ### Executions
 
 - Elites below about 15% HP stagger and show a prompt.
-- Tap it for a dismemberment finisher that heals about 5% HP and spikes Fervor.
+- Tap it for a dismemberment finisher that heals about 5% HP and spikes Zeal.
 
 ### Death and the Shade
 
@@ -153,24 +153,24 @@ The game auto-saves at every room transition. Resuming puts you at the start of 
 
 ## Weapons and builds
 
-The Saint carries three deep weapon slots plus two Miracles. Builds come from
-weapon mutations, Vestment legendaries and relics, not from stacking dozens of weapons.
+The Saint carries three deep weapon slots plus two Rites. Builds come from
+weapon mutations, Vestment hallowed pieces and gear, not from stacking dozens of weapons.
 
 | Slot | Role | Launch roster |
 |---|---|---|
-| Relic Weapon | Primary auto-fire | Nail Crossbow, Bell-Flail, Lance of Weeping, Censure Scythe |
+| Item Weapon | Primary auto-fire | Nail Crossbow, Bell-Flail, Lance of Weeping, Censure Scythe |
 | Censer | Always-on aura or orbit | Thurible of Embers, Ring of Hymnals, Moth Swarm |
-| Penance | Ultimate, charged by Fervor | Flagellant's Rain, Pillar of Salt, Martyr's Bloom, The Last Rite |
-| Miracles (2) | Cooldown actives, auto-targeted | Holy Water Flask, Chain of Penitence, Sanctuary, Blessed Nails (pool grows with progression) |
+| Reckoning | Ultimate, charged by Zeal | Scourger's Rain, Pillar of Salt, Martyr's Bloom, The Last Rite |
+| Rites (2) | Cooldown actives, auto-targeted | Holy Water Vial, Chain of Penitence, Sanctuary, Blessed Nails (pool grows with progression) |
 
-### Relic Weapons at launch
+### Item Weapons at launch
 
 - **Nail Crossbow:** Piercing bolts. Mutates toward spread shot, bolts that
   chain between corpses, or Crucify (pins enemies to walls).
 - **Bell-Flail:** Short-range arcs that stun on each toll. Mutates toward
   resonating chains or ground-shattering slams.
 - **Lance of Weeping:** A slow, heavy beam that applies Sorrow (target takes
-  more damage). Mutates toward splitting beams or a lingering pool of tears.
+  more damage). Mutates toward splitting beams or a lingering pool of holy water.
 - **Censure Scythe:** Close sweeps with lifesteal and stacking bleed. Mutates
   toward a thrown boomerang scythe or execution-on-bleed.
 
@@ -180,52 +180,52 @@ weapon mutations, Vestment legendaries and relics, not from stacking dozens of w
 - The capstone of each branch is a **Transfiguration** that changes how the weapon behaves.
 - Trees reset on Martyrdom but refill faster each Cycle.
 
-### Build-defining legendaries
+### Build-defining hallowed pieces
 
-Legendary Vestments rewrite behavior instead of adding raw stats. Examples:
+Hallowed Vestments rewrite behavior instead of adding raw stats. Examples:
 
 - *Mantle of the Ninth Wound:* Crossbow bolts chain between corpses.
-- *Girdle of the Unfed:* Executions refund a Penance charge.
-- *Hood of Ash-Choir:* Your Censer orbit doubles, but Fervor decays twice as fast.
+- *Girdle of the Unfed:* Executions refund a Reckoning charge.
+- *Hood of Ash-Choir:* Your Censer orbit doubles, but Zeal decays twice as fast.
 
 ## Character progression
 
 Inside a run you pick Stigmata. Across runs you build and craft Vestments
-Diablo-style and earn Litany levels that never reset.
+and earn Litany levels that never reset.
 
 ### Stigmata (in-run talents)
 
 - Each level-up offers 3 Wounds; you pick 1. They last for the run only.
 - About 60 Wounds at launch, in rarity tiers, many tied to specific weapons.
-- Rerolling the offer costs Fervor.
+- Rerolling the offer costs Zeal.
 
 ### Vestments (gear, slot list)
 
-- **Slots:** Hood, Mantle, Gloves, Girdle, Greaves, Rosary, two Seals (rings), plus the three weapons.
-- **Rarities:** Common, Blessed, Consecrated, Relic-touched (legendary), Saint's
+- **Slots:** Hood, Mantle, Gloves, Girdle, Greaves, Pendant, two Seals (rings), plus the three weapons.
+- **Rarities:** Common, Blessed, Consecrated, Hallowed, Saint's
   Set, and Sanctified (Vigil-only, top rolls).
 - **Gear remembers:** On Martyrdom, gear is kept but scales down to your level
   and climbs back with you. Crafting investment is never wasted.
 
-### Crafting (Diablo-deep)
+### Crafting
 
 | System | Where | What it does |
 |---|---|---|
 | Salvage | The Forge | Breaks gear into Bone Dust, Holy Thread and Saint's Marrow |
 | Re-consecrate | The Forge | Rerolls one affix; the same affix stays locked for that item |
-| Inlay | The Forge | Sockets Tears (gems) into gear |
-| Augment | The Forge | Sacrifices gear to add a permanent stat to a legendary |
-| Extract | The Ossuary Altar | Pulls a legendary power out to wear as a passive (3 slots) |
+| Inlay | The Forge | Sockets gems into gear |
+| Augment | The Forge | Sacrifices gear to add a permanent stat to a hallowed |
+| Extract | The Ossuary Altar | Pulls a hallowed power out to wear as a passive (3 slots) |
 | Blind Box | Brother Pell's stall | Gambles gold on a slot-specific item |
 
 ### Respec
 
 Respeccing mutation trees and Litany points at the Confessional costs gold, scaling with level.
 
-### Litany (paragon)
+### Litany
 
 - After max level 60, all XP feeds infinite Litany levels.
-- Points go into four lines: Wrath (damage), Piety (defense), Penance (Fervor
+- Points go into four lines: Wrath (damage), Piety (defense), Reckoning (Zeal
   and skills) and Pilgrimage (movement and loot).
 - Litany never resets, not even on Canonization.
 
@@ -238,16 +238,16 @@ Respeccing mutation trees and Litany points at the Confessional costs gold, scal
 ## Prestige ladder
 
 Four nested loops make the game infinitely replayable. Runs feed Martyrdom,
-Martyrdom feeds the Reliquary and Vigils, and Canonization restarts the climb
+Martyrdom feeds the Champion's Hall and Vigils, and Canonization restarts the climb
 with permanent power and new story. Litany grows underneath all of it.
 
 ```
-Run ──► Martyrdom ──► Vigils ──► Reliquary
+Run ──► Martyrdom ──► Vigils ──► Champion's Hall
  ▲        │  (Ash) ─────────────────▲
  └Cycle+1─┘
  ▲        │ after any ending
- └restart─ Canonization (resets relics, Cycle; grants Halos, new title)
-═══ Litany (paragon): infinite levels that never reset ═══
+ └restart─ Canonization (resets gear, Cycle; grants Halos, new title)
+═══ Litany: infinite levels that never reset ═══
 ```
 
 Martyrdom loops you back to a fresh run with a new Cycle; an ending opens
@@ -256,48 +256,48 @@ Canonization, which restarts the Cycle count with permanent Halos.
 | Layer | Unlocks | Resets | Keeps | Earns |
 |---|---|---|---|---|
 | Run | Start | Run Stigmata | Gear, XP | Loot, gold |
-| Martyrdom | After the Stratum 1 boss, then every 2 to 4 hours | Level, gold, Strata progress, mutation trees | Gear (scaled down), map abilities, Litany, relics, Gospel pages, cosmetics | Ash, a Death Mask, Cycle +1 |
+| Martyrdom | After the Stratum 1 boss, then every 2 to 4 hours | Level, gold, Strata progress, mutation trees | Gear (scaled down), map abilities, Litany, gear, Gospel pages, cosmetics | Ash, a Death Mask, Cycle +1 |
 | Vigils | After the first ending | Nothing | Everything | Sanctified gear, mask upgrades, Anointing, leaderboard rank |
-| Canonization | After any ending | Relics, Cycle count | Litany, Halos, Gospel, Saint's Names, cosmetics | Halos, a new Saint's Name |
+| Canonization | After any ending | Gear, Cycle count | Litany, Halos, Gospel, Saint's Names, cosmetics | Halos, a new Saint's Name |
 
 ### Martyrdom
 
 Ash earned scales with how deep you got, how many bosses fell and your best
-Fervor. First-pass formula, to be tuned in a balance sim:
+Zeal. First-pass formula, to be tuned in a balance sim:
 
 `Ash = (10·S² + 25·B) · (1 + F/100) · R`
 
-S = deepest Stratum reached, B = bosses killed this Cycle, F = best Fervor
-record, R = relic multipliers.
+S = deepest Stratum reached, B = bosses killed this Cycle, F = best Zeal
+record, R = item multipliers.
 
-### The Reliquary
+### The Champion's Hall
 
-Relics are bought and ranked up with Ash. Each is a piece of a past Saint, with
-lore. Collecting every relic from one Saint completes a set, grants a bonus and
+Gear are bought and ranked up with Ash. Each is a piece of a past Saint, with
+lore. Collecting every item from one Saint completes a set, grants a bonus and
 unlocks a Gospel chapter.
 
-| Relic | Effect per rank |
+| Item | Effect per rank |
 |---|---|
-| Finger of the Third Saint | +10% Relic Weapon damage |
+| Finger of the Third Saint | +10% Item Weapon damage |
 | The Unweeping Eye | +2% critical chance |
-| Knucklebone Rosary | +1 Stigmata choice (4 instead of 3), max rank 1 |
+| Knucklebone Pendant | +1 Stigmata choice (4 instead of 3), max rank 1 |
 | Lungs of the Drowned Saint | +1 dash charge, max rank 2 |
 | Heart in Brine | +5% max HP; at max rank the Shade keeps 60% instead of 50% |
 | Tongue of the Fourth Saint | Brother Pell's prices drop 5%, and he starts telling the truth |
 | The Hollow Crown | +5% Ash from each Martyrdom |
 
-### Vigils (the Greater Rift equivalent)
+### Vigil Trials (endless timed descents)
 
 - **Keys:** A Death Mask is cast from your corpse at each Martyrdom, and masks
   also drop in Vigils. Players reach the endgame already holding keys.
 - **Tiers:** A mask's tier sets the difficulty, and tiers go up forever.
 - **The run:** A procedural descent under a 15-minute candle. Kills fill the
-  crowd's Fervor bar, which summons the Warden. Kill it before the candle burns out.
+  crowd's Zeal bar, which summons the Warden. Kill it before the candle burns out.
 - **Mask upgrades:** Faster clears upgrade the mask by +1 to +5 tiers. A failed
   Vigil still gives loot but no upgrade.
 - **Loot:** Drop quality and quantity rise with tier. Sanctified items start dropping at tier 20.
-- **Anointing:** Each successful clear lets you anoint one relic, ranking it past
-  its Ash cap. Success chance falls when the relic's rank is above the Vigil tier.
+- **Anointing:** Each successful clear lets you anoint one item, ranking it past
+  its Ash cap. Success chance falls when the item's rank is above the Vigil tier.
 - **Leaderboards:** Highest tier cleared, reset weekly.
 
 First-pass enemy scaling per tier t:
@@ -306,12 +306,12 @@ First-pass enemy scaling per tier t:
 
 ### Canonization
 
-- Unlocks after any ending. It resets relics and the Cycle count.
+- Unlocks after any ending. It resets gear and the Cycle count.
 - It grants **Halos** based on total Ash ever spent. Halos are permanent
   multipliers, such as +10% damage or +5% Ash.
 - You choose a **Saint's Name**, a permanent title with a passive that changes
   dialogue and opens other endings:
-  - *The Saint Who Wept:* Heals from bleeding enemies. The crowd pities you, so Fervor decays slower.
+  - *The Saint Who Wept:* Heals from bleeding enemies. The crowd pities you, so Zeal decays slower.
   - *The Saint Who Laughed:* Executions always crit. NPCs fear you. Required for The Laughing Saint ending.
   - *The Saint Who Burned:* Fire damage spreads. The city riots between Cycles.
   - *The Saint Who Fed:* Lifesteal on every weapon. The Wound grows hungrier and adds new elites.
@@ -325,10 +325,10 @@ run. Abilities stay unlocked through Martyrdom.
 | # | Stratum | Theme | Boss | Boss type | Ability gained |
 |---|---|---|---|---|---|
 | 1 | The Undercroft | Crypts and the risen dead | The Bellwright | Warden | Bell Toll: shatters seals |
-| 2 | The Weeping Cisterns | Flooded halls of holy water | Mother of Tears | Choir | Sanctified Step: walk on holy water |
-| 3 | The Flagellant Halls | Penitents and whips | The Shieldwall Abbess | Warden | Thorn Hook: cross chasms |
+| 2 | The Weeping Cisterns | Flooded halls of holy water | Mother of Brine | Choir | Sanctified Step: walk on holy water |
+| 3 | The Scourger Halls | Scourgers and whips | The Shieldwall Abbess | Warden | Thorn Hook: cross chasms |
 | 4 | The Ossuary Gardens | Flowers grown from bone | The Gardener of Ribs | Choir | Ash Sight: reveals hidden walls |
-| 5 | The Censer Furnace | Burning relic forges | The Thurifer | Choir | Ember Ward: cross fire floors |
+| 5 | The Censer Furnace | Burning item forges | The Thurifer | Choir | Ember Ward: cross fire floors |
 | 6 | The Mute Choir | Silent singers, sound traps | The Conductor | Warden | Hush: pass sound wards |
 | 7 | The Saints' Graveyard | Graves of every earlier Saint | The Saint Before You | Warden | A Gospel chapter |
 | 8 | The Navel | The bottom of the Wound | The First Saint | Both, in phases | The ending choice |
@@ -359,14 +359,14 @@ shop, respec and read the city's mood toward you.
 | Location | NPC | Function |
 |---|---|---|
 | The Vestry | Sister Odile, who wakes you each Cycle | Spawn point, the Unwritten Gospel, the Martyrdom altar |
-| The Reliquary | Archdeacon Vane | Spend Ash on relics; Canonization |
-| The Forge of Penance | Hollis the smith | Salvage, re-consecrate, inlay, augment |
-| The Ossuary Altar | None | Extract legendary powers |
+| The Champion's Hall | Archdeacon Vane | Spend Ash on gear; Canonization |
+| The Ember Forge | Hollis the smith | Salvage, re-consecrate, inlay, augment |
+| The Ossuary Altar | None | Extract hallowed powers |
 | The Confessional | The Confessor | Respec for gold |
-| Pell's Stall | Brother Pell | Blind Box gambling, "genuine" relics |
+| Pell's Stall | Brother Pell | Blind Box gambling, "genuine" gear |
 | The Gilded Lamb tavern | The barkeep and the bookie | Scrying pool, odds on your death, rumors and lore |
 | The Congregation steps | None | Collect idle Tithe |
-| The Penitents' Gate | None | Send and receive expeditions |
+| The Pilgrims' Gate | None | Send and receive expeditions |
 
 ### Dark humor bank
 
@@ -383,9 +383,9 @@ Idle is a light bonus. It speeds progress up but never replaces playing, and
 there are no energy or stamina limits.
 
 - **Congregation:** The city keeps praying while you're away and generates Tithe
-  (gold). The rate scales with your best Fervor record, because they're
+  (gold). The rate scales with your best Zeal record, because they're
   rewatching your greatest hits. Offline gain caps at 8 hours, worth roughly one run's gold.
-- **Penitents:** Three expedition slots into cleared Strata, lasting 1 to 8
+- **Pilgrims:** Three expedition slots into cleared Strata, lasting 1 to 8
   hours, returning crafting materials. About 10% never come back; they appear as
   named elites on your next run, and killing one returns its haul.
 
@@ -406,7 +406,7 @@ later. The business model is free to play with cosmetics first.
 
 - **Cosmetics:** Death Mask skins, Saint's Name outfits, weapon skins, Acolyte skins, execution animations.
 - **Liturgy pass:** A seasonal battle pass, once seasons exist.
-- **Convenience:** Stash tabs and extra Penitent expedition slots.
+- **Convenience:** Stash tabs and extra Pilgrim expedition slots.
 
 Pay-to-win power would undercut Vigil leaderboards, guilds and world bosses,
 which are the long-term retention hooks. If paid power is ever added, keep it
@@ -422,7 +422,7 @@ glowing VFX over muted, grimy environments.
 
 - **Primary reference:** Otherworld Legends. Detailed top-down pixel tiles,
   chunky characters, punchy damage numbers and bright ability effects.
-- **Tone reference:** Blasphemous. Gilded gold, dried blood, candle smoke and religious grotesque.
+- **Tone:** gilded gold, dried blood, candle smoke and religious grotesque.
 - **Readability rule:** Environments stay muted and dark. The Saint, enemy
   attacks and loot glow, so a 40-enemy fight stays legible.
 
@@ -460,7 +460,7 @@ Sprites animate at 10 to 12 fps; VFX and particles run at 60 fps.
 - **Blood:** Pixel splatter bursts that stain the floor and persist for the whole room.
 - **Dismemberment:** Enemies break into 2 to 4 limb chunks that bounce and settle. Wardens get unique death pieces.
 - **Damage numbers:** Chunky pixel font that stacks; crits are larger and gold.
-- **Fervor tint:** Screen edges shift from none to ember, crimson, then white-gold at Frenzy.
+- **Zeal tint:** Screen edges shift from none to ember, crimson, then white-gold at Frenzy.
 
 ### Strata palettes
 
@@ -468,7 +468,7 @@ Sprites animate at 10 to 12 fps; VFX and particles run at 60 fps.
 |---|---|
 | The Undercroft | Cold grey stone, green candle light, bone white |
 | The Weeping Cisterns | Deep teal water, tarnished silver, pale blue glow |
-| The Flagellant Halls | Rust red, leather brown, dried blood |
+| The Scourger Halls | Rust red, leather brown, dried blood |
 | The Ossuary Gardens | Ivory bone, dusty pink blossoms, moss |
 | The Censer Furnace | Molten orange, black iron, ember yellow |
 | The Mute Choir | Violet dusk, gold leaf, bleached white |
@@ -483,9 +483,9 @@ Sprites animate at 10 to 12 fps; VFX and particles run at 60 fps.
 
 ### HUD (landscape)
 
-- **Top-left:** Saint portrait, HP bar and Fervor bar.
+- **Top-left:** Saint portrait, HP bar and Zeal bar.
 - **Bottom-left:** Virtual joystick.
-- **Bottom-right:** Cluster of dash, two Miracles and the Penance ultimate.
+- **Bottom-right:** Cluster of dash, two Rites and the Reckoning ultimate.
 - **Top-right:** Minimap with the Shade marker, and pause.
 - **Vigils only:** A candle timer across the top center.
 - **Style:** Pixel frames with gilded borders and bold black-and-white circular skill icons.
@@ -523,25 +523,25 @@ The first milestone proves the whole loop on one Stratum: a 30-minute run that
 ends in Martyrdom and a first Vigil. Progress is tracked in `docs/ROADMAP.md`.
 
 - [ ] Movement, auto-targeting, dash with perfect dodge
-- [ ] Nail Crossbow, Thurible of Embers, one Penance, two Miracles
+- [ ] Nail Crossbow, Thurible of Embers, one Reckoning, two Rites
 - [ ] Stratum 1: three enemy types plus an elite, procedural rooms, one shrine, one ability gate
-- [ ] Fervor tiers, executions, dismemberment gore
+- [ ] Zeal tiers, executions, dismemberment gore
 - [x] Stigmata level-ups with 20 Wounds (no reroll yet)
 - [x] Vestments with affixes and salvage (re-consecrate still to do)
 - [ ] The Bellwright boss
 - [ ] Death and the Shade
 - [ ] Walkable town: Vestry, Forge, Pell's Stall, the Gilded Lamb
-- [ ] Martyrdom, Ash, six relics, Death Masks
+- [ ] Martyrdom, Ash, six gear, Death Masks
 - [ ] Vigil tiers 1 to 10, unlocked early for testing
 - [ ] Suspend and resume saves
 
 ## Difficulty and town sites (round 5)
 
-- **Tiers:** Penitent, Zealot, Martyr, Saint. Monster health ×1 / 1.7 / 2.8 / 4.5, damage ×1 / 1.35 / 1.8 / 2.4. Gold ×1 / 1.5 / 2.2 / 3.2, relic count ×1 / 1.3 / 1.6 / 2, rarity boost +0 / 0.5 / 1 / 1.8, XP ×1 / 1.4 / 1.9 / 2.5. Martyr and Saint add one curse to rares and elites.
+- **Tiers:** Pilgrim, Zealot, Martyr, Saint. Monster health ×1 / 1.7 / 2.8 / 4.5, damage ×1 / 1.35 / 1.8 / 2.4. Gold ×1 / 1.5 / 2.2 / 3.2, item count ×1 / 1.3 / 1.6 / 2, rarity boost +0 / 0.5 / 1 / 1.8, XP ×1 / 1.4 / 1.9 / 2.5. Martyr and Saint add one curse to rares and elites.
 - **Unlocks:** Zealot after one finished descent; Martyr and Saint after finishing a descent on the tier before.
 - **Descent panel:** shown at the cathedral doors before every descent (skipped during the tutorial).
-- **Town sites still to build:** Pilgrim Road (Stratum II), Pell's relic stall, plush stall (cosmetics), bounty board, scrying pool wagers, the Forge (reforge and temper), the Bleeding Vigil (Greater Rifts), Martyrdom (one life, double rewards), the Reliquary (Canonization). Each shows what opens it.
-- **Rooms:** 1 to 1.3 screens across, 9 per floor, waves scale with room area.
+- **Town sites still to build:** Pilgrim Road (Stratum II), Pell's curio stall, plush stall (cosmetics), bounty board, scrying pool wagers, the Forge (reforge and temper), the Bleeding Vigil (Vigil Trials), Martyrdom (one life, double rewards), the Canonry (Canonization). Each shows what opens it.
+- **Rooms:** near-square (40–50 × 28–34 tiles), 9 per floor, waves scale with room area. Layouts follow mirrored plans with open floors.
 
 ## Art v5: sculpted pixel art at 360 px
 
@@ -564,7 +564,7 @@ ends in Martyrdom and a first Vigil. Progress is tracked in `docs/ROADMAP.md`.
   floor (`bakeWallEdges` in `index.html`).
 - Light: a dim ambient with warm pools under torches and a bloom around each
   flame. No full-screen colour wash.
-- Effects, item icons, coins, globes and enemy shots are in
+- Effects, item icons, coins, orbs and enemy shots are in
   `tools/models/vfx.mjs`: solid things are SDF models, soft things (impacts,
   blood, smoke, orbs) are lit 2D metaball forms. No dithering.
 - Furniture is rendered in 3/4 view (tilted back about the ground line) so tops read lighter than fronts, as in Otherworld Legends.
@@ -580,10 +580,10 @@ ends in Martyrdom and a first Vigil. Progress is tracked in `docs/ROADMAP.md`.
 
 ## Items and equipment (round 2)
 
-- Eight slots: hood, mantle, gloves, girdle, rosary, seal, relic, greaves.
-- Each slot has a base stat (hood and girdle: max HP; mantle: armor; gloves: damage; greaves: move speed; rosary: fervor gain; seal: crit chance; relic: miracle cooldown).
-- Extra rolls by rarity: blessed 1-2, consecrated 2-3, relic-touched and set 3. Values scale x1 to x2.1.
-- Relic-touched items carry one power per slot (pierce, heal on perfect dodge, faster crossbow, double globes, extra dash charge, slower fervor decay, triple crits, faster Penance).
+- Eight slots: hood, mantle, gloves, girdle, pendant, seal, item, greaves.
+- Each slot has a base stat (hood and girdle: max HP; mantle: armor; gloves: damage; greaves: move speed; pendant: zeal gain; seal: crit chance; item: rite cooldown).
+- Extra rolls by rarity: blessed 1-2, consecrated 2-3, hallowed and set 3. Values scale x1 to x2.1.
+- Hallowed items carry one power per slot (pierce, heal on perfect dodge, faster crossbow, double orbs, extra dash charge, slower zeal decay, triple crits, faster Reckoning).
 - Odile's set: 2 pieces +10% damage; 4 pieces +1 dash charge and +15% damage.
 - The bag holds 30. Selling pays 5 / 15 / 40 / 120 / 200 gold by rarity.
-- Death: the Choir takes every other relic found that run; worn relics are safe.
+- Death: the Choir takes every other item found that run; worn gear are safe.

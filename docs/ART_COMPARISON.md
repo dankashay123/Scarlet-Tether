@@ -8,7 +8,7 @@ Scale note: OWL draws its art at 4x on a 1080p screen, so its view is about
 270 art pixels tall. Heroes are about 40 px tall, item icons about 26 px.
 Our view was 360 px tall with a 52 px Saint (15% of the screen). Round 5
 moved to a 430 px view so the Saint is about 12%, matching OWL's camera
-distance, and rooms grew to 1 to 1.3 screens like OWL's.
+distance. Round 6 made rooms near-square, as OWL's are.
 
 ## Differences (before this round)
 
@@ -46,5 +46,19 @@ Studied from its App Store screenshots and YouTube thumbnails (ZillionGames).
 |---|---|---|
 | Characters | Very chibi heroes (head about half the body), bold flat colours, a red-hooded hunter like ours. | Kept our taller Saint (the owner asked for less chibi earlier); borrowed the readable silhouette and glowing weapon. |
 | Weapons | Weapons glow and leave magic trails. | The Nail Crossbow now floats beside the Saint, turns to aim, recoils and flashes, held by a gold sigil and a thread of light from his raised palm. |
-| Combat look | Hordes, screen-filling skill effects: giant white and cyan crescent slashes, pillars of light, magic circles, lightning. Smooth glowing effects over pixel art. | Stigmata skills: Crescent of Mercy, Pillars of Light, Orbiting Nails, Saint's Lightning, Holy Nova, Wrath of the Choir. |
+| Combat look | Hordes, screen-filling skill effects: giant white and cyan crescent slashes, pillars of light, magic circles, lightning. Smooth glowing effects over pixel art. | Stigmata skills: Crescent of Grace, Pillars of Light, Orbiting Nails, Saint's Lightning, Holy Nova, Wrath of the Choir. |
 | Growth | EXP bar and levels, rapid "stormy growth", skill icons. | EXP bar, level-up light pillar, pick 1 of 3 Stigmata cards (20 Wounds). |
+
+## Map layouts (round 6)
+
+Studied from 18 wiki phone captures and 8 Steam screenshots.
+
+| Area | Otherworld Legends | What we do now |
+|---|---|---|
+| Room shape | Near-square rectangles, under a screen wide | 40–50 × 28–34 tiles |
+| Floor | 70–85% open, one mirrored feature | One plan per room: empty, 2×2 pillars, twin objects, centre feature, side pools, south-edge row, corner clutter |
+| Back wall | Steady mirrored rhythm of banners, windows, statues on plinths, torch stands | 7-tile bays: pilaster, torch stand, statue, window or banner |
+| South edge | No wall; floor ends in a lip over black | Stone ledge over black |
+| Pillars | Narrow, bright, well clear of walls | Pale marble pillar, 1 tile, ~2.5 tiles tall |
+| Clutter | Crates and pots in corner clusters | 1–3 breakables per corner |
+| Hanging things | None | Wall chains removed |

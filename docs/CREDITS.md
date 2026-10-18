@@ -8,11 +8,11 @@ but we give it anyway. The audio is rebuilt from the source packs with
 
 | Pack | Used for |
 |---|---|
-| [Impact Sounds](https://kenney.nl/assets/impact-sounds) | hits, kills, block, hurt, execute, breakables, thurible, flask glass, chain, penance bell, gate slam, shrine and elite bells, death |
+| [Impact Sounds](https://kenney.nl/assets/impact-sounds) | hits, kills, block, hurt, execute, breakables, thurible, vial glass, chain, reckoning bell, gate slam, shrine and elite bells, death |
 | [RPG Audio](https://kenney.nl/assets/rpg-audio) | crossbow click, execute slice, chain latch, gate door and creak, chest coins |
-| [Interface Sounds](https://kenney.nl/assets/interface-sounds) | UI taps, item pickup, health globe, perfect-dodge chime, shrine shimmer |
+| [Interface Sounds](https://kenney.nl/assets/interface-sounds) | UI taps, item pickup, health orb, perfect-dodge chime, shrine shimmer |
 | [Casino Audio](https://kenney.nl/assets/casino-audio) | gold pickup |
-| [Sci-Fi Sounds](https://kenney.nl/assets/sci-fi-sounds) | flask splash, low booms under the elite toll and death |
+| [Sci-Fi Sounds](https://kenney.nl/assets/sci-fi-sounds) | vial splash, low booms under the elite toll and death |
 
 The dash whoosh is synthesised in the game (filtered noise), no file.
 
