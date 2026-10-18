@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-18, after round 7. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-18, after round 8. Read this first, then `CLAUDE.md`.
 
 ## Where the game stands
 
@@ -52,9 +52,11 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   found that run; worn gear is safe. Saved in localStorage (`hollow-saint`).
 - **Audio:** Kenney SFX, OpenGameArt music and ambience (`docs/CREDITS.md`).
   Mute button (or N key). Follows the iPhone silent switch on iOS 17+.
-- **Walks:** the Saint and townsfolk have 8-frame walk cycles (planted foot
-  slides back, the other swings forward lifted, body bob). Monster walks
-  are the older 4-frame cycles.
+- **Animation:** the Saint, townsfolk and all 30 monsters have 8-frame walk
+  cycles (planted foot slides back, the other swings forward lifted, body
+  bob). Every monster flinches when hit (2 frames) and falls over when
+  slain (3 frames, then the gibs burst). Rats and crawlers roll belly-up.
+  Executions still burst at once.
 
 ## The owner's preferences
 
@@ -70,41 +72,46 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## Next steps (ideas, roughly in priority order)
 
-1. **Monster animation pass.** Give every monster the 8-frame walk logic
-   (planted and swinging legs, bob), add 2–3 frame hit reactions and a
-   death pose before the gibs. Check each at `CHUNKY=1`; thin parts (staffs,
-   wings, tails) need to be 2 px or more.
-2. **Chunky-grid art fixes.** Some models lost detail at 2x2: wardens read
+1. **Chunky-grid art fixes.** Some models lost detail at 2x2: wardens read
    as white blocks, small faces lose eyes, item icons got rough. Review
    every sheet with `CHUNKY=2` side by side and thicken or simplify. Make
    the effects (bolts, impacts, skill effects) bolder to suit the bigger
    pixels.
-3. **Locked doors the OWL way.** Replace the iron gates with a row of
+2. **Locked doors the OWL way.** Replace the iron gates with a row of
    glowing vertical bars across the doorway (OWL uses orange light bars).
    Minimap: squares only, current room outlined, "?" for unknown rooms.
-4. **More room plans and biomes.** Add a centre dais, a 3×3 chest grid for
+3. **More room plans and biomes.** Add a centre dais, a 3×3 chest grid for
    treasuries, a shop room (keeper plus three pedestals), a secret room
    behind a cracked wall, and a second biome look for Stratum II.
-5. **Build the first locked feature.** Pell's curio stall is the smallest:
+4. **Build the first locked feature.** Pell's curio stall is the smallest:
    a shop panel with 6 items rerolled per descent, priced by rarity. Then
    the Ember Forge (reroll one stat, temper rarity), then bounties.
-6. **The Bellwright boss.** A Warden's-chamber boss with 3 telegraphed
+5. **The Bellwright boss.** A Warden's-chamber boss with 3 telegraphed
    phases, a health bar and a guaranteed hallowed drop.
-7. **Vigil Trials (endless mode).** One timed descent that gets harder each
+6. **Vigil Trials (endless mode).** One timed descent that gets harder each
    level; a candle timer on the HUD; leaderboard in localStorage.
-8. **Juice.** Screen-shake tuning, hit-flash on every enemy, bigger damage
+7. **Juice.** Screen-shake tuning, hit-flash on every enemy, bigger damage
    numbers for crits, coin fountain on elite death, a short slow-mo on
    room clear, footstep dust when the Saint runs.
-9. **Character choice.** A second playable saint (melee, short range) to
+8. **Character choice.** A second playable saint (melee, short range) to
    show off the chunky style; pick at the cathedral doors.
-10. **Phone polish.** Haptics via `navigator.vibrate` where supported,
+9. **Phone polish.** Haptics via `navigator.vibrate` where supported,
     safe-area insets for notched phones, a settings panel (music/SFX
     volume, screen shake, left-handed controls), save export/import.
-11. **Suspend and resume.** Save the run mid-floor so a closed tab returns
+10. **Suspend and resume.** Save the run mid-floor so a closed tab returns
     to the same room.
+11. **Hand-made reactions.** Hit and death frames are the rest pose tipped
+    back as a whole. Hand-posed versions (arms flung up, weapon dropped,
+    wings folding) would read better for the elites in particular.
 
 ## History by round
 
+- **Round 8:** monster animation pass. 8-frame planted-foot walks for all
+  30 monsters (`stride()` in `tools/models/base.mjs`), `<id>_hit` and
+  `<id>_die` anims made by `reactions()` (re-renders the model tipped back
+  through `setPose()` in `tools/sdf.mjs`), engine flinch (`HIT_T`) and fall
+  (`falls`, `drawFall`, `updateFalls`). Monster frames are trimmed and all
+  sheets are shelf-packed (the elite sheet went from 4236 px tall to 1244).
 - **Round 7:** chunky 2x2 pixels (`setRes(2)` in `tools/sdf.mjs`,
   `tools/chunky.mjs` for every sheet but `ui`, `chunkCanvas()` for the
   baked floor), whole-number nearest-neighbour scaling, thicker halo,
@@ -152,7 +159,8 @@ These hosts are allowed now. Notes: Steam's `api/appdetails` and the App Store p
 - A model set that throws on import only prints a warning; the old art stays in place. Read the build output.
 - The test server is a plain `python3 -m http.server 8123`. Background servers in cloud sessions time out after about 2 h.
 - Town coordinates in `makeTown()` are already at the ×1.3 scale. The player starts at x 2340 (the cathedral), where the descent doors are. The street floor runs from `base` (272) to about 544 px.
-- Elite HP bars sit at `spriteTop(e)`, the height of the sprite's first walk frame, not `hy`.
+- Elite HP bars sit at `spriteTop(e)`, the height of the sprite's first walk frame, not `hy`. Monster frames are trimmed, so this is the real sprite height.
+- While `setPose()` is active, `render()` returns a bigger frame and `dot()`/`under()` remap their coordinates. Helpers that write `f.px` directly (`put()` in props/dungeon) do not follow it; use `dot()` in monster models.
 - `glow()` draws cached sprites; inside the glow pass it writes to a half-size layer (`GLOW_TO`). Pass rgba colours.
 - Art ships on a 2x2 grid: anything under 2 px vanishes. Check new models with `CHUNKY=1 node tools/preview.mjs …`. `dot()` fills a whole 2x2 block; local `put()` helpers write single pixels, which `chunkify` then votes on.
 - `resize()` picks the whole-number scale whose view height lands closest to `T.viewH` (305), so `H` varies a little per device (292 on an iPhone 13). Lay out UI from `W`/`H`, never fixed sizes.

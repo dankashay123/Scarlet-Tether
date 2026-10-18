@@ -61,7 +61,7 @@ Each test writes screenshots to `<outDir>/shots/` and prints `errors 0 []` when 
   - Characters face right; the engine flips them.
   - Every character frame sets `ax`/`ay` at the feet.
   - Furniture is drawn in 3/4 view: pass `tilt` (about 0.3 to 0.6), `tiltY` (the ground line) and `tiltLift` to `render()` so the top face shows (see `tools/models/props.mjs`).
-- **Model sets:** a set exports `{ sheetName: { animName: () => frames } }`. `sprites.mjs` loads it automatically if its name is in the list near the top. Monster anims are `<id>_walk` (4 frames) and `<id>_attack` (2 frames, or 3 = windup, windup2, strike).
+- **Model sets:** a set exports `{ sheetName: { animName: () => frames } }`. `sprites.mjs` loads it automatically if its name is in the list near the top. Monster anims are `<id>_walk` (8 frames from half steps, `HALF` in `base.mjs`), `<id>_attack` (2 frames, or 3 = windup, windup2, strike), and `<id>_hit` (2) and `<id>_die` (3) from `reactions(make)`. Use `stride()` for legs so feet stay planted.
 - **World units:** distances in `index.html` are world pixels at the v5 scale. Any new size or range should already include the ×1.3 scale. MON stats are written at the old scale and multiplied by `WS` in a loop after the table.
 - **Floor tiles:** stay 16 px (`TILE`). Back walls are 3 tiles tall plus a cap: `hall.wall` = [top, cap, upper, lower, mid].
 - **Shipping:** work on a branch, then push to `master`. The owner asked for every finished round to go to master; GitHub Pages deploys from it. End commits with the attribution lines the session asks for.

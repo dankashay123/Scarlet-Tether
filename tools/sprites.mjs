@@ -150,26 +150,47 @@ const P = (f, x, y, c) => f.set(x, y, c);
 
 // ----------------------------------------------------------------- sheets ---
 
+// Crop a frame to its pixels on even bounds; the anchor stays inside.
+function trim(f) {
+  let x0 = f.w, y0 = f.h, x1 = -1, y1 = -1;
+  for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) if (f.px[y * f.w + x] >= 0) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return f;
+  x0 = Math.min(x0, f.ax) & ~1; y0 = Math.min(y0, f.ay) & ~1;
+  x1 = Math.max(x1, f.ax) + 1; y1 = Math.max(y1, f.ay) + 1;
+  x1 = Math.min(f.w, x1 + ((x1 - x0) & 1)); y1 = Math.min(f.h, y1 + ((y1 - y0) & 1));
+  const w = x1 - x0, h = y1 - y0, out = new Frame(w, h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) out.px[y * w + x] = f.px[(y + y0) * f.w + x + x0];
+  return Object.assign(out, { ax: f.ax - x0, ay: f.ay - y0 });
+}
+
 function sheet(name, anims, extra = {}) {
   if (process.argv.includes('--audit')) { const old = Object.keys(anims).filter((k) => !(OVR[name] && OVR[name][k])); if (old.length) console.log(`old art in ${name}: ${old.join(' ')}`); }
   setRes(FINE_SHEETS.has(name) ? 1 : CHUNK);
   if (OVR[name]) { anims = { ...anims }; for (const [a, fn] of Object.entries(OVR[name])) anims[a] = fn(); }
   // Snap every frame (models and the older hand-drawn art) to the chunky grid.
   if (!FINE_SHEETS.has(name)) for (const [a, fs] of Object.entries(anims)) for (const f of fs) chunkify(f, { outline: OVR[name] && OVR[name][a] ? false : 'auto' });
-  // Each row (one animation) gets cells as wide as its widest frame.
+  // Monster frames are cropped to their pixels (on the 2x2 grid), keeping the feet anchor.
+  if (name.startsWith('mon_')) for (const fs of Object.values(anims)) fs.forEach((f, i) => { if (f.ax !== undefined) fs[i] = trim(f); });
+  // Each animation is a strip of cells as wide as its widest frame; strips
+  // are packed onto shelves so no sheet grows too tall for phone GPUs.
   const rows = Object.entries(anims);
   const cellW = rows.map(([, fs]) => Math.max(...fs.map((f) => f.w)));
   const cellH = rows.map(([, fs]) => Math.max(...fs.map((f) => f.h)));
-  const W = Math.max(...rows.map(([, fs], r) => fs.length * cellW[r])), H = cellH.reduce((a, b) => a + b, 0);
+  const stripW = rows.map(([, fs], r) => fs.length * cellW[r]);
+  const area = stripW.reduce((a, w, r) => a + w * cellH[r], 0);
+  const W = Math.max(...stripW, Math.ceil(Math.sqrt(area) * 1.15 / 2) * 2);
+  const at = []; let sx = 0, sy = 0, shelfH = 0;
+  rows.forEach((_, r) => { if (sx + stripW[r] > W) { sx = 0; sy += shelfH; shelfH = 0; } at.push([sx, sy]); sx += stripW[r]; shelfH = Math.max(shelfH, cellH[r]); });
+  const H = sy + shelfH;
   const big = new Frame(W, H);
   const json = { image: `${name}.png`, ...extra, anims: {} };
-  let oy = 0;
   rows.forEach(([anim, frames], r) => {
+    const [ox, oy] = at[r];
     json.anims[anim] = frames.map((f, c) => {
-      for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) big.px[(oy + y) * W + c * cellW[r] + x] = f.px[y * f.w + x];
-      return f.ax !== undefined ? { x: c * cellW[r], y: oy, w: f.w, h: f.h, ax: f.ax, ay: f.ay } : { x: c * cellW[r], y: oy, w: f.w, h: f.h };
+      const x0 = ox + c * cellW[r];
+      for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) big.px[(oy + y) * W + x0 + x] = f.px[y * f.w + x];
+      return f.ax !== undefined ? { x: x0, y: oy, w: f.w, h: f.h, ax: f.ax, ay: f.ay } : { x: x0, y: oy, w: f.w, h: f.h };
     });
-    oy += cellH[r];
   });
   return { name, frame: big, json };
 }

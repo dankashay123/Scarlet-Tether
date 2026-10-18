@@ -3,7 +3,7 @@
 // hand-placed eyes and glints. Everything faces right; frames carry ax/ay at
 // the ground contact point.
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, noise3, dot, pline, under } from '../sdf.mjs';
-import { MATS, torus } from './base.mjs';
+import { MATS, torus, stride, odd, cyc, HALF, reactions } from './base.mjs';
 
 const MM = {
   ...MATS,
@@ -37,6 +37,8 @@ function limb(S, a, b, c, ra, rb, rc, mat, k = 0.8, matB = mat) {
 }
 // Four-frame walk phase helpers.
 const ph = (t) => (t / 4) * PI * 2;
+// Planted-foot legs for a 4-step cycle: [back, front] foot offsets and lifts.
+const gaitL = (t, amp, H = 1.6) => { const b = stride(t / 4 + 0.5, amp, H), f = stride(t / 4, amp, H); return [b, f]; };
 
 // ================================================================ risen ===
 // A hunched, rotting corpse in burial rags, arms out, shambling.
@@ -45,11 +47,12 @@ function risen(t = 0, atk = -1) {
   const s = sin(ph(t)), c = cos(ph(t)), B = atk >= 0 ? 0 : Math.abs(s) * -0.8;
   const lean = atk === 0 ? -2 : atk === 1 ? 3 : 0;
   // Legs: thin, bent, dragging.
-  for (const [side, sw] of [[-1, atk >= 0 ? -2 : s * 3], [1, atk >= 0 ? 2.5 : -s * 3]]) {
+  const G = gaitL(t, 3, 1.4);
+  for (const [side, sw, up] of [[-1, atk >= 0 ? -2 : G[0].x, atk >= 0 ? 0 : G[0].up], [1, atk >= 0 ? 2.5 : G[1].x, atk >= 0 ? 0 : G[1].up]]) {
     const z = side * 1.8, hip = [cx + side * 0.3, 27 + B, z];
-    const knee = [cx + sw * 0.6 + 1, 32.5, z + 0.5], foot = [cx + sw, gy - 1.2, z];
+    const knee = [cx + sw * 0.6 + 1 + up * 0.4, 32.5 - up * 0.5, z + 0.5], foot = [cx + sw, gy - 1.2 - up, z];
     limb(S, hip, knee, foot, 2.1, 1.7, 1.5, 'flesh', 0.9);
-    S.add(ellipsoid([foot[0] + 1.2, gy - 0.9, z], [2.3, 1.1, 1.5], 'fleshDark'), 0.7);
+    S.add(ellipsoid([foot[0] + 1.2, gy - 0.9 - up, z], [2.3, 1.1, 1.5], 'fleshDark'), 0.7);
   }
   // Torso: a hunched barrel tipping forward, with a spine hump.
   const tx = cx + 1 + lean * 0.6, ty = 20 + B;
@@ -155,7 +158,7 @@ function mourner(t = 0, atk = -1) {
   if (atk >= 0) S.add(sphere([hand[0] + (atk ? 1.6 : 0), hand[1] - 2, hand[2]], 2.1, 'ember'), 0);
   limb(S, [cx - 3, 26 + B, -2.2], [cx - 4.4, 31 + B, -2.4], [cx - 2.4, 34 + B, -1.4], 1.8, 1.8, 1.9, 'mournDark', 1);
   // Green candle flame on its wick.
-  const fl = t % 2 ? 0.6 : -0.4;
+  const fl = -0.4 + odd(t);
   S.add(ellipsoid([kx + 0.2, ky0 - 1.8 + fl * 0.3, 0.5], [1.4, 2.5 + fl * 0.3, 1.3], 'flame'), 0);
   const f = R(S, w, h, gy);
   D(f, kx, ky0, 'ink2');
@@ -214,12 +217,13 @@ function gravewarden(t = 0, atk = -1) {
   const s = sin(ph(t)), B = atk >= 0 ? 0 : Math.round(Math.abs(s) * -1);
   const lean = atk === 0 ? -2 : atk === 1 ? 3.5 : 0, push = atk === 1 ? 5 : atk === 0 ? -1.5 : 0;
   // Armoured legs: thigh plate, greave, sabaton.
-  for (const [side, sw] of [[-1, atk >= 0 ? (atk ? -3 : -1) : s * 3], [1, atk >= 0 ? (atk ? 3 : 1) : -s * 3]]) {
+  const G = gaitL(t, 3, 1.8);
+  for (const [side, sw, up] of [[-1, atk >= 0 ? (atk ? -3 : -1) : G[0].x, atk >= 0 ? 0 : G[0].up], [1, atk >= 0 ? (atk ? 3 : 1) : G[1].x, atk >= 0 ? 0 : G[1].up]]) {
     const z = side * 2.6, hip = [cx + side * 0.4, 35 + B, z];
-    const knee = [cx + sw * 0.55 + 0.8, 41 + B * 0.5, z + 0.6], foot = [cx + sw, gy - 1.6, z];
+    const knee = [cx + sw * 0.55 + 0.8 + up * 0.4, 41 + B * 0.5 - up * 0.5, z + 0.6], foot = [cx + sw, gy - 1.6 - up, z];
     limb(S, hip, knee, foot, 2.9, 2.6, 2.3, 'plate', 0.9, 'plateDark');
     S.add(sphere(knee, 2.5, 'plate'), 0.6);
-    S.add(ellipsoid([foot[0] + 1.5, gy - 1.2, z], [3.3, 1.5, 2.4], 'plateDark'), 0.6);
+    S.add(ellipsoid([foot[0] + 1.5, gy - 1.2 - up, z], [3.3, 1.5, 2.4], 'plateDark'), 0.6);
   }
   // Torso: a barrel breastplate and the tabard.
   const tx = cx + lean * 0.5, ty = 27 + B;
@@ -290,10 +294,11 @@ function votary(t = 0, atk = -1) {
   const s = sin(ph(t)), B = atk >= 0 ? 0 : Math.abs(s) * -0.7, sw = atk === 0 ? 1.3 : atk === 1 ? 2.6 : 0;
   const roll = atk >= 0 ? 0 : s * 0.06;
   // Stubby legs.
-  for (const [side, o] of [[-1, atk >= 0 ? 0 : s * 2], [1, atk >= 0 ? 0 : -s * 2]]) {
+  const G = gaitL(t, 2, 1.2);
+  for (const [side, o, up] of [[-1, atk >= 0 ? 0 : G[0].x, atk >= 0 ? 0 : G[0].up], [1, atk >= 0 ? 0 : G[1].x, atk >= 0 ? 0 : G[1].up]]) {
     const z = side * 3.4;
-    S.add(capsule([cx + side * 1.2, 35, z], [cx + side * 1.6 + o, gy - 1.6, z], 3, 2.5, side > 0 ? 'bloat' : 'fleshDark'), 1);
-    S.add(ellipsoid([cx + side * 1.6 + o + 1, gy - 1.1, z], [2.7, 1.3, 2.1], 'fleshDark'), 0.8);
+    S.add(capsule([cx + side * 1.2, 35, z], [cx + side * 1.6 + o, gy - 1.6 - up, z], 3, 2.5, side > 0 ? 'bloat' : 'fleshDark'), 1);
+    S.add(ellipsoid([cx + side * 1.6 + o + 1, gy - 1.1 - up, z], [2.7, 1.3, 2.1], 'fleshDark'), 0.8);
   }
   // The belly: one huge mass with a sagging lower fold.
   const bx = cx + 0.5, by = 29 + B;
@@ -334,11 +339,12 @@ function flagellant(t = 0, atk = -1) {
   const s = sin(ph(t)), B = atk >= 0 ? 0 : Math.round(Math.abs(s) * -1);
   const lean = atk === 0 ? -1.5 : atk === 1 ? 2.5 : 1;
   // Legs: bare, sinewy.
-  for (const [side, sw] of [[-1, atk >= 0 ? -2.5 : s * 3.4], [1, atk >= 0 ? 3 : -s * 3.4]]) {
+  const G = gaitL(t, 3.4, 1.8);
+  for (const [side, sw, up] of [[-1, atk >= 0 ? -2.5 : G[0].x, atk >= 0 ? 0 : G[0].up], [1, atk >= 0 ? 3 : G[1].x, atk >= 0 ? 0 : G[1].up]]) {
     const z = side * 1.7, hip = [cx + side * 0.3, 34 + B, z];
-    const knee = [cx + sw * 0.6 + 1, 41.5, z + 0.5], foot = [cx + sw, gy - 1.3, z];
+    const knee = [cx + sw * 0.6 + 1 + up * 0.4, 41.5 - up * 0.5, z + 0.5], foot = [cx + sw, gy - 1.3 - up, z];
     limb(S, hip, knee, foot, 2.1, 1.7, 1.4, side > 0 ? 'bare' : 'skin', 0.9);
-    S.add(ellipsoid([foot[0] + 1.3, gy - 0.9, z], [2.3, 1, 1.4], 'bare'), 0.6);
+    S.add(ellipsoid([foot[0] + 1.3, gy - 0.9 - up, z], [2.3, 1, 1.4], 'bare'), 0.6);
   }
   // Loincloth.
   S.add(ragged(folds(skirt(cx + 0.3, 31 + B, 38 + B, 3.8, 4.8, 0, 0.9, 'rag'), { cx, n: 5, amp: 0.4, y0: 31, y1: 38 }), 37 + B, 1.2, 1, 6), 1);
@@ -378,7 +384,7 @@ MM.skin = { ramp: 'skin', spec: 0.08, bias: -0.1 };
 // tears of light running from blind eyes.
 function cherub(t = 0, atk = -1) {
   const S = new Scene(), w = 50, h = 46, gy = 44, cx = 24;
-  const flap = atk >= 0 ? (atk === 0 ? -1 : 0.5) : [-1, -0.2, 1, -0.2][t], B = atk >= 0 ? 0 : [0, 0.5, 1, 0.5][t];
+  const flap = atk >= 0 ? (atk === 0 ? -1 : 0.5) : cyc([-1, -0.2, 1, -0.2], t), B = atk >= 0 ? 0 : cyc([0, 0.5, 1, 0.5], t);
   // Wings: broad flattened fans behind the shoulders, scalloped edge.
   for (const side of [-1, 1]) {
     const z = side > 0 ? -1 : -3.4, root = [cx - 1 + side * 1.6, 17.5 + B, z];
@@ -437,7 +443,7 @@ function wisp(t = 0, atk = -1) {
   S.add(capsule(tail[0], tail[1], 3.6, 2.2, 'spiritDeep'), 1.4);
   S.add(capsule(tail[1], tail[2], 2.4, 0.5, 'spiritDeep'), 1);
   // Flame licks streaming off the crown.
-  const lick = (t % 2) * 0.8;
+  const lick = odd(t) * 0.8;
   for (const [dx, L, z] of [[-3.8, 4 + lick, -1], [-1, 6.5 - lick, 0.5], [1.8, 4 + lick, 1]]) S.add(capsule([hx + dx, hy - 3.4, z], [hx + dx - 3.6 - stretch * 0.4, hy - 3.4 - L, z], 1.9, 0.4, 'spirit'), 1.2);
   // Face: two sunken eyes and a round singing mouth.
   S.sub(ellipsoid([hx + 1.6, hy - 0.6, 5.6], [1.3, 1.7, 1.6], 'hollow'), 0.5);
@@ -446,18 +452,21 @@ function wisp(t = 0, atk = -1) {
   const f = R(S, w, h, gy, { contourDepth: 7 });
   D(f, hx + 1.6, hy - 0.8, 'holy0'); D(f, hx + 4.6, hy - 0.6, 'holy1');
   // Sparks shed from the tail.
-  if (atk < 0) { D(f, tail[2][0] - 2 + t, tail[2][1] - 4 + (t % 2), 'holy1'); D(f, tail[1][0] - 4, tail[1][1] + t % 3, 'holy2'); }
+  if (atk < 0) { D(f, tail[2][0] - 2 + t, tail[2][1] - 4 + odd(t), 'holy1'); D(f, tail[1][0] - 4, tail[1][1] + Math.floor(t) % 3, 'holy2'); }
   return A(f, cx, gy);
 }
 
 // ================================================================ export ===
-const walk = (fn) => () => [0, 1, 2, 3].map((t) => fn(t));
+const walk = (fn) => () => HALF.map((t) => fn(t));
 const attack = (fn) => () => [fn(0, 0), fn(0, 1)];
 const MODELS = { risen, crawler, mourner, acolyte, gravewarden, rat, votary, flagellant, cherub, wisp };
 const mon = {};
-for (const [id, fn] of Object.entries(MODELS)) { mon[`${id}_walk`] = walk(fn); mon[`${id}_attack`] = attack(fn); }
+for (const [id, fn] of Object.entries(MODELS)) {
+  const r = reactions(() => fn(0), 0, id === 'rat' || id === 'crawler');
+  mon[`${id}_walk`] = walk(fn); mon[`${id}_attack`] = attack(fn); mon[`${id}_hit`] = r.hit; mon[`${id}_die`] = r.die;
+}
 export default {
   mon_common: mon,
-  risen: { walk: walk(risen), attack: attack(risen) },
-  gravewarden: { walk: walk(gravewarden), attack: attack(gravewarden) },
+  risen: { walk: walk(risen), attack: attack(risen), ...reactions(() => risen(0)) },
+  gravewarden: { walk: walk(gravewarden), attack: attack(gravewarden), ...reactions(() => gravewarden(0)) },
 };

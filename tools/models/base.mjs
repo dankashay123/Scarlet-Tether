@@ -1,10 +1,66 @@
 // Sculpted models for the sprite renderer (tools/sdf.mjs).
-import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, dot, pline } from '../sdf.mjs';
+import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, dot, pline, setPose } from '../sdf.mjs';
 
 export function torus(c, R, r, tilt, mat, o = {}) {
   const ct = Math.cos(tilt), st = Math.sin(tilt);
   return { ...o, mat, bb: [c[0] - R - r, c[1] - R - r, c[2] - R - r, c[0] + R + r, c[1] + R + r, c[2] + R + r],
     f: (x, y, z) => { const px = x - c[0], py = y - c[1], pz = z - c[2]; const ry = py * ct - pz * st, rz = py * st + pz * ct; const q = Math.hypot(px, rz) - R; return Math.hypot(q, ry) - r; } };
+}
+
+// ------------------------------------------------------------ motion ---
+// One leg of a planted-foot walk. p runs 0..1 over a full cycle: for the
+// first half the foot is planted and slides back from +amp to -amp; for the
+// second it swings forward in an arc, lifted by up to H, knee bent.
+export function stride(p, amp, H) {
+  p = ((p % 1) + 1) % 1;
+  if (p < 0.5) return { x: amp - 4 * amp * p, up: 0, bend: 0 };
+  const u = (p - 0.5) * 2, e = u * u * (3 - 2 * u);
+  return { x: -amp + 2 * amp * e, up: H * Math.sin(Math.PI * u), bend: Math.sin(Math.PI * u) };
+}
+// A smooth stand-in for `t % 2` (0 at even t, 1 at odd), so 8-frame walks
+// built from half steps ease between the old 4-frame poses.
+export const odd = (t) => (1 - Math.cos(t * Math.PI)) / 2;
+// Read a looping 4-step table at a fractional step.
+export const cyc = (arr, t) => { const n = arr.length, i = Math.floor(t) % n, f = t - Math.floor(t); return arr[i] + (arr[(i + 1) % n] - arr[i]) * f; };
+// Walk frames from half steps: t = 0, 0.5, ... 3.5.
+export const HALF = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5];
+
+// Hit reactions and deaths for any model. make() draws the model at rest;
+// the same scene is re-rendered tipped back about its feet, so lighting and
+// outlines stay right. Frames are cropped to their pixels, anchor at the feet.
+function posedFrame(make, ref, { rot = 0, dx = 0, dy = 0, mid = false }) {
+  const pad = Math.ceil(Math.max(ref.w, ref.h) / 4) * 2;
+  // mid: turn about the middle of the body instead of the feet.
+  let top = ref.ay; if (mid) for (let i = 0; i < ref.px.length; i++) if (ref.px[i] >= 0) { top = Math.floor(i / ref.w); break; }
+  setPose({ rot, pivot: [ref.ax, ref.ay - (ref.ay - top) / 2], dx, dy, pad });
+  let f;
+  try { f = make(); } finally { setPose(null); }
+  let x0 = f.w, y0 = f.h, x1 = -1, y1 = -1;
+  for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) if (f.px[y * f.w + x] >= 0) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  const ax = ref.ax + pad, ay = ref.ay + pad;
+  x0 = Math.min(x0, ax) & ~1; y0 = Math.min(y0, ay) & ~1;
+  x1 = Math.max(x1, ax) + 1; y1 = Math.max(y1, ay) + 1; x1 += (x1 - x0) & 1; y1 += (y1 - y0) & 1;
+  const w = x1 - x0, h = y1 - y0, px = new Int16Array(w * h).fill(-1);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const sx = x + x0, sy = y + y0; if (sx < f.w && sy < f.h) px[y * w + x] = f.px[sy * f.w + sx]; }
+  return { w, h, px, ax: ax - x0, ay: ay - y0 };
+}
+// heavy: 0 (light, thrown about) .. 1 (an elite that barely rocks).
+// flat: a creature already low to the ground rolls belly-up instead.
+export function reactions(make, heavy = 0, flat = false) {
+  const k = 1 - heavy * 0.55;
+  return {
+    hit: () => { const ref = make(); return [posedFrame(make, ref, { rot: -0.26 * k, dx: -2 }), posedFrame(make, ref, { rot: -0.12 * k, dx: -2 })]; },
+    // Struck, buckling, then flat on its back.
+    die: () => { const ref = make(); return flat ? [
+      posedFrame(make, ref, { rot: -0.6, dx: -2, mid: true }),
+      posedFrame(make, ref, { rot: -1.9, dx: -2, mid: true }),
+      posedFrame(make, ref, { rot: -Math.PI, dx: -2, mid: true }),
+    ] : [
+      posedFrame(make, ref, { rot: -0.4, dx: -2 }),
+      posedFrame(make, ref, { rot: -0.95, dx: -4 }),
+      posedFrame(make, ref, { rot: -1.45, dx: -6, dy: 2 }),
+    ]; },
+  };
 }
 
 // Materials shared by every model: ramp, clamps (in 9 fine steps), shine.

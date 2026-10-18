@@ -65,13 +65,14 @@ export function clip(prim, fn) { const f = prim.f; return { ...prim, f: (x, y, z
 // --------------------------------------------------------- pixel touch-ups ---
 // Hand-placed pixels drawn after rendering (eyes, strings, glints).
 export function dot(fr, x, y, name) {
+  if (POSE && fr.posed) [x, y] = poseXY(x, y);
   x = Math.round(x); y = Math.round(y);
   // On the chunky grid a hand-placed pixel fills its whole block.
   if (RES > 1) { const bx = Math.floor(x / RES) * RES, by = Math.floor(y / RES) * RES; for (let j = 0; j < RES; j++) for (let i = 0; i < RES; i++) { const xx = bx + i, yy = by + j; if (xx >= 0 && yy >= 0 && xx < fr.w && yy < fr.h) fr.px[yy * fr.w + xx] = IDX[name]; } return; }
   if (x >= 0 && y >= 0 && x < fr.w && y < fr.h) fr.px[y * fr.w + x] = IDX[name];
 }
 export function pline(fr, x0, y0, x1, y1, name) { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (let i = 0; i <= n; i++) dot(fr, x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, name); }
-export function under(fr, x, y) { x = Math.round(x); y = Math.round(y); return x >= 0 && y >= 0 && x < fr.w && y < fr.h ? fr.px[y * fr.w + x] : -1; }
+export function under(fr, x, y) { if (POSE && fr.posed) [x, y] = poseXY(x, y); x = Math.round(x); y = Math.round(y); return x >= 0 && y >= 0 && x < fr.w && y < fr.h ? fr.px[y * fr.w + x] : -1; }
 
 // ------------------------------------------------------------- scenes ---
 // Each shape joins the scene with:
@@ -116,7 +117,43 @@ export function tiltX(prim, py, ang) {
 let RES = 1;
 export function setRes(k) { RES = k; }
 export const getRes = () => RES;
+// Whole-figure pose for hit reactions and deaths. While set, render()
+// rotates the finished model by `rot` about `pivot` (its feet; negative tips
+// it backwards), moves it by dx, dy and grows the frame by `pad` on every
+// side. dot() and under() follow the same mapping, so hand-placed eyes stay
+// put. pad, dx and dy must be even to keep the 2x2 grid.
+let POSE = null;
+export function setPose(p) { POSE = p; }
+function poseXY(x, y) {
+  const { rot = 0, pivot: [px, py], dx = 0, dy = 0, pad = 0 } = POSE, c = Math.cos(rot), s = Math.sin(rot);
+  const u = x - px, v = y - py;
+  return [px + u * c - v * s + dx + pad, py + u * s + v * c + dy + pad];
+}
+function poseScene(scene) {
+  const { rot = 0, pivot: [px, py], dx = 0, dy = 0, pad = 0 } = POSE, c = Math.cos(rot), s = Math.sin(rot);
+  const ox = px + dx + pad, oy = py + dy + pad;
+  const t = (p) => {
+    const f = p.f, out = { ...p, f: (x, y, z) => { const u = x - ox, v = y - oy; return f(px + u * c + v * s, py - u * s + v * c, z); } };
+    if (p.bb) {
+      const [x0, y0, z0, x1, y1, z1] = p.bb, xs = [], ys = [];
+      for (const x of [x0, x1]) for (const y of [y0, y1]) { const [a, b] = poseXY(x, y); xs.push(a); ys.push(b); }
+      out.bb = [Math.min(...xs), Math.min(...ys), z0, Math.max(...xs), Math.max(...ys), z1];
+    }
+    return out;
+  };
+  const S2 = new Scene(); S2.prims = scene.prims.map((p) => ({ ...t(p), k: p.k, op: p.op })); S2.paints = scene.paints.map(t);
+  return S2;
+}
 export function render(scene, w, h, MATS, opts = {}) {
+  if (POSE) {
+    const pad = POSE.pad || 0;
+    scene = poseScene(scene); w += pad * 2; h += pad * 2;
+    if (opts.ground) opts = { ...opts, ground: opts.ground + pad + (POSE.dy || 0) };
+    const f = renderAt(scene, w, h, MATS, opts); f.posed = true; return f;
+  }
+  return renderAt(scene, w, h, MATS, opts);
+}
+function renderAt(scene, w, h, MATS, opts) {
   if (RES > 1 && !opts.fine) {
     const k = RES, w2 = Math.ceil(w / k), h2 = Math.ceil(h / k);
     const r = renderGrid(scene, w2, h2, MATS, opts, k), px = new Int16Array(w * h), dep = new Float32Array(w * h);

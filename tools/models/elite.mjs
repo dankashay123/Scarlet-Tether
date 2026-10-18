@@ -1,7 +1,7 @@
 // Sculpted elites (and the Collection Imp) for the mon_elite and loot sheets.
 // Every model faces right; ax/ay mark where the feet meet the ground.
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, folds, bumpy, clip, render, dot, pline, under } from '../sdf.mjs';
-import { MATS, torus } from './base.mjs';
+import { MATS, torus, stride, odd, cyc, HALF, reactions } from './base.mjs';
 import { NAMES } from '../palette.mjs';
 // Hand-placed pixel only where the sculpt shows a dark cavity (mouths).
 const inMaw = (fr, x, y) => { const v = under(fr, x, y); return v >= 0 && /^(ink|blood)/.test(NAMES[v]); };
@@ -54,11 +54,11 @@ function limb(S, a, j, b, r0, r1, r2, mat, k = 1, mat2 = mat) {
   S.add(capsule(j, b, r1, r2, mat2), k * 0.7);
 }
 // Walking legs: side -1 is the far leg, +1 the near one.
+const step = stride;
 function legs(S, { x, hipY, footY, z = 3, thigh = 3, shin = 2.6, mt = 'shroud', ms = mt, mf = 'leather', foot = [3.5, 2, 2.5], t = 0, stride = 4, lift = 2, k = 1, knee = 1.2, xs = 0.4, spread = 0 }) {
   const out = [];
   for (const side of [-1, 1]) {
-    const ph = t * PI / 2 + (side > 0 ? 0 : PI);
-    const sw = Math.sin(ph) * stride, up = Math.max(0, Math.cos(ph)) * lift;
+    const g = step(t / 4 + (side > 0 ? 0 : 0.5), stride, lift), sw = g.x, up = g.up;
     const hip = [x + side * xs, hipY, side * z];
     const ankle = [x + side * spread + sw, footY - foot[1] - up, side * z];
     const kn = [(hip[0] + ankle[0]) / 2 + knee, (hip[1] + ankle[1]) / 2 - up * 0.3, side * z + 0.3];
@@ -93,7 +93,7 @@ const eyes = (f, list, ramp, big = false) => { for (const [x, y] of list) { dot(
 // A mountain of scourged flesh under a sackcloth hood, chained and spiked,
 // fists like millstones. 104x112, feet at 106.
 function colossus(t = 0, atk = 0) {
-  const S = new Scene(), B = atk ? 0 : t % 2, cx = 50;
+  const S = new Scene(), B = atk ? 0 : odd(t), cx = 50;
   const lean = atk === 1 ? -4 : atk === 2 ? 5 : 0;
   legs(S, { x: cx - 2, hipY: 81 + B, footY: 106, z: 8, thigh: 7, shin: 5.6, mt: 'flesh', ms: 'fleshDark', mf: 'sack', foot: [6, 3, 5], t: atk ? 0.5 : t, stride: atk ? 2 : 5, lift: 2.5, k: 3, knee: 2 });
   // Belly and the great hunched back.
@@ -115,10 +115,10 @@ function colossus(t = 0, atk = 0) {
   S.paint({ mat: 'leather', f: (x, y) => Math.abs(y - (78.5 + B)) - 1.3 });
   // Arms.
   const sh = atk === 1 ? -14 : 0;
-  const bArm = atk === 1 ? [[cx - 12, 44, -10], [cx - 12, 28, -8], [cx + 2, 18, -2]] : atk === 2 ? [[cx - 10, 46, -10], [cx + 4, 60, -8], [cx + 20, 92, -4]] : [[cx - 13, 47 + B, -10], [cx - 19, 64 + B, -11], [cx - 15 + (t % 2 ? 1 : -1), 81 + B, -10]];
+  const bArm = atk === 1 ? [[cx - 12, 44, -10], [cx - 12, 28, -8], [cx + 2, 18, -2]] : atk === 2 ? [[cx - 10, 46, -10], [cx + 4, 60, -8], [cx + 20, 92, -4]] : [[cx - 13, 47 + B, -10], [cx - 19, 64 + B, -11], [cx - 15 + (odd(t) * 2 - 1), 81 + B, -10]];
   limb(S, bArm[0], bArm[1], bArm[2], 6.5, 5.5, 5, 'fleshDark', 3);
   S.add(bumpy(sphere(bArm[2], 6.6, 'fleshDark'), 0.4, 0.5, 4), 2);
-  const fArm = atk === 1 ? [[cx + 8, 44, 9], [cx + 13, 28, 10], [cx + 7, 17, 6]] : atk === 2 ? [[cx + 10, 47, 9], [cx + 24, 64, 11], [cx + 30, 94, 8]] : [[cx + 9 + lean, 47 + B, 10], [cx + 19, 62 + B, 13], [cx + 20 + (t % 2 ? -1 : 1), 79 + B, 13]];
+  const fArm = atk === 1 ? [[cx + 8, 44, 9], [cx + 13, 28, 10], [cx + 7, 17, 6]] : atk === 2 ? [[cx + 10, 47, 9], [cx + 24, 64, 11], [cx + 30, 94, 8]] : [[cx + 9 + lean, 47 + B, 10], [cx + 19, 62 + B, 13], [cx + 20 + (1 - odd(t) * 2), 79 + B, 13]];
   limb(S, fArm[0], fArm[1], fArm[2], 7.2, 6, 5.6, 'flesh', 3);
   S.add(bumpy(sphere(fArm[2], 7.4, 'flesh'), 0.45, 0.5, 8), 2.2);
   // Shackles on the wrists.
@@ -183,7 +183,7 @@ function pauldron(S, c, r, plate, trim) {
 // A gilded war-saint the size of a door, plumed, candles burning on its
 // shoulders, swinging a censer of coals. 112x128.
 function titan(t = 0, atk = 0) {
-  const S = new Scene(), B = atk ? 0 : t % 2, cx = 40, k = 1.25;
+  const S = new Scene(), B = atk ? 0 : odd(t), cx = 40, k = 1.25;
   const lean = atk === 1 ? -2 : atk === 2 ? 3 : 0;
   knight(S, { t, atk, cx, bulk: k, B, lean, plate: 'plateGold' });
   // Pauldrons with candles.
@@ -202,7 +202,7 @@ function titan(t = 0, atk = 0) {
   const candles = [[lp[0] - 1, lp[1] - 5, lp[2]], [rp[0] - 1.5, rp[1] - 5.5, rp[2] - 1], [rp[0] + 2.5, rp[1] - 4.6, rp[2] + 1]];
   for (const [x, y, z] of candles) S.add(capsule([x, y + 3, z], [x, y - 2.4, z], 1.3, 1.3, 'bone'), 0.4);
   // Censer on a short chain.
-  const cz = hand[2] + 1, swing = atk === 2 ? [12, 2] : atk === 1 ? [-6, -6] : [2 * (t % 2 ? 1 : -1), 13];
+  const cz = hand[2] + 1, swing = atk === 2 ? [12, 2] : atk === 1 ? [-6, -6] : [2 * (odd(t) * 2 - 1), 13];
   const cs = [hand[0] + swing[0], hand[1] + swing[1], cz];
   const cpts = []; for (let i = 0; i <= 6; i++) cpts.push(lerp3([hand[0], hand[1] + 2, cz], [cs[0], cs[1] - 4, cz], i / 6));
   chain(S, cpts, 0.8, 'steel');
@@ -230,11 +230,11 @@ function titan(t = 0, atk = 0) {
 // ======================================================= Inquisitor ===
 // Black plate, a crimson capirote over the helm, a long execution blade.
 function inquisitor(t = 0, atk = 0) {
-  const S = new Scene(), B = atk ? 0 : t % 2, cx = 40;
+  const S = new Scene(), B = atk ? 0 : odd(t), cx = 40;
   const lean = atk === 1 ? -3 : atk === 2 ? 5 : 1;
   // Cape behind.
   const cape = folds(skirt(cx - 2 + lean * 0.4, 40 + B, 90, 6, 12, -2.5, 0.42, 'crimsonDark'), { cx: cx - 2, cz: -2.5, n: 9, amp: 0.6, y0: 44, y1: 90 });
-  S.add(rotZ(clip(cape, (x, y, z) => z + 1.4), [cx - 2, 40 + B], atk === 2 ? -0.35 : -0.08 - (t % 2) * 0.04), 0);
+  S.add(rotZ(clip(cape, (x, y, z) => z + 1.4), [cx - 2, 40 + B], atk === 2 ? -0.35 : -0.08 - odd(t) * 0.04), 0);
   knight(S, { t, atk, cx, plate: 'black', plateDark: 'black', trim: 'steel', tabard: 'crimson', bulk: 0.95, B, lean });
   const lp = [cx - 7.5 + lean, 41 + B, -4.5], rp = [cx + 8 + lean, 42 + B, 4.6];
   pauldron(S, lp, 5, 'black', 'steel');
@@ -303,7 +303,7 @@ function robeBody(S, { cx, top, waist, hem, rTop, rHem, mat, tip = false, B = 0,
 // A gilt-masked angel in pale robes on black, smouldering wings.
 function seraph(t = 0, atk = 0) {
   const S = new Scene(), cx = 44, B = Math.round(Math.sin(t * PI / 2) * 1.5);
-  const flap = atk === 1 ? 1.6 : atk === 2 ? -0.6 : [0, 0.8, 1.4, 0.6][t];
+  const flap = atk === 1 ? 1.6 : atk === 2 ? -0.6 : cyc([0, 0.8, 1.4, 0.6], t);
   const lean = atk === 2 ? 3 : 0;
   wing(S, [cx - 3, 44 + B, -4], { z: -5, a: -2.15 - flap * 0.25, L: 30, Wt: 12, mat: 'ash', mat2: 'blackCloth', cup: -2 });
   robeBody(S, { cx, top: 40, waist: 56, hem: 84, rTop: 6.4, rHem: 8, mat: 'cloth', tip: true, B, lean, n: 9 });
@@ -339,7 +339,7 @@ function seraph(t = 0, atk = 0) {
 // A cathedral angel come loose from its plinth, weeping light.
 function effigy(t = 0, atk = 0) {
   const S = new Scene(), cx = 44, B = Math.round(Math.sin(t * PI / 2) * 1.5);
-  const flap = atk === 1 ? 0.8 : atk === 2 ? -0.4 : [0, 0.3, 0.5, 0.2][t];
+  const flap = atk === 1 ? 0.8 : atk === 2 ? -0.4 : cyc([0, 0.3, 0.5, 0.2], t);
   wing(S, [cx - 3, 44 + B, -4], { z: -5, a: -1.95 - flap * 0.2, L: 30, Wt: 11, mat: 'statueDark', cup: -2 });
   robeBody(S, { cx, top: 40, waist: 56, hem: 86, rTop: 6.8, rHem: 9.4, mat: 'statue', B, n: 7, amp: 0.8 });
   // Broken hem: jagged stone where the plinth snapped.
@@ -382,7 +382,7 @@ function thornVine(S, pts, r = 0.9, seed = 1) {
   }
 }
 function abbess(t = 0, atk = 0) {
-  const S = new Scene(), cx = 42, B = t % 2;
+  const S = new Scene(), cx = 42, B = odd(t);
   const lean = atk === 1 ? -2 : atk === 2 ? 3 : 0;
   robeBody(S, { cx, top: 42, waist: 56, hem: 100, rTop: 7, rHem: 15, mat: 'habit', B, n: 11, amp: 0.8, lean, zs: 0.8 });
   // Scapular (front panel) and cord.
@@ -425,7 +425,7 @@ function abbess(t = 0, atk = 0) {
 // A walking reliquary: a coffin for a chest, studded with saints' skulls,
 // arms of fused bone ending in grave-stone fists.
 function golem(t = 0, atk = 0) {
-  const S = new Scene(), B = atk ? 0 : t % 2, cx = 42;
+  const S = new Scene(), B = atk ? 0 : odd(t), cx = 42;
   legs(S, { x: cx, hipY: 72 + B, footY: 100, z: 6.5, thigh: 5.4, shin: 5, mt: 'statueDark', ms: 'statue', mf: 'statueDark', foot: [5.6, 3, 4.4], t: atk ? 0.3 : t, stride: atk ? 1.5 : 2.6, lift: 3, k: 1.2, knee: 0.6, xs: 6, spread: 6.5 });
   // Coffin chest: a tapered hexagonal casket.
   const top = 36 + B, bot = 74 + B, mid = 46 + B;
@@ -469,7 +469,7 @@ function golem(t = 0, atk = 0) {
 // ================================================= The Thrice-Buried ===
 // A crowned skeleton in grave-rags, rot crawling from its ribs, a scythe.
 function thrice(t = 0, atk = 0) {
-  const S = new Scene(), B = atk ? 0 : t % 2, cx = 42;
+  const S = new Scene(), B = atk ? 0 : odd(t), cx = 42;
   const lean = atk === 1 ? -3 : atk === 2 ? 4 : 1;
   // Grave-rag cape with a torn hem.
   const rag = folds(skirt(cx - 2 + lean * 0.4, 40 + B, 88, 5.4, 10, -2.4, 0.5, 'shroud'), { cx: cx - 2, cz: -2.4, n: 9, amp: 0.7, y0: 44, y1: 88 });
@@ -521,7 +521,7 @@ function thrice(t = 0, atk = 0) {
 // A heaving mound of flesh, every mouth singing. 4-frame pulse.
 function manymouthed(t = 0, atk = 0) {
   const S = new Scene(), cx = 48, sq = atk ? 1.06 : 1 + Math.sin(t * PI / 2) * 0.035;
-  const open = atk === 1 ? 1.6 : atk === 2 ? 2.4 : 1 + (t % 2) * 0.3;
+  const open = atk === 1 ? 1.6 : atk === 2 ? 2.4 : 1 + odd(t) * 0.3;
   const body = [cx, 76 - 22 * sq, 0];
   S.add(bumpy(ellipsoid(body, [30 / Math.sqrt(sq), 24 * sq, 22 / Math.sqrt(sq)], 'fleshMound'), 1.1, 0.16, 2), 0);
   S.add(bumpy(ellipsoid([cx - 12, 62, -4], [14, 14, 13], 'fleshDark'), 0.8, 0.2, 6), 6);
@@ -605,8 +605,8 @@ function imp(t = 0) {
   return fin(fr, 13, 29);
 }
 
-const set = (fn, walk = [0, 1, 2, 3], atk = [1, 2]) => ({ walk: () => walk.map((t) => fn(t, 0)), attack: () => atk.map((a) => fn(0, a)) });
+const set = (fn, walk = HALF, atk = [1, 2]) => ({ walk: () => walk.map((t) => fn(t, 0)), attack: () => atk.map((a) => fn(0, a)), ...reactions(() => fn(0, 0), 0.8) });
 const R = { colossus: set(colossus), titan: set(titan), inquisitor: set(inquisitor), seraph: set(seraph), effigy: set(effigy), abbess: set(abbess), golem: set(golem), thrice: set(thrice), manymouthed: set(manymouthed), leviathan: set(leviathan) };
 const mon_elite = {};
-for (const [id, s] of Object.entries(R)) { mon_elite[`${id}_walk`] = s.walk; mon_elite[`${id}_attack`] = s.attack; }
+for (const [id, s] of Object.entries(R)) { mon_elite[`${id}_walk`] = s.walk; mon_elite[`${id}_attack`] = s.attack; mon_elite[`${id}_hit`] = s.hit; mon_elite[`${id}_die`] = s.die; }
 export default { mon_elite, loot: { imp: () => [0, 1, 2, 3].map((t) => imp(t)) } };
