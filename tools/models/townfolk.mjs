@@ -250,8 +250,10 @@ function idle(id) {
 function walk(id) {
   const leg = (p) => { p = ((p % 1) + 1) % 1; if (p < 0.5) return [3.2 - 12.8 * p, 0]; const u = (p - 0.5) * 2, e = u * u * (3 - 2 * u); return [-3.2 + 6.4 * e, 2.6 * Math.sin(Math.PI * u)]; };
   return [0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
-    const t = i / 8, b = leg(t + 0.5), f = leg(t), pass = Math.abs(Math.cos(t * 4 * Math.PI)) > 0.7;
-    return person(CAST[id], { legs: [b[0], f[0]], lift: [b[1], f[1]], swing: Math.sin(t * 2 * Math.PI) * 0.8, bob: pass ? 0 : -1, t: i });
+    // The body bobs a whole chunky pixel (2 px) and the cloth folds hold still:
+    // a 1 px bob or drifting folds re-cut the 2x2 blocks and the walker shimmers.
+    const t = i / 8, b = leg(t + 0.5), f = leg(t);
+    return person(CAST[id], { legs: [b[0], f[0]], lift: [b[1], f[1]], swing: Math.sin(t * 2 * Math.PI) * 0.8, bob: i % 4 < 2 ? 0 : -2, t: 0 });
   });
 }
 

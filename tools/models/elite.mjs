@@ -1,7 +1,7 @@
 // Sculpted elites (and the Collection Imp) for the mon_elite and loot sheets.
 // Every model faces right; ax/ay mark where the feet meet the ground.
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, folds, bumpy, clip, render, dot, pline, under } from '../sdf.mjs';
-import { MATS, torus, stride, odd, cyc, HALF, reactions } from './base.mjs';
+import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt } from './base.mjs';
 import { NAMES } from '../palette.mjs';
 // Hand-placed pixel only where the sculpt shows a dark cavity (mouths).
 const inMaw = (fr, x, y) => { const v = under(fr, x, y); return v >= 0 && /^(ink|blood)/.test(NAMES[v]); };
@@ -93,7 +93,7 @@ const eyes = (f, list, ramp, big = false) => { for (const [x, y] of list) { dot(
 // A mountain of scourged flesh under a sackcloth hood, chained and spiked,
 // fists like millstones. 104x112, feet at 106.
 function colossus(t = 0, atk = 0) {
-  const S = new Scene(), B = atk ? 0 : odd(t), cx = 50;
+  const S = new Scene(), B = atk ? 0 : bobAt(t) / 1.24, cx = 50;
   const lean = atk === 1 ? -4 : atk === 2 ? 5 : 0;
   legs(S, { x: cx - 2, hipY: 81 + B, footY: 106, z: 8, thigh: 7, shin: 5.6, mt: 'flesh', ms: 'fleshDark', mf: 'sack', foot: [6, 3, 5], t: atk ? 0.5 : t, stride: atk ? 2 : 5, lift: 2.5, k: 3, knee: 2 });
   // Belly and the great hunched back.
@@ -183,7 +183,7 @@ function pauldron(S, c, r, plate, trim) {
 // A gilded war-saint the size of a door, plumed, candles burning on its
 // shoulders, swinging a censer of coals. 112x128.
 function titan(t = 0, atk = 0) {
-  const S = new Scene(), B = atk ? 0 : odd(t), cx = 40, k = 1.25;
+  const S = new Scene(), B = atk ? 0 : bobAt(t) / 1.33, cx = 40, k = 1.25;
   const lean = atk === 1 ? -2 : atk === 2 ? 3 : 0;
   knight(S, { t, atk, cx, bulk: k, B, lean, plate: 'plateGold' });
   // Pauldrons with candles.
@@ -230,7 +230,7 @@ function titan(t = 0, atk = 0) {
 // ======================================================= Inquisitor ===
 // Black plate, a crimson capirote over the helm, a long execution blade.
 function inquisitor(t = 0, atk = 0) {
-  const S = new Scene(), B = atk ? 0 : odd(t), cx = 40;
+  const S = new Scene(), B = atk ? 0 : bobAt(t) / 1.3, cx = 40;
   const lean = atk === 1 ? -3 : atk === 2 ? 5 : 1;
   // Cape behind.
   const cape = folds(skirt(cx - 2 + lean * 0.4, 40 + B, 90, 6, 12, -2.5, 0.42, 'crimsonDark'), { cx: cx - 2, cz: -2.5, n: 9, amp: 0.6, y0: 44, y1: 90 });
@@ -302,7 +302,7 @@ function robeBody(S, { cx, top, waist, hem, rTop, rHem, mat, tip = false, B = 0,
 // ===================================================== Seraph of Ash ===
 // A gilt-masked angel in pale robes on black, smouldering wings.
 function seraph(t = 0, atk = 0) {
-  const S = new Scene(), cx = 44, B = Math.round(Math.sin(t * PI / 2) * 1.5);
+  const S = new Scene(), cx = 44, B = Math.round(Math.sin(t * PI / 2)) * 2 / 1.24;
   const flap = atk === 1 ? 1.6 : atk === 2 ? -0.6 : cyc([0, 0.8, 1.4, 0.6], t);
   const lean = atk === 2 ? 3 : 0;
   wing(S, [cx - 3, 44 + B, -4], { z: -5, a: -2.15 - flap * 0.25, L: 30, Wt: 12, mat: 'ash', mat2: 'blackCloth', cup: -2 });
@@ -338,7 +338,7 @@ function seraph(t = 0, atk = 0) {
 // ==================================================== Weeping Effigy ===
 // A cathedral angel come loose from its plinth, weeping light.
 function effigy(t = 0, atk = 0) {
-  const S = new Scene(), cx = 44, B = Math.round(Math.sin(t * PI / 2) * 1.5);
+  const S = new Scene(), cx = 44, B = Math.round(Math.sin(t * PI / 2)) * 2 / 1.26;
   const flap = atk === 1 ? 0.8 : atk === 2 ? -0.4 : cyc([0, 0.3, 0.5, 0.2], t);
   wing(S, [cx - 3, 44 + B, -4], { z: -5, a: -1.95 - flap * 0.2, L: 30, Wt: 11, mat: 'statueDark', cup: -2 });
   robeBody(S, { cx, top: 40, waist: 56, hem: 86, rTop: 6.8, rHem: 9.4, mat: 'statue', B, n: 7, amp: 0.8 });
@@ -382,7 +382,7 @@ function thornVine(S, pts, r = 0.9, seed = 1) {
   }
 }
 function abbess(t = 0, atk = 0) {
-  const S = new Scene(), cx = 42, B = odd(t);
+  const S = new Scene(), cx = 42, B = bobAt(t) / 1.22;
   const lean = atk === 1 ? -2 : atk === 2 ? 3 : 0;
   robeBody(S, { cx, top: 42, waist: 56, hem: 100, rTop: 7, rHem: 15, mat: 'habit', B, n: 11, amp: 0.8, lean, zs: 0.8 });
   // Scapular (front panel) and cord.
@@ -425,7 +425,7 @@ function abbess(t = 0, atk = 0) {
 // A walking reliquary: a coffin for a chest, studded with saints' skulls,
 // arms of fused bone ending in grave-stone fists.
 function golem(t = 0, atk = 0) {
-  const S = new Scene(), B = atk ? 0 : odd(t), cx = 42;
+  const S = new Scene(), B = atk ? 0 : bobAt(t) / 1.22, cx = 42;
   legs(S, { x: cx, hipY: 72 + B, footY: 100, z: 6.5, thigh: 5.4, shin: 5, mt: 'statueDark', ms: 'statue', mf: 'statueDark', foot: [5.6, 3, 4.4], t: atk ? 0.3 : t, stride: atk ? 1.5 : 2.6, lift: 3, k: 1.2, knee: 0.6, xs: 6, spread: 6.5 });
   // Coffin chest: a tapered hexagonal casket.
   const top = 36 + B, bot = 74 + B, mid = 46 + B;
@@ -469,7 +469,7 @@ function golem(t = 0, atk = 0) {
 // ================================================= The Thrice-Buried ===
 // A crowned skeleton in grave-rags, rot crawling from its ribs, a scythe.
 function thrice(t = 0, atk = 0) {
-  const S = new Scene(), B = atk ? 0 : odd(t), cx = 42;
+  const S = new Scene(), B = atk ? 0 : bobAt(t) / 1.24, cx = 42;
   const lean = atk === 1 ? -3 : atk === 2 ? 4 : 1;
   // Grave-rag cape with a torn hem.
   const rag = folds(skirt(cx - 2 + lean * 0.4, 40 + B, 88, 5.4, 10, -2.4, 0.5, 'shroud'), { cx: cx - 2, cz: -2.4, n: 9, amp: 0.7, y0: 44, y1: 88 });

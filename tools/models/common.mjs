@@ -3,7 +3,7 @@
 // hand-placed eyes and glints. Everything faces right; frames carry ax/ay at
 // the ground contact point.
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, noise3, dot, pline, under } from '../sdf.mjs';
-import { MATS, torus, stride, odd, cyc, HALF, reactions } from './base.mjs';
+import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt } from './base.mjs';
 
 const MM = {
   ...MATS,
@@ -44,7 +44,7 @@ const gaitL = (t, amp, H = 1.6) => { const b = stride(t / 4 + 0.5, amp, H), f = 
 // A hunched, rotting corpse in burial rags, arms out, shambling.
 function risen(t = 0, atk = -1) {
   const S = new Scene(), w = 40, h = 42, gy = 39, cx = 18;
-  const s = sin(ph(t)), c = cos(ph(t)), B = atk >= 0 ? 0 : Math.abs(s) * -0.8;
+  const s = sin(ph(t)), c = cos(ph(t)), B = atk >= 0 ? 0 : bobAt(t) - 2;
   const lean = atk === 0 ? -2 : atk === 1 ? 3 : 0;
   // Legs: thin, bent, dragging.
   const G = gaitL(t, 3, 1.4);
@@ -89,7 +89,7 @@ function risen(t = 0, atk = -1) {
 function crawler(t = 0, atk = -1) {
   const S = new Scene(), w = 42, h = 28, gy = 25;
   const rear = atk === 0 ? 4 : atk === 1 ? 1.5 : 0, fw = atk === 1 ? 5 : 0;
-  const heave = atk >= 0 ? 0 : sin(ph(t) * 2) * 0.5;
+  const heave = atk >= 0 ? 0 : bobAt(t) - 2;
   // Body lies along the floor, chest lifted on the arms.
   const bx = 17 + fw * 0.5, by = gy - 5.2 - rear * 0.5 + heave;
   S.add(bumpy(rotZ(ellipsoid([bx, by, 0], [8.6, 4.2, 4.6], 'flesh'), [bx, by], -0.2 - rear * 0.07), 0.3, 0.6, 1), 0);
@@ -134,7 +134,7 @@ function crawler(t = 0, atk = -1) {
 // run down over its shoulders.
 function mourner(t = 0, atk = -1) {
   const S = new Scene(), w = 40, h = 54, gy = 51, cx = 19;
-  const s = sin(ph(t)), B = atk >= 0 ? 0 : Math.round(Math.abs(s) * -1);
+  const s = sin(ph(t)), B = atk >= 0 ? 0 : bobAt(t) - 2;
   const sway = atk >= 0 ? (atk === 1 ? 1 : -1) : s;
   // Long mourning robe, sweeping as it glides.
   S.add(rotZ(ragged(folds(skirt(cx, 25 + B, gy - 0.5, 4, 8.6, 0, 0.85, 'mourn'), { cx, n: 9, amp: 0.6, y0: 26, y1: gy, phase: t }), gy - 1.2, 1.2, 0.9, 2), [cx, 25], sway * 0.04), 0);
@@ -172,7 +172,7 @@ function mourner(t = 0, atk = -1) {
 // green flame fires bone shards.
 function acolyte(t = 0, atk = -1) {
   const S = new Scene(), w = 40, h = 52, gy = 49, cx = 18;
-  const s = sin(ph(t)), B = atk >= 0 ? 0 : Math.round(Math.abs(s) * -1);
+  const s = sin(ph(t)), B = atk >= 0 ? 0 : bobAt(t) - 2;
   // Robe from the waist down.
   S.add(ragged(folds(skirt(cx, 29 + B, gy - 0.5, 4.4, 7.6, 0, 0.85, 'robeSlate'), { cx, n: 7, amp: 0.55, y0: 30, y1: gy, phase: t * 0.7 }), gy - 1.2, 1.2, 0.9, 7), 0);
   // Cowled mantle draped over the shoulders, open at the chest.
@@ -214,7 +214,7 @@ function acolyte(t = 0, atk = -1) {
 // tall tower shield with a gilt cross.
 function gravewarden(t = 0, atk = -1) {
   const S = new Scene(), w = 50, h = 52, gy = 49, cx = 20;
-  const s = sin(ph(t)), B = atk >= 0 ? 0 : Math.round(Math.abs(s) * -1);
+  const s = sin(ph(t)), B = atk >= 0 ? 0 : bobAt(t) - 2;
   const lean = atk === 0 ? -2 : atk === 1 ? 3.5 : 0, push = atk === 1 ? 5 : atk === 0 ? -1.5 : 0;
   // Armoured legs: thigh plate, greave, sabaton.
   const G = gaitL(t, 3, 1.8);
@@ -263,7 +263,7 @@ function gravewarden(t = 0, atk = -1) {
 // ================================================================= rat ===
 function rat(t = 0, atk = -1) {
   const S = new Scene(), w = 22, h = 14, gy = 12;
-  const s = sin(ph(t)), B = atk >= 0 ? 0 : Math.abs(s) * -0.5, lunge = atk === 1 ? 2.5 : atk === 0 ? -1 : 0;
+  const s = sin(ph(t)), B = 0, lunge = atk === 1 ? 2.5 : atk === 0 ? -1 : 0;
   const bx = 9 + lunge * 0.4, by = 8 + B;
   S.add(bumpy(ellipsoid([bx, by, 0], [4.9, 2.9, 2.8], 'fur'), 0.2, 1, 2), 0);
   S.add(sphere([bx - 2.5, by - 0.6, 0], 2.6, 'fur'), 1.4);
@@ -291,7 +291,7 @@ function rat(t = 0, atk = -1) {
 // attack it swells and the wound burns red.
 function votary(t = 0, atk = -1) {
   const S = new Scene(), w = 44, h = 48, gy = 45, cx = 20;
-  const s = sin(ph(t)), B = atk >= 0 ? 0 : Math.abs(s) * -0.7, sw = atk === 0 ? 1.3 : atk === 1 ? 2.6 : 0;
+  const s = sin(ph(t)), B = atk >= 0 ? 0 : bobAt(t) - 2, sw = atk === 0 ? 1.3 : atk === 1 ? 2.6 : 0;
   const roll = atk >= 0 ? 0 : s * 0.06;
   // Stubby legs.
   const G = gaitL(t, 2, 1.2);
@@ -336,7 +336,7 @@ function votary(t = 0, atk = -1) {
 // A gaunt bare penitent in a sack hood, back raw from the scourge.
 function flagellant(t = 0, atk = -1) {
   const S = new Scene(), w = 48, h = 54, gy = 51, cx = 18;
-  const s = sin(ph(t)), B = atk >= 0 ? 0 : Math.round(Math.abs(s) * -1);
+  const s = sin(ph(t)), B = atk >= 0 ? 0 : bobAt(t) - 2;
   const lean = atk === 0 ? -1.5 : atk === 1 ? 2.5 : 1;
   // Legs: bare, sinewy.
   const G = gaitL(t, 3.4, 1.8);
@@ -384,7 +384,7 @@ MM.skin = { ramp: 'skin', spec: 0.08, bias: -0.1 };
 // tears of light running from blind eyes.
 function cherub(t = 0, atk = -1) {
   const S = new Scene(), w = 50, h = 46, gy = 44, cx = 24;
-  const flap = atk >= 0 ? (atk === 0 ? -1 : 0.5) : cyc([-1, -0.2, 1, -0.2], t), B = atk >= 0 ? 0 : cyc([0, 0.5, 1, 0.5], t);
+  const flap = atk >= 0 ? (atk === 0 ? -1 : 0.5) : cyc([-1, -0.2, 1, -0.2], t), B = atk >= 0 ? 0 : (cyc([0, 0.5, 1, 0.5], t) > 0.5 ? 2 : 0);
   // Wings: broad flattened fans behind the shoulders, scalloped edge.
   for (const side of [-1, 1]) {
     const z = side > 0 ? -1 : -3.4, root = [cx - 1 + side * 1.6, 17.5 + B, z];
@@ -433,7 +433,7 @@ function cherub(t = 0, atk = -1) {
 // open in an endless note.
 function wisp(t = 0, atk = -1) {
   const S = new Scene(), w = 32, h = 40, gy = 37, cx = 15;
-  const bob = atk >= 0 ? 0 : sin(ph(t)) * 1.2, stretch = atk === 1 ? 5 : atk === 0 ? -1.5 : 0;
+  const bob = atk >= 0 ? 0 : Math.round(sin(ph(t))) * 2, stretch = atk === 1 ? 5 : atk === 0 ? -1.5 : 0;
   const hx = cx + 1 + stretch * 0.6, hy = 14 + bob;
   // Bulb and a tail that whips behind it.
   S.add(sphere([hx, hy, 0], 6.2, 'spirit'), 0);

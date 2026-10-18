@@ -22,6 +22,10 @@ export function stride(p, amp, H) {
 export const odd = (t) => (1 - Math.cos(t * Math.PI)) / 2;
 // Read a looping 4-step table at a fractional step.
 export const cyc = (arr, t) => { const n = arr.length, i = Math.floor(t) % n, f = t - Math.floor(t); return arr[i] + (arr[(i + 1) % n] - arr[i]) * f; };
+// Body bob for a 4-step walk: 2 (one chunky art pixel, down) through each
+// contact and recoil, 0 as the legs pass. Bobs must move whole 2x2 blocks:
+// a 1 px or fractional shift re-cuts every block and the sprite shimmers.
+export const bobAt = (t) => (Math.floor(t * 2) % 4 < 2 ? 2 : 0);
 // Walk frames from half steps: t = 0, 0.5, ... 3.5.
 export const HALF = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5];
 

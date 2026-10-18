@@ -112,6 +112,12 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   through `setPose()` in `tools/sdf.mjs`), engine flinch (`HIT_T`) and fall
   (`falls`, `drawFall`, `updateFalls`). Monster frames are trimmed and all
   sheets are shelf-packed (the elite sheet went from 4236 px tall to 1244).
+- **Round 8b:** walk jitter fix. Body bobs now move whole 2x2 blocks
+  (`bobAt()` in `base.mjs`; 2 px down through contact and recoil). A 1 px
+  or fractional bob re-cut every block, so 60–80% of the upper body changed
+  each frame. Townfolk cloth folds hold still while walking. The camera
+  follows the Saint's rounded position, and monsters have a 6 px dead zone
+  before turning to face the Saint.
 - **Round 7:** chunky 2x2 pixels (`setRes(2)` in `tools/sdf.mjs`,
   `tools/chunky.mjs` for every sheet but `ui`, `chunkCanvas()` for the
   baked floor), whole-number nearest-neighbour scaling, thicker halo,
@@ -166,6 +172,7 @@ These hosts are allowed now. Notes: Steam's `api/appdetails` and the App Store p
 - `resize()` picks the whole-number scale whose view height lands closest to `T.viewH` (305), so `H` varies a little per device (292 on an iPhone 13). Lay out UI from `W`/`H`, never fixed sizes.
 - Town `place()` never marks tiles solid (walk-through by request); dungeon `place()` does.
 - Keys: M opens the town map, N mutes, I opens the bag, E interacts, Esc closes panels.
+- Never bob or slide a whole body by 1 px or a fraction: on the 2x2 grid that re-cuts every block and reads as jitter. Move bodies in steps of 2 px (`bobAt()`); elites are scaled by `s` in `shoot()`, so use `2 / s` model units.
 - `text()` caches each string as a small canvas (cleared at 600 entries). Use `small: true` for the old thin 5x7 font.
 - Audio starts on the first tap (iOS rule). Music streams through `<audio>` elements, effects are decoded buffers. `AUDIO.set([...])` picks the loops; `sfx(name)` plays an effect.
 - Rebuild audio with `tools/build-audio.sh <src>` after downloading the packs; the sources are not committed.

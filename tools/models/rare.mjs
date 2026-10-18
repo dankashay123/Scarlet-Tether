@@ -5,7 +5,7 @@
 // feet at y 74, facing right. Every model is one smooth-unioned form; eyes,
 // strings, chains and whips are placed by hand after rendering.
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, folds, bumpy, clip, render, dot, pline, under } from '../sdf.mjs';
-import { MATS, torus, stride, odd, cyc, HALF, reactions } from './base.mjs';
+import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt } from './base.mjs';
 
 const W = 76, H = 80, GY = 74, CX = 32;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -40,7 +40,7 @@ function blade(a, b, w, t, mat, tip = 0.15) {
 }
 // Walk phase: t in 0..3. s swings legs, lift raises the passing foot.
 // Planted feet: sw is the front foot, swB the back foot (half a cycle behind).
-const gait = (t, amp = 4) => { const a = t * Math.PI / 2, s = Math.sin(a), c = Math.cos(a), f = stride(t / 4, amp, 2.4), b = stride(t / 4 + 0.5, amp, 2.4); return { s, c, sw: f.x, swB: b.x, lift: [b.up, f.up], bob: Math.floor(t * 2) % 4 < 2 ? 1 : 0 }; };
+const gait = (t, amp = 4) => { const a = t * Math.PI / 2, s = Math.sin(a), c = Math.cos(a), f = stride(t / 4, amp, 2.4), b = stride(t / 4 + 0.5, amp, 2.4); return { s, c, sw: f.x, swB: b.x, lift: [b.up, f.up], bob: bobAt(t) }; };
 // A two-segment leg ending in a boot. side -1 = far leg.
 function leg(S, { x, hipY, z, sw, up, mats = ['shroud', 'leather', 'leather'], r = [3.2, 2.7, 2.4], foot = [3.6, 2, 2.6], k = 1, kneeF = 1.2 }) {
   const knee = [x + sw * 0.55 + kneeF, (hipY + GY) / 2 + 0.5 - up * 0.6, z + 0.5], ankle = [x + sw, GY - 2.2 - up, z];
@@ -600,7 +600,7 @@ const SETS = { collector, motherwax, bishop, jailer, bellringer, matron, choirbo
 const extra = {};
 const react = (id, make) => { const r = reactions(make, 0.3); extra[`${id}_hit`] = r.hit; extra[`${id}_die`] = r.die; };
 for (const [id, fn] of Object.entries(SETS)) { const s = std(fn); extra[`${id}_walk`] = s.walk; extra[`${id}_attack`] = s.attack; react(id, () => fn({})); }
-extra.lantern_walk = () => HALF.map((t) => lantern({ t, bob: cyc([0, -1, -2, -1], t) }));
+extra.lantern_walk = () => HALF.map((t) => lantern({ t, bob: Math.round(cyc([0, -1, -2, -1], t) / 2) * 2 }));
 react('lantern', () => lantern({}));
 react('knight', () => knight({}));
 extra.lantern_attack = () => [lantern({ pose: 'windup' }), lantern({ pose: 'windup', bob: -1 }), lantern({ pose: 'strike', bob: 0 })];

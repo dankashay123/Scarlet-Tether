@@ -12,8 +12,9 @@ export default {
       const t = i / 8, AMP = 6.5, H = 3.6;
       const leg = (p) => { p = ((p % 1) + 1) % 1; if (p < 0.5) return { x: AMP - 4 * AMP * p, up: 0, bend: 0 }; const u = (p - 0.5) * 2, e = u * u * (3 - 2 * u); return { x: -AMP + 2 * AMP * e, up: H * Math.sin(Math.PI * u), bend: 1.6 * Math.sin(Math.PI * u) }; };
       const b = leg(t + 0.5), f = leg(t);
-      const pass = Math.abs(Math.cos(t * 4 * Math.PI));
-      return A(saintModel({ bob: pass > 0.7 ? 0 : 1, halo: pass > 0.7 ? 0 : 1, legs: [b.x, f.x], lift: [b.up, f.up], bend: [b.bend, f.bend], cape: -3 - (1 - pass) * 1.5, lean: 1 }));
+      // Bob a whole chunky pixel (2 px) through contact and recoil; a 1 px bob
+      // re-cuts the 2x2 blocks and the Saint shimmers.
+      return A(saintModel({ bob: i % 4 < 2 ? 2 : 0, legs: [b.x, f.x], lift: [b.up, f.up], bend: [b.bend, f.bend], cape: -4, lean: 1 }));
     }),
     dash: () => [
       A(saintModel({ lean: 2, legs: -4, lift: [1, 0], cape: -6, halo: 1 })),
