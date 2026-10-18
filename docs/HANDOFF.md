@@ -26,7 +26,7 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
   - Names: every Blasphemous or Diablo term is gone from the game and docs (see CLAUDE.md, "Names").
   - `tools/tests/rooms.cjs` photographs every room of a floor for layout review.
 - **Round 5:**
-  - Camera: the view is 430 px tall like Otherworld Legends (heroes about 12% of screen height). `resize()` draws into an offscreen buffer, copies it to the screen canvas at the next whole scale, and CSS shrinks it with smoothing, so pixels stay even at any height. `PRE` is that whole scale.
+  - Camera: (since changed to 305 px, see above). `resize()` draws into an offscreen buffer, copies it to the screen canvas at the next whole scale, and CSS shrinks it with smoothing, so pixels stay even at any height. `PRE` is that whole scale.
   - Rooms are 54–67 × 26–32 tiles (`GRID` = 3×3, cells 74×40, corridors 5 wide). Wave sizes grow with room area (`r.ak`, power 0.55) and props, decals and critters with power 0.85 (`many()`). The baked floor canvas is about 3.6k × 2k px, under iOS canvas limits.
   - Descent panel (`renderDescent`): before going down it shows the stratum, difficulty picker, floor makeup, monster health and damage, waves, curse counts, gold per coin/kill/rare/elite/room, item odds per kill/rare/elite/room, rarity odds for foes and elites (`rarityOdds`, the same sums as `rollItem`), XP rate, death penalty and your stats.
   - Difficulty tiers (`DIFF`): Pilgrim, Zealot, Martyr, Saint. They scale monster health and damage (`spawnMonster`, `damagePlayer`, `hurtPlayerRaw`), gold, item count and rarity (`dropLoot`), XP (`gainXp`) and add a curse to rares and elites from Martyr. Zealot opens after one descent; each next tier after finishing a descent on the one before (`SAVE.cleared`). The choice is saved in `SAVE.diff`.
@@ -56,7 +56,7 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
   - 3/4-view furniture (crate, chest, pew, altar, sarcophagus, shrine, coffin, maiden, cage, statues, columns, urns), stone pilasters on back walls, engraved floor seals, new splats, mounds, candles, gibs, cobwebs and HUD buttons. `node tools/sprites.mjs --audit` reports no old art left.
 - **Audio:** Kenney SFX for every action, OpenGameArt music (town, dungeon) and town wind and crickets. Mute button under pause (or M key), saved in localStorage. iOS 17+ follows the silent switch via `navigator.audioSession.type = 'ambient'`. Sources in `docs/CREDITS.md`.
 - **Graphics v5:**
-  - Everything is sculpted with the SDF renderer with a ×1.3 world scale (see `docs/GDD.md` → "Art v5"). The view is now 430 px tall (round 5).
+  - Everything is sculpted with the SDF renderer with a ×1.3 world scale (see `docs/GDD.md` → "Art v5"). The view is now 305 px tall (round 6b).
   - Back walls are 3 tiles tall.
 
 ## The owner's preferences
