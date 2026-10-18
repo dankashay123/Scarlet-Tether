@@ -38,7 +38,8 @@ const T = {
   chain: { cd: 8, range: 150, links: 4, linkRange: 64, bind: 2, dmg: 14, speed: 420 },
   penance: { charge: 160, time: 3, every: 0.07, dmg: 12, radius: 14 },
   fervor: { decayDelay: 2, decay: 2.5, tiers: ['MURMUR', 'CHANT', 'RAPTURE', 'FRENZY'] },
-  wave: { start: 10, max: 34, ramp: 120, eliteEvery: 25, elitesMax: 2, cap: 40 },
+  wave: { start: 16, max: 40, ramp: 100, rate: 10, eliteEvery: 20, elitesMax: 3, cap: 46, finaleBonus: 10 },
+  descent: { time: 180, finale: 30 },  // seconds the candle burns; the last stretch surges
   ambient: 'rgba(10,8,26,0.5)',  // Undercroft darkness
 };
 const ENEMY = {
@@ -157,7 +158,8 @@ function layoutHud() {
   HUD.m1 = { x: W - 78, y: H - 22, r: 15, icon: 'flask' };
   HUD.m2 = { x: W - 26, y: H - 82, r: 15, icon: 'chain' };
   HUD.pen = { x: W - 72, y: H - 68, r: 17, icon: 'penance' };
-  HUD.exec = { x: W - 120, y: H - 30, r: 15, icon: 'dagger' };
+  HUD.exec = { x: W - 122, y: H - 80, r: 15, icon: 'dagger' };
+  HUD.act = { x: W - 122, y: H - 38, r: 19, icon: 'talk' };
   HUD.pause = { x: W - 15, y: 15, r: 11, icon: 'pause' };
   HUD.joy = { x: 48, y: H - 48 };
 }
@@ -172,9 +174,11 @@ function pointerDown(id, cx, cy) {
   if (onTap(x, y)) return;
   if (game.state !== 'play') return;
   if (hitBtn(HUD.pause, x, y)) { game.state = 'pause'; return; }
+  if (tutTap(x, y)) return;
+  if (game.interact && hitBtn(HUD.act, x, y)) { game.interact.use(); return; }
   if (hitBtn(HUD.dash, x, y, 10)) { input.dash = true; HUD.dash.pressed = 0.12; return; }
   if (game.execTarget && hitBtn(HUD.exec, x, y)) { input.execute = true; return; }
-  for (const k of ['m1', 'm2', 'pen']) if (hitBtn(HUD[k], x, y)) { input[k] = true; HUD[k].pressed = 0.12; return; }
+  if (game.scene === 'wound') for (const k of ['m1', 'm2', 'pen']) if (hitBtn(HUD[k], x, y)) { input[k] = true; HUD[k].pressed = 0.12; return; }
   if (x < W * 0.45 && stick.id === null) { Object.assign(stick, { id, ox: x, oy: y, x, y, active: true }); return; }
   // Tap an enemy to lock it (or execute it if it is staggered).
   const wx = x + cam.x, wy = y + cam.y;
@@ -202,12 +206,12 @@ addEventListener('mouseup', () => pointerUp('m'));
 addEventListener('keydown', (e) => {
   keys.add(e.code);
   if (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyK') input.dash = true;
-  if (e.code === 'KeyE' || e.code === 'KeyJ') input.execute = true;
+  if (e.code === 'KeyE' || e.code === 'KeyJ') { if (game.state === 'play' && game.interact && !game.execTarget) game.interact.use(); else input.execute = true; }
   if (e.code === 'KeyQ' || e.code === 'Digit1') input.m1 = true;
   if (e.code === 'KeyF' || e.code === 'Digit2') input.m2 = true;
   if (e.code === 'KeyR' || e.code === 'Digit3') input.pen = true;
   if (e.code === 'Escape' || e.code === 'KeyP') { if (game.state === 'play') game.state = 'pause'; else if (game.state === 'pause') game.state = 'play'; }
-  if (e.code === 'Enter' || e.code === 'Space') onTap(-1, -1);
+  if (e.code === 'Enter' || (e.code === 'Space' && game.state !== 'play')) onTap(-1, -1);
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => { keys.clear(); if (game.state === 'play') game.state = 'pause'; });
@@ -321,7 +325,7 @@ function makeRoom() {
   stain = document.createElement('canvas'); stain.width = roomCanvas.width; stain.height = roomCanvas.height;
   sctxStain = stain.getContext('2d');
   for (const d of decals) lights.push({ x: d.x, y: d.y - 8, r: 42, c: 'flame', a: 0.75, flick: rng() * 9 });
-  room = { w, h, solid, isSolid, props, lights, decals, pw: w * TILE, ph: h * TILE, cx, cy, top: TOP };
+  room = { kind: 'wound', name: 'THE UNDERCROFT', w, h, solid, isSolid, props, lights, decals, npcs: [], interact: [], pw: w * TILE, ph: h * TILE, cx, cy, top: TOP, ambient: T.ambient };
 }
 
 const solidAt = (px, py) => room.isSolid(Math.floor(px / TILE), Math.floor(py / TILE));
@@ -344,13 +348,18 @@ let player, enemies = [], bolts = [], parts = [], gibs = [], nums = [], ghosts =
 let pools = [], flasks = [], chains = [], lashes = [];
 let director;
 
-function newRun() {
-  makeRoom();
-  player = {
-    x: room.cx * TILE + 8, y: room.cy * TILE + 8, r: 5, hp: 100, maxHp: 100, face: 1,
+function makePlayer(x, y) {
+  return {
+    x, y, r: 5, hp: 100, maxHp: 100, face: 1,
     charges: T.dash.charges, recharge: 0, dashT: 0, dashStart: -9, dashDx: 1, dashDy: 0, iframes: 0, perfectUsed: false,
     fireCd: 0.6, thAng: 0, m1cd: 0, m2cd: 0, penance: 0, rainT: 0, rainTick: 0, lock: null, target: null, anim: 'idle', animT: 0, hurt: 0, ghostT: 0,
   };
+}
+function newRun() {
+  makeRoom();
+  player = makePlayer(room.cx * TILE + 8, room.cy * TILE + 8);
+  game.scene = 'wound'; game.state = 'play'; game.cardAt = game.real; game.descentT = T.descent.time; game.waystone = null; game.interact = null;
+  if (tutStep() && tutStep().start && tutStep().scene === 'wound') tutStep().start();
   enemies = []; bolts = []; parts = []; gibs = []; nums = []; ghosts = []; rings = []; fxs = []; pools = []; flasks = []; chains = []; lashes = [];
   Object.assign(game, { time: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, execTarget: null, flash: 0 });
   director = { t: 0, eliteT: 12 };
@@ -361,6 +370,218 @@ const fervorTier = () => Math.min(3, Math.floor(game.fervor / 25));
 function addFervor(n) { if (player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + n); game.fervor = Math.min(100, game.fervor + n); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
 // One-shot sprite effects.
 function playFx(sheet, anim, x, y, fps = 24, o = {}) { fxs.push({ sheet, anim, x, y, t: 0, fps, n: SPR[sheet].anims[anim].length, ...o }); }
+
+// ------------------------------------------------------------- saving ---
+// Per-device progress (tutorial seen, descents, last death). The full
+// versioned save system is a later slice item.
+const SAVE = (() => { try { return JSON.parse(localStorage.getItem('hollow-saint') || '{}'); } catch { return {}; } })();
+function persist() { try { localStorage.setItem('hollow-saint', JSON.stringify(SAVE)); } catch { /* private mode */ } }
+
+// ---------------------------------------------------------------- town ---
+// Vael's square: the Vestry (way down), the Forge, Pell's Stall and the
+// Gilded Lamb, with townsfolk to talk to. Shops open in later slice items.
+const NPC_INFO = {
+  odile: { name: 'SISTER ODILE', lines: () => SAVE.descents || SAVE.deaths
+    ? [pick(["UP YOU GET. THE WOUND WON'T BLEED ITSELF.", "YOUR BED WAS STILL WARM WHEN I CHANGED THE SHEETS. THAT'S NEW.", "THE CHOIR SAYS YOU'RE DOING WONDERFULLY. THE CHOIR SAYS THAT EVERY YEAR."])]
+    : ['AH. AWAKE AT LAST, SAINT.', "DON'T FRET IF YOU REMEMBER NOTHING. NONE OF YOU EVER DO.", 'THE WOUND WAITS BENEATH THE CATHEDRAL. THE VESTRY DOORS WILL TAKE YOU DOWN.', 'THE WHOLE CITY WILL BE WATCHING. TRY TO DIE INTERESTINGLY.'] },
+  hollis: { name: 'HOLLIS THE SMITH', lines: () => ["FORGE STAYS COLD TILL THE CHOIR PAYS ME.", 'BRING ME BONE DUST AND MARROW AND WE WILL TALK VESTMENTS.'] },
+  pell: { name: 'BROTHER PELL', lines: () => ["GENUINE SAINT'S TOENAILS. THREE FOR A COPPER.", "DON'T LOOK AT YOUR FEET. WHY WOULD YOU LOOK AT YOUR FEET?"] },
+  barkeep: { name: 'THE BOOKIE', lines: () => [`THE LAMB IS GIVING ${ODDS[(SAVE.descents || 0) % ODDS.length]} YOU DON'T COME BACK UP.`, 'I TOOK THE BET. AGAINST YOU. NOTHING PERSONAL.'] },
+  crier: { name: 'THE TOWN CRIER', lines: () => SAVE.lastDeath
+    ? [`HEAR YE! OUR SAINT FELL BRAVELY TO ${SAVE.lastDeath}!`, "HEAR YE! IT WAS VERY MOVING! THE CHILDREN HAVE ALREADY MADE A GAME OF IT!"]
+    : ['HEAR YE! THE SAINT HAS RISEN! AGAIN!', 'HEAR YE! WAGERS AT THE GILDED LAMB!'] },
+};
+
+function makeTown() {
+  const w = 40, h = 22, TOP = 5;
+  const solid = [];
+  for (let y = 0; y < h; y++) { solid.push([]); for (let x = 0; x < w; x++) solid[y].push(y < TOP || y >= h - 1 || x < 1 || x >= w - 1); }
+  const isSolid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || solid[y][x];
+  const cx = Math.floor(w / 2), props = [], lights = [], npcs = [], interact = [];
+  const place = (kind, tx, ty, tw = 1, extra = {}) => { for (let x = tx; x < tx + tw; x++) solid[ty][x] = true; props.push({ kind, sheet: 'town', x: (tx + tw / 2) * TILE, y: (ty + 1) * TILE - 1, ...extra }); };
+  roomCanvas = document.createElement('canvas'); roomCanvas.width = w * TILE; roomCanvas.height = h * TILE;
+  const rc = roomCanvas.getContext('2d');
+  // Night sky over the rooftops.
+  const sky = rc.createLinearGradient(0, 0, 0, TOP * TILE);
+  sky.addColorStop(0, PAL.violet4); sky.addColorStop(1, PAL.ink2);
+  rc.fillStyle = sky; rc.fillRect(0, 0, w * TILE, TOP * TILE);
+  for (let i = 0; i < 40; i++) { rc.fillStyle = rng() < 0.3 ? PAL.gold0 : PAL.cloth2; rc.fillRect(Math.floor(rng() * w * TILE), Math.floor(rng() * TOP * TILE * 0.6), 1, 1); }
+  const cob = SPR.town.anims.cobble;
+  for (let y = TOP; y < h; y++) for (let x = 0; x < w; x++) { const f = cob[rng() < 0.6 ? 0 : Math.floor(rng() * 4)]; rc.drawImage(IMG.town, f.x, f.y, 16, 16, x * TILE, y * TILE, 16, 16); }
+  // Low wall along the bottom and sides.
+  const lw = SPR.tiles.anims.wall[3];
+  for (let x = 0; x < w; x++) rc.drawImage(IMG.tiles, lw.x, lw.y, 16, 16, x * TILE, (h - 1) * TILE, 16, 16);
+  for (let y = TOP; y < h; y++) for (const x of [0, w - 1]) rc.drawImage(IMG.tiles, lw.x, lw.y, 16, 16, x * TILE, y * TILE, 16, 16);
+  // Building fronts, bottom-aligned on the square.
+  const front = (anim, x) => { const f = frameOf('town', anim, 0); rc.drawImage(IMG.town, f.x, f.y, f.w, f.h, Math.round(x - f.w / 2), TOP * TILE - f.h + 2, f.w, f.h); return f; };
+  const base = TOP * TILE;
+  front('house', 2 * TILE + 8); front('house', 35 * TILE + 8);
+  front('forge', 8 * TILE); front('stall', 13.5 * TILE);
+  front('vestry', cx * TILE); front('tavern', 28 * TILE);
+  rc.fillStyle = 'rgba(11,7,16,0.4)'; rc.fillRect(0, base, w * TILE, 5);
+  // Lights: forge mouth, tavern and house windows, Vestry door.
+  lights.push({ x: 8 * TILE, y: base - 12, r: 80, c: 'ember', a: 1, flick: 1 });
+  for (const [x, y] of [[23.5, -18], [32.5, -18], [26.5, -45], [29.5, -45], [1.5, -38], [3, -38], [34.5, -38], [36, -38]]) lights.push({ x: x * TILE, y: base + y, r: 30, c: 'ember', a: 0.6, flick: rng() * 9 });
+  lights.push({ x: cx * TILE, y: base - 30, r: 60, c: 'gold', a: 0.7 });
+  // Square furniture.
+  place('fountain', cx - 2, 14, 4, { anim: 'fountain' });
+  lights.push({ x: cx * TILE, y: 14 * TILE, r: 50, c: 'holy', a: 0.5 });
+  for (const [x, y] of [[cx - 6, 9], [cx + 6, 9], [6, 15], [33, 15], [cx - 7, 18], [cx + 7, 18]]) { place('lamp', x, y, 1, { anim: 'lamp', ph: rng() * 9 }); lights.push({ x: x * TILE + 8, y: y * TILE - 22, r: 78, c: 'ember', a: 0.95, flick: rng() * 9 }); }
+  place('anvil', 10, TOP + 1); place('barrel', 4, TOP + 1); place('barrel', 5, TOP + 1); place('crate', 4, TOP + 2);
+  place('barrel', 31, TOP + 1); place('crate', 32, TOP + 1); place('barrel', 36, 17);
+  // Townsfolk.
+  const person = (id, tx, ty, face = 1) => { const n = { npc: id, x: tx * TILE + 8, y: ty * TILE + 8, face, ph: rng() * 3 }; npcs.push(n); interact.push({ x: n.x, y: n.y, r: 26, label: 'TALK', icon: 'talk', who: n, use: () => { talk(id); tut.flags.talked = true; } }); };
+  person('odile', cx - 3, TOP + 2, 1); person('hollis', 9, TOP + 2, 1); person('pell', 13, TOP + 2, 1);
+  person('barkeep', 26, TOP + 2, -1); person('crier', cx + 5, 12, -1);
+  interact.push({ x: cx * TILE, y: base + 6, r: 24, label: 'DESCEND', icon: 'descend', door: true, use: () => startDescent() });
+  stain = document.createElement('canvas'); stain.width = roomCanvas.width; stain.height = roomCanvas.height; sctxStain = stain.getContext('2d');
+  room = { kind: 'town', name: 'VAEL', w, h, solid, isSolid, props, lights, decals: [], npcs, interact, pw: w * TILE, ph: h * TILE, cx, cy: 12, top: TOP, ambient: 'rgba(24,12,34,0.34)' };
+}
+
+function enterTown(wake = true) {
+  makeTown();
+  player = makePlayer(room.cx * TILE + 8, (room.top + 2) * TILE + 4);
+  enemies = []; bolts = []; parts = []; gibs = []; nums = []; ghosts = []; rings = []; fxs = []; pools = []; flasks = []; chains = []; lashes = [];
+  game.scene = 'town'; game.state = 'play'; game.cardAt = game.real; game.time = 0; game.fervor = 0; game.kills = 0; game.waystone = null;
+  if (wake && !SAVE.metOdile) { SAVE.metOdile = true; persist(); talk('odile'); }
+}
+
+function talk(id) {
+  const info = NPC_INFO[id];
+  game.dialog = { name: info.name, lines: info.lines(), i: 0, t: 0, id };
+  game.state = 'dialog';
+}
+
+function startDescent() {
+  game.state = 'loading'; game.loadT = 0;
+  game.loadOdds = ODDS[Math.floor(Math.random() * ODDS.length)];
+}
+
+// Wrap text to a width in characters.
+function wrap(s, n) {
+  const out = []; let line = '';
+  for (const w of s.split(' ')) { if ((line + ' ' + w).trim().length > n) { out.push(line.trim()); line = w; } else line += ' ' + w; }
+  if (line.trim()) out.push(line.trim());
+  return out;
+}
+
+// ------------------------------------------------------------ tutorial ---
+// Guided first steps. "SKIP TUTORIAL" ends it for good.
+const TUT = [
+  { scene: 'town', text: 'WELCOME, SAINT. DRAG ON THE LEFT SIDE OF THE SCREEN TO WALK.', target: 'joy', done: () => tut.flags.moved > 60 },
+  { scene: 'town', text: 'TALK TO THE TOWNSFOLK. WALK UP TO ANYONE AND TAP TALK.', target: 'act', done: () => tut.flags.talked },
+  { scene: 'town', text: 'THE VESTRY DOORS LEAD DOWN INTO THE WOUND. WALK TO THEM AND TAP DESCEND.', target: 'act', done: () => game.scene === 'wound' },
+  { scene: 'wound', text: 'YOUR CROSSBOW FIRES BY ITSELF: ELITES FIRST, THEN THE NEAREST. TAP AN ENEMY TO LOCK ON.', done: () => game.kills >= 4 },
+  { scene: 'wound', text: 'TAP DASH TO DODGE THROUGH ATTACKS. DASH JUST AS A HIT LANDS FOR A PERFECT DODGE.', target: 'dash', done: () => tut.flags.dashed >= 2 },
+  { scene: 'wound', text: 'TAP HOLY WATER TO THROW A FLASK. IT AIMS ITSELF AT THE THICKEST CROWD.', target: 'm1', done: () => tut.flags.m1 },
+  { scene: 'wound', text: 'TAP THE CHAIN TO BIND UP TO FOUR FOES TOGETHER.', target: 'm2', done: () => tut.flags.m2 },
+  { scene: 'wound', text: "KILLS FEED THE CROWD'S FERVOR AND FILL THE RED RING. IT IS FULL: TAP PENANCE.", target: 'pen', start: () => { player.penance = T.penance.charge; }, done: () => tut.flags.pen },
+  { scene: 'wound', text: 'SURVIVE UNTIL THE CANDLE BURNS DOWN. THEN THE WAYSTONE WILL CARRY YOU HOME.', target: 'timer', done: () => tut.t > 6 },
+];
+const tut = { on: !SAVE.tutorialDone, step: 0, t: 0, flags: { moved: 0 } };
+function tutStep() { return tut.on ? TUT[tut.step] : null; }
+function endTutorial() { tut.on = false; SAVE.tutorialDone = true; persist(); }
+function updateTutorial(dt) {
+  const s = tutStep();
+  if (!s) return;
+  if (s.scene !== game.scene) { if (s.scene === 'town' && game.scene === 'wound') { tut.step = 3; tut.t = 0; } return; }
+  tut.t += dt;
+  if (s.done()) {
+    tut.step++; tut.t = 0;
+    if (tut.step >= TUT.length) endTutorial();
+    else if (TUT[tut.step].start && TUT[tut.step].scene === game.scene) TUT[tut.step].start();
+  }
+}
+// The candle only burns once the lesson reaches it.
+const tutHoldsTimer = () => tut.on && game.scene === 'wound' && tut.step < TUT.length - 1;
+// Early lessons keep the horde small.
+const tutWaveCap = () => (tut.on && game.scene === 'wound' && tut.step < 5 ? 8 : Infinity);
+
+function tutRect() { const w = Math.min(300, W - 200), lines = wrap(tutStep().text, Math.floor((w - 16) / 6)); return { x: Math.round(W / 2 - w / 2), y: 48, w, h: 16 + lines.length * 9 + 12, lines }; }
+function renderTutorial() {
+  const s = tutStep();
+  if (!s || s.scene !== game.scene || game.state !== 'play') return;
+  const r = tutRect();
+  ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
+  ctx.fillStyle = PAL.gold2; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
+  ctx.fillStyle = 'rgba(21,15,28,0.92)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+  text(`${tut.step + 1}/${TUT.length}`, r.x + 6, r.y + 5, PAL.gold1, { outline: null });
+  r.lines.forEach((l, i) => text(l, r.x + 8, r.y + 16 + i * 9, PAL.cloth0, { outline: null }));
+  text('SKIP TUTORIAL', r.x + r.w - 6, r.y + r.h - 9, PAL.blood0, { outline: null, align: 'right' });
+  ctx.fillStyle = PAL.blood0; ctx.fillRect(r.x + r.w - 6 - textW('SKIP TUTORIAL'), r.y + r.h - 1, textW('SKIP TUTORIAL'), 1);
+  // Bouncing pointer at the control being taught.
+  const tgt = s.target === 'act' ? (game.interact ? HUD.act : null) : s.target === 'timer' ? { x: W / 2, y: 30, r: 10 } : HUD[s.target];
+  if (tgt) {
+    const b = Math.round(Math.sin(game.real * 8) * 3), up = tgt.y < H / 2;
+    const ax = tgt.x, ay = up ? tgt.y + tgt.r + 6 + b : tgt.y - tgt.r - 6 - b;
+    ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax - 7, ay + (up ? 9 : -9)); ctx.lineTo(ax + 7, ay + (up ? 9 : -9)); ctx.fill();
+    ctx.fillStyle = PAL.gold0; ctx.beginPath(); ctx.moveTo(ax, ay + (up ? 2 : -2)); ctx.lineTo(ax - 4, ay + (up ? 7 : -7)); ctx.lineTo(ax + 4, ay + (up ? 7 : -7)); ctx.fill();
+  }
+}
+function tutTap(x, y) {
+  const s = tutStep();
+  if (!s || s.scene !== game.scene) return false;
+  const r = tutRect();
+  if (x > r.x + r.w - 100 && x < r.x + r.w && y > r.y + r.h - 16 && y < r.y + r.h + 6) { endTutorial(); toast('TUTORIAL SKIPPED'); return true; }
+  return false;
+}
+
+// ------------------------------------------------------------- descent ---
+function updateDescent(dt) {
+  if (game.waystone || tutHoldsTimer()) return;
+  const wasFinale = game.descentT <= T.descent.finale;
+  game.descentT -= dt;
+  if (!wasFinale && game.descentT <= T.descent.finale) { toast('THE BELLS TOLL. THE DEAD SURGE.', 2.5); game.shake = 4; director.eliteT = 0; }
+  if (game.descentT <= 0) {
+    game.descentT = 0;
+    // The candle is spent: the dead fall, and the Waystone wakes.
+    for (const e of enemies) if (!e.dead) killEnemy(e, rand(-1, 1), rand(-1, 1));
+    let wx = player.x, wy = player.y - 40;
+    for (let i = 0; i < 30 && (solidAt(wx, wy) || solidAt(wx + 12, wy) || solidAt(wx - 12, wy)); i++) { wx = room.cx * TILE + 8 + rand(-60, 60); wy = room.cy * TILE + rand(-40, 40); }
+    game.waystone = { kind: 'waystone', sheet: 'town', anim: 'waystone', x: wx, y: wy, ph: 0 };
+    room.props.push(game.waystone);
+    room.lights.push({ x: wx, y: wy - 18, r: 70, c: 'holy', a: 0.9 });
+    room.interact.push({ x: wx, y: wy, r: 22, label: 'RETURN', icon: 'descend', use: () => finishDescent() });
+    rings.push({ x: wx, y: wy - 16, t: 0, max: 0.8, r: 70, color: '138,224,255' });
+    toast('THE CANDLE IS SPENT. TAKE THE WAYSTONE HOME.', 3);
+  }
+}
+function finishDescent() {
+  SAVE.descents = (SAVE.descents || 0) + 1; persist();
+  game.state = 'tally'; game.deathT = 0;
+  game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time };
+}
+function renderTimer() {
+  // Location card that fades after arriving.
+  const ct = game.real - (game.cardAt || 0);
+  if (ct < 3.5) { ctx.globalAlpha = Math.min(1, ct * 3, (3.5 - ct) * 1.5); text(room.name, W / 2, Math.round(H * 0.24), PAL.gold1, { align: 'center', sc: 2 }); ctx.globalAlpha = 1; }
+  if (game.scene !== 'wound') return;
+  const k = game.descentT / T.descent.time, x = Math.round(W / 2), y = 8;
+  // A candle that burns down across the top centre.
+  const w = 120, fw = Math.round(w * k), finale = game.descentT <= T.descent.finale && !game.waystone;
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x - w / 2 - 2, y + 4, w + 4, 8);
+  ctx.fillStyle = PAL.ink3; ctx.fillRect(x - w / 2, y + 6, w, 4);
+  ctx.fillStyle = finale ? PAL.blood1 : PAL.bone2; ctx.fillRect(x - w / 2, y + 6, fw, 4);
+  ctx.fillStyle = finale ? PAL.blood0 : PAL.bone0; ctx.fillRect(x - w / 2, y + 6, fw, 1);
+  if (fw > 0 && !game.waystone) flame(x - w / 2 + fw, y + 4, 0);
+  const s = Math.ceil(game.descentT), label = game.waystone ? 'WAYSTONE AWAKE' : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const pulse = finale && Math.floor(game.real * 4) % 2 === 0;
+  text(label, x, y + 16, finale ? (pulse ? PAL.blood0 : PAL.cloth0) : PAL.cloth0, { align: 'center', bold: true });
+  if (tutHoldsTimer()) text('CANDLE UNLIT', x, y + 26, PAL.stone1, { align: 'center' });
+}
+// Points to the Waystone when it is off screen.
+function renderWaystoneArrow() {
+  const ws = game.waystone; if (!ws) return;
+  const sx = ws.x - cam.x, sy = ws.y - 20 - cam.y;
+  if (sx > 10 && sx < W - 10 && sy > 10 && sy < H - 10) return;
+  const a = Math.atan2(sy - H / 2, sx - W / 2), r = Math.min(W, H) / 2 - 24;
+  const ax = W / 2 + Math.cos(a) * r * (W / H) * 0.9, ay = H / 2 + Math.sin(a) * r;
+  const px = Math.max(16, Math.min(W - 16, ax)), py = Math.max(40, Math.min(H - 16, ay));
+  ctx.save(); ctx.translate(px, py); ctx.rotate(a);
+  ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-6, -8); ctx.lineTo(-6, 8); ctx.fill();
+  ctx.fillStyle = PAL.holy1; ctx.beginPath(); ctx.moveTo(7, 0); ctx.lineTo(-4, -5); ctx.lineTo(-4, 5); ctx.fill();
+  ctx.restore();
+}
 
 // --------------------------------------------------------------- enemies ---
 function spawnEnemy(type) {
@@ -380,11 +601,12 @@ function updateDirector(dt) {
   const alive = enemies.filter((e) => !e.dead);
   const want = Math.min(T.wave.max, Math.round(T.wave.start + (T.wave.max - T.wave.start) * Math.min(1, director.t / T.wave.ramp)));
   const fodder = alive.filter((e) => !e.elite).length;
-  if (fodder < want && alive.length < T.wave.cap && rng() < dt * 6) spawnEnemy('risen');
+  const surge = game.descentT <= T.descent.finale ? T.wave.finaleBonus : 0;
+  if (fodder < Math.min(want + surge, tutWaveCap()) && alive.length < T.wave.cap && rng() < dt * T.wave.rate) spawnEnemy('risen');
   director.eliteT -= dt;
   if (director.eliteT <= 0) {
     director.eliteT = T.wave.eliteEvery;
-    if (alive.filter((e) => e.elite).length < T.wave.elitesMax) spawnEnemy('gravewarden');
+    if (alive.filter((e) => e.elite).length < T.wave.elitesMax && tutWaveCap() === Infinity) spawnEnemy('gravewarden');
   }
 }
 
@@ -444,7 +666,7 @@ function damagePlayer(src, dmg, contacts) {
   if (player.iframes > 0) return;
   const [cx, cy] = contacts[0];
   if (Math.hypot(cx - player.x, cy - player.y) > 1) return; // only the dash origin was in reach: a plain miss
-  player.hp -= dmg; player.iframes = T.hurtIframes; player.hurt = 0.3;
+  player.hp -= dmg; player.iframes = T.hurtIframes; player.hurt = 0.3; game.lastHit = src.type;
   game.shake = Math.max(game.shake, 4); game.hitstop = 0.05;
   game.fervor = Math.max(0, game.fervor - 8);
   bleed(player.x, player.y - 16, 6, src.x < player.x ? 1 : -1);
@@ -673,9 +895,9 @@ function castPenance() {
 function updateAbilities(dt) {
   const p = player;
   p.m1cd = Math.max(0, p.m1cd - dt); p.m2cd = Math.max(0, p.m2cd - dt);
-  if (input.m1) { input.m1 = false; if (p.m1cd <= 0) castFlask(); }
-  if (input.m2) { input.m2 = false; if (p.m2cd <= 0) castChain(); }
-  if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) castPenance(); }
+  if (input.m1) { input.m1 = false; if (p.m1cd <= 0) { castFlask(); tut.flags.m1 = true; } }
+  if (input.m2) { input.m2 = false; if (p.m2cd <= 0) { castChain(); if (p.m2cd > 0) tut.flags.m2 = true; } }
+  if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) { castPenance(); tut.flags.pen = true; } }
   updateThurible(dt);
 
   for (const f of flasks) {
@@ -766,6 +988,7 @@ function updatePlayer(dt) {
       p.iframes = Math.max(p.iframes, T.dash.iframes); p.perfectUsed = false;
       if (Math.abs(dx) > 0.1) p.face = Math.sign(dx);
       playFx('fx', 'smoke', p.x, p.y - 4, 18, { alpha: 0.6 });
+      tut.flags.dashed = (tut.flags.dashed || 0) + 1;
     }
   }
   game.execTarget = enemies.find((e) => !e.dead && e.state === 'stagger' && Math.hypot(e.x - p.x, e.y - p.y) < 90) || null;
@@ -785,7 +1008,10 @@ function updatePlayer(dt) {
     p.anim = Math.hypot(vx, vy) > 5 ? 'run' : 'idle';
     if (!p.target && Math.abs(input.mx) > 0.15) p.face = Math.sign(input.mx);
   }
+  const ox = p.x, oy = p.y;
   moveCircle(p, vx * dt, vy * dt, p.r);
+  tut.flags.moved += Math.hypot(p.x - ox, p.y - oy);
+  for (const n of room.npcs) { const dx = p.x - n.x, dy = p.y - n.y, d = Math.hypot(dx, dy); if (d < 9 && d > 0) moveCircle(p, dx / d * (9 - d), dy / d * (9 - d), p.r); }
   p.animT += dt;
   if (p.dashT <= 0 && game.time - p.dashStart > 0.3) { p.dashX = undefined; p.dashY = undefined; }
 }
@@ -804,6 +1030,9 @@ function execute(e) {
 
 function die() {
   game.state = 'dead'; game.deathT = 0;
+  SAVE.deaths = (SAVE.deaths || 0) + 1;
+  SAVE.lastDeath = rng() < 0.25 ? 'A STAIRCASE' : game.lastHit === 'gravewarden' ? "A GRAVEWARDEN'S SHIELD" : 'A RISEN WITH NO LOWER JAW';
+  persist();
   game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time };
 }
 
@@ -812,9 +1041,12 @@ function update(realDt) {
   game.real += realDt;
   if (game.toast) { game.toast.t -= realDt; if (game.toast.t <= 0) game.toast = null; }
   for (const k of ['dash', 'm1', 'm2', 'pen']) if (HUD[k] && HUD[k].pressed) HUD[k].pressed = Math.max(0, HUD[k].pressed - realDt);
-  if (game.state === 'dead') game.deathT += realDt;
+  if (game.state === 'dead' || game.state === 'tally') game.deathT += realDt;
+  if (game.state === 'dialog') game.dialog.t += realDt;
+  if (game.state === 'loading') { game.loadT += realDt; if (game.loadT > 1.8) newRun(); }
   if (game.state !== 'play') return;
   readMove();
+  updateTutorial(realDt);
   game.flash = Math.max(0, game.flash - realDt);
   game.shake = Math.max(0, game.shake - realDt * 20);
   if (game.hitstop > 0) { game.hitstop -= realDt; return; }
@@ -825,11 +1057,19 @@ function update(realDt) {
   if (game.fervorT > T.fervor.decayDelay) game.fervor = Math.max(0, game.fervor - T.fervor.decay * dt);
 
   updatePlayer(dt);
-  updateCrossbow(dt);
-  updateDirector(dt);
-  for (const e of enemies) if (!e.dead) updateEnemy(e, dt);
-  enemies = enemies.filter((e) => !e.dead);
-  updateAbilities(dt);
+  // Nearest thing to talk to or use.
+  game.interact = null;
+  let bestD = Infinity;
+  for (const it of room.interact) { const d = Math.hypot(it.x - player.x, it.y - player.y); if (d < it.r && d < bestD) { bestD = d; game.interact = it; } }
+  for (const n of room.npcs) { const d = player.x - n.x; if (Math.hypot(d, player.y - n.y) < 40) n.face = d < 0 ? -1 : 1; }
+  if (game.scene === 'wound') {
+    updateCrossbow(dt);
+    if (!game.waystone) updateDirector(dt);
+    for (const e of enemies) if (!e.dead) updateEnemy(e, dt);
+    enemies = enemies.filter((e) => !e.dead);
+    updateAbilities(dt);
+    updateDescent(dt);
+  }
   updateBolts(dt);
   updateParts(dt);
   for (const g of ghosts) g.t += realDt;
@@ -870,17 +1110,25 @@ function render() {
   for (const e of enemies) if (e.state !== 'spawn') shadow(e.x, e.y, e.elite ? 12 : 7);
   shadow(player.x, player.y, 8);
   for (const g of gibs) shadow(g.x, g.y, 3);
-  for (const p of room.props) if (p.kind !== 'urn' && onScreen(p.x, p.y, cx, cy, 40)) shadow(p.x, p.y - 2, p.kind === 'sarcophagus' ? 18 : p.kind === 'candelabra' ? 6 : 11);
+  const SHADOW = { sarcophagus: 18, candelabra: 6, column: 11, statue: 11, lamp: 5, barrel: 6, crate: 7, anvil: 8, waystone: 10 };
+  for (const p of room.props) if (SHADOW[p.kind] && onScreen(p.x, p.y, cx, cy, 40)) shadow(p.x, p.y - 2, SHADOW[p.kind]);
+  for (const n of room.npcs) shadow(n.x, n.y, 6);
   for (const g of ghosts) spr('saint', 'dash', g.i, g.x, g.y, { flip: g.face < 0, white: true, alpha: 0.45 * (1 - g.t / 0.2) });
   // Y-sorted actors and props.
   const th = thuriblePos();
-  const actors = [player, { th: true, y: th.y + 12 }, ...enemies.filter((e) => e.state !== 'spawn'), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, 70))];
+  const actors = [player, ...(game.scene === 'wound' ? [{ th: true, y: th.y + 12 }] : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn'), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, 90))];
   actors.sort((a, b) => a.y - b.y);
   for (const a of actors) {
     if (a === player) drawPlayer();
     else if (a.th) drawThurible(thuriblePos());
     else if (a.kind) drawProp(a);
+    else if (a.npc) spr('town', a.npc, Math.floor(game.real * 2 + a.ph), a.x, a.y, { flip: a.face < 0 });
     else drawEnemy(a);
+  }
+  if (game.interact && game.state === 'play') {
+    const it = game.interact, ty = it.who ? it.y - 40 : it.door ? it.y - 30 : it.y - 46;
+    const label = it.who ? NPC_INFO[it.who.npc].name : it.label;
+    text(label, it.x, ty + Math.round(Math.sin(game.real * 5)), it.who ? PAL.gold1 : PAL.holy1, { align: 'center' });
   }
   drawAbilitiesAir();
   for (const g of gibs) spr('fx', g.anim, g.i, g.x, g.y - g.z, { ax: 5, ay: 5 });
@@ -934,6 +1182,9 @@ function render() {
   renderHud();
   if (game.state === 'pause') overlay('PAUSED', 'TAP TO RESUME');
   if (game.state === 'dead') renderReceipt();
+  if (game.state === 'tally') renderReceipt(true);
+  if (game.state === 'dialog') renderDialog();
+  if (game.state === 'loading') renderLoading();
   blit();
 }
 
@@ -945,15 +1196,15 @@ function flame(x, y, ph = 0) {
 }
 
 function drawProp(p) {
-  if (p.kind === 'candelabra') spr('props', 'candelabra', Math.floor(game.real * 8 + p.ph), p.x, p.y);
-  else spr('props', p.kind, 0, p.x, p.y);
+  const sheet = p.sheet || 'props', anim = p.anim || p.kind, n = SPR[sheet].anims[anim].length;
+  spr(sheet, anim, n > 1 ? Math.floor(game.real * (anim === 'fountain' ? 3 : 8) + (p.ph || 0)) : 0, p.x, p.y);
 }
 
 function renderLight(cx, cy) {
   // Darkness with light radii cut out (GDD: darkness per Stratum, candle radii).
   dctx.globalCompositeOperation = 'source-over';
   dctx.clearRect(0, 0, W, H);
-  dctx.fillStyle = T.ambient; dctx.fillRect(0, 0, W, H);
+  dctx.fillStyle = room.ambient; dctx.fillRect(0, 0, W, H);
   const v = dctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.7);
   v.addColorStop(0, 'rgba(11,7,16,0)'); v.addColorStop(1, 'rgba(11,7,16,0.55)');
   dctx.fillStyle = v; dctx.fillRect(0, 0, W, H);
@@ -1134,9 +1385,11 @@ function renderHud() {
   text(`${Math.ceil(p.hp)}/${p.maxHp}`, 44, 10, PAL.cloth0, { shadow: false });
   const tier = fervorTier();
   const framp = ['ember', 'ember', 'crimson', 'gold'][tier];
+  if (game.scene === 'wound') {
   bar(41, 25, 80, 6, game.fervor / 100, framp);
   for (let i = 1; i < 4; i++) { ctx.fillStyle = PAL.outline; ctx.fillRect(41 + Math.round(80 * i / 4), 25, 1, 6); }
   text(T.fervor.tiers[tier], 127, 25, PAL[framp + '1']);
+  }
   // Top-right: minimap and pause.
   const mw = 54, mh = Math.round(54 * room.ph / room.pw), mx = W - 34 - mw, my = 8;
   gild(mx, my, mw, mh);
@@ -1148,23 +1401,29 @@ function renderHud() {
   for (const e of enemies) { ctx.fillStyle = e.elite ? PAL.gold0 : PAL.blood0; ctx.fillRect(mx + Math.round(e.x * k), my + Math.round(e.y * k), 1, 1); }
   ctx.fillStyle = PAL.white; ctx.fillRect(mx + Math.round(p.x * k) - 1, my + Math.round(p.y * k) - 1, 2, 2);
   button(HUD.pause);
-  text(`${game.kills}`, W - 34, my + mh + 7, PAL.cloth1, { align: 'right', bold: true });
-  text('SLAIN', W - 34 - textW(String(game.kills), 1, true) - 5, my + mh + 7, PAL.stone1, { align: 'right' });
+  if (game.scene === 'wound') text(`${game.kills}`, W - 34, my + mh + 7, PAL.cloth1, { align: 'right', bold: true });
+  if (game.scene === 'wound') text('SLAIN', W - 34 - textW(String(game.kills), 1, true) - 5, my + mh + 7, PAL.stone1, { align: 'right' });
   // Bottom-right: dash, Miracles, Penance.
   const dashK = p.charges >= T.dash.charges ? 0 : 1 - p.recharge / T.dash.recharge;
   button(HUD.dash, { active: p.charges > 0, cd: p.charges === 0 ? dashK : 0 });
   for (let i = 0; i < T.dash.charges; i++) { const x = HUD.dash.x - 7 + i * 9, y = HUD.dash.y + HUD.dash.r + 3; ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, 7, 4); ctx.fillStyle = i < p.charges ? PAL.gold1 : PAL.ink3; ctx.fillRect(x, y, 5, 2); }
+  if (game.scene === 'wound') {
   button(HUD.m1, { active: p.m1cd <= 0, cd: p.m1cd / T.flask.cd, cdText: p.m1cd > 0 ? String(Math.ceil(p.m1cd)) : '' });
   button(HUD.m2, { active: p.m2cd <= 0, cd: p.m2cd / T.chain.cd, cdText: p.m2cd > 0 ? String(Math.ceil(p.m2cd)) : '' });
   const penReady = p.penance >= T.penance.charge && p.rainT <= 0;
   if (penReady) { ctx.globalCompositeOperation = 'lighter'; glow(HUD.pen.x, HUD.pen.y, 28 + Math.sin(game.real * 6) * 4, 'rgba(224,32,46,0.6)'); ctx.globalCompositeOperation = 'source-over'; }
   button(HUD.pen, { active: penReady, ring: penReady ? 1 : p.penance / T.penance.charge, ringColor: penReady ? PAL.blood0 : PAL.blood2 });
+  }
   if (game.execTarget) button(HUD.exec);
+  if (game.interact) { HUD.act.icon = game.interact.icon; button(HUD.act); text(game.interact.label, HUD.act.x, HUD.act.y + HUD.act.r + 4, PAL.cloth0, { align: 'center' }); }
   // Bottom-left: joystick.
   const jx = stick.active ? stick.ox : HUD.joy.x, jy = stick.active ? stick.oy : HUD.joy.y;
   sprC('ui', 'ring', 0, jx, jy, { alpha: stick.active ? 0.85 : 0.4 });
   sprC('ui', 'knob', 0, stick.active ? stick.x : jx, stick.active ? stick.y : jy, { alpha: stick.active ? 1 : 0.6 });
-  if (game.toast) text(game.toast.msg, W / 2, 44, PAL.cloth0, { align: 'center' });
+  renderTimer();
+  renderWaystoneArrow();
+  if (game.toast) text(game.toast.msg, W / 2, Math.round(H * 0.3), PAL.cloth0, { align: 'center' });
+  renderTutorial();
   if (location.search.includes('fps')) text(`${Math.round(fpsAvg)} FPS ${enemies.length}`, 8, 44, PAL.flame1);
 }
 
@@ -1175,45 +1434,101 @@ function overlay(title, sub) {
 }
 
 const ODDS = ['3 TO 1', '5 TO 2', '7 TO 4', '2 TO 1', 'EVENS', '9 TO 2'];
+// Title menu buttons (internal pixels).
+function menuButtons() {
+  const b = [{ id: 'begin', label: SAVE.descents || SAVE.deaths ? 'CONTINUE' : 'BEGIN', x: W / 2, y: Math.round(H * 0.8), w: 116, h: 22 }];
+  if (SAVE.tutorialDone) b.push({ id: 'tutorial', label: 'REPLAY TUTORIAL', x: W / 2, y: Math.round(H * 0.8) + 28, w: 116, h: 16, small: true });
+  return b;
+}
 function renderTitle() {
   if (!PAL) return;
-  const g = ctx.createRadialGradient(W / 2, H * 0.62, 10, W / 2, H * 0.62, H * 0.75);
-  g.addColorStop(0, 'rgba(95,220,108,0.28)'); g.addColorStop(0.5, 'rgba(125,18,51,0.18)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  const g = ctx.createRadialGradient(W / 2, H * 0.55, 10, W / 2, H * 0.55, H * 0.8);
+  g.addColorStop(0, 'rgba(95,220,108,0.26)'); g.addColorStop(0.5, 'rgba(125,18,51,0.2)'); g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  if (IMG.saint) { ctx.save(); ctx.translate(Math.round(W / 2), Math.round(H * 0.7)); ctx.scale(2, 2); spr('saint', 'idle', Math.floor(game.real * 4), 0, 0); ctx.restore(); }
-  text('HOLLOW SAINT', W / 2, H * 0.1, PAL.gold1, { sc: 4, align: 'center' });
-  text('THE WORLD REMEMBERS WHAT YOU FORGET', W / 2, H * 0.1 + 38, PAL.cloth2, { align: 'center' });
-  if (Math.floor(game.real * 2) % 2 === 0) text('TAP TO DESCEND', W / 2, H * 0.76, PAL.cloth0, { sc: 2, align: 'center' });
-  text(`THE GILDED LAMB GIVES ${ODDS[Math.floor(game.real / 4) % ODDS.length]} ON YOUR DEATH TODAY`, W / 2, H - 16, PAL.flame1, { align: 'center' });
+  // A slow rain of embers.
+  for (let i = 0; i < 40; i++) { const x = (i * 97 + game.real * (8 + i % 5) * 3) % W, y = (i * 53 + game.real * (12 + i % 7) * 2) % H; ctx.fillStyle = i % 3 ? PAL.ember2 : PAL.gold1; ctx.fillRect(Math.round(x), Math.round(H - y), 1, 1); }
+  if (IMG.saint) {
+    ctx.save(); ctx.translate(Math.round(W / 2), Math.round(H * 0.68)); ctx.scale(2, 2);
+    ctx.fillStyle = 'rgba(11,7,16,0.5)'; ctx.beginPath(); ctx.ellipse(0, 0, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+    spr('saint', 'idle', Math.floor(game.real * 4), 0, 0); ctx.restore();
+  }
+  text('HOLLOW SAINT', W / 2, H * 0.08, PAL.gold1, { sc: 4, align: 'center' });
+  text('THE WORLD REMEMBERS WHAT YOU FORGET', W / 2, H * 0.08 + 36, PAL.cloth2, { align: 'center' });
+  for (const b of menuButtons()) {
+    const x = Math.round(b.x - b.w / 2), y = Math.round(b.y - b.h / 2);
+    if (!b.small) { gild(x, y, b.w, b.h); ctx.fillStyle = PAL.crimson3; ctx.fillRect(x, y, b.w, b.h); ctx.fillStyle = PAL.crimson2; ctx.fillRect(x, y, b.w, Math.ceil(b.h / 2)); }
+    text(b.label, b.x, b.y - (b.small ? 3 : 7), b.small ? PAL.cloth2 : PAL.gold0, { align: 'center', sc: b.small ? 1 : 2 });
+  }
+  if (SAVE.descents || SAVE.deaths) text(`DESCENTS ${SAVE.descents || 0}   DEATHS ${SAVE.deaths || 0}`, 10, H - 14, PAL.stone1);
+  text(`THE GILDED LAMB GIVES ${ODDS[Math.floor(game.real / 4) % ODDS.length]} ON YOUR DEATH TODAY`, W - 10, H - 14, PAL.flame1, { align: 'right' });
 }
 
-function renderReceipt() {
+function renderDialog() {
+  const d = game.dialog, x = 70, w = W - 140, h = 58, y = H - h - 12;
+  gild(x, y, w, h);
+  ctx.fillStyle = 'rgba(21,15,28,0.95)'; ctx.fillRect(x, y, w, h);
+  const npc = room.npcs.find((n) => n.npc === d.id);
+  if (npc) { ctx.save(); ctx.beginPath(); ctx.rect(x + 4, y + 4, 34, h - 8); ctx.clip(); ctx.fillStyle = PAL.ink2; ctx.fillRect(x + 4, y + 4, 34, h - 8); ctx.translate(x + 21, y + h + 22); ctx.scale(2, 2); spr('town', d.id, Math.floor(game.real * 2), 0, 0); ctx.restore(); }
+  text(d.name, x + 46, y + 6, PAL.gold1, { outline: null });
+  const full = d.lines[d.i], shown = full.slice(0, Math.floor(d.t * 45));
+  wrap(shown, Math.floor((w - 56) / 6)).forEach((l, i) => text(l, x + 46, y + 19 + i * 9, PAL.cloth0, { outline: null }));
+  if (shown.length >= full.length && Math.floor(game.real * 2) % 2 === 0) text(d.i < d.lines.length - 1 ? 'TAP' : 'TAP TO CLOSE', x + w - 6, y + h - 10, PAL.stone1, { outline: null, align: 'right' });
+}
+
+function renderLoading() {
+  const k = Math.min(1, game.loadT * 2);
+  ctx.fillStyle = `rgba(11,7,16,${k})`; ctx.fillRect(0, 0, W, H);
+  if (k < 1) return;
+  text('DESCENDING INTO THE UNDERCROFT', W / 2, H / 2 - 24, PAL.gold1, { align: 'center', sc: 2 });
+  text(`THE GILDED LAMB GIVES ${game.loadOdds} ON YOUR DEATH`, W / 2, H / 2 + 4, PAL.flame1, { align: 'center' });
+  const n = Math.floor(game.loadT * 4) % 4;
+  text('.'.repeat(n + 1), W / 2, H / 2 + 20, PAL.cloth1, { align: 'center' });
+}
+
+function renderReceipt(survived = false) {
   const k = Math.min(1, game.deathT * 1.5);
   ctx.fillStyle = `rgba(11,7,16,${0.8 * k})`; ctx.fillRect(0, 0, W, H);
   if (k < 1) return;
-  const r = game.receipt, w = 200, h = 150, x = Math.round(W / 2 - w / 2), y = Math.round(H / 2 - h / 2);
+  const r = game.receipt, w = 210, h = 150, x = Math.round(W / 2 - w / 2), y = Math.round(H / 2 - h / 2);
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
   ctx.fillStyle = PAL.bone1; ctx.fillRect(x, y, w, h);
   ctx.fillStyle = PAL.bone0; ctx.fillRect(x, y, w, 2);
   for (let i = 0; i < w; i += 4) { ctx.fillStyle = PAL.bone1; ctx.fillRect(x + i, y + h, 2, 2); }
   const line = (s, yy, c = PAL.ink1, al = 'center') => text(s, al === 'center' ? W / 2 : x + 10, y + yy, c, { outline: null, align: al });
   line('THE CHOIR OF VAEL', 9, PAL.crimson3);
-  line('RECEIPT OF DESCENT', 19);
+  line(survived ? 'CERTIFICATE OF SURVIVAL' : 'RECEIPT OF DESCENT', 19);
   ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 30, w - 20, 1);
   const m = Math.floor(r.time / 60), s = String(Math.floor(r.time % 60)).padStart(2, '0');
   const row = (a, b, yy) => { line(a, yy, PAL.ink1, 'left'); text(b, x + w - 10, y + yy, PAL.ink1, { outline: null, align: 'right' }); };
   row('TIME IN THE WOUND', `${m}:${s}`, 37); row('RISEN LAID TO REST', String(r.kills), 48); row('BEST FERVOR', `${r.fervor}%`, 59); row('PERFECT DODGES', String(r.perfects), 70);
   ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 82, w - 20, 1);
-  line('YOUR TITHE HAS BEEN', 90, PAL.crimson3);
-  line('GRATEFULLY RECEIVED.', 100, PAL.crimson3);
-  if (game.deathT > 1.6 && Math.floor(game.real * 2) % 2 === 0) line('TAP TO RISE AGAIN', 128);
+  if (survived) { line('THE CROWD IS SATISFIED.', 90, PAL.crimson3); line('FOR NOW.', 100, PAL.crimson3); }
+  else { line('YOUR TITHE HAS BEEN', 90, PAL.crimson3); line('GRATEFULLY RECEIVED.', 100, PAL.crimson3); }
+  if (game.deathT > 1.4 && Math.floor(game.real * 2) % 2 === 0) line(survived ? 'TAP TO RETURN TO VAEL' : 'TAP TO WAKE IN THE VESTRY', 128);
 }
 
-function onTap() {
-  if (game.state === 'title') { newRun(); game.state = 'play'; return true; }
-  if (game.state === 'pause') { game.state = 'play'; return true; }
-  if (game.state === 'dead' && game.deathT > 1.6) { newRun(); game.state = 'play'; return true; }
-  return game.state !== 'play';
+function onTap(x, y) {
+  switch (game.state) {
+    case 'title': {
+      const hit = menuButtons().find((b) => x < 0 || (Math.abs(x - b.x) < b.w / 2 + 6 && Math.abs(y - b.y) < b.h / 2 + 6));
+      if (!hit) return true;
+      if (hit.id === 'tutorial') { SAVE.tutorialDone = false; SAVE.metOdile = false; persist(); Object.assign(tut, { on: true, step: 0, t: 0, flags: { moved: 0 } }); }
+      enterTown();
+      return true;
+    }
+    case 'pause': game.state = 'play'; return true;
+    case 'loading': return true;
+    case 'dialog': {
+      const d = game.dialog;
+      if (Math.floor(d.t * 45) < d.lines[d.i].length) d.t = 99;
+      else if (d.i < d.lines.length - 1) { d.i++; d.t = 0; }
+      else game.state = 'play';
+      return true;
+    }
+    case 'dead': if (game.deathT > 1.4) { enterTown(false); talk('odile'); } return true;
+    case 'tally': if (game.deathT > 1.4) { enterTown(false); toast('THE CROWD CHEERS YOUR RETURN', 2.5); } return true;
+  }
+  return false;
 }
 
 function blit() { sctx.drawImage(buf, 0, 0, W * SCALE, H * SCALE); }
@@ -1232,11 +1547,12 @@ function frame(t) {
 addEventListener('resize', resize);
 resize();
 loadAssets().then(() => {
-  if (location.search.includes('run')) { newRun(); game.state = 'play'; }
+  if (location.search.includes('run')) { tut.on = false; newRun(); }
+  else if (location.search.includes('town')) enterTown();
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { game, T, hud: HUD, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnEnemy };
+window.HS = { game, T, hud: HUD, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnEnemy, enterTown, tut, SAVE, get room() { return room; } };
 </script>
 </body>
 </html>

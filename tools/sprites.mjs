@@ -10,14 +10,14 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { RGB, IDX, PALETTE, RAMPS, ramp } from './palette.mjs';
+import { RGB, IDX, PALETTE, FINE, ramp } from './palette.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'assets', 'sprites');
 
 // Reverse map: palette index -> [rampName, step].
 const STEP = {};
-for (const [name, r] of Object.entries(RAMPS)) r.forEach((_, i) => { STEP[IDX[`${name}${i}`]] = [name, i]; });
+for (const [name, r] of Object.entries(FINE)) r.forEach((n, i) => { STEP[IDX[n]] = [name, i]; });
 
 // Deterministic noise.
 function hash(x, y, s = 0) { let h = (x * 374761393 + y * 668265263 + s * 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
@@ -43,8 +43,9 @@ class Frame {
     for (const k of mask) {
       const [x, y] = k.split(',').map(Number);
       const t = Math.max(0, Math.min(1, shader(x, y)));
-      let i = Math.round((1 - t) * 4 + (bayer(x, y + this.oy) - 0.5) * dither);
-      i = Math.max(min, Math.min(max, i));
+      // 9 fine steps; min/max are given in the 5 named steps.
+      let i = Math.round((1 - t) * 8 + (bayer(x, y + this.oy) - 0.5) * dither * 1.6);
+      i = Math.max(min * 2, Math.min(max * 2, i));
       this.set(x, y, r[i]);
     }
     return this;
@@ -55,7 +56,7 @@ class Frame {
       const [x, y] = k.split(',').map(Number);
       const c = this.get(x, y); if (c < 0 || !STEP[c]) continue;
       const [name, i] = STEP[c];
-      this.set(x, y, `${name}${Math.max(0, Math.min(4, i + n))}`);
+      this.set(x, y, FINE[name][Math.max(0, Math.min(8, i + n * 2))]);
     }
     return this;
   }
@@ -804,6 +805,8 @@ const G = {
   chain: (s, c) => { const u = s / 32; const m = []; for (const d of [-6, 0, 6]) m.push(M.minus(M.ellipse(c + d * u, c + d * u, 4 * u, 4 * u), M.ellipse(c + d * u, c + d * u, 1.8 * u, 1.8 * u))); return M.union(...m); },
   penance: (s, c) => { const u = s / 32; const m = [M.minus(M.ellipse(c, c, 5 * u, 5 * u), M.ellipse(c, c + 0.5, 2 * u, 1.2 * u))]; for (let a = 0; a < 8; a++) { const ang = a * Math.PI / 4; m.push(M.line(c + Math.cos(ang) * 7 * u, c + Math.sin(ang) * 7 * u, c + Math.cos(ang) * 10 * u, c + Math.sin(ang) * 10 * u, Math.max(2, Math.round(2 * u)))); } m.push(M.line(c, c + 5 * u, c, c + 8 * u, 1)); return M.union(...m); },
   dagger: (s, c) => { const u = s / 32; return M.union(M.poly([[c, c - 11 * u], [c + 3 * u, c - 7 * u], [c + 3 * u, c + 2 * u], [c - 3 * u, c + 2 * u], [c - 3 * u, c - 7 * u]]), M.rect(Math.round(c - 6 * u), Math.round(c + 2 * u), Math.round(12 * u), Math.round(2.5 * u)), M.rect(Math.round(c - 1.5 * u), Math.round(c + 4 * u), Math.round(3 * u), Math.round(6 * u))); },
+  talk: (s, c) => { const u = s / 32; return M.minus(M.union(M.ellipse(c, c - 1 * u, 9 * u, 6.5 * u), M.poly([[c - 5 * u, c + 3 * u], [c - 1 * u, c + 4 * u], [c - 7 * u, c + 9 * u]])), M.ellipse(c - 4 * u, c - 1 * u, 1.2 * u, 1.2 * u), M.ellipse(c, c - 1 * u, 1.2 * u, 1.2 * u), M.ellipse(c + 4 * u, c - 1 * u, 1.2 * u, 1.2 * u)); },
+  descend: (s, c) => { const u = s / 32; return M.union(M.rect(Math.round(c - 2 * u), Math.round(c - 9 * u), Math.round(4 * u), Math.round(9 * u)), M.poly([[c - 7 * u, c], [c + 7 * u, c], [c, c + 7 * u]]), M.rect(Math.round(c - 9 * u), Math.round(c + 8 * u), Math.round(18 * u), Math.round(2 * u))); },
   pause: (s, c) => { const u = s / 32; return M.union(M.rect(Math.round(c - 6 * u), Math.round(c - 7 * u), Math.round(4 * u), Math.round(14 * u)), M.rect(Math.round(c + 2 * u), Math.round(c - 7 * u), Math.round(4 * u), Math.round(14 * u))); },
 };
 
@@ -830,7 +833,258 @@ function uiSheet() {
   const big = 38, small = 30;
   return sheet('ui', {
     dash: [button(big, G.dash)], flask: [button(small, G.flask)], chain: [button(small, G.chain)], penance: [button(big - 4, G.penance)],
-    dagger: [button(small, G.dagger)], pause: [button(22, G.pause)], ring: [joyRing()], knob: [joyKnob()], portrait: [portrait()],
+    dagger: [button(small, G.dagger)], pause: [button(22, G.pause)], talk: [button(big, G.talk)], descend: [button(big, G.descend)], ring: [joyRing()], knob: [joyKnob()], portrait: [portrait()],
+  });
+}
+
+// ================================================================ town ===
+// Vael: warm cobbles, building fronts, townsfolk, lamps and the fountain.
+
+function cobble(v) {
+  const f = new Frame(16, 16);
+  f.paint(M.rect(0, 0, 16, 16), 'sand', flat(0.05), { min: 3, max: 4 });
+  const stones = [[3, 3, 3.2, 2.6], [11, 3, 3.6, 2.6], [7, 8, 3.4, 2.4], [1, 9, 2, 2.4], [14, 9, 2.4, 2.4], [3, 13.5, 3.4, 2.2], [11, 13.5, 3.6, 2.2]];
+  stones.forEach(([cx, cy, rx, ry], i) => {
+    const m = M.ellipse(cx + (hash(v, i, 1) - 0.5), cy, rx, ry);
+    const tone = (hash(v, i, 2) - 0.5) * 0.25;
+    f.paint(M.and(m, M.rect(0, 0, 16, 16)), 'sand', sphere(cx - 1, cy - 1, rx + 1.5, ry + 1.5, tone - 0.05), { min: 1, max: 4, dither: 0.4 });
+  });
+  if (v === 3) for (const [x, y] of [[7, 11], [8, 11], [6, 6]]) P(f, x, y, 'moss2');
+  return f;
+}
+
+function plaster(f, m, seed) { f.paint(m, 'sand', (x, y) => 0.55 + (hash(x, y, seed) - 0.5) * 0.1, { min: 1, max: 3, dither: 0.3 }); }
+function shingles(f, x0, y0, w, h, seed) {
+  for (let row = 0; row * 3 < h; row++) for (let x = x0 - (row % 2) * 3; x < x0 + w; x += 6) {
+    const m = M.and(M.rect(x, y0 + row * 3, 6, 3), M.rect(x0, y0, w, h));
+    f.paint(m, 'roof', bevel(m, 0.45 + hash(x, row, seed) * 0.15, 0.75, 0.15), { min: 0 });
+  }
+}
+function window_(f, x, y, w, h) {
+  const m = M.rect(x, y, w, h);
+  f.paint(m, 'ember', (px, py) => 0.95 - (py - y) / h * 0.5, { dither: 0.5 });
+  f.paint(M.union(M.rect(x + Math.floor(w / 2), y, 1, h), M.rect(x, y + Math.floor(h / 2), w, 1)), 'wood', flat(0.3));
+  f.paint(M.minus(M.rect(x - 1, y - 1, w + 2, h + 2), m), 'wood', flat(0.4));
+  f.paint(M.rect(x - 2, y + h + 1, w + 4, 1), 'wood', flat(0.7));
+}
+
+function vestry() {
+  const f = new Frame(112, 96);
+  const wall = M.rect(10, 26, 92, 70);
+  f.paint(wall, 'stone', (x, y) => bevel(wall, 0.55, 0.7, 0.3)(x, y) + (hash(x, y, 3) - 0.5) * 0.06, { dither: 0.3 });
+  for (let y = 30; y < 96; y += 6) for (let x = 10 + ((y / 6) % 2) * 6; x < 102; x += 12) P(f, x, y, 'stone3');
+  for (let x = 10; x < 102; x++) for (let y = 31; y < 96; y += 6) P(f, x, y, 'stone2h');
+  // Gable and roof.
+  const gable = M.poly([[6, 30], [56, 2], [106, 30]]);
+  f.paint(gable, 'stone', sphere(40, 8, 60, 40), { min: 1 });
+  f.paint(M.minus(M.poly([[2, 32], [56, 0], [110, 32], [104, 32], [56, 6], [8, 32]]), gable), 'gold', (x) => 1 - x / 112);
+  // Buttresses.
+  for (const bx of [4, 98]) { const b = M.rect(bx, 34, 10, 62); f.paint(b, 'stone', cyl(bx + 4, 6)); f.paint(M.poly([[bx, 34], [bx + 5, 26], [bx + 10, 34]]), 'stone', flat(0.6)); }
+  // Rose window.
+  const rose = M.ellipse(56, 22, 10, 10);
+  f.paint(rose, 'violet', sphere(52, 18, 12, 12, 0.1));
+  for (let a = 0; a < 8; a++) f.paint(M.line(56, 22, 56 + Math.cos(a * Math.PI / 4) * 10, 22 + Math.sin(a * Math.PI / 4) * 10), 'gold', flat(0.6), { dither: 0 });
+  f.paint(M.minus(M.ellipse(56, 22, 11.5, 11.5), rose), 'gold', (x, y) => (y < 22 ? 0.9 : 0.4));
+  f.paint(M.ellipse(56, 22, 3, 3), 'holy', flat(0.9));
+  // Great door.
+  const arch = M.union(M.rect(42, 62, 28, 34), M.ellipse(56, 62, 14, 12));
+  f.paint(M.union(M.rect(39, 60, 34, 36), M.ellipse(56, 60, 17, 15)), 'gold', bevel(M.union(M.rect(39, 60, 34, 36), M.ellipse(56, 60, 17, 15)), 0.5, 0.95, 0.2));
+  f.paint(arch, 'wood', (x, y) => 0.5 - (y - 50) / 60 + (x === 56 ? -0.4 : 0), { min: 1 });
+  for (const hx of [50, 62]) f.paint(M.rect(hx, 72, 2, 18), 'iron', flat(0.4));
+  f.paint(M.ellipse(56, 78, 1.5, 1.5), 'gold', flat(0.9));
+  // Saint niches.
+  for (const nx of [22, 82]) { f.paint(M.union(M.rect(nx, 48, 10, 20), M.ellipse(nx + 5, 48, 5, 4)), 'ink', vgrad(44, 68, 0.6, 0.2)); f.paint(M.union(M.ellipse(nx + 5, 52, 2.5, 2.8), M.poly([[nx + 2, 55], [nx + 8, 55], [nx + 9, 67], [nx + 1, 67]])), 'stone', cyl(nx + 4, 4, 0.1)); P(f, nx + 5, 46, 'gold0'); }
+  return f.outline();
+}
+
+function forge() {
+  const f = new Frame(88, 80);
+  const wall = M.rect(4, 24, 80, 56);
+  f.paint(wall, 'slate', (x, y) => bevel(wall, 0.45, 0.6, 0.25)(x, y) + (hash(x, y, 8) - 0.5) * 0.1, { dither: 0.4 });
+  for (let y = 28; y < 80; y += 7) for (let x = 4; x < 84; x++) if ((x + (y / 7 | 0) * 5) % 13 === 0 || y % 7 === 0) P(f, x, y, 'slate3');
+  shingles(f, 0, 10, 88, 16, 4);
+  f.paint(M.rect(0, 25, 88, 2), 'wood', flat(0.4));
+  // Chimney.
+  f.paint(M.rect(64, 0, 12, 14), 'slate', cyl(69, 7));
+  f.paint(M.rect(62, 0, 16, 2), 'slate', flat(0.8));
+  // Open hearth glowing.
+  const hearth = M.union(M.rect(24, 50, 40, 30), M.ellipse(44, 50, 20, 12));
+  f.paint(M.union(M.rect(21, 48, 46, 32), M.ellipse(44, 48, 23, 15)), 'slate', bevel(M.union(M.rect(21, 48, 46, 32), M.ellipse(44, 48, 23, 15)), 0.3, 0.6, 0.1), { min: 1 });
+  f.paint(hearth, 'ember', (x, y) => 0.25 + Math.max(0, 1 - Math.hypot(x - 44, (y - 74) * 1.6) / 30) * 0.8, { dither: 0.8 });
+  for (let i = 0; i < 6; i++) f.paint(M.ellipse(32 + i * 5, 76 - (i % 2) * 2, 2.5, 1.5), 'ember', flat(1));
+  // Hammer sign.
+  f.paint(M.rect(8, 30, 14, 12), 'wood', bevel(M.rect(8, 30, 14, 12), 0.5, 0.8, 0.2));
+  f.paint(M.union(M.rect(11, 33, 8, 3), M.rect(14, 36, 2, 5)), 'iron', flat(0.7));
+  window_(f, 70, 34, 8, 10);
+  return f.outline();
+}
+
+function stall() {
+  const f = new Frame(72, 64);
+  const back = M.rect(4, 14, 64, 50);
+  plaster(f, back, 6);
+  f.paint(M.union(M.rect(4, 14, 3, 50), M.rect(65, 14, 3, 50)), 'wood', cyl(5, 2));
+  // Striped awning with a scalloped edge.
+  for (let x = 0; x < 72; x++) for (let y = 4; y < 18; y++) {
+    if (y >= 15 && (x % 8 < 2 || x % 8 > 5)) continue;
+    const stripe = Math.floor(x / 8) % 2;
+    f.paint(M.pts([[x, y]]), stripe ? 'cloth' : 'crimson', flat(0.85 - (y - 4) / 14 * 0.6), { max: stripe ? 2 : 4 });
+  }
+  // Shelves of relics.
+  f.paint(M.rect(8, 30, 56, 2), 'wood', flat(0.6));
+  for (let i = 0; i < 6; i++) { const x = 11 + i * 9; f.paint(M.rect(x, 23, 5, 7), i % 2 ? 'holy' : 'flame', (px, py) => 0.85 - (py - 23) / 10, { min: 1 }); f.paint(M.rect(x, 22, 5, 1), 'wood', flat(0.5)); }
+  // Counter with bones and a skull.
+  const counter = M.rect(6, 46, 60, 18);
+  f.paint(counter, 'wood', bevel(counter, 0.42, 0.75, 0.15));
+  for (let x = 8; x < 64; x += 8) f.shift(M.rect(x, 48, 1, 15), 1);
+  f.paint(M.ellipse(20, 43, 3.4, 3), 'bone', sphere(19, 42, 4, 4)); P(f, 19, 43, 'ink0'); P(f, 21, 43, 'ink0');
+  for (const [a, b, c, d] of [[30, 45, 40, 43], [34, 44, 44, 45], [48, 44, 56, 44]]) f.paint(M.line(a, b, c, d, 2), 'bone', flat(0.7));
+  f.paint(M.rect(56, 40, 6, 6), 'gold', bevel(M.rect(56, 40, 6, 6), 0.6, 1, 0.3));
+  return f.outline();
+}
+
+function tavern() {
+  const f = new Frame(104, 84);
+  const wall = M.rect(6, 26, 92, 58);
+  plaster(f, wall, 9);
+  const beams = M.union(M.rect(6, 26, 92, 3), M.rect(6, 52, 92, 3), ...[6, 30, 72, 95].map((x) => M.rect(x, 26, 3, 58)), M.line(9, 52, 30, 29, 2), M.line(72, 29, 95, 52, 2));
+  f.paint(beams, 'wood', bevel(beams, 0.35, 0.6, 0.15), { min: 1 });
+  shingles(f, 0, 6, 104, 22, 11);
+  f.paint(M.rect(0, 26, 104, 1), 'roof', flat(0.1));
+  window_(f, 14, 58, 12, 12); window_(f, 78, 58, 12, 12); window_(f, 40, 33, 10, 10); window_(f, 56, 33, 10, 10);
+  // Door.
+  const door = M.union(M.rect(44, 62, 16, 22), M.ellipse(52, 62, 8, 5));
+  f.paint(door, 'wood', (x, y) => 0.45 - (y - 57) / 50 + (x === 52 ? -0.35 : 0), { min: 1 });
+  f.paint(M.rect(56, 72, 2, 2), 'gold', flat(0.9));
+  // Hanging sign: the Gilded Lamb.
+  f.paint(M.rect(76, 42, 20, 1), 'iron', flat(0.5));
+  const sign = M.rect(80, 44, 14, 10);
+  f.paint(sign, 'wood', bevel(sign, 0.4, 0.7, 0.15));
+  f.paint(M.union(M.ellipse(87, 48, 4, 2.5), M.ellipse(91, 47, 1.8, 1.6)), 'gold', sphere(86, 46, 5, 4, 0.1));
+  for (const lx of [84, 86, 88, 90]) P(f, lx, 51, 'gold2');
+  return f.outline();
+}
+
+function house(v) {
+  const f = new Frame(48, 72);
+  const wall = M.rect(2, 22, 44, 50);
+  plaster(f, wall, 20 + v);
+  const beams = M.union(M.rect(2, 22, 44, 2), M.rect(2, 46, 44, 2), M.rect(2, 22, 2, 50), M.rect(44, 22, 2, 50));
+  f.paint(beams, 'wood', flat(0.35), { min: 1 });
+  shingles(f, 0, 4, 48, 20, 30 + v);
+  window_(f, 10, 28, 8, 10); window_(f, 30, 28, 8, 10);
+  if (v === 0) { const d = M.rect(18, 54, 12, 18); f.paint(d, 'wood', flat(0.3)); }
+  else { window_(f, 18, 54, 12, 8); f.paint(M.rect(16, 64, 16, 3), 'moss', flat(0.5)); for (const x of [18, 22, 27]) P(f, x, 63, 'crimson1'); }
+  return f.outline();
+}
+
+function npc({ robe, robeMin = 0, head = 'bald', apron = null, hat = null, beard = false, prop = null }, i) {
+  const f = new Frame(22, 34);
+  const B = i ? 1 : 0;
+  // Body.
+  const body = M.poly([[6, 14 + B], [16, 14 + B], [18, 31], [4, 31]]);
+  f.paint(body, robe, cyl(10.5, 7.5), { min: robeMin });
+  f.shift(M.and(M.line(8, 18 + B, 7, 30), body), 1); f.shift(M.and(M.line(14, 18 + B, 15, 30), body), 1);
+  if (apron) { const a = M.and(M.poly([[8, 18 + B], [14, 18 + B], [15, 30], [7, 30]]), body); f.paint(a, apron, cyl(11, 4)); }
+  f.paint(M.rect(5, 31, 4, 2), 'shroud', flat(0.2)); f.paint(M.rect(13, 31, 4, 2), 'shroud', flat(0.2));
+  // Arms.
+  f.paint(M.line(6, 16 + B, 5, 23 + B, 2), robe, flat(0.3), { min: robeMin });
+  f.paint(M.line(16, 16 + B, 17, 23 + B, 2), robe, flat(0.55), { min: robeMin });
+  f.paint(M.rect(4, 24 + B, 2, 2), 'skin', flat(0.6)); f.paint(M.rect(17, 24 + B, 2, 2), 'skin', flat(0.6));
+  // Head.
+  const hy = 9 + B;
+  f.paint(M.ellipse(11, hy, 4.4, 4.4), 'skin', sphere(9.5, hy - 1.5, 5.5, 5.5));
+  if (head === 'nun') {
+    f.paint(M.minus(M.union(M.ellipse(11, hy - 1, 6, 6), M.rect(5, hy, 12, 7)), M.ellipse(12, hy + 1, 3.4, 3.6)), 'slate', sphere(9, hy - 3, 7, 7), { min: 2 });
+    f.paint(M.minus(M.ellipse(12, hy + 1, 4.4, 4.6), M.ellipse(12, hy + 1, 3.4, 3.6)), 'cloth', flat(0.8));
+  }
+  if (head === 'tonsure') f.paint(M.and(M.minus(M.ellipse(11, hy, 4.6, 4.6), M.ellipse(11, hy - 2.5, 3, 2.2)), M.rect(0, 0, 22, hy + 1)), 'wood', flat(0.25));
+  if (head === 'hair') f.paint(M.and(M.ellipse(10.5, hy - 1, 4.8, 4.4), M.rect(0, 0, 22, hy - 1)), 'shroud', sphere(9, hy - 4, 5, 4));
+  if (hat) { f.paint(M.rect(4, hy - 4, 14, 2), hat, flat(0.4)); f.paint(M.rect(7, hy - 9, 8, 5), hat, cyl(10, 4)); P(f, 14, hy - 8, 'gold0'); }
+  if (beard) f.paint(M.ellipse(12, hy + 4, 3.4, 2.4), 'shroud', sphere(11, hy + 3, 4, 3));
+  // Face: eyes and a mouth.
+  P(f, 12, hy, 'ink0'); P(f, 14, hy, 'ink0');
+  if (!beard) P(f, 13, hy + 2, 'skin3');
+  if (prop === 'hammer') { f.paint(M.line(18, 22 + B, 18, 14 + B), 'wood', flat(0.5)); f.paint(M.rect(16, 11 + B, 5, 3), 'iron', bevel(M.rect(16, 11 + B, 5, 3), 0.5, 0.9, 0.2)); }
+  if (prop === 'bell') { f.paint(M.line(17, 24 + B, 18, 18 + B), 'wood', flat(0.5)); f.paint(M.union(M.ellipse(18.5, 17 + B, 2.6, 2.4), M.rect(16, 18 + B, 6, 1)), 'gold', sphere(17.5, 16 + B, 3, 3)); }
+  if (prop === 'mug') f.paint(M.rect(17, 21 + B, 3, 4), 'wood', bevel(M.rect(17, 21 + B, 3, 4), 0.5, 0.9, 0.2));
+  if (prop === 'rosary') for (let y = 17; y < 26; y += 2) P(f, 11, y + B, y === 25 ? 'gold0' : 'bone1');
+  return f.outline();
+}
+
+const NPCS = {
+  odile: { robe: 'slate', robeMin: 1, head: 'nun', prop: 'rosary' },
+  hollis: { robe: 'shroud', apron: 'wood', head: 'bald', beard: true, prop: 'hammer' },
+  pell: { robe: 'wood', robeMin: 1, head: 'tonsure', prop: 'rosary' },
+  barkeep: { robe: 'crimson', robeMin: 1, apron: 'cloth', head: 'hair', prop: 'mug' },
+  crier: { robe: 'crimson', head: 'hair', hat: 'ink', prop: 'bell' },
+};
+
+function lamp(flick) {
+  const f = new Frame(14, 46);
+  f.paint(M.rect(6, 12, 2, 32), 'iron', cyl(6.5, 2));
+  f.paint(M.rect(3, 42, 8, 3), 'iron', bevel(M.rect(3, 42, 8, 3), 0.4, 0.8, 0.1));
+  f.paint(M.poly([[3, 4], [11, 4], [10, 12], [4, 12]]), 'iron', flat(0.35), { min: 1 });
+  f.paint(M.rect(4, 5, 6, 6), 'ember', (x, y) => 1 - (y - 5) / 8 - (flick ? 0.1 : 0), { dither: 0.3 });
+  f.paint(M.poly([[2, 4], [7, 0], [12, 4]]), 'iron', flat(0.5));
+  return f.outline();
+}
+
+function fountain(i) {
+  const f = new Frame(60, 50);
+  const basin = M.ellipse(30, 38, 28, 10);
+  f.paint(basin, 'stone', sphere(24, 32, 34, 14), { dither: 0.3 });
+  const water = M.ellipse(30, 36, 24, 7);
+  f.paint(water, 'holy', (x, y) => 0.55 + Math.sin(x * 0.5 + y + i * 2) * 0.12, { min: 1, max: 3, dither: 0.6 });
+  f.paint(M.minus(M.ellipse(30, 36, 25, 8), water), 'stone', flat(0.8));
+  // Central pillar and a small saint.
+  f.paint(M.rect(27, 14, 6, 22), 'stone', cyl(29, 4));
+  f.paint(M.poly([[26, 6], [34, 6], [35, 15], [25, 15]]), 'stone', cyl(29, 6, 0.05));
+  f.paint(M.ellipse(30, 4, 2.6, 2.6), 'stone', sphere(29, 3, 3, 3));
+  f.paint(M.minus(M.ellipse(30, 0.5, 4, 1.2), M.ellipse(30, 0.5, 2.5, 0.3)), 'gold', flat(0.8));
+  for (const [x, y] of [[24, 18 + i], [36, 18 + (1 - i)], [22, 26], [38, 27]]) P(f, x, y, 'holy1');
+  return f.outline();
+}
+
+function barrel() {
+  const f = new Frame(14, 18);
+  const m = M.union(M.ellipse(7, 9, 6, 8), M.rect(1, 3, 12, 12));
+  f.paint(M.and(m, M.rect(1, 1, 12, 16)), 'wood', cyl(6, 6.5));
+  for (const y of [4, 13]) f.paint(M.and(M.rect(0, y, 14, 1), m), 'iron', cyl(6, 6.5));
+  f.paint(M.ellipse(7, 2, 5.5, 1.5), 'wood', flat(0.7));
+  return f.outline();
+}
+function crate() {
+  const f = new Frame(16, 16);
+  const m = M.rect(1, 2, 14, 13);
+  f.paint(m, 'wood', bevel(m, 0.45, 0.8, 0.15));
+  f.paint(M.union(M.line(2, 3, 13, 13), M.rect(1, 2, 14, 2)), 'wood', flat(0.65));
+  return f.outline();
+}
+function anvil() {
+  const f = new Frame(20, 14);
+  const m = M.union(M.poly([[1, 2], [18, 2], [15, 6], [5, 6]]), M.rect(7, 6, 6, 5), M.rect(4, 11, 12, 2));
+  f.paint(m, 'iron', bevel(m, 0.4, 0.95, 0.1), { min: 1 });
+  return f.outline();
+}
+
+function waystone(i) {
+  const f = new Frame(28, 40);
+  const m = M.poly([[8, 38], [20, 38], [22, 12], [16, 2], [9, 5], [6, 14]]);
+  f.paint(m, 'slate', cyl(13, 9), { dither: 0.4 });
+  f.paint(M.ellipse(14, 38, 11, 2), 'slate', flat(0.2));
+  const glowT = [0.55, 0.75, 1, 0.75][i];
+  for (const [x, y] of [[13, 10], [14, 11], [13, 12], [12, 16], [13, 17], [14, 17], [15, 16], [13, 22], [13, 23], [12, 24], [14, 24], [13, 29], [14, 30], [13, 31]]) f.paint(M.pts([[x, y]]), 'holy', flat(glowT), { dither: 0 });
+  return f.outline();
+}
+
+function townSheet() {
+  return sheet('town', {
+    cobble: [0, 1, 2, 3].map(cobble),
+    vestry: [vestry()], forge: [forge()], stall: [stall()], tavern: [tavern()], house: [house(0), house(1)],
+    ...Object.fromEntries(Object.entries(NPCS).map(([k, v]) => [k, [npc(v, 0), npc(v, 1)]])),
+    lamp: [lamp(0), lamp(1)], fountain: [fountain(0), fountain(1)], barrel: [barrel()], crate: [crate()], anvil: [anvil()],
+    waystone: [0, 1, 2, 3].map(waystone),
   });
 }
 
@@ -865,7 +1119,7 @@ function png(frame, scale = 1, bg = null) {
 
 // ================================================================ main ===
 
-const sheets = [saintSheet(), risenSheet(), wardenSheet(), tilesSheet(), wallDecorSheet(), propsSheet(), fxSheet(), uiSheet()];
+const sheets = [saintSheet(), risenSheet(), wardenSheet(), tilesSheet(), wallDecorSheet(), propsSheet(), fxSheet(), uiSheet(), townSheet()];
 mkdirSync(OUT, { recursive: true });
 const manifest = { palette: PALETTE };
 for (const s of sheets) {

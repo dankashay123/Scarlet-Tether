@@ -21,11 +21,25 @@ const R = {
   holy: ['#ffffff', '#d8f7ff', '#8ae0ff', '#3fa4f0', '#2a5cc0'],
   blood: ['#ff5a4a', '#e0202e', '#a8102a', '#6a0a22', '#3a0618'],
   violet: ['#d4b0ff', '#9a6ae6', '#6a44b8', '#432a80', '#271a4d'],
+  sand: ['#f2dcb6', '#cfae86', '#a28166', '#755c4f', '#4b3a3a'],
+  skin: ['#ffdcbf', '#f0aa84', '#c97b60', '#8f5048', '#57303a'],
+  roof: ['#c36a5a', '#93453f', '#6a2e33', '#47202a', '#2a1420'],
 };
 
+// v3: each 5-step ramp gains in-between tones, giving 9 shades per material.
+// The original steps keep their names (gold0..gold4); the in-betweens are
+// gold0h..gold3h.
+const mix = (a, b) => '#' + [1, 3, 5].map((i) => Math.round((parseInt(a.slice(i, i + 2), 16) + parseInt(b.slice(i, i + 2), 16)) / 2).toString(16).padStart(2, '0')).join('');
 export const RAMPS = R;
 export const PALETTE = {};
-for (const [name, ramp] of Object.entries(R)) ramp.forEach((hex, i) => { PALETTE[`${name}${i}`] = hex; });
+export const FINE = {};
+for (const [name, ramp] of Object.entries(R)) {
+  FINE[name] = [];
+  ramp.forEach((hex, i) => {
+    PALETTE[`${name}${i}`] = hex; FINE[name].push(`${name}${i}`);
+    if (i < ramp.length - 1) { PALETTE[`${name}${i}h`] = mix(hex, ramp[i + 1]); FINE[name].push(`${name}${i}h`); }
+  });
+}
 PALETTE.outline = R.ink[0];
 PALETTE.white = '#ffffff';
 
@@ -35,5 +49,5 @@ export const RGB = NAMES.map((n) => {
   return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 });
 export const IDX = Object.fromEntries(NAMES.map((n, i) => [n, i]));
-// A ramp as palette indices, light -> dark.
-export const ramp = (name) => R[name].map((_, i) => IDX[`${name}${i}`]);
+// A ramp as palette indices, light -> dark (9 steps).
+export const ramp = (name) => FINE[name].map((n) => IDX[n]);

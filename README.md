@@ -22,7 +22,7 @@ node tools/sprites.mjs        # regenerate sprites after editing tools/
 python3 -m http.server 8000   # then open http://localhost:8000
 ```
 
-Debug URL flags: `?run` skips the title, `?fps` shows frame rate.
+Debug URL flags: `?town` starts in Vael, `?run` jumps straight into a descent (no tutorial), `?fps` shows frame rate.
 
 ## Controls
 
@@ -35,5 +35,6 @@ Debug URL flags: `?run` skips the title, `?fps` shows frame rate.
 | Sun button | R / 3 | Flagellant's Rain (Penance; charges from Fervor) |
 | Tap an enemy | click | Lock target (tap again to release) |
 | Dagger button / tap staggered elite | E | Execute |
+| Talk / Descend button (appears) | E | Talk to townsfolk, take the Vestry doors, use the Waystone |
 
 The Relic Weapon and the Thurible (an orbiting censer) work on their own; the crossbow fires: elites first, then the nearest enemy.

@@ -14,8 +14,12 @@ Goal (GDD): one Stratum, a 30-minute run that ends in Martyrdom and a first Vigi
 - [ ] Vestments with affixes, salvage and re-consecrate
 - [ ] The Bellwright boss
 - [ ] Death and the Shade (Choir receipt screen exists)
-- [ ] Walkable town: Vestry, Forge, Pell's Stall, the Gilded Lamb
+- [ ] Walkable town: Vestry, Forge, Pell's Stall, the Gilded Lamb — square, building fronts, five townsfolk with
+      dialogue and the Vestry doors (descend) are in; shops and crafting still to come
 - [ ] Martyrdom, Ash, six relics, Death Masks
 - [ ] Vigil tiers 1 to 10, unlocked early for testing
 - [ ] Suspend and resume saves
+- [x] Start menu (Begin / Continue, Replay tutorial)
+- [x] Tutorial: 9 guided steps from the town into the first fight, with SKIP TUTORIAL
+- [x] Descent candle: 3-minute timer, a surge in the last 30 s, then the Waystone carries you home
 - [ ] Audio: pick a free sound pack
