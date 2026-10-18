@@ -11,6 +11,13 @@ import { deflateSync } from 'node:zlib';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RGB, IDX, PALETTE, FINE, ramp } from './palette.mjs';
+// v5: sculpted models (tools/sdf.mjs) replace hand-drawn animations by name.
+const OVR = {};
+for (const m of ['saint', 'common', 'rare', 'elite', 'town', 'townfolk', 'dungeon']) {
+  let set;
+  try { set = (await import(`./models/${m}.mjs`)).default; } catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') console.warn(`models/${m}.mjs failed to load: ${e.message}`); continue; }
+  for (const [sh, anims] of Object.entries(set)) OVR[sh] = { ...OVR[sh], ...anims };
+}
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'assets', 'sprites');
@@ -138,6 +145,7 @@ const P = (f, x, y, c) => f.set(x, y, c);
 // ----------------------------------------------------------------- sheets ---
 
 function sheet(name, anims, extra = {}) {
+  if (OVR[name]) { anims = { ...anims }; for (const [a, fn] of Object.entries(OVR[name])) anims[a] = fn(); }
   // Each row (one animation) gets cells as wide as its widest frame.
   const rows = Object.entries(anims);
   const cellW = rows.map(([, fs]) => Math.max(...fs.map((f) => f.w)));
@@ -811,29 +819,30 @@ const G = {
 };
 
 function joyRing() {
-  const f = new Frame(60, 60), c = 29.5;
-  f.paint(M.minus(M.ellipse(c, c, 28, 28), M.ellipse(c, c, 26.5, 26.5)), 'cloth', flat(0.8), { dither: 0 });
+  const f = new Frame(78, 78), c = 38.5;
+  f.paint(M.minus(M.ellipse(c, c, 37, 37), M.ellipse(c, c, 35.5, 35.5)), 'cloth', flat(0.8), { dither: 0 });
   for (let a = 0; a < 4; a++) {
-    const ang = a * Math.PI / 2, x = c + Math.cos(ang) * 23, y = c + Math.sin(ang) * 23;
+    const ang = a * Math.PI / 2, x = c + Math.cos(ang) * 31, y = c + Math.sin(ang) * 31;
     const px = -Math.sin(ang), py = Math.cos(ang);
     f.paint(M.union(M.line(x - px * 3 - Math.cos(ang) * 2, y - py * 3 - Math.sin(ang) * 2, x, y), M.line(x + px * 3 - Math.cos(ang) * 2, y + py * 3 - Math.sin(ang) * 2, x, y)), 'cloth', flat(0.8), { dither: 0 });
   }
   return f;
 }
 function joyKnob() {
-  const f = new Frame(24, 24), c = 11.5;
-  f.paint(M.ellipse(c, c, 10.5, 10.5), 'ink', flat(1));
-  f.paint(M.ellipse(c, c, 9, 9), 'cloth', (x, y) => 1 - Math.max(0, y - c) / 18, { max: 1 });
-  for (const k of M.union(M.rect(10, 5, 4, 14), M.rect(5, 10, 14, 4))) { const [x, y] = k.split(',').map(Number); P(f, x, y, 'ink0'); }
-  for (const k of M.rect(11, 11, 2, 2)) { const [x, y] = k.split(',').map(Number); P(f, x, y, 'cloth0'); }
+  const f = new Frame(32, 32), c = 15.5;
+  f.paint(M.ellipse(c, c, 14.5, 14.5), 'ink', flat(1));
+  f.paint(M.ellipse(c, c, 12.6, 12.6), 'cloth', (x, y) => 1 - Math.max(0, y - c) / 24, { max: 1 });
+  for (const k of M.union(M.rect(13, 6, 6, 20), M.rect(6, 13, 20, 6))) { const [x, y] = k.split(',').map(Number); P(f, x, y, 'ink0'); }
+  for (const k of M.rect(15, 15, 2, 2)) { const [x, y] = k.split(',').map(Number); P(f, x, y, 'cloth0'); }
   return f;
 }
 
 function uiSheet() {
-  const big = 38, small = 30;
+  // v5: 1.3x for the 360 px view.
+  const big = 50, small = 40;
   return sheet('ui', {
-    dash: [button(big, G.dash)], flask: [button(small, G.flask)], chain: [button(small, G.chain)], penance: [button(big - 4, G.penance)],
-    dagger: [button(small, G.dagger)], pause: [button(22, G.pause)], talk: [button(big, G.talk)], descend: [button(big, G.descend)], ring: [joyRing()], knob: [joyKnob()], portrait: [portrait()],
+    dash: [button(big, G.dash)], flask: [button(small, G.flask)], chain: [button(small, G.chain)], penance: [button(44, G.penance)],
+    dagger: [button(small, G.dagger)], pause: [button(28, G.pause)], talk: [button(big, G.talk)], descend: [button(big, G.descend)], ring: [joyRing()], knob: [joyKnob()], portrait: [portrait()],
   });
 }
 
