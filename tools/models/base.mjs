@@ -50,20 +50,14 @@ export function saintModel(pose = {}) {
   S.add(capsule([cx - 4 + X, 29.5 + B, -2.6], [cx - 5.6 + X, 35 + B, -2.8], 2.1, 1.8, 'crimsonDark'), 1);
   S.add(capsule([cx - 5.6 + X, 35 + B, -2.8], [cx - 4.6 + X, 39.4 + B, -2], 1.8, 1.6, 'crimsonDark'), 0.6);
   S.add(sphere([cx - 4.6 + X, 40 + B, -2], 1.55, 'leather'), 0.5);
-  // Front arm out to the crossbow: full sleeve, gilt bell cuff, gloved hand.
-  const hand = [cx + 9.6 + X, 37.4 + B + aim, 5.6], elbow = [cx + 6.2 + X, 35 + B, 4.4];
+  // Front arm raised in a casting gesture: the crossbow floats, guided by this hand.
+  const hand = [cx + 8.4 + X, 31.6 + B + aim, 5.8], elbow = [cx + 6.6 + X, 37 + B, 4.6];
   S.add(capsule([cx + 4.4 + X, 29.6 + B, 2.4], elbow, 2.5, 2.1, 'crimson'), 1.3);
-  S.add(capsule(elbow, [hand[0] - 1.8, hand[1] - 0.2, hand[2] - 0.4], 2.1, 2.3, 'crimson'), 0.7);
-  S.paint({ f: (x, y, z) => Math.hypot(x - (hand[0] - 2.1), y - (hand[1] - 0.3), z - (hand[2] - 0.4)) - 2.45, mat: 'gold' });
-  S.add(ellipsoid(hand, [1.8, 1.6, 1.6], 'leather'), 0.6);
+  S.add(capsule(elbow, [hand[0] - 0.4, hand[1] + 1.8, hand[2] - 0.3], 2.1, 2.3, 'crimson'), 0.7);
+  S.paint({ f: (x, y, z) => Math.hypot(x - (hand[0] - 0.4), y - (hand[1] + 2.2), z - (hand[2] - 0.3)) - 2.45, mat: 'gold' });
+  S.add(ellipsoid(hand, [1.5, 2, 1.6], 'leather'), 0.6);
+  S.add(capsule([hand[0] + 0.6, hand[1] - 1, hand[2]], [hand[0] + 1.4, hand[1] - 3, hand[2]], 0.6, 0.5, 'leather'), 0.4);
   S.paint({ f: (x, y, z) => Math.hypot(x - (cx + 4.2 + X), y - (29.2 + B), z - 3.4) - 1.4, mat: 'gold' });
-  // The Nail Crossbow: stock, a recurved iron prod and a loaded nail.
-  const by = hand[1] - 0.6, bx = hand[0];
-  S.add(box([bx + 4.4, by + 0.4, 6], [6.2, 0.9, 0.9], 0.45, 'wood'), 0);
-  S.add(box([bx - 1.4, by + 1.6, 6], [1.2, 1.6, 0.8], 0.4, 'wood'), 0);
-  S.add(capsule([bx + 9.4, by - 6, 6], [bx + 10.8, by - 0.2, 6], 0.9, 1, 'iron'), 0.4);
-  S.add(capsule([bx + 10.8, by + 0.2, 6], [bx + 9.4, by + 6.4, 6], 1, 0.9, 'iron'), 0.4);
-  S.add(sphere([bx + 11.6, by, 6], 1.05, 'gold'), 0);
   // Neck, the hood and its point.
   const hx = cx + 1.2 + X, hy = 19.4 + B;
   S.add(capsule([cx + X, 27 + B, 0], [hx, hy + 3, 0.3], 3, 3.6, 'crimson'), 1.6);
@@ -89,7 +83,7 @@ export function saintModel(pose = {}) {
   // Hand-placed touches: the two green eyes, the crossbow string.
   if (!blink) for (const ex of [fc[0] - 1.3, fc[0] + 1]) { dot(f, ex, fc[1] - 0.6, 'flame0'); dot(f, ex, fc[1] + 0.4, 'flame2'); }
   else for (const ex of [fc[0] - 1.3, fc[0] + 1]) dot(f, ex, fc[1] + 0.2, 'flame3');
-  pline(f, bx + 9.2, by - 5.6, bx + 2.2, by - 0.4, 'bone2');
-  pline(f, bx + 9.2, by + 6, bx + 2.2, by + 0.6, 'bone3');
+  // A holy light cupped in the raised palm.
+  dot(f, hand[0] + 1.4, hand[1] - 1, 'holy1'); dot(f, hand[0] + 2.2, hand[1] - 2, 'white'); dot(f, hand[0] + 1.6, hand[1] - 2.6, 'holy2');
   return f;
 }

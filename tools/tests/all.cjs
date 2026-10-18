@@ -4,6 +4,7 @@ const { chromium, devices } = (() => { try { return require('/opt/node-tools/nod
 const S = process.argv[2];
 (async () => {
   const b = await chromium.launch(); const p = await (await b.newContext({ ...devices['iPhone 13 landscape'] })).newPage();
+  await p.addInitScript(() => { window.HS_AUTOSTIG = true; }); // level-up cards pick themselves
   const errs = []; p.on('pageerror', (e) => errs.push(String(e.stack || e).slice(0, 400)));
   await p.goto('http://localhost:8123/?run&fps'); await p.waitForTimeout(800);
   const ids = await p.evaluate(() => Object.keys(HS.MON).filter((k) => k !== 'imp'));

@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-18, after round 2: map fixes, minimap, inventory and the last old art.
+Last updated 2026-10-18, after round 3: the floating crossbow and Stigmata level-ups.
 
 ## Where the game stands
 
@@ -22,6 +22,9 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
   - Effects, item icons, coins, globes and enemy shots remodelled (`tools/models/vfx.mjs`).
   - New UI font: Kenney High, bold, cap height 9.
   - Saint legs show in the run; golem legs split; leviathan rears; darker Inquisitor hood.
+- **Round 3 (inspired by Pixel Hunter Idle, see `docs/ART_COMPARISON.md`):**
+  - The Nail Crossbow floats: `tools/models/weapon.mjs` renders it at 16 angles; `updateFloatBow`/`drawFloatBow` in `index.html` hover, aim, recoil and glow. Bolts leave from its tip. The Saint now raises a glowing palm instead of holding it.
+  - Stigmata (GDD in-run talents): kills give XP (`gainXp`), each level offers 3 of 20 Wounds (`WOUNDS`). Plain boons fold into `gearStats()`; six skills run in `updateSkills` with big smooth effects (`drawSkillsGlow`). The pause screen lists what you bear. Tests set `window.HS_AUTOSTIG` so cards pick themselves.
 - **Round 2:**
   - Map bug fixed: the room grid lookup wrapped across rows, so corridors could join far rooms and leave others unreachable (185 of 200 floors were affected). Loop links are now orthogonal, the spawn and carpet aisles are kept clear of props, and enemies spawn only on open tiles. A room where nothing is hurt for 15 s pulls its survivors into the open. `tools/tests/maps.cjs` checks 300 floors.
   - Minimap redrawn as a room grid with fog, corridors, locked gates in red, room icons and a blinking marker; the town shows a street strip.
@@ -52,7 +55,7 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
    - The fx sheet (bolt, impacts, smoke, thurible, flask, chain links) and the item icons are still the older hand-drawn style at the old size.
    - The 5×7 pixel font is small at 360 px; consider a larger or bolder UI font.
 2. **Audio:** the owner wants a free sound pack. Kenney (CC0) is the easiest. The network must allow the host first (see below). Sounds can also be synthesised with WebAudio.
-3. **Roadmap items** (`docs/ROADMAP.md`): Stigmata level-ups, Vestments and crafting, the Bellwright boss, death/Shade, Martyrdom, Vigil tiers, suspend/resume.
+5. **Roadmap items** (`docs/ROADMAP.md`): Stigmata level-ups, Vestments and crafting, the Bellwright boss, death/Shade, Martyrdom, Vigil tiers, suspend/resume.
 
 ## Network access
 

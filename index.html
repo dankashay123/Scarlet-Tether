@@ -323,6 +323,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyR' || e.code === 'Digit3') input.pen = true;
   if (e.code === 'Escape' || e.code === 'KeyP') { if (game.state === 'play') game.state = 'pause'; else if (game.state === 'pause') game.state = 'play'; }
   if (e.code === 'KeyM') AUDIO.setMuted(!AUDIO.muted);
+  if (game.state === 'stig' && game.stig.t > 0.35 && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { pickStigma(+e.code.slice(5) - 1); return; }
   if (e.code === 'KeyI' || e.code === 'KeyB') { if (game.state === 'play') openInventory(); else if (game.state === 'inv') closeInventory(); }
   if (e.code === 'Escape' && game.state === 'inv') { closeInventory(); return; }
   if (e.code === 'Enter' || (e.code === 'Space' && game.state !== 'play')) onTap(-1, -1);
@@ -836,7 +837,7 @@ function makePlayer(x, y) {
 }
 function resetWorld() {
   enemies = []; bolts = []; parts = []; gibs = []; nums = []; ghosts = []; rings = []; fxs = []; pools = []; flasks = []; chains = []; lashes = [];
-  hazards = []; shots = []; drops = [];
+  hazards = []; shots = []; drops = []; skillFx = [];
 }
 function newRun() {
   makeDungeon();
@@ -844,7 +845,7 @@ function newRun() {
   resetWorld();
   game.scene = 'wound'; game.state = 'play'; game.cardAt = game.real; game.waystone = null; game.interact = null;
   Object.assign(game, { time: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, execTarget: null, flash: 0,
-    run: { gold: 0, items: [] }, curRoom: room.start, buff: null, banner: null, massacre: null, focus: null, reflect: 0 });
+    run: { gold: 0, items: [], level: 1, xp: 0, pending: 0, wounds: {} }, skill: null, stig: null, curRoom: room.start, buff: null, banner: null, massacre: null, focus: null, reflect: 0 });
   // Shrines and chests are things to use.
   for (const r of room.rooms) {
     if (r.shrine) { const p = r.shrine; room.interact.push({ x: p.x, y: p.y + 4, r: 26, label: 'PRAY', icon: 'talk', use() { useShrine(p); this.done = true; } }); }
@@ -1718,6 +1719,8 @@ function killEnemy(e, dirx, diry, executed = false) {
   if (e.illusion) { playFx('fx', 'smoke', e.x, e.y - 8, 14); return; }
   if (G.lok) player.hp = Math.min(player.maxHp, player.hp + G.lok);
   game.kills++;
+  if (!e.minion || rng() < 0.5) gainXp(e.tier === 'elite' ? 15 : e.tier === 'rare' ? 4 : e.type === 'imp' ? 6 : 1);
+  onWoundKill();
   addFervor(e.def.fervor + 1);
   game.shake = Math.max(game.shake, e.tier === 'elite' ? 7 : e.elite ? 4 : 1.5);
   game.hitstop = Math.max(game.hitstop, e.tier === 'elite' ? 0.12 : e.elite ? 0.06 : 0.025);
@@ -1866,6 +1869,8 @@ function gearStats() {
   const g = { dmg: 0, crit: 0, hp: 0, dash: 0, fervor: 0, gold: 0, speed: 0, cdr: 0, armor: 0, lok: 0, powers: new Set(), setN: 0 };
   for (const it of Object.values(SAVE.equip || {})) { if (!it) continue; for (const [key, v] of it.stats) g[key] += v; if (it.power) g.powers.add(POWERS[it.power].key); if (it.set) g.setN++; }
   if (g.setN >= 2) g.dmg += 10; if (g.setN >= 4) g.dmg += 15;
+  // Stigmata taken this run.
+  g.dmg += wound('wrath') * 15; g.crit += wound('luck') * 8; g.hp += wound('vigil') * 25; g.speed += wound('swift') * 10; g.fervor += wound('fervent') * 30; g.lok += wound('letting') * 2;
   g.dmgMul = 1 + g.dmg / 100; g.armorK = 1 - Math.min(60, g.armor) / 100; g.cdrK = 1 - Math.min(50, g.cdr) / 100; g.dashK = 1 - Math.min(50, g.dash) / 100;
   g.charges = T.dash.charges + (g.powers.has('dashCharge') ? 1 : 0) + (g.setN >= 4 ? 1 : 0);
   return g;
@@ -2033,18 +2038,58 @@ function chooseTarget() {
   return best;
 }
 
+// The Nail Crossbow floats beside the Saint, guided by his raised hand. It
+// hovers behind his shoulder at rest, swings out toward its target, and
+// kicks back with a flash when it looses a nail.
+function updateFloatBow(dt) {
+  const p = player, xb = p.xb || (p.xb = { x: p.x, y: p.y - 34, ang: p.face > 0 ? 0 : Math.PI, recoil: 0, flash: 0, t: 0 });
+  xb.t += dt; xb.recoil = Math.max(0, xb.recoil - dt * 6); xb.flash = Math.max(0, xb.flash - dt * 5);
+  const t = p.target;
+  let tx, ty, aim;
+  if (t) { aim = Math.atan2(t.y - t.hy - (p.y - 46), t.x - p.x); tx = p.x + Math.cos(aim) * 24; ty = p.y - 46 + Math.sin(aim) * 10; }
+  else { aim = (p.face > 0 ? 0 : Math.PI) + Math.sin(xb.t * 1.3) * 0.12; tx = p.x - p.face * 18; ty = p.y - 52; }
+  ty += Math.sin(xb.t * 3.1) * 2;
+  const k = Math.min(1, dt * 9); xb.x += (tx - xb.x) * k; xb.y += (ty - xb.y) * k;
+  let da = aim - xb.ang; da = Math.atan2(Math.sin(da), Math.cos(da)); xb.ang += da * Math.min(1, dt * 14);
+  if (game.scene === 'wound' && rng() < dt * 10) parts.push({ kind: 'spark', x: xb.x + rand(-6, 6), y: xb.y + rand(-4, 4), z: 0, vx: rand(-6, 6), vy: rand(-22, -8), vz: 0, c: pick([PAL.holy0, PAL.holy1, PAL.gold0]), life: rand(0.3, 0.6) });
+}
+const bowTip = () => { const xb = player.xb; return [xb.x + Math.cos(xb.ang) * (20 - xb.recoil * 5), xb.y + Math.sin(xb.ang) * (20 - xb.recoil * 5)]; };
+function drawFloatBow() {
+  const xb = player.xb; if (!xb) return;
+  const i = ((Math.round(xb.ang / (Math.PI / 8)) % 16) + 16) % 16;
+  const x = xb.x - Math.cos(xb.ang) * xb.recoil * 5, y = xb.y - Math.sin(xb.ang) * xb.recoil * 5;
+  // A soft shadow on the floor far below.
+  ctx.fillStyle = 'rgba(11,7,16,0.25)'; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(player.y + 4), 7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  sprC('weapon', 'xbow', i, x, y, { white: xb.flash > 0.75 });
+}
+function drawFloatBowGlow() {
+  const xb = player.xb; if (!xb) return;
+  // The sigil that holds it aloft: a slowly turning ring of gold ticks.
+  const r = 13, a0 = xb.t * 0.9;
+  for (let k = 0; k < 12; k++) { const a = a0 + k * Math.PI / 6; ctx.fillStyle = `rgba(255,209,85,${k % 3 === 0 ? 0.55 : 0.28})`; ctx.fillRect(Math.round(xb.x + Math.cos(a) * r), Math.round(xb.y + Math.sin(a) * r * 0.45 + 2), k % 3 === 0 ? 2 : 1, 1); }
+  glow(xb.x, xb.y, 18, 'rgba(138,224,255,0.18)');
+  // A thread of light from the raised hand.
+  const hx = player.x + player.face * 11, hy = player.y - 34;
+  glow(hx, hy, 6 + Math.sin(game.real * 8), 'rgba(216,247,255,0.5)');
+  for (let k = 1; k < 8; k++) { const f = k / 8, fl = Math.sin(game.real * 9 + k) * 0.5 + 0.5; ctx.fillStyle = `rgba(216,247,255,${0.18 + fl * 0.2})`; ctx.fillRect(Math.round(hx + (xb.x - hx) * f), Math.round(hy + (xb.y - hy) * f + Math.sin(f * Math.PI) * -4), 1, 1); }
+  if (xb.flash > 0) { const [tx, ty] = bowTip(); glow(tx, ty, 10 + 18 * xb.flash, `rgba(255,244,176,${0.7 * xb.flash})`); }
+}
 function updateCrossbow(dt) {
   player.fireCd -= dt;
   player.target = chooseTarget();
+  updateFloatBow(dt);
   if (!player.target || player.fireCd > 0) return;
-  player.fireCd = T.crossbow.cooldown * (G.powers.has('fire') ? 0.8 : 1);
-  const t = player.target;
+  player.fireCd = T.crossbow.cooldown * (G.powers.has('fire') ? 0.8 : 1) * Math.pow(0.85, wound('quick'));
+  const t = player.target, xb = player.xb;
   player.face = t.x < player.x ? -1 : 1;
-  const sx = player.x + player.face * 21, sy = player.y - 25;
+  const [sx, sy] = bowTip();
   const tx = t.x + t.kx * 0.05, ty = t.y - t.hy;
   const d = Math.hypot(tx - sx, ty - sy) || 1;
   const crit = rng() < T.crossbow.crit + G.crit / 100;
-  bolts.push({ x: sx, y: sy, vx: (tx - sx) / d * T.crossbow.speed, vy: (ty - sy) / d * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0), hit: new Set(), crit, trail: [] }); sfx('shoot');
+  const base = Math.atan2(ty - sy, tx - sx), n = 1 + wound('split');
+  for (let k = 0; k < n; k++) { const a = base + (k - (n - 1) / 2) * 0.16; bolts.push({ x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce'), hit: new Set(), crit, trail: [] }); }
+  sfx('shoot');
+  xb.recoil = 1; xb.flash = 1;
   playFx('fx', 'impact', sx, sy, 40, { small: true, skip: 2 });
 }
 
@@ -2062,7 +2107,8 @@ function updateBolts(dt) {
         if (Math.abs(b.x - e.x) < hr && Math.abs(b.y - hy) < hr + 2) {
           b.hit.add(e);
           const sp = Math.hypot(b.vx, b.vy), [lo, hi] = T.crossbow.dmg;
-          hurtEnemy(e, Math.round(rand(lo, hi + 1) * (b.crit ? (G.powers.has('critX') ? 3 : 2) : 1)), b.crit, b.vx / sp, b.vy / sp);
+          hurtEnemy(e, Math.round(rand(lo, hi + 1) * (b.crit ? (G.powers.has('critX') ? 3 : 2) * (1 + wound('heavy') * 0.5) : 1)), b.crit, b.vx / sp, b.vy / sp);
+          if (b.crit) onWoundCrit(e);
           if (b.pierce-- <= 0) { b.life = 0; break; }
         }
       }
@@ -2075,21 +2121,24 @@ function updateBolts(dt) {
 // Censer: Thurible of Embers. Miracles: Holy Water Flask, Chain of
 // Penitence. Penance: Flagellant's Rain. All auto-targeted.
 function inRange(e, R) { return !e.dead && e.state !== 'spawn' && Math.hypot(e.x - player.x, e.y - player.y) <= R; }
-function thuriblePos() {
-  const a = player.thAng, R = T.thurible.radius;
+const censers = () => 1 + wound('censer2');
+function thuriblePos(i = 0) {
+  const a = player.thAng + i * Math.PI * 2 / censers(), R = T.thurible.radius;
   return { x: player.x + Math.cos(a) * R, y: player.y - 16 + Math.sin(a) * R * 0.6 };
 }
 
 function updateThurible(dt) {
   player.thAng += T.thurible.speed * dt;
-  const t = thuriblePos();
+  for (let ci = 0; ci < censers(); ci++) updateOneCenser(thuriblePos(ci), dt);
+}
+function updateOneCenser(t, dt) {
   for (const e of enemies) {
     if (e.dead || e.state === 'spawn' || (e.thCd ?? 0) > game.time) continue;
     if (Math.hypot(e.x - t.x, e.y - e.hy - t.y) < e.hr + 3) {
       e.thCd = game.time + T.thurible.hitCd;
       const dx = e.x - player.x, dy = e.y - player.y, d = Math.hypot(dx, dy) || 1;
       e.burn = T.thurible.burn.time;
-      hurtEnemy(e, T.thurible.dmg, false, dx / d, dy / d, 50); sfx('thurible', { gap: 0.12 });
+      hurtEnemy(e, T.thurible.dmg * (1 + wound('ember') * 0.5), false, dx / d, dy / d, 50); sfx('thurible', { gap: 0.12 });
       sparks(t.x, t.y, PAL.ember0, 4);
     }
   }
@@ -2128,7 +2177,7 @@ function bestCluster(R) {
 function castFlask() {
   const t = bestCluster(T.flask.range);
   flasks.push({ sx: player.x, sy: player.y - 23, tx: t ? t.x : player.x + player.face * 60, ty: t ? t.y : player.y, t: 0 }); sfx('tap', { rate: 0.6, vol: 0.6 });
-  player.m1cd = T.flask.cd * G.cdrK;
+  player.m1cd = T.flask.cd * G.cdrK * Math.pow(0.85, wound('flask'));
 }
 function castChain() {
   let t = null, bd = Infinity;
@@ -2160,7 +2209,7 @@ function updateAbilities(dt) {
     f.t += dt;
     if (f.t >= T.flask.flight) {
       f.done = true;
-      pools.push({ x: f.tx, y: f.ty, r: T.flask.radius, t: 0 }); sfx('flask');
+      pools.push({ x: f.tx, y: f.ty, r: T.flask.radius * (1 + wound('flask') * 0.3), t: 0 }); sfx('flask');
       hitBreakables(f.tx, f.ty, T.flask.radius);
       for (let i = 0; i < 14; i++) parts.push({ kind: 'blood', x: f.tx, y: f.ty, z: 4, vx: rand(-70, 70), vy: rand(-45, 45), vz: rand(20, 80), c: pick([PAL.holy0, PAL.holy1, PAL.holy2]), s: rng() < 0.4 ? 2 : 1, clean: true });
       rings.push({ x: f.tx, y: f.ty, t: 0, max: 0.35, r: 34, color: '138,224,255', flat: true });
@@ -2186,7 +2235,7 @@ function updateAbilities(dt) {
         c.phase = 'bind'; c.t = 0; sfx('chain', { rate: 0.8 });
         const bound = [tg];
         for (const e of enemies.filter((o) => !o.dead && o !== tg && o.state !== 'spawn').sort((a, b) => Math.hypot(a.x - tg.x, a.y - tg.y) - Math.hypot(b.x - tg.x, b.y - tg.y))) {
-          if (bound.length >= T.chain.links || Math.hypot(e.x - tg.x, e.y - tg.y) > T.chain.linkRange) break;
+          if (bound.length >= T.chain.links + wound('chains') * 2 || Math.hypot(e.x - tg.x, e.y - tg.y) > T.chain.linkRange) break;
           bound.push(e);
         }
         c.links = bound;
@@ -2195,7 +2244,7 @@ function updateAbilities(dt) {
           if (e.state === 'windup' || e.state === 'strike') { e.state = 'walk'; e.t = 0; }
           const ox = tg.x - e.x, oy = tg.y - e.y, od = Math.hypot(ox, oy) || 1;
           if (e !== tg) { e.kx += ox / od * Math.min(220, od * 4); e.ky += oy / od * Math.min(220, od * 4); }
-          hurtEnemy(e, T.chain.dmg, rng() < 0.15, ox / od, oy / od, 0, { status: true, color: PAL.iron0 });
+          hurtEnemy(e, T.chain.dmg * (1 + wound('chains') * 0.4), rng() < 0.15, ox / od, oy / od, 0, { status: true, color: PAL.iron0 });
           playFx('fx', 'impact', e.x, e.y - e.hy, 24);
         }
         sparks(tg.x, ty, PAL.iron0, 8);
@@ -2247,7 +2296,7 @@ function updatePlayer(dt) {
       let dx = input.mx, dy = input.my;
       if (Math.hypot(dx, dy) < 0.2) { dx = p.face; dy = 0; }
       const d = Math.hypot(dx, dy); p.dashDx = dx / d; p.dashDy = dy / d;
-      p.dashT = T.dash.time; p.dashStart = game.time; p.dashX = p.x; p.dashY = p.y; sfx('dash');
+      p.dashT = T.dash.time; p.dashStart = game.time; p.dashX = p.x; p.dashY = p.y; onWoundDash(); sfx('dash');
       p.iframes = Math.max(p.iframes, T.dash.iframes); p.perfectUsed = false;
       if (Math.abs(dx) > 0.1) p.face = Math.sign(dx);
       playFx('fx', 'smoke', p.x, p.y - 4, 18, { alpha: 0.6 });
@@ -2311,6 +2360,7 @@ function update(realDt) {
   for (const k of ['dash', 'm1', 'm2', 'pen']) if (HUD[k] && HUD[k].pressed) HUD[k].pressed = Math.max(0, HUD[k].pressed - realDt);
   if (game.state === 'dead' || game.state === 'tally') game.deathT += realDt;
   if (game.state === 'dialog') game.dialog.t += realDt;
+  if (game.state === 'stig') game.stig.t += realDt;
   if (game.state === 'loading') { game.loadT += realDt; if (game.loadT > 1.8) newRun(); }
   if (game.state !== 'play') return;
   readMove();
@@ -2330,9 +2380,11 @@ function update(realDt) {
   let bestD = Infinity;
   for (const it of room.interact) { if (it.done) continue; const d = Math.hypot(it.x - player.x, it.y - player.y); if (d < it.r && d < bestD) { bestD = d; game.interact = it; } }
   for (const n of room.npcs) { const d = player.x - n.x; if (!n.walk && !n.circle && !n.still && Math.hypot(d, player.y - n.y) < 40) n.face = d < 0 ? -1 : 1; }
-  if (game.scene === 'town') updateTown(dt);
+  if (game.scene === 'town') { updateTown(dt); player.target = null; updateFloatBow(dt); }
   if (game.scene === 'wound') {
     updateCrossbow(dt);
+    updateSkills(dt);
+    if (game.run.pending > 0 && game.state === 'play' && game.real >= (game.stigAt || 0)) openStigmata();
     updateFloor(dt);
     for (const e of enemies) if (!e.dead) updateEnemy(e, dt);
     enemies = enemies.filter((e) => !e.dead);
@@ -2382,6 +2434,7 @@ function render() {
   for (const l of room.lights) if (l.sconce) bigFlame(l.x, l.y, l.flick);
   if (game.scene === 'wound') { drawGates(); drawTelegraphs(); drawDrops(); drawCritters(cx, cy); }
   drawAbilitiesGround();
+  if (game.scene === 'wound') drawSkillsGround();
   for (const e of enemies) {
     if (e.spawnDelay > 0) continue;
     if (e.state === 'spawn') {
@@ -2401,11 +2454,12 @@ function render() {
   for (const g of ghosts) spr('saint', 'dash', g.i, g.x, g.y, { flip: g.face < 0, white: true, alpha: 0.45 * (1 - g.t / 0.2) });
   // Y-sorted actors and props.
   const th = thuriblePos();
-  const actors = [player, ...(game.scene === 'wound' ? [{ th: true, y: th.y + 12 }] : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0)), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, 90))];
+  const actors = [player, ...(player.xb ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0)), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, 90))];
   actors.sort((a, b) => a.y - b.y);
   for (const a of actors) {
     if (a === player) drawPlayer();
-    else if (a.th) drawThurible(thuriblePos());
+    else if (a.bow) drawFloatBow();
+    else if (a.th) drawThurible(thuriblePos(a.ci));
     else if (a.kind) drawProp(a);
     else if (a.npc) drawNpc(a);
     else drawEnemy(a);
@@ -2460,6 +2514,8 @@ function render() {
     for (const r of room.rooms) if (r.shrine && !r.shrine.used) glow(r.shrine.x, r.shrine.y - 26, 26, `rgba(${SHRINES[r.shrine.shrineKind].rgb},0.4)`);
   }
   drawAbilitiesGlow();
+  drawFloatBowGlow();
+  if (game.scene === 'wound') drawSkillsGlow();
   for (const b of bolts) {
     ctx.strokeStyle = b.crit ? 'rgba(255,209,85,0.8)' : 'rgba(255,244,176,0.55)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(b.x, b.y); for (const [x, y] of b.trail) ctx.lineTo(x, y); ctx.stroke();
@@ -2485,6 +2541,7 @@ function render() {
   renderHud();
   if (game.state === 'pause') overlay('PAUSED', 'TAP TO RESUME');
   if (game.state === 'inv') renderInventory();
+  if (game.state === 'stig') renderStigmata();
   if (game.state === 'dead') renderReceipt();
   if (game.state === 'tally') renderReceipt(true);
   if (game.state === 'dialog') renderDialog();
@@ -2839,6 +2896,7 @@ function renderHud() {
   if (penReady) { ctx.globalCompositeOperation = 'lighter'; glow(HUD.pen.x, HUD.pen.y, 28 + Math.sin(game.real * 6) * 4, 'rgba(224,32,46,0.6)'); ctx.globalCompositeOperation = 'source-over'; }
   button(HUD.pen, { active: penReady, ring: penReady ? 1 : p.penance / T.penance.charge, ringColor: penReady ? PAL.blood0 : PAL.blood2 });
   }
+  if (game.scene === 'wound') renderXpBar();
   if (game.execTarget) button(HUD.exec);
   if (game.interact) { HUD.act.icon = game.interact.icon; button(HUD.act); text(game.interact.label, HUD.act.x, HUD.act.y + HUD.act.r + 4, PAL.cloth0, { align: 'center' }); }
   // Bottom-left: joystick.
@@ -2858,6 +2916,12 @@ function overlay(title, sub) {
   ctx.fillStyle = 'rgba(11,7,16,0.72)'; ctx.fillRect(0, 0, W, H);
   text(title, W / 2, H / 2 - 22, PAL.gold1, { sc: 3, align: 'center' });
   text(sub, W / 2, H / 2 + 8, PAL.cloth1, { align: 'center' });
+  // Stigmata borne this run.
+  const ws = game.scene === 'wound' && game.run && game.run.wounds ? Object.entries(game.run.wounds) : [];
+  if (ws.length) {
+    text(`LEVEL ${game.run.level}  STIGMATA`, W / 2, H / 2 + 34, PAL.gold0, { align: 'center' });
+    ws.forEach(([id, n], i) => { const w = WOUNDS.find((q) => q.id === id); text(`${w.name} ${'I'.repeat(n)}`, W / 2 + (i % 2 ? 8 : -8), H / 2 + 50 + Math.floor(i / 2) * 11, WOUND_RARITY[w.r].col, { align: i % 2 ? 'left' : 'right', small: true }); });
+  }
 }
 
 const ODDS = ['3 TO 1', '5 TO 2', '7 TO 4', '2 TO 1', 'EVENS', '9 TO 2'];
@@ -2937,6 +3001,213 @@ function renderReceipt(survived = false) {
   else { line('YOUR TITHE HAS BEEN GRATEFULLY RECEIVED.', 113, PAL.crimson3); }
   if (best) line('FINEST FIND', 126, PAL.stone1);
   if (game.deathT > 1.4 && Math.floor(game.real * 2) % 2 === 0) line(survived ? 'TAP TO RETURN TO VAEL' : 'TAP TO WAKE IN THE VESTRY', 158);
+}
+
+// ---------------------------------------------------------- Stigmata ---
+// In-run growth (GDD: Stigmata). Kills give XP; each level offers three
+// Wounds and you keep one for the rest of the run. Some are plain boons,
+// some wake big miracles that fight on their own.
+const WOUNDS = [
+  { id: 'wrath', name: 'NAIL OF WRATH', r: 0, max: 5, icon: 'xbow', text: (n) => `+15% DAMAGE, ${n * 15}% IN ALL.` },
+  { id: 'quick', name: 'QUICKENED FAITH', r: 0, max: 5, icon: 'xbow', text: () => 'THE CROSSBOW FIRES 15% FASTER.' },
+  { id: 'split', name: 'SPLIT NAIL', r: 1, max: 3, icon: 'xbow', text: (n) => `FIRES ${n + 1} NAILS IN A SPREAD.` },
+  { id: 'pierce', name: 'PIERCING PRAYER', r: 0, max: 3, icon: 'xbow', text: () => 'NAILS PIERCE ONE MORE FOE.' },
+  { id: 'vigil', name: "VIGIL'S BLOOD", r: 0, max: 5, icon: 'globe', text: () => '+25 MAX HP, AND HEAL IT.' },
+  { id: 'swift', name: 'SWIFT SANDALS', r: 0, max: 3, icon: 'greaves', text: () => '+10% MOVE SPEED.' },
+  { id: 'ember', name: 'EMBER CENSER', r: 0, max: 3, icon: 'thurible', text: () => 'THE THURIBLE HITS 50% HARDER.' },
+  { id: 'censer2', name: 'SECOND CENSER', r: 1, max: 2, icon: 'thurible', text: () => 'ONE MORE THURIBLE SWINGS ROUND YOU.' },
+  { id: 'flask', name: 'DEEP FLASK', r: 0, max: 3, icon: 'flask', text: () => 'HOLY WATER POOLS 30% WIDER AND RETURNS SOONER.' },
+  { id: 'chains', name: 'LONGER CHAINS', r: 0, max: 3, icon: 'link', text: () => 'THE CHAIN BINDS 2 MORE AND HITS 40% HARDER.' },
+  { id: 'luck', name: "MARTYR'S LUCK", r: 0, max: 5, icon: 'seal', text: () => '+8% CRIT CHANCE.' },
+  { id: 'heavy', name: 'HEAVY NAILS', r: 1, max: 3, icon: 'seal', text: () => 'CRITICAL NAILS DEAL 50% MORE.' },
+  { id: 'fervent', name: 'FERVENT', r: 0, max: 3, icon: 'rosary', text: () => '+30% FERVOR GAIN.' },
+  { id: 'letting', name: 'BLOODLETTING', r: 1, max: 3, icon: 'relic', text: () => '+2 HP FOR EVERY KILL.' },
+  { id: 'crescent', name: 'CRESCENT OF MERCY', r: 2, max: 3, icon: 'crescent', text: (n) => `A GREAT CRESCENT SWEEPS AROUND YOU EVERY ${(3.2 - (n - 1) * 0.5).toFixed(1)} S.` },
+  { id: 'pillar', name: 'PILLARS OF LIGHT', r: 2, max: 3, icon: 'pillar', text: (n) => `LIGHT STRIKES ${n + 1} FOES FROM ABOVE EVERY 4 S.` },
+  { id: 'orbit', name: 'ORBITING NAILS', r: 1, max: 3, icon: 'orbit', text: (n) => `${2 + n * 2} HOLY NAILS CIRCLE YOU.` },
+  { id: 'arc', name: "SAINT'S LIGHTNING", r: 2, max: 3, icon: 'arc', text: (n) => `CRITS ARC TO ${n + 1} MORE FOES.` },
+  { id: 'nova', name: 'HOLY NOVA', r: 1, max: 3, icon: 'nova', text: () => 'DASHING RELEASES A RING OF LIGHT.' },
+  { id: 'choir', name: 'WRATH OF THE CHOIR', r: 2, max: 2, icon: 'choir', text: (n) => `EVERY ${14 - n * 3} KILLS A SIGIL BURSTS AROUND YOU.` },
+];
+const WOUND_RARITY = [{ name: 'WOUND', col: '#c2b6aa', w: 10 }, { name: 'DEEP WOUND', col: '#8ae0ff', w: 5 }, { name: 'STIGMA', col: '#ffd155', w: 2.2 }];
+const wound = (id) => (game.run && game.run.wounds && game.run.wounds[id]) || 0;
+const xpNeed = (lv) => 8 + lv * 6;
+function gainXp(n) {
+  const R = game.run; if (!R) return;
+  R.xp += n;
+  while (R.xp >= xpNeed(R.level)) { R.xp -= xpNeed(R.level); R.level++; R.pending++; levelBurst(); }
+}
+function levelBurst() {
+  skillFx.push({ kind: 'levelup', x: player.x, y: player.y, t: 0, max: 1.1 });
+  rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.6, r: 70, color: '255,209,85' });
+  nums.push({ x: player.x, y: player.y - 70, v: 'LEVEL UP', t: 0, color: PAL.gold0, crit: true });
+  game.flash = 0.1; sfx('shrine', { gap: 0.3 });
+  game.stigAt = game.real + 0.7;
+}
+function rollStigmata() {
+  const pool = WOUNDS.filter((w) => wound(w.id) < w.max), out = [];
+  for (let k = 0; k < 3 && pool.length; k++) {
+    let tot = 0; for (const w of pool) tot += WOUND_RARITY[w.r].w;
+    let roll = rng() * tot, i = 0; for (; i < pool.length - 1; i++) { roll -= WOUND_RARITY[pool[i].r].w; if (roll <= 0) break; }
+    out.push(pool.splice(i, 1)[0]);
+  }
+  return out;
+}
+function openStigmata() {
+  if (window.HS_AUTOSTIG) { game.stig = { cards: rollStigmata(), t: 1 }; pickStigma(0); return; } // tests
+  game.state = 'stig'; game.stig = { cards: rollStigmata(), t: 0 }; sfx('chest', { rate: 1.3, vol: 0.5 }); }
+function pickStigma(i) {
+  const c = game.stig.cards[i]; if (!c) return;
+  const R = game.run; R.wounds[c.id] = (R.wounds[c.id] || 0) + 1; R.pending--;
+  applyGear(); if (c.id === 'vigil') player.hp = player.maxHp;
+  rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 50, color: '138,224,255' });
+  sfx('perfect'); game.stig = null; game.state = 'play';
+}
+function stigLayout() {
+  const n = game.stig.cards.length, cw = Math.min(150, Math.floor((W - 60) / 3)), ch = 158, gap = 14, x0 = Math.round(W / 2 - (n * cw + (n - 1) * gap) / 2), y0 = Math.round(H / 2 - ch / 2 + 10);
+  return game.stig.cards.map((c, i) => ({ x: x0 + i * (cw + gap), y: y0, w: cw, h: ch }));
+}
+function stigTap(x, y) { if (game.stig.t < 0.35) return; stigLayout().forEach((r, i) => { if (inRect(r, x, y)) pickStigma(i); }); }
+// A small drawn emblem for a Wound: a sprite where one fits, light where it does not.
+function woundIcon(icon, x, y, t) {
+  const sp = { xbow: ['weapon', 'xbow', 0], globe: ['loot', 'globe', 0], thurible: ['fx', 'thurible', 0], flask: ['fx', 'flask', 0], link: ['fx', 'hook', 0] }[icon];
+  if (sp) { ctx.save(); ctx.translate(x, y); ctx.scale(2, 2); sprC(sp[0], sp[1], sp[2], 0, 0); ctx.restore(); return; }
+  if (ICON_OF.includes(icon)) { ctx.save(); ctx.translate(x, y); ctx.scale(2, 2); sprC('loot', 'item', ICON_OF.indexOf(icon), 0, 0); ctx.restore(); return; }
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  if (icon === 'crescent') { for (let k = 0; k < 6; k++) { ctx.strokeStyle = `rgba(${k < 2 ? '255,255,255' : '138,224,255'},${0.9 - k * 0.13})`; ctx.lineWidth = 5 - k * 0.6; ctx.beginPath(); ctx.arc(x, y, 22 - k, t * 3 + k * 0.12, t * 3 + 3.6 + k * 0.12); ctx.stroke(); } }
+  if (icon === 'pillar') { const g = ctx.createLinearGradient(0, y - 34, 0, y + 20); g.addColorStop(0, 'rgba(255,244,176,0)'); g.addColorStop(1, 'rgba(255,244,176,0.95)'); ctx.fillStyle = g; ctx.fillRect(x - 7, y - 34, 14, 54); ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(x - 2, y - 34, 4, 54); ctx.strokeStyle = 'rgba(255,209,85,0.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y + 20, 18, 6, 0, 0, Math.PI * 2); ctx.stroke(); }
+  if (icon === 'orbit') { for (let k = 0; k < 6; k++) { const a = t * 2 + k * Math.PI / 3; glow(x + Math.cos(a) * 20, y + Math.sin(a) * 20, 7, 'rgba(138,224,255,0.9)'); } glow(x, y, 8, 'rgba(255,209,85,0.6)'); }
+  if (icon === 'arc') { ctx.strokeStyle = 'rgba(160,230,255,0.95)'; ctx.lineWidth = 2; for (let k = 0; k < 3; k++) { ctx.beginPath(); let px = x - 24, py = y - 14 + k * 14; ctx.moveTo(px, py); for (let j = 0; j < 6; j++) { px += 8; py = y - 14 + k * 14 + Math.sin(t * 20 + j * 2 + k) * 6; ctx.lineTo(px, py); } ctx.stroke(); } }
+  if (icon === 'nova') { for (let k = 0; k < 3; k++) { const r = ((t * 30 + k * 10) % 30) + 4; ctx.strokeStyle = `rgba(255,244,176,${1 - r / 34})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.7, 0, 0, Math.PI * 2); ctx.stroke(); } }
+  if (icon === 'choir') { ctx.strokeStyle = 'rgba(255,209,85,0.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); for (let k = 0; k <= 5; k++) { const a = t + k * Math.PI * 4 / 5 - Math.PI / 2; ctx[k ? 'lineTo' : 'moveTo'](x + Math.cos(a) * 20, y + Math.sin(a) * 20); } ctx.stroke(); }
+  ctx.restore();
+}
+function renderStigmata() {
+  const S = game.stig, k = Math.min(1, S.t * 4);
+  ctx.fillStyle = `rgba(11,7,16,${0.75 * k})`; ctx.fillRect(0, 0, W, H);
+  text(`LEVEL ${game.run.level}`, W / 2, 20, PAL.gold0, { align: 'center', sc: 2 });
+  text('CHOOSE A WOUND TO BEAR', W / 2, 44, PAL.cloth1, { align: 'center' });
+  stigLayout().forEach((r, i) => {
+    const c = S.cards[i], R0 = WOUND_RARITY[c.r], rank = wound(c.id), lift = Math.round((1 - Math.min(1, S.t * 3 - i * 0.25)) * 30);
+    if (lift >= 30) return;
+    const y = r.y + Math.max(0, lift);
+    gild(r.x, y, r.w, r.h);
+    ctx.fillStyle = PAL.ink1; ctx.fillRect(r.x, y, r.w, r.h);
+    ctx.fillStyle = R0.col; ctx.globalAlpha = 0.18; ctx.fillRect(r.x, y, r.w, 64); ctx.globalAlpha = 1;
+    ctx.fillStyle = R0.col; ctx.fillRect(r.x, y + 64, r.w, 1);
+    if (c.r === 2) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(r.x + r.w / 2, y + 32, 40 + Math.sin(game.real * 4) * 4, 'rgba(255,209,85,0.25)'); ctx.restore(); }
+    woundIcon(c.icon, r.x + r.w / 2, y + 34, game.real);
+    let ty = y + 72;
+    for (const l of wrap(c.name, Math.floor((r.w - 10) / 7))) { text(l, r.x + r.w / 2, ty, R0.col, { align: 'center' }); ty += 12; }
+    text(R0.name, r.x + r.w / 2, ty, PAL.stone1, { align: 'center', small: true, outline: null }); ty += 13;
+    for (const l of wrap(c.text(rank + 1), Math.floor((r.w - 12) / 6))) { text(l, r.x + r.w / 2, ty, PAL.cloth0, { align: 'center', small: true, outline: null }); ty += 10; }
+    // Rank pips.
+    for (let q = 0; q < c.max; q++) { const px = r.x + r.w / 2 - c.max * 4 + q * 8; ctx.fillStyle = PAL.outline; ctx.fillRect(px, y + r.h - 14, 6, 6); ctx.fillStyle = q < rank ? R0.col : q === rank ? PAL.white : PAL.ink3; ctx.fillRect(px + 1, y + r.h - 13, 4, 4); }
+  });
+}
+
+// ------------------------------------------------------ big miracles ---
+let skillFx = [];
+function nearestFoes(x, y, n, R = 9999) { return enemies.filter((e) => !e.dead && e.state !== 'spawn' && !e.under && Math.hypot(e.x - x, e.y - y) < R).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y)).slice(0, n); }
+function updateSkills(dt) {
+  const p = player, S = game.skill || (game.skill = { crescent: 1, pillar: 2, orbA: 0, choirN: 0 });
+  // Crescent of Mercy.
+  const cr = wound('crescent');
+  if (cr && (S.crescent -= dt) <= 0) {
+    S.crescent = 3.2 - (cr - 1) * 0.5;
+    const R = 66 * WS * (1 + (cr - 1) * 0.15);
+    skillFx.push({ kind: 'crescent', x: p.x, y: p.y - 14, t: 0, max: 0.32, r: R, a: p.face > 0 ? -2.4 : 0.7, dir: p.face });
+    for (const e of nearestFoes(p.x, p.y, 99, R)) { const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, 14 + cr * 8, rng() < 0.2, dx / d, dy / d, 90); }
+    sfx('chain', { rate: 0.7, vol: 0.5 }); game.shake = Math.max(game.shake, 2);
+  }
+  // Pillars of Light.
+  const pl = wound('pillar');
+  if (pl && (S.pillar -= dt) <= 0) {
+    S.pillar = 4;
+    nearestFoes(p.x, p.y, pl + 1, 260).forEach((e, i) => skillFx.push({ kind: 'pillar', x: e.x, y: e.y, t: -i * 0.12, max: 0.7, hit: false, dmg: 26 + pl * 14 }));
+  }
+  // Orbiting nails.
+  const ob = wound('orbit');
+  if (ob) {
+    S.orbA += dt * 3.2;
+    const n = 2 + ob * 2, R = 38 * WS;
+    for (let k = 0; k < n; k++) {
+      const a = S.orbA + k * Math.PI * 2 / n, x = p.x + Math.cos(a) * R, y = p.y - 16 + Math.sin(a) * R * 0.6;
+      for (const e of enemies) if (!e.dead && e.state !== 'spawn' && (e.orbCd ?? 0) < game.time && Math.hypot(e.x - x, e.y - e.hy - y) < e.hr + 4) { e.orbCd = game.time + 0.4; hurtEnemy(e, 5 + ob * 2, false, Math.cos(a), Math.sin(a), 30, { status: true, color: PAL.holy1 }); }
+    }
+  }
+  for (const f of skillFx) {
+    f.t += dt;
+    if (f.kind === 'pillar' && !f.hit && f.t >= 0.22) {
+      f.hit = true; game.shake = Math.max(game.shake, 3); sfx('penance', { vol: 0.35, rate: 1.4, gap: 0.08 });
+      for (const e of nearestFoes(f.x, f.y, 99, 24 * WS)) hurtEnemy(e, f.dmg, rng() < 0.3, 0, 1, 40);
+      playFx('fx', 'impact', f.x, f.y - 10, 22, { big: true });
+    }
+    if (f.kind === 'nova' && !f.done) { const r = f.r * Math.min(1, f.t / f.max); for (const e of enemies) if (!e.dead && !f.hits.has(e) && Math.hypot(e.x - f.x, (e.y - f.y) / 0.7) < r) { f.hits.add(e); const dx = e.x - f.x, dy = e.y - f.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, f.dmg, false, dx / d, dy / d, 120); } }
+    if (f.kind === 'choir' && !f.hit && f.t >= 0.55) { f.hit = true; game.shake = 6; game.flash = 0.08; sfx('elite', { vol: 0.5, rate: 1.5, gap: 0.2 }); for (const e of nearestFoes(f.x, f.y, 99, f.r)) { const dx = e.x - f.x, dy = e.y - f.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, f.dmg, true, dx / d, dy / d, 140); } }
+  }
+  skillFx = skillFx.filter((f) => f.t < f.max);
+}
+// Called from kills, crits and dashes.
+function onWoundKill() { const ch = wound('choir'); if (!ch) return; const S = game.skill || (game.skill = { crescent: 1, pillar: 2, orbA: 0, choirN: 0 }); if (++S.choirN >= 14 - ch * 3) { S.choirN = 0; skillFx.push({ kind: 'choir', x: player.x, y: player.y, t: 0, max: 1, r: 92 * WS, dmg: 40 + ch * 20, hit: false }); } }
+function onWoundCrit(e) {
+  const ar = wound('arc'); if (!ar) return;
+  let from = e; const hit = new Set([e]);
+  for (let k = 0; k < ar + 1; k++) {
+    const nx = nearestFoes(from.x, from.y, 6, 90 * WS).find((q) => !hit.has(q)); if (!nx) break; hit.add(nx);
+    skillFx.push({ kind: 'arc', x0: from.x, y0: from.y - from.hy, x1: nx.x, y1: nx.y - nx.hy, t: 0, max: 0.18, seed: rng() * 99 });
+    hurtEnemy(nx, 8 + ar * 4, false, 0, 0, 20, { status: true, color: PAL.holy0 }); from = nx;
+  }
+}
+function onWoundDash() { const nv = wound('nova'); if (nv) skillFx.push({ kind: 'nova', x: player.x, y: player.y, t: 0, max: 0.3, r: 64 * WS, dmg: 10 + nv * 8, hits: new Set() }); }
+function drawSkillsGround() {
+  for (const f of skillFx) {
+    if (f.kind === 'pillar' && f.t < 0.3 && f.t > 0) { const k = f.t / 0.22; ctx.strokeStyle = `rgba(255,209,85,${0.8})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(f.x, f.y, 22 * Math.min(1, k), 9 * Math.min(1, k), 0, 0, Math.PI * 2); ctx.stroke(); }
+    if (f.kind === 'choir') { const k = Math.min(1, f.t / 0.5), a = f.t * 4; ctx.strokeStyle = `rgba(255,209,85,${f.hit ? 1 - (f.t - 0.55) / 0.45 : 0.9})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r * k, f.r * 0.6 * k, 0, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); for (let q = 0; q <= 5; q++) { const b = a + q * Math.PI * 4 / 5; ctx[q ? 'lineTo' : 'moveTo'](f.x + Math.cos(b) * f.r * 0.92 * k, f.y + Math.sin(b) * f.r * 0.55 * k); } ctx.stroke(); }
+  }
+}
+function drawSkillsGlow() {
+  const p = player;
+  const ob = wound('orbit');
+  if (ob && game.skill) { const n = 2 + ob * 2, R = 38 * WS; for (let k = 0; k < n; k++) { const a = game.skill.orbA + k * Math.PI * 2 / n, x = p.x + Math.cos(a) * R, y = p.y - 16 + Math.sin(a) * R * 0.6; glow(x, y, 9, 'rgba(138,224,255,0.55)'); ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(a + Math.PI / 2); const f = frameOf('fx', 'bolt', 0); ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -f.w / 2, -f.h / 2, f.w, f.h); ctx.restore(); } }
+  for (const f of skillFx) {
+    const k = f.t / f.max;
+    if (f.kind === 'crescent') {
+      // A great sweeping crescent: white edge, cyan body, a fading tail.
+      const sweep = Math.min(1, k * 1.6) * 4.6, fade = 1 - Math.max(0, (k - 0.55) / 0.45);
+      for (let q = 0; q < 9; q++) {
+        const r = f.r - q * 2.2, a1 = f.a + sweep * f.dir, a0 = a1 - f.dir * (1.6 - q * 0.12);
+        ctx.strokeStyle = `rgba(${q < 2 ? '255,255,255' : q < 5 ? '170,240,255' : '90,180,255'},${(0.95 - q * 0.09) * fade})`; ctx.lineWidth = q < 2 ? 4 : 3;
+        ctx.beginPath(); ctx.ellipse(f.x, f.y, r, r * 0.62, 0, Math.min(a0, a1), Math.max(a0, a1)); ctx.stroke();
+      }
+    }
+    if (f.kind === 'pillar' && f.t > 0) {
+      const strike = f.t >= 0.22, w = strike ? 18 * (1 - (f.t - 0.22) / 0.48) + 3 : 3, top = f.y - 260;
+      const g = ctx.createLinearGradient(0, top, 0, f.y); g.addColorStop(0, 'rgba(255,244,176,0)'); g.addColorStop(1, `rgba(255,244,176,${strike ? 0.95 : 0.35})`);
+      ctx.fillStyle = g; ctx.fillRect(Math.round(f.x - w / 2), top, Math.round(w), f.y - top);
+      if (strike) { ctx.fillStyle = `rgba(255,255,255,${0.9 * (1 - k)})`; ctx.fillRect(Math.round(f.x - w / 6), top, Math.max(1, Math.round(w / 3)), f.y - top); glow(f.x, f.y - 6, 34 * (1 - k) + 10, 'rgba(255,224,138,0.7)'); }
+    }
+    if (f.kind === 'arc') { ctx.strokeStyle = `rgba(170,235,255,${1 - k})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(f.x0, f.y0); for (let j = 1; j < 6; j++) { const t = j / 6, nx = -(f.y1 - f.y0), ny = f.x1 - f.x0, nl = Math.hypot(nx, ny) || 1, o = Math.sin(f.seed + j * 2.7 + game.real * 40) * 6; ctx.lineTo(f.x0 + (f.x1 - f.x0) * t + nx / nl * o, f.y0 + (f.y1 - f.y0) * t + ny / nl * o); } ctx.lineTo(f.x1, f.y1); ctx.stroke(); glow(f.x1, f.y1, 10, `rgba(170,235,255,${0.8 * (1 - k)})`); }
+    if (f.kind === 'nova') { const r = f.r * Math.min(1, k * 1.2); ctx.strokeStyle = `rgba(255,244,176,${0.9 * (1 - k)})`; ctx.lineWidth = 5 * (1 - k) + 1; ctx.beginPath(); ctx.ellipse(f.x, f.y - 6, r, r * 0.65, 0, 0, Math.PI * 2); ctx.stroke(); }
+    if (f.kind === 'choir') { if (f.hit) glow(f.x, f.y - 10, f.r * (0.6 + (f.t - 0.55)), `rgba(255,209,85,${0.6 * (1 - (f.t - 0.55) / 0.45)})`); else glow(f.x, f.y - 10, 20 + f.t * 30, 'rgba(255,209,85,0.25)'); }
+    if (f.kind === 'levelup') {
+      const w = 26 * (1 - k) + 4, top = f.y - 220, g = ctx.createLinearGradient(0, top, 0, f.y);
+      g.addColorStop(0, 'rgba(255,209,85,0)'); g.addColorStop(1, `rgba(255,209,85,${0.8 * (1 - k)})`);
+      ctx.fillStyle = g; ctx.fillRect(Math.round(player.x - w / 2), top, Math.round(w), player.y - top);
+      glow(player.x, player.y - 20, 40 * (1 - k) + 12, `rgba(255,244,176,${0.6 * (1 - k)})`);
+    }
+  }
+}
+// The EXP bar along the bottom edge, between the joystick and the buttons.
+function renderXpBar() {
+  const R = game.run; if (!R) return;
+  const x0 = Math.round(W * 0.27), x1 = Math.round(W * 0.6), y = H - 13, k = R.xp / xpNeed(R.level);
+  text(`LV ${R.level}`, x0 - 6, y - 2, PAL.gold0, { align: 'right' });
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x0 - 1, y - 1, x1 - x0 + 2, 6);
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(x0, y, x1 - x0, 4);
+  ctx.fillStyle = PAL.gold1; ctx.fillRect(x0, y, Math.round((x1 - x0) * k), 4);
+  ctx.fillStyle = PAL.gold0; ctx.fillRect(x0, y, Math.round((x1 - x0) * k), 1);
+  if (R.pending > 0 && game.state === 'play') text('LEVEL UP!', (x0 + x1) / 2, y - 12, Math.floor(game.real * 4) % 2 ? PAL.gold0 : PAL.white, { align: 'center' });
 }
 
 // ------------------------------------------------------- the inventory ---
@@ -3067,6 +3338,7 @@ function onTap(x, y) {
     }
     case 'pause': sfx('tap'); game.state = 'play'; return true;
     case 'inv': invTap(x, y); return true;
+    case 'stig': stigTap(x, y); return true;
     case 'loading': return true;
     case 'dialog': {
       const d = game.dialog;
@@ -3104,7 +3376,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { game, T, hud: HUD, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; } };
+window.HS = { game, T, hud: HUD, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; } };
 </script>
 </body>
 </html>

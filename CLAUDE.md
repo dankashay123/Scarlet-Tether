@@ -12,7 +12,7 @@ next, and the owner's preferences.
 | `assets/sprites/*.png`, `sprites.json` | Generated sheets (committed). Never edit them by hand |
 | `tools/sprites.mjs` | Builds every sheet. Older hand-drawn art lives here; sculpted models override it by anim name |
 | `tools/sdf.mjs` | The sculpted pixel-art renderer (SDF shapes, smooth union, lighting, palette banding, outlines) |
-| `tools/models/*.mjs` | Model sets: `base` (materials + Saint model), `saint`, `common`, `rare`, `elite`, `townfolk`, `town`, `dungeon`, `floor` (flagstones, water), `vfx` (effects, icons, loot, HUD sound icon), `props` (3/4-view furniture, pilasters, floor bits, HUD buttons) |
+| `tools/models/*.mjs` | Model sets: `base` (materials + Saint model), `saint`, `common`, `rare`, `elite`, `townfolk`, `town`, `dungeon`, `floor` (flagstones, water), `vfx` (effects, icons, loot, HUD sound icon), `props` (3/4-view furniture, pilasters, floor bits, HUD buttons), `weapon` (the floating crossbow, 16 angles) |
 | `assets/audio/*.mp3` | Sound effects, music and ambience (committed). Rebuilt by `tools/build-audio.sh <src>` from the packs in `docs/CREDITS.md` |
 | `docs/CREDITS.md` | Every asset source and licence. Add to it when you add an asset |
 | `docs/ART_COMPARISON.md` | Otherworld Legends vs our art: the gap list |
@@ -36,6 +36,7 @@ node tools/tests/town.cjs <outDir>    # tour of Vael's districts
 node tools/tests/e2e.cjs <outDir>     # menu → town → tutorial → dungeon → death
 node tools/tests/maps.cjs [n]         # builds n floors; every room reachable, spawn clear (no screenshots)
 node tools/tests/inv.cjs <outDir>     # bag, wear, sell, loot labels
+node tools/tests/stig.cjs <outDir>    # level-up cards and every Stigmata skill at once
 node tools/tests/err.cjs              # prints page errors and state
 node tools/sprites.mjs --audit        # lists any animation still drawn by the old hand-drawn code
 ```

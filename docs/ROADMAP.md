@@ -10,8 +10,8 @@ Goal (GDD): one Stratum, a 30-minute run that ends in Martyrdom and a first Vigi
       yanks them together, ignores shields); Flagellant's Rain (charged by Fervor, scourges fall across the view)
 - [ ] Stratum 1: monsters, procedural rooms and shrines done; ability gate and the Bellwright still to come
 - [ ] Fervor tiers, executions, dismemberment gore — first pass in (tiers, edge tint, elite executions, gibs, floor stains); Inquisitor still to do
-- [ ] Stigmata level-ups with 20 Wounds
-- [ ] Vestments with affixes, salvage and re-consecrate
+- [x] Stigmata level-ups with 20 Wounds (no reroll yet)
+- [x] Vestments with affixes and salvage (re-consecrate still to do)
 - [ ] The Bellwright boss
 - [ ] Death and the Shade (Choir receipt screen exists)
 - [ ] Walkable town: Vestry, Forge, Pell's Stall, the Gilded Lamb — square, building fronts, five townsfolk with

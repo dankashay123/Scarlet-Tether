@@ -36,3 +36,14 @@ match; the gaps are in surfaces, light and finish.
    bloom around torches, candles, bolts and impacts.
 4. Effects and item icons remodelled with the SDF renderer at the new size.
 5. A larger, bolder UI font.
+
+## Pixel Hunter Idle: Retro RPG (round 3)
+
+Studied from its App Store screenshots and YouTube thumbnails (ZillionGames).
+
+| Area | Pixel Hunter Idle | What we took |
+|---|---|---|
+| Characters | Very chibi heroes (head about half the body), bold flat colours, a red-hooded hunter like ours. | Kept our taller Saint (the owner asked for less chibi earlier); borrowed the readable silhouette and glowing weapon. |
+| Weapons | Weapons glow and leave magic trails. | The Nail Crossbow now floats beside the Saint, turns to aim, recoils and flashes, held by a gold sigil and a thread of light from his raised palm. |
+| Combat look | Hordes, screen-filling skill effects: giant white and cyan crescent slashes, pillars of light, magic circles, lightning. Smooth glowing effects over pixel art. | Stigmata skills: Crescent of Mercy, Pillars of Light, Orbiting Nails, Saint's Lightning, Holy Nova, Wrath of the Choir. |
+| Growth | EXP bar and levels, rapid "stormy growth", skill icons. | EXP bar, level-up light pillar, pick 1 of 3 Stigmata cards (20 Wounds). |

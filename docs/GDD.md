@@ -526,8 +526,8 @@ ends in Martyrdom and a first Vigil. Progress is tracked in `docs/ROADMAP.md`.
 - [ ] Nail Crossbow, Thurible of Embers, one Penance, two Miracles
 - [ ] Stratum 1: three enemy types plus an elite, procedural rooms, one shrine, one ability gate
 - [ ] Fervor tiers, executions, dismemberment gore
-- [ ] Stigmata level-ups with 20 Wounds
-- [ ] Vestments with affixes, salvage and re-consecrate
+- [x] Stigmata level-ups with 20 Wounds (no reroll yet)
+- [x] Vestments with affixes and salvage (re-consecrate still to do)
 - [ ] The Bellwright boss
 - [ ] Death and the Shade
 - [ ] Walkable town: Vestry, Forge, Pell's Stall, the Gilded Lamb

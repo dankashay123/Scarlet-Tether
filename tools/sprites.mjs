@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { RGB, IDX, PALETTE, FINE, ramp } from './palette.mjs';
 // v5: sculpted models (tools/sdf.mjs) replace hand-drawn animations by name.
 const OVR = {};
-for (const m of ['saint', 'common', 'rare', 'elite', 'town', 'townfolk', 'dungeon', 'floor', 'vfx', 'props']) {
+for (const m of ['saint', 'common', 'rare', 'elite', 'town', 'townfolk', 'dungeon', 'floor', 'vfx', 'props', 'weapon']) {
   let set;
   try { set = (await import(`./models/${m}.mjs`)).default; } catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') console.warn(`models/${m}.mjs failed to load: ${e.message}`); continue; }
   for (const [sh, anims] of Object.entries(set)) OVR[sh] = { ...OVR[sh], ...anims };
