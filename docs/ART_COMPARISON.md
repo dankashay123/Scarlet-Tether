@@ -7,8 +7,10 @@ Reddit posts. The reference images stay out of the repo (they are not ours).
 Scale note: OWL draws its art at 4x on a 1080p screen, so its view is about
 270 art pixels tall. Heroes are about 40 px tall, item icons about 26 px.
 Our view was 360 px tall with a 52 px Saint (15% of the screen). Round 5
-moved to a 430 px view so the Saint is about 12%, matching OWL's camera
-distance. Round 6 made rooms near-square, as OWL's are.
+moved to a 430 px view based on zoomed Steam promo shots. Real phone
+captures show the OWL hero at about 16.5% of screen height, so round 6
+set the view to 305 px (Saint 50 px head to feet) and sized rooms to
+just under a screen wide and a bit over a screen tall, as OWL's are.
 
 ## Differences (before this round)
 
@@ -55,7 +57,7 @@ Studied from 18 wiki phone captures and 8 Steam screenshots.
 
 | Area | Otherworld Legends | What we do now |
 |---|---|---|
-| Room shape | Near-square rectangles, under a screen wide | 40–50 × 28–34 tiles |
+| Room shape | Under a screen wide, a bit over a screen tall | 32–40 × 22–28 tiles at a 305 px view |
 | Floor | 70–85% open, one mirrored feature | One plan per room: empty, 2×2 pillars, twin objects, centre feature, side pools, south-edge row, corner clutter |
 | Back wall | Steady mirrored rhythm of banners, windows, statues on plinths, torch stands | 7-tile bays: pilaster, torch stand, statue, window or banner |
 | South edge | No wall; floor ends in a lip over black | Stone ledge over black |

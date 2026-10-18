@@ -7,7 +7,7 @@ Last updated 2026-10-18, after round 6 (clean OWL-style maps, auto equip, bulk s
 Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page errors in any test.
 
 - **Start:** a start menu, then the town of Vael. A dismissible 11-step tutorial (SKIP TUTORIAL) runs from the town into the first fight.
-- **The descent:** a floor of 9 near-square rooms on a 3×3 grid (40–50 × 28–34 tiles).
+- **The descent:** a floor of 9 rooms on a 3×3 grid (32–40 × 22–28 tiles).
   - Gates lock behind you and waves spawn.
   - Room types: vestibule, crypts, a reliquary with an elite, a shrine, a treasury and the Warden's chamber.
   - Clearing the Warden's chamber wakes the Waystone home, which leads to the tally screen.
@@ -15,12 +15,12 @@ Playable on iPhone landscape (or desktop with keys) at 55–60 fps, with no page
 - **Monsters:** 30 of them (10 common; 10 rare, which glow blue; 10 elite, which glow gold), plus the Collection Imp. All attacks are telegraphed. 19 affixes, elite names and a nameplate bar.
 - **Loot:** gold, health orbs, items in 5 rarities, shrines, chests, breakables and a Carnage bonus. Gold saves to localStorage under the key `hollow-saint`.
 - **Vael:** a long twilight street with six districts, 13 talking townsfolk, walkers, kids, crows, fog, ash and lightning.
+- **Camera (round 6b):** the view is 305 px tall, so the Saint (50 px head to feet) is about 16.5% of the screen height, measured against the hero in real Otherworld Legends phone captures (round 5's 430 px was based on zoomed Steam promo shots and was too far out). Rooms shrank to 32–40 × 22–28 tiles (`GRID` cells 46×36) to keep OWL's proportions: a room is just under a screen wide and a bit over a screen tall. The descent panel and town map were compacted to fit; the town camera offset is now `H * 0.26`.
 - **Round 6:**
   - Maps follow the Otherworld Legends recipe (studied from wiki and Steam screenshots): most of the floor stays open, each combat room gets one mirrored plan (`r.plan`: empty, grid4, twin, center, sidepools, edgerow, corners, pews), clutter sits in corners, and nothing hangs in mid air (the wall chains are gone).
   - Back walls follow a 7-tile rhythm mirrored about the room centre (`bay()`): pilaster, torch stand, statue on a plinth, window or banner.
   - New pale marble pillar (`hall.pillar` in `tools/models/props.mjs`), short and narrow so it never reads as a wall. The old 76 px column is unused.
   - The south side of a room has no wall: the floor ends in a stone ledge over black (`bakeWallEdges`).
-  - Rooms are near-square (40–50 × 28–34 tiles, `GRID` cells 56×42).
   - Bag: AUTO EQUIP wears the best piece per slot by `itemScore`; SELL MANY offers four rules (worse than worn, common and blessed, all but hallowed and set, everything) with counts and gold shown first.
   - Town props and townsfolk no longer block the Saint.
   - Names: every Blasphemous or Diablo term is gone from the game and docs (see CLAUDE.md, "Names").

@@ -541,11 +541,11 @@ ends in Martyrdom and a first Vigil. Progress is tracked in `docs/ROADMAP.md`.
 - **Unlocks:** Zealot after one finished descent; Martyr and Saint after finishing a descent on the tier before.
 - **Descent panel:** shown at the cathedral doors before every descent (skipped during the tutorial).
 - **Town sites still to build:** Pilgrim Road (Stratum II), Pell's curio stall, plush stall (cosmetics), bounty board, scrying pool wagers, the Forge (reforge and temper), the Bleeding Vigil (Vigil Trials), Martyrdom (one life, double rewards), the Canonry (Canonization). Each shows what opens it.
-- **Rooms:** near-square (40–50 × 28–34 tiles), 9 per floor, waves scale with room area. Layouts follow mirrored plans with open floors.
+- **Rooms:** 32–40 × 22–28 tiles (just under a screen wide, a bit over a screen tall), 9 per floor, waves scale with room area. Layouts follow mirrored plans with open floors.
 
 ## Art v5: sculpted pixel art at 360 px
 
-- The game renders about 430 px tall (`T.viewH`, was 360 before round 5). Every world distance is
+- The game renders about 305 px tall (`T.viewH`), matching the Otherworld Legends phone camera (the Saint is ~16.5% of screen height). Every world distance is
   scaled by `WS = 1.3` so the larger sprites keep the same feel.
 - Characters, monsters, props and buildings are modelled as signed-distance
   shapes (`tools/sdf.mjs`) that melt together with smooth unions, so no body
