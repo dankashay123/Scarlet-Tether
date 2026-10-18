@@ -14,7 +14,10 @@ the Wound again and again, for a city that profits from your suffering.
 | `index.html` | The whole game: one file, Canvas 2D, no build step |
 | `assets/sprites/` | Generated PNG sheets + JSON frame maps (committed) |
 | `tools/palette.mjs` | The master palette; every sprite pixel must be on it |
-| `tools/sprites.mjs` | Draws every sprite in code and exports the sheets |
+| `tools/sprites.mjs` | Builds and exports every sprite sheet |
+| `tools/sdf.mjs`, `tools/models/` | Sculpted pixel-art renderer and the model sets (see `docs/GDD.md` → Art v5) |
+| `tools/tests/` | Playwright checks (see `CLAUDE.md`) |
+| `docs/HANDOFF.md` | Current state and next steps |
 
 ## Run it
 
