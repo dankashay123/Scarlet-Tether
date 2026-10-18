@@ -9,7 +9,7 @@ const S = process.argv[2];
   const errs = []; p.on('pageerror', (e) => errs.push(String(e.stack || e).slice(0, 400)));
   await p.goto('http://localhost:8123/?town&fps'); await p.waitForTimeout(1200);
   for (let i = 0; i < 12 && await p.evaluate(() => HS.game.state === 'dialog'); i++) { await p.mouse.click(400, 200); await p.waitForTimeout(120); }
-  await p.evaluate(() => { HS.tut.on = false; HS.SAVE.descents = 1; HS.SAVE.eliteKills = 4; HS.player.x = 1600; HS.player.y = HS.room.top * 16 + 60; });
+  await p.evaluate(() => { HS.tut.on = false; HS.SAVE.descents = 1; HS.SAVE.eliteKills = 4; HS.player.x = HS.townX(1600); HS.player.y = HS.room.top * 16 + 60; });
   await p.waitForTimeout(800); await p.screenshot({ path: `${S}/shots/t1-minimap.png` });
   // Tap the minimap to open the full map.
   const box = await p.evaluate(() => { const r = document.getElementById('screen').getBoundingClientRect(); return { l: r.left, t: r.top, k: r.width / HS.W, m: HS.hud.minimap }; });
@@ -18,13 +18,13 @@ const S = process.argv[2];
   await p.screenshot({ path: `${S}/shots/t2-map.png` });
   await p.keyboard.press('Escape');
   // Walk to the Vigil and use it.
-  await p.evaluate(() => { HS.player.x = 1664; HS.player.y = HS.room.top * 16 + 60; }); await p.waitForTimeout(300);
+  await p.evaluate(() => { HS.player.x = HS.townX(1664); HS.player.y = HS.room.top * 16 + 60; }); await p.waitForTimeout(300);
   await p.keyboard.press('KeyE'); await p.waitForTimeout(300);
   console.log('site', await p.evaluate(() => HS.game.state + ' ' + (HS.game.site && HS.game.site.s.id)));
   await p.screenshot({ path: `${S}/shots/t3-site.png` });
   await p.keyboard.press('Escape');
   // The descent panel.
-  await p.evaluate(() => { HS.player.x = 2340; HS.player.y = HS.room.top * 16 + 14; }); await p.waitForTimeout(300);
+  await p.evaluate(() => { HS.player.x = HS.townX(2340); HS.player.y = HS.room.top * 16 + 14; }); await p.waitForTimeout(300);
   await p.keyboard.press('KeyE'); await p.waitForTimeout(300);
   console.log('descent', await p.evaluate(() => HS.game.state));
   await p.screenshot({ path: `${S}/shots/t4-descent0.png` });

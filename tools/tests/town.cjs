@@ -10,7 +10,7 @@ const S = process.argv[2];
   for (let i = 0; i < 12 && await p.evaluate(() => HS.game.state === 'dialog'); i++) { await p.mouse.click(400, 200); await p.waitForTimeout(120); } await p.evaluate(() => { HS.tut.on = false; });
   const stops = [2340, 2030, 1690, 1365, 990, 620, 230];
   for (const [i, x] of stops.entries()) {
-    await p.evaluate((x) => { HS.player.x = x; HS.player.y = HS.room.top * 16 + 90; }, x);
+    await p.evaluate((x) => { HS.player.x = HS.townX(x); HS.player.y = HS.room.top * 16 + 90; }, x);
     await p.waitForTimeout(1600);
     await p.screenshot({ path: `${S}/shots/v${i}.png` });
   }

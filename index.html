@@ -990,7 +990,19 @@ const NPC_INFO = {
 
 // A long street in permanent twilight: gate, market, tavern square, forge,
 // graveyard and the cathedral, with townsfolk, crows, smoke, fog and ash.
-const DISTRICTS = [[0, "THE PILGRIMS' GATE"], [429, 'THE CURIO MARKET'], [832, 'THE GILDED LAMB'], [1118, 'THE EMBER FORGE'], [1495, 'THE QUIET ACRE'], [2080, 'CATHEDRAL OF THE WOUND']];
+// Vael is laid out in "plan" coordinates (the original, longer street) and
+// squeezed onto the real street by townX/townY: landmarks keep their true
+// size, the gaps between them shrink, and the street is shallower.
+const TOWN_KNOTS = [[0, 0], [180, 180], [500, 380], [742, 622], [842, 692], [978, 828], [1129, 919], [1243, 1033], [1607, 1237], [1721, 1351], [2163, 1613], [2517, 1967], [3120, 2150]];
+function townX(x) {
+  const K = TOWN_KNOTS; if (x <= 0) return x;
+  for (let i = 1; i < K.length; i++) if (x <= K[i][0]) { const [a, b] = K[i - 1], [c, d] = K[i]; return Math.round(b + (x - a) / (c - a) * (d - b)); }
+  return Math.round(x - K[K.length - 1][0] + K[K.length - 1][1]);
+}
+// Depth below the kerb line: the first 40 px stay, the rest is squeezed.
+const townY = (dy) => Math.round(dy <= 40 ? dy : 40 + (dy - 40) * 0.6);
+const CATHEDRAL_X = townX(2340);
+const DISTRICTS = [[0, "THE PILGRIMS' GATE"], [429, 'THE CURIO MARKET'], [832, 'THE GILDED LAMB'], [1118, 'THE EMBER FORGE'], [1495, 'THE QUIET ACRE'], [2080, 'CATHEDRAL OF THE WOUND']].map(([x, n]) => [townX(x), n]);
 const BARKS = {
   peasant: ['THEY SAY THE LAST SAINT FELL TO A STAIRCASE.', 'TWO COPPERS ON THE BELLWRIGHT.', 'MY BOY WANTS TO BE A SAINT. I HIT HIM.', 'THE DEAD GOT UP AGAIN IN THE BAKERY.', 'BLESSED BE THE DESCENT. PASS THE BREAD.'],
   peasant2: ['PRAY FOR US, SAINT. OR DON\'T. IT\'S ALL THE SAME.', 'THE POOL SHOWED HIM CRYING LAST YEAR. SUCH A GOOD SHOW.', 'MIND THE CART, IT\'S FULL OF THE LAST ONES.', 'DID YOU HEAR THE BELLS? NEITHER DID I.'],
@@ -1013,7 +1025,7 @@ Object.assign(NPC_INFO, {
 });
 
 function makeTown() {
-  const w = 195, h = 35, TOP = 17, base = TOP * TILE;
+  const w = Math.ceil(townX(3120) / TILE), h = 30, TOP = 17, base = TOP * TILE;
   const solid = [];
   for (let y = 0; y < h; y++) { solid.push([]); for (let x = 0; x < w; x++) solid[y].push(y < TOP || y >= h - 1 || x < 1 || x >= w - 1); }
   const isSolid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || solid[y][x];
@@ -1039,7 +1051,7 @@ function makeTown() {
   for (let x = 0; x < w; x++) rc.drawImage(IMG.hall, lw.x, lw.y, 16, 16, x * TILE, (h - 1) * TILE, 16, 16);
   // Building fronts along the north side, packed with houses between landmarks.
   const front = (sheetName, anim, cx, i = 0) => { const f = frameOf(sheetName, anim, i); rc.drawImage(IMG[sheetName], f.x, f.y, f.w, f.h, Math.round(cx - f.w / 2), base - f.h + 2, f.w, f.h); return { l: cx - f.w / 2, r: cx + f.w / 2, f }; };
-  const landmarks = [['town2', 'gate', 91], ['town', 'stall', 588], ['town2', 'plush', 692], ['town', 'tavern', 910], ['town', 'forge', 1186], ['town2', 'mausoleum', 1664], ['town2', 'cathedral', 2340]];
+  const landmarks = [['town2', 'gate', 91], ['town', 'stall', 588], ['town2', 'plush', 692], ['town', 'tavern', 910], ['town', 'forge', 1186], ['town2', 'mausoleum', 1664], ['town2', 'cathedral', 2340]].map(([a, b, x]) => [a, b, townX(x)]);
   const chimney = (x, y) => smoke.push({ x, y, t: rng() * 2 });
   let cursor = 182, hv = 0;
   const fillTo = (end) => { while (cursor + 83 <= end) { const v = hv++ % 6; const ruinHere = hv % 7 === 3; const fr = front('town2', ruinHere ? 'ruin' : 'tall', cursor + 44, ruinHere ? 0 : v); if (!ruinHere) { chimney(cursor + 68, base - 166); if (rng() < 0.6) lights.push({ x: cursor + 18, y: base - 39, r: 44, c: 'ember', a: 0.55, flick: rng() * 9 }); } cursor += 88; } };
@@ -1057,7 +1069,10 @@ function makeTown() {
   const bottom = (h - 1) * TILE;
   for (let x = 20; x < w * TILE; x += 26 + rng() * 40) { decal('weeds', x, base + 10 + rng() * 6, Math.floor(rng() * 3)); decal('weeds', x + rng() * 20, bottom - 8 - rng() * 6, Math.floor(rng() * 3)); }
   for (let k = 0; k < 70; k++) decal('leaves', rng() * w * TILE, base + 30 + rng() * (bottom - base - 40), Math.floor(rng() * 3));
-  for (let x = 140; x < w * TILE; x += 260 + rng() * 120) decal('grate', x, base + 150 + rng() * 40);
+  for (let x = 140; x < w * TILE; x += 260 + rng() * 120) decal('grate', x, base + townY(150 + rng() * 40));
+  // Everything placed from here on is written in plan coordinates; see the
+  // squeeze at the end of makeTown.
+  const mark = { props: props.length, lights: lights.length, smoke: smoke.length };
   chimney(1186 + 34, base - 104);
   // District dressing.
   const lamp = (x, y) => { place('lamp', x, y, 1, { sheet: 'town', anim: 'lamp', ph: rng() * 9 }); lights.push({ x, y: Math.floor(y / TILE) * TILE - 50, r: 104, c: 'ember', a: 0.95, flick: rng() * 9 }); };
@@ -1069,7 +1084,7 @@ function makeTown() {
   place('stocks', 390, base + 78, 2);
   // The market.
   for (const [x, y] of [[494, 325], [780, 341]]) place('cart', x, y, 3);
-  place('board', 793, base + 34, 1);
+  place('board', 880, base + 34, 1);
   for (const [x, y] of [[533, 242], [554, 242], [754, 247], [645, 390]]) place(rng() < 0.5 ? 'barrel' : 'crate', x, y, 1, { sheet: 'town', anim: rng() < 0.5 ? 'barrel' : 'crate' });
   lamp(455, base + 156); lamp(832, base + 156);
   // The Gilded Lamb and the scrying pool.
@@ -1138,7 +1153,20 @@ function makeTown() {
   // Children playing Saint and Bellwright round the well.
   person('town2', 'kid', 1378, base + 156, { circle: { cx: 1378, cy: base + 143, r: 44, a: 0, speed: 1.6 }, bark: 'kid' });
   person('town2', 'kid2', 1378, base + 156, { circle: { cx: 1378, cy: base + 143, r: 44, a: 1.2, speed: 1.6 }, bark: 'kid' });
-  interact.push({ x: 2340, y: base + 8, r: 36, label: 'DESCEND', icon: 'descend', door: true, use: () => startDescent() });
+  interact.push({ x: CATHEDRAL_X, y: base + 8, r: 36, label: 'DESCEND', icon: 'descend', door: true, use: () => startDescent() });
+  // Squeeze plan coordinates onto the real street.
+  const px = (o, kx = 'x', ky = 'y') => { o[kx] = townX(o[kx]); if (ky && o[ky] !== undefined) o[ky] = base + townY(o[ky] - base); };
+  for (const p of props.slice(mark.props)) { px(p); p.y = (Math.floor(p.y / TILE) + 1) * TILE - 1; }
+  for (const l of lights.slice(mark.lights)) px(l);
+  for (const m of smoke.slice(mark.smoke)) px(m, 'x', null);
+  for (const c of crows) { px(c); px(c, 'hx', 'hy'); }
+  for (const c of room_candles) px(c, 'x', null);
+  for (const n of npcs) {
+    px(n);
+    if (n.walk) { n.walk.x0 = townX(n.walk.x0); n.walk.x1 = townX(n.walk.x1); }
+    if (n.circle) { px(n.circle, 'cx', 'cy'); n.circle.r *= 0.75; }
+  }
+  for (const it of interact) if (it.who) { it.x = it.who.x; it.y = it.who.y; }
   for (const S of SITES) interact.push({ x: S.x, y: base + S.dy, r: 26, label: siteDone(S) ? 'LOOK' : 'LOCKED', icon: 'lock', site: S, use: () => openSite(S) });
   // Foreground silhouettes (parallax, drawn over everything).
   for (let x = 0; x < w * TILE * 1.25 + 520; x += 78 + rng() * 156) fg.push({ x, kind: pick(['tree', 'fence', 'fence', 'tomb', 'gallows', 'cart']), frame: Math.floor(rng() * 3) });
@@ -1157,13 +1185,14 @@ const SITES = [
   { id: 'road', name: 'THE PILGRIM ROAD', badge: 'gate', x: 91, dy: 30, what: 'STRATUM II: THE DROWNED NAVE. A NEW FLOOR WITH NEW MONSTERS, BOSSES AND TREASURE.', need: 'FINISH A DESCENT ON SAINT', prog: () => [(SAVE.cleared ?? -1) >= 3 ? 1 : 0, 1] },
   { id: 'stall', name: "PELL'S CURIO STALL", badge: 'market', x: 540, dy: 34, what: 'BUY GEAR WITH GOLD. THE STOCK CHANGES AFTER EVERY DESCENT.', need: 'FINISH 1 DESCENT', prog: () => [SAVE.descents || 0, 1] },
   { id: 'plush', name: 'THE PLUSH STALL', badge: 'plush', x: 740, dy: 34, what: "NEW VESTMENT COLOURS AND HALOS FOR THE SAINT. LOOKS ONLY.", need: 'FALL 5 TIMES', prog: () => [SAVE.deaths || 0, 5] },
-  { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 793, dy: 64, what: 'HUNT NAMED ELITES FOR GOLD AND A GUARANTEED CONSECRATED PIECE OF GEAR.', need: 'SLAY 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
+  { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 880, dy: 64, what: 'HUNT NAMED ELITES FOR GOLD AND A GUARANTEED CONSECRATED PIECE OF GEAR.', need: 'SLAY 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
   { id: 'pool', name: 'THE SCRYING POOL', badge: 'pool', x: 1060, dy: 110, what: 'WAGERS. BET YOUR GOLD ON HOW DEEP YOU GET. THE CROWD PAYS OUT.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
   { id: 'forge', name: 'THE EMBER FORGE', badge: 'forge', x: 1250, dy: 50, what: 'REFORGE A PIECE OF GEAR TO REROLL ONE STAT, OR TEMPER IT TO RAISE ITS RARITY.', need: 'FINISH A DESCENT ON ZEALOT', prog: () => [(SAVE.cleared ?? -1) >= 1 ? 1 : 0, 1] },
   { id: 'vigil', name: 'THE BLEEDING VIGIL', badge: 'rift', x: 1664, dy: 60, what: 'VIGIL TRIALS. ONE ENDLESS, TIMED DESCENT THAT GROWS HARDER WITH EVERY LEVEL. BEAT THE CANDLE BEFORE IT BURNS OUT FOR BETTER GEAR.', need: 'FINISH A DESCENT ON MARTYR', prog: () => [(SAVE.cleared ?? -1) >= 2 ? 1 : 0, 1] },
   { id: 'martyr', name: 'MARTYRDOM', badge: 'saint', x: 2215, dy: 70, what: 'ONE LIFE. IF YOU FALL, EVERYTHING YOU CARRY IS LOST, BUT GOLD AND GEAR ARE DOUBLED.', need: 'FINISH 10 DESCENTS', prog: () => [SAVE.descents || 0, 10] },
   { id: 'canonry', name: 'THE CANONRY', badge: 'relic', x: 2470, dy: 40, what: 'CANONIZATION. SPEND ASH FROM YOUR DEATHS ON PERMANENT VIRTUES: HEALTH, DAMAGE, LUCK.', need: 'REACH LEVEL 20 IN ONE DESCENT', prog: () => [SAVE.bestLevel || 1, 20] },
 ];
+for (const S of SITES) { S.x = townX(S.x); S.dy = townY(S.dy); }
 const siteDone = (s) => { const [a, b] = s.prog(); return a >= b; };
 function openSite(s) { game.site = { s, t: 0 }; game.state = 'site'; sfx('tap'); }
 function siteLayout() { const pw = Math.min(330, W - 16), ph = 172, x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2); return { pw, ph, x0, y0, ok: { x: x0 + pw / 2 - 50, y: y0 + ph - 32, w: 100, h: 22 } }; }
@@ -1318,7 +1347,7 @@ function drawNpc(n) {
 function enterTown(wake = true) {
   makeTown();
   if (game.run) game.run.wounds = {}; // Stigmata last only for the run
-  player = makePlayer(2340, (room.top + 3) * TILE); applyGear(true);
+  player = makePlayer(CATHEDRAL_X, (room.top + 3) * TILE); applyGear(true);
   game.district = null;
   resetWorld();
   game.buff = null; game.banner = null; game.focus = null;
@@ -3248,8 +3277,10 @@ function renderMinimap() {
   ctx.globalAlpha = 0.75; ctx.drawImage(roomCanvas, vx, srcY, span, srcH, mx + 2, my + 2, mw - 4, srcH * k); ctx.globalAlpha = 1;
   const sx = (wx) => mx + 2 + Math.round((wx - vx) * k), sy = (wy) => my + 2 + Math.round((wy - srcY) * k);
   for (const S of SITES) { badge(S.badge, sx(S.x), my + 10); if (!siteDone(S)) mapIcon('lock', sx(S.x) + 3, my + 12, PAL.cloth0); }
-  badge('descend', sx(2340), my + 10);
-  for (const n of room.npcs) if (NPC_BADGE[n.npc]) badge(NPC_BADGE[n.npc], sx(n.x), Math.min(my + mh - 9, sy(n.y) + 2));
+  badge('descend', sx(CATHEDRAL_X), my + 10);
+  // A keeper standing at their own site shares its badge: draw it once.
+  const atSite = (n) => SITES.some((S) => S.badge === NPC_BADGE[n.npc] && Math.abs(S.x - n.x) < 160);
+  for (const n of room.npcs) if (NPC_BADGE[n.npc] && !atSite(n)) badge(NPC_BADGE[n.npc], sx(n.x), Math.min(my + mh - 9, sy(n.y) + 2));
   ctx.restore();
   const px = Math.max(mx + 3, Math.min(mx + mw - 4, sx(player.x))), py = Math.min(my + mh - 4, sy(player.y));
   ctx.fillStyle = PAL.outline; ctx.fillRect(px - 3, py - 3, 7, 7);
@@ -3259,7 +3290,7 @@ function renderMinimap() {
   return { mx, my, mw, mh };
 }
 // Named townsfolk on the map.
-const NPC_BADGE = { odile: 'saint', vane: 'relic', pell: 'market', plushseller: 'plush', barkeep: 'tavern', hollis: 'forge', beggar: 'npc', crier: 'npc' };
+const NPC_BADGE = { odile: 'npc', vane: 'relic', pell: 'market', plushseller: 'plush', barkeep: 'tavern', hollis: 'forge', beggar: 'npc', crier: 'npc' };
 const NPC_ROLE = { odile: 'SISTER ODILE, YOUR KEEPER', vane: 'ARCHDEACON VANE', pell: 'BROTHER PELL, CURIO SELLER', plushseller: 'THE PLUSH SELLER', barkeep: 'THE BOOKIE, WAGERS', hollis: 'HOLLIS THE SMITH', beggar: 'OLD BARNABY', crier: 'THE TOWN CRIER' };
 // The full town map: the whole street, every site and person, and a legend.
 function renderTownMap() {
@@ -3277,7 +3308,7 @@ function renderTownMap() {
   const dy = my + srcH * k + 4;
   DISTRICTS.forEach(([dx, name], i) => { const nx = i + 1 < DISTRICTS.length ? DISTRICTS[i + 1][0] : room.pw, room0 = sx(nx) - sx(dx) - 4; ctx.fillStyle = PAL.stone4; ctx.fillRect(sx(dx), dy, 1, 8); let label = name.replace(/^THE /, ''); if (textW(label, 1, true) > room0) label = label.split(' ').pop(); if (textW(label, 1, true) <= room0) text(label, (sx(dx) + sx(nx)) / 2, dy + 1, PAL.stone1, { align: 'center', small: true, outline: null }); });
   for (const S of SITES) { badge(S.badge, sx(S.x), sy(room.top * TILE - 20), true); if (!siteDone(S)) mapIcon('lock', sx(S.x) + 5, sy(room.top * TILE - 20) + 4, PAL.cloth0); }
-  badge('descend', sx(2340), sy(room.top * TILE - 20), true);
+  badge('descend', sx(CATHEDRAL_X), sy(room.top * TILE - 20), true);
   for (const n of room.npcs) if (NPC_BADGE[n.npc]) badge(NPC_BADGE[n.npc], sx(n.x), sy(n.y) - 4);
   const px = sx(player.x), py = sy(player.y);
   ctx.fillStyle = PAL.outline; ctx.fillRect(px - 4, py - 4, 9, 9);
@@ -3904,7 +3935,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { game, T, hud: HUD, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, SITES, openSite };
+window.HS = { game, T, hud: HUD, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, SITES, openSite, townX };
 </script>
 </body>
 </html>

@@ -131,6 +131,12 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   always show frame 0).
 - **Round 8e:** town site panels wrap every line to the panel width
   (`wrapW()`, a pixel-width wrap; use it for any new panel text).
+- **Round 8f:** Vael condensed from 3120 to 2150 px wide and 17 to 12
+  walkable rows. `makeTown()` still writes positions in the old "plan"
+  coordinates; `townX()` (piecewise, landmarks keep their width, gaps
+  shrink) and `townY()` (depth past the kerb x0.6) squeeze them at the end.
+  `CATHEDRAL_X` is the descent door. The minimap draws a keeper's badge
+  once (at their site), and Sister Odile has the plain townsperson badge.
 - **Round 7:** chunky 2x2 pixels (`setRes(2)` in `tools/sdf.mjs`,
   `tools/chunky.mjs` for every sheet but `ui`, `chunkCanvas()` for the
   baked floor), whole-number nearest-neighbour scaling, thicker halo,
@@ -177,7 +183,7 @@ These hosts are allowed now. Notes: Steam's `api/appdetails` and the App Store p
 - `node tools/sprites.mjs` must be re-run after any model change. The sheets are committed, so commit them too.
 - A model set that throws on import only prints a warning; the old art stays in place. Read the build output.
 - The test server is a plain `python3 -m http.server 8123`. Background servers in cloud sessions time out after about 2 h.
-- Town coordinates in `makeTown()` are already at the ×1.3 scale. The player starts at x 2340 (the cathedral), where the descent doors are. The street floor runs from `base` (272) to about 544 px.
+- Town coordinates in `makeTown()` are plan coordinates (×1.3 scale, the old long street), squeezed by `townX()`/`townY()`; tests use `HS.townX(x)`. The player starts at `CATHEDRAL_X` (the descent doors). The street floor runs from `base` (272) to about 464 px.
 - Elite HP bars sit at `spriteTop(e)`, the height of the sprite's first walk frame, not `hy`. Monster frames are trimmed, so this is the real sprite height.
 - While `setPose()` is active, `render()` returns a bigger frame and `dot()`/`under()` remap their coordinates. Helpers that write `f.px` directly (`put()` in props/dungeon) do not follow it; use `dot()` in monster models.
 - `glow()` draws cached sprites; inside the glow pass it writes to a half-size layer (`GLOW_TO`). Pass rgba colours.
