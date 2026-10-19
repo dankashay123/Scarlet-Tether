@@ -102,7 +102,7 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **Looks:** the Saint is always drawn through `saintSheet()`, which applies the Plush stall look (`lookSheet`); the portrait through `drawPortrait`.
 - **Slots:** 10 (eight vestments in `GEAR_SLOTS`, plus `bow` and `quiver`). Set pieces carry `it.set`, arms carry `it.wset`.
 - **Settings:** read player options with `opt(k)` (`OPT_DEF` holds defaults). Respect `LOWFX` for anything decorative.
-- **Performance:** never build a canvas per frame or per hit. `text()` caches each string, so anything with changing digits goes glyph by glyph (it does this by itself). Freeze frames go through `hitStop()`. Check crowds with `tools/tests/perf.cjs`.
+- **Performance:** never build a canvas per frame or per hit. `text()` caches string widths (`TEXT_W`) and queues the string; `flushText()` draws the queue in the web font (`UI_FONT`) at screen resolution, so text always sits on top of its layer. A window drawn over another window must call `layerBreak()` first or the lower window's text shows through. Freeze frames go through `hitStop()`. Check crowds with `tools/tests/perf.cjs`.
 - **Monster attacks:** `MON` lists each kit; `MORE_ATTACKS` adds the round 16 ones. Damage is written at the old scale and multiplied by `MON_DMG`; shot speed by `SHOT_K`. Every attack needs a telegraph (windup tell, circle, `aim` line or the Sentence ring).
 - **The Censer:** `CENSER_UP` holds its 12 upgrades, unlocked by lifetime deeds (`SAVE.life`, bumped by `bumpBounty`). Read them with `censerUp(id)`.
 - **Run levels:** capped at `MAX_LEVEL` (15); `xpNeed` grows by `XP_G` from `run.xpBase`, set in `populate()` from the map's foes.

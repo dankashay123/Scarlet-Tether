@@ -93,13 +93,13 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 1. **A training yard in Vael.** A dummy and a monster summoner so players
    can learn the round 16 attacks (snipe, blight, Sentence) safely.
-2. **Rite depth.** Let rites gain ranks with use, and give each set a
-   rite-specific 6-piece twist, so the Rites panel becomes a build screen.
+2. **Damage numbers in the new font.** Give crits a size step and a
+   colour ramp now that numbers are drawn at screen resolution.
 3. **Stratum III.** A third look (the Ossuary Spire or a burnt chapter
    house) with its own two Wardens (each needs a roar, a fall, an earned
    halo, a stand on the Vigil Roll and battle music), reusing `STRATA`.
-4. **Death recap.** After a fall, show what hit you hardest and a tip for
-   that attack.
+4. **Drop the old bitmap font.** `GLYPHS`, `FONT` and `drawPortrait` are
+   unused since round 29 and can go once nothing else reads them.
 5. **The pool's crowd.** Let the crowd at the Scrying Pool cheer or jeer
    when a wager settles in Vael, and show past wagers (won and lost).
 6. **A second playable saint.** A short-range melee saint with its own
@@ -110,6 +110,20 @@ Desktop works with keys. 55–60 fps in dense crowds.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 29 (font and HUD):** all text now uses Barlow Semi Condensed
+  SemiBold (`assets/fonts/ui.ttf`, font face 'Saint UI', `UI_FONT`).
+  `text()` measures and queues; `flushText()` draws the queue on the screen
+  canvas at device resolution after `blit()`. `layerBreak()` blits, draws
+  the queued text and clears the game buffer, so a window drawn after it
+  covers the text under it: render calls it before the menu windows, and
+  any window drawn over another window needs one too (the altar's memory
+  does). The portrait is gone: HP and Zeal bars (`hudBar`, with a pale
+  drain strip for lost HP and tier marks on Zeal) sit at the top left, with
+  a line under Zeal giving the damage bonus and the next tier. The level
+  bar is a quarter of the width, centred, labelled `LEVEL N (P%)`. The Toll
+  bar fits between the HP bar and the minimap with its label underneath.
+  The Rites tab label shrinks a little instead of being cut.
 
 - **Round 28 (passive icons, deed passives, 4-piece damage, grind check):**
   every passive has an icon (`PASS_ICONS` in `props.mjs`, same order as

@@ -12,6 +12,7 @@
   html, body { margin: 0; height: 100%; background: #0b0710; overflow: hidden; }
   body { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
   canvas { position: absolute; image-rendering: pixelated; image-rendering: crisp-edges; }
+  @font-face { font-family: 'Saint UI'; src: url('assets/fonts/ui.ttf') format('truetype'); font-weight: 600; font-display: block; }
 </style>
 </head>
 <body>
@@ -92,9 +93,10 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '28.1';
+const BUILD = '29.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '29.1': ['A NEW, CLEANER FONT FOR ALL TEXT.', 'NEW HEALTH AND ZEAL BARS AT THE TOP LEFT. UNDER ZEAL: YOUR DAMAGE BONUS AND THE NEXT STEP.', 'A SMALLER LEVEL BAR AT THE BOTTOM.'],
   '28.1': ['EVERY PASSIVE HAS AN ICON. EIGHT NEW PASSIVES ARE EARNED BY DEEDS.', 'FOUR PIECES OF ANY SET NOW ALSO GIVE +25% DAMAGE.'],
   '27.1': ['PASSIVE SKILLS: THREE SLOTS, OPENED BY DEVOTION. FIND THEM IN THE RITES PANEL.', 'THE WEEPING RELIQUARY NOW SENDS HORDES: KILL 100.',
     'BRIGHTER RITE EFFECTS. BAG ICONS SHOW THEIR RARITY COLOUR, AND SET PIECES WEAR A STAR.', 'GEAR DROPS LESS OFTEN. THE SETS HAVE BEEN REBALANCED.'],
@@ -297,62 +299,61 @@ for (const k in FONT) FONT[k][3] = FONT[k][3].split('.').map((v) => parseInt(v, 
 FONT[' '][0] = 4;
 FONT['1'] = [4, 0, 3, [2, 6, 2, 2, 2, 2, 2, 2, 7]]; // a plain 1 (the original reads as a 7)
 const glyphOf = (ch) => FONT[ch] || FONT['?'];
-// Width in pixels; `small` uses the old thin 5x7 font for dense labels.
+// ------------------------------------------------------------- UI text ---
+// Text is drawn with a real font straight onto the full-resolution screen,
+// so it stays smooth and sharp at any scale. text() only measures and
+// queues; flushText() draws the queue after the pixel layer is blitted.
+// render() flushes once before the menu windows (so a window covers the HUD
+// text under it) and once at the end.
+const UI_FONT = { family: "'Saint UI', 'Barlow Semi Condensed', 'Arial Narrow', sans-serif", main: 11, small: 9.5, wMain: 600, wSmall: 600, cap: 8, capSmall: 7, track: 0.4 };
+const fontOf = (px, small) => `${small ? UI_FONT.wSmall : UI_FONT.wMain} ${px}px ${UI_FONT.family}`;
+const MCTX = document.createElement('canvas').getContext('2d');
+const TEXT_W = new Map(), TEXT_Q = [];
+const TEXT_CACHE = TEXT_W; // the dev menu counts it
+// Width in game pixels.
 const textW = (s, sc = 1, small = false) => {
   s = String(s).toUpperCase();
-  if (small) return s.length * 6 * sc - sc;
-  let w = 0; for (const ch of s) w += glyphOf(ch)[0] + 1; return Math.max(0, w - 1) * sc;
-};
-const TEXT_CACHE = new Map();
-// Draw pixel text with an ink outline and drop shadow. Strings are rendered
-// once into a small canvas and cached.
-function text(s, x, y, color, o = {}) {
-  const { sc = 1, outline = PAL ? PAL.outline : '#000', align = 'left', small = false, shadow = true } = o;
-  s = String(s).toUpperCase();
-  // Strings with numbers change all the time (damage, counters, timers):
-  // draw them a glyph at a time so they never fill the cache.
-  if (s.length > 1 && /[0-9]/.test(s)) return numText(s, x, y, color, o);
-  const key = `${s}|${color}|${sc}|${outline}|${small}|${shadow}`;
-  let c = TEXT_CACHE.get(key);
-  if (!c) {
-    const w = textW(s, sc, small), gh = small ? 7 : 10, pad = 2;
-    c = document.createElement('canvas'); c.width = w + pad * 2 + 1; c.height = gh * sc + pad * 2 + sc + 1;
-    const g = c.getContext('2d');
-    const pass = (ox, oy, col) => {
-      g.fillStyle = col;
-      let cx = pad;
-      for (const ch of s) {
-        if (small) {
-          const gl = GLYPHS[ch] || GLYPHS['?'];
-          for (let r = 0; r < 7; r++) for (let q = 0; q < 5; q++) if (gl[r * 5 + q] === '1') g.fillRect(cx + q * sc + ox, pad + r * sc + oy, sc, sc);
-          cx += 6 * sc; continue;
-        }
-        const [adv, x0, gw, rows] = glyphOf(ch);
-        rows.forEach((bits, r) => { for (let q = 0; q < gw; q++) if (bits & (1 << (gw - 1 - q))) g.fillRect(cx + (x0 + q) * sc + ox, pad + r * sc + oy, sc * 2, sc); });
-        cx += (adv + 1) * sc;
-      }
-    };
-    if (outline) {
-      if (shadow) pass(0, sc + 1, outline);
-      for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) pass(ox, oy, outline);
-    }
-    pass(0, 0, color);
-    // Drop the oldest entries, never the whole cache (a full rebuild in one frame stutters).
-    if (TEXT_CACHE.size > 600) { let k = 0; for (const old of TEXT_CACHE.keys()) { TEXT_CACHE.delete(old); if (++k >= 150) break; } }
-    TEXT_CACHE.set(key, c);
+  const key = `${small ? 1 : 0}${sc}|${s}`; let w = TEXT_W.get(key);
+  if (w === undefined) {
+    MCTX.font = fontOf((small ? UI_FONT.small : UI_FONT.main) * sc, small);
+    w = Math.ceil(MCTX.measureText(s).width + UI_FONT.track * sc * Math.max(0, s.length - 1));
+    if (TEXT_W.size > 4000) TEXT_W.clear();
+    TEXT_W.set(key, w);
   }
-  const w = c.width - 5;
-  if (align === 'center') x -= Math.floor(w / 2); else if (align === 'right') x -= w;
-  // The tall font sits one pixel higher so old layouts stay centred.
-  ctx.drawImage(c, Math.round(x) - 2, Math.round(y) - 2 - (small ? 0 : sc));
+  return w;
+};
+// Queue a line of text. (x, y) is its top-left in game pixels, as before.
+function text(s, x, y, color, o = {}) {
+  s = String(s).toUpperCase(); if (!s.trim()) return;
+  const { sc = 1, align = 'left', small = false } = o;
+  const w = textW(s, sc, small);
+  if (align === 'center') x -= w / 2; else if (align === 'right') x -= w;
+  const m = ctx.getTransform();
+  TEXT_Q.push({ s, x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f, k: Math.abs(m.a) || 1, color, o, a: ctx.globalAlpha });
 }
-// One cached glyph at a time (see text()).
-function numText(s, x, y, color, o = {}) {
-  s = String(s).toUpperCase();
-  const sc = o.sc || 1, w = textW(s, sc, o.small);
-  if (o.align === 'center') x -= Math.floor(w / 2); else if (o.align === 'right') x -= w;
-  for (const ch of s) { text(ch, x, y, color, { ...o, align: 'left' }); x += o.small ? 6 * sc : (glyphOf(ch)[0] + 1) * sc; }
+function flushText() {
+  const P = PRE, g = sctx; if (!TEXT_Q.length) return;
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.textBaseline = 'alphabetic'; g.lineJoin = 'round';
+  let font = '';
+  for (const q of TEXT_Q) {
+    const { sc = 1, small = false, shadow = true } = q.o, outline = q.o.outline === undefined ? PAL.outline : q.o.outline;
+    const size = (small ? UI_FONT.small : UI_FONT.main) * sc * q.k, f = fontOf(size * P, small);
+    if (f !== font) { g.font = f; font = f; }
+    g.letterSpacing !== undefined && (g.letterSpacing = `${UI_FONT.track * sc * q.k * P}px`);
+    const x = Math.round(q.x * P), y = Math.round((q.y + (small ? UI_FONT.capSmall : UI_FONT.cap) * sc * q.k) * P);
+    g.globalAlpha = q.a;
+    if (outline) {
+      if (shadow) { g.fillStyle = outline; g.fillText(q.s, x, y + Math.round(P * sc * q.k)); }
+      g.strokeStyle = outline; g.lineWidth = Math.max(2, 1.6 * P * sc * q.k); g.strokeText(q.s, x, y);
+    }
+    g.fillStyle = q.color; g.fillText(q.s, x, y);
+  }
+  g.restore(); TEXT_Q.length = 0;
 }
+// Blit the pixel layer, draw its text on top, and start a clear layer above.
+function layerBreak() { blit(); flushText(); ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); ctx.restore(); }
+// Remeasure once the font has loaded.
+if (document.fonts) document.fonts.load(fontOf(22, false)).then(() => TEXT_W.clear()).catch(() => {});
 
 // -------------------------------------------------------------- audio ---
 // Effects are decoded Web Audio buffers. Music and ambience stream from
@@ -1267,24 +1268,23 @@ function renderRoomStatus() {
   // The Warden's bar while it lives; otherwise the Toll.
   const wd = game.warden;
   if (wd && !wd.dead) return renderBossBar(wd);
-  const T0 = game.toll, w = 150, x = Math.round(W / 2 - w / 2), y = 9;
+  // Centred between the HP bar and the minimap; the label sits under the bar.
+  const T0 = game.toll, hpEnd = 16 + Math.round(Math.min(150, W * 0.28)), w = Math.min(150, W - 2 * (hpEnd + 6)), x = Math.round(W / 2 - w / 2), y = 9;
+  const small = { small: true };
   if (game.waystone) text('WARDEN KILLED. USE THE WAYSTONE TO RETURN.', W / 2, y, PAL.holy1, { align: 'center' });
   else if (game.cell) {
     const c = game.cell, goal = CELLS[c.id].goal;
-    text('ABSOLUTION', x - 6, y - 1, RARITY[4].color, { align: 'right' });
     ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, 9); ctx.fillStyle = PAL.ink2; ctx.fillRect(x, y, w, 5);
     ctx.fillStyle = `rgb(${SET_RGB[c.id]})`; ctx.fillRect(x, y, Math.round(w * Math.min(1, c.kills / goal)), 5);
-    text(`${c.kills}/${goal}`, x + w + 6, y - 1, PAL.cloth0);
-    text(`${Math.max(0, Math.ceil(c.t))} S`, W / 2, y + 10, c.t < 15 ? PAL.blood0 : PAL.stone1, { align: 'center' });
+    text(`ABSOLUTION ${c.kills}/${goal}   ${Math.max(0, Math.ceil(c.t))} S`, W / 2, y + 9, c.t < 15 ? PAL.blood0 : RARITY[4].color, { ...small, align: 'center' });
   } else if (T0) {
-    text('THE TOLL', x - 6, y - 1, PAL.gold1, { align: 'right' });
     ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, 9);
     ctx.fillStyle = PAL.gold4; ctx.fillRect(x - 1, y - 1, w + 2, 7);
     ctx.fillStyle = PAL.ink2; ctx.fillRect(x, y, w, 5);
     const fw = Math.round(w * T0.v / T0.max);
     ctx.fillStyle = PAL.blood1; ctx.fillRect(x, y, fw, 5); ctx.fillStyle = PAL.blood0; ctx.fillRect(x, y, fw, 1);
-    text(`${Math.floor(T0.v / T0.max * 100)}%`, x + w + 6, y - 1, PAL.cloth0);
-    if (game.run && game.run.martyr) text("MARTYR'S VOW: ONE LIFE, DOUBLE LOOT", W / 2, y + 10, PAL.blood0, { align: 'center', small: true });
+    text(`THE TOLL ${Math.floor(T0.v / T0.max * 100)}%`, W / 2, y + 9, PAL.gold1, { ...small, align: 'center' });
+    if (game.run && game.run.martyr) text("MARTYR'S VOW: ONE LIFE, DOUBLE LOOT", W / 2, y + 19, PAL.blood0, { align: 'center', small: true });
   }
   renderTrialHud();
   if (game.focus && !game.focus.boss) renderNameplate(game.focus, game.vigil || (game.event && !game.event.done) ? 30 : 20);
@@ -1294,12 +1294,12 @@ function renderTrialHud() {
   const V = game.vigil, E = game.event;
   if (V && !game.waystone) {
     const m = Math.floor(V.t / 60), s = String(Math.floor(V.t % 60)).padStart(2, '0');
-    const x = Math.round(W / 2 - 75), y = 20, k = V.t / VIGIL_TIME;
+    const x = Math.round(W / 2 - 75), y = 30, k = V.t / VIGIL_TIME;
     ctx.fillStyle = PAL.outline; ctx.fillRect(x - 13, y - 1, 6, 10); ctx.fillStyle = PAL.bone1; ctx.fillRect(x - 12, y + Math.round(8 * (1 - k)), 4, Math.max(1, Math.round(8 * k)));
     if (!V.out) { ctx.fillStyle = PAL.ember0; ctx.fillRect(x - 11, y - 3 + Math.round(8 * (1 - k)), 2, 2); }
     text(`VIGIL ${V.L}   ${V.out ? 'THE CANDLE IS OUT' : `${m}:${s}`}`, x, y, V.out || V.t < 60 ? PAL.blood0 : PAL.gold1);
   }
-  if (E && !E.done) text(`THE RELIQUARY WEEPS   ${E.kills}/${E.need}   ${Math.floor(Math.ceil(E.t) / 60)}:${String(Math.ceil(E.t) % 60).padStart(2, '0')}`, W / 2, V ? 31 : 20, PAL.blood0, { align: 'center' });
+  if (E && !E.done) text(`THE RELIQUARY WEEPS   ${E.kills}/${E.need}   ${Math.floor(Math.ceil(E.t) / 60)}:${String(Math.ceil(E.t) % 60).padStart(2, '0')}`, W / 2, V ? 41 : 30, PAL.blood0, { align: 'center' });
 }
 // The Warden: name, title, a wide bar with phase marks, its curses.
 function renderBossBar(e) {
@@ -2217,7 +2217,7 @@ function renderRites() {
     ctx.fillStyle = on ? PAL.ink3 : PAL.ink2; ctx.fillRect(t.x, t.y, t.w, t.h);
     if (on) { ctx.fillStyle = PAL.gold1; ctx.fillRect(t.x, t.y + t.h - 2, t.w, 2); }
     if (textW(label, 1, true) <= t.w - 28) { riteSocket(t.x + 11, t.y + 11, 8, riteOf(slot).icon, 0.5, on ? PAL.gold2 : PAL.ink3, on ? 1 : 0.7); text(label, t.x + 23, t.y + 8, on ? PAL.gold1 : PAL.stone1, small); }
-    else text(fitText(label, t.w - 6), t.x + t.w / 2, t.y + 8, on ? PAL.gold1 : PAL.stone1, { ...small, align: 'center' });
+    else { const sc = Math.max(0.75, Math.min(1, (t.w - 6) / textW(label, 1, true))); text(label, t.x + t.w / 2, t.y + 8 + (1 - sc) * 4, on ? PAL.gold1 : PAL.stone1, { ...small, sc, align: 'center' }); }
   });
   // The fourth tab: passive skills.
   { const t = L.tab(3), on = focus === 'passive'; ctx.fillStyle = PAL.outline; ctx.fillRect(t.x - 1, t.y - 1, t.w + 2, t.h + 2); ctx.fillStyle = on ? PAL.ink3 : PAL.ink2; ctx.fillRect(t.x, t.y, t.w, t.h);
@@ -2773,7 +2773,7 @@ function renderAltar() {
     text(fitText(Lg ? Lg.name : 'EMPTY', b.w - sz - 22), b.x + sz + 14, cy + 1, Lg ? RARITY[3].color : PAL.stone2, small);
     if (P) wrapW(P.text, b.w - sz - 22, true).slice(0, Math.max(1, Math.floor((b.h - 34) / 9))).forEach((l, j) => text(l, b.x + sz + 14, cy + 11 + j * 9, PAL.ember1, small));
   });
-  if (game.altarPick) renderAltarPick();
+  if (game.altarPick) { layerBreak(); renderAltarPick(); }
 }
 // The altar's memory: every power that fits one socket, as a grid of
 // pieces. Learned ones are lit; tap one to read it, then set it.
@@ -5491,7 +5491,7 @@ function die() { sfx('death'); AUDIO.set([]);
 
 // --------------------------------------------------------------- update ---
 function update(realDt) {
-  game.real += realDt;
+  game.real += realDt; game.realDt = realDt;
   if (game.aim && (game.state !== 'play' || game.scene !== 'wound' || !player || player.hp <= 0)) game.aim = null;
   if (game.news === undefined) game.news = NEWS;
   if (game.news && game.state === 'play' && game.scene === 'town' && !game.dialog && !tut.on && game.real > 1.2) { game.newsFor = game.news; game.news = null; game.state = 'news'; persist(); sfx('shrine', { rate: 1.4, vol: 0.5 }); }
@@ -5615,7 +5615,7 @@ function mark(k) { if (!PROFON) return; const t = performance.now(); if (k) PROF
 function render() {
   mark(); LOWFX = opt('fx') === 'low';
   ctx.fillStyle = '#0b0710'; ctx.fillRect(0, 0, W, H);
-  if (game.state === 'title' || !player) { renderTitle(); blit(); return; }
+  if (game.state === 'title' || !player) { renderTitle(); blit(); flushText(); return; }
   const shk = opt('shake') ? game.shake : 0;
   const sx = shk ? Math.round(rand(-shk, shk)) : 0, sy = shk ? Math.round(rand(-shk, shk)) : 0;
   const cx = Math.round(cam.x) + sx, cy = Math.round(cam.y) + sy;
@@ -5779,6 +5779,7 @@ function render() {
     // The latest caught error, so a player can send it to us.
     if (ERRS.length) { const e = ERRS[ERRS.length - 1]; text(`BUG LOGGED: ${e.msg}`.slice(0, 70).toUpperCase(), W / 2, H - 14, PAL.iron1, { align: 'center', small: true }); }
   }
+  layerBreak(); // menu windows cover the HUD and its text
   if (game.state === 'inv') renderInventory();
   if (game.state === 'stig') renderStigmata();
   if (game.state === 'dead') renderReceipt();
@@ -5807,7 +5808,7 @@ function render() {
   if (game.state === 'map') renderTownMap();
   if (game.state === 'loading') renderLoading();
   if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; }
-  blit();
+  blit(); flushText();
 }
 
 function bigFlame(x, y, ph = 0) {
@@ -6131,6 +6132,24 @@ function gild(x, y, w, h) { // gilded pixel frame with bevel
   ctx.fillStyle = PAL.gold4; ctx.fillRect(x - 2, y + h + 1, w + 4, 1); ctx.fillRect(x + w + 1, y - 2, 1, h + 4);
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
 }
+// A HUD bar: ink case with a thin gilt edge, a three-band fill, a pale strip
+// for what was just lost, a top sheen, and optional segment ticks.
+let hudY = 24;
+function hudBar(x, y, w, h, k, ghost, ramp, hit = false, segs = 0) {
+  k = Math.max(0, Math.min(1, k)); const fw = Math.round(w * k), gw = Math.round(w * Math.max(k, Math.min(1, ghost || 0)));
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+  ctx.fillStyle = hit ? PAL.blood0 : PAL.gold3; ctx.fillRect(x - 1, y - 1, w + 2, 1); ctx.fillRect(x - 1, y + h, w + 2, 1); ctx.fillRect(x - 1, y, 1, h); ctx.fillRect(x + w, y, 1, h);
+  ctx.fillStyle = PAL.ink1; ctx.fillRect(x, y, w, h);
+  if (gw > fw) { ctx.fillStyle = 'rgba(255,244,176,0.55)'; ctx.fillRect(x + fw, y, gw - fw, h); }
+  if (fw > 0) {
+    ctx.fillStyle = PAL[ramp + '2']; ctx.fillRect(x, y, fw, h);
+    ctx.fillStyle = PAL[ramp + '1']; ctx.fillRect(x, y, fw, Math.ceil(h * 0.45));
+    ctx.fillStyle = PAL[ramp + '3']; ctx.fillRect(x, y + h - Math.max(1, Math.floor(h * 0.2)), fw, Math.max(1, Math.floor(h * 0.2)));
+    ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(x, y, fw, 1);
+    if (fw < w) { ctx.fillStyle = PAL.white; ctx.fillRect(x + fw - 1, y, 1, h); }
+  }
+  for (let i = 1; i < segs; i++) { ctx.fillStyle = PAL.outline; ctx.fillRect(x + Math.round(w * i / segs), y, 1, h); }
+}
 function bar(x, y, w, h, k, ramp) {
   gild(x, y, w, h);
   ctx.fillStyle = PAL[ramp + '4']; ctx.fillRect(x, y, w, h);
@@ -6318,18 +6337,19 @@ function renderTownMap() {
 
 function renderHud() {
   const p = player;
-  // Top-left: portrait, HP, Fervor.
-  gild(8, 8, 34, 34);
-  drawPortrait(G && G.skin && SPR.ui.anims[`portrait_${G.skin}`] ? `portrait_${G.skin}` : 'portrait', 8, 8);
-  if (p.hurt > 0) { ctx.fillStyle = `rgba(224,32,46,${p.hurt * 2})`; ctx.fillRect(8, 8, 34, 34); }
-  bar(49, 9, 136, 11, p.hp / p.maxHp, 'blood');
-  text(`${Math.ceil(p.hp)}/${p.maxHp}`, 53, 11, PAL.cloth0, { shadow: false });
-  const tier = fervorTier();
-  const framp = ['ember', 'ember', 'crimson', 'gold'][tier];
+  // Top-left: health, then Zeal with what its fill is worth.
+  const hw = Math.round(Math.min(150, W * 0.28)), hk = Math.max(0, p.hp / p.maxHp);
+  p.hpGhost = Math.max(hk, (p.hpGhost ?? hk) - 0.6 * (game.realDt || 0.016)); // the lost part drains away
+  hudBar(8, 8, hw, 12, hk, p.hpGhost, 'blood', p.hurt > 0);
+  text(`${Math.ceil(p.hp)} / ${p.maxHp}`, 8 + hw / 2, 10, PAL.white, { align: 'center', small: true });
+  hudY = 24;
   if (game.scene === 'wound') {
-  bar(49, 29, 104, 7, game.fervor / 100, framp);
-  for (let i = 1; i < 4; i++) { ctx.fillStyle = PAL.outline; ctx.fillRect(49 + Math.round(104 * i / 4), 29, 1, 7); }
-  text(T.fervor.tiers[tier], 159, 29, PAL[framp + '1']);
+    const tier = fervorTier(), framp = ['ember', 'ember', 'crimson', 'gold'][tier], zw = Math.round(hw * 0.78);
+    hudBar(8, 25, zw, 6, game.fervor / 100, 0, framp, false, 4);
+    text(T.fervor.tiers[tier], 8 + zw + 5, 23, PAL[framp + '1'], { small: true });
+    const bonus = tier * 10 * (game.buff && game.buff.kind === 'fervor' ? 2 : 1);
+    text(`${bonus ? `+${bonus}% DAMAGE` : 'NO BONUS YET'}${tier < 3 ? `   NEXT AT ${(tier + 1) * 25}%` : '   MAX'}`, 8, 34, bonus ? PAL.gold1 : PAL.stone2, { small: true });
+    hudY = 46;
   }
   // Top-right: minimap and pause.
   const { mx, my, mw, mh } = renderMinimap();
@@ -6344,10 +6364,10 @@ function renderHud() {
   text(String(gold), mx + 12, my + mh + 7, PAL.gold1);
   if (game.scene === 'wound') text(`${game.kills} KILLED`, mx + mw, my + mh + 7, PAL.stone1, { align: 'right' });
   // The shrine blessing sits on its own line under the portrait (below the FPS readout when shown).
-  if (game.buff) { const S = SHRINES[game.buff.kind]; text(`${S.name.replace('SHRINE OF ', '')} ${Math.ceil(game.buff.t)}`, 8, showFps() ? 56 : 46, `rgb(${S.rgb})`); }
+  if (game.buff) { const S = SHRINES[game.buff.kind]; text(`${S.name.replace('SHRINE OF ', '')} ${Math.ceil(game.buff.t)}`, 8, hudY + (showFps() ? 10 : 0), `rgb(${S.rgb})`, { small: true }); }
   // Vestment set state: nail stacks, the Penitent's window, standing in a pool.
   { const st = sb('nails', 4) && player.nails ? `NAILS ${player.nails}` : (player.strideT || 0) > game.time ? `STRIDE ${Math.ceil(player.strideT - game.time)}` : player.inPool ? 'IN THE FONT' : '';
-    if (st) text(st, 8, (showFps() ? 56 : 46) + (game.buff ? 11 : 0), RARITY[4].color, { small: true }); }
+    if (st) text(st, 8, hudY + (showFps() ? 10 : 0) + (game.buff ? 11 : 0), RARITY[4].color, { small: true }); }
   const ms = game.massacre;
   if (ms && ms.n >= 5 && game.time - ms.last < 1.2) text(`x${ms.n}`, 14, Math.round(H * 0.42), Math.floor(game.real * 8) % 2 ? PAL.blood0 : PAL.gold0, { sc: 2 });
   // Bottom-right: dash, Miracles, Penance.
@@ -6754,13 +6774,14 @@ function drawSkillsGlow() {
 // The EXP bar along the bottom edge, between the joystick and the buttons.
 function renderXpBar() {
   const R = game.run; if (!R) return;
-  const x0 = Math.round(W * 0.27), x1 = Math.round(W * 0.6), y = H - 13, k = R.level >= MAX_LEVEL ? 1 : Math.min(1, R.xp / xpNeed(R.level));
-  text(R.level >= MAX_LEVEL ? `LV ${R.level} MAX` : `LV ${R.level}`, x0 - 6, y - 2, PAL.gold0, { align: 'right' });
-  ctx.fillStyle = PAL.outline; ctx.fillRect(x0 - 1, y - 1, x1 - x0 + 2, 6);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(x0, y, x1 - x0, 4);
-  ctx.fillStyle = PAL.gold1; ctx.fillRect(x0, y, Math.round((x1 - x0) * k), 4);
-  ctx.fillStyle = PAL.gold0; ctx.fillRect(x0, y, Math.round((x1 - x0) * k), 1);
-  if (R.pending > 0 && game.state === 'play') text('LEVEL UP!', (x0 + x1) / 2, y - 12, Math.floor(game.real * 4) % 2 ? PAL.gold0 : PAL.white, { align: 'center' });
+  // A slim bar a quarter of the screen wide, centred at the bottom, its label above it.
+  const bw = Math.round(W * 0.25), x0 = Math.round(W / 2 - bw / 2), y = H - 8, max = R.level >= MAX_LEVEL, k = max ? 1 : Math.min(1, R.xp / xpNeed(R.level));
+  text(max ? `LEVEL ${R.level} (MAX)` : `LEVEL ${R.level} (${Math.floor(k * 100)}%)`, W / 2, y - 11, PAL.cloth0, { align: 'center', small: true });
+  ctx.fillStyle = 'rgba(11,7,16,0.75)'; ctx.fillRect(x0 - 1, y - 1, bw + 2, 5);
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(x0, y, bw, 3);
+  const fw = Math.round(bw * k);
+  ctx.fillStyle = PAL.ember2; ctx.fillRect(x0, y, fw, 3); ctx.fillStyle = PAL.ember1; ctx.fillRect(x0, y, fw, 2); ctx.fillStyle = PAL.ember0; ctx.fillRect(x0, y, fw, 1);
+  if (R.pending > 0 && game.state === 'play') text('LEVEL UP!', W / 2, y - 22, Math.floor(game.real * 4) % 2 ? PAL.gold0 : PAL.white, { align: 'center' });
 }
 
 // ------------------------------------------------------- the inventory ---
@@ -7080,7 +7101,7 @@ function frame(t) {
     logError('render', err);
     for (let i = 0; i < 32; i++) ctx.restore();
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-    safe('blit', () => blit());
+    safe('blit', () => { blit(); flushText(); });
   }
   game.cpu = (game.cpu || 0) * 0.95 + (performance.now() - t0) * 0.05; // ms of our own work per frame
 }

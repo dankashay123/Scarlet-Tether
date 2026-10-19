@@ -568,7 +568,7 @@ ends in Martyrdom and a first Vigil. Progress is tracked in `docs/ROADMAP.md`.
   `tools/models/vfx.mjs`: solid things are SDF models, soft things (impacts,
   blood, smoke, orbs) are lit 2D metaball forms. No dithering.
 - Furniture is rendered in 3/4 view (tilted back about the ground line) so tops read lighter than fronts, as in Otherworld Legends.
-- UI font: Kenney High (CC0) as a bitmap with doubled stems, cap height 9.
+- UI font: Barlow Semi Condensed SemiBold (OFL), drawn at screen resolution over the pixel art (round 29).
   `text()` caches each drawn string.
 - Model sets live in `tools/models/`: `base` (materials and the Saint),
   `saint`, `common`, `rare`, `elite`, `townfolk`, `town`, `dungeon`, `floor`

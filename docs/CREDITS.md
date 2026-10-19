@@ -61,9 +61,10 @@ Freesound and Sonniss were not used: Freesound downloads need an account and
 its pages refuse this build machine, and the Sonniss bundles are
 multi-gigabyte archives.
 
-## Font: Kenney, CC0 1.0
+## Font: Barlow Semi Condensed, SIL Open Font License 1.1
 
-- [Kenney Fonts](https://kenney.nl/assets/kenney-fonts): "Kenney High", converted to a bitmap font in `index.html` with doubled stems.
+- [Barlow](https://github.com/jpt/barlow) by The Barlow Project Authors (Jeremy Tribby), SemiBold, via Google Fonts. Shipped as `assets/fonts/ui.ttf`. All UI text since round 29.
+- Before round 29: [Kenney Fonts](https://kenney.nl/assets/kenney-fonts) "Kenney High" (CC0 1.0) as a bitmap font. The glyph tables (`GLYPHS`, `FONT`) are still in `index.html` but unused.
 
 ## Reference
 
