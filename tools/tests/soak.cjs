@@ -57,7 +57,7 @@ const S = process.argv[2], SECS = +(process.argv[3] || 180);
       if (Math.random() < 0.03) await p.keyboard.press('Escape');
       await p.waitForTimeout(500); await p.keyboard.up(k);
       // Nudge progress: in town walk into the Descent; in the dungeon hop to a neighbouring room now and then.
-      if (st.scene === 'town' && Math.random() < 0.25) await p.evaluate(() => { HS.player.x = HS.townX(2340); HS.player.y = HS.room.top * 16 + 14; }).then(() => p.keyboard.press('KeyE'));
+      if (st.scene === 'town' && Math.random() < 0.25) await p.evaluate(() => { HS.player.x = HS.townX(2340); HS.player.y = HS.room.top * 16 + 464 + 14; }).then(() => p.keyboard.press('KeyE'));
       if (st.scene === 'wound' && Math.random() < 0.2) await p.evaluate(() => { const R = HS.room, r = HS.game.curRoom; if (r.state !== 'active') { const id = r.links[Math.floor(Math.random() * r.links.length)], t = R.rooms[id]; HS.player.x = (t.cx + 0.5) * 16; HS.player.y = (t.cy + 1.5) * 16; } else { for (const e of HS.enemies) if (Math.random() < 0.3) HS.killEnemy(e, 1, 0); } });
       if (st.scene === 'wound' && Math.random() < +(process.env.SOAK_DEATH || 0.02)) await p.evaluate(() => { HS.player.hp = 1; HS.player.iframes = 0; });
       if (st.scene === 'wound' && Math.random() < 0.05) await p.evaluate(() => { if (HS.game.waystone) { HS.player.x = HS.game.waystone.x; HS.player.y = HS.game.waystone.y + 4; } }).then(() => p.keyboard.press('KeyE'));

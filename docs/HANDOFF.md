@@ -225,6 +225,13 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 15b:** more monsters (about 450 at Station I, 850 at VIII, 1,100
+  at XV; `MAX_FOES` caps a map) and the Warden comes at 90% of the map's
+  Toll (`TOLL_SHARE`). Vael folded into two streets about 1,200 px wide
+  (upper: gate, market, Gilded Lamb, forge; lower: Quiet Acre, Cells,
+  Martyrdom, Cathedral) joined by two alleys (`TOWN_SPLIT`, `ROW_DY`,
+  `townRow`, `TOWN_ALLEYS`). The minimap shows the whole town; the full
+  map puts its legend beside the picture.
 - **Round 15a:** choosable rites (`RITES`, `riteOf`, the Rites panel from
   pause, the bag or the T key). Three slots, four rites each, every rite
   feeding one set's hooks: Holy Water, Baptism (Font); Nail Storm,
