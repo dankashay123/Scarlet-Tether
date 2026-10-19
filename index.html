@@ -113,6 +113,16 @@ async function loadAssets() {
 }
 
 // The Saint's sheet: a vestment set skin at 4 pieces (saint_nails, ...).
+// Each skin's bolts: trail and glow colours (r,g,b) and a hit-spark colour.
+const BOLT_FX = {
+  null: { trail: '255,244,176', crit: '255,209,85' },
+  nails: { trail: '255,209,85', crit: '255,122,31', spark: 'gold0' },
+  stride: { trail: '255,122,31', crit: '255,192,74', spark: 'ember1' },
+  font: { trail: '138,224,255', crit: '216,247,255', spark: 'holy1' },
+  confessor: { trail: '178,188,203', crit: '154,106,230', spark: 'violet0' },
+  choir: { trail: '255,90,74', crit: '255,209,85', spark: 'ember0' },
+};
+const boltFx = () => BOLT_FX[(G && G.skin) || null];
 const saintSheet = () => (G && G.skin && SPR[`saint_${G.skin}`] ? `saint_${G.skin}` : 'saint');
 function frameOf(sheet, anim, i) { const a = SPR[sheet].anims[anim]; return a[((i % a.length) + a.length) % a.length]; }
 // Draw a frame with its anchor at pixel (x, y). Default anchor: sheet anchor, else bottom-centre.
@@ -167,8 +177,12 @@ const textW = (s, sc = 1, small = false) => {
 const TEXT_CACHE = new Map();
 // Draw pixel text with an ink outline and drop shadow. Strings are rendered
 // once into a small canvas and cached.
-function text(s, x, y, color, { sc = 1, outline = PAL ? PAL.outline : '#000', align = 'left', small = false, shadow = true } = {}) {
+function text(s, x, y, color, o = {}) {
+  const { sc = 1, outline = PAL ? PAL.outline : '#000', align = 'left', small = false, shadow = true } = o;
   s = String(s).toUpperCase();
+  // Strings with numbers change all the time (damage, counters, timers):
+  // draw them a glyph at a time so they never fill the cache.
+  if (s.length > 1 && /[0-9]/.test(s)) return numText(s, x, y, color, o);
   const key = `${s}|${color}|${sc}|${outline}|${small}|${shadow}`;
   let c = TEXT_CACHE.get(key);
   if (!c) {
@@ -194,13 +208,21 @@ function text(s, x, y, color, { sc = 1, outline = PAL ? PAL.outline : '#000', al
       for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) pass(ox, oy, outline);
     }
     pass(0, 0, color);
-    if (TEXT_CACHE.size > 600) TEXT_CACHE.clear();
+    // Drop the oldest entries, never the whole cache (a full rebuild in one frame stutters).
+    if (TEXT_CACHE.size > 600) { let k = 0; for (const old of TEXT_CACHE.keys()) { TEXT_CACHE.delete(old); if (++k >= 150) break; } }
     TEXT_CACHE.set(key, c);
   }
   const w = c.width - 5;
   if (align === 'center') x -= Math.floor(w / 2); else if (align === 'right') x -= w;
   // The tall font sits one pixel higher so old layouts stay centred.
   ctx.drawImage(c, Math.round(x) - 2, Math.round(y) - 2 - (small ? 0 : sc));
+}
+// One cached glyph at a time (see text()).
+function numText(s, x, y, color, o = {}) {
+  s = String(s).toUpperCase();
+  const sc = o.sc || 1, w = textW(s, sc, o.small);
+  if (o.align === 'center') x -= Math.floor(w / 2); else if (o.align === 'right') x -= w;
+  for (const ch of s) { text(ch, x, y, color, { ...o, align: 'left' }); x += o.small ? 6 * sc : (glyphOf(ch)[0] + 1) * sc; }
 }
 
 // -------------------------------------------------------------- audio ---
@@ -233,7 +255,10 @@ const AUDIO = (() => {
   // Play an effect. Repeats of one sound are spaced at least `gap` seconds.
   A.play = (name, { vol = 1, rate = 1, gap = 0.045, vary = 0.06 } = {}) => {
     if (!A.ctx || A.muted || !A.buf[name]) return;
-    const now = A.ctx.currentTime; if (now - (A.last[name] || 0) < gap) return; A.last[name] = now;
+    const now = A.ctx.currentTime; if (now - (A.last[name] || 0) < gap) return;
+    // At most 10 new voices per tenth of a second: a crowd of hits stays clean.
+    if (now - (A.win || 0) > 0.1) { A.win = now; A.voices = 0; } if (++A.voices > 10) return;
+    A.last[name] = now;
     const src = A.ctx.createBufferSource(), g = A.ctx.createGain();
     src.buffer = A.buf[name]; src.playbackRate.value = rate * (1 + (Math.random() * 2 - 1) * vary);
     g.gain.value = (VOL[name] ?? 0.5) * vol; src.connect(g); g.connect(A.sfxBus); src.start();
@@ -1168,7 +1193,7 @@ function toast(msg, t = 2) { game.toast = { msg, t }; game.toastColor = null; }
 const fervorTier = () => Math.min(3, Math.floor(game.fervor / 25));
 function addFervor(n) { if (player.inPool) n *= 2; if (player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + n * (G.powers.has('penance') ? 1.4 : 1)); game.fervor = Math.min(100, game.fervor + n * (1 + G.fervor / 100)); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
 // One-shot sprite effects.
-function playFx(sheet, anim, x, y, fps = 24, o = {}) { fxs.push({ sheet, anim, x, y, t: 0, fps, n: SPR[sheet].anims[anim].length, ...o }); }
+function playFx(sheet, anim, x, y, fps = 24, o = {}) { if (fxs.length > 70 && !o.big) return; fxs.push({ sheet, anim, x, y, t: 0, fps, n: SPR[sheet].anims[anim].length, ...o }); }
 
 // ------------------------------------------------------------- saving ---
 // Per-device progress (tutorial seen, descents, last death). The full
@@ -2635,7 +2660,7 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   if (!opts.status && !blocked) e.hitT = HIT_T;
   const heavy = e.tier === 'elite' ? 0.15 : e.tier === 'rare' ? 0.4 : 1;
   if (!blocked) { e.kx += dirx * kb * heavy; e.ky += diry * kb * heavy; }
-  nums.push({ x: e.x + rand(-5, 5), y: e.y - e.hy * 2 - 4, v: dmg, t: 0, color: blocked ? PAL.iron1 : crit ? PAL.gold1 : opts.color || PAL.cloth0, crit, small: !!opts.status && !crit });
+  if (nums.length < 60 || crit) nums.push({ x: e.x + rand(-5, 5), y: e.y - e.hy * 2 - 4, v: dmg, t: 0, color: blocked ? PAL.iron1 : crit ? PAL.gold1 : opts.color || PAL.cloth0, crit, small: !!opts.status && !crit });
   const hy = e.y - e.hy;
   if (blocked) { sparks(e.x + e.face * 10, hy, PAL.gold0, 5); sfx('block'); playFx('fx', 'impact', e.x + e.face * 10, hy, 30); }
   else if (dirx || diry) { bleed(e.x, hy, crit ? 5 : 2, dirx); if (!opts.status) { sfx('hit' + Math.floor(rng() * 3), { vol: crit ? 1.3 : 1 }); } if (!opts.status) playFx('fx', 'impact', e.x - dirx * 4, hy, 30, { small: !crit }); }
@@ -2662,6 +2687,13 @@ function setFoeK(e, kind) {
   if (player.rainT > 0 && sb('choir', 6)) k *= 3;
   return k;
 }
+// A short freeze for weight. In a crowd kills come every frame, and freezes
+// back to back read as frame drops, so after one ends there is a 0.35 s
+// cooldown (big moments, like an elite falling, may still cut in).
+function hitStop(t, big = false) {
+  if (!big && (game.hitstop > 0 || game.real - (game.stopEnd || -9) < 0.35)) return;
+  game.hitstop = Math.max(game.hitstop, t); game.stopEnd = game.real + game.hitstop;
+}
 function killEnemy(e, dirx, diry, executed = false) {
   if (e.dead) return;
   e.dead = true; sfx(rng() < 0.5 ? 'kill0' : 'kill1', { vol: e.elite ? 1.3 : 1, rate: e.tier === 'elite' ? 0.8 : 1 });
@@ -2681,7 +2713,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   onWoundKill();
   addFervor(e.def.fervor + 1);
   game.shake = Math.max(game.shake, e.tier === 'elite' ? 7 : e.elite ? 4 : 1.5);
-  game.hitstop = Math.max(game.hitstop, e.tier === 'elite' ? 0.12 : e.elite ? 0.06 : 0.025);
+  hitStop(e.tier === 'elite' ? 0.12 : e.elite ? 0.06 : 0.025, e.tier === 'elite');
   // The body falls over before it bursts (executions burst at once).
   if (!executed && e.def.die && SPR[e.def.sheet].anims[e.def.die]) falls.push({ e, dirx, diry, t: 0, y: e.y });
   else dismember(e, dirx, diry, executed);
@@ -2699,6 +2731,7 @@ function killEnemy(e, dirx, diry, executed = false) {
 
 // ---------------------------------------------------------------- gore ---
 function bleed(x, y, n, dir) {
+  if (parts.length > 500) n = Math.min(n, 1);
   for (let i = 0; i < n; i++) parts.push({ kind: 'blood', x, y, z: 8, vx: dir * rand(10, 80) + rand(-25, 25), vy: rand(-30, 30), vz: rand(10, 70), c: pick([PAL.blood0, PAL.blood1, PAL.blood1, PAL.blood2]), s: rng() < 0.35 ? 2 : 1 });
 }
 function sparks(x, y, c, n) {
@@ -3088,10 +3121,10 @@ function drawFloatBow() {
   const x = xb.x - Math.cos(xb.ang) * xb.recoil * 5, y = xb.y - Math.sin(xb.ang) * xb.recoil * 5;
   // A soft shadow on the floor far below.
   ctx.fillStyle = 'rgba(11,7,16,0.25)'; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(player.y + 4), 7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-  sprC('weapon', 'xbow', i, x, y, { white: xb.flash > 0.75 });
+  sprC('weapon', G && G.skin ? `xbow_${G.skin}` : 'xbow', i, x, y, { white: xb.flash > 0.75 });
 }
 function drawFloatBowGlow() {
-  const xb = player.xb; if (!xb) return;
+  const xb = player.xb; if (!xb || player.hp <= 0) return;
   // The sigil that holds it aloft: a slowly turning ring of gold ticks.
   const r = 13, a0 = xb.t * 0.9;
   for (let k = 0; k < 12; k++) { const a = a0 + k * Math.PI / 6; ctx.fillStyle = `rgba(255,209,85,${k % 3 === 0 ? 0.55 : 0.28})`; ctx.fillRect(Math.round(xb.x + Math.cos(a) * r), Math.round(xb.y + Math.sin(a) * r * 0.45 + 2), k % 3 === 0 ? 2 : 1, 1); }
@@ -3139,6 +3172,7 @@ function updateBolts(dt) {
           b.hit.add(e);
           const sp = Math.hypot(b.vx, b.vy), [lo, hi] = T.crossbow.dmg;
           hurtEnemy(e, Math.round(rand(lo, hi + 1) * (b.crit ? (G.powers.has('critX') ? 3 : 2) * (1 + wound('heavy') * 0.5) : 1)), b.crit, b.vx / sp, b.vy / sp, 60, { kind: 'bolt' });
+          if (G.skin) sparks(b.x, b.y, PAL[boltFx().spark], 2);
           if (sb('nails', 4)) { player.nails = Math.min(50, (player.nails || 0) + 1); player.nailT = game.time; }
           if (b.crit) { onWoundCrit(e); if (sb('choir', 2)) addFervor(1.5); }
           if (b.pierce-- <= 0) {
@@ -3219,7 +3253,7 @@ function bestCluster(R) {
 function castFlask() {
   const t = bestCluster(T.flask.range);
   flasks.push({ sx: player.x, sy: player.y - 23, tx: t ? t.x : player.x + player.face * 60, ty: t ? t.y : player.y, t: 0 }); sfx('tap', { rate: 0.6, vol: 0.6 });
-  player.m1cd = T.flask.cd * G.cdrK * Math.pow(0.85, wound('flask'));
+  player.m1cd = T.flask.cd * G.cdrK * Math.pow(0.85, wound('flask')); player.castT = 0.28;
 }
 function castChain() {
   let t = null, bd = Infinity;
@@ -3230,10 +3264,10 @@ function castChain() {
   }
   if (!t) { toast('NOTHING TO BIND'); return; }
   chains.push({ x: player.x + player.face * 14, y: player.y - 25, target: t, links: [], t: 0, phase: 'fly' }); sfx('chain');
-  player.m2cd = T.chain.cd * G.cdrK;
+  player.m2cd = T.chain.cd * G.cdrK; player.castT = 0.28;
 }
 function castPenance() {
-  player.penance = 0; player.rainT = T.penance.time; player.rainTick = 0; sfx('penance');
+  player.penance = 0; player.rainT = T.penance.time; player.rainTick = 0; sfx('penance'); player.castT = 0.32;
   game.shake = Math.max(game.shake, 3); game.flash = 0.1;
   toast('RAIN OF RECKONING', 1.5);
 }
@@ -3290,7 +3324,7 @@ function updateAbilities(dt) {
           playFx('fx', 'impact', e.x, e.y - e.hy, 24);
         }
         sparks(tg.x, ty, PAL.iron0, 8);
-        game.shake = Math.max(game.shake, 3); game.hitstop = Math.max(game.hitstop, 0.04);
+        game.shake = Math.max(game.shake, 3); hitStop(0.04);
       } else { c.x += dx / d * step; c.y += dy / d * step; }
     } else if (c.phase === 'bind' && c.t > T.chain.bind) {
       c.phase = 'done';
@@ -3300,7 +3334,7 @@ function updateAbilities(dt) {
         const mx = live.reduce((a, e) => a + e.x, 0) / live.length, my = live.reduce((a, e) => a + e.y, 0) / live.length;
         for (const e of live) { const ox = mx - e.x, oy = my - e.y, od = Math.hypot(ox, oy) || 1; if (!e.boss) { e.kx += ox / od * Math.min(260, od * 5); e.ky += oy / od * Math.min(260, od * 5); } hurtEnemy(e, T.chain.dmg * 5 * (1 + wound('chains') * 0.4), true, ox / od, oy / od, 0, { status: true, color: PAL.iron0 }); }
         rings.push({ x: mx, y: my, t: 0, max: 0.45, r: 60, color: '178,188,203' }); playFx('fx', 'burst', mx, my - 10, 18, { big: true });
-        game.shake = Math.max(game.shake, 6); game.hitstop = Math.max(game.hitstop, 0.06); sfx('chain', { rate: 0.6 });
+        game.shake = Math.max(game.shake, 6); hitStop(0.06); sfx('chain', { rate: 0.6 });
       }
     }
   }
@@ -3336,7 +3370,7 @@ function updateAbilities(dt) {
 function updatePlayer(dt) {
   const p = player;
   unstick(p, p.r);
-  p.iframes = Math.max(0, p.iframes - dt); p.hurt = Math.max(0, p.hurt - dt);
+  p.iframes = Math.max(0, p.iframes - dt); p.hurt = Math.max(0, p.hurt - dt); p.castT = Math.max(0, (p.castT || 0) - dt);
   p.slowT = Math.max(0, (p.slowT || 0) - dt); p.rootT = Math.max(0, (p.rootT || 0) - dt);
   // Vestment set upkeep: nail stacks fade, pools and chains guard, Reckoning frees.
   if (p.nails && game.time - (p.nailT || 0) > 3) p.nails = 0;
@@ -3405,6 +3439,7 @@ function execute(e) { sfx('execute');
 }
 
 function die() { sfx('death'); AUDIO.set([]);
+  nums = []; bolts = []; // the world holds still while the Saint falls: clear what hung in the air
   game.state = 'dead'; game.deathT = 0;
   SAVE.deaths = (SAVE.deaths || 0) + 1;
   SAVE.lastDeath = rng() < 0.25 ? 'A STAIRCASE' : game.lastHit === 'gravewarden' ? "A GRAVEWARDEN'S SHIELD" : 'A RISEN WITH NO LOWER JAW';
@@ -3500,7 +3535,7 @@ function glowSprite(rgb, r) {
     const x = c.getContext('2d'), g = x.createRadialGradient(r, r, 0, r, r, r);
     g.addColorStop(0, `rgba(${rgb},1)`); g.addColorStop(1, `rgba(${rgb},0)`);
     x.fillStyle = g; x.fillRect(0, 0, r * 2, r * 2);
-    if (GLOW_CACHE.size > 300) GLOW_CACHE.clear();
+    if (GLOW_CACHE.size > 300) { let k = 0; for (const old of GLOW_CACHE.keys()) { GLOW_CACHE.delete(old); if (++k >= 60) break; } }
     GLOW_CACHE.set(key, c);
   }
   return c;
@@ -3512,7 +3547,7 @@ function glow(x, y, r, c, g2 = GLOW_TO || ctx) {
   let sp = COLOR_SPLIT.get(c);
   if (!sp) { const m = /rgba?\(([^)]+)\)/.exec(c), v = m ? m[1].split(',').map((q) => q.trim()) : ['255', '255', '255', '1']; sp = [v.slice(0, 3).join(','), v[3] === undefined ? 1 : +v[3]]; if (COLOR_SPLIT.size > 2000) COLOR_SPLIT.clear(); COLOR_SPLIT.set(c, sp); }
   if (sp[1] <= 0.003) return;
-  const R = Math.max(2, Math.round(r / 2) * 2), img = glowSprite(sp[0], R), a0 = g2.globalAlpha;
+  const R = r < 16 ? Math.max(2, Math.round(r / 2) * 2) : Math.round(r / 6) * 6, img = glowSprite(sp[0], R), a0 = g2.globalAlpha;
   g2.globalAlpha = a0 * Math.min(1, sp[1]);
   g2.drawImage(img, x - r, y - r, r * 2, r * 2);
   g2.globalAlpha = a0;
@@ -3520,7 +3555,11 @@ function glow(x, y, r, c, g2 = GLOW_TO || ctx) {
 const LIGHT_RGB = { flame: '95,220,108', ember: '255,122,31', holy: '138,224,255', gold: '255,209,85', blood: '224,32,46', violet: '154,106,230' };
 const onScreen = (x, y, cx, cy, m) => x > cx - m && x < cx + W + m && y > cy - m && y < cy + H + m;
 
+// ?prof: time each part of the frame draw (PROF['r:<part>']).
+let markT = 0;
+function mark(k) { if (!PROFON) return; const t = performance.now(); if (k) PROF['r:' + k] = (PROF['r:' + k] || 0) * 0.98 + (t - markT); markT = t; }
 function render() {
+  mark();
   ctx.fillStyle = '#0b0710'; ctx.fillRect(0, 0, W, H);
   if (game.state === 'title' || !player) { renderTitle(); blit(); return; }
   const sx = game.shake ? Math.round(rand(-game.shake, game.shake)) : 0, sy = game.shake ? Math.round(rand(-game.shake, game.shake)) : 0;
@@ -3533,8 +3572,10 @@ function render() {
   for (const d of room.decals) d.kind === 'skullcandle' ? spr('hall', 'skullcandle', Math.floor(game.real * 6 + d.x), d.x, d.y) : spr('props', 'candles', Math.floor(game.real * 6 + d.x), d.x, d.y);
   for (const l of room.lights) if (l.sconce) bigFlame(l.x, l.y, l.flick);
   if (game.scene === 'wound') { drawGates(); drawTelegraphs(); drawDrops(); drawCritters(cx, cy); }
+  mark('floor');
   drawAbilitiesGround();
   if (game.scene === 'wound') drawSkillsGround();
+  mark('ground');
   for (const e of enemies) {
     if (e.spawnDelay > 0) continue;
     if (e.state === 'spawn') {
@@ -3553,9 +3594,10 @@ function render() {
   for (const p of room.props) if (SHADOW[p.kind] && onScreen(p.x, p.y, cx, cy, 40)) shadow(p.x, p.y - 2, SHADOW[p.kind]);
   for (const n of room.npcs) shadow(n.x, n.y, 6);
   for (const g of ghosts) spr(saintSheet(), 'dash', g.i, g.x, g.y, { flip: g.face < 0, white: true, alpha: 0.45 * (1 - g.t / 0.2) });
+  mark('shadows');
   // Y-sorted actors and props.
   const th = thuriblePos();
-  const actors = [player, ...(player.xb ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 90)), ...falls.map((f) => ({ fall: f, y: f.y })), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, 90))];
+  const actors = [player, ...(player.xb && player.hp > 0 ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 90)), ...falls.map((f) => ({ fall: f, y: f.y })), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, 90))];
   actors.sort((a, b) => a.y - b.y);
   for (const a of actors) {
     // One actor that fails to draw is skipped; the canvas state is put back.
@@ -3571,6 +3613,7 @@ function render() {
     } catch (err) { logError('draw', err); }
     ctx.restore();
   }
+  mark('actors');
   if (game.interact && game.state === 'play') {
     const it = game.interact, ty = it.who ? it.y - 40 : it.door ? it.y - 30 : it.y - 46;
     const label = it.who ? NPC_INFO[it.who.talk || it.who.npc].name : it.label;
@@ -3581,8 +3624,9 @@ function render() {
   if (game.scene === 'town') drawTownWorld();
   for (const g of gibs) spr('fx', g.anim, g.i, g.x, g.y - g.z, { ax: 5, ay: 5 });
   for (const p of parts) { ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x), Math.round(p.y - p.z), p.s || 1, p.s || 1); }
+  const boltAnim = G && G.skin ? `bolt_${G.skin}` : 'bolt';
   for (const b of bolts) {
-    const f = frameOf('fx', 'bolt', 0);
+    const f = frameOf('fx', boltAnim, 0);
     ctx.save(); ctx.translate(Math.round(b.x), Math.round(b.y)); ctx.rotate(Math.atan2(b.vy, b.vx));
     ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -f.w + 3, -Math.floor(f.h / 2), f.w, f.h); ctx.restore();
   }
@@ -3598,8 +3642,10 @@ function render() {
   if (player.target) drawMarker(player.target, player.lock === player.target);
   ctx.restore();
 
+  mark('air');
   if (game.scene === 'town') drawTownOverlay(cx, cy);
   renderLight(cx, cy);
+  mark('light');
   if (game.scene === 'town') { drawTownForeground(cx, cy); drawSiteMarkers(cx, cy); }
 
   // Additive glow (VFX layer). Soft glows go to a half-size layer that is
@@ -3629,10 +3675,12 @@ function render() {
   drawAbilitiesGlow();
   drawFloatBowGlow();
   if (game.scene === 'wound') drawSkillsGlow();
+  const BF = boltFx();
   for (const b of bolts) {
-    ctx.strokeStyle = b.crit ? 'rgba(255,209,85,0.8)' : 'rgba(255,244,176,0.55)'; ctx.lineWidth = 2;
+    const c = b.crit ? BF.crit : BF.trail;
+    ctx.strokeStyle = `rgba(${c},${b.crit ? 0.8 : 0.55})`; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(b.x, b.y); for (const [x, y] of b.trail) ctx.lineTo(x, y); ctx.stroke();
-    glow(b.x, b.y, b.crit ? 14 : 9, b.crit ? 'rgba(255,209,85,0.6)' : 'rgba(255,244,176,0.35)');
+    glow(b.x, b.y, b.crit ? 14 : 9, `rgba(${c},${b.crit ? 0.6 : 0.35})`);
   }
   for (const p of parts) if (p.kind === 'spark') glow(p.x, p.y, 4, 'rgba(255,192,74,0.5)');
   for (const f of fxs) if (f.anim === 'impact' && !f.small) glow(f.x, f.y, 20 * (1 - f.t * f.fps / f.n), 'rgba(255,244,176,0.6)');
@@ -3646,7 +3694,7 @@ function render() {
   ctx.globalCompositeOperation = 'lighter'; ctx.imageSmoothingEnabled = true;
   ctx.drawImage(glowLayer, 0, 0, glowLayer.width * 2, glowLayer.height * 2);
   ctx.imageSmoothingEnabled = false; ctx.globalCompositeOperation = 'source-over';
-
+  mark('glow');
   for (const n of nums) {
     const rise = 16 * Math.min(1, n.t * 6) + n.t * 8, pop = n.t < 0.08;
     const sc = n.crit ? (pop ? 3 : 2) : n.small ? 1 : pop ? 2 : 1;
@@ -3654,8 +3702,10 @@ function render() {
     text(String(n.v) + (n.crit && typeof n.v === 'number' ? '!' : ''), n.x - cx, n.y - cy - rise, n.color, { sc, align: 'center', small: n.small });
     ctx.globalAlpha = 1;
   }
+  mark('nums');
   renderScreenFx();
   renderHud();
+  mark('hud');
   if (game.state === 'pause') {
     overlay('PAUSED', 'TAP TO RESUME');
     // The latest caught error, so a player can send it to us.
@@ -3750,7 +3800,12 @@ function drawPlayer() {
   let i = Math.floor(p.animT * fps);
   if (p.anim === 'dash') i = Math.min(2, Math.floor((T.dash.time - p.dashT) / T.dash.time * 3));
   const blink = p.iframes > 0 && p.hurt > 0 && Math.floor(game.real * 30) % 2 === 0;
-  spr(saintSheet(), p.anim, i, p.x, p.y, { flip: p.face < 0, white: p.hurt > 0.25 || blink });
+  // Hand-posed reactions over the move cycle: death, a rite cast, a flinch.
+  let anim = p.anim;
+  if (game.state === 'dead' || p.hp <= 0) { anim = 'die'; i = Math.min(3, Math.floor((game.deathT || 0) / 0.13)); }
+  else if (p.anim !== 'dash' && (p.castT || 0) > 0) { anim = 'cast'; i = p.castT > 0.2 ? 0 : 1; }
+  else if (p.anim !== 'dash' && p.hurt > 0.1) { anim = 'hit'; i = p.hurt > 0.22 ? 0 : 1; }
+  spr(saintSheet(), anim, i, p.x, p.y, { flip: p.face < 0, white: anim !== 'die' && (p.hurt > 0.25 || blink) });
 }
 
 // Height of a monster's sprite above its feet, from its first walk frame.
@@ -4210,7 +4265,8 @@ function renderLoading() {
 }
 
 function renderReceipt(survived = false) {
-  const k = Math.min(1, game.deathT * 1.5);
+  // A death first shows the Saint falling (about 0.7 s), then the receipt.
+  const k = Math.min(1, Math.max(0, game.deathT - (survived ? 0 : 0.7)) * 1.5);
   ctx.fillStyle = `rgba(11,7,16,${0.8 * k})`; ctx.fillRect(0, 0, W, H);
   if (k < 1) return;
   const r = game.receipt, w = 260, h = 176, x = Math.round(W / 2 - w / 2), y = Math.round(H / 2 - h / 2);
@@ -4652,7 +4708,7 @@ function onTap(x, y) {
       else game.state = 'play';
       return true;
     }
-    case 'dead': if (game.deathT > 1.4) { enterTown(false); talk('odile'); } return true;
+    case 'dead': if (game.deathT > 2.1) { enterTown(false); talk('odile'); } return true;
     case 'tally': if (game.deathT > 1.4) { enterTown(false); toast('THE CROWD CHEERS YOUR RETURN', 2.5); } return true;
   }
   return false;
@@ -4708,7 +4764,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

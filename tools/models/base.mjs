@@ -32,7 +32,7 @@ export const HALF = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5];
 // Hit reactions and deaths for any model. make() draws the model at rest;
 // the same scene is re-rendered tipped back about its feet, so lighting and
 // outlines stay right. Frames are cropped to their pixels, anchor at the feet.
-function posedFrame(make, ref, { rot = 0, dx = 0, dy = 0, mid = false }) {
+export function posedFrame(make, ref, { rot = 0, dx = 0, dy = 0, mid = false }) {
   const pad = Math.ceil(Math.max(ref.w, ref.h) / 4) * 2;
   // mid: turn about the middle of the body instead of the feet.
   let top = ref.ay; if (mid) for (let i = 0; i < ref.px.length; i++) if (ref.px[i] >= 0) { top = Math.floor(i / ref.w); break; }
@@ -84,7 +84,8 @@ export const MATS = {
 // ---------------------------------------------------------- the Saint ---
 // 48x68 frame, feet at y 62, facing right.
 export function saintModel(pose = {}) {
-  const { bob = 0, legs = 0, lift = [0, 0], bend = [0, 0], cape = 0, lean = 0, aim = 0, blink = false, halo = 0, skin = null } = pose;
+  // reach: the front arm thrust forward (cast); haloAt: [dx, dy] knocks the halo loose.
+  const { bob = 0, legs = 0, lift = [0, 0], bend = [0, 0], cape = 0, lean = 0, aim = 0, blink = false, halo = 0, skin = null, reach = 0, haloAt = null } = pose;
   const K = { robe: 'crimson', robeDark: 'crimsonDark', tabard: 'cloth', hose: 'shroud', boot: 'leather', trim: 'gold', hood: 'crimson', cowl: 'crimson', cape: 'crimsonDark', capeHem: 'gold', cross: 'crimson', ...(skin ? SKINS[skin].mats : {}) };
   // legs: one number (mirrored swing) or [back leg, front leg] foot offsets.
   const legX = Array.isArray(legs) ? legs : [-legs, legs];
@@ -117,7 +118,7 @@ export function saintModel(pose = {}) {
   S.add(capsule([cx - 5.6 + X, 35 + B, -2.8], [cx - 4.6 + X, 39.4 + B, -2], 1.8, 1.6, K.robeDark), 0.6);
   S.add(sphere([cx - 4.6 + X, 40 + B, -2], 1.55, K.boot), 0.5);
   // Front arm raised in a casting gesture: the crossbow floats, guided by this hand.
-  const hand = [cx + 8.4 + X, 31.6 + B + aim, 5.8], elbow = [cx + 6.6 + X, 37 + B, 4.6];
+  const hand = [cx + 8.4 + X + reach * 4, 31.6 + B + aim - reach * 1.6, 5.8], elbow = [cx + 6.6 + X + reach * 2.6, 37 + B - reach * 1.8, 4.6];
   S.add(capsule([cx + 4.4 + X, 29.6 + B, 2.4], elbow, 2.5, 2.1, K.robe), 1.3);
   S.add(capsule(elbow, [hand[0] - 0.4, hand[1] + 1.8, hand[2] - 0.3], 2.1, 2.3, K.robe), 0.7);
   S.paint({ f: (x, y, z) => Math.hypot(x - (hand[0] - 0.4), y - (hand[1] + 2.2), z - (hand[2] - 0.3)) - 2.45, mat: K.trim });
@@ -144,7 +145,7 @@ export function saintModel(pose = {}) {
   S.paint({ f: (x, y) => Math.abs(y - (50.8 + B * 0.4)) - 0.8, mat: K.trim });
   // The cracked halo, seen from just above.
   // Tipped up enough that its hole still shows on the chunky 2x2 grid.
-  if (!SKINS[skin]?.crown) S.add(torus([hx - 1, hy - 12 + halo, 0], 4.8, 1.05, 0.55, 'halo'), 0);
+  if (!SKINS[skin]?.crown) S.add(torus(haloAt ? [cx + haloAt[0], 62 - 1.2 + haloAt[1], 2] : [hx - 1, hy - 12 + halo, 0], 4.8, 1.05, haloAt ? 1.25 : 0.55, 'halo'), 0);
   const J = { cx, B, X, hx, hy, hand, fc };
   if (skin) SKINS[skin].add?.(S, J);
   const f = render(S, 48, 68, MATS, { ground: 62 });
@@ -153,6 +154,8 @@ export function saintModel(pose = {}) {
   else for (const ex of [fc[0] - 1.3, fc[0] + 1]) dot(f, ex, fc[1] + 0.2, 'flame3');
   // A holy light cupped in the raised palm.
   if (!SKINS[skin]?.noLight) { dot(f, hand[0] + 1.4, hand[1] - 1, 'holy1'); dot(f, hand[0] + 2.2, hand[1] - 2, 'white'); dot(f, hand[0] + 1.6, hand[1] - 2.6, 'holy2'); }
+  // A cast flares the light in the palm.
+  if (reach > 0.5) { dot(f, hand[0] + 3.4, hand[1] - 1.4, 'holy0'); dot(f, hand[0] + 3.6, hand[1] - 3.4, 'white'); dot(f, hand[0] + 4.8, hand[1] - 2.4, 'holy1'); }
   if (skin) SKINS[skin].dots?.(f, J);
   return f;
 }

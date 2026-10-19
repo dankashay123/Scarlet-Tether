@@ -94,14 +94,20 @@ function orb(ramp, { r = 4.2, tail = false } = {}) {
 // --------------------------------------------------------------- objects ---
 const A = (f, ax, ay) => Object.assign(f, { ax, ay });
 // The nail bolt, flying right: a forged iron nail with a gilt collar.
-function bolt() {
+// Set bolts (docs/SETS.md): shaft, collar and point per vestment set.
+const BOLTS = {
+  nails: ['gold', 'crimson', 'gold0'], stride: ['emberLit', 'ember', 'ember0'], font: ['holy', 'iron', 'holy0'],
+  confessor: ['slate', 'iron', 'violet0'], choir: ['gold', 'cloth', 'ember0'],
+};
+function bolt(skin = null) {
+  const [shaft, collar, tip] = skin ? BOLTS[skin] : ['iron', 'gold', 'gold0'];
   const S = new Scene();
-  S.add(capsule([4, 4.5, 2], [17, 4.5, 2], 1.1, 1.1, 'iron'), 0);
-  S.add(capsule([17, 4.5, 2], [21.5, 4.5, 2], 1.1, 0.2, 'iron'), 0.6);
-  S.add(ellipsoid([3, 4.5, 2], [1.2, 2.6, 2.4], 'iron'), 0.5);
-  S.paint({ f: (x) => Math.abs(x - 7.5) - 0.9, mat: 'gold' });
+  S.add(capsule([4, 4.5, 2], [17, 4.5, 2], 1.1, 1.1, shaft), 0);
+  S.add(capsule([17, 4.5, 2], [21.5, 4.5, 2], 1.1, 0.2, shaft), 0.6);
+  S.add(ellipsoid([3, 4.5, 2], [1.2, 2.6, 2.4], shaft), 0.5);
+  S.paint({ f: (x) => Math.abs(x - 7.5) - 0.9, mat: collar });
   const f = render(S, 23, 9, MATS, { contrast: 1.5 });
-  put(f, 20, 4, 'white'); put(f, 19, 4, 'gold0');
+  put(f, 20, 4, 'white'); put(f, 19, 4, tip);
   return f;
 }
 // The thurible: a pierced brass censer on its chain, embers glowing inside.
@@ -268,7 +274,7 @@ function soundIcon(on) {
 export default {
   ui: { sound: () => [soundIcon(true)], muted: () => [soundIcon(false)] },
   fx: {
-    bolt: () => [bolt()],
+    bolt: () => [bolt()], ...Object.fromEntries(Object.keys(BOLTS).map((k) => [`bolt_${k}`, () => [bolt(k)]])),
     impact: () => [0, 1, 2, 3].map(impact),
     burst: () => [0, 1, 2, 3].map(burst),
     smoke: () => [0, 1, 2, 3].map(smoke),

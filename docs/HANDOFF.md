@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-19, after round 12. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 13. Read this first, then `CLAUDE.md`.
 
 **Every reply that completes a prompt ends with two lists: what was done,
 and 5 suggestions for what to do next.** (The owner's standing request;
@@ -109,7 +109,8 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   and the HUD portrait wear the set's sculpted skin. Odile's Habit is the
   4-piece starter set (below Station IV). The Lesser Vow (a Hallowed seal)
   counts one extra piece. Odile's Gift: after the Wardens of III, VI and
-  IX, talk to Sister Odile for two pieces of a set you choose.
+  IX, talk to Sister Odile for two pieces of a set you choose. Each skin
+  has its own crossbow, bolts and bolt colours (round 13).
 - **Stratum II, the Drowned Nave** (round 11): after the Warden of III the
   descent panel shows a STRATUM button. The Nave is a flooded look
   (`STRATA`, `useStratum`): its sheets (`hall_d`, `floor_d`, `walldecor_d`,
@@ -198,7 +199,7 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
    open the Reliquary, finish under 8 minutes) paying gold and Devotion.
 4. **Chunky-grid art fixes.** Review every sheet with `CHUNKY=2`: small
    faces losing eyes, rough item icons, bolder effects for big pixels.
-5. **Juice.** Hit-flash tuning, bigger crit numbers, coin fountains on elite
+5. **Juice (mind the cost).** Hit-flash tuning, bigger crit numbers, coin fountains on elite
    and Warden deaths, a short slow-mo when a Warden falls, footstep dust.
 6. **Penitent Cells and set tuning.** One small trial room per set,
    opened by wearing it; tune the 6-piece multipliers from play; set
@@ -213,6 +214,16 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 13:** a crossbow, bolt and bolt colours per set skin; hand-posed
+  `cast`, `hit` and `die` frames for the Saint (death shows the fall for
+  0.7 s before the receipt). Crowd stutter fixed: kill hitstops chained
+  into near-constant freezes (32% of the time in a dense fight, now 7%;
+  `hitStop()` has a 0.35 s cooldown), and every new damage number or
+  counter built a new text canvas (strings with digits now draw from
+  cached glyphs, `numText`; caches drop their oldest entries instead of
+  clearing). Caps on effects, particles, numbers and new sound voices.
+  `?prof` now also times each part of the frame draw (`r:*`). New test:
+  `tools/tests/perf.cjs` (frame times, frozen share, canvases made).
 - **Round 12:** the five vestment sets in game: drops, 2/4/6 bonuses, set
   cards, set icons, a sculpted Saint skin and HUD portrait per set, the
   Lesser Vow, Odile's Gift. New test: `tools/tests/sets.cjs`.

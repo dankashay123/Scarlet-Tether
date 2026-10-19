@@ -7,6 +7,10 @@ In game: `VSETS`, `MAIN_SETS`, `sb(id, n)` (pieces worn), `setGuard()`
 (`openGift`). Skins: `SKINS` in `tools/models/base.mjs` make the sheets
 `saint_<set>` and `portrait_<set>`; `saintSheet()` picks one at 4 pieces.
 Set icons: `ui` `set_<set>`. Test: `tools/tests/sets.cjs`.
+Round 13: each skin also has its own crossbow (`weapon` `xbow_<set>`,
+`XSKIN` in `tools/models/weapon.mjs`), bolt (`fx` `bolt_<set>`) and bolt
+trail, glow and hit-spark colours (`BOLT_FX`). Every Saint sheet has
+hand-posed `cast`, `hit` and `die` frames.
 
 ## What we take from Diablo 3
 
