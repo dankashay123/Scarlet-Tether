@@ -1821,41 +1821,104 @@ function drawCellBanners() {
 }
 
 // ------------------------------------------------------------- rites panel ---
-// Pick one rite per slot. Opened from the pause screen or the bag.
+// Pick one rite per slot. Opened from the pause screen or the bag. Three
+// columns of cards on the left, the chosen card's details on the right.
 function riteLayout() {
-  const pw = Math.min(640, W - 12), ph = Math.min(H - 12, 300), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
-  const colW = Math.floor((pw - 24 - 12) / 3), ch = Math.floor((ph - 44 - 9) / 4);
-  return { pw, ph, x0, y0, colW, ch, close: { x: x0 + pw - 14, y: y0 + 13, r: 10 }, card: (c, r) => ({ x: x0 + 12 + c * (colW + 6), y: y0 + 42 + r * (ch + 3), w: colW, h: ch }) };
+  const pw = Math.min(660, W - 12), ph = Math.min(H - 12, 300), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
+  const dw = Math.max(150, Math.min(210, pw - 38 - 3 * 132)), colW = Math.floor((pw - dw - 26 - 12) / 3), ch = Math.floor((ph - 46 - 8 - 12) / 4);
+  return { pw, ph, x0, y0, colW, ch, close: { x: x0 + pw - 14, y: y0 + 13, r: 10 }, detail: { x: x0 + pw - dw - 10, y: y0 + 34, w: dw, h: ph - 42 },
+    card: (c, r) => ({ x: x0 + 10 + c * (colW + 6), y: y0 + 46 + r * (ch + 4), w: colW, h: ch }) };
 }
 const RITE_SLOTS = [['m1', 'RITE I'], ['m2', 'RITE II'], ['pen', 'RECKONING']];
-function openRites(back) { game.ritesBack = back || game.state; game.state = 'rites'; sfx('tap'); }
+// What each rite gains from its set, and the Hallowed power that bends it.
+const RITE_MORE = {
+  water: { syn: 'POOLS ARE 30% WIDER AND SLOW FOES 40%. STAND IN ONE TO TAKE LESS HARM AND GAIN ZEAL TWICE AS FAST.', pow: 'bigPools' },
+  wave: { syn: 'ITS THREE POOLS ARE WIDER AND SLOW, AND THEY SHIELD YOU LIKE THE VIAL\'S.', pow: 'bigPools' },
+  storm: { syn: 'EVERY NAIL PIERCES AND SPLITS LIKE A BOLT, AND EACH HIT ADDS A NAIL STACK.', pow: 'bigStorm' },
+  step: { syn: 'THE LEAP IS A DASH: IT LEAVES HOLY FIRE, CAN BE A PERFECT DODGE AND OPENS THE X4 WINDOW.', pow: 'hotTrail' },
+  chain: { syn: 'BINDS 3 MORE FOES, BOUND FOES TAKE 25% MORE, AND AT SIX THEY BURST TOGETHER.', pow: 'longBind' },
+  shackle: { syn: 'BOUND FOES TAKE 25% MORE, AND EACH ONE HELD GUARDS YOU 8%, UP TO 40%.', pow: 'longBind' },
+  censer: { syn: 'ZEAL FADES HALF AS FAST, SO EACH BLAZE BRINGS RECKONING SOONER.', pow: 'censerPlus' },
+  ward: { syn: 'THE FREE PERFECT DODGE REFILLS EVERY DASH AND GIVES 2 S OF PENANCE.', pow: 'wardLong' },
+  rain: { syn: 'KILLS IN RECKONING HEAL YOU. AT SIX IT BURNS WHILE ZEAL LASTS, ALL DAMAGE X3.', pow: 'longReck' },
+  pillars: { syn: 'KILLS IN RECKONING HEAL YOU. AT SIX IT BURNS WHILE ZEAL LASTS, ALL DAMAGE X3.', pow: 'fastPillars' },
+  font: { syn: 'THE GREAT POOL IS WIDER AND SLOWS, AND IT SHIELDS YOU AS YOU WALK.', pow: 'bigPools' },
+  volley: { syn: 'EVERY SHOT PIERCES AND SPLITS, AND THE STORM OF BOLTS PILES NAIL STACKS FAST.', pow: 'longReck' },
+};
+function openRites(back) { game.ritesBack = back || game.state; game.state = 'rites'; game.riteFocus = game.riteFocus || 'm1'; sfx('tap'); }
+// A dark round socket with an icon in it.
+function riteSocket(x, y, r, icon, scale, ring, alpha = 1) {
+  ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(x, y, r + 1, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = ring; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = PAL.ink0; ctx.beginPath(); ctx.arc(x, y, r - 2, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale); sprC('ui', icon, 0, 0, 0, { alpha }); ctx.restore();
+}
 function renderRites() {
-  const L = riteLayout();
+  const L = riteLayout(), small = { small: true, outline: null };
   ctx.fillStyle = 'rgba(11,7,16,0.8)'; ctx.fillRect(0, 0, W, H);
   gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 22);
-  text('RITES', L.x0 + 10, L.y0 + 7, PAL.gold1); text('EACH LEANS ON ONE VESTMENT SET', L.x0 + 60, L.y0 + 8, PAL.stone2, { small: true, outline: null });
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  ctx.fillStyle = PAL.gold3; ctx.fillRect(L.x0, L.y0 + 26, L.pw, 1);
+  text('RITES', L.x0 + 12, L.y0 + 9, PAL.gold1);
+  text('CHOOSE ONE FOR EACH SLOT. EACH LEANS ON A VESTMENT SET.', L.x0 + 64, L.y0 + 10, PAL.stone1, small);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
   RITE_SLOTS.forEach(([slot, label], c) => {
-    const x = L.x0 + 12 + c * (L.colW + 6); text(label, x + 2, L.y0 + 29, PAL.cloth1, { small: true, outline: null });
+    const x = L.x0 + 10 + c * (L.colW + 6);
+    text(label, x + 2, L.y0 + 34, game.riteFocus === slot ? PAL.gold1 : PAL.cloth1, small);
+    ctx.fillStyle = PAL.ink3; ctx.fillRect(x, L.y0 + 42, L.colW, 1);
     RITES[slot].forEach((r, i) => {
-      const b = L.card(c, i), sel = riteOf(slot).id === r.id;
+      const b = L.card(c, i), sel = riteOf(slot).id === r.id, syn = sb(r.set, 2) || sbw(r.set), rgb = SET_RGB[r.set];
+      ctx.fillStyle = PAL.outline; ctx.fillRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2);
       ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(b.x, b.y, b.w, b.h);
-      if (sel) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 1; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1); }
-      ctx.save(); ctx.translate(b.x + 15, b.y + 15); ctx.scale(0.6, 0.6); sprC('ui', r.icon, 0, 0, 0, { alpha: sel ? 1 : 0.7 }); ctx.restore();
-      text(r.name, b.x + 30, b.y + 4, sel ? PAL.gold1 : PAL.cloth0, { small: true, outline: null });
-      const syn = sb(r.set, 2) || sbw(r.set);
-      text(VSETS[r.set].name.replace(/^THE /, ''), b.x + 30, b.y + 13, syn ? RARITY[4].color : PAL.stone2, { small: true, outline: null });
-      wrapW(r.text, b.w - 8, true).slice(0, Math.max(1, Math.floor((b.h - 26) / 10))).forEach((l, k) => text(l, b.x + 4, b.y + 26 + k * 10, PAL.stone1, { small: true, outline: null }));
+      ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(b.x, b.y, b.w, 2);
+      ctx.fillStyle = `rgba(${rgb},${syn || sel ? 0.95 : 0.45})`; ctx.fillRect(b.x, b.y, 3, b.h);
+      if (sel) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 2; ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2); }
+      const cy = b.y + Math.round(b.h / 2);
+      riteSocket(b.x + 19, cy, 12, r.icon, 0.85, sel ? PAL.gold2 : syn ? `rgb(${rgb})` : PAL.ink3, sel ? 1 : 0.75);
+      const tx = b.x + 37;
+      text(r.name, tx, cy - 15, sel ? PAL.gold1 : PAL.cloth0, small);
+      text(VSETS[r.set].name.replace(/^THE /, ''), tx, cy - 4, syn ? `rgb(${rgb})` : PAL.stone2, small);
+      text(r.cd ? `${r.cd} S` : 'ZEAL', tx, cy + 7, PAL.stone1, small);
+      if (syn) text('SET', b.x + b.w - 6, cy + 7, RARITY[4].color, { ...small, align: 'right' });
     });
   });
+  renderRiteDetail(L, game.riteFocus || 'm1');
+}
+// The chosen rite of one slot, in full: what it does, its set, its Hallowed.
+function renderRiteDetail(L, slot) {
+  const D = L.detail, r = riteOf(slot), M = RITE_MORE[r.id], rgb = SET_RGB[r.set], small = { small: true, outline: null };
+  const syn = sb(r.set, 2) || sbw(r.set), worn = G.sets[r.set] || 0, arms = G.wsets[r.set] >= 2;
+  ctx.fillStyle = PAL.outline; ctx.fillRect(D.x - 1, D.y - 1, D.w + 2, D.h + 2);
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(D.x, D.y, D.w, D.h);
+  ctx.fillStyle = `rgba(${rgb},0.16)`; ctx.fillRect(D.x, D.y, D.w, 44);
+  ctx.fillStyle = `rgb(${rgb})`; ctx.fillRect(D.x, D.y + 44, D.w, 1);
+  riteSocket(D.x + 23, D.y + 22, 17, r.icon, 1, PAL.gold2);
+  const big = textW(r.name) <= D.w - 52; text(r.name, D.x + 46, D.y + (big ? 8 : 10), PAL.gold1, big ? {} : small);
+  const cd = r.cd ? `${RITE_SLOTS.find((s) => s[0] === slot)[1]}, ${(r.cd * G.cdrK * (r.id === 'censer' && G.powers.has('censerPlus') ? 0.6 : 1)).toFixed(1)} S` : 'CHARGED BY ZEAL';
+  text(cd, D.x + 46, D.y + 24, PAL.stone1, small);
+  let y = D.y + 52;
+  const para = (s, col, step = 11) => { for (const l of wrapW(s, D.w - 16, true)) { text(l, D.x + 8, y, col, small); y += step; } };
+  para(r.text, PAL.cloth0);
+  y += 5; ctx.fillStyle = PAL.ink3; ctx.fillRect(D.x + 8, y, D.w - 16, 1); y += 7;
+  sprC('ui', 'set_' + r.set, 0, D.x + 16, y + 6);
+  text(VSETS[r.set].name, D.x + 30, y + 3, `rgb(${rgb})`, small); y += 17;
+  para(M.syn, syn ? PAL.cloth1 : PAL.stone2);
+  text(syn ? (arms && worn < 2 ? 'ACTIVE THROUGH ITS ARMS' : `ACTIVE, ${worn} OF 6 WORN`) : `WEAR 2 PIECES OR ITS ARMS, ${worn} OF 6 WORN`, D.x + 8, y + 1, syn ? RARITY[4].color : PAL.stone2, small); y += 15;
+  const lg = LEGENDS.find((g) => g.key === M.pow);
+  if (!lg || y > D.y + D.h - 34) return;
+  ctx.fillStyle = PAL.ink3; ctx.fillRect(D.x + 8, y, D.w - 16, 1); y += 7;
+  const has = G.powers.has(M.pow);
+  text(has ? 'HALLOWED, WORN' : 'HALLOWED', D.x + 8, y, has ? RARITY[3].color : PAL.stone2, small); y += 11;
+  text(lg.name, D.x + 8, y, has ? PAL.ember0 : PAL.ember2, small); y += 11;
+  for (const l of wrapW(lg.text, D.w - 16, true)) { if (y > D.y + D.h - 22) break; text(l, D.x + 8, y, has ? PAL.cloth1 : PAL.stone2, small); y += 11; }
+  if (y < D.y + D.h - 18) text('TAP A CARD TO CHOOSE IT', D.x + D.w / 2, D.y + D.h - 12, PAL.stone2, { ...small, align: 'center' });
 }
 function ritesTap(x, y) {
   const L = riteLayout();
   if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { game.state = game.ritesBack === 'rites' ? 'play' : game.ritesBack || 'play'; sfx('tap'); return; }
   RITE_SLOTS.forEach(([slot], c) => RITES[slot].forEach((r, i) => {
     if (!inRect(L.card(c, i), x, y)) return;
-    SAVE.rites = SAVE.rites || {}; SAVE.rites[slot] = r.id; persist(); sfx('tap', { vol: 0.6 });
+    SAVE.rites = SAVE.rites || {}; SAVE.rites[slot] = r.id; game.riteFocus = slot; persist(); sfx('tap', { vol: 0.6 });
     if (player) { if (slot === 'm1') player.m1cd = Math.max(player.m1cd, 1); if (slot === 'm2') player.m2cd = Math.max(player.m2cd, 1); }
   }));
 }
@@ -5302,7 +5365,7 @@ function invLayout() {
   const auto = { x: bag.x, y: by, w: bw, h: 20 }, sell = { x: bag.x + bw + 6, y: by, w: bw, h: 20 };
   // Bulk-sell choices fill the card while open.
   const opts = [0, 1, 2, 3].map((i) => ({ x: card.x + 6, y: card.y + 40 + i * 36, w: card.w - 12, h: 22 }));
-  const rites = { x: x0 + 196, y: y0 + 5, w: 62, h: 18 };
+  const rites = { x: doll.x, y: y0 + ph - 28, w: 72, h: 20 };
   return { pw, ph, x0, y0, doll, slots, bag, card, close, btnA, btnB, auto, sell, opts, rites };
 }
 // Auto equip: for each slot, wear the best piece from the bag if it beats
@@ -5340,7 +5403,7 @@ function selItem() { const s = game.inv && game.inv.sel; if (!s) return null; re
 function invTap(x, y) {
   const L = invLayout();
   if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || x < 0 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { closeInventory(); return; }
-  if (inRect(L.rites, x, y)) { openRites('inv'); return; }
+  if (inRect({ ...L.rites, w: L.rites.w + 84 }, x, y)) { openRites('inv'); return; }
   if (game.inv.selling) {
     const i = L.opts.findIndex((r) => inRect(r, x, y));
     if (i >= 0) bulkSell(SELL_RULES[i]);
@@ -5389,7 +5452,6 @@ function renderInventory() {
   ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
   ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
   text('VESTMENTS AND GEAR', L.x0 + 12, L.y0 + 9, PAL.gold1);
-  invButton(L.rites, 'RITES', PAL.crimson3);
   const gold = game.scene === 'wound' ? game.run.gold : SAVE.gold || 0;
   sprC('loot', 'coin', 0, L.close.x - 64, L.y0 + 13); text(String(gold), L.close.x - 57, L.y0 + 9, PAL.gold1);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
@@ -5412,8 +5474,11 @@ function renderInventory() {
   if (!lines.length) text('NOTHING WORN', D.x, sy + 10, PAL.stone2, { small: true, outline: null });
   lines.slice(0, 12).forEach((l, i) => text(l, D.x + (i % 2) * 96, sy + 10 + Math.floor(i / 2) * 9, PAL.cloth1, { small: true, outline: null }));
   let py = sy + 12 + Math.ceil(Math.min(12, lines.length) / 2) * 9;
-  for (const l of setL) { text(l, D.x, py - 2, RARITY[4].color, { small: true, outline: null }); py += 9; }
-  for (const t of pw) for (const l of wrap(t, 30)) { if (py < L.y0 + L.ph - 10) text(l, D.x, py, PAL.ember1, { small: true, outline: null }); py += 9; }
+  for (const l of setL) { if (py < L.rites.y - 6) text(l, D.x, py - 2, RARITY[4].color, { small: true, outline: null }); py += 9; }
+  for (const t of pw) for (const l of wrap(t, 30)) { if (py < L.rites.y - 8) text(l, D.x, py, PAL.ember1, { small: true, outline: null }); py += 9; }
+  // The rites button, bottom left, with the three chosen rites beside it.
+  invButton(L.rites, 'RITES', PAL.crimson3);
+  RITE_SLOTS.forEach(([slot], i) => riteSocket(L.rites.x + L.rites.w + 16 + i * 24, L.rites.y + 10, 10, riteOf(slot).icon, 0.7, PAL.ink3));
   // The bag.
   const B = L.bag;
   text(`BAG ${SAVE.bag.length}/${BAG_SIZE}`, B.x, B.y - 12, PAL.stone1);

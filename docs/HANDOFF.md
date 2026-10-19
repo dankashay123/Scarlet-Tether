@@ -225,6 +225,12 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 15f (Rites panel polish):** the bag's RITES button moved to the
+  bottom left, with the three chosen rites shown beside it. The Rites panel
+  was redone: roomier cards (round icon socket, set stripe, cooldown, SET
+  when the synergy is on) and a detail pane for the slot last tapped (full
+  text, cooldown after Rite CD, what its set adds and whether it is active,
+  and the Hallowed piece that bends it, from `RITE_MORE`).
 - **Round 15e (difficulty pass):** monsters now climb by `MON_STEP` (1.5)
   per Station while gear climbs by `POWER_STEP` (1.36), so each Station is
   about 10% beyond its own gear, compounding (x1.5 at V, x2.4 at X, x3.9 at
