@@ -73,4 +73,5 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **Layouts:** dungeon rooms follow the Otherworld Legends recipe in `docs/ART_COMPARISON.md`: open floors, one mirrored plan per room, a mirrored back-wall rhythm, clutter in corners, nothing floating. Review with `tools/tests/rooms.cjs`.
 - **UI sizes:** the view height varies a little per device (whole-number scaling), so place UI from `W`/`H` and check panels fit at H ≈ 290.
 - **Writing style:** keep docs and code comments plain and short.
+- **Replies:** after every completed prompt, end the reply with a short list of what was done and 5 suggestions for what to do next (the owner's standing request).
 - **Finishing a round:** run the tests and soak, look at the screenshots, update `docs/HANDOFF.md` (state, history, next ideas) and this file, then push the branch and `master`.

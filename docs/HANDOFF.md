@@ -1,6 +1,10 @@
 # Handoff
 
-Last updated 2026-10-19, after round 10. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 10b. Read this first, then `CLAUDE.md`.
+
+**Every reply that completes a prompt ends with two lists: what was done,
+and 5 suggestions for what to do next.** (The owner's standing request;
+see "The owner's preferences".)
 
 ## Where the game stands
 
@@ -15,16 +19,17 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 - **Start:** a clean title (logo, Saint, cathedral silhouette, one button),
   then the town of Vael. An 11-step tutorial (skippable) runs from the town
   into the first fight.
-- **Vael (the town):** a long twilight street with six districts (Pilgrims'
+- **Vael (the town):** a compact twilight street (2150 px, round 8f) with six districts (Pilgrims'
   Gate, Curio Market, Gilded Lamb, Ember Forge, Quiet Acre, Cathedral),
   13 talking townsfolk, walkers, kids, crows, fog, ash and lightning.
   Market booths, benches, hay, planters, shrines, a fountain and ground
   detail fill the whole street. Nothing blocks movement.
-  - Nine **locked feature sites** (`SITES`) with badges and "UNLOCKED WHEN
-    …" panels and progress bars: Pilgrim Road (Stratum II), Pell's curio
-    stall, plush stall, bounty board, scrying-pool wagers, Ember Forge,
-    the Bleeding Vigil (Vigil Trials), Martyrdom, the Canonry. None of
-    the features behind them exist yet.
+  - Nine **feature sites** (`SITES`) with badges and "UNLOCKED WHEN …"
+    panels and progress bars: Pilgrim Road (Stratum II, Warden of XV),
+    Pell's curio stall, plush stall, bounty board, scrying-pool wagers,
+    Ember Forge (Warden of V), the Bleeding Vigil (Warden of IV),
+    Martyrdom, the Canonry. Only the **Bleeding Vigil** is built; the
+    others still say "coming in a later build".
   - Town minimap with badges; tap it or press M for the full map and legend.
 - **The descent (round 9, modelled on Diablo 3 rifts and Torchlight
   Infinite Timemarks, with our own names):**
@@ -126,6 +131,10 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## The owner's preferences
 
+- **After every completed prompt, reply with (1) a short list of what was
+  done and (2) 5 suggestions for what to do next.** Keep both as plain
+  bullet lists at the end of the reply, after the outcome and screenshots.
+
 - Graphics matter most. The target is Otherworld Legends: chunky, crisp
   pixel art, warm torch-lit stone halls, clean open rooms, nothing that
   looks AI-made. Match OWL by measuring real phone captures, not promo art.
@@ -135,47 +144,38 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 - Ship each finished round to `master` (GitHub Pages deploys from it).
 - They read on a phone: keep updates short, lead with the outcome, attach
   screenshots. They notice when an earlier request was not fully done.
+- Gameplay direction (rounds 9–10): Diablo 3 and Torchlight Infinite style
+  progression (difficulty ladder, random packed maps, a progress bar that
+  brings a boss, a timed endless trial), always under our own names.
+  Monster density should feel high and climb with difficulty. Wardens must
+  be difficult and punishing, but every hit stays telegraphed.
 
 ## Next steps (ideas, roughly in priority order)
 
-1. **Chunky-grid art fixes.** Some models lost detail at 2x2: wardens read
-   as white blocks, small faces lose eyes, item icons got rough. Review
-   every sheet with `CHUNKY=2` side by side and thicken or simplify. Make
-   the effects (bolts, impacts, skill effects) bolder to suit the bigger
-   pixels.
-2. **Locked doors the OWL way.** Replace the iron gates with a row of
-   glowing vertical bars across the doorway (OWL uses orange light bars).
-   Minimap: squares only, current room outlined, "?" for unknown rooms.
-3. **More room plans and biomes.** Add a centre dais, a 3×3 chest grid for
-   treasuries, a shop room (keeper plus three pedestals), a secret room
-   behind a cracked wall, and a second biome look for Stratum II.
-4. **Build the first locked feature.** Pell's curio stall is the smallest:
-   a shop panel with 6 items rerolled per descent, priced by rarity. Then
-   the Ember Forge (reroll one stat, temper rarity), then bounties.
-5. **More from the D3/TLI playbook (own names).** An account-wide level
-   after the cap that gives small permanent points ("Devotion"); a
-   crafting bench that rerolls one stat (the Ember Forge site); bounties on
-   the board; a Vigil leaderboard; set dungeons; more Wardens per biome.
-6. **Tune the descent from play.** Toll size (68% of the map), Warden
-   health and skills, monster counts per room and drop rates are first
-   guesses. Watch how long a Station takes at matched Sanctity (aim for
-   6–10 minutes) and adjust `populate()`, `TOLL_VALUE` and `WARDEN`.
-   Vigil timer (10 min) and level step (0.5 Station per level) too.
-6. **Vigil Trials (endless mode).** One timed descent that gets harder each
-   level; a candle timer on the HUD; leaderboard in localStorage.
-7. **Juice.** Screen-shake tuning, hit-flash on every enemy, bigger damage
-   numbers for crits, coin fountain on elite death, a short slow-mo on
-   room clear, footstep dust when the Saint runs.
-8. **Character choice.** A second playable saint (melee, short range) to
-   show off the chunky style; pick at the cathedral doors.
-9. **Phone polish.** Haptics via `navigator.vibrate` where supported,
-    safe-area insets for notched phones, a settings panel (music/SFX
-    volume, screen shake, left-handed controls), save export/import.
-10. **Suspend and resume.** Save the run mid-floor so a closed tab returns
-    to the same room.
-11. **Hand-made reactions.** Hit and death frames are the rest pose tipped
-    back as a whole. Hand-posed versions (arms flung up, weapon dropped,
-    wings folding) would read better for the elites in particular.
+1. **Tune the descent from play.** Toll size (68% of the map), Warden
+   health, phases and enrage (100 s), monster counts, drop rates and the
+   Vigil timer and level step are first guesses. Aim for 6–10 minutes per
+   Station at matched Sanctity, and a Warden fight of 60–90 s. Knobs:
+   `populate()`, `TOLL_VALUE`, `WARDEN`, `DIFF`, `vigilDiff`.
+2. **Build the first town features.** Pell's curio stall (6 items rerolled
+   per descent, priced by rarity and Sanctity), then the Ember Forge
+   (reroll one stat, raise item level for gold), then bounties on the board.
+3. **Long-term progress (own names).** An account-wide level after the cap
+   that grants small permanent points ("Devotion"); a Vigil best-level
+   record per season; Warden trophies; set bonuses worth chasing.
+4. **Chunky-grid art fixes.** Review every sheet with `CHUNKY=2`: small faces
+   losing eyes, rough item icons, bolder effects for the big pixels.
+5. **More biomes and Wardens.** A second look for Stratum II (the Pilgrim
+   Road) with its own room dressing, monsters and two new Wardens; more
+   room plans (centre dais, chest grid, a secret room behind a cracked wall).
+6. **Juice.** Hit-flash tuning, bigger crit numbers, coin fountains on elite
+   and Warden deaths, a short slow-mo when a Warden falls, footstep dust.
+7. **Phone polish.** Haptics, safe-area insets, a settings panel (music/SFX
+   volume, screen shake, left-handed controls), save export/import.
+8. **Suspend and resume.** Save a run mid-map so a closed tab returns to it.
+9. **Character choice.** A second playable saint (melee, short range).
+10. **Hand-made reactions.** Hand-posed hit and death frames for the elites
+    and Wardens instead of the whole-body tilt.
 
 ## History by round
 
@@ -281,8 +281,9 @@ These hosts are allowed now. Notes: Steam's `api/appdetails` and the App Store p
 - Art ships on a 2x2 grid: anything under 2 px vanishes. Check new models with `CHUNKY=1 node tools/preview.mjs …`. `dot()` fills a whole 2x2 block; local `put()` helpers write single pixels, which `chunkify` then votes on.
 - `resize()` picks the whole-number scale whose view height lands closest to `T.viewH` (305), so `H` varies a little per device (292 on an iPhone 13). Lay out UI from `W`/`H`, never fixed sizes.
 - Town `place()` never marks tiles solid (walk-through by request); dungeon `place()` does.
-- Keys: M opens the town map, N mutes, I opens the bag, E interacts, Esc closes panels.
+- Keys: M opens the map (town or dungeon), N mutes, I opens the bag, E interacts, Esc closes panels.
 - Never bob or slide a whole body by 1 px or a fraction: on the 2x2 grid that re-cuts every block and reads as jitter. Move bodies in steps of 2 px (`bobAt()`); elites are scaled by `s` in `shoot()`, so use `2 / s` model units.
+- To test the Vigil or high Stations quickly from the console: `HS.SAVE.cleared = 3` (opens Station V and the Vigil), `HS.SAVE.vigilOpen = 10`.
 - Errors never stop the loop; they are logged instead. If the owner reports a bug, ask what the pause screen says under BUG LOGGED, or read `localStorage['hollow-saint-errors']`.
 - `text()` caches each string as a small canvas (cleared at 600 entries). Use `small: true` for the old thin 5x7 font.
 - Audio starts on the first tap (iOS rule). Music streams through `<audio>` elements, effects are decoded buffers. `AUDIO.set([...])` picks the loops; `sfx(name)` plays an effect.
