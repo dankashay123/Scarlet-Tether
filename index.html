@@ -92,9 +92,12 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '23.1';
+const BUILD = '24.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '24.1': ["NEW MUSIC: VAEL SINGS A CHANT, AND THE CHOIR JOINS IN BY THE CATHEDRAL DOORS. EACH STRATUM HAS ITS OWN MUSIC.",
+    'EVERY WARDEN HAS ITS OWN ROAR, A STING WHEN IT COMES, AND ITS OWN DEATH. MONSTERS CRY OUT AS THEY FALL.',
+    'THE PLUSH STALL SELLS BOLT TRAILS AND DASH SHADOWS. SLAY A WARDEN AT STATION X OR DEEPER TO EARN ITS HALO.'],
   '23.1': ['NEW SOUNDS THROUGHOUT: A REAL CROSSBOW, WET HITS, BELLS AND GONGS IN A STONE HALL, A WARDEN ROAR.',
     'THE PLUSH STALL IS OPEN: ROBE DYES AND HALOS FOR GOLD.', 'SET PIECES SHOW THEIR SET COLOURS. HALLOWED PIECES SHIMMER.', "THE ASHEN ALTAR HAS ITS OWN FLAME AND CHIME, AND ITS FIRE CRACKLES AS YOU PASS."],
   '22.1': ['EVERY HALLOWED PIECE NOW HAS ITS OWN ICON, IN THE BAG, THE ALTAR AND ON THE GROUND.', "THE ALTAR'S LIST SHOWS EACH PIECE'S ICON BESIDE ITS NAME."],
@@ -149,7 +152,7 @@ const BOLT_FX = {
   confessor: { trail: '178,188,203', crit: '154,106,230', spark: 'violet0' },
   choir: { trail: '255,90,74', crit: '255,209,85', spark: 'ember0' },
 };
-const boltFx = () => BOLT_FX[(G && G.xskin) || null];
+const boltFx = () => { const T0 = TRAILS.find((q) => q.id === looks().bolt), B = BOLT_FX[(G && G.xskin) || null]; return T0 && T0.rgb ? { trail: T0.rgb, crit: T0.crit, spark: B.spark } : B; };
 const saintBase = () => (G && G.skin && SPR[`saint_${G.skin}`] ? `saint_${G.skin}` : 'saint');
 const saintSheet = () => lookSheet(saintBase());
 // ------------------------------------------------- the Plush stall's looks ---
@@ -164,9 +167,33 @@ const DYES = [
 const HALOS = [
   { id: 'gold', name: 'GILT HALO', short: 'GILT', price: 0 }, { id: 'iron', name: 'SILVER HALO', short: 'SILVER', price: 500 }, { id: 'ember', name: 'EMBER HALO', short: 'EMBER', price: 800 },
   { id: 'holy', name: 'STARLIGHT HALO', short: 'STARLIGHT', price: 1000 }, { id: 'violet', name: 'NIGHT HALO', short: 'NIGHT', price: 1200 }, { id: 'rose', name: 'BLOODROSE HALO', short: 'BLOODROSE', price: 1500 }, { id: 'flame', name: 'VERDANT HALO', short: 'VERDANT', price: 2000 },
+  // Earned, never sold: slay that Warden at Station X or deeper. They sparkle.
+  { id: 'bone', name: "THE BELLWRIGHT'S HALO", short: 'BELLWRIGHT', earn: 'bellwright' }, { id: 'pot', name: "MOTHER CANDLEMASS'S HALO", short: 'CANDLEMASS', earn: 'candlemass' },
+  { id: 'cloth', name: "THE CARDINAL'S HALO", short: 'CARDINAL', earn: 'cardinal' }, { id: 'blood', name: "THE CHARNEL KING'S HALO", short: 'CHARNEL', earn: 'charnelKing' },
+  { id: 'stone', name: 'THE HALO OF NAILS', short: 'NAILS', earn: 'ladyOfNails' }, { id: 'teal', name: "THE TIDE-BISHOP'S HALO", short: 'TIDE', earn: 'tideBishop' },
+  { id: 'moss', name: "THE ORGANIST'S HALO", short: 'ORGANIST', earn: 'organist' },
 ];
+const EARN_FROM = 10; // Station X
+// Bolt trails and dash trails (r,g,b): the first of each keeps the set's own.
+const TRAILS = [
+  { id: 'set', name: "YOUR SET'S OWN", short: 'SET', price: 0 }, { id: 'ember', name: 'EMBER BOLTS', short: 'EMBER', price: 600, rgb: '255,122,31', crit: '255,192,74' },
+  { id: 'holy', name: 'STARLIGHT BOLTS', short: 'STARLIGHT', price: 800, rgb: '138,224,255', crit: '216,247,255' }, { id: 'blood', name: 'BLOOD BOLTS', short: 'BLOOD', price: 800, rgb: '224,32,46', crit: '255,90,74' },
+  { id: 'violet', name: 'NIGHT BOLTS', short: 'NIGHT', price: 1000, rgb: '154,106,230', crit: '212,176,255' }, { id: 'verdant', name: 'VERDANT BOLTS', short: 'VERDANT', price: 1200, rgb: '95,220,108', crit: '184,255,143' },
+  { id: 'rose', name: 'BLOODROSE BOLTS', short: 'BLOODROSE', price: 1500, rgb: '232,90,166', crit: '255,156,207' }, { id: 'silver', name: 'SILVER BOLTS', short: 'SILVER', price: 1500, rgb: '178,188,203', crit: '238,242,247' },
+];
+const DASHES = [
+  { id: 'white', name: 'PALE SHADOWS', short: 'PALE', price: 0 }, { id: 'ember', name: 'EMBER STEPS', short: 'EMBER', price: 500, rgb: '255,122,31' },
+  { id: 'holy', name: 'STARLIGHT STEPS', short: 'STARLIGHT', price: 700, rgb: '138,224,255' }, { id: 'violet', name: 'NIGHT STEPS', short: 'NIGHT', price: 900, rgb: '154,106,230' },
+  { id: 'rose', name: 'BLOODROSE STEPS', short: 'BLOODROSE', price: 1200, rgb: '232,90,166' }, { id: 'shadow', name: 'THE BLACK FAST', short: 'BLACK', price: 1500, rgb: '42,34,54' },
+];
+// A tinted silhouette of a sheet (one canvas per sheet and colour, kept).
+function tintKey(sheet, rgb) {
+  const k = `t${rgb}`; TINT[k] = TINT[k] || {};
+  if (!TINT[k][sheet] && WHITE[sheet]) { const W0 = WHITE[sheet], c = document.createElement('canvas'); c.width = W0.width; c.height = W0.height; const x = c.getContext('2d'); x.drawImage(W0, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = `rgb(${rgb})`; x.fillRect(0, 0, c.width, c.height); TINT[k][sheet] = c; }
+  return TINT[k][sheet] ? k : null;
+}
 const CROWNED = ['saint_nails', 'saint_choir', 'portrait_nails', 'portrait_choir']; // crowns, not halos
-const looks = () => (SAVE.looks = SAVE.looks || { dye: 'crimson', halo: 'gold', own: ['d:crimson', 'h:gold'] });
+const looks = () => { const K = (SAVE.looks = SAVE.looks || { dye: 'crimson', halo: 'gold', own: ['d:crimson', 'h:gold'] }); if (!K.bolt) { K.bolt = 'set'; K.dash = 'white'; K.own.push('b:set', 's:white'); } return K; };
 const LOOK_CACHE = new Map();
 const rampOf = (name) => Object.keys(PAL).filter((k) => new RegExp(`^${name}\\d+h?$`).test(k)).sort((a, b) => parseFloat(a.replace(name, '').replace('h', '.5')) - parseFloat(b.replace(name, '').replace('h', '.5')));
 const rgbOf = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -311,8 +338,8 @@ function numText(s, x, y, color, o = {}) {
 // <audio> elements routed through the same context, so memory stays low.
 // iOS 17+: audioSession 'ambient' makes the game follow the silent switch.
 const AUDIO = (() => {
-  const SFX = ['shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'execute', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind'];
-  const VOL = { shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, execute: 0.8, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6 };
+  const SFX = ['shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'execute', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist'];
+  const VOL = { shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, execute: 0.8, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9 };
   const A = { ctx: null, buf: {}, last: {}, muted: false, master: null, sfxBus: null, musicBus: null, tracks: {}, want: [] };
   try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch { /* not supported */ }
   try { A.muted = !!JSON.parse(localStorage.getItem('hollow-saint') || '{}').muted; } catch { /* private mode */ }
@@ -330,6 +357,7 @@ const AUDIO = (() => {
     if (A.ctx.state === 'suspended') A.ctx.resume();
     for (const t of Object.values(A.tracks)) if (t.on && t.el.paused) t.el.play().catch(() => {});
   };
+  A.has = (name) => !!A.buf[name];
   // Play an effect. Repeats of one sound are spaced at least `gap` seconds.
   A.play = (name, { vol = 1, rate = 1, gap = 0.045, vary = 0.06 } = {}) => {
     if (!A.ctx || A.muted || !A.buf[name]) return;
@@ -349,23 +377,31 @@ const AUDIO = (() => {
     try { const src = A.ctx.createMediaElementSource(el); t.g = A.ctx.createGain(); t.g.gain.value = 0; src.connect(t.g); t.g.connect(A.musicBus); } catch { el.volume = 0; }
     return (A.tracks[name] = t);
   };
-  const LOOPS = { music_town: 0.8, music_dungeon: 0.75, amb_town: 0.5, amb_crickets: 0.18, amb_fire: 0.7 };
+  const LOOPS = { music_town: 0.8, music_dungeon: 0.75, music_undercroft: 0.8, music_nave: 0.8, amb_choir: 0.85, amb_town: 0.5, amb_crickets: 0.18, amb_fire: 0.7 };
+  // Loops whose level follows the Saint (A.level): their start level.
+  const LEVELED = { music_town: 1, amb_choir: 0, amb_fire: 0 };
   // A loop whose level follows something (the fire near the altar and forge), 0-1.
   A.level = (name, v) => {
     if (!A.ctx || A.muted || (v <= 0 && !A.tracks[name])) return;
     const t = track(name, LOOPS[name]); if (Math.abs((t.lv ?? -1) - v) < 0.02) return; t.lv = v;
     if (v > 0 && !t.on) { t.on = true; t.el.play().catch(() => {}); }
-    if (v <= 0 && t.on) { t.on = false; setTimeout(() => { if (!t.on) t.el.pause(); }, 1600); }
+    if (!t.on) return;
     if (t.g) t.g.gain.setTargetAtTime(t.vol * v, A.ctx.currentTime, 0.3); else t.el.volume = t.vol * v * 0.55;
+  };
+  // Duck the music for a moment (the Warden's sting).
+  A.duck = (secs, to = 0.3) => {
+    if (!A.ctx) return; const g = A.musicBus.gain, now = A.ctx.currentTime, base = g.value;
+    g.cancelScheduledValues(now); g.setValueAtTime(base, now); g.linearRampToValueAtTime(base * to, now + 0.3); g.setValueAtTime(base * to, now + secs); g.linearRampToValueAtTime(base, now + secs + 2);
   };
   A.set = (names) => {
     A.want = names; if (!A.ctx) return;
     const now = A.ctx.currentTime;
     for (const n of new Set([...Object.keys(A.tracks), ...names])) {
       const on = names.includes(n), t = on ? track(n, LOOPS[n]) : A.tracks[n]; if (!t) continue;
-      if (on && !t.on) { t.on = true; t.el.play().catch(() => {}); }
+      if (on && !t.on) { t.on = true; if (n === 'amb_choir' && A.tracks.music_town) t.el.currentTime = A.tracks.music_town.el.currentTime; t.el.play().catch(() => {}); }
       if (!on && t.on) { t.on = false; setTimeout(() => { if (!t.on) t.el.pause(); }, 1600); }
-      if (t.g) { t.g.gain.cancelScheduledValues(now); t.g.gain.setValueAtTime(t.g.gain.value, now); t.g.gain.linearRampToValueAtTime(on ? t.vol : 0, now + 1.5); } else t.el.volume = on ? t.vol * 0.55 : 0;
+      const lv = n in LEVELED ? (t.lv ?? LEVELED[n]) : 1;
+      if (t.g) { t.g.gain.cancelScheduledValues(now); t.g.gain.setValueAtTime(t.g.gain.value, now); t.g.gain.linearRampToValueAtTime(on ? t.vol * lv : 0, now + 1.5); } else t.el.volume = on ? t.vol * lv * 0.55 : 0;
     }
   };
   // Music and sound levels 0-3 (settings), read from the save.
@@ -971,7 +1007,7 @@ function spawnWarden(force) {
   game.warden = e;
   game.banner = { text: e.name, sub: d.lore, t: 0, color: PAL.blood0 };
   toast('THE TOLL IS FULL. THE WARDEN COMES.', 2.5);
-  game.shake = 8; game.flash = 0.12; sfx('elite', { rate: 0.6, vol: 1.4, gap: 0 }); sfx('roar', { gap: 0 });
+  game.shake = 8; game.flash = 0.12; sfx('elite', { rate: 0.6, vol: 1.4, gap: 0 }); sfx(AUDIO.has(`roar_${id}`) ? `roar_${id}` : 'roar', { gap: 0 }); sfx('sting_warden', { gap: 0 }); AUDIO.duck(5);
   rings.push({ x, y: y - 12, t: 0, max: 0.9, r: 110, color: '224,32,46' });
 }
 // Phases at two thirds and one third: faster, angrier, with a burst of shots.
@@ -1010,12 +1046,21 @@ function vigilPayout(e, L) {
 // drop one half of the time.
 const VKEY_FROM = 10, VKEY_CHANCE = 0.5;
 function dropVkey(e) { if (curDiff().n >= VKEY_FROM && Math.random() < VKEY_CHANCE) drops.push({ kind: 'vkey', x: e.x + 14, y: e.y + 6, z: 10, vx: rand(-30, 30), vy: rand(10, 30), vz: 140, t: 0 }); }
+// Each monster's voice when it dies (a family of two takes). Common foes voice
+// about one death in four, spaced out, so a crowd never drones; others always do.
+const VOICE = {};
+for (const [fam, ids] of Object.entries({'bone': ['acolyte', 'knight', 'golem', 'thrice', 'gravewarden', 'risen'], 'flesh': ['crawler', 'votary', 'flagellant', 'matron', 'collector', 'choirboy', 'colossus', 'titan', 'manymouthed', 'leviathan', 'siltWretch', 'imp', 'motherwax', 'gravedigger'], 'spirit': ['mourner', 'wisp', 'lantern', 'seraph', 'effigy', 'cherub'], 'vermin': ['rat', 'naveEel'], 'cleric': ['bishop', 'jailer', 'bellringer', 'inquisitor', 'abbess', 'cantor']})) for (const id of ids) VOICE[id] = fam;
+function deathVoice(e) {
+  const fam = VOICE[e.type]; if (!fam || e.boss) return;
+  const common = e.tier === 'common' || e.tier === 'imp' || !e.tier; if (common && rng() > 0.25) return;
+  sfx(`die_${fam}${rng() < 0.5 ? 0 : 1}`, { gap: common ? 0.22 : 0.08, vol: common ? 1 : 1.25, rate: (e.scaleK || 1) > 1.2 ? 0.85 : 1, vary: 0.1 });
+}
 function wardenSlain(e) {
-  const df = curDiff();
+  const df = curDiff(); earnHalo(e);
   game.warden = null;
   // The fall: a long slow beat, a white flash, and a fountain of coins that
   // lands before it is drawn to the Saint.
-  game.slowmo = 1.1; game.flash = 0.25; game.shake = 10; sfx('elite', { rate: 0.7 }); buzz([60, 40, 90]);
+  game.slowmo = 1.1; game.flash = 0.25; game.shake = 10; sfx('elite', { rate: 0.7 }); sfx(AUDIO.has(`fall_${e.type}`) ? `fall_${e.type}` : 'death', { gap: 0 }); buzz([60, 40, 90]);
   for (const [r, c] of [[110, '255,209,85'], [70, '255,244,176']]) rings.push({ x: e.x, y: e.y - 20, t: 0, max: 0.9, r, color: c });
   for (let k = 0; k < (opt('fx') === 'low' ? 14 : 36); k++) drops.push({ kind: 'gold', amount: Math.max(1, Math.round(rand(1, 4) * df.gold)), x: e.x + rand(-6, 6), y: e.y, z: 14, vx: rand(-120, 120), vy: rand(-70, 70), vz: rand(170, 320), t: -1.1 - rng() * 0.6 });
   if (df.vigil) {
@@ -1826,13 +1871,21 @@ function renderCanonry() {
 }
 // The Plush stall: robe dyes and halos, bought once with gold, worn at will.
 function openPlush() { game.state = 'plush'; game.plush = { tab: 0, sel: null }; sfx('tap'); }
-const plushList = (tab) => (tab ? HALOS : DYES);
-const plushOwn = (tab, id) => looks().own.includes(`${tab ? 'h' : 'd'}:${id}`);
-function plushGeo() {
-  const L = featLayout(), Lx = L.list, n = 9, two = L.y0 + 54 + n * 24 > L.y0 + L.ph - 8;
-  const rh = two ? Math.min(24, Math.floor((L.ph - 62) / 5)) : 22, cw = two ? Math.floor((Lx.w - 4) / 2) : Lx.w;
-  return { L, tabs: [0, 1].map((i) => ({ x: Lx.x + i * Math.floor(Lx.w / 2), y: L.y0 + 30, w: Math.floor(Lx.w / 2) - 4, h: 18 })),
-    row: (i) => (two ? { x: Lx.x + (i % 2) * (cw + 4), y: L.y0 + 54 + Math.floor(i / 2) * (rh + 3), w: cw, h: rh } : { x: Lx.x, y: L.y0 + 54 + i * (rh + 2), w: cw, h: rh }), btn: L.btnA, btn2: L.btnB };
+const PLUSH_TABS = [{ key: 'dye', pre: 'd', list: DYES, label: 'ROBES' }, { key: 'halo', pre: 'h', list: HALOS, label: 'HALOS' }, { key: 'bolt', pre: 'b', list: TRAILS, label: 'BOLTS' }, { key: 'dash', pre: 's', list: DASHES, label: 'DASH' }];
+const plushList = (tab) => PLUSH_TABS[tab].list;
+const plushOwn = (tab, id) => looks().own.includes(`${PLUSH_TABS[tab].pre}:${id}`);
+const plushWorn = (tab) => looks()[PLUSH_TABS[tab].key];
+function plushGeo(tab = game.plush ? game.plush.tab : 0) {
+  const L = featLayout(), Lx = L.list, n = plushList(tab).length, top = L.y0 + 54, room = L.y0 + L.ph - 10 - top, one = n * 24 <= room;
+  const rows = one ? n : Math.ceil(n / 2), rh = Math.max(16, Math.min(22, Math.floor(room / rows) - 3)), cw = one ? Lx.w : Math.floor((Lx.w - 4) / 2), tw = Math.floor(Lx.w / 4);
+  return { L, tabs: PLUSH_TABS.map((_, i) => ({ x: Lx.x + i * tw, y: L.y0 + 30, w: tw - 3, h: 18 })),
+    row: (i) => (one ? { x: Lx.x, y: top + i * (rh + 2), w: cw, h: rh } : { x: Lx.x + (i % 2) * (cw + 4), y: top + Math.floor(i / 2) * (rh + 3), w: cw, h: rh }), btn: L.btnA };
+}
+// A three-step swatch: a palette ramp (dyes, halos) or one colour in three strengths.
+function plushSwatch(tab, c, x, y, h) {
+  const w = Math.ceil(h / 3), rp = tab < 2 ? rampOf(c.id) : null, rgb = c.rgb || (tab === 2 ? '255,244,176' : '255,255,255');
+  [0, 1, 2].forEach((q) => { ctx.fillStyle = rp ? PAL[rp[q * 3]] : `rgba(${rgb},${[1, 0.7, 0.45][q]})`; ctx.fillRect(x + q * w, y, w, h); });
+  ctx.strokeStyle = PAL.outline; ctx.lineWidth = 1; ctx.strokeRect(x - 0.5, y - 0.5, w * 3 + 1, h + 1); return w * 3;
 }
 function renderPlush() {
   const P = game.plush, Gm = plushGeo(), L = Gm.L, list = plushList(P.tab), K = looks(), small = { small: true, outline: null };
@@ -1840,41 +1893,52 @@ function renderPlush() {
   panelFrame(L.x0, L.y0, L.pw, L.ph); headerBar(L.x0, L.y0, L.pw, 26);
   text('THE PLUSH STALL', L.x0 + 12, L.y0 + 9, PAL.rose1 || RARITY[3].color); sprC('ui', 'close', 0, L.close.x, L.close.y);
   sprC('loot', 'coin', 0, L.close.x - 64, L.y0 + 13); text(String(SAVE.gold || 0), L.close.x - 57, L.y0 + 9, PAL.gold1);
-  Gm.tabs.forEach((r, i) => invButton(r, i ? 'HALOS' : 'ROBES', i === P.tab ? PAL.crimson3 : PAL.ink3, true));
+  Gm.tabs.forEach((r, i) => invButton(r, PLUSH_TABS[i].label, i === P.tab ? PAL.crimson3 : PAL.ink3, true));
   list.forEach((c, i) => {
-    const r = Gm.row(i), own = plushOwn(P.tab, c.id), worn = (P.tab ? K.halo : K.dye) === c.id, sel = (P.sel ?? (P.tab ? K.halo : K.dye)) === c.id;
+    const r = Gm.row(i), own = plushOwn(P.tab, c.id), worn = plushWorn(P.tab) === c.id, sel = (P.sel ?? plushWorn(P.tab)) === c.id, locked = c.earn && !own;
     ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
-    const rp = rampOf(c.id), sw = Math.min(14, r.h - 6); // a swatch: light, mid, dark
-    [0, 3, 6].forEach((j, q) => { ctx.fillStyle = PAL[rp[j]]; ctx.fillRect(r.x + 4 + q * Math.ceil(sw / 3), r.y + 3, Math.ceil(sw / 3), sw); });
-    ctx.strokeStyle = PAL.outline; ctx.strokeRect(r.x + 3.5, r.y + 2.5, Math.ceil(sw / 3) * 3 + 1, sw + 1);
-    const tx = r.x + 10 + Math.ceil(sw / 3) * 3, tag = worn ? 'WORN' : own ? 'OWNED' : String(c.price), tw = textW(tag, 1, true) + (own || worn ? 0 : 9);
-    text(fitText(c.name, r.x + r.w - tx - tw - 14, c.short), tx, r.y + Math.round(r.h / 2) - 4, worn ? PAL.gold0 : own ? PAL.cloth0 : PAL.stone1, small);
-    if (!own && !worn) sprC('loot', 'coin', 0, r.x + r.w - tw - 1, r.y + Math.round(r.h / 2));
-    text(tag, r.x + r.w - 5, r.y + Math.round(r.h / 2) - 4, worn ? PAL.gold0 : own ? PAL.stone1 : (SAVE.gold || 0) >= c.price ? PAL.gold1 : PAL.blood0, { ...small, align: 'right' });
+    const sw = plushSwatch(P.tab, c, r.x + 4, r.y + 3, Math.min(14, r.h - 6));
+    const tx = r.x + 10 + sw, tag = worn ? 'WORN' : own ? 'OWNED' : locked ? 'EARN' : String(c.price), tw = textW(tag, 1, true) + (own || worn || locked ? 0 : 9);
+    text(fitText(c.name, r.x + r.w - tx - tw - 14, c.short), tx, r.y + Math.round(r.h / 2) - 4, worn ? PAL.gold0 : own ? PAL.cloth0 : locked ? PAL.stone2 : PAL.stone1, small);
+    if (!own && !worn && !locked) sprC('loot', 'coin', 0, r.x + r.w - tw - 1, r.y + Math.round(r.h / 2));
+    text(tag, r.x + r.w - 5, r.y + Math.round(r.h / 2) - 4, worn ? PAL.gold0 : own ? PAL.stone1 : locked ? PAL.rose1 : (SAVE.gold || 0) >= c.price ? PAL.gold1 : PAL.blood0, { ...small, align: 'right' });
+    if (c.earn && own && !LOWFX) twinkles(r.x + 4 + sw / 2, r.y + r.h / 2, 5, i * 0.17, 4, 1);
     if (sel) { ctx.strokeStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.lineWidth = 1; ctx.strokeRect(r.x - 1.5, r.y - 1.5, r.w + 3, r.h + 3); }
   });
-  // The preview: the Saint in the chosen look, large, on a little dais.
+  // The preview: the Saint in the chosen look on a little dais, with a bolt or a dash to show trails.
   const C = L.card; ctx.fillStyle = PAL.ink1; ctx.fillRect(C.x, C.y, C.w, C.h);
-  const dye = P.tab === 0 && P.sel ? P.sel : K.dye, halo = P.tab === 1 && P.sel ? P.sel : K.halo, sh = lookSheet(saintBase(), dye, halo);
+  const pick = (t) => (P.tab === t && P.sel ? P.sel : plushWorn(t));
+  const sh = lookSheet(saintBase(), pick(0), pick(1));
   const fh = frameOf(sh, 'idle', 0).h, sc = Math.max(1, Math.min(3, Math.floor((C.h - 84) / fh))), cx = Math.round(C.x + C.w / 2), fy = C.y + C.h - 34;
   ctx.fillStyle = PAL.ink3; ctx.fillRect(cx - 34, fy, 68, 6); ctx.fillStyle = PAL.ink2; ctx.fillRect(cx - 30, fy + 6, 60, 4);
-  ctx.save(); ctx.translate(cx, fy); ctx.scale(sc, sc); spr(sh, 'idle', Math.floor(game.real * 5), 0, 0); ctx.restore();
-  const c = (P.sel && plushList(P.tab).find((q) => q.id === P.sel)) || null, own = c && plushOwn(P.tab, c.id), worn = c && (P.tab ? K.halo : K.dye) === c.id;
-  text(c ? c.name : 'TRY ON A LOOK', C.x + 8, C.y + 8, c ? PAL.gold1 : PAL.stone1, small);
-  wrapW('LOOKS ONLY. A SET SKIN KEEPS ITS OWN CROWN.', C.w - 16, true).forEach((l, j) => text(l, C.x + 8, C.y + 20 + j * 9, PAL.stone2, small));
-  if (c) invButton(Gm.btn, worn ? 'WORN' : own ? 'WEAR' : `BUY ${c.price}`, worn ? PAL.ink3 : own ? PAL.crimson3 : PAL.gold3, !worn && (own || (SAVE.gold || 0) >= c.price));
+  if (P.tab === 3) { const D0 = DASHES.find((q) => q.id === pick(3)), tk = D0 && D0.rgb ? tintKey(sh, D0.rgb) : null;
+    for (let k = 3; k >= 1; k--) { ctx.save(); ctx.translate(cx - k * 12 * sc, fy); ctx.scale(sc, sc); spr(sh, 'dash', 1, 0, 0, tk ? { tint: tk, alpha: 0.5 - k * 0.1 } : { white: true, alpha: 0.5 - k * 0.1 }); ctx.restore(); } }
+  ctx.save(); ctx.translate(cx, fy); ctx.scale(sc, sc); spr(sh, P.tab === 3 ? 'dash' : 'idle', P.tab === 3 ? 1 : Math.floor(game.real * 5), 0, 0); ctx.restore();
+  const H0 = HALOS.find((q) => q.id === pick(1)); if (H0 && H0.earn && !LOWFX) twinkles(cx, fy - (frameOf(sh, 'idle', 0).ay ?? fh) * sc + 6 * sc, 5 * sc, 0.2, 4, 2);
+  if (P.tab === 2) { const T0 = TRAILS.find((q) => q.id === pick(2)), c0 = T0 && T0.rgb ? T0.rgb : BOLT_FX[(G && G.xskin) || null].trail, ph = (game.real * 0.9) % 1, bx = Math.round(C.x + 12 + ph * (C.w - 24)), by = fy - Math.round(fh * sc * 0.55);
+    ctx.save(); ctx.beginPath(); ctx.rect(C.x, C.y, C.w, C.h); ctx.clip(); ctx.strokeStyle = `rgba(${c0},0.7)`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx - 34, by); ctx.stroke(); ctx.fillStyle = `rgb(${c0})`; ctx.fillRect(bx - 2, by - 2, 6, 4); ctx.fillStyle = PAL.white; ctx.fillRect(bx + 2, by - 1, 2, 2); ctx.restore(); }
+  const c = (P.sel && list.find((q) => q.id === P.sel)) || null, own = c && plushOwn(P.tab, c.id), worn = c && plushWorn(P.tab) === c.id;
+  text(c ? fitText(c.name, C.w - 16, c.short) : 'TRY ON A LOOK', C.x + 8, C.y + 8, c ? PAL.gold1 : PAL.stone1, small);
+  const note = c && c.earn && !own ? `SLAY ${MON[c.earn].name} AT STATION ${ROMAN[EARN_FROM - 1]} OR DEEPER TO EARN IT.` : c && c.earn ? 'EARNED, NEVER SOLD. IT SPARKLES.' : ['LOOKS ONLY. YOUR VESTMENTS STILL SHOW THEIR SET.', 'LOOKS ONLY. A SET SKIN KEEPS ITS OWN CROWN.', 'THE TRAIL YOUR BOLTS LEAVE. LOOKS ONLY.', 'THE SHADOWS YOUR DASH LEAVES. LOOKS ONLY.'][P.tab];
+  wrapW(note, C.w - 16, true).forEach((l, j) => text(l, C.x + 8, C.y + 20 + j * 9, c && c.earn && !own ? PAL.rose1 : PAL.stone2, small));
+  if (c && !(c.earn && !own)) invButton(Gm.btn, worn ? 'WORN' : own ? 'WEAR' : `BUY ${c.price}`, worn ? PAL.ink3 : own ? PAL.crimson3 : PAL.gold3, !worn && (own || (SAVE.gold || 0) >= c.price));
 }
 function plushTap(x, y) {
   const P = game.plush, Gm = plushGeo(), L = Gm.L, K = looks();
   if (featOut(L, x, y)) { game.state = 'play'; sfx('tap'); return; }
-  Gm.tabs.forEach((r, i) => { if (inRect(r, x, y) && P.tab !== i) { P.tab = i; P.sel = null; sfx('tap'); } });
+  for (const [i, r] of Gm.tabs.entries()) if (inRect(r, x, y) && P.tab !== i) { P.tab = i; P.sel = null; sfx('tap'); return; }
   plushList(P.tab).forEach((c, i) => { if (inRect(Gm.row(i), x, y)) { P.sel = c.id; sfx('tap', { vol: 0.6 }); } });
-  const c = P.sel && plushList(P.tab).find((q) => q.id === P.sel);
+  const c = P.sel && plushList(P.tab).find((q) => q.id === P.sel), T0 = PLUSH_TABS[P.tab];
   if (c && inRect(Gm.btn, x, y)) {
-    const tag = `${P.tab ? 'h' : 'd'}:${c.id}`;
-    if (!K.own.includes(tag)) { if (!spend(c.price)) { toast(`THE PLUSH SELLER WANTS ${c.price} GOLD`, 1.6); return; } K.own.push(tag); toast(`${c.name}! IT SUITS YOU`, 1.8); game.toastColor = PAL.gold1; }
-    if (P.tab) K.halo = c.id; else K.dye = c.id; persist(); sfx('shrine', { rate: 1.4, vol: 0.5 });
+    const tag = `${T0.pre}:${c.id}`;
+    if (!K.own.includes(tag)) { if (c.earn) return; if (!spend(c.price)) { toast(`THE PLUSH SELLER WANTS ${c.price} GOLD`, 1.6); return; } K.own.push(tag); toast(`${c.name}! IT SUITS YOU`, 1.8); game.toastColor = PAL.gold1; }
+    K[T0.key] = c.id; persist(); sfx('shrine', { rate: 1.4, vol: 0.5 });
   }
+}
+// A Warden slain at Station X or deeper gives up its halo, once.
+function earnHalo(e) {
+  const H0 = HALOS.find((q) => q.earn === e.type), K = looks(); if (!H0 || curDiff().n < EARN_FROM || K.own.includes(`h:${H0.id}`)) return;
+  K.own.push(`h:${H0.id}`); persist(); setTimeout(() => { toast(`${H0.name} IS YOURS. WEAR IT AT THE PLUSH STALL`, 3.2); game.toastColor = PAL.rose1; }, 1800);
 }
 function canonryTap(x, y) {
   const L = featLayout();
@@ -2709,7 +2773,7 @@ function devRows() {
     ];
     case 'UNLOCK': return [
       [B('ALL STATIONS', () => { SAVE.cleared = DIFF.length - 1; persist(); toast('EVERY STATION OPEN', 1.2); }), B('ALL TOWN SITES', () => { SAVE.descents = Math.max(SAVE.descents || 0, 20); SAVE.cleared = Math.max(SAVE.cleared ?? -1, 4); persist(); toast('EVERY SITE OPEN', 1.2); }), B('VIGIL 1-30', () => { SAVE.vigilOpen = 30; persist(); }), B("+1 ODILE'S GIFT", () => { SAVE.gifts = (SAVE.gifts || 0) + 1; persist(); toast('TALK TO SISTER ODILE', 1.2); })],
-      [B('ALL PLUSH LOOKS', () => { const K = looks(); K.own = [...DYES.map((q) => `d:${q.id}`), ...HALOS.map((q) => `h:${q.id}`)]; persist(); toast('EVERY DYE AND HALO', 1.2); }), B('OPEN PLUSH STALL', () => openPlush())],
+      [B('ALL PLUSH LOOKS', () => { const K = looks(); K.own = [...DYES.map((q) => `d:${q.id}`), ...HALOS.map((q) => `h:${q.id}`), ...TRAILS.map((q) => `b:${q.id}`), ...DASHES.map((q) => `s:${q.id}`)]; persist(); toast('EVERY DYE AND HALO', 1.2); }), B('OPEN PLUSH STALL', () => openPlush())],
       [B(SAVE.censerDev ? 'CENSER: DEEDS' : 'CENSER: ALL LIT', () => { SAVE.censerDev = !SAVE.censerDev; persist(); }, { on: !!SAVE.censerDev }), B('OPEN CENSER', () => openCenser())],
       [B('+3 BLOODROSE KEYS', () => { SAVE.vkeys = (SAVE.vkeys || 0) + 3; persist(); toast('THREE BLOODROSE KEYS', 1.2); }), B('+4 CHRISM', () => { const C = chrisms(); for (let i = 0; i < 4; i++) C[i]++; persist(); toast('ONE OF EACH CHRISM', 1.2); }), B('+3 HALLOWED', () => { for (let k = 0; k < 3; k++) { const it = makeItem(pick(Object.keys(SLOTS).filter((q) => LEGENDS.some((L) => L.slot === q))), 3, 'X', undefined, 3); const lg = pick(LEGENDS.filter((L) => L.slot === it.slot)); it.name = lg.name; it.power = lg.id; bagAdd(it); } persist(); toast('THREE HALLOWED PIECES', 1.2); })],
       [B('LEARN ALL POWERS', () => { altar().known = LEGENDS.map((L) => L.id); persist(); toast('THE ALTAR KNOWS EVERY POWER', 1.2); }), B('OPEN ALTAR', () => openAltar()), B('OPEN BOUNTIES', () => openBoard()), B('FILL BOUNTIES', () => { for (const b of bounties().list) b.have = b.need; persist(); })],
@@ -3948,7 +4012,7 @@ function hitStop(t, big = false) {
 }
 function killEnemy(e, dirx, diry, executed = false) {
   if (e.dead) return;
-  e.dead = true; sfx(rng() < 0.5 ? 'kill0' : 'kill1', { vol: e.elite ? 1.3 : 1, rate: e.tier === 'elite' ? 0.8 : 1 });
+  e.dead = true; sfx(rng() < 0.5 ? 'kill0' : 'kill1', { vol: e.elite ? 1.3 : 1, rate: e.tier === 'elite' ? 0.8 : 1 }); deathVoice(e);
   if (player.lock === e) player.lock = null;
   if (e.illusion) { playFx('fx', 'smoke', e.x, e.y - 8, 14); return; }
   addToll(e);
@@ -4908,8 +4972,10 @@ function update(realDt) {
   if (game.news && game.state === 'play' && game.scene === 'town' && !game.dialog && !tut.on && game.real > 1.2) { game.newsFor = game.news; game.news = null; game.state = 'news'; persist(); sfx('shrine', { rate: 1.4, vol: 0.5 }); }
   // Music and ambience follow the scene.
   const mus = game.state === 'dead' ? 'dead' : game.state === 'title' ? 'title' : game.scene;
-  if (mus !== game.music) { game.music = mus; AUDIO.set(mus === 'town' || mus === 'title' ? ['music_town', 'amb_town', 'amb_crickets'] : mus === 'wound' ? ['music_dungeon'] : []); }
+  if (mus !== game.music) { game.music = mus; AUDIO.set(mus === 'town' || mus === 'title' ? ['music_town', 'amb_choir', 'amb_town', 'amb_crickets'] : mus === 'wound' ? [curDiff().vigil ? 'music_dungeon' : stratum() === 2 ? 'music_nave' : 'music_undercroft'] : []); }
   // The altar's and the forge's fires crackle as the Saint walks by.
+  // Near the cathedral doors the chant is sung: the choir rises as the organ falls away.
+  if (game.scene === 'town' && room && player && game.state !== 'title') { const D = room.interact && room.interact.find((q) => q.door); if (D) { const k = Math.max(0, Math.min(1, 1 - (Math.hypot(D.x - player.x, D.y - player.y) - 60) / 320)); AUDIO.level('amb_choir', k); AUDIO.level('music_town', 1 - k * 0.75); } }
   if (game.scene === 'town' && room && player && game.state !== 'title') { let d = 1e9; for (const S of SITES) if (S.id === 'altar' || S.id === 'forge') d = Math.min(d, Math.hypot(S.x - player.x, room.top * TILE + S.dy - player.y)); AUDIO.level('amb_fire', Math.max(0, Math.min(1, 1 - (d - 50) / 200))); }
   else if (game.music !== 'town') AUDIO.level('amb_fire', 0);
   if (game.toast) { game.toast.t -= realDt; if (game.toast.t <= 0) game.toast = null; }
@@ -5056,7 +5122,8 @@ function render() {
   const SHADOW = { pillar: 10, torch: 6, statue_saint: 12, statue_angel: 12, statue_knight: 12, crate: 13, gallows: 22, cart: 20, well: 15, tomb: 6, tree: 10, stocks: 14, board: 8, brazier: 6, sarcophagus: 18, candelabra: 6, column: 11, statue: 11, lamp: 5, barrel: 6, crate: 7, anvil: 8, waystone: 10, pew: 15, coffin: 7, cage: 7, maiden: 8, altar: 17, shrine: 10, chest: 10, urn: 5 };
   for (const p of room.props) if (SHADOW[p.kind] && onScreen(p.x, p.y, cx, cy, 40)) shadow(p.x, p.y - 2, SHADOW[p.kind]);
   for (const n of room.npcs) shadow(n.x, n.y, 6);
-  for (const g of ghosts) spr(saintSheet(), 'dash', g.i, g.x, g.y, { flip: g.face < 0, white: true, alpha: 0.45 * (1 - g.t / 0.2) });
+  const D0 = DASHES.find((q) => q.id === looks().dash), dk = D0 && D0.rgb ? tintKey(saintSheet(), D0.rgb) : null;
+  for (const g of ghosts) spr(saintSheet(), 'dash', g.i, g.x, g.y, dk ? { flip: g.face < 0, tint: dk, alpha: 0.5 * (1 - g.t / 0.2) } : { flip: g.face < 0, white: true, alpha: 0.45 * (1 - g.t / 0.2) });
   mark('shadows');
   // Y-sorted actors and props.
   const th = thuriblePos();
@@ -5292,6 +5359,7 @@ function drawPlayer() {
   else if (p.anim !== 'dash' && p.hurt > 0.1) { anim = 'hit'; i = p.hurt > 0.22 ? 0 : 1; }
   if (G.quiver && anim !== 'die') spr('weapon', G.quiver, 0, p.x - p.face * 10, p.y - 23 + (anim === 'run' && i % 4 < 2 ? 2 : 0), { flip: p.face < 0 });
   spr(saintSheet(), anim, i, p.x, p.y, { flip: p.face < 0, white: anim !== 'die' && (p.hurt > 0.25 || blink) });
+  const H0 = HALOS.find((q) => q.id === looks().halo); if (H0 && H0.earn && anim !== 'die' && !LOWFX && !CROWNED.includes(saintBase())) { const f = frameOf(saintSheet(), anim, i); twinkles(p.x - p.face, p.y - (f.ay ?? f.h) + 5, 6, 0.4, 4, 1); }
 }
 
 // Height of a monster's sprite above its feet, from its first walk frame.
@@ -6407,7 +6475,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

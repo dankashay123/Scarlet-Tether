@@ -18,7 +18,7 @@ loop() { # name input start length xfade bitrate extra-filter
 
 # --- music and ambience ---
 O="$SRC/oga"
-loop music_town "$O/dark_castle_-_part1.wav" 0 90 4 96k
+# The Bleeding Vigil's music (Vael and the strata: tools/build-sfx.py).
 loop music_dungeon "$O/dungeon002_0.ogg" 0 196 6 96k
 loop amb_town "$O/wind%20background%20noise%202.wav" 4 28 2 64k "lowpass=f=2400,aformat=channel_layouts=mono"
 loop amb_crickets "$O/crickets_1.mp3" 0 10 1.2 48k "highpass=f=1500,aformat=channel_layouts=mono"

@@ -169,6 +169,59 @@ def loop(name, pack, file, start, secs, xf=1.5, lu=-24.0, hp=0, lp=0, br='48k'):
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'f64le', '-ar', str(SR), '-ac', '1', '-i', '-', '-b:a', br, os.path.join(OUT, name + '.mp3')], input=y.tobytes(), check=True)
     print(f'{name:10s} {secs:5.2f} s loop')
 
+def music(name, pack, file, start=0.0, secs=None, xf=3.0, lu=-20.0, lp=0, br='96k', seamless=False):
+    """A stereo music loop. A seamless source plays whole; any other has its
+    tail (the xf seconds after `secs`) crossfaded over its head."""
+    r = subprocess.run(['ffmpeg', '-v', 'error', '-i', find(pack, file), '-ac', '2', '-ar', str(SR), '-f', 'f64le', '-'], capture_output=True, check=True)
+    x = np.frombuffer(r.stdout, np.float64).reshape(-1, 2)[int(start * SR):].copy()
+    if lp: x = np.stack([onepole(x[:, c], lp, False) for c in (0, 1)], 1)
+    if seamless: y = x if not secs else x[:int(secs * SR)]
+    else:
+        n = int((secs or (len(x) / SR - xf)) * SR); f = int(xf * SR); w = np.linspace(0, 1, f)[:, None]
+        y = x[:n].copy(); y[:f] = x[:f] * np.sqrt(w) + x[n:n + f] * np.sqrt(1 - w)
+    y *= 10 ** ((lu - 10 * np.log10(np.mean(y ** 2) + 1e-12)) / 20)
+    y *= min(1, 0.95 / np.abs(y).max())
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'f64le', '-ar', str(SR), '-ac', '2', '-i', '-', '-b:a', br, os.path.join(OUT, name + '.mp3')], input=y.tobytes(), check=True)
+    print(f'{name:14s} {len(y) / SR:6.1f} s music')
+
+# Monster deaths by family (two of each; the game voices only some deaths).
+NPC = 'rpg-sound-pack'; C80 = '80-cc0-creature-sfx'; C80B = '80-cc0-creture-sfx-2'; GHOST = 'ghost-monster-voice-moaning-growling'
+TROLL = 'big-scary-troll-sounds'; HORROR = 'horror-sfx'
+for k, v in {
+    'die_bone0': lambda: build('die_bone0', [L(BONE, 'Deep Break 3.wav', dur=0.3, pk=True), L(RPG, 'stones_01.ogg', at=0.04, db=-4, dur=0.35), L(RPG, 'wood_02.ogg', at=0.08, db=-8)], fade=0.15, lu=-14),
+    'die_bone1': lambda: build('die_bone1', [L(BONE, 'Deep Break 8.wav', dur=0.3, pk=True), L(BFH, 'bfh1_rock_falling_05.ogg', at=0.05, db=-5), L(RPG, 'stones_03.ogg', at=0.1, db=-8, dur=0.3)], fade=0.15, lu=-14),
+    'die_flesh0': lambda: build('die_flesh0', [L(NPC, 'mnstr5.wav', rate=0.9), L(WET, 'impactsplat04.mp3.flac', db=-8, dur=0.3, pk=True)], fade=0.2, lu=-15),
+    'die_flesh1': lambda: build('die_flesh1', [L(NPC, 'mnstr9.wav', rate=0.85), L(C80, 'grunt_02.ogg', db=-6)], fade=0.2, lu=-15),
+    'die_spirit0': lambda: build('die_spirit0', [L(NPC, 'shade8.wav', dur=1.0)], fade=0.4, rev=(0.35, 1.6), lu=-17),
+    'die_spirit1': lambda: build('die_spirit1', [L(GHOST, 'qubodup-GhostMoan01.wav', dur=0.9, rate=1.2)], fade=0.4, rev=(0.35, 1.6), lu=-17),
+    'die_vermin0': lambda: build('die_vermin0', [L(C80, 'hurt_02.ogg', rate=1.1), L(C80, 'bug_02.ogg', db=-6)], fade=0.12, lu=-17),
+    'die_vermin1': lambda: build('die_vermin1', [L(C80, 'misc_06.ogg'), L(NPC, 'bite-small2.wav', db=-6)], fade=0.12, lu=-17),
+    'die_cleric0': lambda: build('die_cleric0', [L(C80B, 'die_03.ogg'), L(HITS, 'hit06.mp3.flac', db=-10, dur=0.15, pk=True)], fade=0.2, rev=(0.2, 1.2), lu=-15),
+    'die_cleric1': lambda: build('die_cleric1', [L(C80B, 'human_07.ogg', rate=0.9)], fade=0.2, rev=(0.2, 1.2), lu=-15),
+    # Each Warden's roar (it comes) and fall (it dies).
+    'roar_bellwright': lambda: build('roar_bellwright', [L(C100, 'gong_01.ogg', rate=0.8), L(TROLL, 'troll-roars_0.ogg', 0, at=0.1, db=-2)], fade=0.8, rev=(0.45, 2.4, 2500), lu=-9),
+    'fall_bellwright': lambda: build('fall_bellwright', [L(KI, 'impactBell_heavy_004.ogg', rate=0.5), L(BFH, 'bfh1_metal_falling_01.ogg', at=0.3, db=-3), L(C100, 'gong_02.ogg', at=0.6, rate=0.5, db=-2)], fade=1.2, rev=(0.55, 3.0, 2200), lu=-9),
+    'roar_candlemass': lambda: build('roar_candlemass', [L(FIREB, '105016__julien-matthey__jm-fx-fireball-01.wav', db=-3), L(GHAST, 'ghast_cries.3.ogg', at=0.1, rate=0.85)], fade=0.7, rev=(0.35, 2.0), lu=-9),
+    'fall_candlemass': lambda: build('fall_candlemass', [L(GHAST, 'ghast_hurt.2.ogg', rate=0.75), L(RPG, 'spell_fire_03.ogg', at=0.2, db=-2), L(C80, 'breath.ogg', at=1.0, rate=0.6, db=-6)], fade=1.0, rev=(0.45, 2.6), lu=-9),
+    'roar_cardinal': lambda: build('roar_cardinal', [L(ROAR, 'monster_roar.wav', rate=1.1, dur=1.8), L(CHANT, 'ethereal_chant_Subclip 07_07.wav', db=-6, dur=2.0)], fade=0.8, rev=(0.5, 2.8), lu=-9),
+    'fall_cardinal': lambda: build('fall_cardinal', [L(C80, 'scream_02.ogg', rate=0.7), L(C100, 'gong_01.ogg', at=0.3, rate=0.45, db=-3), L(CHANT, 'ethereal_chant_Subclip 09_09.wav', at=0.4, db=-6, dur=2.2)], length=3.6, fade=1.4, rev=(0.6, 3.2, 2200), lu=-9),
+    'roar_charnelKing': lambda: build('roar_charnelKing', [L(TROLL, 'troll-roars_0.ogg', 1, rate=0.8), L(BONE, 'Deep Break 5.wav', at=0.05, db=-4, dur=0.4)], fade=0.8, rev=(0.4, 2.4, 2500), lu=-9),
+    'fall_charnelKing': lambda: build('fall_charnelKing', [L(BFH, 'bfh1_rock_falling_01.ogg'), L(BFH, 'bfh1_rock_falling_06.ogg', at=0.3, db=-2), L(BONE, 'Deep Break 2.wav', at=0.1, db=-3), L(BONE, 'Deep Break 6.wav', at=0.5, db=-4), L(KS, 'lowFrequency_explosion_000.ogg', db=-4)], fade=1.0, rev=(0.45, 2.6, 2500), lu=-9),
+    'roar_ladyOfNails': lambda: build('roar_ladyOfNails', [L(HORROR, 'horror_effect2.wav', dur=2.2), L(RPG, 'metal_02.ogg', db=-4), L(RPG, 'chain_03.ogg', at=0.3, db=-6)], fade=0.8, rev=(0.4, 2.4), lu=-9),
+    'fall_ladyOfNails': lambda: build('fall_ladyOfNails', [L(C80, 'scream_01.ogg', rate=0.8), L(BFH, 'bfh1_metal_falling_02.ogg', at=0.25, db=-2), L(BFH, 'bfh1_metal_hit_03.ogg', at=0.6, db=-4)], fade=1.0, rev=(0.5, 2.8), lu=-9),
+    'roar_tideBishop': lambda: build('roar_tideBishop', [L(C80B, 'roar_05.ogg', rate=0.7), L(WATER, 'splash_10.ogg', db=-3)], fade=0.8, rev=(0.45, 2.4, 2200), lu=-9),
+    'fall_tideBishop': lambda: build('fall_tideBishop', [L(WATER, 'splash_12.ogg'), L(C80B, 'roar_06.ogg', at=0.1, rate=0.6, db=-3), L(WATER, 'loop_bubbles_1.ogg', at=0.4, db=-6, dur=2.0, fade=0.8)], fade=1.0, rev=(0.4, 2.6, 2200), lu=-9),
+    'roar_organist': lambda: build('roar_organist', [L(C80, 'monster_04.ogg', rate=0.9), L(C100, 'gong_01.ogg', rate=0.5, db=-4), L(HORROR, 'horror_effect1.wav', db=-6, dur=2.2)], fade=0.8, rev=(0.55, 3.0, 2200), lu=-9),
+    'fall_organist': lambda: build('fall_organist', [L(KI, 'impactBell_heavy_002.ogg', rate=0.55), L(HORROR, 'horror_effect1.wav', skip=2.0, db=-3, dur=2.6, fade=1.0), L(C80B, 'monster_20.ogg', at=0.2, rate=0.7, db=-4)], length=3.6, fade=1.4, rev=(0.6, 3.2, 2200), lu=-9),
+}.items(): SFX[k] = v
+
+# Music: Vael's chant (the sung one rises near the cathedral), each stratum, the Warden's sting.
+SFX['music_town'] = lambda: music('music_town', 'chant-instrumental', 'ChantInstrumental_0.mp3', 0, None, 4, lu=-21)
+SFX['amb_choir'] = lambda: music('amb_choir', 'chant', 'chant_0.ogg', 0, None, 4, lu=-21)
+SFX['music_undercroft'] = lambda: music('music_undercroft', 'evil-temple-ambiance-loop', 'evil_temple.ogg', seamless=True, lu=-20)
+SFX['music_nave'] = lambda: music('music_nave', 'underwater-theme-ii', 'Underwater Theme II.ogg', 0, None, 4, lu=-21)
+SFX['sting_warden'] = lambda: build('sting_warden', [L('string-and-piano-horror-stings', 'abyss_0.ogg', fade=0.5)], fade=1.0, rev=(0.3, 2.4, 2500), lu=-12)
+
 # Loops (ambience near a site).
 SFX['amb_fire'] = lambda: loop('amb_fire', 'fireplace-sound-loop', 'fire.wav', 2, 12, lu=-22, hp=80)
 

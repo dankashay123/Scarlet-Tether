@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-19, after round 23. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 24. Read this first, then `CLAUDE.md`.
 The history of every round is at the bottom; the sections above it describe
 the game as it is now.
 
@@ -96,10 +96,9 @@ Desktop works with keys. 55–60 fps in dense crowds.
    deep a run gets) and Martyrdom (one life, doubled rewards).
 3. **A training yard in Vael.** A dummy and a monster summoner so players
    can learn the round 16 attacks (snipe, blight, Sentence) safely.
-4. **Music.** The town and dungeon tracks are the oldest audio left. Find a
-   CC0 organ or choir piece for Vael and a darker loop per stratum, and a
-   short sting for the Warden (OpenGameArt works from here; Freesound does
-   not).
+4. **Warden fight music.** Each Warden has a roar, a sting and a fall; a
+   battle loop while it lives (ducking the stratum music) would finish it.
+   OpenGameArt works from here; Freesound does not.
 5. **Rite depth.** Let rites gain ranks with use, and give each set a
    rite-specific 6-piece twist, so the Rites panel becomes a build screen.
 6. **Stratum III.** A third look (the Ossuary Spire or a burnt chapter
@@ -116,6 +115,20 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## History by round
 
+- **Round 24 (music, voices, more looks):** Vael plays Christislord's chant
+  (`music_town`); the sung version (`amb_choir`) runs in step with it and
+  rises as the Saint nears the cathedral doors while the organ falls away
+  (`AUDIO.level`, `LEVELED`). The Undercroft plays `music_undercroft`, the
+  Drowned Nave `music_nave`, the Bleeding Vigil the old `music_dungeon`.
+  A Warden's coming plays its own `roar_<id>`, the `sting_warden` and
+  ducks the music (`AUDIO.duck`); its death plays `fall_<id>`. Monsters
+  cry out by family (`VOICE`: bone, flesh, spirit, vermin, cleric; two
+  takes each, `deathVoice`): common foes about one death in four, spaced
+  out; rares and elites always. The Plush stall gained BOLTS (`TRAILS`,
+  read by `boltFx`) and DASH (`DASHES`, tinted ghosts via `tintKey`) tabs,
+  and seven halos earned by slaying each Warden at Station X or deeper
+  (`HALOS[].earn`, `earnHalo`, `EARN_FROM`); earned halos sparkle.
+  `tools/tests/round24.cjs` covers it.
 - **Round 23 (new sounds, set icons, Hallowed shimmer, the Plush stall):**
   every effect was rebuilt from CC0 recordings (`tools/build-sfx.py`, sources
   in `docs/CREDITS.md`): a real crossbow, layered wet hits and bone cracks,

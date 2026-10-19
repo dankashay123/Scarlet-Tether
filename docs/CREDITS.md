@@ -35,14 +35,23 @@ OpenGameArt.org unless marked.
 | [Open chest SFX](https://opengameart.org/content/open-chest-sfx) | Oiboo | chests |
 | [51 UI sound effects](https://opengameart.org/content/51-ui-sound-effects-buttons-switches-and-clicks) | Kenney | UI taps |
 | [Fireplace sound loop](https://opengameart.org/content/fireplace-sound-loop) | PagDev | the fire loop by the altar and the forge |
+| [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) and [part 2](https://opengameart.org/content/80-cc0-creture-sfx-2) | rubberduck | monster death cries (vermin, cleric, flesh), Warden roars and falls |
+| [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) (NPC voices) | artisticdude | flesh and spirit death cries |
+| [Ghost/monster voice: moaning, growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) | qubodup | spirit death cries |
+| [Big scary troll sounds](https://opengameart.org/content/big-scary-troll-sounds) | Darsycho | the Bellwright's and the Charnel King's roars |
+| [Horror SFX](https://opengameart.org/content/horror-sfx) | tinyworlds | Our Lady of Nails' roar, the Drowned Organist |
 | [Kenney Impact Sounds, RPG Audio, Sci-Fi Sounds](https://kenney.nl/assets) (kenney.nl) | Kenney | low layers: wood thump, heavy bell, metal, door creak, low booms |
 
 ## Music and ambience: OpenGameArt.org, CC0 1.0
 
 | Track | Author | Used for |
 |---|---|---|
-| [Dark Castle - Part I](https://opengameart.org/content/dark-castle-part-i) | umplix | town music |
-| [Dungeon Ambience](https://opengameart.org/content/dungeon-ambience) | yd | dungeon music |
+| [Chant Instrumental](https://opengameart.org/content/chant-instrumental) | christislord | Vael's music |
+| [Chant](https://opengameart.org/content/chant) (Gregorian chant) | christislord | the sung chant near the cathedral doors, in step with Vael's music |
+| [Evil Temple Ambiance Loop](https://opengameart.org/content/evil-temple-ambiance-loop) | HaelDB (CC0 of its CC0/OGA-BY dual licence) | the Undercroft (Stratum I) |
+| [Underwater Theme II](https://opengameart.org/content/underwater-theme-ii) | CleytonKauffman | the Drowned Nave (Stratum II) |
+| [String and piano horror stings](https://opengameart.org/content/string-and-piano-horror-stings) | congusbongus | the Warden's sting |
+| [Dungeon Ambience](https://opengameart.org/content/dungeon-ambience) | yd | the Bleeding Vigil |
 | [Mild wind background noise](https://opengameart.org/content/mild-wind-background-noise) | bashar3a | town wind |
 | [Crickets ambient noise (loopable)](https://opengameart.org/content/crickets-ambient-noise-loopable) | wolfgang | town night crickets |
 
