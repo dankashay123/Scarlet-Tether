@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-19, after round 14. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 15. Read this first, then `CLAUDE.md`.
 
 **Every reply that completes a prompt ends with two lists: what was done,
 and 5 suggestions for what to do next.** (The owner's standing request;
@@ -209,7 +209,7 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## Next steps (ideas, roughly in priority order)
 
-1. **Tune from play.** Set and arms multipliers, cell goals (`CELLS`),
+1. **Tune from play.** Run `tools/tests/balance.cjs` after any balance change. Set and arms multipliers, cell goals (`CELLS`),
    shop prices, forge costs, Devotion pace, Toll size, Warden health and
    enrage. Use the dev menu to try each set quickly.
 2. **Bounty board.** Three small goals per descent paying gold and Devotion.
@@ -225,6 +225,20 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 15e (difficulty pass):** monsters now climb by `MON_STEP` (1.5)
+  per Station while gear climbs by `POWER_STEP` (1.36), so each Station is
+  about 10% beyond its own gear, compounding (x1.5 at V, x2.4 at X, x3.9 at
+  XV). Monster damage climbs by `MON_STEP^0.72`. Commons have 1.6x and
+  rares 1.3x health. Fewer drops (commons 0.6%, rares 30%, elites 1 piece,
+  Wardens 3). Main sets and arms drop from Station VI (`SET_FROM`).
+  Measured with `tools/tests/balance.cjs` (Consecrated gear in all 10
+  slots, a mid-run Wound build, Warden seconds against the 100 s enrage):
+  I about 55 s; V about 85 s matched, 100 s one Station behind; X about
+  220 s matched without a set, about 130 s with a full set and arms; XV
+  about 400 s without a set, about 90 to 200 s with one. Late Stations
+  need sets, Devotion, Hallowed powers and the Altar on top of matched
+  gear, so progress means farming. Warden blows to die at matched gear:
+  about 5.5 at I, 3 at X, 2.5 at XV.
 - **Round 15d:** 20 more Hallowed pieces (`LEGENDS`, 30 in all, two or
   three per slot; many lean on the new rites, such as the Stormwright's
   Gloves, the Pall of Seven Wards, the Seal of Judgement). The Ashen Altar

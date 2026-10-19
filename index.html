@@ -857,7 +857,7 @@ function addToll(e) {
 // phases. Slaying it opens the Waystone home and the next Station.
 // Wardens are meant to punish: hpK and dmgK on top of their MON stats, and
 // an enrage after `enrage` seconds (double damage, much faster).
-const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 4 }; // hp: the average MON Warden
+const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 3 }; // hp: the average MON Warden
 // Built on first use: A() and the monster table come later in the file.
 let WARDEN_SKILLS = null;
 const wardenSkills = () => WARDEN_SKILLS || (WARDEN_SKILLS = [
@@ -1574,7 +1574,7 @@ function shopStock() {
     const items = [];
     for (let k = 0; k < 6; k++) {
       let roll = Math.random() * 100, ri = 1; for (let i = 1; i < 5; i++) { if (roll < w[i]) { ri = i; break; } roll -= w[i]; }
-      const setId = ri === 4 ? (il >= 4 ? pick(MAIN_SETS) : 'habit') : null;
+      const setId = ri === 4 ? (il >= SET_FROM ? pick(MAIN_SETS) : 'habit') : null;
       if (setId && setId !== 'habit' && rng() < 0.3) { const it = armsItem(setId, rng() < 0.5 ? 'bow' : 'quiver', il); it.price = Math.round(SHOP_PRICE[ri] * (1 + (il - 1) * 0.6) / 5) * 5; items.push(it); continue; }
       const slot = setId ? pick(VSETS[setId].slots) : pick(Object.keys(SLOTS)), base = pick(SLOTS[slot]);
       const leg = ri === 3 ? pick(LEGENDS.filter((L) => L.slot === slot)) : null;
@@ -2412,10 +2412,15 @@ const BANDS = [
   { name: 'SAINT', col: '#ff7a1f', text: 'ONLY THE CANONIZED COME BACK FROM HERE.' },
 ];
 const stationPower = (i) => Math.pow(POWER_STEP, i);
+// Monsters climb faster than gear (round 15): each Station is MON_STEP / POWER_STEP
+// (about 10%) beyond what its own gear gives, compounding. Late Stations need
+// sets, Devotion, Hallowed powers and the Altar, so progress means farming.
+const MON_STEP = 1.5;
+const monPower = (i) => Math.pow(MON_STEP, i);
 const DIFF = ROMAN.map((rn, i) => {
   const band = BANDS[Math.min(3, Math.floor(i / 4))];
   return { n: i + 1, rn, name: `STATION ${rn}`, band: band.name, col: band.col, text: band.text,
-    hp: stationPower(i) * (1 + i * 0.05), dmg: Math.pow(stationPower(i), 0.85) * (1 + i * 0.04),
+    hp: monPower(i) * (1 + i * 0.05), dmg: Math.pow(monPower(i), 0.72) * (1 + i * 0.04),
     gold: 1 + i * 0.35, drop: 1 + i * 0.02, boost: i * 0.14, xp: 1 + i * 0.2, aff: (i >= 8 ? 1 : 0) + (i >= 12 ? 1 : 0), lv: 1 + i * 3 };
 });
 const diffOpen = (i) => i === 0 || (SAVE.cleared ?? -1) >= i - 1;
@@ -2426,7 +2431,7 @@ const VIGIL_TIME = 600;
 function vigilDiff(L) {
   const i = (L - 1) * 0.5, base = DIFF[Math.min(14, Math.floor(i))];
   return { ...base, n: Math.min(15, Math.floor(i) + 1), vigil: L, name: `VIGIL ${L}`, rn: `V${L}`,
-    hp: stationPower(i) * (1 + i * 0.05), dmg: Math.pow(stationPower(i), 0.85) * (1 + i * 0.04),
+    hp: monPower(i) * (1 + i * 0.05), dmg: Math.pow(monPower(i), 0.72) * (1 + i * 0.04),
     gold: 1 + i * 0.35, boost: i * 0.14 + 0.3, xp: 1 + i * 0.2, aff: (i >= 8 ? 1 : 0) + (i >= 12 ? 1 : 0) + (i >= 18 ? 1 : 0), dens: 1.15 + L * 0.05 };
 }
 // Omens: optional curses taken at the cathedral doors. Each makes the map
@@ -2712,6 +2717,8 @@ const MON = {
 };
 for (const [id, d] of Object.entries(MON)) {
   d.id = id;
+  // The horde takes more than a single bolt (round 15 difficulty pass).
+  if (d.tier === 'common') d.hp = Math.round(d.hp * 1.6); else if (d.tier === 'rare') d.hp = Math.round(d.hp * 1.3);
   for (const k of ['speed', 'r', 'hy', 'hr', 'keep']) if (d[k]) d[k] = Math.round(d[k] * WS);
   if (d.orbit) d.orbit.r *= WS;
   for (const a of d.attacks) for (const k of ['range', 'reach', 'min', 'len', 'rad', 'speed', 'max', 'spreadR', 'radius', 'step']) if (a[k]) a[k] *= WS;
@@ -3288,9 +3295,9 @@ function killEnemy(e, dirx, diry, executed = false) {
   // Loot.
   if (e.type === 'imp') { dropLoot(e.x, e.y, { gold: 22, item: 3, itemBoost: 2, globe: 1 }); game.banner = { text: 'THE IMP IS SLAIN', sub: 'ITS SACK SPLITS OPEN', t: 0, color: PAL.gold0 }; }
   else if (e.boss) { /* wardenSlain drops the loot */ }
-  else if (e.tier === 'elite') { if (!e.minion) SAVE.eliteKills = (SAVE.eliteKills || 0) + 1; dropLoot(e.x, e.y, { gold: 10, item: 2, itemBoost: 1.5, globe: 2 }); game.banner = { text: `${e.name} FALLS`, sub: '', t: 0, color: PAL.gold0 }; }
-  else if (e.tier === 'rare') dropLoot(e.x, e.y, { gold: 3, item: rng() < 0.45 ? 1 : 0, itemBoost: 1, globe: rng() < 0.4 ? 1 : 0 });
-  else dropLoot(e.x, e.y, { gold: rng() < 0.3 ? 1 : 0, item: rng() < 0.015 ? 1 : 0, globe: rng() < (e.minion ? 0.1 : 0.06) ? 1 : 0 });
+  else if (e.tier === 'elite') { if (!e.minion) SAVE.eliteKills = (SAVE.eliteKills || 0) + 1; dropLoot(e.x, e.y, { gold: 10, item: 1, itemBoost: 2, globe: 2 }); game.banner = { text: `${e.name} FALLS`, sub: '', t: 0, color: PAL.gold0 }; }
+  else if (e.tier === 'rare') dropLoot(e.x, e.y, { gold: 3, item: rng() < 0.3 ? 1 : 0, itemBoost: 1, globe: rng() < 0.4 ? 1 : 0 });
+  else dropLoot(e.x, e.y, { gold: rng() < 0.3 ? 1 : 0, item: rng() < 0.006 ? 1 : 0, globe: rng() < (e.minion ? 0.1 : 0.06) ? 1 : 0 });
 }
 
 // ---------------------------------------------------------------- gore ---
@@ -3360,7 +3367,7 @@ const RARITY = [
   { id: 'blessed', name: 'BLESSED', color: '#8ae0ff', rgb: '138,224,255', w: 32 },
   { id: 'consecrated', name: 'CONSECRATED', color: '#ffd155', rgb: '255,209,85', w: 14 },
   { id: 'relic', name: 'HALLOWED', color: '#ff7a1f', rgb: '255,122,31', w: 3.5 },
-  { id: 'set', name: 'VESTMENT SET', color: '#7fdc6c', rgb: '127,220,108', w: 0.9 },
+  { id: 'set', name: 'VESTMENT SET', color: '#7fdc6c', rgb: '127,220,108', w: 0.6 },
 ];
 const SLOTS = { hood: ['HOOD', 'COWL', 'VEIL'], mantle: ['MANTLE', 'SHROUD', 'PALL'], gloves: ['GLOVES', 'GAUNTLETS', 'MITTS'], girdle: ['GIRDLE', 'CINCTURE', 'CORD'], greaves: ['GREAVES', 'SABATONS', 'SANDALS'], rosary: ['PENDANT', 'LOCKET', 'TALISMAN'], seal: ['SEAL', 'SIGNET', 'BAND'], relic: ['CHARM', 'KNUCKLEBONE', 'TOOTH'] , bow: ['CROSSBOW', 'ARBALEST', 'REPEATER'], quiver: ['QUIVER', 'BOLT-CASE', 'NAIL-POUCH'] };
 // The eight vestment slots (the sets' pieces); bow and quiver are the arms.
@@ -3402,6 +3409,7 @@ const VSETS = {
   choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, 'IN RECKONING: NO ROOTS OR SLOWS, KILLS HEAL 2%.'], [6, 'RECKONING LASTS WHILE ZEAL REMAINS. X3 DAMAGE WHILE IT BURNS.']] },
 };
 const MAIN_SETS = ['nails', 'stride', 'font', 'confessor', 'choir'];
+const SET_FROM = 6; // the five main sets (and their arms) drop from Station VI
 // Each set's arms: a crossbow and a quiver, a separate 2-piece bonus that
 // leans on the same skill. A set crossbow also sets the crossbow's look.
 const ARMS = {
@@ -3459,7 +3467,7 @@ function rollItem(boost = 0, il = curDiff().n) {
   let roll = rng() * total, ri = 0;
   for (; ri < w.length - 1 && roll > w[ri]; ri++) roll -= w[ri];
   // Set pieces: Odile's Habit below Station IV, the five main sets from IV up.
-  const setId = ri === 4 ? (il >= 4 ? pick(MAIN_SETS) : 'habit') : null;
+  const setId = ri === 4 ? (il >= SET_FROM ? pick(MAIN_SETS) : 'habit') : null;
   if (setId && setId !== 'habit' && rng() < 0.3) return armsItem(setId, rng() < 0.5 ? 'bow' : 'quiver', il);
   const slot = setId ? pick(VSETS[setId].slots) : pick(Object.keys(SLOTS)), base = pick(SLOTS[slot]);
   const leg = ri === 3 ? pick(LEGENDS.filter((L) => L.slot === slot)) : null;
@@ -5551,7 +5559,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { openAltar, altarTap, altarRow, altarSock, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

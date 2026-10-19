@@ -53,6 +53,7 @@ node tools/tests/dev.cjs <outDir>     # dev menu: every tab, sets into the bag, 
 node tools/tests/round14.cjs <outDir> # Penitent Cells, banners, rite colours, Nave props, settings, the Warden's fall
 node tools/tests/rites2.cjs <outDir>  # the Rites panel and all 12 rites cast in a crowd
 node tools/tests/round15.cjs <outDir> # worn quiver and Habit look, bounty board, suspend and resume across a reload
+node tools/tests/balance.cjs [stations] [profiles] # difficulty check: DPS, Warden seconds and blows to die per Station, gear matched and behind
 node tools/tests/perf.cjs [secs]      # dense crowd: frame times, % of time frozen by hitstop, canvases made, slowest systems
 node tools/tests/err.cjs              # prints page errors and state
 node tools/sprites.mjs --audit        # lists any animation still drawn by the old hand-drawn code
@@ -87,7 +88,7 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **Strata:** `STRATA` and `useStratum(k)` swap the dungeon sheets for the `_d` copies (built by the `DROWN` ramp remap in `tools/sprites.mjs`). Give a monster `stratum: 2` to put it in Stratum II's pools.
 - **Town:** two streets. Plan x below `TOWN_SPLIT` is the upper street, the rest the lower street `ROW_DY` further south (`townX`, `townRow`). Sites carry `S.row`; site `dy` already includes the row.
 - **Seeds:** descent maps and their monsters come from `rng`, which `newRun` seeds (`run.seed`) so a suspended run rebuilds the same map. Never use `Math.random` in map building or `populate()`.
-- **Descent maps:** 11–12 rooms grown at random on a 4×4 grid (`GRID`), packed by `populate()`; no gates or waves. Balance numbers live in `DIFF` (Stations), `TOLL_VALUE`, `WARDEN` and `itemSanctity`.
+- **Descent maps:** 11–12 rooms grown at random on a 4×4 grid (`GRID`), packed by `populate()`; no gates or waves. Balance numbers live in `DIFF` (Stations; monsters climb by `MON_STEP`, gear by `POWER_STEP`), `TOLL_SHARE`, `MAX_FOES`, `WARDEN`, `SET_FROM` and `itemSanctity`. The owner wants progress to need a lot of farming: check `tools/tests/balance.cjs` after any change.
 - **Layouts:** dungeon rooms follow the Otherworld Legends recipe in `docs/ART_COMPARISON.md`: open floors, one mirrored plan per room, a mirrored back-wall rhythm, clutter in corners, nothing floating. Review with `tools/tests/rooms.cjs`.
 - **UI sizes:** the view height varies a little per device (whole-number scaling), so place UI from `W`/`H` and check panels fit at H ≈ 290.
 - **Writing style:** keep docs and code comments plain and short.

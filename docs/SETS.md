@@ -35,7 +35,7 @@ hand-posed `cast`, `hit` and `die` frames.
   own skill (about ×3 to ×5). It is the biggest jump in the game, but set
   pieces still carry an item level, so **Sanctity still gates the
   Stations**: a Station I set cannot carry you to XV.
-- Set pieces drop from Station IV up (rarity `set`, green beam). Rares
+- Set pieces drop from Station VI up (`SET_FROM`; rarity `set`, green beam; Odile's Habit below that). Rares
   never drop them; elites rarely do; Wardens sometimes do. Rates rise with
   the Station.
 - **The Lesser Vow** (a Hallowed seal power): sets need one fewer piece
@@ -135,7 +135,7 @@ Play: build Zeal fast, then hold Reckoning as long as the killing lasts.
 ## How it is built
 
 - `rollItem` and the curio stall: rarity `set` picks a set (Odile's Habit
-  below Station IV) and one of its slots; `it.set` holds the set id (old
+  below Station VI) and one of its slots; `it.set` holds the set id (old
   saves' `true` becomes `habit`). 35% of Hallowed seals are the Lesser Vow.
 - `gearStats` counts pieces per set (`g.sets`), adds the Vow and picks
   `g.skin`. The crossbow, dash, vial, chain and Reckoning code read
@@ -159,7 +159,7 @@ Research sources:
 
 Each set also has two weapon pieces, a crossbow and a quiver, with their own
 2-piece bonus that leans on the same skill. They drop as set rarity from
-Station IV (30% of set drops). A set crossbow sets the crossbow's look.
+Station VI (30% of set drops). A set crossbow sets the crossbow's look.
 
 | Arms | Crossbow | Quiver | 2-piece |
 |---|---|---|---|
