@@ -10,8 +10,8 @@ const S = process.argv[2];
   await p.goto('http://localhost:8123/?town'); await p.waitForTimeout(1000);
   // Density: monsters on a Station I map against a Station XV map.
   console.log('density', await p.evaluate(() => { HS.tut.on = false; const out = []; for (const d of [0, 7, 14]) { const n = []; for (let k = 0; k < 3; k++) { HS.game.nextDiff = d; HS.game.nextOmens = []; HS.newRun(); n.push(HS.enemies.length); } out.push(`${d + 1}:${Math.round(n.reduce((a, v) => a + v) / 3)}`); } return out.join(' '); }));
-  // The Vigil panel at the town site.
-  await p.evaluate(() => { HS.enterTown(); HS.SAVE.cleared = 3; HS.SAVE.vigilOpen = 6; HS.openSite(HS.SITES.find((s) => s.id === 'vigil')); });
+  // The Vigil panel, from the Descent panel's VIGIL button.
+  await p.evaluate(() => { HS.enterTown(); HS.SAVE.cleared = 3; HS.SAVE.vigilOpen = 6; HS.SAVE.vkeys = 1; HS.startDescent(); const L = HS.descentLayout(); HS.descentTap(L.vig.x + 5, L.vig.y + 5); });
   await p.waitForTimeout(300); await p.screenshot({ path: `${S}/shots/v1-panel.png` });
   // A Vigil at level 6.
   await p.evaluate(() => HS.beginVigil(6)); await p.waitForTimeout(2600);

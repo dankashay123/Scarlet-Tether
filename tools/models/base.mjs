@@ -79,6 +79,7 @@ export const MATS = {
   slate: { ramp: 'slate', spec: 0.1 }, violet: { ramp: 'violet', spec: 0.1 }, moss: { ramp: 'moss' }, ink: { ramp: 'ink', bias: -0.1, min: 2 }, teal: { ramp: 'teal' },
   blood: { ramp: 'blood', spec: 0.4 }, holy: { ramp: 'holy', spec: 0.5 }, flame: { ramp: 'flame', glow: 1 }, ember: { ramp: 'ember', glow: 1 }, emberLit: { ramp: 'ember', spec: 0.3, bias: 0.2 },
   brick: { ramp: 'brick' }, flag: { ramp: 'flag' }, sand: { ramp: 'sand' }, roof: { ramp: 'roof' },
+  rose: { ramp: 'rose', spec: 0.5 },
 };
 
 // ---------------------------------------------------------- the Saint ---

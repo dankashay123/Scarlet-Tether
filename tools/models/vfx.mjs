@@ -273,6 +273,19 @@ function globe(i) {
   return f;
 }
 
+// The Bloodrose Key that opens the Bleeding Vigil: a gilt ring round a
+// rose, on a pink shaft.
+function roseKey() {
+  const S = new Scene();
+  S.add(torus([10, 8, 2], 5.4, 1.8, Math.PI / 2, 'gold'), 0);
+  S.add(sphere([10, 8, 2.6], 2.6, 'rose'), 0);
+  S.add(capsule([10, 15, 2], [10, 26, 2], 2, 1.9, 'rose'), 0.6);
+  S.add(box([14, 21, 2], [2.4, 1.3, 1.4], 0.3, 'rose'), 0.4);
+  S.add(box([14, 25, 2], [2.4, 1.3, 1.4], 0.3, 'rose'), 0.4);
+  const f = render(S, 20, 29, MATS, { contrast: 1.4 });
+  put(f, 8, 6, 'white'); put(f, 9, 6, 'white');
+  return f;
+}
 // Sound toggle for the HUD: a pale disc like the pause button, with a speaker.
 function soundIcon(on) {
   const S = new Scene();
@@ -305,6 +318,7 @@ export default {
     coin: () => [0, 1].map(coin),
     gold: () => [0, 1, 2].map(goldPile),
     globe: () => [0, 1].map(globe),
+    vkey: () => [roseKey()],
     wax: () => [orb('pot', { tail: true })], bone: () => [orb('bone', { r: 3.6 })], tear: () => [orb('holy', { tail: true })],
     feather: () => [orb('cloth', { r: 3.4, tail: true })], spit: () => [orb('rot', { tail: true })], ember: () => [orb('ember', { tail: true })],
     violet: () => [orb('violet')], blood: () => [orb('blood', { tail: true })], frost: () => [orb('holy', { r: 4.6 })], bomb: () => [orb('ink', { r: 4.8 })],

@@ -1,232 +1,132 @@
 # Handoff
 
-Last updated 2026-10-19, after round 15. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 18. Read this first, then `CLAUDE.md`.
+The history of every round is at the bottom; the sections above it describe
+the game as it is now.
 
 **Every reply that completes a prompt ends with two lists: what was done,
 and 5 suggestions for what to do next.** (The owner's standing request;
 see "The owner's preferences".)
 
+## Starting a new session
+
+1. Read this file and `CLAUDE.md`. `docs/SETS.md` and `docs/COMBAT.md` hold
+   the set and monster details.
+2. Serve the repo (`python3 -m http.server 8123`) and open `/?town` or
+   `/?run`. Add `?dev` for the dev menu (sets, items, levels, Stations,
+   Wardens, Bloodrose Keys, Chrism, Censer upgrades).
+3. Work on the branch `round8-monster-anim`, then fast-forward `master` and
+   push both. GitHub Pages deploys from `master`.
+4. Before shipping: run the tests listed in `CLAUDE.md` (each prints
+   `errors 0 []`), a soak (`SOAK_DEATH=0.04 node tools/tests/soak.cjs <dir> 150`),
+   and look at the screenshots at phone sizes (game widths run about 445 to
+   620 px, heights 250 to 290). Text must fit: use `fitText` and `wrapW`.
+
 ## Where the game stands
 
-A playable vertical slice on iPhone landscape (desktop works with keys) at
-55–60 fps, with no page errors in any test or in 5 minutes of random play.
+A playable action-RPG slice for iPhone, always landscape (held upright the
+canvas turns a quarter, `PORTRAIT` in `resize`, and `toLocal` maps taps).
+Desktop works with keys. 55–60 fps in dense crowds.
 
-- **Look:** sculpted SDF pixel art rendered on a chunky 2x2 grid, so art
-  pixels read as hard blocks like Otherworld Legends. The view is 305 px
-  tall, so the Saint is about 16.5% of the screen height, as in OWL phone
-  play. The screen always scales by a whole number, nearest neighbour. Warm
-  torch light on dark stone, soft bloom.
-- **Start:** a clean title (logo, Saint, cathedral silhouette, one button),
-  then the town of Vael. An 11-step tutorial (skippable) runs from the town
-  into the first fight.
-- **Vael (the town):** a compact twilight street (2150 px, round 8f) with six districts (Pilgrims'
-  Gate, Curio Market, Gilded Lamb, Ember Forge, Quiet Acre, Cathedral),
-  13 talking townsfolk, walkers, kids, crows, fog, ash and lightning.
-  Market booths, benches, hay, planters, shrines, a fountain and ground
-  detail fill the whole street. Nothing blocks movement.
-  - Nine **feature sites** (`SITES`) with badges and "UNLOCKED WHEN …"
-    panels and progress bars. Built (round 11):
-    - **Pell's curio stall** (finish one descent): 6 pieces, restocked
-      every descent (`shopStock`, `SAVE.shop`), at the best cleared
-      Station + 1, never common; price by rarity and item level.
-    - **The Ember Forge** (Warden of II): reforge one stat of a worn or
-      bagged piece (the first stat rerolls its value, any other becomes a
-      new stat; cost grows per reforge), or temper a piece up to your best
-      Station's item level (`bestIl`).
-    - **The Canonry** (finish one descent): **Devotion**, an account level
-      fed by all XP (`gainDevotion`, `devNeed`). Each level gives a point
-      to spend on six **Virtues** (Might, Vigour, Fortune, Precision,
-      Swiftness, Piety; `VIRTUES`), small permanent boosts with caps.
-    - **The Bleeding Vigil** (Warden of IV).
-    - **The Pilgrim Road** (Warden of III): opens Stratum II.
-    Plush stall, bounty board, wagers and Martyrdom still say "coming in a
-    later build".
-  - Town minimap with badges; tap it or press M for the full map and legend.
-- **The descent (round 9, modelled on Diablo 3 rifts and Torchlight
-  Infinite Timemarks, with our own names):**
-  - **The Fifteen Stations of the Wound** (`DIFF`, Station I–XV) are the
-    difficulty ladder, in four bands: Pilgrim I–IV, Zealot V–VIII, Martyr
-    IX–XII, Saint XIII–XV. A Station opens when you slay the Warden of the
-    one before (`SAVE.cleared` = highest Station index cleared). Monster
-    health climbs by `POWER_STEP` (1.36) per Station plus 5%, damage a
-    little slower; rares/elites gain a curse at IX and XIII.
-  - The descent panel at the cathedral doors shows the Station, every
-    number, and your Sanctity against what the Station expects.
-  - **The map** is new every descent: 11–12 rooms grown as a random blob
-    on a 4×4 grid of cells (`GRID`), joined by corridors with a few loops,
-    no locked gates. Every room but the Vestibule starts packed
-    (`populate()`): clusters of commons, a chance of a blue rare pack, gold
-    elite packs in two Champion's Halls, a shrine and one or two
-    treasuries. About 220–290 monsters per map. Monsters sleep until the
-    Saint is near (or they are hurt) and go back to sleep when left far
-    behind (`awake` list), so the frame cost stays low.
-  - **Fog of war:** the minimap is the explored map around the Saint (one
-    pixel per tile, `room.fog`), filling in as you walk (`revealAround`,
-    15 tiles). Tap it or press M for the full explored map.
-  - **The Toll** (the progress bar at the top): every kill rings it
-    (commons 1, rares 4, elites 12; `tollValue`). It needs about 68% of the
-    map's monsters. When it is full a banner says THE WARDEN COMES and the
-    **Warden** appears near the Saint (`spawnWarden`): one of five, each
-    with its own sculpted model (`mon_warden` sheet, `tools/models/elite.mjs`,
-    150×160 frames), name, lore line and kit (`MON` entries with
-    `warden: true`):
-    - **The Bellwright** (bell on his back, iron hammer): slam, `peal`
-      (three concentric shockwaves), a ring of falling bells, risen.
-    - **Mother Candlemass** (wax matron crowned with candles): burning wax
-      pools, an ember spiral, a ring of fire round the Saint, ember ring.
-    - **The Hollow Cardinal** (empty floating robes, mitre, crozier):
-      `sweep` (three rotating holy beams), blink, violet fans, acolytes.
-    - **The Charnel King** (bone giant, crown, femur sceptre): a line of
-      bone spikes toward the Saint, triple charge, risen, shockwave.
-    - **Our Lady of Nails** (iron saint, halo of nails): `volley` (four
-      fans of nails), chain pull, a cross of spikes, a ring of nails.
-    Wardens are meant to punish (`WARDEN`): ×1.8 health and ×1.6 damage on
-    top of their MON stats. At 66% and 33% each learns its `phases` moves
-    (a bigger peal, eight-stream spiral, five beams, a cross of spikes,
-    six-shot nail volleys and so on), gets faster, and by the last phase
-    chains attacks with almost no recovery. After 100 s it enrages (double
-    damage, much faster); the boss bar counts down WRATH. The Bellwright's
-    peals and bells root the Saint; Candlemass's pools burn harder. The
-    tutorial's Warden is gentler. Never staggered or executed. Slaying one drops 4
-    pieces, opens the next Station and raises the Waystone home.
-  - **Density** climbs with the Station: more and bigger clusters, more
-    rare packs, a third champion hall from Station VIII. About 240
-    monsters at I, 480 at VIII, 760 at XV.
-  - **Knells:** rares and elites drop bell-shards that add 3 to the Toll
-    when gathered (our take on progress orbs).
-  - **Shrine of Judgement:** holy lightning strikes the two nearest foes
-    every 0.35 s for 15 s (joins Zeal, Haste, Warding, Plenty).
-  - **The Weeping Reliquary:** one per map (not in the Vigil). Wake it and
-    the dead pour in for 30 s; lay 30 to rest near it and it opens
-    (3 pieces). Fail and it falls silent.
-  - **Omens:** at the cathedral doors take one or two random omens (more
-    monsters, more health, more damage, more curses, faster monsters);
-    each pays +40% gold, +30% gear and rarer gear (`OMENS`, `applyOmens`).
-- **Vestment sets** (round 12, `docs/SETS.md`): five 6-piece sets with 2/4/6
-  bonuses built around one skill each (the Hundred Nails: crossbow; the
-  Penitent's Stride: dash; the Drowned Font: holy water; the Last
-  Confessor: chain; the Burning Choir: Reckoning). At 4 pieces the Saint
-  and the HUD portrait wear the set's sculpted skin. Odile's Habit is the
-  4-piece starter set (below Station IV). The Lesser Vow (a Hallowed seal)
-  counts one extra piece. Odile's Gift: after the Wardens of III, VI and
-  IX, talk to Sister Odile for two pieces of a set you choose. Each skin
-  has its own crossbow, bolts and bolt colours (round 13).
-- **Set arms** (round 14): two new slots, crossbow and quiver (Sanctity now
-  averages 10 slots). Each set has a 2-piece Arms set (`ARMS`, `it.wset`,
-  `sbw(id)`): Arms of the Hundred Nails (every 5th bolt a great nail),
-  of the Penitent's Stride (ember bolts after a dash), of the Drowned Font
-  (slowing bolts, pools on kills), of the Last Confessor (every 8th bolt
-  binds), of the Burning Choir (crits charge Reckoning, flame bursts in
-  Reckoning). A set crossbow sets the crossbow's look (`G.xskin`). 30% of
-  set drops from Station IV are arms.
-- **Penitent Cells** (round 14, town site near the Quiet Acre): one 90 s
-  wave trial per set, opened by wearing all six pieces (`CELLS`,
-  `updateCell`). Absolving one hangs its banner on the Cathedral front and
-  the first time pays the set's missing arms.
-- **Rite colours** (round 14): holy water, the chain and Reckoning take the
-  robe's colour (`RITE_FX`).
-- **The Drowned Nave's own pieces** (round 14): organ pipes on the back
-  wall, half-sunk pews, kelp in corners, weed mats on the floor, a dripping
-  ambience (synthesised `drip`).
-- **Settings** (round 14, pause screen): effects full/low, screen shake,
-  damage numbers all/crits/off, haptics (Android only; iPhone Safari has no
-  vibration), music and sound levels, left-handed controls (`SAVE.opts`,
-  `opt()`).
-- **The Warden's fall** (round 14): a long slow-motion beat, flash and a
-  fountain of coins that lands before it is drawn in.
-- **Dev menu** (round 14): `?dev`, then DEV on the pause screen.
-- **Stratum II, the Drowned Nave** (round 11): after the Warden of III the
-  descent panel shows a STRATUM button. The Nave is a flooded look
-  (`STRATA`, `useStratum`): its sheets (`hall_d`, `floor_d`, `walldecor_d`,
-  `props_d`, `loot_d`) are the Undercroft's ramps remapped to teal and
-  silt (`DROWN` in `tools/sprites.mjs`), with a cold ambient and mostly
-  flooded room themes. Own monsters mix in with the old ones (`stratum: 2`
-  in `MON`; `poolC`/`poolR`): the **Silt Wretch** and **Nave Eel**
-  (commons) and the **Tide Cantor** (rare: tear ring, frost pools). Two
-  Wardens: **the Tide-Bishop** (shockwaves that slow, chain pull, frost
-  rings, eels; later peals, a frost cross and pool lobs) and **the
-  Drowned Organist** (rotating beams, nail volleys, peals, cantors; later
-  a 30-shot ring, four beams and a bell ring). Same Stations, same Toll.
-  The Vigil always uses Stratum I.
-- **The Bleeding Vigil** (the town site in the Quiet Acre, open after the
-  Warden of Station IV): our timed endless trial. Pick a Vigil level (up to
-  `SAVE.vigilOpen`), light the candle: 10 minutes to fill the Toll and slay
-  the Warden. Two Vigil levels per Station step, climbing past Station XV,
-  and density grows every level (`vigilDiff`). Monsters drop gold and
-  knells, never gear; the Warden pays 3 + level/5 pieces. Finishing with
-  5 minutes left opens +3 levels, 3 minutes +2, in time +1; a burnt-out
-  candle opens nothing. `SAVE.vigilBest` is the best level kept.
-- **Combat:** a floating auto-aiming crossbow, dash with perfect-dodge
-  slow-mo, two rites (holy-water vial, chain), Reckoning (the ultimate,
-  charged by Zeal), executions, Carnage bonus.
-  - 30 monsters (10 common, 10 rare in blue packs, 10 elite in gold), plus
-    the Collection Imp. All attacks are telegraphed. 19 affixes, named
-    elites, nameplate bar.
-  - Stigmata: XP and level-ups offer 3 of 20 Wounds, six of which are big
-    auto skills.
-- **Loot:** gold, health orbs, gear in 5 rarities (common, blessed,
-  consecrated, hallowed, Saint's set) across 8 slots (hood, mantle, gloves,
-  girdle, pendant, seal, charm, greaves). Every piece has an item level,
-  the Station it dropped on (`it.il`), which sets its **Sanctity**
-  (10 × 1.36^(il−1)). Your Sanctity is the average over the eight slots
-  (an empty slot counts 10); it multiplies your damage, and your health by
-  its 0.85 power, matching the monsters' climb. So Station I gear cannot
-  carry you up the ladder. Dropped gear shows a pillar of light by rarity
-  (blessed blue, consecrated gold, hallowed and set tall), drawn in the
-  additive pass over the darkness (`drawLootBeams`); hallowed and set also
-  show a star on the minimap. Drop rates were trimmed (commons 1.5%, rares
-  45%, elites 2 pieces) and rarity odds rise with the Station. A 30-slot bag with AUTO EQUIP and
-  SELL MANY. On death the Choir takes half your gold and every other piece
-  found that run; worn gear is safe. Saved in localStorage (`hollow-saint`).
-- **Audio:** Kenney SFX, OpenGameArt music and ambience (`docs/CREDITS.md`).
-  Mute button (or N key). Follows the iPhone silent switch on iOS 17+.
-- **Animation:** the Saint, townsfolk and all 30 monsters have 8-frame walk
-  cycles (planted foot slides back, the other swings forward lifted, body
-  bob). Every monster flinches when hit (2 frames) and falls over when
-  slain (3 frames, then the gibs burst). Rats and crawlers roll belly-up.
-  Executions still burst at once.
+- **Look:** sculpted SDF pixel art on a chunky 2x2 grid (the Otherworld
+  Legends look), whole-number scaling, a 305 px tall view, warm torch light
+  on dark stone. Every pixel is on the palette (`tools/palette.mjs`, 25
+  ramps; `rose` was added in round 18 for the Bloodrose Keys).
+- **Vael, the town:** two short streets (`TOWN_SPLIT`, `ROW_DY`) with
+  townsfolk and nine sites: Pell's curio stall, the Plush stall, the
+  Bounty Board, the Scrying Pool, the Ember Forge, the Ashen Altar, the
+  Penitent Cells, Martyrdom, the Canonry, plus the Pilgrim Road (Stratum
+  II). Some still say "coming soon" (Plush stall, Scrying Pool, Martyrdom).
+- **The descent:** the Descent panel at the cathedral doors picks a Station
+  (I–XV, `DIFF`), a stratum (the Undercroft or the Drowned Nave), omens,
+  and now also holds **the Bleeding Vigil** (top-right button). Maps are
+  random 11–12 room layouts packed with 500+ monsters (`populate()`,
+  seeded so a suspended run rebuilds the same map). Kills ring **the
+  Toll**; at 90% the **Warden** comes (five in Stratum I, two in the Nave).
+  Monsters climb faster than gear (`MON_STEP` 1.5 against `POWER_STEP`
+  1.36), so progress needs farming (`tools/tests/balance.cjs`).
+- **The Bleeding Vigil** (timed endless trial): each one costs a
+  **Bloodrose Key** (`SAVE.vkeys`), dropped by Wardens of Station X and
+  deeper half the time (`dropVkey`, pink beam). Ten minutes to fill the
+  Toll and slay the Warden; time left raises the Vigil level.
+- **Combat:** a floating auto-aiming crossbow, dash with a perfect dodge,
+  the Censer (a thurible that swings round the Saint), two rites and a
+  Reckoning chosen from 12 (`RITES`, the Rites panel), Zeal, executions.
+  Monsters are punishing (round 16): `MON_DMG`, faster shots (`SHOT_K`),
+  and new telegraphed attacks (snipe lines, fast-ticking blight pools,
+  novas, barrages, homing shots, the Sentence that only a dash cleanses).
+  22 elite curses. Heal per kill is capped at 3% of health a second.
+- **Run levels:** up to 15 (`MAX_LEVEL`), each 1.22x the last, paced so 15
+  comes at about 75% of the map. Each level offers 3 of 30 Wounds;
+  rite Wounds only appear for chosen rites.
+- **Gear:** 10 slots (8 vestments, crossbow, quiver), 5 rarities, item
+  level = Station (Sanctity). Hallowed pieces (30 in `LEGENDS`) are rare
+  (about 1.5–2.5% of drops). Five 6-piece vestment sets with 2/4/6
+  bonuses, each with its own Saint skin, crossbow and bolts, plus 2-piece
+  set Arms; Odile's Habit is the starter set. Sets drop from Station VI.
+- **Account systems:** Devotion and Virtues (Canonry), the Ember Forge
+  (reforge, temper), the Ashen Altar (burn a Hallowed piece to learn its
+  power for good: gold price, 30% failure, Chrism raises the odds; three
+  sockets), the Censer's 12 deed upgrades (tap the censer on the bag's
+  paper doll), the Bounty Board, Penitent Cells, Odile's Gift, suspend and
+  resume.
+- **Settings and tools:** settings panel (effects, shake, numbers, sound,
+  left-handed), dev menu (`devRows()`), `?prof` and `?fps` profiling.
 
 ## The owner's preferences
 
 - **After every completed prompt, reply with (1) a short list of what was
-  done and (2) 5 suggestions for what to do next.** Keep both as plain
-  bullet lists at the end of the reply, after the outcome and screenshots.
-
+  done and (2) 5 suggestions for what to do next.**
 - Graphics matter most. The target is Otherworld Legends: chunky, crisp
-  pixel art, warm torch-lit stone halls, clean open rooms, nothing that
-  looks AI-made. Match OWL by measuring real phone captures, not promo art.
-- Systems lean on classic action-RPG ideas (elite affixes, loot showers, a
-  lively town), with our own names. Never use names or terms from other
-  games (no Blasphemous or Diablo terms; see CLAUDE.md, "Names").
-- Ship each finished round to `master` (GitHub Pages deploys from it).
-- They read on a phone: keep updates short, lead with the outcome, attach
-  screenshots. They notice when an earlier request was not fully done.
-- Gameplay direction (rounds 9–10): Diablo 3 and Torchlight Infinite style
-  progression (difficulty ladder, random packed maps, a progress bar that
-  brings a boss, a timed endless trial), always under our own names.
-  Monster density should feel high and climb with difficulty. Wardens must
-  be difficult and punishing, but every hit stays telegraphed.
+  pixel art, nothing that looks AI-made. They check text layout on a phone
+  closely: no overlapping or clipped text.
+- Systems borrow from Diablo 3 and Torchlight Infinite, always under our
+  own names (never borrow names or terms from other games).
+- They want the game hard: monsters punish mistakes, drops are rare,
+  progress needs farming. Every hit must still be telegraphed.
+- Ship each finished round to `master`. Keep updates short, lead with the
+  outcome, attach screenshots.
 
-## Next steps (ideas, roughly in priority order)
+## Next steps (ideas, building on what is there)
 
-1. **Tune the new attacks from play.** Watch which of `MORE_ATTACKS` feel
-   unfair; telegraphs must stay readable in a crowd.
-2. **Tune from play.** Run `tools/tests/balance.cjs` after any balance change. Set and arms multipliers, cell goals (`CELLS`),
-   shop prices, forge costs, Devotion pace, Toll size, Warden health and
-   enrage. Use the dev menu to try each set quickly.
-2. **Bounty board.** Three small goals per descent paying gold and Devotion.
-3. **Chunky-grid art pass.** Review every sheet with `CHUNKY=2`: small
-   faces, item icons, the weed mats (they read a little like lily pads).
-4. **Set looks for Odile's Habit and the arms on the doll.** Show the worn
-   quiver on the Saint's back; a starter look for the Habit.
-5. **More Nave room plans.** Deep water channels with bridges, a flooded
-   organ loft for the Organist's arena.
-6. **Suspend and resume.** Save a run mid-map so a closed tab returns to it.
-7. **Character choice.** A second playable saint (melee, short range).
-8. **Season-style events.** A rotating weekly omen with a set showcased.
+1. **Vigil rewards worth the key.** A Vigil-only drop table: better odds of
+   Chrism, a guaranteed set piece at high levels, and a leaderboard-style
+   "best kept" board in Vael.
+2. **Finish the "coming soon" sites.** The Scrying Pool (wager gold on how
+   deep a run gets), Martyrdom (one life, doubled rewards), the Plush stall
+   (cosmetic halos and robe colours bought with gold).
+3. **A training yard in Vael.** A dummy and a monster summoner so players
+   can learn the round 16 attacks (snipe, blight, Sentence) safely.
+4. **Altar extras.** Turn three unwanted Hallowed pieces into a Chrism;
+   a burning animation that differs for success and failure.
+5. **Rite depth.** Let rites gain ranks with use, and give each set a
+   rite-specific 6-piece twist, so the Rites panel becomes a build screen.
+6. **Stratum III.** A third look (the Ossuary Spire or a burnt chapter
+   house) with its own two Wardens, reusing the `STRATA` remap pipeline.
+7. **A second playable saint.** A short-range melee saint with its own
+   rites, to reuse the sets and Stations.
+8. **Art pass on small icons.** Review every sheet with `CHUNKY=2`: item
+   icons, the Chrism vial on the ground, weed mats.
+9. **Death recap.** After a fall, show what hit you hardest and a tip for
+   that attack.
+10. **Tune from play.** `tools/tests/balance.cjs`, `perf.cjs` and the
+    survival check in round 16's notes after any balance change.
 
 ## History by round
 
+- **Round 18 (Rites tabs, the Vigil moves, Bloodrose Keys, always
+  landscape):** the Rites panel now has slot tabs (Rite I, Rite II,
+  Reckoning) over one wide column of cards, smaller icons, and text that
+  fits at every phone width (`fitText`, `SET_SHORT`). The Bleeding Vigil
+  left its town site and now opens from the Descent panel's top-right
+  button; each Vigil spends a Bloodrose Key (`SAVE.vkeys`), dropped by
+  Wardens of Station X and deeper half the time (`VKEY_FROM`,
+  `VKEY_CHANCE`), with a sculpted key (`loot` `vkey`, new `rose` ramp) and
+  a tall pink beam (`VKEY_BEAM`). The Descent panel fits short screens
+  (drops its footer and least useful rows) and shows corrected drop
+  numbers. Held upright, the game no longer asks you to turn the phone:
+  the canvas turns a quarter (`PORTRAIT`, `toLocal`). Test:
+  `tools/tests/round18.cjs`.
 - **Round 17 (rarer Hallowed, altar odds, run levels):** Hallowed weight
   3.5 to 1.4, and drop boosts lift Hallowed and set pieces only a little
   (about 1.5% of plain drops, 2.5% of elite and Warden drops; was about

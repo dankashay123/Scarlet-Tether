@@ -13,7 +13,7 @@ const S = process.argv[2];
   const log = [];
   for (const [slot, ci] of [['m1', 0], ['m2', 1], ['pen', 2]]) {
     for (let i = 0; i < 4; i++) {
-      await p.evaluate(([ci, i]) => { HS.openRites('play'); const b = HS.riteLayout().card(ci, i); HS.ritesTap(b.x + 5, b.y + 5); HS.game.state = 'play'; }, [ci, i]);
+      await p.evaluate(([ci, i]) => { HS.openRites('play'); HS.game.riteFocus = ['m1', 'm2', 'pen'][ci]; const b = HS.riteLayout().card(ci, i); HS.ritesTap(b.x + 5, b.y + 5); HS.game.state = 'play'; }, [ci, i]);
       const id = await p.evaluate((slot) => HS.riteOf(slot).id, slot);
       await p.evaluate(() => { const P = HS.player, r = HS.game.curRoom; for (const e of HS.enemies) if (Math.hypot(e.x - P.x, e.y - P.y) < 300) e.dead = true; for (let k = 0; k < 8; k++) HS.spawnMonster('risen', P.x + 50 + (k % 4) * 14, P.y - 20 + Math.floor(k / 4) * 30, { room: r && r.id }); });
       await p.waitForTimeout(1400); // let them rise from the floor

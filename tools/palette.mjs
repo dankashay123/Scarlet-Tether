@@ -29,6 +29,8 @@ const R = {
   brick: ['#e8a27a', '#bf7056', '#8f4c42', '#613234', '#3c2028'],
   teal: ['#8eaeab', '#67888a', '#4a6670', '#334956', '#22323f'],
   pot: ['#f0d9b5', '#d0ae86', '#a6806a', '#7a5a52', '#4f3a3c'],
+  // Round 18: the pink of the Bloodrose Keys.
+  rose: ['#ffe0f0', '#ff9ccf', '#e85aa6', '#a8336f', '#5c1a44'],
 };
 
 // v3: each 5-step ramp gains in-between tones, giving 9 shades per material.
