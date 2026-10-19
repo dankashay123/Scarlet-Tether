@@ -38,6 +38,7 @@ const MM = {
   wormBelly: { ramp: 'bone', spec: 0.2, bias: -0.08, min: 1 },
   dirt: { ramp: 'shroud', spec: 0, bias: -0.04 },
   boneDark: { ramp: 'bone', bias: -0.14, spec: 0.15, min: 1 },
+  tealRobe: { ramp: 'teal', spec: 0.15, bias: -0.08 }, barnacle: { ramp: 'bone', spec: 0.3, bias: -0.1 }, coral: { ramp: 'crimson', spec: 0.2, bias: 0.05 }, silt: { ramp: 'teal', spec: 0.25, bias: 0.02 }, rope: { ramp: 'wood', spec: 0.1, bias: 0.1 },
   wax: { ramp: 'bone', spec: 0.35, bias: 0.02 }, waxDark: { ramp: 'bone', spec: 0.25, bias: -0.16, min: 2 },
   impSkin: { ramp: 'crimson', spec: 0.25 },
   coin: { ramp: 'gold', spec: 0.8, bias: 0.12 },
@@ -782,7 +783,76 @@ function ladyOfNails(t = 0, atk = 0) {
   if (open) for (let k = 0; k < 5; k++) o.dot(cx + 3, 64 + k * 6 + B, 'iron1');
   return o.f;
 }
-const WARDENS = { bellwright, candlemass, cardinal, charnelKing, ladyOfNails };
+// (Stratum II) The Tide-Bishop: a giant drowned bishop crusted with
+// barnacles, his cope dragging nets, a coral-grown mitre and a trident crozier.
+function tideBishop(t = 0, atk = 0) {
+  const S = new Scene(), cx = 60, B = atk ? 0 : bobAt(t) / 1.25;
+  const lean = atk === 1 ? -3 : atk === 2 ? 5 : 0;
+  robeBody(S, { cx, top: 38, waist: 60, hem: 110, rTop: 13, rHem: 22, mat: 'tealRobe', B, n: 11, amp: 1, lean, zs: 0.8 });
+  // Barnacles and weed on the cope.
+  for (let k = 0; k < 22; k++) { const a = -1.3 + (k * 0.37) % 2.6, y = 64 + (k * 7) % 42 + B, r = 14 + (y - 60) * 0.16; S.add(sphere([cx + Math.sin(a) * r, y, Math.cos(a) * r * 0.8], 1.3 + (k % 3) * 0.3, 'barnacle'), 0.5); }
+  // The net trailing behind: a lattice of cords.
+  for (let i = 0; i < 4; i++) S.add(capsule([cx - 18, 70 + i * 9 + B, -6], [cx - 6, 74 + i * 9 + B, 12], 0.7, 0.7, 'rope'), 0);
+  for (let i = 0; i < 4; i++) S.add(capsule([cx - 16 + i * 3, 66 + B, 4 - i * 3], [cx - 14 + i * 3, 104, 6 - i * 3], 0.7, 0.7, 'rope'), 0);
+  S.add(ellipsoid([cx + lean, 42 + B, 0], [16, 6, 10], 'tealRobe'), 2);
+  S.paint({ mat: 'gold', f: (x, y, z) => Math.max(Math.abs(x - (cx + 2 + lean)) - 2.2, -(y - (46 + B)), y - (108), -z + 4) });
+  // Arms: the crozier hand raises a trident.
+  const hand = atk === 1 ? [cx + 8, 24, 10] : atk === 2 ? [cx + 28, 50, 11] : [cx + 18 + lean, 62 + B, 10];
+  limb(S, [cx + 12 + lean, 44 + B, 6], [cx + 17 + lean, 54 + B, 9], hand, 5, 4.4, 4, 'tealRobe', 1.8);
+  S.add(sphere(hand, 3, 'silt'), 0.8);
+  const top = atk === 1 ? [hand[0] - 2, hand[1] - 34, hand[2] + 1] : atk === 2 ? [hand[0] + 24, hand[1] - 18, hand[2] + 1] : [hand[0] + 2, hand[1] - 38, hand[2] + 1];
+  const bot = [hand[0] + (hand[0] - top[0]) * 0.45, hand[1] + (hand[1] - top[1]) * 0.45, hand[2] + 1];
+  S.add(capsule(bot, top, 1.4, 1.4, 'goldDark'), 0);
+  const ux = (top[0] - bot[0]), uy = (top[1] - bot[1]), L0 = Math.hypot(ux, uy), nx = -uy / L0, ny = ux / L0;
+  for (const k of [-4, 0, 4]) S.add(capsule([top[0] + nx * k, top[1] + ny * k, top[2]], [top[0] + nx * k + ux / L0 * 7, top[1] + ny * k + uy / L0 * 7, top[2]], 1, 0.3, 'gold'), 0.3);
+  S.add(capsule([top[0] - nx * 4, top[1] - ny * 4, top[2]], [top[0] + nx * 4, top[1] + ny * 4, top[2]], 1.1, 1.1, 'gold'), 0.3);
+  limb(S, [cx - 12 + lean, 44 + B, -6], [cx - 16 + lean, 58 + B, -7], [cx - 12 + lean, 68 + B, -5], 5, 4.4, 4, 'tealRobe', 1.6);
+  // A bloated, drowned face under a coral mitre.
+  const hx = cx + 4 + lean * 1.2, hy = 30 + B;
+  S.add(bumpy(sphere([hx, hy, 1.5], 8, 'silt'), 0.5, 0.5, 3), 1);
+  S.add(skirt(hx - 1, hy - 22, hy - 6, 3, 8.5, 0, 0.6, 'cloth'), 1);
+  for (let k = 0; k < 5; k++) S.add(capsule([hx - 5 + k * 2.6, hy - 14 + (k % 2) * 3, 4], [hx - 7 + k * 3.2, hy - 22 - (k % 3) * 3, 3], 1.2, 0.5, 'coral'), 0.6);
+  const o = wshoot(S, cx);
+  for (const ex of [hx + 3, hx + 7]) { o.dot(ex, hy - 1, 'holy0'); o.dot(ex, hy, 'holy2'); }
+  o.line(hx + 3, hy + 4, hx + 8, hy + 5, 'ink2');
+  return o.f;
+}
+
+// (Stratum II) The Drowned Organist: bent double under the ruin of the
+// nave's organ, pipes rising from his back, long fingers on a keyboard of
+// bones. He plays the flood.
+function organist(t = 0, atk = 0) {
+  const S = new Scene(), cx = 56, B = atk ? 0 : bobAt(t) / 1.25;
+  const lean = atk === 1 ? -4 : atk === 2 ? 5 : 2;
+  legs(S, { x: cx, hipY: 82 + B, footY: 110, z: 7, thigh: 5, shin: 4.2, mt: 'slate', ms: 'silt', mf: 'leather', foot: [5, 2.6, 4], t: atk ? 0.5 : t, stride: atk ? 2 : 4.6, lift: 2.5, k: 2, knee: 2 });
+  // The organ on his back: a case and a rank of pipes.
+  const ox = cx - 12 + lean * 0.4, oy = 54 + B;
+  S.add(box([ox, oy, -8], [11, 14, 6], 1.2, 'wood'), 0);
+  for (let k = 0; k < 7; k++) { const x = ox - 9 + k * 3, hgt = 16 + Math.abs(3 - k) * -3 + 14; S.add(capsule([x, oy - 10, -6 + (k % 2)], [x, oy - 10 - hgt, -6 + (k % 2)], 1.5, 1.5, k % 2 ? 'gold' : 'iron'), 0); S.sub(capsule([x, oy - 10 - hgt + 3, -4.4 + (k % 2)], [x, oy - 10 - hgt + 5, -4.4 + (k % 2)], 0.7, 0.7, 'void'), 0.2); }
+  // Body: a sodden robe, hunched forward.
+  S.add(bumpy(ellipsoid([cx + 3 + lean * 0.6, 62 + B, 2], [12, 14, 10], 'slate'), 0.3, 0.3, 2), 3);
+  S.add(folds(skirt(cx + 3, 70 + B, 92, 12, 14, 2, 0.85, 'slate'), { cx: cx + 3, n: 8, amp: 0.6, y0: 72, y1: 92 }), 2);
+  // The keyboard he carries before him, keys of bone.
+  const ky = atk === 2 ? 70 : atk === 1 ? 56 : 66 + B;
+  S.add(box([cx + 18 + lean, ky, 10], [9, 1.6, 4], 0.6, 'wood'), 0.4);
+  S.paint({ mat: 'bone', f: (x, y, z) => Math.max(Math.abs(y - (ky - 1.4)) - 0.6, Math.abs(x - (cx + 18 + lean)) - 8.5, -z + 7) });
+  // Long-fingered hands above the keys.
+  const hy2 = atk === 1 ? ky - 14 : ky - 3;
+  for (const [dx, z] of [[12, 13], [22, 12]]) {
+    limb(S, [cx + 8 + lean, 50 + B, z - 6], [cx + dx - 2 + lean, (50 + B + hy2) / 2 + 2, z - 2], [cx + dx + lean, hy2, z], 3.4, 3, 2.4, 'slate', 1.4);
+    for (let f = 0; f < 3; f++) S.add(capsule([cx + dx + lean, hy2, z], [cx + dx + lean + 1.5 - f * 1.5, hy2 + 4 + f * 0.6, z + 1], 0.6, 0.4, 'silt'), 0.3);
+  }
+  // A long pale face, eyes sewn shut, ears like trumpets.
+  const hx = cx + 14 + lean * 1.3, hy = 42 + B;
+  S.add(capsule([cx + 6 + lean, 52 + B, 2], [hx - 2, hy + 2, 2], 4, 4.4, 'silt'), 1.4);
+  S.add(ellipsoid([hx, hy, 2], [6, 8, 5.6], 'silt'), 1.2);
+  S.add(clip(sphere([hx - 2, hy - 2, 1], 7, 'slate'), (x, y, z) => (x - (hx + 1.6)) + (y - hy) * 0.3), 1);
+  const o = wshoot(S, cx);
+  for (const ex of [hx + 2, hx + 5]) o.line(ex - 1, hy - 1, ex + 1, hy - 1, 'ink1');
+  o.line(hx + 2, hy + 4, hx + 5, hy + 5, 'ink2');
+  return o.f;
+}
+const WARDENS = { bellwright, candlemass, cardinal, charnelKing, ladyOfNails, tideBishop, organist };
 
 const set = (fn, walk = HALF, atk = [1, 2]) => ({ walk: () => walk.map((t) => fn(t, 0)), attack: () => atk.map((a) => fn(0, a)), ...reactions(() => fn(0, 0), 0.8) });
 const R = { colossus: set(colossus), titan: set(titan), inquisitor: set(inquisitor), seraph: set(seraph), effigy: set(effigy), abbess: set(abbess), golem: set(golem), thrice: set(thrice), manymouthed: set(manymouthed), leviathan: set(leviathan) };

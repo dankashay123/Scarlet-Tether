@@ -2088,6 +2088,17 @@ function png(frame, scale = 1, bg = null) {
 const sheets = [saint2Sheet(), hallSheet(), risenSheet(), wardenSheet(), tilesSheet(), wallDecorSheet(), propsSheet(), fxSheet(), uiSheet(), townSheet(), town2Sheet(), ...monsterSheets(), lootSheet()];
 // Sheets that exist only in a model set (e.g. floor, vfx, icons).
 for (const name of Object.keys(OVR)) if (!sheets.some((s) => s.name === name)) sheets.push(sheet(name, {}));
+// Stratum II, the Drowned Nave: the dungeon sheets again with their ramps
+// swapped step for step, so every pixel stays on the palette.
+const DROWN = { flag: 'teal', teal: 'slate', stone: 'slate', brick: 'moss', wood: 'shroud', sand: 'teal' };
+const drownIdx = new Map();
+for (const [from, to] of Object.entries(DROWN)) FINE[from].forEach((n, i) => drownIdx.set(IDX[n], IDX[FINE[to][i]]));
+for (const name of ['hall', 'floor', 'walldecor', 'props', 'loot']) {
+  const src = sheets.find((q) => q.name === name); if (!src) continue;
+  const f = new Frame(src.frame.w, src.frame.h);
+  for (let i = 0; i < f.px.length; i++) { const v = src.frame.px[i]; f.px[i] = drownIdx.has(v) ? drownIdx.get(v) : v; }
+  sheets.push({ name: `${name}_d`, frame: f, json: { ...src.json, image: `${name}_d.png` } });
+}
 mkdirSync(OUT, { recursive: true });
 const manifest = { palette: PALETTE };
 for (const s of sheets) {

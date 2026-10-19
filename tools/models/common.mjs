@@ -19,7 +19,8 @@ const MM = {
   sack: { ramp: 'shroud', bias: -0.05 }, rope: { ramp: 'wood', spec: 0.1, bias: 0.1 },
   marble: { ramp: 'bone', spec: 0.15, bias: -0.1 }, marbleDark: { ramp: 'bone', bias: -0.25, min: 3 },
   spirit: { ramp: 'holy', spec: 0.4, bias: -0.02, min: 1, max: 7 }, spiritDeep: { ramp: 'holy', bias: -0.05, min: 2 },
-  hollow: { ramp: 'ink', bias: -0.5, min: 5 }, belly: { ramp: 'moss', spec: 0.25 }, bellyHot: { ramp: 'blood', spec: 0.55, bias: 0.05 },
+  hollow: { ramp: 'ink', bias: -0.5, min: 5 },
+  silt: { ramp: 'teal', spec: 0.25, bias: -0.08 }, weed: { ramp: 'moss', spec: 0.15, bias: -0.15, min: 1 }, eel: { ramp: 'slate', spec: 0.6, bias: 0.05 }, eelDark: { ramp: 'teal', spec: 0.4, bias: -0.2, min: 2 }, belly: { ramp: 'moss', spec: 0.25 }, bellyHot: { ramp: 'blood', spec: 0.55, bias: 0.05 },
 };
 
 const A = (f, ax, ay) => Object.assign(f, { ax, ay });
@@ -456,13 +457,74 @@ function wisp(t = 0, atk = -1) {
   return A(f, cx, gy);
 }
 
+// ========================================================== silt wretch ===
+// (Stratum II) A drowned penitent crawled up out of the flooded nave, hair and
+// rags gone to waterweed, skin gone grey-green; it drags itself on long arms.
+function siltWretch(t = 0, atk = -1) {
+  const S = new Scene(), w = 44, h = 44, gy = 41, cx = 18;
+  const s = sin(ph(t)), B = atk >= 0 ? 0 : bobAt(t) - 2;
+  const lean = atk === 0 ? -2 : atk === 1 ? 4 : 1;
+  const G = gaitL(t, 2.6, 1.4);
+  for (const [side, sw, up] of [[-1, atk >= 0 ? -2 : G[0].x, atk >= 0 ? 0 : G[0].up], [1, atk >= 0 ? 2 : G[1].x, atk >= 0 ? 0 : G[1].up]]) {
+    const z = side * 2, hip = [cx + side * 0.4, 29 + B, z];
+    limb(S, hip, [cx + sw * 0.6 + 1.5, 35 - up * 0.5, z + 0.5], [cx + sw, gy - 1.3 - up, z], 2, 1.6, 1.4, 'fleshDark', 0.9);
+    S.add(ellipsoid([cx + sw + 1.2, gy - 0.9 - up, z], [2.4, 1.1, 1.6], 'fleshDark'), 0.7);
+  }
+  // A hunched, waterlogged trunk.
+  const tx = cx + 1.5 + lean * 0.6, ty = 22 + B;
+  S.add(bumpy(rotZ(ellipsoid([tx, ty, 0], [5.4, 7.2, 4.4], 'silt'), [tx, ty + 5], 0.5 + lean * 0.05), 0.4, 0.6, 7), 0);
+  // Waterweed hanging from the shoulders and head in long strands.
+  for (let k = 0; k < 7; k++) { const a = -1.2 + k * 0.4, x0 = tx + Math.sin(a) * 4.6, z0 = Math.cos(a) * 3.6; S.add(capsule([x0, ty - 5, z0], [x0 - 0.8 + (k % 2), ty + 7 + (k % 3) * 2, z0 + 0.4], 1.3, 0.7, 'weed'), 0.6); }
+  // Long arms reaching (strike: a lunging grab).
+  const reach = atk === 0 ? [[tx - 2, ty - 8, 3.4], [tx - 5, ty - 12, 3.6]] : atk === 1 ? [[tx + 8, ty + 1, 3.4], [tx + 15, ty + 3, 3.4]] : [[tx + 7, ty + 1 + s, 3.2], [tx + 12, ty + 4 + s, 3.2]];
+  limb(S, [tx + 2, ty - 4, 2.6], reach[0], reach[1], 1.9, 1.5, 1.3, 'silt', 1.1);
+  for (let k = 0; k < 3; k++) S.add(capsule(reach[1], [reach[1][0] + 2.4 - k * 0.6, reach[1][1] + 1.8 + k * 0.8, 3.4], 0.6, 0.3, 'boneDark'), 0.4);
+  limb(S, [tx - 2, ty - 4, -2.6], [tx + 4, ty + 2 - s, -3], [tx + 8, ty + 5 - s, -3], 1.7, 1.4, 1.2, 'fleshDark', 1);
+  // The head, slumped low and veiled in weed; one eye shows.
+  const hx = tx + 5.5 + lean * 0.4, hy = ty - 6 + (atk === 1 ? 2 : 0);
+  S.add(capsule([tx + 2, ty - 4, 0], [hx - 1, hy + 1, 0.6], 2.4, 2.2, 'silt'), 1.4);
+  S.add(bumpy(sphere([hx, hy, 0.8], 4, 'silt'), 0.3, 0.8, 4), 1.2);
+  S.add(clip(sphere([hx - 1, hy - 1, 0], 4.6, 'weed'), (x, y, z) => (x - (hx + 1.6)) + (y - hy) * 0.2), 0.8);
+  S.sub(ellipsoid([hx + 3.4, hy + 2.4, 2], [1.4, atk === 1 ? 1.4 : 0.8, 2], 'gum'), 0.4);
+  const f = R(S, w, h, gy);
+  eye(f, hx + 2.6, hy - 0.6, 'holy0', 'holy2');
+  // Drips off the weed.
+  if (atk < 0) { D(f, tx - 3, ty + 10 + Math.floor(t * 2) % 3, 'holy2'); D(f, tx + 4, ty + 12 + Math.floor(t * 2 + 1) % 3, 'holy3'); }
+  return A(f, cx, gy);
+}
+
+// ============================================================= nave eel ===
+// (Stratum II) A blind eel as long as a pew that swims the flooded aisles; it
+// rears its head before it strikes.
+function naveEel(t = 0, atk = -1) {
+  const S = new Scene(), w = 50, h = 34, gy = 31;
+  const rear = atk === 0 ? 7 : atk === 1 ? 2 : 0, lunge = atk === 1 ? 6 : 0;
+  // The body: a chain of segments on a travelling wave.
+  const segs = [];
+  for (let i = 0; i < 9; i++) { const u = i / 8, x = 34 - u * 30 + lunge * (1 - u), y = gy - 4 - (atk >= 0 ? rear * Math.max(0, 1 - u * 2.5) : 0) + sin(u * 6 - ph(t) * 2) * (1.6 * u + 0.4), z = cos(u * 5 - ph(t)) * 1.5; segs.push([x, y - 1, z, 5 - u * 3]); }
+  for (let i = 0; i < segs.length - 1; i++) S.add(capsule(segs[i], segs[i + 1], segs[i][3], segs[i + 1][3], i % 2 ? 'eel' : 'eelDark'), 1.2);
+  // Pale belly and a ragged fin along the back.
+  S.paint({ mat: 'wax', f: (x, y, z) => -(y - (gy - 3.6)) + (z < 0 ? 9 : 0) });
+  for (let i = 1; i < 7; i++) { const [x, y, z, r] = segs[i]; S.add(capsule([x, y - r + 0.5, z], [x - 1.8, y - r - 3, z], 1.2, 0.4, 'eelDark'), 0.4); }
+  // The head: a blunt wedge with a long underslung jaw.
+  const [hx, hy] = segs[0], open = atk === 1 ? 3 : atk === 0 ? 1.4 : 0.6;
+  S.add(ellipsoid([hx + 4, hy - 0.6, 0.4], [6.4, 4.4, 4], 'eel'), 1.2);
+  S.add(ellipsoid([hx + 5, hy + 2.6 + open * 0.6, 0.4], [5.4, 1.8, 3.2], 'eelDark'), 0.8);
+  S.sub(ellipsoid([hx + 8, hy + 1.4 + open * 0.3, 1.6], [3, open * 0.7 + 0.5, 2.4], 'gum'), 0.4);
+  const f = R(S, w, h, gy);
+  // Pale blind eyes and needle teeth.
+  D(f, hx + 5, hy - 2.4, 'bone0');
+  if (open > 1) for (let k = 0; k < 3; k++) D(f, hx + 6 + k * 2, hy + 1, 'bone1');
+  return A(f, 22, gy);
+}
+
 // ================================================================ export ===
 const walk = (fn) => () => HALF.map((t) => fn(t));
 const attack = (fn) => () => [fn(0, 0), fn(0, 1)];
-const MODELS = { risen, crawler, mourner, acolyte, gravewarden, rat, votary, flagellant, cherub, wisp };
+const MODELS = { risen, crawler, mourner, acolyte, gravewarden, rat, votary, flagellant, cherub, wisp, siltWretch, naveEel };
 const mon = {};
 for (const [id, fn] of Object.entries(MODELS)) {
-  const r = reactions(() => fn(0), 0, id === 'rat' || id === 'crawler');
+  const r = reactions(() => fn(0), 0, id === 'rat' || id === 'crawler' || id === 'naveEel');
   mon[`${id}_walk`] = walk(fn); mon[`${id}_attack`] = attack(fn); mon[`${id}_hit`] = r.hit; mon[`${id}_die`] = r.die;
 }
 export default {

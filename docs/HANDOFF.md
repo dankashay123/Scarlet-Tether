@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-19, after round 10b. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 11. Read this first, then `CLAUDE.md`.
 
 **Every reply that completes a prompt ends with two lists: what was done,
 and 5 suggestions for what to do next.** (The owner's standing request;
@@ -25,11 +25,22 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   Market booths, benches, hay, planters, shrines, a fountain and ground
   detail fill the whole street. Nothing blocks movement.
   - Nine **feature sites** (`SITES`) with badges and "UNLOCKED WHEN …"
-    panels and progress bars: Pilgrim Road (Stratum II, Warden of XV),
-    Pell's curio stall, plush stall, bounty board, scrying-pool wagers,
-    Ember Forge (Warden of V), the Bleeding Vigil (Warden of IV),
-    Martyrdom, the Canonry. Only the **Bleeding Vigil** is built; the
-    others still say "coming in a later build".
+    panels and progress bars. Built (round 11):
+    - **Pell's curio stall** (finish one descent): 6 pieces, restocked
+      every descent (`shopStock`, `SAVE.shop`), at the best cleared
+      Station + 1, never common; price by rarity and item level.
+    - **The Ember Forge** (Warden of II): reforge one stat of a worn or
+      bagged piece (the first stat rerolls its value, any other becomes a
+      new stat; cost grows per reforge), or temper a piece up to your best
+      Station's item level (`bestIl`).
+    - **The Canonry** (finish one descent): **Devotion**, an account level
+      fed by all XP (`gainDevotion`, `devNeed`). Each level gives a point
+      to spend on six **Virtues** (Might, Vigour, Fortune, Precision,
+      Swiftness, Piety; `VIRTUES`), small permanent boosts with caps.
+    - **The Bleeding Vigil** (Warden of IV).
+    - **The Pilgrim Road** (Warden of III): opens Stratum II.
+    Plush stall, bounty board, wagers and Martyrdom still say "coming in a
+    later build".
   - Town minimap with badges; tap it or press M for the full map and legend.
 - **The descent (round 9, modelled on Diablo 3 rifts and Torchlight
   Infinite Timemarks, with our own names):**
@@ -91,6 +102,19 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   - **Omens:** at the cathedral doors take one or two random omens (more
     monsters, more health, more damage, more curses, faster monsters);
     each pays +40% gold, +30% gear and rarer gear (`OMENS`, `applyOmens`).
+- **Stratum II, the Drowned Nave** (round 11): after the Warden of III the
+  descent panel shows a STRATUM button. The Nave is a flooded look
+  (`STRATA`, `useStratum`): its sheets (`hall_d`, `floor_d`, `walldecor_d`,
+  `props_d`, `loot_d`) are the Undercroft's ramps remapped to teal and
+  silt (`DROWN` in `tools/sprites.mjs`), with a cold ambient and mostly
+  flooded room themes. Own monsters mix in with the old ones (`stratum: 2`
+  in `MON`; `poolC`/`poolR`): the **Silt Wretch** and **Nave Eel**
+  (commons) and the **Tide Cantor** (rare: tear ring, frost pools). Two
+  Wardens: **the Tide-Bishop** (shockwaves that slow, chain pull, frost
+  rings, eels; later peals, a frost cross and pool lobs) and **the
+  Drowned Organist** (rotating beams, nail volleys, peals, cantors; later
+  a 30-shot ring, four beams and a bell ring). Same Stations, same Toll.
+  The Vigil always uses Stratum I.
 - **The Bleeding Vigil** (the town site in the Quiet Acre, open after the
   Warden of Station IV): our timed endless trial. Pick a Vigil level (up to
   `SAVE.vigilOpen`), light the candle: 10 minutes to fill the Toll and slay
@@ -153,23 +177,23 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 ## Next steps (ideas, roughly in priority order)
 
 1. **Tune the descent from play.** Toll size (68% of the map), Warden
-   health, phases and enrage (100 s), monster counts, drop rates and the
-   Vigil timer and level step are first guesses. Aim for 6–10 minutes per
-   Station at matched Sanctity, and a Warden fight of 60–90 s. Knobs:
-   `populate()`, `TOLL_VALUE`, `WARDEN`, `DIFF`, `vigilDiff`.
-2. **Build the first town features.** Pell's curio stall (6 items rerolled
-   per descent, priced by rarity and Sanctity), then the Ember Forge
-   (reroll one stat, raise item level for gold), then bounties on the board.
-3. **Long-term progress (own names).** An account-wide level after the cap
-   that grants small permanent points ("Devotion"); a Vigil best-level
-   record per season; Warden trophies; set bonuses worth chasing.
-4. **Chunky-grid art fixes.** Review every sheet with `CHUNKY=2`: small faces
-   losing eyes, rough item icons, bolder effects for the big pixels.
-5. **More biomes and Wardens.** A second look for Stratum II (the Pilgrim
-   Road) with its own room dressing, monsters and two new Wardens; more
-   room plans (centre dais, chest grid, a secret room behind a cracked wall).
-6. **Juice.** Hit-flash tuning, bigger crit numbers, coin fountains on elite
+   health, phases and enrage (100 s), monster counts, drop rates, shop
+   prices, forge costs and Devotion pace are first guesses. Aim for 6–10
+   minutes per Station at matched Sanctity and a 60–90 s Warden fight.
+   Knobs: `populate()`, `TOLL_VALUE`, `WARDEN`, `DIFF`, `vigilDiff`,
+   `SHOP_PRICE`, `REFORGE_COST`, `TEMPER_K`, `devNeed`, `VIRTUES`.
+2. **Give the Drowned Nave its own dressing.** It is a recolour today:
+   add drowned props (fallen organ pipes, kelp, half-sunk pews), deep
+   water channels in room plans, a drip and slosh ambience, and one more
+   common (a drowned choir moth) so the stratum feels new, not tinted.
+3. **Bounty board.** Three small goals per descent (slay a named elite,
+   open the Reliquary, finish under 8 minutes) paying gold and Devotion.
+4. **Chunky-grid art fixes.** Review every sheet with `CHUNKY=2`: small
+   faces losing eyes, rough item icons, bolder effects for big pixels.
+5. **Juice.** Hit-flash tuning, bigger crit numbers, coin fountains on elite
    and Warden deaths, a short slow-mo when a Warden falls, footstep dust.
+6. **Set bonuses and Warden trophies.** Saint's set pieces grant 2- and
+   4-piece bonuses; each Warden slain hangs a trophy in town.
 7. **Phone polish.** Haptics, safe-area insets, a settings panel (music/SFX
    volume, screen shake, left-handed controls), save export/import.
 8. **Suspend and resume.** Save a run mid-map so a closed tab returns to it.
@@ -179,6 +203,13 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 11:** Pell's curio stall, the Ember Forge (reforge, temper), the
+  Canonry with Devotion and Virtues, and Stratum II (the Drowned Nave:
+  recoloured sheets, Silt Wretch, Nave Eel, Tide Cantor, the Tide-Bishop
+  and the Drowned Organist). Site unlocks moved earlier (Forge II, Road
+  III, Vigil IV, stall and Canonry after one descent). New tests:
+  `tools/tests/town2.cjs`, `tools/tests/stratum.cjs`; `rites.cjs` now
+  spawns its crowd near the Saint (the packed maps fooled its count).
 - **Round 10b:** Wardens made punishing: more health and damage, new
   moves per phase, near-zero recovery in the last phase, an enrage timer,
   roots on bell attacks.

@@ -11,6 +11,7 @@ const W = 76, H = 80, GY = 74, CX = 32;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 const MM = {
+  silt: { ramp: 'teal', spec: 0.25, bias: -0.08 }, goldDark: { ramp: 'gold', bias: -0.22, spec: 0.6, min: 2 },
   ...MATS,
   plate: { ramp: 'iron', spec: 0.7, bias: -0.06 }, helm: { ramp: 'iron', spec: 0.6, bias: -0.22, min: 1 }, plateDark: { ramp: 'iron', spec: 0.5, bias: -0.2, min: 2 },
   slateArmor: { ramp: 'slate', spec: 0.55, bias: 0.06 }, slateDark: { ramp: 'slate', bias: -0.1, min: 2 },
@@ -595,8 +596,36 @@ function lantern({ bob = 0, t = 0, pose = 'walk' }) {
   return f;
 }
 
+// ========================================================== tide cantor ===
+// (Stratum II) A drowned cantor in a sodden teal cope, kelp in its hair, who
+// sings through a great conch; the note comes out as a ring of seawater.
+function cantor({ bob = 0, sw = 0, swB = -sw, lift = [0, 0], t = 0, pose = 'walk' }) {
+  const S = new Scene(), cx = CX - 1, B = bob, X = pose === 'strike' ? 3 : pose === 'windup' ? -2 : 1;
+  boots(S, cx, [swB, sw], lift, 'leather', 2.6);
+  robe(S, { cx, top: 40 + B, ra: 6.4, rb: 10, mat: 'teal', n: 9, amp: 0.7, sway: -sw * 0.3, hem: 'goldDark' });
+  S.add(ellipsoid([cx + X * 0.6, 33 + B, 0], [6.4, 7, 4.6], 'teal'), 1.5);
+  // Kelp draped over the shoulders.
+  for (let k = 0; k < 6; k++) { const a = -1.1 + k * 0.45, x0 = cx + X * 0.6 + Math.sin(a) * 6, z0 = Math.cos(a) * 4; S.add(capsule([x0, 28 + B, z0], [x0 - 1 + (k % 2) * 2, 44 + B + (k % 3) * 3, z0 + 0.4], 1.1, 0.6, 'moss'), 0.6); }
+  // Both hands raise the conch to the mouth; on the strike it points out.
+  const conch = pose === 'strike' ? [cx + 14, 22 + B, 6] : pose === 'windup' ? [cx + 8, 18 + B, 6] : [cx + 9, 30 + B + odd(t), 6];
+  arm(S, [cx + 4.4 + X, 29 + B, 3.4], [cx + 7 + X, 34 + B, 5], [conch[0] - 3, conch[1] + 2, 5.5], [2.4, 2.1, 1.9], 'teal', 1.2, 'skin', 1.6);
+  arm(S, [cx - 4.4 + X, 29 + B, -3], [cx + 1 + X, 35 + B, 3], [conch[0] - 5, conch[1] + 3, 4], [2.2, 1.9, 1.7], 'teal', 1.2, 'skin', 1.5);
+  S.add(capsule([conch[0] - 3, conch[1] + 1, 6], conch, 2.2, 3.4, 'bone'), 0.6);
+  S.add(sphere([conch[0] + 1.4, conch[1] - 0.6, 6], 3.2, 'bone'), 0.8);
+  S.sub(sphere([conch[0] + 3.6, conch[1] - 0.8, 7.4], 1.8, 'void'), 0.4);
+  // Head: drowned grey face, kelp hair.
+  const hx = cx + 2 + X * 1.4, hy = 20 + B;
+  S.add(capsule([cx + X, 27 + B, 0], [hx - 0.6, hy + 3, 0], 2.6, 2.6, 'silt'), 1);
+  S.add(ellipsoid([hx, hy, 0.6], [5, 5.6, 4.8], 'silt'), 0.8);
+  S.add(clip(sphere([hx - 1.4, hy - 1.4, -0.4], 5.6, 'moss'), (x, y, z) => (x - (hx + 1.4)) + (y - hy) * 0.4), 1);
+  const f = frame(S);
+  eye(f, hx + 1.6, hy - 1, 'holy0', 'holy2'); eye(f, hx + 4, hy - 1, 'holy1');
+  if (pose === 'strike') sparks(f, [[conch[0] + 7, conch[1] - 4], [conch[0] + 9, conch[1] + 2], [conch[0] + 6, conch[1] + 6], [conch[0] + 11, conch[1] - 1]], ['holy1', 'holy2']);
+  return f;
+}
+
 const std = (fn) => ({ walk: walkSet((g) => fn({ bob: g.bob, sw: g.sw, swB: g.swB, lift: g.lift, t: g.t })), attack: () => [fn({ pose: 'windup' }), fn({ pose: 'windup', bob: -1 }), fn({ pose: 'strike', bob: 1 })] });
-const SETS = { collector, motherwax, bishop, jailer, bellringer, matron, choirboy, gravedigger };
+const SETS = { collector, motherwax, bishop, jailer, bellringer, matron, choirboy, gravedigger, cantor };
 const extra = {};
 const react = (id, make) => { const r = reactions(make, 0.3); extra[`${id}_hit`] = r.hit; extra[`${id}_die`] = r.die; };
 for (const [id, fn] of Object.entries(SETS)) { const s = std(fn); extra[`${id}_walk`] = s.walk; extra[`${id}_attack`] = s.attack; react(id, () => fn({})); }
