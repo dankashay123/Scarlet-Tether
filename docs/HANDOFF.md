@@ -227,6 +227,18 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 17 (rarer Hallowed, altar odds, run levels):** Hallowed weight
+  3.5 to 1.4, and drop boosts lift Hallowed and set pieces only a little
+  (about 1.5% of plain drops, 2.5% of elite and Warden drops; was about
+  12%). Elites drop at boost 1.5, rares 20% of the time. The Ashen Altar
+  now shows a price per piece (`burnCost`, by item level), fails 30% of the
+  time (`ALTAR_FAIL`; the piece is lost) and takes a Chrism, a very rare
+  drop (`maybeChrism`: commons 0.04%, rares 1%, elites 5%, imps 15%,
+  reliquaries 25%, Wardens 40%) in four kinds that add 10/20/30/70% to the
+  odds (`CHRISM`, `SAVE.chrism`). Tap a piece to read its power in the
+  detail panel. Run levels stop at 15 (`MAX_LEVEL`); each needs 1.22x the
+  last (`XP_G`), with the base set from the map's foes so 15 comes at
+  about 75% of them, before the Toll fills. Test: `tools/tests/altar.cjs`.
 - **Round 16 (punishing foes, the Censer):** monsters hit harder
   (`MON_DMG` 1.25, plus up to +40% by Station V in `DIFF`), shots fly 35%
   faster (`SHOT_K`), lobs land sooner, hurt i-frames 0.6 to 0.4 s, and heal

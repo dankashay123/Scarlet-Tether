@@ -37,7 +37,9 @@ const S = process.argv[2];
   // Legendaries and the Ashen Altar: burn two Hallowed pieces, socket them.
   await p.evaluate(() => { HS.enterTown(false); HS.SAVE.descents = 5; HS.SAVE.bag = []; for (const id of ['stormHands', 'emberQuiver', 'saintTooth']) { const L = HS.LEGENDS.find((q) => q.id === id); const it = HS.makeItem(L.slot, 3, L.name, undefined, 4); it.power = id; HS.SAVE.bag.push(it); } HS.openAltar(); });
   await p.waitForTimeout(200); await p.screenshot({ path: `${S}/shots/q5-altar.png` });
-  for (let k = 0; k < 3; k++) await p.evaluate(() => { const r = HS.altarRow(HS.featLayout(), 0); HS.altarTap(r.x + r.w - 30, r.y + 10); });
+  // Burn three with a Hallowed Chrism each (sure to take): tap the row, the chrism, then BURN.
+  await p.evaluate(() => { HS.SAVE.gold = 99999; HS.SAVE.chrism = [0, 0, 0, 3]; });
+  for (let k = 0; k < 3; k++) await p.evaluate(() => { const L = HS.featLayout(), G = HS.altarGeo(L), r = G.row(0); HS.altarTap(r.x + 20, r.y + 10); const c = G.chip(3); if (HS.game.altarChrism !== 3) HS.altarTap(c.x + 5, c.y + 5); HS.altarTap(G.burn.x + 5, G.burn.y + 5); });
   for (let i = 0; i < 3; i++) await p.evaluate((i) => { const b = HS.altarSock(HS.featLayout(), i); HS.altarTap(b.x + b.w - 10, b.y + 8); }, i);
   await p.waitForTimeout(200); await p.screenshot({ path: `${S}/shots/q6-altar-set.png` });
   log.push('altar ' + await p.evaluate(() => JSON.stringify({ known: HS.SAVE.altar.known, sockets: HS.SAVE.altar.sockets, powers: [...HS.G.powers], bag: HS.SAVE.bag.length, legends: HS.LEGENDS.length })));
