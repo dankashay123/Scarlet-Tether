@@ -92,9 +92,10 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '27.1';
+const BUILD = '28.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '28.1': ['EVERY PASSIVE HAS AN ICON. EIGHT NEW PASSIVES ARE EARNED BY DEEDS.', 'FOUR PIECES OF ANY SET NOW ALSO GIVE +25% DAMAGE.'],
   '27.1': ['PASSIVE SKILLS: THREE SLOTS, OPENED BY DEVOTION. FIND THEM IN THE RITES PANEL.', 'THE WEEPING RELIQUARY NOW SENDS HORDES: KILL 100.',
     'BRIGHTER RITE EFFECTS. BAG ICONS SHOW THEIR RARITY COLOUR, AND SET PIECES WEAR A STAR.', 'GEAR DROPS LESS OFTEN. THE SETS HAVE BEEN REBALANCED.'],
   '26.1': ['SIX NEW RITES: EVERY SET NOW HAS A RITE IN EVERY SLOT.', 'RITES RANK UP AS YOU USE THEM. SIX PIECES OF A SET GIVE ITS RITES A TWIST.',
@@ -1042,7 +1043,7 @@ function addToll(e) {
 // Wardens are meant to punish: hpK and dmgK on top of their MON stats, and
 // an enrage after `enrage` seconds (double damage, much faster).
 // Set bonus strengths, tuned with tools/tests/setbal.cjs.
-const SETK = { stride: 6, strideT: 5, font: 2.5, bound: 1.4, bound6: 2, crush: 12, choir: 1.25, choirDrain: 18, nail: 0.04 };
+const SETK = { stride: 6, strideT: 5, font: 2.5, bound: 1.4, bound6: 2, crush: 12, choir: 1.25, choirDrain: 18, nail: 0.04, four: 25 };
 const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 2 };
 // Gear per kill, before the Station's multiplier. Kept low: progress should take farming.
 const DROP = { kill: 0.003, rare: 0.1, elite: 0.5 }; // hp: the average MON Warden
@@ -2207,7 +2208,7 @@ function renderRites() {
   headerBar(L.x0, L.y0, L.pw, 26);
   ctx.fillStyle = PAL.gold3; ctx.fillRect(L.x0, L.y0 + 26, L.pw, 1);
   text('RITES', L.x0 + 12, L.y0 + 9, PAL.gold1);
-  text(fitText('CHOOSE ONE PER SLOT. EACH SUITS A VESTMENT SET.', L.pw - 100), L.x0 + 64, L.y0 + 10, PAL.stone1, small);
+  text(fitText(focus === 'passive' ? 'PASSIVES ARE ALWAYS ON. SOME ARE EARNED BY DEEDS.' : 'CHOOSE ONE PER SLOT. EACH SUITS A VESTMENT SET.', L.pw - 100), L.x0 + 64, L.y0 + 10, PAL.stone1, small);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
   // Slot tabs, each with the rite chosen for it.
   RITE_SLOTS.forEach(([slot, label], c) => {
@@ -2273,9 +2274,9 @@ function renderRiteDetail(L, slot) {
 }
 // Passives: three slots across the top, every passive below, the chosen one in full.
 function passGeo(L) {
-  const x = L.card(0, 0).x, w = L.lw, top = L.y0 + 62, sw = Math.floor((w - 8) / 3), gy = top + 28, rows = Math.ceil(PASSIVES.length / 2);
-  const rh = Math.floor((L.y0 + L.ph - 8 - gy) / rows) - 2, cw = Math.floor((w - 4) / 2);
-  return { slot: (i) => ({ x: x + i * (sw + 4), y: top, w: sw, h: 22 }), card: (i) => ({ x: x + (i % 2) * (cw + 4), y: gy + Math.floor(i / 2) * (rh + 2), w: cw, h: rh }),
+  const x = L.card(0, 0).x, w = L.lw, top = L.y0 + 62, sw = Math.floor((w - 8) / 3), gy = top + 30, cols = 6, rows = Math.ceil(PASSIVES.length / cols);
+  const cs = Math.min(30, Math.floor((w - (cols - 1) * 4) / cols), Math.floor((L.y0 + L.ph - 8 - gy) / rows) - 4), ox = x + Math.floor((w - (cols * cs + (cols - 1) * 4)) / 2);
+  return { slot: (i) => ({ x: x + i * (sw + 4), y: top, w: sw, h: 22 }), card: (i) => ({ x: ox + (i % cols) * (cs + 4), y: gy + Math.floor(i / cols) * (cs + 4), w: cs, h: cs }),
     btn: { x: L.detail.x + 8, y: L.detail.y + L.detail.h - 28, w: L.detail.w - 16, h: 20 } };
 }
 function renderPassives(L) {
@@ -2284,15 +2285,19 @@ function renderPassives(L) {
     const b = G0.slot(i), open = passOpen(i), q = PASSIVES.find((z) => z.id === P[i]), on = game.passSlot === i;
     ctx.fillStyle = PAL.outline; ctx.fillRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2); ctx.fillStyle = open ? (on ? PAL.ink3 : PAL.ink2) : PAL.ink1; ctx.fillRect(b.x, b.y, b.w, b.h);
     if (q && open) { ctx.fillStyle = `rgb(${PASS_CAT[q.cat][1]})`; ctx.fillRect(b.x, b.y, 3, b.h); }
-    text(fitText(!open ? `DEVOTION ${PASSIVE_AT[i]}` : q ? q.name : 'EMPTY SLOT', b.w - 10), b.x + 7, b.y + 7, !open ? PAL.stone2 : q ? PAL.gold1 : PAL.stone1, small);
+    // A worn passive shows its icon, and its name only when the whole name fits.
+    if (q && open) { const fits = textW(q.name, 1, true) <= b.w - 30; sprC('ui', 'passive', PASSIVES.indexOf(q), fits ? b.x + 13 : b.x + b.w / 2, b.y + 11); if (fits) text(q.name, b.x + 26, b.y + 7, PAL.gold1, small); }
+    else text(!open ? `DEVOTION ${PASSIVE_AT[i]}` : 'EMPTY', b.x + b.w / 2, b.y + 7, !open ? PAL.stone2 : PAL.stone1, { ...small, align: 'center' });
     if (on) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 2; ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2); }
   }
+  // Every passive as an icon; deed passives stay dark and locked until earned.
   PASSIVES.forEach((q, i) => {
-    const b = G0.card(i), worn = P.includes(q.id), isSel = game.passSel === q.id;
-    ctx.fillStyle = isSel ? PAL.ink3 : PAL.ink2; ctx.fillRect(b.x, b.y, b.w, b.h);
-    ctx.fillStyle = `rgba(${PASS_CAT[q.cat][1]},${worn || isSel ? 1 : 0.5})`; ctx.fillRect(b.x, b.y, 3, b.h);
-    text(fitText(q.name, b.w - 12), b.x + 7, b.y + Math.floor(b.h / 2) - 4, worn ? PAL.gold1 : isSel ? PAL.cloth0 : PAL.cloth1, small);
-    if (isSel) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 1; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1); }
+    const b = G0.card(i), worn = P.includes(q.id), isSel = game.passSel === q.id, got = passEarned(q);
+    ctx.fillStyle = PAL.outline; ctx.fillRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2); ctx.fillStyle = worn ? `rgba(${PASS_CAT[q.cat][1]},0.35)` : isSel ? PAL.ink3 : PAL.ink2; ctx.fillRect(b.x, b.y, b.w, b.h);
+    const sc = Math.max(1, Math.floor(b.w / 20)); ctx.save(); ctx.translate(b.x + b.w / 2, b.y + b.h / 2); ctx.scale(sc, sc); sprC('ui', 'passive', i, 0, 0, { alpha: got ? 1 : 0.3 }); ctx.restore();
+    if (!got) mapIcon('lock', b.x + b.w - 6, b.y + b.h - 6, PAL.cloth0);
+    if (worn) { ctx.fillStyle = PAL.gold1; ctx.fillRect(b.x, b.y + b.h - 2, b.w, 2); }
+    if (isSel) { ctx.strokeStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.lineWidth = 1; ctx.strokeRect(b.x - 1.5, b.y - 1.5, b.w + 3, b.h + 3); }
   });
   // The chosen passive in full.
   const D = L.detail; ctx.fillStyle = PAL.outline; ctx.fillRect(D.x - 1, D.y - 1, D.w + 2, D.h + 2); ctx.fillStyle = PAL.ink2; ctx.fillRect(D.x, D.y, D.w, D.h);
@@ -2302,8 +2307,11 @@ function renderPassives(L) {
   ctx.fillStyle = `rgba(${PASS_CAT[sel.cat][1]},0.2)`; ctx.fillRect(D.x, D.y, D.w, 34);
   text(fitText(sel.name, D.w - 16), D.x + 8, D.y + 8, PAL.gold1); text(PASS_CAT[sel.cat][0], D.x + 8, D.y + 22, `rgb(${PASS_CAT[sel.cat][1]})`, small); y = D.y + 44;
   for (const l of wrapW(sel.text, D.w - 16, true)) { text(l, D.x + 8, y, PAL.cloth0, small); y += 11; }
+  const got = passEarned(sel);
+  if (sel.stat) { y += 6; text(got ? 'EARNED' : `TO EARN: ${sel.deed}`, D.x + 8, y, got ? PAL.flame1 : PAL.blood0, small); y += 11;
+    if (!got) { const have = Math.min(sel.need, lifeOf(sel.stat)), bw = D.w - 16; ctx.fillStyle = PAL.ink1; ctx.fillRect(D.x + 8, y, bw, 4); ctx.fillStyle = PAL.ember1; ctx.fillRect(D.x + 8, y, Math.round(bw * have / sel.need), 4); text(`${have.toLocaleString('en-US')} / ${sel.need.toLocaleString('en-US')}`, D.x + 8, y + 7, PAL.stone1, small); } }
   const worn = P.includes(sel.id), free = [0, 1, 2].some((i) => passOpen(i));
-  invButton(G0.btn, worn ? 'REMOVE' : game.passSlot != null ? `EQUIP IN SLOT ${game.passSlot + 1}` : 'EQUIP', worn ? PAL.stone4 : PAL.crimson3, worn || free);
+  invButton(G0.btn, worn ? 'REMOVE' : !got ? 'LOCKED' : game.passSlot != null ? `EQUIP IN SLOT ${game.passSlot + 1}` : 'EQUIP', worn ? PAL.stone4 : PAL.crimson3, worn || (free && got));
 }
 function passTap(L, x, y) {
   const G0 = passGeo(L), P = (SAVE.passives = SAVE.passives || [null, null, null]);
@@ -2311,6 +2319,7 @@ function passTap(L, x, y) {
   PASSIVES.forEach((q, i) => { if (inRect(G0.card(i), x, y)) { game.passSel = q.id; sfx('tap', { vol: 0.5 }); } });
   if (game.passSel && inRect(G0.btn, x, y)) {
     const at = P.indexOf(game.passSel);
+    if (at < 0 && !passEarned(PASSIVES.find((q) => q.id === game.passSel))) { toast('NOT EARNED YET', 1.4); return; }
     if (at >= 0) P[at] = null;
     else { let i = game.passSlot != null && passOpen(game.passSlot) ? game.passSlot : [0, 1, 2].find((k) => passOpen(k) && !P[k]); if (i == null) i = [0, 1, 2].filter(passOpen).pop(); if (i == null) return; P[i] = game.passSel; game.passSlot = null; }
     persist(); applyGear(); sfx('shrine', { vol: 0.5, gap: 0.2 });
@@ -3944,7 +3953,7 @@ function performAttack(e) {
       const pdx = player.x - e.x, pdy = player.y - e.y, pd = Math.hypot(pdx, pdy);
       let da = Math.atan2(pdy, pdx) - ang; da = Math.atan2(Math.sin(da), Math.cos(da));
       if (pd < a.len && Math.abs(da) < a.arc / 2) { damagePlayer(e, a.dmg * k, [[player.x, player.y]], 'cone'); if (a.slow) player.slowT = a.slow; }
-      else if (game.time - player.dashStart < T.dash.perfectWindow + 0.05 && player.dashX !== undefined && Math.hypot(player.dashX - e.x, player.dashY - e.y) < a.len) damagePlayer(e, a.dmg * k, [[player.dashX, player.dashY]], 'cone');
+      else if (game.time - player.dashStart < perfWin() + 0.05 && player.dashX !== undefined && Math.hypot(player.dashX - e.x, player.dashY - e.y) < a.len) damagePlayer(e, a.dmg * k, [[player.dashX, player.dashY]], 'cone');
       hazards.push({ kind: 'flash', x: e.x, y: e.y - 6, ang, len: a.len, arc: a.arc, t: 0, dur: 0.18, color: a.slow ? '200,240,255' : '255,90,74' });
       break;
     }
@@ -4116,7 +4125,7 @@ function setGuard() {
   if (sb('font', 4) && player.inPool) k *= 0.6;
   if (sb('confessor', 4)) k *= 1 - Math.min(40, (game.boundN || 0) * 8) / 100;
   if ((player.wardT || 0) > game.time) k *= 0.4;
-  if (pas('hide')) k *= 0.85; if (pas('ironvigil') && (player.ivT || 0) > game.time) k *= 0.7;
+  if (pas('hide')) k *= 0.85; if (pas('laststand') && player.hp < player.maxHp * 0.3) k *= 0.7; if (pas('ironvigil') && (player.ivT || 0) > game.time) k *= 0.7;
   return k;
 }
 // What hurt the Saint this run, for the recap after a death.
@@ -4252,10 +4261,11 @@ function drawShots() {
 }
 
 // --------------------------------------------------------- taking damage ---
+const perfWin = () => T.dash.perfectWindow * (pas('deft') ? 1.5 : 1);
 function damagePlayer(src, dmg, contacts, how) {
   if (!contacts.length || DEV.god) return;
   const dashing = game.time - player.dashStart <= T.dash.iframes;
-  if (dashing && game.time - player.dashStart <= T.dash.perfectWindow + 0.05 && !player.perfectUsed) { perfectDodge(); return; }
+  if (dashing && game.time - player.dashStart <= perfWin() + 0.05 && !player.perfectUsed) { perfectDodge(); return; }
   if (player.iframes > 0) return;
   const [cx, cy] = contacts[0];
   if (Math.hypot(cx - player.x, cy - player.y) > 1) return; // only the dash origin was in reach: a plain miss
@@ -4297,6 +4307,9 @@ function passK(e, crit) {
   if (pas('close') && player && Math.hypot(e.x - player.x, e.y - player.y) < 70) k *= 1.25;
   if (pas('zealfury')) k *= 1 + 0.15 * Math.min(1, (game.fervor || 0) / 100);
   if (pas('headsman') && crit) k *= 1.4;
+  if (pas('bloodtithe') && player) k *= 1 + 0.3 * Math.max(0, 1 - player.hp / player.maxHp);
+  if (pas('hunter') && (e.tier === 'rare' || e.tier === 'elite')) k *= 1.3;
+  if (pas('breaker') && e.boss) k *= 1.25;
   return k;
 }
 function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
@@ -4368,6 +4381,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   if (e.illusion) { playFx('fx', 'smoke', e.x, e.y - 8, 14); return; }
   addToll(e);
   // The Last Confessor (6): a bound foe bursts as it dies.
+  if (pas('burst') && Math.random() < 0.1) skillFx.push({ kind: 'nova', x: e.x, y: e.y, t: 0, max: 0.25, r: 48 * WS, dmg: 18, hits: new Set([e]) });
   if (e.bound > 0 && sb('confessor', 6)) { for (const o of nearestFoes(e.x, e.y, 6, 44)) if (o !== e && !o.dead) later(0.05, () => hurtEnemy(o, T.chain.dmg * 2, false, 0, 0, 40, { status: true, color: PAL.iron0 })); rings.push({ x: e.x, y: e.y, t: 0, max: 0.3, r: 40, color: '178,188,203', flat: true }); }
   if (e.cell && game.cell) game.cell.kills++;
   if (e.sid !== undefined && game.run && game.run.dead) game.run.dead.push(e.sid);
@@ -4510,11 +4524,11 @@ const POWERS = {
 // at 4 pieces the Saint wears its skin. Odile's Habit is the starter set.
 const VSETS = {
   habit: { name: "ODILE'S HABIT", piece: "ODILE'S", slots: GEAR_SLOTS, bonus: [[2, '+10% DAMAGE.'], [4, '+1 DASH CHARGE, +15% DAMAGE.']] },
-  nails: { name: 'THE HUNDRED NAILS', piece: 'NAILBEARER\'S', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BOLTS PIERCE ONE MORE FOE AND SPLIT AT THE LAST.'], [4, 'HITS ADD NAIL STACKS (50 MAX): EACH IS 1% LESS DAMAGE TAKEN.'], [6, 'BOLTS DEAL +4% PER NAIL STACK.']] },
-  stride: { name: "THE PENITENT'S STRIDE", piece: "PENITENT'S", slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+1 DASH CHARGE. DASHES LEAVE HOLY FIRE.'], [4, 'PERFECT DODGES REFILL DASHES AND HALVE DAMAGE FOR 2 S.'], [6, 'FOR 5 S AFTER A DASH, BOLTS, NOVA AND FIRE DEAL X6. EVERY DASH RELEASES A NOVA.']] },
-  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, 'IN YOUR OWN POOL: 40% LESS DAMAGE, DOUBLE ZEAL.'], [6, 'POOLS DEAL X2.5 AND DRAW FOES IN. KILLS IN THEM SPEED THE VIAL.']] },
-  confessor: { name: 'THE LAST CONFESSOR', piece: 'CONFESSOR\'S', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, 'THE CHAIN BINDS 3 MORE. BOUND FOES TAKE 40% MORE.'], [4, 'EACH BOUND FOE: 8% LESS DAMAGE TAKEN (40% MAX).'], [6, 'BOUND FOES TAKE DOUBLE DAMAGE AND BURST WHEN THEY DIE. THE CHAIN ENDS IN A X12 CRUSH.']] },
-  choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, 'IN RECKONING: NO ROOTS OR SLOWS, KILLS HEAL 2%.'], [6, 'RECKONING LASTS WHILE ZEAL REMAINS. X1.25 DAMAGE WHILE IT BURNS.']] },
+  nails: { name: 'THE HUNDRED NAILS', piece: 'NAILBEARER\'S', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BOLTS PIERCE ONE MORE FOE AND SPLIT AT THE LAST.'], [4, '+25% DAMAGE. HITS ADD NAIL STACKS (50 MAX): EACH IS 1% LESS DAMAGE TAKEN.'], [6, 'BOLTS DEAL +4% PER NAIL STACK.']] },
+  stride: { name: "THE PENITENT'S STRIDE", piece: "PENITENT'S", slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+1 DASH CHARGE. DASHES LEAVE HOLY FIRE.'], [4, '+25% DAMAGE. PERFECT DODGES REFILL DASHES AND HALVE DAMAGE FOR 2 S.'], [6, 'FOR 5 S AFTER A DASH, BOLTS, NOVA AND FIRE DEAL X6. EVERY DASH RELEASES A NOVA.']] },
+  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, '+25% DAMAGE. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.'], [6, 'POOLS DEAL X2.5 AND DRAW FOES IN. KILLS IN THEM SPEED THE VIAL.']] },
+  confessor: { name: 'THE LAST CONFESSOR', piece: 'CONFESSOR\'S', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, 'THE CHAIN BINDS 3 MORE. BOUND FOES TAKE 40% MORE.'], [4, '+25% DAMAGE. EACH BOUND FOE: 8% LESS DAMAGE TAKEN (40% MAX).'], [6, 'BOUND FOES TAKE DOUBLE DAMAGE AND BURST WHEN THEY DIE. THE CHAIN ENDS IN A X12 CRUSH.']] },
+  choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, '+25% DAMAGE. IN RECKONING: NO ROOTS OR SLOWS, KILLS HEAL 2%.'], [6, 'RECKONING LASTS WHILE ZEAL REMAINS. X1.25 DAMAGE WHILE IT BURNS.']] },
 };
 const MAIN_SETS = ['nails', 'stride', 'font', 'confessor', 'choir'];
 const SET_FROM = 6; // the five main sets (and their arms) drop from Station VI
@@ -4641,6 +4655,8 @@ function gearStats() {
   g.power = playerSanctity() / 10;
   // Virtues bought with Devotion.
   g.dmg += virtue('might'); g.gold += virtue('fortune') * 2; g.crit += virtue('precision') * 0.5; g.speed += virtue('swiftness') * 0.5; g.fervor += virtue('piety'); g.hpPct = virtue('vigour');
+  // Four pieces of any vestment set also add damage, so 4+2 mixes stay worth wearing.
+  for (const id of MAIN_SETS) if ((g.sets[id] || 0) >= 4) g.dmg += SETK.four;
   if (pas('pace')) g.speed += 12; if (pas('devout')) g.cdr += 15; if (pas('coin')) g.gold += 25;
   g.dmgMul = (1 + g.dmg / 100) * g.power; g.armorK = 1 - Math.min(60, g.armor) / 100; g.cdrK = 1 - Math.min(50, g.cdr) / 100; g.dashK = 1 - Math.min(50, g.dash) / 100;
   g.charges = T.dash.charges + (g.powers.has('dashCharge') ? 1 : 0) + (g.powers.has('pilgrim') ? 1 : 0) + (has('habit', 4) ? 1 : 0) + (has('stride', 2) ? 1 : 0);
@@ -4682,7 +4698,7 @@ function salvage(it) {
 
 let drops = [];
 function dropLoot(x, y, { gold = 0, item = 0, itemBoost = 0, globe = 0, warden = false } = {}) {
-  const df = curDiff(); item *= df.drop * (game.run && game.run.martyr ? 2 : 1); itemBoost += df.boost;
+  const df = curDiff(); item *= df.drop * (game.run && game.run.martyr ? 2 : 1); itemBoost += df.boost + (pas('sense') ? 0.5 : 0);
   if (df.vigil && !warden) item = 0; // in the Vigil only the Warden pays in gear
   const pop = (o) => drops.push({ x, y, z: 6, vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(60, 120), t: 0, ...o });
   for (let k = 0; k < gold; k++) pop({ kind: 'gold', amount: Math.round(rand(3, 9) * df.gold * (game.buff && game.buff.kind === 'plenty' ? 2 : 1)) });
@@ -4829,7 +4845,7 @@ function useShrine(p) {
   bumpBounty('shrines');
   if (p.used) return; sfx('shrine');
   p.used = true; p.frame = p.frame; const S = SHRINES[p.shrineKind];
-  game.buff = { kind: p.shrineKind, t: S.t, max: S.t };
+  const st = S.t * (pas('shrine') ? 2 : 1); game.buff = { kind: p.shrineKind, t: st, max: st };
   game.banner = { text: S.name, sub: S.sub, t: 0, color: `rgb(${S.rgb})` };
   rings.push({ x: p.x, y: p.y - 14, t: 0, max: 0.7, r: 70, color: S.rgb });
   if (p.shrineKind === 'plenty') dropLoot(p.x, p.y, { gold: 18 });
@@ -5066,11 +5082,22 @@ const PASSIVES = [
   { id: 'fontstep', name: 'FONT-STEP', cat: 2, text: 'DASHING LEAVES A HOLY POOL. ONCE EVERY 3 S.' },
   { id: 'gravesense', name: 'GRAVE SENSE', cat: 2, text: 'HEALTH ORBS DROP 50% MORE OFTEN.' },
   { id: 'coin', name: 'COUNTED COIN', cat: 2, text: '+25% GOLD.' },
+  // Earned by lifetime deeds (like the Censer's upgrades).
+  { id: 'bloodtithe', name: 'BLOOD TITHE', cat: 0, text: 'UP TO +30% DAMAGE AS YOUR HEALTH FALLS.', stat: 'kills', need: 5000, deed: 'KILL 5,000 FOES' },
+  { id: 'hunter', name: 'ELITE HUNTER', cat: 0, text: '+30% DAMAGE TO RARES AND ELITES.', stat: 'elites', need: 200, deed: 'KILL 200 ELITES' },
+  { id: 'breaker', name: 'WARDEN-BREAKER', cat: 0, text: '+25% DAMAGE TO WARDENS.', stat: 'wardens', need: 15, deed: 'KILL 15 WARDENS' },
+  { id: 'burst', name: 'HOLY BURST', cat: 0, text: 'KILLS HAVE A 10% CHANCE TO BURST, HURTING FOES NEARBY.', stat: 'reliquary', need: 10, deed: 'OPEN 10 RELIQUARIES' },
+  { id: 'laststand', name: 'LAST STAND', cat: 1, text: 'BELOW 30% HEALTH, TAKE 30% LESS DAMAGE.', stat: 'deaths', need: 10, deed: 'DIE 10 TIMES' },
+  { id: 'deft', name: 'DEFT FEET', cat: 1, text: 'THE PERFECT DODGE WINDOW IS 50% LONGER.', stat: 'perfects', need: 200, deed: '200 PERFECT DODGES' },
+  { id: 'shrine', name: 'SHRINEKEEPER', cat: 2, text: 'SHRINE BLESSINGS LAST TWICE AS LONG.', stat: 'shrines', need: 50, deed: 'PRAY AT 50 SHRINES' },
+  { id: 'sense', name: 'RELIC SENSE', cat: 2, text: 'BETTER GEAR RARITY FROM EVERY DROP.', stat: 'chests', need: 40, deed: 'OPEN 40 CHESTS' },
 ];
+// A deed passive is open once its deed is done (the dev unlock opens all).
+const passEarned = (q) => !q.stat || lifeOf(q.stat) >= q.need || !!SAVE.censerDev;
 const PASS_CAT = [['OFFENCE', '224,32,46'], ['DEFENCE', '63,164,240'], ['UTILITY', '255,192,74']];
 const PASSIVE_AT = [0, 5, 15]; // Devotion needed for each slot
 const passOpen = (i) => (SAVE.devLvl || 0) >= PASSIVE_AT[i];
-const pas = (id) => { const P = SAVE.passives || []; for (let i = 0; i < 3; i++) if (P[i] === id && passOpen(i)) return true; return false; };
+const pas = (id) => { const P = SAVE.passives || []; for (let i = 0; i < 3; i++) if (P[i] === id && passOpen(i)) return passEarned(PASSIVES.find((q) => q.id === id)); return false; };
 // Every rite by id.
 const RITE_BY = Object.fromEntries(Object.values(RITES).flat().map((r) => [r.id, r]));
 // Rites rank up with use: casts needed for ranks 2-5. Each rank takes 5%
@@ -7069,7 +7096,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

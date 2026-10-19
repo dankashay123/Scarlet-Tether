@@ -474,11 +474,41 @@ Object.assign(BADGE_GLYPH, {
   confessor: (u, v) => [[-0.34, 0.3], [0, 0], [0.34, -0.3]].some(([x, y]) => { const d = Math.hypot(u - x, (v - y) * 1.2); return d < 0.26 && d > 0.11; }),
   choir: (u, v) => [-0.36, 0, 0.36].some((x) => (Math.abs(u - x) < 0.11 && v > 0 && v < 0.55) || Math.hypot((u - x) / 0.14, (v + 0.3) / 0.22) < 1),
 });
+// Passive icons (index.html PASSIVES, same order): a disc in the passive's
+// colour (offence crimson, defence holy, utility gold) with a pale glyph.
+const ring2 = (u, v, R, w) => Math.abs(Math.hypot(u, v) - R) < w;
+const drop = (u, v, x, y, r) => Math.hypot(u - x, v - y) < r || (v < y && v > y - r * 2 && Math.abs(u - x) < (v - (y - r * 2)) * 0.55);
+export const PASS_ICONS = [
+  ['answer', 'crimson', (u, v) => seg(u, v, -0.5, 0.5, 0.3, -0.3, 0.1) || (v < -0.05 && u > 0.05 && u + v > -0.75 && v - u < 0.2 && u - v < 0.95 && Math.hypot(u - 0.4, v + 0.4) < 0.35)],
+  ['firstblood', 'crimson', (u, v) => drop(u, v, 0, 0.2, 0.36)],
+  ['close', 'crimson', (u, v) => ring2(u, v, 0.48, 0.09) || Math.hypot(u, v) < 0.16],
+  ['kindling', 'crimson', (u, v) => drop(u, v, 0, 0.25, 0.32) && !(Math.hypot(u, v - 0.32) < 0.12)],
+  ['zealfury', 'crimson', (u, v) => [-0.35, 0, 0.35].some((o) => (Math.abs(Math.abs(u) - (v - o + 0.18) * 0.9) < 0.09 && v - o > -0.18 && v - o < 0.22))],
+  ['headsman', 'crimson', (u, v) => (Math.abs(Math.hypot(u / 1.6, v) - 0.36) < 0.08) || Math.hypot(u, v) < 0.16],
+  ['hide', 'holy', (u, v) => (Math.abs(u) < 0.42 && v > -0.48 && v < 0.05) || (v >= 0.05 && v < 0.58 && Math.abs(u) < (0.58 - v) * 0.8)],
+  ['secondwind', 'holy', (u, v) => Math.hypot(u + 0.2, v + 0.15) < 0.24 || Math.hypot(u - 0.2, v + 0.15) < 0.24 || (v > -0.12 && v < 0.5 && Math.abs(u) < (0.5 - v) * 0.85)],
+  ['stillwater', 'holy', (u, v) => [-0.3, 0.05, 0.4].some((y) => Math.abs(v - y - Math.sin(u * 6) * 0.07) < 0.07 && Math.abs(u) < 0.55)],
+  ['ironvigil', 'holy', (u, v) => (Math.abs(u) < 0.45 && Math.abs(v) < 0.4 && !(Math.abs(v) < 0.08 && Math.abs(u) < 0.3)) && !(Math.abs(u) < 0.3 && Math.abs(v + 0.22) < 0.08)],
+  ['mending', 'holy', (u, v) => (Math.abs(u) < 0.14 && Math.abs(v) < 0.5) || (Math.abs(v) < 0.14 && Math.abs(u) < 0.5)],
+  ['pace', 'gold', (u, v) => [-0.38, 0.02].some((o) => seg(u, v, o - 0.15, -0.38, o + 0.2, 0, 0.1) || seg(u, v, o + 0.2, 0, o - 0.15, 0.38, 0.1))],
+  ['devout', 'gold', (u, v) => (Math.abs(v) > 0.45 && Math.abs(v) < 0.56 && Math.abs(u) < 0.38) || (Math.abs(v) <= 0.45 && Math.abs(u) < Math.abs(v) * 0.75 + 0.06)],
+  ['fontstep', 'gold', (u, v) => (Math.abs(Math.hypot(u / 1.7, v - 0.35) - 0.22) < 0.08) || drop(u, v, 0, -0.1, 0.18)],
+  ['gravesense', 'gold', (u, v) => Math.hypot(u, v) < 0.45 && !(Math.hypot(u + 0.15, v + 0.15) < 0.13)],
+  ['coin', 'gold', (u, v) => ring2(u, v, 0.42, 0.1) || (Math.abs(u) < 0.14 && Math.abs(v) < 0.14)],
+  ['bloodtithe', 'crimson', (u, v) => drop(u, v, -0.15, 0.25, 0.28) || seg(u, v, 0.35, -0.5, 0.35, 0.3, 0.08) || (v > 0.25 && v < 0.55 && Math.abs(u - 0.35) < (0.55 - v) * 0.9)],
+  ['hunter', 'crimson', (u, v) => (v > -0.05 && v < 0.35 && Math.abs(u) < 0.5) || [-0.4, 0, 0.4].some((x) => v <= -0.05 && v > -0.5 && Math.abs(u - x) < (v + 0.5) * 0.35)],
+  ['breaker', 'crimson', (u, v) => (Math.abs(u) < 0.45 && v > -0.5 && v < -0.15) || (Math.abs(u) < 0.09 && v >= -0.15 && v < 0.58)],
+  ['burst', 'crimson', (u, v) => Math.hypot(u, v) < 0.18 || [0, 1, 2, 3, 4, 5, 6, 7].some((k) => { const a = k * Math.PI / 4; return seg(u, v, Math.cos(a) * 0.28, Math.sin(a) * 0.28, Math.cos(a) * 0.58, Math.sin(a) * 0.58, k % 2 ? 0.05 : 0.09); })],
+  ['laststand', 'holy', (u, v) => (Math.abs(u + 0.32) < 0.08 && v > -0.55 && v < 0.58) || (u > -0.3 && u < 0.45 && v > -0.55 && v < -0.05 && !(u > 0.25 && Math.abs(v + 0.3) < 0.1))],
+  ['deft', 'holy', (u, v) => (Math.hypot(u, v) < 0.5 && u > -0.05 && Math.hypot(u + 0.25, v + 0.2) > 0.42) || seg(u, v, -0.45, 0.45, 0.05, -0.05, 0.08)],
+  ['shrine', 'gold', (u, v) => (Math.abs(u) < 0.13 && v > -0.1 && v < 0.5) || (Math.abs(v - 0.52) < 0.07 && Math.abs(u) < 0.32) || drop(u, v, 0, -0.25, 0.14)],
+  ['sense', 'gold', (u, v) => { const a = Math.atan2(v, u), r = Math.hypot(u, v), k = 0.28 + 0.27 * Math.pow(Math.abs(Math.cos(a * 2.5 + Math.PI / 2)), 3); return r < k; }],
+];
 const SET_BADGES = [['nails', 'crimson'], ['stride', 'ember'], ['font', 'holy'], ['confessor', 'slate'], ['choir', 'gold']];
-function badge(size, ramp, glyph) {
+function badge(size, ramp, glyph, min = 2) {
   const S = new Scene(), r = size / 2 - 1.2, c = size / 2;
   S.add(ellipsoid([c, c, 0], [r, r, r * 0.5], 'disc'), 0);
-  const f = R(S, size, size, { disc: { ramp, spec: 0.3, min: 2, max: 6 } }, { contrast: 1.2 });
+  const f = R(S, size, size, { disc: { ramp, spec: 0.3, min, max: Math.max(6, min + 3) } }, { contrast: 1.2 });
   const g = BADGE_GLYPH[glyph];
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) { const u = (x + 0.5 - c) / (r - 0.6), v = (y + 0.5 - c) / (r - 0.6); if (g(u, v)) { put(f, x, y, 'bone0'); if (!g((x + 1.5 - c) / (r - 0.6), (y + 1.5 - c) / (r - 0.6))) put(f, x + 1, y + 1, 'ink2'); } }
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) { const d = Math.hypot(x + 0.5 - c, y + 0.5 - c); if (d >= r - 0.3 && d < r + 1.2) put(f, x, y, 'outline'); }
@@ -528,6 +558,7 @@ export default {
     lock: () => [button(50, BADGE_GLYPH.lock)], map: () => [button(26, BADGE_GLYPH.board)],
     badge: () => MAP_BADGES.map(([g, ramp]) => badge(15, ramp, g)), badgeBig: () => MAP_BADGES.map(([g, ramp]) => badge(21, ramp, g)),
     ...Object.fromEntries(SET_BADGES.map(([g, ramp]) => [`set_${g}`, () => [badge(21, ramp, g)]])),
+    passive: () => PASS_ICONS.map(([, ramp, g]) => { BADGE_GLYPH.__p = g; return badge(19, ramp, '__p', ramp === 'holy' ? 5 : ramp === 'gold' ? 3 : 2); }),
     ring: () => [ring()], knob: () => [button(32, GLYPH.knob)], bag: () => [button(26, GLYPH.bag)], close: () => [button(22, GLYPH.close)],
   },
 };

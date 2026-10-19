@@ -111,6 +111,17 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## History by round
 
+- **Round 28 (passive icons, deed passives, 4-piece damage, grind check):**
+  every passive has an icon (`PASS_ICONS` in `props.mjs`, same order as
+  `PASSIVES`; ui `passive` frames); the PASSIVES tab is a 6-wide icon grid.
+  Eight passives are earned by lifetime deeds (`stat`, `need`, `deed`;
+  `passEarned`): Blood Tithe, Elite Hunter, Warden-Breaker, Holy Burst, Last
+  Stand, Deft Feet (`perfWin`), Shrinekeeper, Relic Sense. Four pieces of
+  any set add +25% damage (`SETK.four`). `tools/tests/grind.cjs` works out
+  the gear a full clear drops per Station: about 9-17 pieces a run, a
+  Hallowed every 3-7 runs, and 620-890 runs (70-100 hours at 7 minutes) to
+  finish one chosen six-piece set from drops alone (Odile's Gift, Vigil set
+  pieces and bounties shorten it).
 - **Round 27 (passives, the Reliquary horde, brighter rites, bag colours,
   fewer drops, set balance):** passive skills (`PASSIVES`, 16 in offence,
   defence and utility; three slots opened at Devotion 0, 5 and 15,
