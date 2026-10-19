@@ -1414,7 +1414,7 @@ function monsterSheets() {
     const anims = {};
     for (const [id, make] of Object.entries(list)) { const set = make(); anims[`${id}_walk`] = set.walk; anims[`${id}_attack`] = set.attack; }
     return sheet(`mon_${tier}`, anims);
-  });
+  }).concat([sheet('mon_warden', {})]); // the Wardens come only from models/elite.mjs
 }
 
 // Enemy projectiles and pickups.

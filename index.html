@@ -343,7 +343,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyN') AUDIO.setMuted(!AUDIO.muted); // N mutes; M opens the town map
   if (e.code === 'KeyI' || e.code === 'KeyB') { if (game.state === 'play') openInventory(); else if (game.state === 'inv') closeInventory(); }
   if (e.code === 'Escape' && game.state === 'inv') { closeInventory(); return; }
-  if (e.code === 'Escape' && ['descent', 'site', 'map'].includes(game.state)) { game.state = 'play'; return; }
+  if (e.code === 'Escape' && ['descent', 'site', 'map', 'vigil'].includes(game.state)) { game.state = 'play'; return; }
   if (e.code === 'KeyM' && (game.scene === 'town' || game.scene === 'wound')) { if (game.state === 'play') game.state = 'map'; else if (game.state === 'map') game.state = 'play'; }
   if (game.state === 'descent' && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) { const D = game.descent; D.i = (D.i + (e.code === 'ArrowLeft' ? DIFF.length - 1 : 1)) % DIFF.length; }
   if (e.code === 'Enter' || (e.code === 'Space' && game.state !== 'play')) onTap(-1, -1);
@@ -478,7 +478,7 @@ function makeDungeon() {
   for (const r of rooms) {
     const cx = Math.floor((r.x0 + r.x1) / 2), cy = Math.floor((r.y0 + r.y1) / 2);
     r.cx = cx; r.cy = cy;
-    if (r.type === 'shrine') { r.shrine = place(r, 'shrine', cx, cy, 1, 1, { sheet: 'loot', anim: 'shrine', frame: Math.floor(rng() * 4), shrineKind: pick(['fervor', 'haste', 'warding', 'plenty']) }); for (let a = 0; a < 6; a++) candle((cx + 0.5) * TILE + Math.cos(a) * 40, (cy + 1) * TILE + Math.sin(a) * 26); lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 80, c: 'holy', a: 0.9 }); }
+    if (r.type === 'shrine') { r.shrine = place(r, 'shrine', cx, cy, 1, 1, { sheet: 'loot', anim: 'shrine', frame: Math.floor(rng() * 4), shrineKind: pick(['fervor', 'haste', 'warding', 'plenty', 'judgement']) }); for (let a = 0; a < 6; a++) candle((cx + 0.5) * TILE + Math.cos(a) * 40, (cy + 1) * TILE + Math.sin(a) * 26); lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 80, c: 'holy', a: 0.9 }); }
     if (r.type === 'treasury') { r.chest = place(r, 'chest', cx, cy, 1, 1, { sheet: 'loot', anim: 'chest', frame: 0 }); lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 70, c: 'gold', a: 0.8 }); for (const dx of [-8, -6, 6, 8]) for (const dy of [-2, 2]) if (roomFree(r, cx + dx, cy + dy, 1, 1, 0)) place(r, 'coffin', cx + dx, cy + dy, 1, 1, { sheet: 'loot', anim: 'coffin', breakable: 2 }); }
     if (r.type === 'exit') { place(r, 'altar', cx - 1, r.y0 + 1, 2, 1, { sheet: 'loot', anim: 'altar' }); for (let k = -3; k <= 3; k++) candle((cx + k * 1.3) * TILE, (r.y0 + 3) * TILE, 0.8); }
     if (r.type === 'start') { const door = r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - cx) <= 3)); place(r, 'statue', cx, door ? r.y1 - 3 : r.y0 + 2); candle((cx + 0.5) * TILE, (door ? r.y1 - 1 : r.y0 + 4) * TILE - 2, 0.9); }
@@ -749,23 +749,29 @@ const TOLL_VALUE = { common: 1, rare: 4, elite: 12 };
 const tollValue = (e) => e.illusion || e.type === 'imp' || e.boss ? 0 : e.minion ? 1 : TOLL_VALUE[e.tier] || 1;
 function populate() {
   const df = curDiff(), tutorial = tut.on && tut.step <= 8;
+  // Density climbs with the Station (and with Vigil levels and omens).
+  const dens = (1 + (df.n - 1) * 0.07) * (df.dens || 1);
   const before = enemies.length;
   for (const r of room.rooms) {
     if (r.type === 'start') continue;
     const d = Math.min(3, Math.max(0, r.depth - 1) + Math.floor(df.n / 3));
     const commons = tutorial ? ['risen', 'crawler'] : COMMON_POOL.filter(([, min]) => min <= d).map(([id]) => id);
-    const clusters = tutorial ? 2 : Math.round(2 + r.ak * 1.6) - (r.type === 'shrine' || r.type === 'treasury' ? 2 : 0);
+    const clusters = tutorial ? 2 : Math.round((2 + r.ak * 1.6) * Math.pow(dens, 0.6)) - (r.type === 'shrine' || r.type === 'treasury' ? 2 : 0);
     for (let k = 0; k < clusters; k++) {
-      const id = pick(commons), per = MON[id].group || 1, n = Math.max(1, Math.round((3 + rng() * 3 + df.n * 0.15) / per));
+      const id = pick(commons), per = MON[id].group || 1, n = Math.max(1, Math.round((3 + rng() * 3 + df.n * 0.2) * Math.pow(dens, 0.4) / per));
       const [x, y] = spawnPoint(r, 120);
       for (let i = 0; i < n; i++) for (let g = 0; g < per; g++) spawnMonster(id, x + rand(-18, 18), y + rand(-12, 12), { room: r.id });
     }
     if (tutorial) continue;
-    if (r.type === 'combat' && rng() < 0.35 + df.n * 0.02) { const [x, y] = spawnPoint(r, 120); spawnPack(pick(RARE_POOL), 'rare', x, y, 1 + df.aff + (rng() < 0.4 ? 1 : 0), r.id); }
+    if (r.type === 'combat' && rng() < (0.35 + df.n * 0.02) * Math.min(1.8, dens)) { const [x, y] = spawnPoint(r, 120); spawnPack(pick(RARE_POOL), 'rare', x, y, 1 + df.aff + (rng() < 0.4 ? 1 : 0), r.id); }
     if (r.type === 'elite') { const [x, y] = spawnPoint(r, 120); spawnPack(pick(ELITE_POOL), 'elite', x, y, 2 + df.aff + (rng() < 0.4 ? 1 : 0), r.id); }
   }
   let total = 0;
+  // From Station VIII a third hall of champions.
+  if (!tutorial && df.n >= 8) { const r = pick(room.rooms.filter((q) => q.type === 'combat')); if (r) { const [x, y] = spawnPoint(r, 120); spawnPack(pick(ELITE_POOL), 'elite', x, y, 2 + df.aff, r.id); } }
   for (const e of enemies.slice(before)) { e.asleep = true; e.state = 'move'; e.spawnDelay = 0; total += tollValue(e); }
+  // A Weeping Reliquary waits in one room (not in the Vigil).
+  if (!tutorial && !df.vigil) { const r = pick(room.rooms.filter((q) => q.type === 'combat')); if (r) placeReliquary(r); }
   game.toll = { v: 0, max: Math.max(10, Math.round(total * 0.68)), done: false, total };
 }
 // Wake a sleeper and its pack.
@@ -783,7 +789,7 @@ function addToll(e) {
 // When the Toll is full, the Warden of the Station comes for the Saint: an
 // elite of the Undercroft grown huge, with extra rites of its own and three
 // phases. Slaying it opens the Waystone home and the next Station.
-const WARDEN = { hp: 2400, items: 4, scale: 1.45 };
+const WARDEN = { hp: 2500, items: 4 }; // hp: the average Warden at Station I (see MON)
 // Built on first use: A() and the monster table come later in the file.
 let WARDEN_SKILLS = null;
 const wardenSkills = () => WARDEN_SKILLS || (WARDEN_SKILLS = [
@@ -793,17 +799,17 @@ const wardenSkills = () => WARDEN_SKILLS || (WARDEN_SKILLS = [
   A('spiral', { streams: 4, dur: 2.4, rate: 0.13, range: 240, windup: 0.8, cd: 9, dmg: 8, speed: 95, shot: 'blood' }),
   A('summon', { monster: 'risen', n: 4, range: 300, windup: 0.8, cd: 12 }),
 ].map((a) => { for (const k of ['range', 'reach', 'min', 'len', 'rad', 'speed', 'max', 'spreadR']) if (a[k]) a[k] *= WS; return a; }));
-function spawnWarden() {
-  const df = curDiff(), id = pick(ELITE_POOL), d = MON[id];
+function spawnWarden(force) {
+  const df = curDiff(), id = force || pick(Object.keys(MON).filter((k) => MON[k].warden)), d = MON[id];
   const r = game.curRoom && roomOf(player.x, player.y) ? game.curRoom : room.rooms.reduce((b, q) => Math.hypot((q.cx + 0.5) * TILE - player.x, (q.cy + 0.5) * TILE - player.y) < Math.hypot((b.cx + 0.5) * TILE - player.x, (b.cy + 0.5) * TILE - player.y) ? q : b);
   const [x, y] = spawnPoint(r, 110);
   const affixes = AFFIX_POOL.filter((a) => !['mirrored', 'horde', 'vengeful'].includes(a)).sort(() => rng() - 0.5).slice(0, 1 + df.aff);
-  const e = spawnMonster(id, x, y, { tier: 'elite', affixes, room: r.id, scaleK: WARDEN.scale, name: d.name, hpK: WARDEN.hp / d.hp });
+  const e = spawnMonster(id, x, y, { tier: 'elite', affixes, room: r.id, name: d.name });
   e.boss = true; e.title = `WARDEN OF ${df.name}`; e.phase = 0;
-  e.def = { ...d, attacks: [...d.attacks, ...[...wardenSkills()].sort(() => rng() - 0.5).slice(0, 3)] };
   e.cds = e.def.attacks.map(() => rand(1, 2.5));
   game.warden = e;
-  game.banner = { text: 'THE WARDEN COMES', sub: `THE TOLL IS FULL. ${e.name} HAS HEARD THE BELL.`, t: 0, color: PAL.blood0 };
+  game.banner = { text: e.name, sub: d.lore, t: 0, color: PAL.blood0 };
+  toast('THE TOLL IS FULL. THE WARDEN COMES.', 2.5);
   game.shake = 8; game.flash = 0.12; sfx('elite', { rate: 0.6, vol: 1.4, gap: 0 }); sfx('gate_lock', { rate: 0.5 });
   rings.push({ x, y: y - 12, t: 0, max: 0.9, r: 110, color: '224,32,46' });
 }
@@ -820,10 +826,21 @@ function wardenPhase(e) {
 function wardenSlain(e) {
   const df = curDiff();
   game.warden = null;
-  const first = (SAVE.cleared ?? -1) < df.n - 1;
-  SAVE.cleared = Math.max(SAVE.cleared ?? -1, df.n - 1); persist();
-  game.banner = { text: 'THE WARDEN FALLS', sub: first && df.n < 15 ? `STATION ${ROMAN[df.n]} IS OPEN TO YOU` : 'THE WAYSTONE WAKES', t: 0, color: PAL.gold0 };
-  dropLoot(e.x, e.y, { gold: 25, item: WARDEN.items, itemBoost: 2, globe: 2 });
+  if (df.vigil) {
+    // The Vigil: rise by how much of the candle is left.
+    const V = game.vigil, L = df.vigil, left = V.out ? 0 : V.t;
+    const up = V.out ? 0 : left > 300 ? 3 : left > 180 ? 2 : 1;
+    if (up) { SAVE.vigilBest = Math.max(SAVE.vigilBest || 0, L); SAVE.vigilOpen = Math.max(SAVE.vigilOpen || 1, L + up); }
+    persist();
+    game.run.vigilResult = { L, left, up };
+    game.banner = { text: up ? `VIGIL ${L} KEPT` : 'THE WARDEN FALLS', sub: up ? `VIGIL ${L + up} IS OPEN TO YOU` : 'THE CANDLE WAS OUT. THE VIGIL DOES NOT RISE.', t: 0, color: up ? PAL.gold0 : PAL.stone1 };
+    dropLoot(e.x, e.y, { gold: 30, item: up ? 3 + Math.floor(L / 5) : 2, itemBoost: 2 + L * 0.06, globe: 2, warden: true });
+  } else {
+    const first = (SAVE.cleared ?? -1) < df.n - 1;
+    SAVE.cleared = Math.max(SAVE.cleared ?? -1, df.n - 1); persist();
+    game.banner = { text: 'THE WARDEN FALLS', sub: first && df.n < 15 ? `STATION ${ROMAN[df.n]} IS OPEN TO YOU` : 'THE WAYSTONE WAKES', t: 0, color: PAL.gold0 };
+    dropLoot(e.x, e.y, { gold: 25, item: WARDEN.items, itemBoost: 2, globe: 2, warden: true });
+  }
   for (const d of drops) if (d.kind !== 'globe') d.vac = true;
   addFervor(25);
   // The Waystone rises where the Warden fell (nudged onto open floor).
@@ -847,6 +864,43 @@ function updateFloor(dt) {
   }
   revealAround(player.x, player.y);
   if (game.warden && !game.warden.dead) wardenPhase(game.warden);
+  // The Vigil's candle.
+  const V = game.vigil;
+  if (V && !V.out && !game.waystone) { V.t -= dt; if (V.t <= 0) { V.t = 0; V.out = true; game.banner = { text: 'THE CANDLE GOES OUT', sub: 'SLAY THE WARDEN ANYWAY. THE VIGIL WILL NOT RISE.', t: 0, color: PAL.blood0 }; sfx('gate_lock', { rate: 0.6 }); } }
+  // Shrine of Judgement: holy lightning on the nearest foes.
+  if (game.buff && game.buff.kind === 'judgement') { game.zapT = (game.zapT || 0) - dt; if (game.zapT <= 0) { game.zapT = 0.35; for (const e of nearestFoes(player.x, player.y, 2, 170)) { const dx = e.x - player.x, dy = e.y - player.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, 14 + game.run.level * 1.5, rng() < 0.2, dx / d, dy / d, 30, { color: PAL.holy0 }); game.zaps.push({ x0: player.x, y0: player.y - 40, x1: e.x, y1: e.y - e.hy, t: 0 }); } if (game.zaps.length) sfx('chain', { rate: 1.8, vol: 0.4, gap: 0.2 }); } }
+  for (const z of game.zaps) z.t += dt; game.zaps = game.zaps.filter((z) => z.t < 0.14);
+  updateReliquary(dt);
+}
+// ------------------------------------------------- the Weeping Reliquary ---
+// A sealed reliquary that weeps blood. Wake it and the dead pour in: lay 30
+// of them to rest near it within 30 seconds and it opens.
+function placeReliquary(r) {
+  const [x, y] = spawnPoint(r, 160);
+  const p = { kind: 'reliquary', sheet: 'loot', anim: 'chest', frame: 0, x, y, reliquary: true };
+  room.props.push(p);
+  room.lights.push({ x, y: y - 10, r: 60, c: 'blood', a: 0.8 });
+  room.interact.push({ x, y: y + 4, r: 26, label: 'WAKE THE RELIQUARY', icon: 'talk', use() { this.done = true; startReliquary(p); } });
+}
+function startReliquary(p) {
+  game.event = { p, t: 30, kills: 0, need: 30, spawnT: 0 };
+  game.banner = { text: 'THE RELIQUARY WEEPS', sub: 'LAY 30 OF THE DEAD TO REST BEFORE IT FALLS SILENT', t: 0, color: PAL.blood0 };
+  sfx('elite', { rate: 0.8 }); game.shake = 4;
+}
+function updateReliquary(dt) {
+  const E = game.event; if (!E || E.done) return;
+  E.t -= dt; E.spawnT -= dt;
+  if (E.spawnT <= 0) {
+    E.spawnT = 2.2;
+    const df = curDiff(), commons = COMMON_POOL.filter(([, min]) => min <= Math.min(3, Math.floor(df.n / 3) + 1)).map(([id]) => id);
+    for (let k = 0; k < 4; k++) { const a = rng() * Math.PI * 2, m = spawnMonster(pick(commons), E.p.x + Math.cos(a) * 90, E.p.y + Math.sin(a) * 60, { room: roomOf(E.p.x, E.p.y)?.id }); m.state = 'spawn'; m.relic = true; if (!roomOf(m.x, m.y)) { m.x = E.p.x + rand(-20, 20); m.y = E.p.y + rand(-14, 14); } }
+  }
+  if (E.kills >= E.need) {
+    E.done = true; E.p.frame = 1;
+    game.banner = { text: 'THE RELIQUARY OPENS', sub: 'ITS SAINT IS GRATEFUL', t: 0, color: PAL.gold0 };
+    dropLoot(E.p.x, E.p.y + 6, { gold: 16, item: 3, itemBoost: 1.5, globe: 1 }); sfx('chest');
+    rings.push({ x: E.p.x, y: E.p.y - 8, t: 0, max: 0.7, r: 60, color: '255,209,85' });
+  } else if (E.t <= 0) { E.done = true; game.banner = { text: 'THE RELIQUARY FALLS SILENT', sub: 'TOO FEW OF THE DEAD WERE LAID TO REST', t: 0, color: PAL.stone1 }; dropLoot(E.p.x, E.p.y + 6, { gold: 4 }); }
 }
 // ---------------------------------------------------------- fog of war ---
 // The map fills in as the Saint explores: every tile within REVEAL tiles is
@@ -884,13 +938,13 @@ function bankRun(died) {
   for (const it of SAVE.bag) it.run = false;
   R.lostItems = lost.length;
   SAVE.bestLevel = Math.max(SAVE.bestLevel || 1, R.level);
-  game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time, gold: R.gold, tithe: R.tithe, items: R.items, lostItems: R.lostItems, rooms: room.rooms.filter((q) => q.state === 'clear').length, total: room.rooms.length };
+  game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time, gold: R.gold, tithe: R.tithe, items: R.items, lostItems: R.lostItems, rooms: room.rooms.filter((q) => q.state === 'clear').length, total: room.rooms.length, vigil: !!R.vigil, where: R.vigil ? (R.vigilResult ? (R.vigilResult.up ? `${R.vigil} KEPT, +${R.vigilResult.up}` : `${R.vigil}, CANDLE OUT`) : `${R.vigil}, FALLEN`) : `${DIFF[R.diff].rn}${R.omens && R.omens.length ? ` +${R.omens.length} OMEN${R.omens.length > 1 ? 'S' : ''}` : ''}` };
   persist();
 }
 function renderRoomStatus() {
   // Location card that fades after arriving.
   const ct = game.real - (game.cardAt || 0);
-  if (ct < 3.5) { ctx.globalAlpha = Math.min(1, ct * 3, (3.5 - ct) * 1.5); text(game.scene === 'town' && game.district ? game.district : room.name, W / 2, Math.round(H * 0.22), PAL.gold1, { align: 'center', sc: 2 }); ctx.globalAlpha = 1; }
+  if (ct < 3.5 && !(game.warden && !game.warden.dead)) { ctx.globalAlpha = Math.min(1, ct * 3, (3.5 - ct) * 1.5); text(game.scene === 'town' && game.district ? game.district : room.name, W / 2, Math.round(H * 0.22), PAL.gold1, { align: 'center', sc: 2 }); ctx.globalAlpha = 1; }
   if (game.scene !== 'wound') return;
   // The Warden's bar while it lives; otherwise the Toll.
   const wd = game.warden;
@@ -906,11 +960,24 @@ function renderRoomStatus() {
     ctx.fillStyle = PAL.blood1; ctx.fillRect(x, y, fw, 5); ctx.fillStyle = PAL.blood0; ctx.fillRect(x, y, fw, 1);
     text(`${Math.floor(T0.v / T0.max * 100)}%`, x + w + 6, y - 1, PAL.cloth0);
   }
-  if (game.focus && !game.focus.boss) renderNameplate(game.focus, 20);
+  renderTrialHud();
+  if (game.focus && !game.focus.boss) renderNameplate(game.focus, game.vigil || (game.event && !game.event.done) ? 30 : 20);
+}
+// The Vigil's candle and the Reliquary's count, under the Toll.
+function renderTrialHud() {
+  const V = game.vigil, E = game.event;
+  if (V && !game.waystone) {
+    const m = Math.floor(V.t / 60), s = String(Math.floor(V.t % 60)).padStart(2, '0');
+    const x = Math.round(W / 2 - 75), y = 20, k = V.t / VIGIL_TIME;
+    ctx.fillStyle = PAL.outline; ctx.fillRect(x - 13, y - 1, 6, 10); ctx.fillStyle = PAL.bone1; ctx.fillRect(x - 12, y + Math.round(8 * (1 - k)), 4, Math.max(1, Math.round(8 * k)));
+    if (!V.out) { ctx.fillStyle = PAL.ember0; ctx.fillRect(x - 11, y - 3 + Math.round(8 * (1 - k)), 2, 2); }
+    text(`VIGIL ${V.L}   ${V.out ? 'THE CANDLE IS OUT' : `${m}:${s}`}`, x, y, V.out || V.t < 60 ? PAL.blood0 : PAL.gold1);
+  }
+  if (E && !E.done) text(`THE RELIQUARY WEEPS   ${E.kills}/${E.need}   0:${String(Math.ceil(E.t)).padStart(2, '0')}`, W / 2, V ? 31 : 20, PAL.blood0, { align: 'center' });
 }
 // The Warden: name, title, a wide bar with phase marks, its curses.
 function renderBossBar(e) {
-  const w = Math.min(260, W - 200), x = Math.round(W / 2 - w / 2), y = 25;
+  const w = Math.min(260, W - 200), x = Math.round(W / 2 - w / 2), y = 29;
   text(e.name, W / 2, 3, PAL.blood0, { align: 'center' });
   text(e.title, W / 2, 14, PAL.gold1, { align: 'center', small: true, outline: null });
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, 10);
@@ -1045,14 +1112,18 @@ function newRun() {
   resetWorld();
   game.scene = 'wound'; game.state = 'play'; game.cardAt = game.real; game.waystone = null; game.interact = null;
   Object.assign(game, { time: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, execTarget: null, flash: 0,
-    run: { gold: 0, items: [], level: 1, xp: 0, pending: 0, wounds: {}, diff: game.nextDiff || 0 }, skill: null, stig: null, curRoom: room.start, buff: null, banner: null, massacre: null, focus: null, reflect: 0 });
+    run: { gold: 0, items: [], level: 1, xp: 0, pending: 0, wounds: {}, diff: game.nextDiff || 0, vigil: game.nextVigil || 0, omens: game.nextVigil ? [] : (game.nextOmens || []) }, skill: null, stig: null, curRoom: room.start, buff: null, banner: null, massacre: null, focus: null, reflect: 0 });
   applyGear(true); // after the run reset, so last run's Stigmata are gone
   // Shrines and chests are things to use.
   for (const r of room.rooms) {
     if (r.shrine) { const p = r.shrine; room.interact.push({ x: p.x, y: p.y + 4, r: 26, label: 'PRAY', icon: 'talk', use() { useShrine(p); this.done = true; } }); }
     if (r.chest) { const p = r.chest; room.interact.push({ x: p.x, y: p.y + 4, r: 24, label: 'OPEN', icon: 'talk', use() { openChest(p); this.done = true; } }); }
   }
-  game.warden = null;
+  game.warden = null; game.event = null; game.zaps = [];
+  const R0 = game.run;
+  if (R0.vigil) { R0.df = vigilDiff(R0.vigil); game.vigil = { t: VIGIL_TIME, out: false, L: R0.vigil }; }
+  else { game.vigil = null; if (R0.omens.length) R0.df = applyOmens(DIFF[R0.diff], R0.omens); }
+  game.nextVigil = 0;
   populate();
   if (tutStep() && tutStep().start && tutStep().scene === 'wound') tutStep().start();
 }
@@ -1284,13 +1355,50 @@ const SITES = [
   { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 880, dy: 64, what: 'HUNT NAMED ELITES FOR GOLD AND A GUARANTEED CONSECRATED PIECE OF GEAR.', need: 'SLAY 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
   { id: 'pool', name: 'THE SCRYING POOL', badge: 'pool', x: 1060, dy: 110, what: 'WAGERS. BET YOUR GOLD ON HOW DEEP YOU GET. THE CROWD PAYS OUT.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
   { id: 'forge', name: 'THE EMBER FORGE', badge: 'forge', x: 1250, dy: 50, what: 'REFORGE A PIECE OF GEAR TO REROLL ONE STAT, OR TEMPER IT TO RAISE ITS RARITY.', need: 'SLAY THE WARDEN OF STATION V', prog: () => [(SAVE.cleared ?? -1) >= 4 ? 1 : 0, 1] },
-  { id: 'vigil', name: 'THE BLEEDING VIGIL', badge: 'rift', x: 1664, dy: 60, what: 'VIGIL TRIALS. ONE ENDLESS, TIMED DESCENT THAT GROWS HARDER WITH EVERY LEVEL. BEAT THE CANDLE BEFORE IT BURNS OUT FOR BETTER GEAR.', need: 'SLAY THE WARDEN OF STATION IX', prog: () => [(SAVE.cleared ?? -1) >= 8 ? 1 : 0, 1] },
+  { id: 'vigil', name: 'THE BLEEDING VIGIL', badge: 'rift', x: 1664, dy: 60, what: 'VIGIL TRIALS. ONE ENDLESS, TIMED DESCENT THAT GROWS HARDER WITH EVERY LEVEL. BEAT THE CANDLE BEFORE IT BURNS OUT FOR BETTER GEAR.', need: 'SLAY THE WARDEN OF STATION IV', prog: () => [(SAVE.cleared ?? -1) >= 3 ? 1 : 0, 1] },
   { id: 'martyr', name: 'MARTYRDOM', badge: 'saint', x: 2215, dy: 70, what: 'ONE LIFE. IF YOU FALL, EVERYTHING YOU CARRY IS LOST, BUT GOLD AND GEAR ARE DOUBLED.', need: 'FINISH 10 DESCENTS', prog: () => [SAVE.descents || 0, 10] },
   { id: 'canonry', name: 'THE CANONRY', badge: 'relic', x: 2470, dy: 40, what: 'CANONIZATION. SPEND ASH FROM YOUR DEATHS ON PERMANENT VIRTUES: HEALTH, DAMAGE, LUCK.', need: 'REACH LEVEL 20 IN ONE DESCENT', prog: () => [SAVE.bestLevel || 1, 20] },
 ];
 for (const S of SITES) { S.x = townX(S.x); S.dy = townY(S.dy); }
 const siteDone = (s) => { const [a, b] = s.prog(); return a >= b; };
-function openSite(s) { game.site = { s, t: 0 }; game.state = 'site'; sfx('tap'); }
+function openSite(s) {
+  if (s.id === 'vigil' && siteDone(s)) return openVigil();
+  game.site = { s, t: 0 }; game.state = 'site'; sfx('tap');
+}
+// ------------------------------------------------- the Bleeding Vigil ---
+function openVigil() { game.vigilPick = { L: Math.max(1, SAVE.vigilOpen || 1) }; game.state = 'vigil'; sfx('tap'); }
+function beginVigil(L) { game.nextVigil = L; game.nextDiff = 0; game.state = 'loading'; game.loadT = 0; game.loadOdds = ODDS[Math.floor(Math.random() * ODDS.length)]; }
+function vigilTap(x, y) {
+  const L = descentLayout(), P = game.vigilPick, open = SAVE.vigilOpen || 1;
+  if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || inRect(L.back, x, y) || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { game.state = 'play'; sfx('tap'); return; }
+  if (Math.hypot(x - L.prev.x, y - L.prev.y) < L.prev.r + 8) { P.L = P.L > 1 ? P.L - 1 : open; sfx('tap', { vol: 0.5 }); return; }
+  if (Math.hypot(x - L.next.x, y - L.next.y) < L.next.r + 8) { P.L = P.L < open ? P.L + 1 : 1; sfx('tap', { vol: 0.5 }); return; }
+  if (inRect(L.go, x, y)) beginVigil(P.L);
+}
+function renderVigil() {
+  const L = descentLayout(), P = game.vigilPick, df = vigilDiff(P.L), need = stationSanctity(Math.min(14, Math.floor((P.L - 1) * 0.5)));
+  ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
+  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  text('THE BLEEDING VIGIL', L.x0 + 12, L.y0 + 9, PAL.blood0);
+  text('A TIMED DESCENT THAT NEVER ENDS', L.x0 + L.pw / 2 + 40, L.y0 + 9, PAL.cloth1, { align: 'center' });
+  sprC('ui', 'close', 0, L.close.x, L.close.y);
+  for (const [b, ch] of [[L.prev, '<'], [L.next, '>']]) { ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 1, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = PAL.ink3; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); text(ch, b.x, b.y - 5, PAL.gold1, { align: 'center' }); }
+  text('VIGIL LEVEL', L.x0 + L.pw / 2, L.y0 + 30, PAL.stone2, { align: 'center', small: true, outline: null });
+  text(String(P.L), L.x0 + L.pw / 2, L.y0 + 43, PAL.blood0, { align: 'center', sc: 2 });
+  text(`OPEN UP TO ${SAVE.vigilOpen || 1}   BEST KEPT ${SAVE.vigilBest || 'NONE'}`, L.x0 + L.pw / 2, L.y0 + 66, PAL.stone1, { align: 'center', small: true, outline: null });
+  const lines = [
+    ['THE CANDLE', '10 MINUTES TO FILL THE TOLL AND SLAY THE WARDEN.', PAL.gold1],
+    ['THE DEAD', `MONSTER HEALTH X${df.hp >= 100 ? Math.round(df.hp) : +df.hp.toFixed(1)}, DAMAGE X${+df.dmg.toFixed(1)}, ${Math.round(df.dens * (1 + (df.n - 1) * 0.07) * 100)}% DENSITY.`, PAL.blood0],
+    ['NO GEAR', 'MONSTERS DROP GOLD AND KNELLS, NEVER GEAR. ONLY THE WARDEN PAYS.', PAL.cloth0],
+    ['THE WARDEN', `${3 + Math.floor(P.L / 5)} PIECES OF STATION ${ROMAN[df.n - 1]} GEAR IF YOU KEEP THE VIGIL.`, PAL.flame1],
+    ['RISING', 'FINISH WITH 5 MINUTES LEFT: +3 LEVELS. 3 MINUTES: +2. IN TIME: +1.', PAL.cloth0],
+    ['YOUR GEAR', `SANCTITY ${playerSanctity()} / ${need}${playerSanctity() >= need * 0.7 ? '' : '  (TOO WEAK HERE)'}`, playerSanctity() >= need * 0.7 ? PAL.cloth0 : PAL.blood0],
+  ];
+  lines.forEach(([a, b, c], i) => { const y = L.y0 + 88 + i * 22; text(a, L.x0 + 16, y, PAL.gold1, { small: true, outline: null }); for (const [j, l] of wrapW(b, L.pw - 130, true).entries()) text(l, L.x0 + 110, y + j * 9, c, { small: true, outline: null }); });
+  invButton(L.back, 'CANCEL', PAL.stone4);
+  invButton(L.go, 'LIGHT THE CANDLE', PAL.crimson3, true);
+}
 function siteLayout() { const pw = Math.min(330, W - 16), ph = 172, x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2); return { pw, ph, x0, y0, ok: { x: x0 + pw / 2 - 50, y: y0 + ph - 32, w: 100, h: 22 } }; }
 function renderSite() {
   const L = siteLayout(), S = game.site.s, done = siteDone(S), [a, b] = S.prog();
@@ -1480,8 +1588,34 @@ const DIFF = ROMAN.map((rn, i) => {
 });
 const diffOpen = (i) => i === 0 || (SAVE.cleared ?? -1) >= i - 1;
 const diffNeed = (i) => `SLAY THE WARDEN OF STATION ${ROMAN[i - 1]}`;
+// The Bleeding Vigil, our timed trial: endless levels, two per Station step,
+// still climbing past Station XV. Density rises with every level.
+const VIGIL_TIME = 600;
+function vigilDiff(L) {
+  const i = (L - 1) * 0.5, base = DIFF[Math.min(14, Math.floor(i))];
+  return { ...base, n: Math.min(15, Math.floor(i) + 1), vigil: L, name: `VIGIL ${L}`, rn: `V${L}`,
+    hp: stationPower(i) * (1 + i * 0.05), dmg: Math.pow(stationPower(i), 0.85) * (1 + i * 0.04),
+    gold: 1 + i * 0.35, boost: i * 0.14 + 0.3, xp: 1 + i * 0.2, aff: (i >= 8 ? 1 : 0) + (i >= 12 ? 1 : 0) + (i >= 18 ? 1 : 0), dens: 1.15 + L * 0.05 };
+}
+// Omens: optional curses taken at the cathedral doors. Each makes the map
+// harder and pays more gold and gear (a little like map modifiers elsewhere,
+// under our own names).
+const OMENS = [
+  { id: 'restless', name: 'THE RESTLESS', text: 'MONSTERS 40% MORE NUMEROUS', dens: 1.4 },
+  { id: 'iron', name: 'IRON FLESH', text: 'MONSTERS HAVE 50% MORE HEALTH', hp: 1.5 },
+  { id: 'wrath', name: 'WRATH', text: 'MONSTERS DEAL 35% MORE DAMAGE', dmg: 1.35 },
+  { id: 'curses', name: 'MANY CURSES', text: 'RARES AND ELITES BEAR ONE MORE CURSE', aff: 1 },
+  { id: 'swift', name: 'SWIFT DEATH', text: 'MONSTERS MOVE 20% FASTER', speed: 1.2 },
+];
+const OMEN_PAY = { drop: 1.3, boost: 0.4, gold: 1.4 };
+function applyOmens(df, ids) {
+  const o = { ...df, dens: df.dens || 1, speed: 1 };
+  for (const id of ids) { const m = OMENS.find((q) => q.id === id); if (!m) continue; if (m.dens) o.dens *= m.dens; if (m.hp) o.hp *= m.hp; if (m.dmg) o.dmg *= m.dmg; if (m.aff) o.aff += m.aff; if (m.speed) o.speed *= m.speed; o.drop *= OMEN_PAY.drop; o.boost += OMEN_PAY.boost; o.gold *= OMEN_PAY.gold; }
+  return o;
+}
 // The tier in play: the run's tier in the dungeon, otherwise Penitent.
-const curDiff = () => DIFF[game.scene === 'wound' && game.run && game.run.diff !== undefined ? game.run.diff : 0];
+// A run may carry its own difficulty (a Vigil level, or a Station with omens).
+const curDiff = () => game.scene === 'wound' && game.run && game.run.df ? game.run.df : DIFF[game.scene === 'wound' && game.run && game.run.diff !== undefined ? game.run.diff : 0];
 
 function startDescent() {
   if (tut.on) return beginDescent(0);
@@ -1490,6 +1624,7 @@ function startDescent() {
   game.descent = { i, t: 0 }; game.state = 'descent'; sfx('tap');
 }
 function beginDescent(i) {
+  game.nextOmens = (game.descent && game.descent.omens) || [];
   game.nextDiff = i; SAVE.diff = i; persist();
   game.state = 'loading'; game.loadT = 0;
   game.loadOdds = ODDS[Math.floor(Math.random() * ODDS.length)];
@@ -1505,7 +1640,8 @@ function descentLayout() {
   const pw = Math.min(600, W - 16), ph = Math.min(352, H - 12), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
   const prev = { x: x0 + pw / 2 - 110, y: y0 + 52, r: 11 }, next = { x: x0 + pw / 2 + 110, y: y0 + 52, r: 11 };
   const go = { x: x0 + pw - 140, y: y0 + ph - 32, w: 124, h: 22 }, back = { x: go.x - 104, y: go.y, w: 96, h: 22 };
-  return { pw, ph, x0, y0, prev, next, go, back, close: { x: x0 + pw - 14, y: y0 + 14, r: 10 } };
+  const omen = { x: x0 + 12, y: go.y, w: 150, h: 22 };
+  return { pw, ph, x0, y0, prev, next, go, back, omen, close: { x: x0 + pw - 14, y: y0 + 14, r: 10 } };
 }
 function descentTap(x, y) {
   const L = descentLayout(), D = game.descent;
@@ -1513,6 +1649,7 @@ function descentTap(x, y) {
   if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || inRect(L.back, x, y) || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { game.state = 'play'; sfx('tap'); return; }
   if (Math.hypot(x - L.prev.x, y - L.prev.y) < L.prev.r + 8) { D.i = (D.i + DIFF.length - 1) % DIFF.length; sfx('tap', { vol: 0.5 }); return; }
   if (Math.hypot(x - L.next.x, y - L.next.y) < L.next.r + 8) { D.i = (D.i + 1) % DIFF.length; sfx('tap', { vol: 0.5 }); return; }
+  if (inRect(L.omen, x, y)) { const n = ((D.omens || []).length + 1) % 3; D.omens = [...OMENS].sort(() => Math.random() - 0.5).slice(0, n).map((o) => o.id); sfx('tap', { vol: 0.6 }); return; }
   if (inRect(L.go, x, y) && diffOpen(D.i)) beginDescent(D.i);
 }
 function renderDescent() {
@@ -1569,7 +1706,11 @@ function renderDescent() {
   const fy = top + 150;
   text('IF YOU FALL: THE CHOIR TITHES HALF YOUR GOLD AND EVERY OTHER PIECE OF GEAR YOU CARRY.', L.x0 + 12, fy, PAL.blood0, { small: true, outline: null });
   text('WORN GEAR IS SAFE. SLAY THE WARDEN AND TAKE THE WAYSTONE HOME TO KEEP IT ALL.', L.x0 + 12, fy + 10, PAL.stone1, { small: true, outline: null });
-  text(`DESCENTS ${SAVE.descents || 0}   HIGHEST STATION CLEARED ${(SAVE.cleared ?? -1) >= 0 ? ROMAN[SAVE.cleared] : 'NONE'}`, L.x0 + 12, L.go.y + 8, PAL.stone2, { small: true, outline: null });
+  // Omens: optional curses that pay more.
+  const om = D.omens || [];
+  text(om.length ? `OMENS: ${om.map((id) => OMENS.find((o) => o.id === id).text).join('. ')}.` : `DESCENTS ${SAVE.descents || 0}   HIGHEST STATION CLEARED ${(SAVE.cleared ?? -1) >= 0 ? ROMAN[SAVE.cleared] : 'NONE'}`, L.x0 + 12, fy + 22, om.length ? PAL.blood0 : PAL.stone2, { small: true, outline: null });
+  if (om.length) text(`EACH OMEN PAYS +${Math.round((OMEN_PAY.gold - 1) * 100)}% GOLD AND +${Math.round((OMEN_PAY.drop - 1) * 100)}% GEAR, RARER.`, L.x0 + 12, fy + 32, PAL.flame1, { small: true, outline: null });
+  invButton(L.omen, om.length === 2 ? 'TWO OMENS (TAP: NONE)' : om.length ? 'ONE OMEN (TAP: TWO)' : 'TAKE AN OMEN', PAL.violet3 || PAL.ink3, true);
   invButton(L.back, 'CANCEL', PAL.stone4);
   invButton(L.go, open ? 'DESCEND' : 'LOCKED', PAL.crimson3, open);
 }
@@ -1687,6 +1828,32 @@ const MON = {
   leviathan: { name: 'GRAVE LEVIATHAN', tier: 'elite', hp: 800, speed: 30, r: 13, hy: 18, hr: 18, move: 'chase', fervor: 30, attacks: [A('burrow', { range: 260, min: 40, windup: 0.6, cd: 5, dmg: 22, rad: 30 }), A('spread', { n: 5, arc: 0.7, range: 170, windup: 0.6, cd: 2.5, dmg: 9, speed: 120, shot: 'spit' })] },
   inquisitor: { name: 'THE INQUISITOR', tier: 'elite', hp: 750, speed: 30, r: 11, hy: 28, hr: 18, move: 'chase', fervor: 30, attacks: [A('multidash', { n: 3, range: 170, min: 30, windup: 0.6, cd: 5, dmg: 16, speed: 320, time: 0.22 }), A('swipe', { range: 26, reach: 26, windup: 0.4, cd: 1.2, dmg: 14 })] },
   effigy: { name: 'WEEPING EFFIGY', tier: 'elite', hp: 700, speed: 10, r: 12, hy: 30, hr: 18, move: 'static', fly: true, fervor: 30, attacks: [A('blink', { range: 400, min: 120, windup: 0.5, cd: 6 }), A('beam', { n: 3, fan: 0.5, range: 230, len: 240, windup: 1, cd: 3.5, dmg: 16 })] },
+  // The five Wardens (one comes when the Toll is full). Own sheet, own kits.
+  bellwright: { name: 'THE BELLWRIGHT', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2600, speed: 16, r: 16, hy: 36, hr: 24, move: 'chase', fervor: 40, lore: 'HE RANG THE BELL THAT WOKE THE DEAD. HE HAS NOT STOPPED.', attacks: [
+    A('slam', { range: 48, rad: 34, windup: 0.8, cd: 2.6, dmg: 20 }),
+    A('peal', { range: 170, windup: 1, cd: 6, dmg: 14, speed: 105, max: 210, n: 3, gap: 0.45 }),
+    A('pattern', { shape: 'ring', at: 'player', n: 6, radius: 58, rad: 22, delay: 1, range: 230, windup: 0.7, cd: 7, dmg: 16, style: 'bell' }),
+    A('summon', { monster: 'risen', n: 3, range: 300, windup: 0.6, cd: 11 })] },
+  candlemass: { name: 'MOTHER CANDLEMASS', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2400, speed: 13, r: 16, hy: 38, hr: 22, move: 'kite', keep: 110, fervor: 40, lore: 'EVERY CANDLE LIT FOR THE DEAD BURNS ON HER STILL.', attacks: [
+    A('lob', { n: 5, spreadR: 50, rad: 20, range: 210, windup: 0.7, cd: 4, dmg: 12, pool: 'fire', poolLife: 5, poolDps: 12 }),
+    A('spiral', { streams: 5, dur: 3, rate: 0.12, range: 230, windup: 0.8, cd: 8, dmg: 7, speed: 90, shot: 'ember' }),
+    A('pattern', { shape: 'ring', at: 'player', n: 10, radius: 70, rad: 16, delay: 1, range: 250, windup: 0.8, cd: 9, dmg: 10, pool: 'fire' }),
+    A('ring', { n: 24, range: 200, windup: 0.7, cd: 5, dmg: 8, speed: 85, shot: 'ember' })] },
+  cardinal: { name: 'THE HOLLOW CARDINAL', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2200, speed: 20, r: 14, hy: 38, hr: 20, move: 'kite', keep: 120, fly: true, fervor: 40, lore: 'THE ROBES STILL PREACH. NO ONE HAS WORN THEM IN A HUNDRED YEARS.', attacks: [
+    A('sweep', { beams: 3, dur: 2.4, rate: 0.2, spin: 0.9, len: 240, range: 260, windup: 0.9, cd: 8, dmg: 12 }),
+    A('blink', { range: 320, min: 60, windup: 0.3, cd: 5 }),
+    A('spread', { n: 7, arc: 1, range: 210, windup: 0.5, cd: 2.4, dmg: 9, speed: 115, shot: 'violet' }),
+    A('summon', { monster: 'acolyte', n: 4, range: 300, windup: 0.7, cd: 12 })] },
+  charnelKing: { name: 'THE CHARNEL KING', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2800, speed: 18, r: 14, hy: 36, hr: 20, move: 'chase', fervor: 40, lore: 'HE RULES THE OSSUARY BY RIGHT OF THE MOST BONES.', attacks: [
+    A('pattern', { shape: 'line', at: 'self', n: 8, step: 24, rad: 16, delay: 0.6, range: 230, windup: 0.7, cd: 4.5, dmg: 16, style: 'thorn' }),
+    A('multidash', { n: 3, range: 210, windup: 0.8, cd: 6, dmg: 18, speed: 230, time: 0.35 }),
+    A('summon', { monster: 'risen', n: 5, range: 300, windup: 0.7, cd: 10 }),
+    A('shockwave', { range: 150, windup: 0.9, cd: 6, dmg: 16, speed: 120, max: 180 })] },
+  ladyOfNails: { name: 'OUR LADY OF NAILS', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2500, speed: 14, r: 15, hy: 38, hr: 20, move: 'chase', fervor: 40, lore: 'A STATUE OF A MARTYR, MADE OF WHAT KILLED HER.', attacks: [
+    A('volley', { n: 5, arc: 0.7, shots: 4, rate: 0.35, range: 230, windup: 0.6, cd: 5, dmg: 7, speed: 140, shot: 'bone' }),
+    A('pull', { len: 170, range: 170, windup: 0.6, cd: 6, dmg: 8 }),
+    A('pattern', { shape: 'cross', at: 'player', n: 12, step: 22, rad: 14, delay: 0.8, range: 250, windup: 0.7, cd: 6, dmg: 15, style: 'thorn' }),
+    A('ring', { n: 20, range: 200, windup: 0.7, cd: 7, dmg: 8, speed: 100, shot: 'bone' })] },
   // The treasure goblin of the Wound.
   imp: { name: 'COLLECTION IMP', tier: 'imp', sheet: 'loot', walk: 'imp', attack: 'imp', hp: 140, speed: 74, r: 5, hy: 10, hr: 9, move: 'flee', fervor: 10, attacks: [] },
 };
@@ -1694,7 +1861,8 @@ for (const [id, d] of Object.entries(MON)) {
   d.id = id;
   for (const k of ['speed', 'r', 'hy', 'hr', 'keep']) if (d[k]) d[k] = Math.round(d[k] * WS);
   if (d.orbit) d.orbit.r *= WS;
-  for (const a of d.attacks) for (const k of ['range', 'reach', 'min', 'len', 'rad', 'speed', 'max', 'spreadR']) if (a[k]) a[k] *= WS;
+  for (const a of d.attacks) for (const k of ['range', 'reach', 'min', 'len', 'rad', 'speed', 'max', 'spreadR', 'radius', 'step']) if (a[k]) a[k] *= WS;
+  if (d.warden) Object.assign(d, { walk: `${id}_walk`, attack: `${id}_attack`, hit: `${id}_hit`, die: `${id}_die` });
   if (!d.sheet) { d.sheet = `mon_${d.tier}`; d.walk = `${id}_walk`; d.attack = `${id}_attack`; d.hit = `${id}_hit`; d.die = `${id}_die`; }
 }
 
@@ -1731,7 +1899,7 @@ function spawnMonster(id, x, y, o = {}) {
     tier: o.tier || d.tier, elite: d.tier !== 'common' && d.tier !== 'imp', staggered: false, slowK: 1, bound: 0, speedK: 1, cdK: 1, dmgK: 1, scaleK: o.scaleK || 1,
     cds: d.attacks.map(() => rand(0.5, 1.5)), affixes: o.affixes || [], affT: {}, room: o.room, pack: o.pack, minion: o.minion, name: o.name || d.name, illusion: o.illusion, life: o.life, spawnDelay: o.spawnDelay || 0 };
   if (o.hpK) e.maxHp = e.hp = Math.round(e.hp * o.hpK);
-  if (game.scene === 'wound' && !o.illusion) e.maxHp = e.hp = Math.round(e.hp * curDiff().hp);
+  if (game.scene === 'wound' && !o.illusion) { e.maxHp = e.hp = Math.round(e.hp * curDiff().hp); e.speedK *= curDiff().speed || 1; }
   for (const a of e.affixes) AFFIX[a].init && AFFIX[a].init(e);
   for (const a of e.affixes) e.affT[a] = rand(1, AFFIX[a].every || 1);
   if (o.scaleK) { e.hy *= o.scaleK; e.r = Math.max(4, e.r * o.scaleK); }
@@ -1914,6 +2082,19 @@ function performAttack(e) {
       hazards.push({ kind: 'circle', x: e.x, y: e.y, r: a.rad, t: 0, delay: 0, dmg: a.dmg * k, pool: a.pool, src: e });
       killEnemy(e, 0, 0); break;
     case 'burrow': e.state = 'act'; e.t = 0; e.actT = 1.1; e.under = true; playFx('fx', 'smoke', e.x, e.y - 6, 14); break;
+    // Warden signatures.
+    case 'peal': for (let i = 0; i < a.n; i++) hazards.push({ kind: 'ring', x: e.x, y: e.y, R: 6, speed: a.speed, max: a.max, dmg: a.dmg * k, src: e, t: 0, wait: i * a.gap }); game.shake = Math.max(game.shake, 4); break;
+    case 'pattern': {
+      // Telegraphed blasts laid out as a ring, a line or a cross.
+      const pts = [], cx = a.at === 'self' ? e.x : player.x, cy = a.at === 'self' ? e.y : player.y, aim = Math.atan2(player.y - e.y, player.x - e.x);
+      if (a.shape === 'ring') for (let i = 0; i < a.n; i++) { const t = i / a.n * Math.PI * 2; pts.push([cx + Math.cos(t) * a.radius, cy + Math.sin(t) * a.radius * 0.7, 0]); }
+      if (a.shape === 'line') for (let i = 0; i < a.n; i++) pts.push([cx + Math.cos(aim) * a.step * (i + 1), cy + Math.sin(aim) * a.step * (i + 1) * 0.8, i * 0.07]);
+      if (a.shape === 'cross') { pts.push([cx, cy, 0]); for (let i = 1; pts.length < a.n; i++) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) pts.push([cx + dx * a.step * i, cy + dy * a.step * i * 0.7, i * 0.08]); }
+      for (const [x, y, lag] of pts) hazards.push({ kind: 'circle', x, y, r: a.rad, t: 0, delay: a.delay + lag, dmg: a.dmg * k, style: a.style, pool: a.pool, poolLife: 4, poolDps: 10, src: e });
+      break;
+    }
+    case 'volley': e.state = 'act'; e.t = 0; e.vLeft = a.shots; e.fireT = 0; break;
+    case 'sweep': e.state = 'act'; e.t = 0; e.actT = a.dur; e.fireT = 0; e.spinA = Math.atan2(player.y - e.y, player.x - e.x); break;
   }
 }
 
@@ -1931,6 +2112,15 @@ function actUpdate(e, dt) {
       if (e.dashes > 0) { e.actT = a.time; e.hitDone = false; e.subWind = 0.32; }
       else { e.state = 'recover'; e.t = 0; }
     }
+  } else if (a.type === 'volley') {
+    e.fireT -= dt;
+    if (e.fireT <= 0) { e.fireT = a.rate; e.vLeft--; const base = Math.atan2(player.y - 16 - (e.y - e.hy), player.x - e.x); for (let i = 0; i < a.n; i++) shotAt(e, base + (i - (a.n - 1) / 2) * (a.arc / Math.max(1, a.n - 1)), a); }
+    if (e.vLeft <= 0) { e.state = 'recover'; e.t = 0; }
+  } else if (a.type === 'sweep') {
+    // Rotating beams, each one shown as a warning line just before it burns.
+    e.actT -= dt; e.fireT -= dt;
+    if (e.fireT <= 0) { e.fireT = a.rate; e.spinA += a.spin * a.rate * 2; for (let b = 0; b < a.beams; b++) hazards.push({ kind: 'line', x: e.x, y: e.y - e.hy, ang: e.spinA + b * Math.PI * 2 / a.beams, len: a.len, w: 10, t: 0, delay: 0.3, dur: 0.12, dmg: a.dmg * e.dmgK, src: e, style: 'beam' }); }
+    if (e.actT <= 0) { e.state = 'recover'; e.t = 0; }
   } else if (a.type === 'spiral') {
     e.actT -= dt; e.fireT -= dt; e.spinA += dt * 2.2;
     if (e.fireT <= 0) { e.fireT = a.rate; for (let s = 0; s < a.streams; s++) shotAt(e, e.spinA + s * Math.PI * 2 / a.streams, a); }
@@ -1972,6 +2162,7 @@ function updateHazards(dt) {
       if (Math.hypot(px - h.x, (py - h.y) / 0.6) < h.r && h.tick <= 0) { h.tick = 0.5; if (player.iframes <= 0) hurtPlayerRaw(h.dps * 0.5, PAL.ember1); if (h.pool === 'frost') player.slowT = 0.6; }
       if (h.t > h.life) h.dead = true;
     } else if (h.kind === 'ring') {
+      if (h.wait > 0) { h.wait -= dt; continue; }
       h.R += h.speed * dt;
       const dd = Math.hypot(px - h.x, (py - h.y) / 0.6);
       if (!h.hit && Math.abs(dd - h.R) < 7) { h.hit = true; damagePlayer(h.src, h.dmg, [[px, py]]); }
@@ -2169,6 +2360,9 @@ function killEnemy(e, dirx, diry, executed = false) {
   if (e.illusion) { playFx('fx', 'smoke', e.x, e.y - 8, 14); return; }
   addToll(e);
   if (e.boss) wardenSlain(e);
+  if (game.event && !game.event.done && Math.hypot(e.x - game.event.p.x, e.y - game.event.p.y) < 260) game.event.kills++;
+  // Knells: rares and elites drop bell-shards that ring the Toll when gathered.
+  if (!e.minion && (e.tier === 'rare' || (e.tier === 'elite' && !e.boss)) && game.toll && !game.toll.done) for (let k = 0; k < (e.tier === 'elite' ? 2 : 1); k++) drops.push({ kind: 'knell', x: e.x, y: e.y, z: 6, vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(60, 120), t: 0 });
   if (G.lok && player.hp > 0 && game.state === 'play') player.hp = Math.min(player.maxHp, player.hp + G.lok * Math.pow(G.power, 0.85));
   game.kills++;
   if (!e.minion || rng() < 0.5) gainXp(e.tier === 'elite' ? 15 : e.tier === 'rare' ? 4 : e.type === 'imp' ? 6 : 1);
@@ -2377,8 +2571,9 @@ function salvage(it) {
 }
 
 let drops = [];
-function dropLoot(x, y, { gold = 0, item = 0, itemBoost = 0, globe = 0 } = {}) {
+function dropLoot(x, y, { gold = 0, item = 0, itemBoost = 0, globe = 0, warden = false } = {}) {
   const df = curDiff(); item *= df.drop; itemBoost += df.boost;
+  if (df.vigil && !warden) item = 0; // in the Vigil only the Warden pays in gear
   const pop = (o) => drops.push({ x, y, z: 6, vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(60, 120), t: 0, ...o });
   for (let k = 0; k < gold; k++) pop({ kind: 'gold', amount: Math.round(rand(3, 9) * df.gold * (game.buff && game.buff.kind === 'plenty' ? 2 : 1)) });
   for (let k = 0; k < Math.floor(globe) + (rng() < globe % 1 ? 1 : 0); k++) pop({ kind: 'globe' });
@@ -2389,12 +2584,13 @@ function updateDrops(dt) {
     d.t += dt;
     if (d.z > 0 || d.vz > 0) { d.vz -= 300 * dt; d.z += d.vz * dt; moveCircle(d, d.vx * dt, d.vy * dt, 2); if (d.z <= 0) { d.z = 0; if (Math.abs(d.vz) > 40) { d.vz = -d.vz * 0.35; d.vx *= 0.5; d.vy *= 0.5; } else { d.vz = 0; d.vx = d.vy = 0; } } }
     const dist = Math.hypot(d.x - player.x, d.y - player.y);
-    const magnet = d.kind === 'gold' ? 60 : d.kind === 'globe' ? 40 : 0;
+    const magnet = d.kind === 'gold' ? 60 : d.kind === 'knell' ? 80 : d.kind === 'globe' ? 40 : 0;
     const full = d.kind === 'item' && SAVE.bag.length >= BAG_SIZE && SAVE.equip[d.item.slot];
     if (d.t > 0.4 && dist > 0.5 && (dist < magnet || (d.vac && !full))) { const s = (d.vac ? 330 : 210) * dt; d.x += (player.x - d.x) / dist * Math.min(dist, s); d.y += (player.y - d.y) / dist * Math.min(dist, s); }
     if (full && d.t > 0.4 && dist < 14 && !(game.toast && game.toast.msg === 'YOUR BAG IS FULL')) toast('YOUR BAG IS FULL', 1.5);
     if (!full && d.t > 0.4 && dist < (d.kind === 'item' ? 14 : 10)) {
-      d.taken = true; sfx(d.kind === 'gold' ? 'gold' : d.kind === 'globe' ? 'heal' : 'pickup', { rate: d.kind === 'item' && d.item.ri >= 3 ? 0.8 : 1 });
+      d.taken = true; sfx(d.kind === 'gold' ? 'gold' : d.kind === 'globe' ? 'heal' : d.kind === 'knell' ? 'tap' : 'pickup', { rate: d.kind === 'item' && d.item.ri >= 3 ? 0.8 : 1 });
+      if (d.kind === 'knell') { const T0 = game.toll; if (T0 && !T0.done) { T0.v = Math.min(T0.max, T0.v + 3); nums.push({ x: player.x, y: player.y - 46, v: 'TOLL', t: 0, color: PAL.gold1, small: true }); if (T0.v >= T0.max) { T0.done = true; spawnWarden(); } } }
       if (d.kind === 'gold') { d.amount = Math.round(d.amount * (1 + G.gold / 100)); game.run.gold += d.amount; nums.push({ x: player.x + rand(-6, 6), y: player.y - 39, v: `+${d.amount}`, t: 0, color: PAL.gold0, small: true }); }
       if (d.kind === 'globe') { const h = Math.round(player.maxHp * 0.15 * (G.powers.has('globe') ? 2 : 1)); player.hp = Math.min(player.maxHp, player.hp + h); nums.push({ x: player.x, y: player.y - 55, v: `+${h}`, t: 0, color: PAL.flame1, small: false }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.3, r: 20, color: '224,32,46' }); }
       if (d.kind === 'item') { game.run.items.push(d.item); const R = RARITY[d.item.ri]; const auto = !SAVE.equip[d.item.slot]; bagAdd(d.item); if (!auto) { toast(`${d.item.name}`, 2); game.toastColor = R.color; } if (d.item.ri >= 3) { game.flash = 0.06; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: R.rgb }); } }
@@ -2407,6 +2603,7 @@ function drawDrops() {
     const y = d.y - d.z - (d.z === 0 ? Math.round(Math.sin(game.real * 4 + d.x) * 1) : 0);
     if (d.kind === 'gold') spr('loot', 'gold', d.amount > 7 ? 2 : d.amount > 4 ? 1 : 0, d.x, y + 4);
     if (d.kind === 'globe') sprC('loot', 'globe', Math.floor(game.real * 3) % 2, d.x, y - 4);
+    if (d.kind === 'knell') { const kx = Math.round(d.x), ky = Math.round(y - 6); ctx.fillStyle = PAL.outline; ctx.fillRect(kx - 4, ky - 5, 8, 9); ctx.fillStyle = PAL.gold1; ctx.fillRect(kx - 3, ky - 4, 6, 6); ctx.fillStyle = PAL.gold0; ctx.fillRect(kx - 2, ky - 4, 2, 4); ctx.fillStyle = PAL.gold3; ctx.fillRect(kx - 1, ky + 2, 2, 2); }
     if (d.kind === 'item') {
       const ic = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic'].indexOf(d.item.slot);
       sprC('loot', 'item', ic, d.x, y - 10);
@@ -2428,20 +2625,38 @@ function drawDropLabels() {
     if (!worn || itemScore(d.item) > itemScore(worn) + 0.2) { const ax = Math.round(d.x + w / 2 + 3), ay = Math.round(y); ctx.fillStyle = PAL.outline; ctx.fillRect(ax - 1, ay - 1, 7, 9); ctx.fillStyle = PAL.flame1; for (let r = 0; r < 3; r++) ctx.fillRect(ax + 2 - r, ay + r, 1 + r * 2, 1); ctx.fillRect(ax + 1, ay + 3, 3, 4); }
   }
 }
+// Pillars of light over dropped gear, by rarity: taller and brighter the
+// rarer it is. Drawn in whole 2 px steps so they sit with the chunky art.
+const BEAM = [null, { h: 60, w: 6, a: 0.35 }, { h: 100, w: 8, a: 0.45 }, { h: 170, w: 10, a: 0.6 }, { h: 170, w: 10, a: 0.6 }];
+function drawLootBeams(cx, cy) {
+  for (const d of drops) {
+    if (d.kind !== 'item' || d.z > 0 || !BEAM[d.item.ri] || !onScreen(d.x, d.y, cx, cy, 160)) continue;
+    const B0 = BEAM[d.item.ri], R0 = RARITY[d.item.ri], x = Math.round(d.x / 2) * 2, y0 = Math.round(d.y / 2) * 2;
+    const rise = Math.min(1, d.t * 3), H = Math.round(B0.h * rise / 2) * 2, pulse = 0.8 + 0.2 * Math.sin(game.real * 5 + d.x);
+    // Floor ring.
+    ctx.fillStyle = `rgba(${R0.rgb},${0.25 * pulse})`; ctx.beginPath(); ctx.ellipse(x, y0, B0.w + 4 + 2 * Math.sin(game.real * 3), (B0.w + 4) * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+    // The column: soft outer band and a bright core, fading as it climbs.
+    for (let yy = 0; yy < H; yy += 2) {
+      const k = 1 - yy / H, a = B0.a * k * Math.sqrt(k) * pulse;
+      ctx.fillStyle = `rgba(${R0.rgb},${a})`; ctx.fillRect(x - B0.w / 2, y0 - yy - 2, B0.w, 2);
+      ctx.fillStyle = `rgba(255,251,234,${Math.min(1, a * 1.6)})`; ctx.fillRect(x - 1, y0 - yy - 2, 2, 2);
+    }
+    // Sparks rising up the beam.
+    for (let m = 0; m < 2 + d.item.ri; m++) {
+      const ph = (game.real * 0.6 + m / (2 + d.item.ri) + (d.x % 7) * 0.1) % 1, my = Math.round((y0 - ph * H) / 2) * 2, mx = x + Math.round(Math.sin(ph * 9 + m) * B0.w * 0.4 / 2) * 2;
+      ctx.fillStyle = `rgba(${R0.rgb},${(1 - ph) * 0.9})`; ctx.fillRect(mx - 1, my, 2, 2);
+    }
+  }
+}
 function drawDropGlow() {
   for (const d of drops) {
     if (d.kind === 'globe') glow(d.x, d.y - d.z - 4, 12, 'rgba(224,32,46,0.45)');
     if (d.kind === 'gold') glow(d.x, d.y - d.z, 7, 'rgba(255,209,85,0.25)');
+    if (d.kind === 'knell') glow(d.x, d.y - d.z - 6, 14, 'rgba(255,209,85,0.55)');
     if (d.kind === 'item') {
       const R = RARITY[d.item.ri];
       glow(d.x, d.y - d.z - 6, 14, `rgba(${R.rgb},0.45)`);
-      if (d.item.ri >= 2 && d.z === 0) { // the loot beam
-        const h = 70 + d.item.ri * 20, g = ctx.createLinearGradient(0, d.y - h, 0, d.y);
-        g.addColorStop(0, `rgba(${R.rgb},0)`); g.addColorStop(1, `rgba(${R.rgb},${0.35 + 0.1 * Math.sin(game.real * 5)})`);
-        ctx.fillStyle = g; ctx.fillRect(Math.round(d.x) - 6, d.y - h, 12, h);
-        const g2 = ctx.createLinearGradient(0, d.y - h, 0, d.y); g2.addColorStop(0, `rgba(${R.rgb},0)`); g2.addColorStop(1, `rgba(${R.rgb},0.55)`);
-        ctx.fillStyle = g2; ctx.fillRect(Math.round(d.x) - 1, d.y - h, 3, h);
-      }
+      if (BEAM[d.item.ri] && d.z === 0) glow(d.x, d.y - 30, 26 + d.item.ri * 8, `rgba(${R.rgb},0.25)`); // the beam's bloom
     }
   }
 }
@@ -2477,7 +2692,7 @@ function breakProp(p) {
 function hitBreakables(x, y, r) { for (const p of room.props) if (p.breakable && Math.hypot(p.x - x, p.y - 6 - y) < r + 8) breakProp(p); }
 
 // Shrines (temporary buffs) and treasury chests.
-const SHRINES = { fervor: { name: 'SHRINE OF ZEAL', sub: 'DOUBLE DAMAGE', t: 25, rgb: '224,32,46' }, haste: { name: 'SHRINE OF HASTE', sub: 'SWIFTER FEET AND FASTER RITES', t: 25, rgb: '95,220,108' }, warding: { name: 'SHRINE OF WARDING', sub: 'HALF DAMAGE TAKEN', t: 25, rgb: '138,224,255' }, plenty: { name: 'SHRINE OF PLENTY', sub: 'A RAIN OF GOLD', t: 20, rgb: '255,209,85' } };
+const SHRINES = { judgement: { name: 'SHRINE OF JUDGEMENT', sub: 'HOLY LIGHTNING STRIKES YOUR FOES', t: 15, rgb: '216,247,255' }, fervor: { name: 'SHRINE OF ZEAL', sub: 'DOUBLE DAMAGE', t: 25, rgb: '224,32,46' }, haste: { name: 'SHRINE OF HASTE', sub: 'SWIFTER FEET AND FASTER RITES', t: 25, rgb: '95,220,108' }, warding: { name: 'SHRINE OF WARDING', sub: 'HALF DAMAGE TAKEN', t: 25, rgb: '138,224,255' }, plenty: { name: 'SHRINE OF PLENTY', sub: 'A RAIN OF GOLD', t: 20, rgb: '255,209,85' } };
 function useShrine(p) {
   if (p.used) return; sfx('shrine');
   p.used = true; p.frame = p.frame; const S = SHRINES[p.shrineKind];
@@ -2866,7 +3081,7 @@ function update(realDt) {
     for (const e of enemies) if (!e.dead) {
       const far = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
       if (e.asleep) { if (far < 300 || (e.hp < e.maxHp && far < 700)) wake(e); else continue; }
-      else if (far > 760 && !e.boss && e.state === 'move' && e.type !== 'imp') { e.asleep = true; continue; }
+      else if (far > 600 && !e.boss && e.state === 'move' && e.type !== 'imp') { e.asleep = true; continue; }
       awake.push(e);
       safe(`enemy ${e.type}`, () => updateEnemy(e, dt), () => { e.dead = true; });
     }
@@ -3028,8 +3243,9 @@ function render() {
   }
   glow(player.x, player.y - 54, 20, 'rgba(255,209,85,0.25)');
   if (game.scene === 'wound') {
-    drawDropGlow(); drawAmbientGlow(cx, cy);
-    for (const e of enemies) if (!e.dead && e.elite && !e.under && e.state !== 'spawn') glow(e.x, e.y - e.hy, e.hr * 2.2, e.tier === 'elite' ? 'rgba(255,209,85,0.22)' : e.tier === 'rare' ? 'rgba(90,180,255,0.22)' : 'rgba(255,209,85,0.2)');
+    drawDropGlow(); drawAmbientGlow(cx, cy); drawLootBeams(cx, cy); // additive, over the darkness
+    for (const z of game.zaps || []) { ctx.strokeStyle = `rgba(216,247,255,${1 - z.t / 0.14})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(z.x0, z.y0); for (let i = 1; i < 6; i++) { const k = i / 6; ctx.lineTo(z.x0 + (z.x1 - z.x0) * k + rand(-6, 6), z.y0 + (z.y1 - z.y0) * k + rand(-6, 6)); } ctx.lineTo(z.x1, z.y1); ctx.stroke(); glow(z.x1, z.y1, 14, 'rgba(216,247,255,0.6)'); }
+    for (const e of enemies) if (!e.dead && e.elite && !e.under && e.state !== 'spawn' && onScreen(e.x, e.y, cx, cy, 40)) glow(e.x, e.y - e.hy, e.hr * 2.2, e.tier === 'elite' ? 'rgba(255,209,85,0.22)' : e.tier === 'rare' ? 'rgba(90,180,255,0.22)' : 'rgba(255,209,85,0.2)');
     for (const s of shots) glow(s.x, s.y, 8, s.kind === 'tear' || s.kind === 'frost' ? 'rgba(138,224,255,0.5)' : s.kind === 'spit' ? 'rgba(127,165,72,0.5)' : s.kind === 'violet' ? 'rgba(154,106,230,0.6)' : 'rgba(255,122,31,0.5)');
     for (const h of hazards) if (h.kind === 'pool') glow(h.x, h.y, h.r * 1.2, `rgba(${POOL_RGB[h.pool] || POOL_RGB.blood},0.18)`);
     for (const r of room.rooms) if (r.shrine && !r.shrine.used) glow(r.shrine.x, r.shrine.y - 26, 26, `rgba(${SHRINES[r.shrine.shrineKind].rgb},0.4)`);
@@ -3076,6 +3292,7 @@ function render() {
   if (game.state === 'dialog') renderDialog();
   if (game.state === 'descent') renderDescent();
   if (game.state === 'site') renderSite();
+  if (game.state === 'vigil') renderVigil();
   if (game.state === 'map') renderTownMap();
   if (game.state === 'loading') renderLoading();
   blit();
@@ -3141,7 +3358,7 @@ function renderLight(cx, cy) {
   for (const b of bolts) hole(b.x, b.y, 24, 0.6);
   for (const s of shots) hole(s.x, s.y, 16, 0.5);
   for (const d of drops) if (d.kind === 'item' && d.item.ri >= 2) hole(d.x, d.y - 20, 30, 0.6);
-  for (const e of enemies) if (e.tier === 'elite' && !e.dead) hole(e.x, e.y - e.hy, 40, 0.5);
+  for (const e of enemies) if (e.tier === 'elite' && !e.dead && onScreen(e.x, e.y, cx, cy, 60)) hole(e.x, e.y - e.hy, 40, 0.5);
   for (const f of fxs) if (f.anim === 'impact' || f.anim === 'burst') hole(f.x, f.y, 26, 0.6);
   dctx.globalCompositeOperation = 'source-over'; dctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.imageSmoothingEnabled = true; ctx.drawImage(dark, 0, 0, dark.width * 2, dark.height * 2); ctx.imageSmoothingEnabled = false;
@@ -3372,6 +3589,7 @@ function drawMapMarks(ox, oy, k, mx, my, mw, mh) {
     if (e.dead || e.boss || Math.abs(e.x - player.x) > 300 || Math.abs(e.y - player.y) > 200) continue;
     const [px, py] = at(e.x, e.y); ctx.fillStyle = e.tier === 'elite' ? PAL.gold0 : e.tier === 'rare' ? PAL.holy1 : PAL.blood0; ctx.fillRect(px, py, k > 1 ? 2 : 1, k > 1 ? 2 : 1);
   }
+  for (const d of drops) if (d.kind === 'item' && d.item.ri >= 3) icon('elite', d.x, d.y, RARITY[d.item.ri].color);
   if (game.waystone) icon('start', game.waystone.x, game.waystone.y, PAL.holy1);
   if (game.warden && !game.warden.dead) icon('exit', game.warden.x, game.warden.y, Math.floor(game.real * 4) % 2 ? PAL.blood0 : PAL.gold0);
 }
@@ -3623,7 +3841,7 @@ function renderReceipt(survived = false) {
   ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 36, w - 20, 1);
   const m = Math.floor(r.time / 60), s = String(Math.floor(r.time % 60)).padStart(2, '0');
   const row = (a, b, yy) => { line(a, yy, PAL.ink1, 'left'); text(b, x + w - 10, y + yy, PAL.ink1, { outline: null, align: 'right' }); };
-  row('TIME IN THE WOUND', `${m}:${s}`, 44); row('ROOMS CLEARED', `${r.rooms}/${r.total}`, 57); row('DEAD LAID TO REST', String(r.kills), 70); row('GOLD GATHERED', String(r.gold), 83);
+  row('TIME IN THE WOUND', `${m}:${s}`, 44); row(r.vigil ? 'THE VIGIL' : 'THE STATION', r.where, 57); row('DEAD LAID TO REST', String(r.kills), 70); row('GOLD GATHERED', String(r.gold), 83);
   row(survived ? 'GEAR FOUND' : 'TITHED TO THE CHOIR', survived ? String(r.items.length) : `${r.tithe} GOLD, ${r.lostItems} GEAR`, 96);
   const best = [...r.items].sort((a, b) => b.ri - a.ri)[0];
   if (best) text(best.name, W / 2, y + 138, RARITY[best.ri].color, { align: 'center', outline: PAL.ink1, shadow: false });
@@ -4030,6 +4248,7 @@ function onTap(x, y) {
     case 'loading': return true;
     case 'descent': descentTap(x, y); return true;
     case 'site': sfx('tap'); game.state = 'play'; return true;
+    case 'vigil': vigilTap(x, y); return true;
     case 'map': sfx('tap'); game.state = 'play'; return true;
     case 'dialog': {
       const d = game.dialog;
@@ -4060,7 +4279,9 @@ function logError(where, err) {
   while (ERRS.length > 8) ERRS.shift();
   try { localStorage.setItem('hollow-saint-errors', JSON.stringify(ERRS)); } catch { /* private mode */ }
 }
-function safe(where, fn, onFail) { try { fn(); } catch (err) { logError(where, err); if (onFail) try { onFail(); } catch { /* give up quietly */ } } }
+const PROF = {}; // per-system ms, filled only with ?prof
+const PROFON = location.search.includes('prof');
+function safe(where, fn, onFail) { const t0 = PROFON ? performance.now() : 0; try { fn(); if (PROFON) { const k = where.startsWith('enemy') ? 'enemies' : where; PROF[k] = (PROF[k] || 0) * 0.98 + (performance.now() - t0); } } catch (err) { logError(where, err); if (onFail) try { onFail(); } catch { /* give up quietly */ } } }
 function frame(t) {
   requestAnimationFrame(frame);
   const dt = Math.min(1 / 30, (t - last) / 1000 || 0);
@@ -4068,7 +4289,8 @@ function frame(t) {
   if (dt > 0) fpsAvg = fpsAvg * 0.95 + (1 / dt) * 0.05;
   const t0 = performance.now();
   safe('update', () => update(dt));
-  try { render(); } catch (err) {
+  const tr = PROFON ? performance.now() : 0;
+  try { render(); if (PROFON) PROF.render = (PROF.render || 0) * 0.98 + (performance.now() - tr); } catch (err) {
     // Unwind any half-done canvas state and still show the frame.
     logError('render', err);
     for (let i = 0; i < 32; i++) ctx.restore();
@@ -4092,7 +4314,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { game, T, hud: HUD, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, SITES, openSite, townX };
+window.HS = { game, T, hud: HUD, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

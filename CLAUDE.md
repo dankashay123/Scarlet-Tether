@@ -43,11 +43,13 @@ node tools/tests/descent.cjs <outDir> # town minimap, full map, a locked site, d
 node tools/tests/rooms.cjs <outDir> [n] # photographs every room of n floors (layout review)
 SOAK_DEATH=0.04 node tools/tests/soak.cjs <outDir> 300   # 5 min of random play: errors, NaN, stuck states, walls
 node tools/tests/rites.cjs [secs]     # both rites at once in a crowd, plus injected faults: the loop must keep running
+node tools/tests/wardens.cjs <outDir> # summons each of the five Wardens and photographs it mid-fight
+node tools/tests/vigil.cjs <outDir>   # density by Station, the Bleeding Vigil, the Reliquary, Judgement, omens
 node tools/tests/err.cjs              # prints page errors and state
 node tools/sprites.mjs --audit        # lists any animation still drawn by the old hand-drawn code
 ```
 
-Each test writes screenshots to `<outDir>/shots/` and prints `errors 0 []` when clean. `?fps` shows frames per second and the ms our own code takes per frame. Look at the screenshots yourself; the user cares most about how it looks.
+Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test writes screenshots to `<outDir>/shots/` and prints `errors 0 []` when clean. `?fps` shows frames per second and the ms our own code takes per frame. Look at the screenshots yourself; the user cares most about how it looks.
 
 ## Conventions
 
@@ -66,7 +68,7 @@ Each test writes screenshots to `<outDir>/shots/` and prints `errors 0 []` when 
 - **World units:** distances in `index.html` are world pixels at the v5 scale. Any new size or range should already include the ×1.3 scale. MON stats are written at the old scale and multiplied by `WS` in a loop after the table.
 - **Floor tiles:** stay 16 px (`TILE`). Back walls are 3 tiles tall plus a cap: `hall.wall` = [top, cap, upper, lower, mid].
 - **Shipping:** work on a branch, then push to `master`. The owner asked for every finished round to go to master; GitHub Pages deploys from it. End commits with the attribution lines the session asks for.
-- **Names:** never borrow names or terms from other games (the owner removed all Blasphemous and Diablo terms for copyright). Our terms: Zeal (resource), Reckoning (ultimate), Rites (skills), the Fifteen Stations (difficulty, I–XV, in bands Pilgrim/Zealot/Martyr/Saint), the Toll (progress bar), the Warden (the Station boss), Sanctity (gear power from item level), Hallowed (top rarity), Vigil Trials (endless mode), health orbs, Carnage bonus.
+- **Names:** never borrow names or terms from other games (the owner removed all Blasphemous and Diablo terms for copyright). Our terms: Zeal (resource), Reckoning (ultimate), Rites (skills), the Fifteen Stations (difficulty, I–XV, in bands Pilgrim/Zealot/Martyr/Saint), the Toll (progress bar), the Warden (the Station boss; five of them), Sanctity (gear power from item level), the Bleeding Vigil (timed endless trial), knells (Toll orbs), omens (map curses), the Weeping Reliquary (an event), Hallowed (top rarity), Vigil Trials (endless mode), health orbs, Carnage bonus.
 - **Descent maps:** 11–12 rooms grown at random on a 4×4 grid (`GRID`), packed by `populate()`; no gates or waves. Balance numbers live in `DIFF` (Stations), `TOLL_VALUE`, `WARDEN` and `itemSanctity`.
 - **Layouts:** dungeon rooms follow the Otherworld Legends recipe in `docs/ART_COMPARISON.md`: open floors, one mirrored plan per room, a mirrored back-wall rhythm, clutter in corners, nothing floating. Review with `tools/tests/rooms.cjs`.
 - **UI sizes:** the view height varies a little per device (whole-number scaling), so place UI from `W`/`H` and check panels fit at H ≈ 290.

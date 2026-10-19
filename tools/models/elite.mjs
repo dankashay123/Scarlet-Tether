@@ -38,6 +38,7 @@ const MM = {
   wormBelly: { ramp: 'bone', spec: 0.2, bias: -0.08, min: 1 },
   dirt: { ramp: 'shroud', spec: 0, bias: -0.04 },
   boneDark: { ramp: 'bone', bias: -0.14, spec: 0.15, min: 1 },
+  wax: { ramp: 'bone', spec: 0.35, bias: 0.02 }, waxDark: { ramp: 'bone', spec: 0.25, bias: -0.16, min: 2 },
   impSkin: { ramp: 'crimson', spec: 0.25 },
   coin: { ramp: 'gold', spec: 0.8, bias: 0.12 },
 };
@@ -605,8 +606,188 @@ function imp(t = 0) {
   return fin(fr, 13, 29);
 }
 
+// ===================================================== the Wardens ===
+// The five Wardens of the Stations: one comes when the Toll is full. They
+// stand taller than any elite (frames 150x160, feet at 154).
+const WFRAME = { w: 150, h: 160, s: 1.25, gy: 110, ax: 70, ay: 154 };
+const wshoot = (S, cx) => shoot(S, { ...WFRAME, gx: cx });
+
+// The Bellwright: a hunched giant in sackcloth who carries the cathedral's
+// cracked bell on his back and rings it with a great iron hammer.
+function bellwright(t = 0, atk = 0) {
+  const S = new Scene(), cx = 56, B = atk ? 0 : bobAt(t) / 1.25;
+  const lean = atk === 1 ? -4 : atk === 2 ? 6 : 1;
+  legs(S, { x: cx, hipY: 84 + B, footY: 110, z: 8, thigh: 6.4, shin: 5.4, mt: 'sack', ms: 'fleshDark', mf: 'leather', foot: [6, 3, 5], t: atk ? 0.5 : t, stride: atk ? 2 : 5, lift: 2.5, k: 2.6, knee: 2 });
+  // The bell on his back, mouth down, its rim catching the light.
+  const bx = cx - 14 + lean * 0.4, by = 46 + B;
+  S.add(skirt(bx, by - 18, by + 12, 8, 16, -8, 0.9, 'goldDark'), 0);
+  S.add(sphere([bx, by - 19, -8], 8.5, 'goldDark'), 2);
+  S.add(torus([bx, by + 12, -8], 15.5, 2.2, 1.35, 'gold'), 0.6);
+  S.paint({ mat: 'gold', f: (x, y) => Math.abs(y - (by - 4)) - 1.1 });
+  S.sub(capsule([bx - 6, by - 10, 5], [bx + 3, by + 4, 7], 0.8, 0.6, 'void'), 0.5);
+  // Hunched torso and sack robe.
+  S.add(bumpy(ellipsoid([cx + 2 + lean * 0.6, 58 + B, 1], [17, 18, 13], 'sack'), 0.3, 0.3, 4), 3);
+  S.add(folds(skirt(cx + 2, 70 + B, 96, 16, 18, 1, 0.85, 'sack'), { cx: cx + 2, n: 9, amp: 0.7, y0: 72, y1: 96 }), 2);
+  chain(S, [[cx - 12, 40 + B, 10], [cx - 2, 52 + B, 14], [cx + 8, 62 + B, 13], [cx + 16, 72 + B, 9]], 1.4, 'iron');
+  // The hammer arm: raised overhead on the windup, brought down on the strike.
+  const hand = atk === 1 ? [cx + 4, 20, 10] : atk === 2 ? [cx + 30, 82, 12] : [cx + 20 + lean, 72 + B, 12];
+  limb(S, [cx + 10 + lean, 46 + B, 9], atk === 1 ? [cx + 16, 32, 12] : [cx + 22 + lean, 58 + B, 13], hand, 6.4, 5.6, 5, 'fleshDark', 2.5);
+  S.add(sphere(hand, 5.6, 'fleshDark'), 1.5);
+  const dir = atk === 1 ? [-0.4, -1] : atk === 2 ? [1, 0.25] : [0.15, 1];
+  const L = Math.hypot(...dir), ux = dir[0] / L, uy = dir[1] / L, head = [hand[0] + ux * 26, hand[1] + uy * 26, 13];
+  S.add(capsule([hand[0] - ux * 6, hand[1] - uy * 6, 13], head, 1.7, 1.7, 'wood'), 0);
+  S.add(box(head, [7, 5, 5], 1.2, 'ironDark'), 0);
+  S.paint({ mat: 'iron', f: (x, y, z) => Math.max(Math.abs(x - head[0]) - 7.5, Math.abs(y - head[1]) - 5.5, Math.abs(z - head[2]) - 5.5, -(Math.abs(x - head[0]) - 5.6)) });
+  limb(S, [cx - 8, 46 + B, -8], [cx - 14, 62 + B, -9], [cx - 10, 76 + B, -8], 5.6, 4.8, 4.6, 'fleshDark', 2);
+  // Head: a hood stitched shut, the face a cracked bronze bell-mask.
+  const hx = cx + 16 + lean * 1.2, hy = 38 + B + (atk === 2 ? 5 : 0);
+  S.add(bumpy(ellipsoid([hx - 2, hy - 1, 3], [10, 10.5, 9], 'sack'), 0.35, 0.5, 2), 3);
+  S.add(skirt(hx + 3, hy - 6, hy + 7, 4, 7, 6, 0.75, 'goldDark'), 1.2);
+  const o = wshoot(S, cx);
+  for (const ex of [hx + 2, hx + 6]) { o.dot(ex, hy - 1, 'ember0'); o.dot(ex, hy, 'ember2'); }
+  o.line(hx + 1, hy + 4, hx + 7, hy + 4, 'ink2');
+  return o.f;
+}
+
+// Mother Candlemass: a towering matron of melted wax, a crown of lit candles
+// on her head and more on her shoulders, a candelabrum in her hands.
+function candlemass(t = 0, atk = 0) {
+  const S = new Scene(), cx = 60, B = atk ? 0 : bobAt(t) / 1.25;
+  const lean = atk === 1 ? -3 : atk === 2 ? 4 : 0;
+  robeBody(S, { cx, top: 40, waist: 62, hem: 110, rTop: 11, rHem: 21, mat: 'wax', B, n: 12, amp: 1.1, lean, zs: 0.8 });
+  // Drips frozen down the skirt.
+  for (let k = 0; k < 9; k++) { const a = -1.2 + k * 0.32, x = cx + Math.sin(a) * 17, z = Math.cos(a) * 14; S.add(capsule([x, 70 + (k % 3) * 4 + B, z], [x + 0.5, 92 + (k % 4) * 4 + B, z + 1], 1.8, 1.2, 'wax'), 1.2); }
+  S.add(ellipsoid([cx + lean, 42 + B, 0], [14, 5, 9], 'wax'), 2);
+  // Shoulder candles.
+  const flames = [];
+  for (const [dx, h, z] of [[-11, 9, -2], [-6, 12, 4], [8, 10, 3], [12, 7, -3]]) { const b = [cx + dx + lean, 38 + B, z]; S.add(capsule(b, [b[0], b[1] - h, z], 1.9, 1.7, 'waxDark'), 0.6); flames.push([b[0], b[1] - h - 2.5, z]); }
+  // Arms raising the candelabrum.
+  const hand = atk === 1 ? [cx + 6, 26, 9] : atk === 2 ? [cx + 24, 46, 10] : [cx + 14 + lean, 58 + B, 10];
+  limb(S, [cx + 10 + lean, 44 + B, 6], [cx + 14 + lean, 52 + B, 9], hand, 4, 3.6, 3.2, 'wax', 1.6);
+  limb(S, [cx - 10 + lean, 44 + B, 6], [cx - 6 + lean, 54 + B, 10], [hand[0] - 5, hand[1] + 3, hand[2]], 4, 3.6, 3.2, 'wax', 1.6);
+  const top = [hand[0] + (atk === 2 ? 10 : 2), hand[1] - (atk === 2 ? 14 : 22), hand[2] + 1];
+  S.add(capsule([hand[0] - (top[0] - hand[0]) * 0.3, hand[1] + 8, hand[2]], top, 1.3, 1.1, 'gold'), 0);
+  for (const dx of [-7, 0, 7]) { const c = [top[0] + dx, top[1] - (dx ? 2 : 4), top[2]]; S.add(capsule(top, c, 0.9, 0.9, 'gold'), 0.3); S.add(capsule(c, [c[0], c[1] - 5, c[2]], 1.4, 1.3, 'waxDark'), 0.3); flames.push([c[0], c[1] - 7, c[2]]); }
+  // Head: a smooth wax face, eyes melted shut, a crown of candles.
+  const hx = cx + 3 + lean * 1.2, hy = 28 + B;
+  S.add(capsule([cx + lean, 40 + B, 0], [hx, hy + 4, 1], 5, 5.4, 'wax'), 2);
+  S.add(ellipsoid([hx, hy, 1.5], [7, 8, 6.4], 'wax'), 2);
+  S.add(capsule([hx + 3, hy + 2, 6], [hx + 3.4, hy + 9, 6.4], 1, 0.7, 'wax'), 0.8);
+  for (let k = 0; k < 5; k++) { const a = -0.9 + k * 0.45, b = [hx + Math.sin(a) * 6, hy - 6, Math.cos(a) * 5 + 1]; S.add(capsule(b, [b[0], b[1] - 6 - (k % 2) * 3, b[2]], 1.4, 1.3, 'waxDark'), 0.6); flames.push([b[0], b[1] - 8.5 - (k % 2) * 3, b[2]]); }
+  for (const f of flames) S.add(ellipsoid(f, [1.7, 2.8, 1.7], 'ember'), 0);
+  const o = wshoot(S, cx);
+  o.line(hx + 1, hy - 0.5, hx + 3, hy - 0.5, 'bone4'); o.line(hx + 4.5, hy - 0.5, hx + 6, hy - 0.5, 'bone4');
+  o.dot(hx + 4, hy + 4, 'ember1');
+  for (const f of flames) o.dot(f[0], f[1] - 1, 'ember0');
+  return o.f;
+}
+
+// The Hollow Cardinal: crimson robes with no one inside, floating above
+// the floor; a gold mitre over an empty hood, a crozier of gold.
+function cardinal(t = 0, atk = 0) {
+  const S = new Scene(), cx = 60, B = atk ? -2 : Math.round(Math.sin(t * PI / 2)) * 2 / 1.25 - 4;
+  const lean = atk === 1 ? -3 : atk === 2 ? 4 : 0;
+  robeBody(S, { cx, top: 40, waist: 58, hem: 98, rTop: 10, rHem: 17, mat: 'crimson', tip: true, B, n: 10, amp: 0.9, lean, zs: 0.8 });
+  S.add(folds(skirt(cx - 4, 40 + B, 100, 9, 20, -6, 0.6, 'crimsonDark'), { cx: cx - 4, cz: -6, n: 8, amp: 0.8, y0: 44, y1: 100 }), 1.5);
+  // Ermine cape and a gold pectoral cross.
+  S.add(ellipsoid([cx + lean, 44 + B, 0], [14, 6, 10], 'cloth'), 2);
+  for (let k = 0; k < 6; k++) S.paint(sphere([cx - 10 + k * 4 + lean, 47 + B, 8 - Math.abs(k - 2.5)], 0.9, 'ink'));
+  S.paint({ mat: 'gold', f: (x, y, z) => Math.min(Math.max(Math.abs(x - (cx + 2 + lean)) - 1, Math.abs(y - (60 + B)) - 6), Math.max(Math.abs(x - (cx + 2 + lean)) - 4, Math.abs(y - (57 + B)) - 1)) + (z < 4 ? 9 : 0) });
+  // Sleeves; the hands are not there, only gloves.
+  const hand = atk === 1 ? [cx + 10, 30, 9] : atk === 2 ? [cx + 26, 50, 10] : [cx + 16 + lean, 60 + B, 9];
+  limb(S, [cx + 9 + lean, 45 + B, 5], [cx + 15 + lean, 53 + B, 8], hand, 4.6, 4.4, 4.8, 'crimson', 1.6);
+  S.add(sphere(hand, 2.6, 'cloth'), 0.6);
+  limb(S, [cx - 9 + lean, 45 + B, -5], [cx - 13 + lean, 56 + B, -6], [cx - 9 + lean, 64 + B, -4], 4.4, 4.2, 4.6, 'crimsonDark', 1.4);
+  // The crozier.
+  const top = atk === 1 ? [hand[0] - 2, hand[1] - 34, hand[2] + 1] : atk === 2 ? [hand[0] + 22, hand[1] - 22, hand[2] + 1] : [hand[0] + 2, hand[1] - 36, hand[2] + 1];
+  const bot = [hand[0] + (hand[0] - top[0]) * 0.5, hand[1] + (hand[1] - top[1]) * 0.5, hand[2] + 1];
+  S.add(capsule(bot, top, 1.2, 1.2, 'gold'), 0);
+  const crook = []; for (let k = 0; k <= 8; k++) { const a = PI * 0.5 - k * PI / 7; crook.push([top[0] + 3 + Math.cos(a) * 4, top[1] - 4 + Math.sin(a) * -4, top[2]]); }
+  for (let k = 0; k < crook.length - 1; k++) S.add(capsule(crook[k], crook[k + 1], 1.2, 1.2, 'gold'), 0.3);
+  // Hood with nothing in it, mitre above.
+  const hx = cx + 2 + lean * 1.2, hy = 30 + B;
+  S.add(sphere([hx - 1, hy, 0], 8, 'crimson'), 2);
+  const cut = ellipsoid([hx + 4, hy + 1.5, 5.5], [4.2, 5.4, 4], 'void'); S.sub(cut, 0.8);
+  S.add(skirt(hx - 1, hy - 18, hy - 5, 2.5, 7, 0, 0.6, 'cloth'), 1);
+  S.paint({ mat: 'gold', f: (x, y, z) => Math.min(Math.abs(x - (hx - 1)) - 0.9, Math.abs(y - (hy - 6)) - 0.9) + (z < 1 ? 9 : 0) });
+  const o = wshoot(S, cx);
+  for (const ex of [hx + 3, hx + 6]) { o.dot(ex, hy + 0.5, 'holy0'); o.dot(ex, hy + 1.5, 'holy2'); }
+  return o.f;
+}
+
+// The Charnel King: a giant of fused bones under a crown of skulls, with a
+// rotten royal cloak and a sceptre made from a thigh bone.
+function charnelKing(t = 0, atk = 0) {
+  const S = new Scene(), cx = 58, B = atk ? 0 : bobAt(t) / 1.25;
+  const lean = atk === 1 ? -4 : atk === 2 ? 6 : 1;
+  legs(S, { x: cx, hipY: 76 + B, footY: 110, z: 6, thigh: 3.4, shin: 2.8, mt: 'bone', ms: 'bone', mf: 'boneDark', foot: [5, 2.2, 3], t: atk ? 0.5 : t, stride: atk ? 3 : 5.5, lift: 3, k: 0.8, knee: 2.2 });
+  // Cloak behind.
+  S.add(clip(folds(skirt(cx - 3, 36 + B, 104, 10, 22, -7, 0.55, 'hoodRed'), { cx: cx - 3, cz: -7, n: 9, amp: 0.8, y0: 40, y1: 104 }), (x, y, z) => y - (100 + 4 * Math.sin(x * 0.6))), 0);
+  // Pelvis, spine and a cage of ribs.
+  S.add(ellipsoid([cx + lean * 0.3, 76 + B, 0], [8, 4, 6], 'bone'), 1);
+  for (let k = 0; k < 7; k++) S.add(sphere([cx + lean * (0.3 + k * 0.08), 72 - k * 4 + B, -2], 2.2, 'boneDark'), 0.6);
+  for (let k = 0; k < 5; k++) { const y = 46 + k * 4.6 + B, r = 13 - Math.abs(k - 1.5) * 1.4; const ribs = []; for (let i = 0; i <= 8; i++) { const a = -PI * 0.9 + i * PI * 0.225; ribs.push([cx + lean * 0.6 + Math.cos(a) * r, y + Math.sin(a) * 1.5 + i * 0.2, Math.sin(a + PI / 2) * r * 0.75]); } for (let i = 0; i < ribs.length - 1; i++) if (ribs[i][2] > -3) S.add(capsule(ribs[i], ribs[i + 1], 1.3, 1.3, 'bone'), 0.4); }
+  S.add(ellipsoid([cx + lean * 0.6, 42 + B, 0], [15, 4, 9], 'bone'), 1.2);
+  // Arms: the sceptre arm swings it overhead, then down.
+  const hand = atk === 1 ? [cx + 6, 22, 10] : atk === 2 ? [cx + 30, 76, 11] : [cx + 18 + lean, 70 + B, 10];
+  limb(S, [cx + 12 + lean, 43 + B, 6], atk === 1 ? [cx + 16, 30, 10] : [cx + 18 + lean, 56 + B, 9], hand, 2.4, 2.2, 2, 'bone', 0.8);
+  S.add(sphere(hand, 2.6, 'boneDark'), 0.5);
+  const dir = atk === 1 ? [-0.3, -1] : atk === 2 ? [1, 0.4] : [0.2, -1];
+  const L = Math.hypot(...dir), ux = dir[0] / L, uy = dir[1] / L, tip = [hand[0] + ux * 24, hand[1] + uy * 24, 11];
+  S.add(capsule([hand[0] - ux * 4, hand[1] - uy * 4, 11], tip, 1.6, 1.6, 'bone'), 0);
+  S.add(sphere(tip, 3.4, 'bone'), 1); S.add(sphere([tip[0] - uy * 2.6, tip[1] + ux * 2.6, 11], 3, 'bone'), 1);
+  limb(S, [cx - 12 + lean, 43 + B, -6], [cx - 16 + lean, 58 + B, -7], [cx - 12 + lean, 70 + B, -6], 2.4, 2.2, 2, 'boneDark', 0.8);
+  // Skull and crown.
+  const hx = cx + 6 + lean * 1.3, hy = 30 + B + (atk === 2 ? 4 : 0);
+  S.add(sphere([hx, hy, 1], 7.6, 'bone'), 0);
+  S.add(ellipsoid([hx + 3, hy + 6, 2], [5, 3, 5], 'bone'), 2);
+  for (const [ex, ez] of [[2.5, 5], [6, 2.5]]) S.sub(sphere([hx + ex, hy + 0.5, ez + 1], 2.5, 'void'), 0.5);
+  S.sub(ellipsoid([hx + 6, hy + 4, 4], [0.9, 1.4, 2], 'void'), 0.3);
+  S.add(skirt(hx - 0.5, hy - 12, hy - 5, 7.8, 7.4, 1, 1, 'goldDark'), 0.5);
+  for (let k = 0; k < 5; k++) { const a = -1 + k * 0.5; S.add(capsule([hx - 0.5 + Math.sin(a) * 7.6, hy - 11, 1 + Math.cos(a) * 7.6], [hx - 0.5 + Math.sin(a) * 8, hy - 16, 1 + Math.cos(a) * 8], 1.3, 0.4, 'gold'), 0.3); }
+  const o = wshoot(S, cx);
+  for (const ex of [hx + 2.5, hx + 6]) o.dot(ex, hy + 0.5, 'flame0');
+  o.line(hx + 2, hy + 7, hx + 7, hy + 7, 'boneDark' in MM ? 'bone4' : 'bone4');
+  return o.f;
+}
+
+// Our Lady of Nails: a hollow iron statue of a saint, hands folded, robed in
+// riveted plates, a halo of long nails; she glides, she does not walk.
+function ladyOfNails(t = 0, atk = 0) {
+  const S = new Scene(), cx = 60, B = atk ? 0 : Math.round(Math.sin(t * PI / 2)) * 2 / 1.25;
+  const lean = atk === 1 ? -2 : atk === 2 ? 3 : 0, open = atk === 2 ? 4 : atk === 1 ? 1.5 : 0;
+  robeBody(S, { cx, top: 38, waist: 58, hem: 110, rTop: 10, rHem: 19, mat: 'ironDark', B, n: 8, amp: 0.4, lean, zs: 0.8 });
+  // Rust weeping down the plates.
+  for (const [a, y0, len] of [[-0.6, 66, 22], [0.3, 72, 18], [0.9, 64, 26]]) S.paint({ mat: 'blood', f: (x, y, z) => Math.max(Math.abs(Math.atan2(x - cx, z) - a) * 14 - 0.9, y0 + B - y, y - (y0 + len + B), -z) });
+  // Rivets and plate seams.
+  for (let row = 0; row < 5; row++) for (let k = 0; k < 6; k++) { const a = -1.1 + k * 0.45, y = 66 + row * 9 + B, r = 11 + (y - 58) * 0.17; S.paint(sphere([cx + Math.sin(a) * r, y, Math.cos(a) * r * 0.8], 1, 'steel')); }
+  // The front opens on the strike: a dark seam with nails inside.
+  if (open) S.sub(box([cx + 3, 76 + B, 15], [open, 26, 5], 0.6, 'void'), 0.8);
+  // Folded hands; on the windup they part.
+  const hand = atk === 1 ? [cx + 16, 44, 9] : atk === 2 ? [cx + 20, 52, 10] : [cx + 6 + lean, 54 + B, 11];
+  limb(S, [cx + 9 + lean, 42 + B, 5], [cx + 12 + lean, 50 + B, 9], hand, 3.6, 3.2, 2.6, 'steel', 1.2);
+  limb(S, [cx - 9 + lean, 42 + B, 5], [cx - 4 + lean, 51 + B, 10], atk ? [cx - 12, 52, 8] : [hand[0] - 2, hand[1] + 1, hand[2] - 1], 3.6, 3.2, 2.6, 'steel', 1.2);
+  // Veiled head with a calm iron face.
+  const hx = cx + 2 + lean * 1.2, hy = 28 + B;
+  S.add(capsule([cx + lean, 40 + B, 0], [hx, hy + 4, 0], 4.6, 5, 'steel'), 1.6);
+  S.add(folds(skirt(hx - 2, hy - 6, hy + 14, 6, 11, -1, 0.95, 'ironDark'), { cx: hx - 2, cz: -1, n: 7, amp: 0.4, y0: hy - 3, y1: hy + 14 }), 1.2);
+  S.add(ellipsoid([hx + 2.5, hy + 1, 3], [4.4, 5.6, 3.6], 'steel'), 0.6);
+  // The halo of nails, fanned behind the head.
+  for (let k = 0; k < 9; k++) { const a = -PI * 0.95 + k * PI * 0.237; S.add(capsule([hx - 1 + Math.cos(a) * 8, hy - 1 + Math.sin(a) * 8, -4], [hx - 1 + Math.cos(a) * 20, hy - 1 + Math.sin(a) * 20, -4.5], 1.5, 0.5, 'steel'), 0); }
+  S.add(torus([hx - 1, hy - 1, -5], 8.5, 1.6, PI / 2, 'gold'), 0);
+  const o = wshoot(S, cx);
+  // Closed eyes and a tear of rust.
+  o.line(hx + 2, hy, hx + 4, hy, 'iron4'); o.line(hx + 5.5, hy, hx + 7, hy, 'iron4');
+  o.dot(hx + 3, hy + 2, 'blood1'); o.dot(hx + 3, hy + 4, 'blood2');
+  if (open) for (let k = 0; k < 5; k++) o.dot(cx + 3, 64 + k * 6 + B, 'iron1');
+  return o.f;
+}
+const WARDENS = { bellwright, candlemass, cardinal, charnelKing, ladyOfNails };
+
 const set = (fn, walk = HALF, atk = [1, 2]) => ({ walk: () => walk.map((t) => fn(t, 0)), attack: () => atk.map((a) => fn(0, a)), ...reactions(() => fn(0, 0), 0.8) });
 const R = { colossus: set(colossus), titan: set(titan), inquisitor: set(inquisitor), seraph: set(seraph), effigy: set(effigy), abbess: set(abbess), golem: set(golem), thrice: set(thrice), manymouthed: set(manymouthed), leviathan: set(leviathan) };
 const mon_elite = {};
 for (const [id, s] of Object.entries(R)) { mon_elite[`${id}_walk`] = s.walk; mon_elite[`${id}_attack`] = s.attack; mon_elite[`${id}_hit`] = s.hit; mon_elite[`${id}_die`] = s.die; }
-export default { mon_elite, loot: { imp: () => [0, 1, 2, 3].map((t) => imp(t)) } };
+const mon_warden = {};
+for (const [id, fn] of Object.entries(WARDENS)) { const w = set(fn); mon_warden[`${id}_walk`] = w.walk; mon_warden[`${id}_attack`] = w.attack; mon_warden[`${id}_hit`] = w.hit; mon_warden[`${id}_die`] = w.die; }
+export default { mon_elite, mon_warden, loot: { imp: () => [0, 1, 2, 3].map((t) => imp(t)) } };

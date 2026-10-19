@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-19, after round 9. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 10. Read this first, then `CLAUDE.md`.
 
 ## Where the game stands
 
@@ -50,11 +50,44 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   - **The Toll** (the progress bar at the top): every kill rings it
     (commons 1, rares 4, elites 12; `tollValue`). It needs about 68% of the
     map's monsters. When it is full a banner says THE WARDEN COMES and the
-    **Warden** appears near the Saint (`spawnWarden`): a random elite grown
-    1.45×, 2,400 health at Station I, three extra rites from
-    `WARDEN_SKILLS`, phases at 66% and 33% (faster, a burst of shots,
-    adds), its own boss bar, never staggered or executed. Slaying it drops
-    4 pieces, opens the next Station and raises the Waystone home.
+    **Warden** appears near the Saint (`spawnWarden`): one of five, each
+    with its own sculpted model (`mon_warden` sheet, `tools/models/elite.mjs`,
+    150×160 frames), name, lore line and kit (`MON` entries with
+    `warden: true`):
+    - **The Bellwright** (bell on his back, iron hammer): slam, `peal`
+      (three concentric shockwaves), a ring of falling bells, risen.
+    - **Mother Candlemass** (wax matron crowned with candles): burning wax
+      pools, an ember spiral, a ring of fire round the Saint, ember ring.
+    - **The Hollow Cardinal** (empty floating robes, mitre, crozier):
+      `sweep` (three rotating holy beams), blink, violet fans, acolytes.
+    - **The Charnel King** (bone giant, crown, femur sceptre): a line of
+      bone spikes toward the Saint, triple charge, risen, shockwave.
+    - **Our Lady of Nails** (iron saint, halo of nails): `volley` (four
+      fans of nails), chain pull, a cross of spikes, a ring of nails.
+    All have phases at 66% and 33% (faster, a burst of shots, adds), a
+    boss bar, and are never staggered or executed. Slaying one drops 4
+    pieces, opens the next Station and raises the Waystone home.
+  - **Density** climbs with the Station: more and bigger clusters, more
+    rare packs, a third champion hall from Station VIII. About 240
+    monsters at I, 480 at VIII, 760 at XV.
+  - **Knells:** rares and elites drop bell-shards that add 3 to the Toll
+    when gathered (our take on progress orbs).
+  - **Shrine of Judgement:** holy lightning strikes the two nearest foes
+    every 0.35 s for 15 s (joins Zeal, Haste, Warding, Plenty).
+  - **The Weeping Reliquary:** one per map (not in the Vigil). Wake it and
+    the dead pour in for 30 s; lay 30 to rest near it and it opens
+    (3 pieces). Fail and it falls silent.
+  - **Omens:** at the cathedral doors take one or two random omens (more
+    monsters, more health, more damage, more curses, faster monsters);
+    each pays +40% gold, +30% gear and rarer gear (`OMENS`, `applyOmens`).
+- **The Bleeding Vigil** (the town site in the Quiet Acre, open after the
+  Warden of Station IV): our timed endless trial. Pick a Vigil level (up to
+  `SAVE.vigilOpen`), light the candle: 10 minutes to fill the Toll and slay
+  the Warden. Two Vigil levels per Station step, climbing past Station XV,
+  and density grows every level (`vigilDiff`). Monsters drop gold and
+  knells, never gear; the Warden pays 3 + level/5 pieces. Finishing with
+  5 minutes left opens +3 levels, 3 minutes +2, in time +1; a burnt-out
+  candle opens nothing. `SAVE.vigilBest` is the best level kept.
 - **Combat:** a floating auto-aiming crossbow, dash with perfect-dodge
   slow-mo, two rites (holy-water vial, chain), Reckoning (the ultimate,
   charged by Zeal), executions, Carnage bonus.
@@ -70,7 +103,10 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   (10 × 1.36^(il−1)). Your Sanctity is the average over the eight slots
   (an empty slot counts 10); it multiplies your damage, and your health by
   its 0.85 power, matching the monsters' climb. So Station I gear cannot
-  carry you up the ladder. Drop rates were trimmed (commons 1.5%, rares
+  carry you up the ladder. Dropped gear shows a pillar of light by rarity
+  (blessed blue, consecrated gold, hallowed and set tall), drawn in the
+  additive pass over the darkness (`drawLootBeams`); hallowed and set also
+  show a star on the minimap. Drop rates were trimmed (commons 1.5%, rares
   45%, elites 2 pieces) and rarity odds rise with the Station. A 30-slot bag with AUTO EQUIP and
   SELL MANY. On death the Choir takes half your gold and every other piece
   found that run; worn gear is safe. Saved in localStorage (`hollow-saint`).
@@ -110,12 +146,15 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 4. **Build the first locked feature.** Pell's curio stall is the smallest:
    a shop panel with 6 items rerolled per descent, priced by rarity. Then
    the Ember Forge (reroll one stat, temper rarity), then bounties.
-5. **Tune the descent from play.** Toll size (68% of the map), Warden
+5. **More from the D3/TLI playbook (own names).** An account-wide level
+   after the cap that gives small permanent points ("Devotion"); a
+   crafting bench that rerolls one stat (the Ember Forge site); bounties on
+   the board; a Vigil leaderboard; set dungeons; more Wardens per biome.
+6. **Tune the descent from play.** Toll size (68% of the map), Warden
    health and skills, monster counts per room and drop rates are first
    guesses. Watch how long a Station takes at matched Sanctity (aim for
    6–10 minutes) and adjust `populate()`, `TOLL_VALUE` and `WARDEN`.
-   Give each Warden its own art and a signature attack (the Bellwright,
-   who rings a bell that slams the floor in rings).
+   Vigil timer (10 min) and level step (0.5 Station per level) too.
 6. **Vigil Trials (endless mode).** One timed descent that gets harder each
    level; a candle timer on the HUD; leaderboard in localStorage.
 7. **Juice.** Screen-shake tuning, hit-flash on every enemy, bigger damage
@@ -134,6 +173,12 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 10:** five unique Wardens (models, kits, new attack types
+  `peal`, `pattern`, `volley`, `sweep`), loot beams, density by Station,
+  the Bleeding Vigil (timed endless trial), knells, Shrine of Judgement,
+  the Weeping Reliquary, omens. Off-screen elite glows and light holes are
+  culled. `?prof` shows per-system ms in `HS.PROF`. New tests:
+  `tools/tests/wardens.cjs`, `tools/tests/vigil.cjs`.
 - **Round 9:** the descent rebuilt the D3/TLI way: 15 Stations gated by
   Wardens, random packed maps with fog-of-war minimap and full map, the
   Toll and the Warden boss, item levels and Sanctity for loot balance,
