@@ -347,6 +347,34 @@ const LEGEND_ICONS = [
   () => legendIcon('quiver', { leather: 'ink', gold: 'iron', iron: 'blood' }, (S) => { for (let k = 0; k < 3; k++) S.add(torus([9 + k * 3, 14 + k * 1.2, 4], 1.3, 0.6, k % 2 ? 0 : Math.PI / 2, 'iron'), 0); }),
 ];
 
+// Set pieces: every slot in a set's own colours (taken from its Saint skin)
+// with the set's mark in the lower right. Frame = set * 10 + slot, sets in
+// SET_ICONS order, slots in index.html's ICON_OF order.
+const SLOT_ORDER = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic', 'bow', 'quiver'];
+const SET_LOOK = {
+  // Odile's Habit: brown homespun, cream trim, a wooden cross.
+  habit: { map: { crimson: 'shroud', violet: 'shroud', leather: 'shroud', iron: 'leather', gold: 'cream', blood: 'wood', wood: 'wood' },
+    mark: (S) => { S.add(box([18.5, 18.5, 7], [1.2, 4.4, 1], 0.3, 'cream'), 0); S.add(box([18.5, 17, 7], [3.4, 1.2, 1], 0.3, 'cream'), 0); } },
+  // The Hundred Nails: steel, gilt edges, a gold nail driven through.
+  nails: { map: { crimson: 'steel', violet: 'steel', leather: 'slate', blood: 'iron', wood: 'slate', bone: 'steel' },
+    mark: (S) => { S.add(capsule([14.5, 14.5, 7], [22, 22, 7], 1.2, 0.8, 'gold'), 0); S.add(ellipsoid([14.5, 14.5, 7.5], [2.6, 2.6, 1], 'gold'), 0.4); } },
+  // The Penitent's Stride: cream and smouldering umber, a flame.
+  stride: { map: { crimson: 'cream', violet: 'cream', leather: 'smoulder', iron: 'smoulder', blood: 'ember', wood: 'smoulder' },
+    mark: (S) => { S.add(ellipsoid([18.5, 18.5, 7], [3.4, 4.6, 2], 'ember'), 0.6); S.add(ellipsoid([18.5, 20, 9], [1.8, 2.6, 1], 'emberLit'), 0.3); } },
+  // The Drowned Font: deep blue and silver, a drop of holy water.
+  font: { map: { crimson: 'blueRobe', violet: 'blueRobe', leather: 'blueDark', iron: 'silver', gold: 'silver', blood: 'vial', wood: 'blueDark', bone: 'silver' },
+    mark: (S) => { S.add(sphere([18.5, 19.5, 7], 3.2, 'vial'), 0); S.add(capsule([18.5, 18, 7], [18.5, 13.5, 7], 2.2, 0.5, 'vial'), 1.2); } },
+  // The Last Confessor: slate and cream, two links of chain.
+  confessor: { map: { crimson: 'slateRobe', violet: 'slateRobe', leather: 'slateDark', gold: 'cream', blood: 'slateDark', wood: 'slateDark', bone: 'cream' },
+    mark: (S) => { S.add(torus([16, 16.5, 7], 3, 1.1, Math.PI / 2, 'cream'), 0); S.add(torus([20.5, 20.5, 7], 2.8, 1.1, 0.25, 'cream'), 0.2); } },
+  // The Burning Choir: white and crimson, gilt, a lit candle.
+  choir: { map: { crimson: 'cloth', violet: 'cloth', leather: 'crimson', iron: 'gold', blood: 'crimson', wood: 'crimson', bone: 'wax' },
+    mark: (S) => { S.add(capsule([18.5, 22.5, 7], [18.5, 16, 7], 2, 2, 'wax'), 0); },
+    post: (f) => { dot(f, 18, 14, 'ember1'); dot(f, 18, 12, 'ember0'); dot(f, 20, 14, 'ember2'); } },
+};
+const SET_ICONS = Object.keys(SET_LOOK);
+const setIcon = (set, slot) => { const L = SET_LOOK[set]; return legendIcon(slot, L.map, L.mark, L.post); };
+
 // -------------------------------------------------------------- loot bits ---
 function coin(i) {
   const S = new Scene();
@@ -412,6 +440,7 @@ export default {
   loot: {
     item: () => ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic', 'bow', 'quiver'].map((k) => ICONS[k]()),
     legend: () => LEGEND_ICONS.map((f) => f()),
+    setitem: () => SET_ICONS.flatMap((k) => SLOT_ORDER.map((slot) => setIcon(k, slot))),
     coin: () => [0, 1].map(coin),
     gold: () => [0, 1, 2].map(goldPile),
     globe: () => [0, 1].map(globe),

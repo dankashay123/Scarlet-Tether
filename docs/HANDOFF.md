@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-19, after round 22. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 23. Read this first, then `CLAUDE.md`.
 The history of every round is at the bottom; the sections above it describe
 the game as it is now.
 
@@ -36,7 +36,7 @@ Desktop works with keys. 55–60 fps in dense crowds.
   townsfolk and nine sites: Pell's curio stall, the Plush stall, the
   Bounty Board, the Scrying Pool, the Ember Forge, the Ashen Altar, the
   Penitent Cells, Martyrdom, the Canonry, plus the Pilgrim Road (Stratum
-  II). Some still say "coming soon" (Plush stall, Scrying Pool, Martyrdom).
+  II). Some still say "coming soon" (Scrying Pool, Martyrdom).
 - **The descent:** the Descent panel at the cathedral doors picks a Station
   (I–XV, `DIFF`), a stratum (the Undercroft or the Drowned Nave), omens,
   and now also holds **the Bleeding Vigil** (top-right button). Maps are
@@ -93,12 +93,13 @@ Desktop works with keys. 55–60 fps in dense crowds.
 1. **A "best kept" board in Vael.** Show the highest Vigil levels kept and
    the time left, now that the Vigil pays its own rewards.
 2. **Finish the "coming soon" sites.** The Scrying Pool (wager gold on how
-   deep a run gets), Martyrdom (one life, doubled rewards), the Plush stall
-   (cosmetic halos and robe colours bought with gold).
+   deep a run gets) and Martyrdom (one life, doubled rewards).
 3. **A training yard in Vael.** A dummy and a monster summoner so players
    can learn the round 16 attacks (snipe, blight, Sentence) safely.
-4. **Altar sound.** Its own crackle for the flame and a chime for a learned
-   power (today it borrows the shrine and break sounds).
+4. **Music.** The town and dungeon tracks are the oldest audio left. Find a
+   CC0 organ or choir piece for Vael and a darker loop per stratum, and a
+   short sting for the Warden (OpenGameArt works from here; Freesound does
+   not).
 5. **Rite depth.** Let rites gain ranks with use, and give each set a
    rite-specific 6-piece twist, so the Rites panel becomes a build screen.
 6. **Stratum III.** A third look (the Ossuary Spire or a burnt chapter
@@ -115,6 +116,25 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## History by round
 
+- **Round 23 (new sounds, set icons, Hallowed shimmer, the Plush stall):**
+  every effect was rebuilt from CC0 recordings (`tools/build-sfx.py`, sources
+  in `docs/CREDITS.md`): a real crossbow, layered wet hits and bone cracks,
+  bells and gongs through a stone-hall reverb, a Warden roar. New sounds:
+  `dash` (was synthesised), `eshot` (every monster shot), `knell`, `drip`,
+  `roar`, `levelup`, `legend` (a Hallowed drop), `buy`, and the altar's
+  `burn`, `learn`, `ash` and `grind` (the outcome sounds when the animation
+  reveals it). `amb_fire` crackles near the altar and the forge
+  (`AUDIO.level`). Each effect is levelled to the loudness of the one it
+  replaced, so `VOL` stayed fair. Set pieces and set arms have their own
+  icons (loot `setitem`, `SET_ICONS`): the set's colours and its mark.
+  Hallowed slots in the bag get a light sweep and a twinkle (`hallowSweep`,
+  `twinkles`), and Hallowed drops twinkle on the ground. The Plush stall
+  opens after 5 falls: 9 robe dyes and 7 halos (`DYES`, `HALOS`,
+  `SAVE.looks`), tried on in a large preview and bought with gold.
+  `lookSheet` recolours the Saint's sheet once per look (crimson ramp for
+  the robe, gold in the top rows of each frame for the halo; crowned set
+  skins keep their crowns) and `drawPortrait` does the HUD portrait.
+  `tools/tests/round23.cjs` covers it all.
 - **Round 22 (an icon for every Hallowed piece):** `LEGEND_ICONS` in
   `tools/models/vfx.mjs` builds 30 icons into loot `legend`, in `LEGENDS`
   order. Each reuses its slot's sculpt (`BODY`) with materials swapped
@@ -401,4 +421,4 @@ These hosts are allowed now. Notes: Steam's `api/appdetails` and the App Store p
 - Errors never stop the loop; they are logged instead. If the owner reports a bug, ask what the pause screen says under BUG LOGGED, or read `localStorage['hollow-saint-errors']`.
 - `text()` caches each string as a small canvas (cleared at 600 entries). Use `small: true` for the old thin 5x7 font.
 - Audio starts on the first tap (iOS rule). Music streams through `<audio>` elements, effects are decoded buffers. `AUDIO.set([...])` picks the loops; `sfx(name)` plays an effect.
-- Rebuild audio with `tools/build-audio.sh <src>` after downloading the packs; the sources are not committed.
+- Rebuild sound effects with `python3 tools/build-sfx.py <src> [names]` (needs numpy) and music loops with `tools/build-audio.sh <src>`, after downloading the packs in `docs/CREDITS.md`; the sources are not committed. Each recipe in `build-sfx.py` lists its layers; `lu=` is the loudness it is levelled to.
