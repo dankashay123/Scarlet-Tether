@@ -2143,14 +2143,14 @@ addEventListener('pagehide', () => { try { snapRun(); } catch { /* best effort *
 // one learned power in each socket: vestments (hood, mantle, gloves,
 // girdle, greaves), arms (crossbow, quiver) and relics (pendant, seal,
 // charm). Socketed powers work as if worn. Burning costs gold and fails
-// ALTAR_FAIL of the time (the piece is lost); a Chrism, a very rare drop,
+// only ALTAR_WIN of the time (otherwise the piece is lost); a Chrism, a very rare drop,
 // raises the odds.
 const ALTAR_SOCKETS = [['vest', 'VESTMENT', ['hood', 'mantle', 'gloves', 'girdle', 'greaves']], ['arms', 'ARMS', ['bow', 'quiver']], ['relic', 'RELIC', ['rosary', 'seal', 'relic']]];
-const ALTAR_FAIL = 0.3;
+const ALTAR_WIN = 0.3;
 const CHRISM = [{ name: 'COMMON CHRISM', add: 0.1 }, { name: 'BLESSED CHRISM', add: 0.2 }, { name: 'CONSECRATED CHRISM', add: 0.3 }, { name: 'HALLOWED CHRISM', add: 0.7 }];
 const chrisms = () => { SAVE.chrism = SAVE.chrism || [0, 0, 0, 0]; return SAVE.chrism; };
 const burnCost = (it) => Math.round(250 * (1 + ((it.il || 1) - 1) * 0.6) / 10) * 10;
-const burnChance = (ci) => Math.min(1, 1 - ALTAR_FAIL + (ci >= 0 ? CHRISM[ci].add : 0));
+const burnChance = (ci) => Math.min(1, ALTAR_WIN + (ci >= 0 ? CHRISM[ci].add : 0));
 // A Chrism drop: very rare, better kinds rarer still.
 function maybeChrism(x, y, chance) {
   if (rng() >= chance) return;
@@ -2213,7 +2213,7 @@ function renderAltarDetail(L, Gm, A, C, small) {
   if (!it) {
     text('TAP A PIECE TO READ ITS POWER', D.x + D.w / 2, D.y + 12, PAL.stone1, { ...small, align: 'center' });
     text(`CHRISM HELD: ${C.map((n, i) => `${n}`).join(' / ')}`, D.x + D.w / 2, D.y + 30, PAL.stone2, { ...small, align: 'center' });
-    wrapW(`THE FLAME REFUSES ${Math.round(ALTAR_FAIL * 100)}% OF OFFERINGS AND THE PIECE IS LOST. A CHRISM RAISES THE ODDS.`, D.w - 16, true).slice(0, 3).forEach((l, i) => text(l, D.x + 8, D.y + 52 + i * 10, PAL.stone2, small));
+    wrapW(`THE FLAME TAKES ONLY ${Math.round(ALTAR_WIN * 100)}% OF OFFERINGS. THE REST BURN TO ASH. A CHRISM RAISES THE ODDS.`, D.w - 16, true).slice(0, 3).forEach((l, i) => text(l, D.x + 8, D.y + 52 + i * 10, PAL.stone2, small));
     return;
   }
   const known = A.known.includes(it.power), P = POWERS[it.power], ci = C[game.altarChrism] > 0 ? game.altarChrism : -1, ch = burnChance(ci), cost = burnCost(it);

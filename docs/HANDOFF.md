@@ -66,7 +66,7 @@ Desktop works with keys. 55–60 fps in dense crowds.
   set Arms; Odile's Habit is the starter set. Sets drop from Station VI.
 - **Account systems:** Devotion and Virtues (Canonry), the Ember Forge
   (reforge, temper), the Ashen Altar (burn a Hallowed piece to learn its
-  power for good: gold price, 30% failure, Chrism raises the odds; three
+  power for good: gold price, 30% success, Chrism raises the odds; three
   sockets), the Censer's 12 deed upgrades (tap the censer on the bag's
   paper doll), the Bounty Board, Penitent Cells, Odile's Gift, suspend and
   resume.
@@ -127,12 +127,14 @@ Desktop works with keys. 55–60 fps in dense crowds.
   numbers. Held upright, the game no longer asks you to turn the phone:
   the canvas turns a quarter (`PORTRAIT`, `toLocal`). Test:
   `tools/tests/round18.cjs`.
+  The altar's odds were turned round: a burn now succeeds only 30% of the
+  time (`ALTAR_WIN`), so Chrism takes it to 40/50/60/100%.
 - **Round 17 (rarer Hallowed, altar odds, run levels):** Hallowed weight
   3.5 to 1.4, and drop boosts lift Hallowed and set pieces only a little
   (about 1.5% of plain drops, 2.5% of elite and Warden drops; was about
   12%). Elites drop at boost 1.5, rares 20% of the time. The Ashen Altar
-  now shows a price per piece (`burnCost`, by item level), fails 30% of the
-  time (`ALTAR_FAIL`; the piece is lost) and takes a Chrism, a very rare
+  now shows a price per piece (`burnCost`, by item level), succeeds only 30% of
+  the time (`ALTAR_WIN`; otherwise the piece is lost) and takes a Chrism, a very rare
   drop (`maybeChrism`: commons 0.04%, rares 1%, elites 5%, imps 15%,
   reliquaries 25%, Wardens 40%) in four kinds that add 10/20/30/70% to the
   odds (`CHRISM`, `SAVE.chrism`). Tap a piece to read its power in the

@@ -1,6 +1,6 @@
 // Playwright check. Serve the repo on :8123 first (python3 -m http.server 8123).
 // Usage: node tools/tests/altar.cjs <outDir>
-// Round 17: the Ashen Altar's price, 30% failure and Chrism; Chrism drops;
+// The Ashen Altar: price, 30% success (round 18) and Chrism; Chrism drops;
 // Hallowed drop rates; run levels capped at 15 and paced to the map.
 const { chromium, devices } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const S = process.argv[2];
