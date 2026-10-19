@@ -61,7 +61,7 @@ Desktop works with keys. 55–60 fps in dense crowds.
   rite Wounds only appear for chosen rites.
 - **Gear:** 10 slots (8 vestments, crossbow, quiver), 5 rarities, item
   level = Station (Sanctity). Hallowed pieces (30 in `LEGENDS`) are rare
-  (about 1.5–2.5% of drops), each with its own icon (loot `legend`). Five 6-piece vestment sets with 2/4/6
+  (about 1–1.8% of drops; round 27 lowered all drops, `DROP`), each with its own icon (loot `legend`). Five 6-piece vestment sets with 2/4/6
   bonuses, each with its own Saint skin, crossbow and bolts, plus 2-piece
   set Arms; Odile's Habit is the starter set. Sets drop from Station VI.
 - **Account systems:** Devotion and Virtues (Canonry), the Ember Forge
@@ -111,6 +111,20 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## History by round
 
+- **Round 27 (passives, the Reliquary horde, brighter rites, bag colours,
+  fewer drops, set balance):** passive skills (`PASSIVES`, 16 in offence,
+  defence and utility; three slots opened at Devotion 0, 5 and 15,
+  `PASSIVE_AT`; `pas(id)`; the PASSIVES tab of the Rites panel). Damage
+  passives go through `passK`, defences through `setGuard`. The Weeping
+  Reliquary (`RELIC`): 100 kills in 90 s, waves of 20-30. Every cast flares
+  in its set's colour (`riteFlare`); the Ward shows a shield, a Reckoning an
+  aura, pools sparkle, pillars and lashes are larger. Bag cells fill with
+  the rarity's `cell` colour and a 2 px rim; set pieces wear a star
+  (`setStar`, drawn by `itemIcon`). Drops: `DROP` (kill 0.3%, rare 10%,
+  elite 0.5), Wardens drop 2, Hallowed and set weights 1.0 and 0.4. Set
+  balance: `tools/tests/setbal.cjs` (each set whole with its arms and rites,
+  4+2 mixes, no set; kills and damage taken a second); tuned numbers live in
+  `SETK`. The altar text under the bag's paper doll is gone.
 - **Round 26 (a rite per set, ranks, twists, aimed Reckonings, death
   recap):** six new rites so every slot has one per set (`RITES`): Rite I
   Iron Brand (Confessor, aimed spot, binds) and Hymn of Cinders (Choir,

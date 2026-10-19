@@ -59,6 +59,8 @@ node tools/tests/round22.cjs <outDir> [WxH] # one of each Hallowed piece: their 
 node tools/tests/round23.cjs <outDir> [WxH] # the Plush stall (buy, wear, recoloured Saint), set icons, Hallowed twinkles, every sound decoded
 node tools/tests/round24.cjs <outDir> [WxH] # music per place, the choir by the cathedral, Warden voices, bolt and dash trails, an earned halo
 node tools/tests/round25.cjs <outDir> [WxH] # Warden music, voice settings, the Scrying Pool, Martyrdom's vow, the Vigil Roll
+node tools/tests/round27.cjs <outDir> [WxH] # the Reliquary horde, passives, cast effects, bag colours and set stars
+node tools/tests/setbal.cjs [secs] [station] [seeds] # set balance: kills and damage taken a second per set and 4+2 mix (seeded)
 node tools/tests/round26.cjs <outDir> [WxH] # six new rites, ranks, twists, aimed Judgement and Font, the death recap
 node tools/tests/aim.cjs <outDir> [WxH]   # drag to aim each rite, cancel, plain tap
 node tools/tests/menus.cjs <outDir> [WxH] # every menu window at one phone size (run at 932x430, 844x390, 667x375)
@@ -115,6 +117,8 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **The Vigil:** opened from the Descent panel; each run spends a Bloodrose Key (`SAVE.vkeys`, `dropVkey`). Its extra rewards live in `VIGIL_PAY` and `vigilPayout`.
 - **Wagers and the vow:** `WAGER_MARKS`, `wagerOdds`, `settleWager` (the Scrying Pool; `run.reach`); `SAVE.vow` and `run.martyr` (Martyrdom).
 - **Rites:** every slot has one rite per set (6 each). A new rite needs an icon (`GLYPH` in `props.mjs`), a `RITE_MORE` line, a `TWIST` line, a rite Wound, and a `bumpRite` call path. Ranks: `RANK_AT`. Delayed second strikes: `later(sec, fn)`.
+- **Passives:** `PASSIVES` (offence, defence, utility), read with `pas(id)`; damage ones in `passK`, defences in `setGuard`. Slots open at `PASSIVE_AT` Devotion.
+- **Set balance:** set bonus strengths are in `SETK`; check `setbal.cjs` after changing any set.
 - **Death recap:** pass `how` to `damagePlayer`/`hurtPlayerRaw` for any new attack, and give it a `HURT_HOW` name and `HURT_TIP`.
 - **Aiming rites:** `AIMABLE` lists rites that take a drag (and their preview shape in `renderAim`); a new aimable rite takes `aim` (`{a, f}`) in its cast function.
 - **The altar:** odds are `burnChance` (`ALTAR_WIN` + Chrism + `ALTAR_PITY` per past failure); `grindAtAltar` mills three pieces into a Chrism.
