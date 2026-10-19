@@ -299,7 +299,7 @@ function pointerDown(id, cx, cy) {
   if (['play', 'title', 'pause'].includes(game.state) && hitBtn(HUD.mute, x, y)) { AUDIO.unlock(); AUDIO.setMuted(!AUDIO.muted); sfx('tap'); return; }
   if (onTap(x, y)) return;
   if (game.state !== 'play') return;
-  if (game.scene === 'town' && HUD.minimap && inRect(HUD.minimap, x, y)) { sfx('tap'); game.state = 'map'; return; }
+  if (HUD.minimap && inRect(HUD.minimap, x, y)) { sfx('tap'); game.state = 'map'; return; }
   if (hitBtn(HUD.pause, x, y)) { sfx('tap'); game.state = 'pause'; return; }
   if (hitBtn(HUD.bag, x, y)) { openInventory(); return; }
   if (tutTap(x, y)) return;
@@ -344,7 +344,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyI' || e.code === 'KeyB') { if (game.state === 'play') openInventory(); else if (game.state === 'inv') closeInventory(); }
   if (e.code === 'Escape' && game.state === 'inv') { closeInventory(); return; }
   if (e.code === 'Escape' && ['descent', 'site', 'map'].includes(game.state)) { game.state = 'play'; return; }
-  if (e.code === 'KeyM' && game.scene === 'town') { if (game.state === 'play') game.state = 'map'; else if (game.state === 'map') game.state = 'play'; }
+  if (e.code === 'KeyM' && (game.scene === 'town' || game.scene === 'wound')) { if (game.state === 'play') game.state = 'map'; else if (game.state === 'map') game.state = 'play'; }
   if (game.state === 'descent' && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) { const D = game.descent; D.i = (D.i + (e.code === 'ArrowLeft' ? DIFF.length - 1 : 1)) % DIFF.length; }
   if (e.code === 'Enter' || (e.code === 'Space' && game.state !== 'play')) onTap(-1, -1);
 });
@@ -379,9 +379,10 @@ const pick = (a) => a[Math.floor(rng() * a.length)];
 // Rooms are near-square like Otherworld Legends: under a screen wide and a
 // little over a screen tall. Nine of them keep the baked floor canvas small
 // (about 2.7k x 2.1k px).
-const GRID = { cols: 3, rows: 3, cw: 46, ch: 36, hall: 5 };
+// A descent map: 11-12 rooms grown as a random blob on a 4x4 grid of cells.
+const GRID = { cols: 4, rows: 4, cw: 46, ch: 36, hall: 5, rooms: [11, 12] };
 const ROOM_AREA0 = 476; // average room area before v6; content scales from it
-const ROOM_NAMES = { start: 'THE VESTIBULE', combat: 'CRYPT', elite: "CHAMPION'S HALL", shrine: 'SHRINE', treasury: 'TREASURY', exit: "THE WARDEN'S CHAMBER" };
+const ROOM_NAMES = { start: 'THE VESTIBULE', combat: 'CRYPT', elite: "CHAMPION'S HALL", shrine: 'SHRINE', treasury: 'TREASURY' };
 const THEMES = ['crypt', 'ossuary', 'flooded', 'chapel'];
 
 function makeDungeon() {
@@ -391,19 +392,30 @@ function makeDungeon() {
   for (let y = 0; y < h; y++) { solid.push([]); for (let x = 0; x < w; x++) solid[y].push(true); }
   const isSolid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || solid[y][x];
   const carve = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (x > 0 && y > 3 && x < w - 1 && y < h - 1) solid[y][x] = false; };
-  // Rooms, one per cell, with small jitter so neighbours always overlap.
-  const rooms = [];
+  // Pick the cells: grow a connected blob from a random cell.
+  const cells = new Set(), key = (gx, gy) => gy * cols + gx, grow = [];
+  const first = [Math.floor(rng() * cols), Math.floor(rng() * rows)]; cells.add(key(...first));
+  const want = GRID.rooms[0] + Math.floor(rng() * (GRID.rooms[1] - GRID.rooms[0] + 1));
+  while (cells.size < want) {
+    const k = pick([...cells]), gx = k % cols, gy = Math.floor(k / cols);
+    const [dx, dy] = pick([[1, 0], [-1, 0], [0, 1], [0, -1]]), nx = gx + dx, ny = gy + dy;
+    if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || cells.has(key(nx, ny))) continue;
+    cells.add(key(nx, ny)); grow.push([key(gx, gy), key(nx, ny)]);
+  }
+  // Rooms, one per chosen cell, with small jitter so neighbours always overlap.
+  const rooms = [], byCell = new Map();
   for (let gy = 0; gy < rows; gy++) for (let gx = 0; gx < cols; gx++) {
+    if (!cells.has(key(gx, gy))) continue;
     const rw = Math.floor(rand(32, 41)), rh = Math.floor(rand(22, 29));
     const x0 = 1 + gx * cw + Math.floor((cw - rw) / 2) + Math.floor(rand(-1, 2)), y0 = 5 + gy * ch + Math.floor((ch - 4 - rh) / 2) + Math.floor(rand(-1, 1));
-    rooms.push({ id: rooms.length, gx, gy, x0, y0, x1: x0 + rw - 1, y1: y0 + rh - 1, ak: rw * rh / ROOM_AREA0, links: [], gates: [], state: 'idle', visited: false, known: false });
+    const r = { id: rooms.length, gx, gy, x0, y0, x1: x0 + rw - 1, y1: y0 + rh - 1, ak: rw * rh / ROOM_AREA0, links: [], gates: [], state: 'idle', visited: false, known: false };
+    rooms.push(r); byCell.set(key(gx, gy), r);
   }
-  const at = (gx, gy) => (gx >= 0 && gy >= 0 && gx < cols && gy < rows ? rooms[gy * cols + gx] : null);
-  // A random spanning tree over the grid, plus two loops.
-  const seen = new Set([0]), edges = [];
-  const frontier = () => rooms.flatMap((r) => seen.has(r.id) ? [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [r, at(r.gx + dx, r.gy + dy)]).filter(([, b]) => b && !seen.has(b.id)) : []);
-  for (let f = frontier(); f.length; f = frontier()) { const [a, b] = pick(f); seen.add(b.id); edges.push([a, b]); }
-  for (let n = 0; n < 2; n++) { const a = pick(rooms), right = rng() < 0.5, b = at(a.gx + (right ? 1 : 0), a.gy + (right ? 0 : 1)); if (b && b !== a && !edges.some(([p, q]) => (p === a && q === b) || (p === b && q === a))) edges.push([a, b]); }
+  const at = (gx, gy) => (gx >= 0 && gy >= 0 && gx < cols && gy < rows && byCell.get(key(gx, gy))) || null;
+  // The growth tree, plus up to three loops between neighbouring rooms.
+  const edges = grow.map(([a, b]) => [byCell.get(a), byCell.get(b)]);
+  const linked = (a, b) => edges.some(([p, q]) => (p === a && q === b) || (p === b && q === a));
+  for (let n = 0, tries = 0; n < 3 && tries < 40; tries++) { const a = pick(rooms), right = rng() < 0.5, b = at(a.gx + (right ? 1 : 0), a.gy + (right ? 0 : 1)); if (b && b !== a && !linked(a, b)) { edges.push([a, b]); n++; } }
   for (const r of rooms) carve(r.x0, r.y0, r.x1, r.y1);
   for (const [a, b] of edges) {
     a.links.push(b.id); b.links.push(a.id);
@@ -421,23 +433,27 @@ function makeDungeon() {
       D.gates.push({ tiles: n.map((k) => [x + k, D.y0 - 1]), side: 'n', to: U.id });
     }
   }
-  // Room roles: start on an edge, exit farthest away, then elite, shrine, treasury.
-  const start = pick(rooms.filter((r) => r.gx === 0 || r.gx === cols - 1));
+  // Room roles: start in a dead end where there is one, then two elite
+  // halls deep in, a shrine and one or two treasuries.
+  const start = pick(rooms.filter((r) => r.links.length === 1).length ? rooms.filter((r) => r.links.length === 1) : rooms);
   const dist = new Map([[start.id, 0]]), q = [start];
   while (q.length) { const r = q.shift(); for (const id of r.links) if (!dist.has(id)) { dist.set(id, dist.get(r.id) + 1); q.push(rooms[id]); } }
   for (const r of rooms) { r.depth = dist.get(r.id); r.type = 'combat'; r.theme = pick(THEMES); }
   const byDepth = [...rooms].sort((a, b) => b.depth - a.depth);
   start.type = 'start'; start.theme = 'chapel';
-  byDepth[0].type = 'exit'; byDepth[0].theme = 'crypt';
+  void byDepth;
   const pool = rooms.filter((r) => r.type === 'combat' && r.depth >= 2).sort(() => rng() - 0.5);
-  if (pool[0]) pool[0].type = 'elite';
+  for (const r of pool.slice(0, 2)) r.type = 'elite';
   const easy = rooms.filter((r) => r.type === 'combat').sort(() => rng() - 0.5);
   if (easy[0]) easy[0].type = 'shrine';
   const leaf = rooms.filter((r) => r.type === 'combat' && r.links.length === 1);
   (leaf[0] || easy[1] || {}).type = 'treasury';
+  if (rng() < 0.5) (leaf[1] || easy[2] || {}).type = 'treasury';
   start.visited = start.known = true; start.state = 'clear';
   for (const id of start.links) rooms[id].known = true;
 
+  // Walls only (before props), for the fog-of-war map.
+  const baseSolid = Uint8Array.from(solid.flat(), (v) => v ? 1 : 0);
   const props = [], lights = [], decals = [], critters = [];
   const gateSet = new Set(rooms.flatMap((r) => r.gates.flatMap((g) => g.tiles.map(([x, y]) => `${x},${y}`))));
   const nearGate = (r, x, y, m = 3) => r.gates.some((g) => g.tiles.some(([gx, gy]) => Math.abs(gx - x) <= m && Math.abs(gy - y) <= m));
@@ -623,7 +639,8 @@ function makeDungeon() {
   chunkCanvas(roomCanvas);
   stain = roomCanvas; sctxStain = rc;
   for (const l of lights) l.r *= WS;
-  room = { kind: 'wound', name: 'THE UNDERCROFT', w, h, solid, isSolid, props, lights, decals: decals.filter((d) => d.kind === 'candles'), npcs: [], interact: [], pw: w * TILE, ph: h * TILE, top: 4, ambient: T.ambient, rooms, start, critters, water: waterSet, walls: [] };
+  room = { kind: 'wound', name: 'THE UNDERCROFT', w, h, solid, isSolid, props, lights, decals: decals.filter((d) => d.kind === 'candles'), npcs: [], interact: [], pw: w * TILE, ph: h * TILE, top: 4, ambient: T.ambient, rooms, start, critters, water: waterSet, walls: [], baseSolid, seen: new Uint8Array(w * h) };
+  room.fog = document.createElement('canvas'); room.fog.width = w; room.fog.height = h; room.fogCtx = room.fog.getContext('2d');
   room.cx = start.cx; room.cy = start.cy;
 }
 
@@ -711,20 +728,6 @@ function setGates(r, locked) {
 const COMMON_POOL = [['risen', 0], ['crawler', 0], ['rat', 0], ['acolyte', 0], ['mourner', 1], ['gravewarden', 1], ['votary', 2], ['flagellant', 2], ['cherub', 2], ['wisp', 3]];
 const RARE_POOL = ['knight', 'collector', 'motherwax', 'bishop', 'jailer', 'bellringer', 'matron', 'choirboy', 'gravedigger', 'lantern'];
 const ELITE_POOL = ['colossus', 'seraph', 'golem', 'thrice', 'abbess', 'titan', 'manymouthed', 'leviathan', 'inquisitor', 'effigy'];
-function planWaves(r) {
-  const d = Math.max(1, r.depth), commons = COMMON_POOL.filter(([, min]) => min <= d).map(([id]) => id);
-  const mix = () => [pick(commons), pick(commons)];
-  const tutorial = tut.on && tut.step <= 8;
-  if (tutorial) return [{ commons: [['risen', 6]] }, { commons: [['risen', 5], ['crawler', 3]] }];
-  const wave = (n, rare = 0, elite = 0) => { const [a, b] = mix(); return { commons: [[a, Math.ceil(n * 0.6)], [b, Math.floor(n * 0.4)]], rare, elite }; };
-  const n = Math.round((8 + d * 2) * Math.max(1, r.ak || 1) ** 0.55);
-  if (r.type === 'elite') return [wave(n), wave(Math.floor(n / 2), 0, 2 + (d >= 4 ? 1 : 0))];
-  if (r.type === 'exit') return [wave(n, 1 + (d >= 4 ? 1 : 0)), wave(Math.floor(n / 2), 0, 3), wave(n + 4)];
-  const waves = [wave(n)];
-  waves.push(wave(n, rng() < 0.45 + d * 0.1 ? 1 + (d >= 4 ? 1 : 0) : 0));
-  if (d >= 3) waves.push(wave(n + 2, rng() < 0.4 ? 1 : 0));
-  return waves;
-}
 function spawnPoint(r, minD = 70) {
   // A tile with free tiles all around it, away from the player.
   const clear = (tx, ty) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (room.isSolid(tx + dx, ty + dy)) return false; return true; };
@@ -738,59 +741,129 @@ function spawnPoint(r, minD = 70) {
   for (let ty = r.y0 + 1; ty < r.y1; ty++) for (let tx = r.x0 + 1; tx < r.x1; tx++) if (clear(tx, ty)) return [tx * TILE + 8, ty * TILE + 8];
   return [r.cx * TILE + 8, r.cy * TILE + 8];
 }
-function startWave(r) {
-  const wv = r.waves[r.wave];
-  for (const [id, n] of wv.commons) {
-    const per = MON[id].group || 1;
-    for (let k = 0; k < Math.max(1, Math.round(n / per)); k++) { const [x, y] = spawnPoint(r); for (let g = 0; g < per; g++) spawnMonster(id, x + rand(-8, 8), y + rand(-6, 6), { room: r.id }); }
+// ------------------------------------------------- populating the map ---
+// Every room but the Vestibule starts full: clusters of commons, a chance of
+// a blue rare pack, gold elites in the two champion's halls. Monsters sleep
+// until the Saint comes near (or they are hurt), so a packed map stays cheap.
+const TOLL_VALUE = { common: 1, rare: 4, elite: 12 };
+const tollValue = (e) => e.illusion || e.type === 'imp' || e.boss ? 0 : e.minion ? 1 : TOLL_VALUE[e.tier] || 1;
+function populate() {
+  const df = curDiff(), tutorial = tut.on && tut.step <= 8;
+  const before = enemies.length;
+  for (const r of room.rooms) {
+    if (r.type === 'start') continue;
+    const d = Math.min(3, Math.max(0, r.depth - 1) + Math.floor(df.n / 3));
+    const commons = tutorial ? ['risen', 'crawler'] : COMMON_POOL.filter(([, min]) => min <= d).map(([id]) => id);
+    const clusters = tutorial ? 2 : Math.round(2 + r.ak * 1.6) - (r.type === 'shrine' || r.type === 'treasury' ? 2 : 0);
+    for (let k = 0; k < clusters; k++) {
+      const id = pick(commons), per = MON[id].group || 1, n = Math.max(1, Math.round((3 + rng() * 3 + df.n * 0.15) / per));
+      const [x, y] = spawnPoint(r, 120);
+      for (let i = 0; i < n; i++) for (let g = 0; g < per; g++) spawnMonster(id, x + rand(-18, 18), y + rand(-12, 12), { room: r.id });
+    }
+    if (tutorial) continue;
+    if (r.type === 'combat' && rng() < 0.35 + df.n * 0.02) { const [x, y] = spawnPoint(r, 120); spawnPack(pick(RARE_POOL), 'rare', x, y, 1 + df.aff + (rng() < 0.4 ? 1 : 0), r.id); }
+    if (r.type === 'elite') { const [x, y] = spawnPoint(r, 120); spawnPack(pick(ELITE_POOL), 'elite', x, y, 2 + df.aff + (rng() < 0.4 ? 1 : 0), r.id); }
   }
-  if (wv.rare) { const id = pick(RARE_POOL); const [x, y] = spawnPoint(r, 90); spawnPack(id, 'rare', x, y, wv.rare + curDiff().aff, r.id); }
-  if (wv.elite) { const id = pick(ELITE_POOL); const [x, y] = spawnPoint(r, 100); spawnPack(id, 'elite', x, y, wv.elite + curDiff().aff, r.id); }
-  r.waveSize = enemies.filter((e) => e.room === r.id && !e.illusion).length;
-  if (r.wave > 0) toast(`WAVE ${r.wave + 1} OF ${r.waves.length}`, 1.4);
+  let total = 0;
+  for (const e of enemies.slice(before)) { e.asleep = true; e.state = 'move'; e.spawnDelay = 0; total += tollValue(e); }
+  game.toll = { v: 0, max: Math.max(10, Math.round(total * 0.68)), done: false, total };
 }
+// Wake a sleeper and its pack.
+function wake(e) {
+  e.asleep = false;
+  if (e.pack) for (const m of e.pack.members) m.asleep = false;
+}
+function addToll(e) {
+  const T0 = game.toll; if (!T0 || T0.done) return;
+  T0.v = Math.min(T0.max, T0.v + tollValue(e));
+  if (T0.v >= T0.max) { T0.done = true; spawnWarden(); }
+}
+
+// ------------------------------------------------------------ the Warden ---
+// When the Toll is full, the Warden of the Station comes for the Saint: an
+// elite of the Undercroft grown huge, with extra rites of its own and three
+// phases. Slaying it opens the Waystone home and the next Station.
+const WARDEN = { hp: 2400, items: 4, scale: 1.45 };
+// Built on first use: A() and the monster table come later in the file.
+let WARDEN_SKILLS = null;
+const wardenSkills = () => WARDEN_SKILLS || (WARDEN_SKILLS = [
+  A('ring', { n: 18, range: 220, windup: 0.8, cd: 5, dmg: 9, speed: 95, shot: 'ember' }),
+  A('spikes', { n: 6, rad: 18, range: 260, windup: 0.6, delay: 0.8, cd: 6, dmg: 14 }),
+  A('shockwave', { range: 200, windup: 0.9, cd: 6.5, dmg: 16, speed: 120, max: 190 }),
+  A('spiral', { streams: 4, dur: 2.4, rate: 0.13, range: 240, windup: 0.8, cd: 9, dmg: 8, speed: 95, shot: 'blood' }),
+  A('summon', { monster: 'risen', n: 4, range: 300, windup: 0.8, cd: 12 }),
+].map((a) => { for (const k of ['range', 'reach', 'min', 'len', 'rad', 'speed', 'max', 'spreadR']) if (a[k]) a[k] *= WS; return a; }));
+function spawnWarden() {
+  const df = curDiff(), id = pick(ELITE_POOL), d = MON[id];
+  const r = game.curRoom && roomOf(player.x, player.y) ? game.curRoom : room.rooms.reduce((b, q) => Math.hypot((q.cx + 0.5) * TILE - player.x, (q.cy + 0.5) * TILE - player.y) < Math.hypot((b.cx + 0.5) * TILE - player.x, (b.cy + 0.5) * TILE - player.y) ? q : b);
+  const [x, y] = spawnPoint(r, 110);
+  const affixes = AFFIX_POOL.filter((a) => !['mirrored', 'horde', 'vengeful'].includes(a)).sort(() => rng() - 0.5).slice(0, 1 + df.aff);
+  const e = spawnMonster(id, x, y, { tier: 'elite', affixes, room: r.id, scaleK: WARDEN.scale, name: d.name, hpK: WARDEN.hp / d.hp });
+  e.boss = true; e.title = `WARDEN OF ${df.name}`; e.phase = 0;
+  e.def = { ...d, attacks: [...d.attacks, ...[...wardenSkills()].sort(() => rng() - 0.5).slice(0, 3)] };
+  e.cds = e.def.attacks.map(() => rand(1, 2.5));
+  game.warden = e;
+  game.banner = { text: 'THE WARDEN COMES', sub: `THE TOLL IS FULL. ${e.name} HAS HEARD THE BELL.`, t: 0, color: PAL.blood0 };
+  game.shake = 8; game.flash = 0.12; sfx('elite', { rate: 0.6, vol: 1.4, gap: 0 }); sfx('gate_lock', { rate: 0.5 });
+  rings.push({ x, y: y - 12, t: 0, max: 0.9, r: 110, color: '224,32,46' });
+}
+// Phases at two thirds and one third: faster, angrier, with a burst of shots.
+function wardenPhase(e) {
+  const want = e.hp / e.maxHp <= 0.33 ? 2 : e.hp / e.maxHp <= 0.66 ? 1 : 0;
+  if (want <= e.phase) return;
+  e.phase = want; e.speedK *= 1.15; e.cdK *= 0.8;
+  toast(want === 1 ? 'THE WARDEN RAGES' : 'THE WARDEN IS DESPERATE', 1.6); game.shake = 6;
+  const n = 16 + want * 8, a = wardenSkills()[0];
+  for (let k = 0; k < n; k++) shotAt(e, (k / n) * Math.PI * 2, { ...a, dmg: a.dmg * e.dmgK });
+  for (let k = 0; k < 2 + want; k++) { const m = spawnMonster(pick(['risen', 'acolyte', 'flagellant']), e.x + rand(-40, 40), e.y + rand(-30, 30), { room: e.room, minion: true }); m.state = 'move'; }
+}
+function wardenSlain(e) {
+  const df = curDiff();
+  game.warden = null;
+  const first = (SAVE.cleared ?? -1) < df.n - 1;
+  SAVE.cleared = Math.max(SAVE.cleared ?? -1, df.n - 1); persist();
+  game.banner = { text: 'THE WARDEN FALLS', sub: first && df.n < 15 ? `STATION ${ROMAN[df.n]} IS OPEN TO YOU` : 'THE WAYSTONE WAKES', t: 0, color: PAL.gold0 };
+  dropLoot(e.x, e.y, { gold: 25, item: WARDEN.items, itemBoost: 2, globe: 2 });
+  for (const d of drops) if (d.kind !== 'globe') d.vac = true;
+  addFervor(25);
+  // The Waystone rises where the Warden fell (nudged onto open floor).
+  let wx = Math.floor(e.x / TILE), wy = Math.floor(e.y / TILE);
+  for (let rr = 0; rr < 6 && room.isSolid(wx, wy); rr++) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!room.isSolid(wx + dx * rr, wy + dy * rr)) { wx += dx * rr; wy += dy * rr; break; }
+  const px = (wx + 0.5) * TILE, py = (wy + 1) * TILE;
+  game.waystone = { kind: 'waystone', sheet: 'town', anim: 'waystone', x: px, y: py, ph: 0 };
+  room.props.push(game.waystone);
+  room.lights.push({ x: px, y: py - 18, r: 80, c: 'holy', a: 0.9 });
+  room.interact.push({ x: px, y: py, r: 24, label: 'RETURN', icon: 'descend', use: () => finishDescent() });
+  rings.push({ x: px, y: py - 16, t: 0, max: 0.8, r: 70, color: '138,224,255' });
+}
+
 function updateFloor(dt) {
-  const cur = roomOf(player.x, player.y, 1);
   game.curRoom = roomOf(player.x, player.y) || game.curRoom;
+  const cur = roomOf(player.x, player.y, 1);
   if (game.curRoom && !game.curRoom.visited) { game.curRoom.visited = game.curRoom.known = true; for (const id of game.curRoom.links) room.rooms[id].known = true; }
   if (cur && cur.state === 'idle') {
-    if (cur.type === 'shrine') cur.state = 'clear';
-    else if (cur.type === 'treasury') { cur.state = 'clear'; if (rng() < 0.75) { const [x, y] = spawnPoint(cur, 60); spawnMonster('imp', x, y, { room: cur.id }); toast('A COLLECTION IMP! CATCH IT!', 2.2); } }
-    else {
-      cur.state = 'active'; cur.wave = 0; cur.waves = planWaves(cur); cur.lastHurt = game.time;
-      setGates(cur, true); game.shake = 3;
-      toast(cur.type === 'exit' ? "THE WARDEN'S CHAMBER SEALS" : cur.type === 'elite' ? 'SOMETHING TERRIBLE STIRS' : 'THE GATES FALL', 1.6);
-      startWave(cur);
-    }
+    cur.state = 'seen';
+    if (cur.type === 'treasury' && rng() < 0.75) { const [x, y] = spawnPoint(cur, 60); const m = spawnMonster('imp', x, y, { room: cur.id }); m.state = 'move'; toast('A COLLECTION IMP! CATCH IT!', 2.2); }
   }
-  for (const r of room.rooms) {
-    r.gateT = Math.min(1, (r.gateT || 0) + dt * 4);
-    if (r.state !== 'active') continue;
-    const alive = enemies.filter((e) => e.room === r.id && !e.dead && !e.illusion && e.type !== 'imp').length;
-    if (alive <= Math.max(1, Math.floor(r.waveSize * 0.15)) && r.wave < r.waves.length - 1) { r.wave++; startWave(r); }
-    else if (alive === 0) clearRoom(r);
-    // Safety net: if nothing in the room has been hurt for a while, pull the
-    // survivors out into the open near the player (one may be wedged somewhere).
-    else if (game.time - (r.lastHurt || 0) > 15) {
-      r.lastHurt = game.time;
-      for (const e of enemies) if (e.room === r.id && !e.dead && !e.illusion) { const [x, y] = spawnPoint(r, 50); blinkTo(e, x, y); e.under = false; }
-    }
-  }
+  revealAround(player.x, player.y);
+  if (game.warden && !game.warden.dead) wardenPhase(game.warden);
 }
-function clearRoom(r) {
-  r.state = 'clear'; setGates(r, false);
-  // Gold and relics left on the floor fly to the Saint.
-  for (const d of drops) if (d.kind !== 'globe' && roomOf(d.x, d.y) === r) d.vac = true;
-  game.banner = { text: 'ROOM CLEARED', sub: r.type === 'exit' ? 'THE WAYSTONE WAKES' : `${room.rooms.filter((q) => q.state === 'clear').length} OF ${room.rooms.length} ROOMS`, t: 0 };
-  dropLoot(player.x + rand(-30, 30), player.y + rand(-20, 20), { gold: 2 + r.depth, globe: 0.6, item: 0.35 + r.depth * 0.05 });
-  addFervor(10);
-  if (r.type === 'exit') {
-    const wx = (r.cx + 0.5) * TILE, wy = (r.cy + 1) * TILE;
-    game.waystone = { kind: 'waystone', sheet: 'town', anim: 'waystone', x: wx, y: wy, ph: 0 };
-    room.props.push(game.waystone);
-    room.lights.push({ x: wx, y: wy - 18, r: 80, c: 'holy', a: 0.9 });
-    room.interact.push({ x: wx, y: wy, r: 24, label: 'RETURN', icon: 'descend', use: () => finishDescent() });
-    rings.push({ x: wx, y: wy - 16, t: 0, max: 0.8, r: 70, color: '138,224,255' });
+// ---------------------------------------------------------- fog of war ---
+// The map fills in as the Saint explores: every tile within REVEAL tiles is
+// marked seen and painted onto a one-pixel-per-tile map for the minimap.
+const REVEAL = 15;
+function revealAround(px, py) {
+  const R = room, tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
+  if (!R.seen || (R.lastReveal && R.lastReveal[0] === tx && R.lastReveal[1] === ty)) return;
+  R.lastReveal = [tx, ty];
+  const g = R.fogCtx;
+  for (let y = ty - REVEAL; y <= ty + REVEAL; y++) for (let x = tx - REVEAL; x <= tx + REVEAL; x++) {
+    if (x < 0 || y < 0 || x >= R.w || y >= R.h || (x - tx) ** 2 + (y - ty) ** 2 > REVEAL * REVEAL) continue;
+    const i = y * R.w + x; if (R.seen[i]) continue;
+    R.seen[i] = 1;
+    const floor = !R.baseSolid[i];
+    if (floor) { g.fillStyle = PAL.stone2; g.fillRect(x, y, 1, 1); }
+    else if (!R.baseSolid[i - 1] || !R.baseSolid[i + 1] || !R.baseSolid[i - R.w] || !R.baseSolid[i + R.w]) { g.fillStyle = PAL.cloth1; g.fillRect(x, y, 1, 1); }
   }
 }
 function finishDescent() {
@@ -819,15 +892,35 @@ function renderRoomStatus() {
   const ct = game.real - (game.cardAt || 0);
   if (ct < 3.5) { ctx.globalAlpha = Math.min(1, ct * 3, (3.5 - ct) * 1.5); text(game.scene === 'town' && game.district ? game.district : room.name, W / 2, Math.round(H * 0.22), PAL.gold1, { align: 'center', sc: 2 }); ctx.globalAlpha = 1; }
   if (game.scene !== 'wound') return;
-  const r = game.curRoom;
-  if (game.focus) return renderNameplate(game.focus);
-  if (!r) return;
-  let label = ROOM_NAMES[r.type], sub = '';
-  if (r.state === 'active') { const left = enemies.filter((e) => e.room === r.id && !e.dead && !e.illusion).length; sub = `WAVE ${r.wave + 1}/${r.waves.length}   ${left} REMAIN`; }
-  else if (r.type === 'exit' && game.waystone) sub = 'TAKE THE WAYSTONE HOME';
-  else sub = `${room.rooms.filter((q) => q.state === 'clear').length}/${room.rooms.length} ROOMS CLEARED`;
-  text(label, W / 2, 9, r.state === 'active' ? PAL.blood0 : PAL.gold1, { align: 'center' });
-  text(sub, W / 2, 19, PAL.cloth1, { align: 'center' });
+  // The Warden's bar while it lives; otherwise the Toll.
+  const wd = game.warden;
+  if (wd && !wd.dead) return renderBossBar(wd);
+  const T0 = game.toll, w = 150, x = Math.round(W / 2 - w / 2), y = 9;
+  if (game.waystone) text('THE WARDEN IS SLAIN. TAKE THE WAYSTONE HOME.', W / 2, y, PAL.holy1, { align: 'center' });
+  else if (T0) {
+    text('THE TOLL', x - 6, y - 1, PAL.gold1, { align: 'right' });
+    ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, 9);
+    ctx.fillStyle = PAL.gold4; ctx.fillRect(x - 1, y - 1, w + 2, 7);
+    ctx.fillStyle = PAL.ink2; ctx.fillRect(x, y, w, 5);
+    const fw = Math.round(w * T0.v / T0.max);
+    ctx.fillStyle = PAL.blood1; ctx.fillRect(x, y, fw, 5); ctx.fillStyle = PAL.blood0; ctx.fillRect(x, y, fw, 1);
+    text(`${Math.floor(T0.v / T0.max * 100)}%`, x + w + 6, y - 1, PAL.cloth0);
+  }
+  if (game.focus && !game.focus.boss) renderNameplate(game.focus, 20);
+}
+// The Warden: name, title, a wide bar with phase marks, its curses.
+function renderBossBar(e) {
+  const w = Math.min(260, W - 200), x = Math.round(W / 2 - w / 2), y = 25;
+  text(e.name, W / 2, 3, PAL.blood0, { align: 'center' });
+  text(e.title, W / 2, 14, PAL.gold1, { align: 'center', small: true, outline: null });
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, 10);
+  ctx.fillStyle = PAL.blood3; ctx.fillRect(x - 1, y - 1, w + 2, 8);
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(x, y, w, 6);
+  const fw = Math.max(0, Math.round(w * e.hp / e.maxHp));
+  ctx.fillStyle = PAL.blood1; ctx.fillRect(x, y, fw, 6); ctx.fillStyle = PAL.blood0; ctx.fillRect(x, y, fw, 2);
+  ctx.fillStyle = PAL.gold1; for (const k of [1 / 3, 2 / 3]) ctx.fillRect(x + Math.round(w * k), y - 1, 1, 8);
+  const aff = e.affixes.map((a) => AFFIX[a].label).join('  ');
+  if (aff) text(aff, W / 2, y + 10, PAL.cloth1, { align: 'center' });
 }
 function renderBanner() {
   const b = game.banner; if (!b) return;
@@ -931,6 +1024,7 @@ function moveCircle(o, dx, dy, r) {
 
 // --------------------------------------------------------------- state ---
 const game = { state: 'title', time: 0, real: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, toast: null, execTarget: null, flash: 0 };
+let awake = []; // the monsters updated this frame (see the sleep rule in update)
 let player, enemies = [], bolts = [], parts = [], gibs = [], falls = [], nums = [], ghosts = [], rings = [], fxs = [];
 let pools = [], flasks = [], chains = [], lashes = [];
 
@@ -958,6 +1052,8 @@ function newRun() {
     if (r.shrine) { const p = r.shrine; room.interact.push({ x: p.x, y: p.y + 4, r: 26, label: 'PRAY', icon: 'talk', use() { useShrine(p); this.done = true; } }); }
     if (r.chest) { const p = r.chest; room.interact.push({ x: p.x, y: p.y + 4, r: 24, label: 'OPEN', icon: 'talk', use() { openChest(p); this.done = true; } }); }
   }
+  game.warden = null;
+  populate();
   if (tutStep() && tutStep().start && tutStep().scene === 'wound') tutStep().start();
 }
 
@@ -1182,13 +1278,13 @@ const room_candles = [];
 const MAP_BADGES = ['gate', 'market', 'plush', 'tavern', 'forge', 'acre', 'descend', 'rift', 'lock', 'npc', 'board', 'relic', 'pool', 'saint'];
 const badge = (name, x, y, big = false, o = {}) => sprC('ui', big ? 'badgeBig' : 'badge', MAP_BADGES.indexOf(name), x, y, o);
 const SITES = [
-  { id: 'road', name: 'THE PILGRIM ROAD', badge: 'gate', x: 91, dy: 30, what: 'STRATUM II: THE DROWNED NAVE. A NEW FLOOR WITH NEW MONSTERS, BOSSES AND TREASURE.', need: 'FINISH A DESCENT ON SAINT', prog: () => [(SAVE.cleared ?? -1) >= 3 ? 1 : 0, 1] },
+  { id: 'road', name: 'THE PILGRIM ROAD', badge: 'gate', x: 91, dy: 30, what: 'STRATUM II: THE DROWNED NAVE. A NEW FLOOR WITH NEW MONSTERS, BOSSES AND TREASURE.', need: 'SLAY THE WARDEN OF STATION XV', prog: () => [(SAVE.cleared ?? -1) >= 14 ? 1 : 0, 1] },
   { id: 'stall', name: "PELL'S CURIO STALL", badge: 'market', x: 540, dy: 34, what: 'BUY GEAR WITH GOLD. THE STOCK CHANGES AFTER EVERY DESCENT.', need: 'FINISH 1 DESCENT', prog: () => [SAVE.descents || 0, 1] },
   { id: 'plush', name: 'THE PLUSH STALL', badge: 'plush', x: 740, dy: 34, what: "NEW VESTMENT COLOURS AND HALOS FOR THE SAINT. LOOKS ONLY.", need: 'FALL 5 TIMES', prog: () => [SAVE.deaths || 0, 5] },
   { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 880, dy: 64, what: 'HUNT NAMED ELITES FOR GOLD AND A GUARANTEED CONSECRATED PIECE OF GEAR.', need: 'SLAY 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
   { id: 'pool', name: 'THE SCRYING POOL', badge: 'pool', x: 1060, dy: 110, what: 'WAGERS. BET YOUR GOLD ON HOW DEEP YOU GET. THE CROWD PAYS OUT.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
-  { id: 'forge', name: 'THE EMBER FORGE', badge: 'forge', x: 1250, dy: 50, what: 'REFORGE A PIECE OF GEAR TO REROLL ONE STAT, OR TEMPER IT TO RAISE ITS RARITY.', need: 'FINISH A DESCENT ON ZEALOT', prog: () => [(SAVE.cleared ?? -1) >= 1 ? 1 : 0, 1] },
-  { id: 'vigil', name: 'THE BLEEDING VIGIL', badge: 'rift', x: 1664, dy: 60, what: 'VIGIL TRIALS. ONE ENDLESS, TIMED DESCENT THAT GROWS HARDER WITH EVERY LEVEL. BEAT THE CANDLE BEFORE IT BURNS OUT FOR BETTER GEAR.', need: 'FINISH A DESCENT ON MARTYR', prog: () => [(SAVE.cleared ?? -1) >= 2 ? 1 : 0, 1] },
+  { id: 'forge', name: 'THE EMBER FORGE', badge: 'forge', x: 1250, dy: 50, what: 'REFORGE A PIECE OF GEAR TO REROLL ONE STAT, OR TEMPER IT TO RAISE ITS RARITY.', need: 'SLAY THE WARDEN OF STATION V', prog: () => [(SAVE.cleared ?? -1) >= 4 ? 1 : 0, 1] },
+  { id: 'vigil', name: 'THE BLEEDING VIGIL', badge: 'rift', x: 1664, dy: 60, what: 'VIGIL TRIALS. ONE ENDLESS, TIMED DESCENT THAT GROWS HARDER WITH EVERY LEVEL. BEAT THE CANDLE BEFORE IT BURNS OUT FOR BETTER GEAR.', need: 'SLAY THE WARDEN OF STATION IX', prog: () => [(SAVE.cleared ?? -1) >= 8 ? 1 : 0, 1] },
   { id: 'martyr', name: 'MARTYRDOM', badge: 'saint', x: 2215, dy: 70, what: 'ONE LIFE. IF YOU FALL, EVERYTHING YOU CARRY IS LOST, BUT GOLD AND GEAR ARE DOUBLED.', need: 'FINISH 10 DESCENTS', prog: () => [SAVE.descents || 0, 10] },
   { id: 'canonry', name: 'THE CANONRY', badge: 'relic', x: 2470, dy: 40, what: 'CANONIZATION. SPEND ASH FROM YOUR DEATHS ON PERMANENT VIRTUES: HEALTH, DAMAGE, LUCK.', need: 'REACH LEVEL 20 IN ONE DESCENT', prog: () => [SAVE.bestLevel || 1, 20] },
 ];
@@ -1361,17 +1457,29 @@ function talk(id) {
   game.state = 'dialog';
 }
 
-// Difficulty tiers. Each one scales monster health and damage, and pays it
-// back in gold, relics and better rarity. A tier opens when you finish a
-// descent on the one before it.
-const DIFF = [
-  { id: 'pilgrim', name: 'PILGRIM', col: '#c2b6aa', hp: 1, dmg: 1, gold: 1, drop: 1, boost: 0, xp: 1, aff: 0, lv: 1, text: 'THE FIRST STEPS DOWN. FOR THE NEWLY SHRIVEN.' },
-  { id: 'zealot', name: 'ZEALOT', col: '#8ae0ff', hp: 1.7, dmg: 1.35, gold: 1.5, drop: 1.3, boost: 0.5, xp: 1.4, aff: 0, lv: 6, text: 'THE DEAD REMEMBER YOU NOW. THEY HIT HARDER.' },
-  { id: 'martyr', name: 'MARTYR', col: '#ffd155', hp: 2.8, dmg: 1.8, gold: 2.2, drop: 1.6, boost: 1, xp: 1.9, aff: 1, lv: 12, text: 'RARES AND ELITES WEAR ONE MORE CURSE.' },
-  { id: 'saint', name: 'SAINT', col: '#ff7a1f', hp: 4.5, dmg: 2.4, gold: 3.2, drop: 2, boost: 1.8, xp: 2.5, aff: 1, lv: 20, text: 'ONLY THE CANONIZED COME BACK FROM HERE.' },
+// The Fifteen Stations of the Wound: the difficulty ladder. The Wound under
+// Vael opens a new way every descent; each Station is a deeper, crueler step
+// of the Saint's way. A Station opens when you slay the Warden of the one
+// before it. Monster health and damage climb by POWER_STEP per Station, the
+// same rate gear Sanctity climbs by item level, so gear from a low Station
+// cannot carry you to the top.
+const POWER_STEP = 1.36;
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV'];
+const BANDS = [
+  { name: 'PILGRIM', col: '#c2b6aa', text: 'THE FIRST STEPS DOWN. FOR THE NEWLY SHRIVEN.' },
+  { name: 'ZEALOT', col: '#8ae0ff', text: 'THE DEAD REMEMBER YOU NOW. THEY HIT HARDER.' },
+  { name: 'MARTYR', col: '#ffd155', text: 'RARES AND ELITES WEAR ONE MORE CURSE.' },
+  { name: 'SAINT', col: '#ff7a1f', text: 'ONLY THE CANONIZED COME BACK FROM HERE.' },
 ];
-const diffOpen = (i) => i === 0 || (i === 1 ? (SAVE.descents || 0) >= 1 : (SAVE.cleared ?? -1) >= i - 1);
-const diffNeed = (i) => i === 1 ? 'FINISH ONE DESCENT' : `FINISH A DESCENT ON ${DIFF[i - 1].name}`;
+const stationPower = (i) => Math.pow(POWER_STEP, i);
+const DIFF = ROMAN.map((rn, i) => {
+  const band = BANDS[Math.min(3, Math.floor(i / 4))];
+  return { n: i + 1, rn, name: `STATION ${rn}`, band: band.name, col: band.col, text: band.text,
+    hp: stationPower(i) * (1 + i * 0.05), dmg: Math.pow(stationPower(i), 0.85) * (1 + i * 0.04),
+    gold: 1 + i * 0.35, drop: 1 + i * 0.02, boost: i * 0.14, xp: 1 + i * 0.2, aff: (i >= 8 ? 1 : 0) + (i >= 12 ? 1 : 0), lv: 1 + i * 3 };
+});
+const diffOpen = (i) => i === 0 || (SAVE.cleared ?? -1) >= i - 1;
+const diffNeed = (i) => `SLAY THE WARDEN OF STATION ${ROMAN[i - 1]}`;
 // The tier in play: the run's tier in the dungeon, otherwise Penitent.
 const curDiff = () => DIFF[game.scene === 'wound' && game.run && game.run.diff !== undefined ? game.run.diff : 0];
 
@@ -1414,28 +1522,32 @@ function renderDescent() {
   ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
   ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
   text('THE DESCENT', L.x0 + 12, L.y0 + 9, PAL.gold1);
-  text('STRATUM I  THE UNDERCROFT', L.x0 + L.pw / 2, L.y0 + 9, PAL.cloth1, { align: 'center' });
+  text('THE FIFTEEN STATIONS OF THE WOUND', L.x0 + L.pw / 2, L.y0 + 9, PAL.cloth1, { align: 'center' });
   sprC('ui', 'close', 0, L.close.x, L.close.y);
-  // Difficulty picker.
+  // Station picker.
   for (const [b, ch] of [[L.prev, '<'], [L.next, '>']]) { ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 1, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = PAL.ink3; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); text(ch, b.x, b.y - 5, PAL.gold1, { align: 'center' }); }
-  text('DIFFICULTY', L.x0 + L.pw / 2, L.y0 + 30, PAL.stone2, { align: 'center', small: true, outline: null });
+  text(df.band, L.x0 + L.pw / 2, L.y0 + 30, open ? df.col : PAL.stone2, { align: 'center', small: true, outline: null });
   text(df.name, L.x0 + L.pw / 2, L.y0 + 43, open ? df.col : PAL.stone2, { align: 'center', sc: 2 });
   if (!open) badge('lock', L.x0 + L.pw / 2 - textW(df.name, 2) / 2 - 14, L.y0 + 53);
-  DIFF.forEach((q, k) => { const px = L.x0 + L.pw / 2 - (DIFF.length - 1) * 6 + k * 12; ctx.fillStyle = PAL.outline; ctx.fillRect(px - 3, L.y0 + 66, 6, 6); ctx.fillStyle = k === D.i ? q.col : diffOpen(k) ? PAL.stone3 : PAL.ink3; ctx.fillRect(px - 2, L.y0 + 67, 4, 4); });
-  text(open ? df.text : `LOCKED. UNLOCKED WHEN YOU ${diffNeed(D.i)}.`, L.x0 + L.pw / 2, L.y0 + 77, open ? PAL.cloth1 : PAL.blood0, { align: 'center', small: true, outline: null });
+  DIFF.forEach((q, k) => { const px = L.x0 + L.pw / 2 - (DIFF.length - 1) * 5 + k * 10; ctx.fillStyle = PAL.outline; ctx.fillRect(px - 3, L.y0 + 66, 6, 6); ctx.fillStyle = k === D.i ? PAL.white : diffOpen(k) ? q.col : PAL.ink3; ctx.fillRect(px - 2, L.y0 + 67, 4, 4); });
+  text(open ? df.text : `LOCKED. ${diffNeed(D.i)} TO OPEN IT.`, L.x0 + L.pw / 2, L.y0 + 77, open ? PAL.cloth1 : PAL.blood0, { align: 'center', small: true, outline: null });
   // Three columns of numbers.
   const cw = Math.floor((L.pw - 32) / 3), top = L.y0 + 88, cx = (c) => L.x0 + 12 + c * (cw + 4);
-  const goldK = df.gold * (1 + G.gold / 100), avg = 6 * goldK;
+  const goldK = df.gold * (1 + G.gold / 100);
   const row = (c, i, label, val, col = PAL.cloth0) => { const y = top + 15 + i * 9; text(label, cx(c) + 6, y, PAL.stone1, { small: true, outline: null }); text(val, cx(c) + cw - 6, y, col, { small: true, outline: null, align: 'right' }); };
   const head = (c, t) => { ctx.fillStyle = PAL.ink2; ctx.fillRect(cx(c), top, cw, 144); ctx.fillStyle = PAL.ink3; ctx.fillRect(cx(c), top, cw, 12); text(t, cx(c) + 6, top + 3, PAL.gold1, { small: true, outline: null }); };
-  const x = (v) => `X${+v.toFixed(2)}`;
-  head(0, 'THE FLOOR');
-  [['ROOMS', '9'], ['  COMBAT', '5'], ["  CHAMPION'S HALL (ELITE)", '1'], ['  SHRINE / TREASURY', '1 / 1'], ["  WARDEN'S CHAMBER", '1'], ['MONSTER LEVEL', `${df.lv}-${df.lv + 4}`], ['MONSTER HEALTH', x(df.hp), df.hp > 1 ? PAL.blood0 : PAL.cloth0], ['MONSTER DAMAGE', x(df.dmg), df.dmg > 1 ? PAL.blood0 : PAL.cloth0], ['WAVES PER ROOM', '2-3'], ['FOES PER WAVE', '14-26'], ['RARE PACK CHANCE', '55-85%'], ['CURSES ON RARES', `${1 + df.aff}-${2 + df.aff}`], ['CURSES ON ELITES', `${2 + df.aff}-${3 + df.aff}`], ['COLLECTION IMP', '75% IN TREASURY']]
+  const x = (v) => v >= 100 ? `X${Math.round(v)}` : `X${+v.toFixed(1)}`;
+  const red = (v) => v > 1 ? PAL.blood0 : PAL.cloth0;
+  head(0, 'THE MAP');
+  [['LAYOUT', 'NEW EVERY TIME'], ['ROOMS', '11-12'], ['MONSTERS', 'PACKED'], ['MONSTER LEVEL', `${df.lv}-${df.lv + 2}`], ['MONSTER HEALTH', x(df.hp), red(df.hp)], ['MONSTER DAMAGE', x(df.dmg), red(df.dmg)],
+    ['CURSES ON RARES', `${1 + df.aff}-${2 + df.aff}`, df.aff ? PAL.blood0 : PAL.cloth0], ['CURSES ON ELITES', `${2 + df.aff}-${3 + df.aff}`, df.aff ? PAL.blood0 : PAL.cloth0], ['ELITE PACKS', '2-3'],
+    ['THE TOLL', 'KILLS RING IT'], ['FULL TOLL', 'THE WARDEN COMES'], ['WARDEN HEALTH', `${Math.round(WARDEN.hp * df.hp).toLocaleString('en-US')}`, PAL.blood0], ['SLAY THE WARDEN', D.i < 14 ? `OPENS ${ROMAN[D.i + 1]}` : 'THE LAST STATION', PAL.flame1]]
     .forEach(([a, b, c], i) => row(0, i, a, b, c));
   head(1, 'REWARDS');
-  const iK = df.drop;
-  [['GOLD PER COIN', `${Math.round(3 * goldK)}-${Math.round(9 * goldK)}`, PAL.gold1], ['GOLD PER KILL', `~${(0.3 * avg).toFixed(1)}`, PAL.gold1], ['GOLD PER RARE', `~${Math.round(3 * avg)}`, PAL.gold1], ['GOLD PER ELITE', `~${Math.round(10 * avg)}`, PAL.gold1], ['GOLD BONUS (GEAR)', `+${G.gold}%`, G.gold ? PAL.flame1 : PAL.cloth0],
-    ['GEAR PER KILL', pct(2.5 * iK)], ['GEAR PER RARE', pct(Math.min(100, 60 * iK))], ['GEAR PER ELITE', `${(3.5 * iK).toFixed(1)}`], ['GEAR ON ROOM CLEAR', `${pct(Math.min(100, 40 * iK))}+`], ['TREASURY CHEST', 'GUARANTEED'], ['HEALTH ORB', `${pct(6)}-${pct(10)}`], ['EXPERIENCE', x(df.xp), df.xp > 1 ? PAL.flame1 : PAL.cloth0], ['GOLD PER ROOM CLEAR', `~${Math.round(4 * avg)}`, PAL.gold1], ['LEVEL CAP', 'NONE']]
+  const iK = df.drop, need = stationSanctity(D.i);
+  [['GEAR ITEM LEVEL', df.rn, PAL.flame1], ['GEAR SANCTITY', `${need}`, PAL.flame1], ['GOLD PER COIN', `${Math.round(3 * goldK)}-${Math.round(9 * goldK)}`, PAL.gold1], ['GOLD BONUS (GEAR)', `+${G.gold}%`, G.gold ? PAL.flame1 : PAL.cloth0],
+    ['GEAR PER KILL', pct(1.5 * iK)], ['GEAR PER RARE', pct(Math.min(100, 45 * iK))], ['GEAR PER ELITE', `${(2 * iK).toFixed(1)}`], ['WARDEN', `${WARDEN.items} PIECES`], ['TREASURY CHEST', 'GUARANTEED'],
+    ['HEALTH ORB', `${pct(6)}-${pct(10)}`], ['EXPERIENCE', x(df.xp), df.xp > 1 ? PAL.flame1 : PAL.cloth0]]
     .forEach(([a, b, c], i) => row(1, i, a, b, c));
   head(2, 'GEAR RARITY');
   const base = rarityOdds(df.boost), elite = rarityOdds(df.boost + 1.5);
@@ -1447,14 +1559,17 @@ function renderDescent() {
     text(pct(base[i]), cx(2) + cw - 54, y + 7, PAL.cloth0, { small: true, outline: null, align: 'right' });
     text(pct(elite[i]), cx(2) + cw - 6, y + 7, PAL.cloth0, { small: true, outline: null, align: 'right' });
   });
-  text('YOU', cx(2) + 6, top + 112, PAL.gold1, { small: true, outline: null });
-  text(`HP ${100 + G.hp}  DAMAGE +${G.dmg}%`, cx(2) + 6, top + 122, PAL.cloth0, { small: true, outline: null });
-  text(`CRIT ${Math.round(T.crossbow.crit * 100) + G.crit}%  ARMOR ${G.armor}%`, cx(2) + 6, top + 132, PAL.cloth0, { small: true, outline: null });
+  // Your gear against what the Station expects.
+  const mine = playerSanctity(), ok = mine >= need * 0.7;
+  text('YOUR SANCTITY', cx(2) + 6, top + 112, PAL.gold1, { small: true, outline: null });
+  text(`${mine} / ${need}`, cx(2) + cw - 6, top + 112, ok ? PAL.flame1 : PAL.blood0, { small: true, outline: null, align: 'right' });
+  text(ok ? 'YOUR GEAR IS READY.' : 'YOUR GEAR IS TOO WEAK HERE.', cx(2) + 6, top + 122, ok ? PAL.cloth0 : PAL.blood0, { small: true, outline: null });
+  text(`HP ${player ? player.maxHp : 100}  CRIT ${Math.round(T.crossbow.crit * 100) + G.crit}%`, cx(2) + 6, top + 132, PAL.cloth0, { small: true, outline: null });
   // The price of falling, and the buttons.
   const fy = top + 150;
   text('IF YOU FALL: THE CHOIR TITHES HALF YOUR GOLD AND EVERY OTHER PIECE OF GEAR YOU CARRY.', L.x0 + 12, fy, PAL.blood0, { small: true, outline: null });
-  text('WORN GEAR IS SAFE. RETURN BY THE WAYSTONE TO KEEP IT ALL.', L.x0 + 12, fy + 10, PAL.stone1, { small: true, outline: null });
-  text(`DESCENTS ${SAVE.descents || 0}   BEST CLEAR ${(SAVE.cleared ?? -1) >= 0 ? DIFF[SAVE.cleared].name : 'NONE'}`, L.x0 + 12, L.go.y + 8, PAL.stone2, { small: true, outline: null });
+  text('WORN GEAR IS SAFE. SLAY THE WARDEN AND TAKE THE WAYSTONE HOME TO KEEP IT ALL.', L.x0 + 12, fy + 10, PAL.stone1, { small: true, outline: null });
+  text(`DESCENTS ${SAVE.descents || 0}   HIGHEST STATION CLEARED ${(SAVE.cleared ?? -1) >= 0 ? ROMAN[SAVE.cleared] : 'NONE'}`, L.x0 + 12, L.go.y + 8, PAL.stone2, { small: true, outline: null });
   invButton(L.back, 'CANCEL', PAL.stone4);
   invButton(L.go, open ? 'DESCEND' : 'LOCKED', PAL.crimson3, open);
 }
@@ -1480,14 +1595,14 @@ const TUT = [
   { scene: 'town', text: 'WELCOME, SAINT. DRAG ON THE LEFT SIDE OF THE SCREEN TO WALK.', target: 'joy', done: () => tut.flags.moved > 60 },
   { scene: 'town', text: 'TALK TO THE TOWNSFOLK. WALK UP TO ANYONE AND TAP TALK.', target: 'act', done: () => tut.flags.talked },
   { scene: 'town', text: 'THE VESTRY DOORS LEAD DOWN INTO THE WOUND. WALK TO THEM AND TAP DESCEND.', target: 'act', done: () => game.scene === 'wound' },
-  { scene: 'wound', text: 'EACH ROOM SEALS ITS GATES UNTIL THE DEAD STAY DEAD. WALK INTO THE NEXT ROOM.', done: () => room.rooms && room.rooms.some((q) => q.state !== 'idle' && q.type !== 'start') },
+  { scene: 'wound', text: 'THE WOUND IS FULL OF THE RESTLESS DEAD, AND IT IS NEVER THE SAME TWICE. WALK ON AND FIND THEM.', done: () => game.kills >= 1 || room.rooms && room.rooms.some((q) => q.state !== 'idle' && q.type !== 'start') },
   { scene: 'wound', text: 'YOUR CROSSBOW FIRES BY ITSELF: ELITES FIRST, THEN THE NEAREST. TAP AN ENEMY TO LOCK ON.', done: () => game.kills >= 4 },
   { scene: 'wound', text: 'TAP DASH TO DODGE THROUGH ATTACKS. RED SHAPES ON THE FLOOR WARN YOU WHERE A HIT WILL LAND.', target: 'dash', done: () => tut.flags.dashed >= 2 },
   { scene: 'wound', text: 'TAP HOLY WATER TO THROW A VIAL. IT AIMS ITSELF AT THE THICKEST CROWD.', target: 'm1', done: () => tut.flags.m1 },
   { scene: 'wound', text: 'TAP THE CHAIN TO BIND UP TO FOUR FOES TOGETHER.', target: 'm2', done: () => tut.flags.m2 || tut.t > 12 },
   { scene: 'wound', text: "KILLS FEED THE CROWD'S ZEAL AND FILL THE RED RING. IT IS FULL: TAP RECKONING.", target: 'pen', start: () => { player.penance = T.penance.charge; }, done: () => tut.flags.pen || tut.t > 15 },
   { scene: 'wound', text: 'RED ORBS HEAL. GOLD AND GEAR SPILL FROM THE DEAD. BLUE MONSTERS ARE RARE, GOLD ARE ELITE: READ THEIR CURSES UNDER THEIR NAME.', done: () => tut.t > 8 },
-  { scene: 'wound', text: "CLEAR ROOMS AND FIND THE WARDEN'S CHAMBER, THE RED SKULL ON YOUR MAP. ITS WAYSTONE CARRIES YOU HOME.", target: 'map', done: () => tut.t > 8 },
+  { scene: 'wound', text: 'EVERY KILL RINGS THE TOLL AT THE TOP. WHEN IT IS FULL, THE WARDEN OF THE STATION COMES FOR YOU. SLAY IT AND ITS WAYSTONE CARRIES YOU HOME.', target: 'toll', done: () => tut.t > 9 },
 ];
 const tut = { on: !SAVE.tutorialDone, step: 0, t: 0, flags: { moved: 0 } };
 function tutStep() { return tut.on ? TUT[tut.step] : null; }
@@ -1518,7 +1633,7 @@ function renderTutorial() {
   text('SKIP TUTORIAL', r.x + r.w - 6, r.y + r.h - 9, PAL.blood0, { outline: null, align: 'right' });
   ctx.fillStyle = PAL.blood0; ctx.fillRect(r.x + r.w - 6 - textW('SKIP TUTORIAL'), r.y + r.h - 1, textW('SKIP TUTORIAL'), 1);
   // Bouncing pointer at the control being taught.
-  const tgt = s.target === 'act' ? (game.interact ? HUD.act : null) : s.target === 'map' ? { x: HUD.pause.x - HUD.pause.r - 56, y: 40, r: 26 } : HUD[s.target];
+  const tgt = s.target === 'act' ? (game.interact ? HUD.act : null) : s.target === 'map' ? { x: HUD.pause.x - HUD.pause.r - 56, y: 40, r: 26 } : s.target === 'toll' ? { x: W / 2, y: 12, r: 24 } : HUD[s.target];
   if (tgt) {
     const b = Math.round(Math.sin(game.real * 8) * 3), up = tgt.y < H / 2;
     const ax = tgt.x, ay = up ? tgt.y + tgt.r + 6 + b : tgt.y - tgt.r - 6 - b;
@@ -1734,7 +1849,7 @@ function moveEnemy(e, dt, dx, dy, dist) {
     if (dist < 160) to(-1.1); else { vx = Math.cos(e.animT) * sp * 0.4; vy = Math.sin(e.animT * 1.3) * sp * 0.4; }
     if (e.hp < e.maxHp) { e.escape = (e.escape ?? 12) - dt; if (e.escape <= 0) { rings.push({ x: e.x, y: e.y - 10, t: 0, max: 0.6, r: 30, color: '154,106,230' }); playFx('fx', 'smoke', e.x, e.y - 8, 12); e.dead = true; e.escaped = true; toast('THE IMP ESCAPED WITH YOUR TITHE', 2); return; } }
   }
-  if (!d.fly) for (const o of enemies) {
+  if (!d.fly) for (const o of awake) {
     if (o === e || o.dead || o.state === 'spawn') continue;
     const ox = e.x - o.x, oy = e.y - o.y, od = Math.hypot(ox, oy), min = e.r + o.r + 3;
     if (od > 0 && od < min) { vx += ox / od * 80 * (1 - od / min); vy += oy / od * 80 * (1 - od / min); }
@@ -2011,7 +2126,7 @@ function damagePlayer(src, dmg, contacts) {
 
 function perfectDodge() {
   player.perfectUsed = true; game.perfects++;
-  if (G.powers.has('perfectHeal')) player.hp = Math.min(player.maxHp, player.hp + 10); sfx('perfect');
+  if (G.powers.has('perfectHeal')) player.hp = Math.min(player.maxHp, player.hp + Math.round(10 * Math.pow(G.power, 0.85))); sfx('perfect');
   game.slowmo = T.slowmo.time; game.flash = 0.12;
   addFervor(15);
   rings.push({ x: player.x, y: player.y - 21, t: 0, max: 0.45, r: 48, color: '255,224,138' });
@@ -2043,7 +2158,7 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   }
   if (e.type === 'imp' && !e.alarmed) { e.alarmed = true; toast('IT FLEES. KILL IT BEFORE IT ESCAPES!', 1.6); }
   const st = e.tier === 'elite' ? 0.08 : 0.15;
-  if (e.elite && !e.illusion && !e.staggered && e.hp > 0 && e.hp <= e.maxHp * st && e.tier !== 'imp') { e.staggered = true; e.state = 'stagger'; e.t = 0; e.under = false; toast('STAGGERED: EXECUTE IT', 1.5); }
+  if (e.elite && !e.boss && !e.illusion && !e.staggered && e.hp > 0 && e.hp <= e.maxHp * st && e.tier !== 'imp') { e.staggered = true; e.state = 'stagger'; e.t = 0; e.under = false; toast('STAGGERED: EXECUTE IT', 1.5); }
   if (e.hp <= 0) killEnemy(e, dirx, diry);
 }
 
@@ -2052,7 +2167,9 @@ function killEnemy(e, dirx, diry, executed = false) {
   e.dead = true; sfx(rng() < 0.5 ? 'kill0' : 'kill1', { vol: e.elite ? 1.3 : 1, rate: e.tier === 'elite' ? 0.8 : 1 });
   if (player.lock === e) player.lock = null;
   if (e.illusion) { playFx('fx', 'smoke', e.x, e.y - 8, 14); return; }
-  if (G.lok && player.hp > 0 && game.state === 'play') player.hp = Math.min(player.maxHp, player.hp + G.lok);
+  addToll(e);
+  if (e.boss) wardenSlain(e);
+  if (G.lok && player.hp > 0 && game.state === 'play') player.hp = Math.min(player.maxHp, player.hp + G.lok * Math.pow(G.power, 0.85));
   game.kills++;
   if (!e.minion || rng() < 0.5) gainXp(e.tier === 'elite' ? 15 : e.tier === 'rare' ? 4 : e.type === 'imp' ? 6 : 1);
   onWoundKill();
@@ -2068,9 +2185,10 @@ function killEnemy(e, dirx, diry, executed = false) {
   if (e.def.split && e.scaleK > 0.7) for (let k = 0; k < e.def.split; k++) { const c = spawnMonster(e.type, e.x + rand(-16, 16), e.y + rand(-10, 10), { tier: e.tier, affixes: e.affixes.filter((a) => a !== 'hale'), room: e.room, scaleK: 0.6, hpK: 0.25, name: e.name }); c.state = 'move'; }
   // Loot.
   if (e.type === 'imp') { dropLoot(e.x, e.y, { gold: 22, item: 3, itemBoost: 2, globe: 1 }); game.banner = { text: 'THE IMP IS SLAIN', sub: 'ITS SACK SPLITS OPEN', t: 0, color: PAL.gold0 }; }
-  else if (e.tier === 'elite') { if (!e.minion) SAVE.eliteKills = (SAVE.eliteKills || 0) + 1; dropLoot(e.x, e.y, { gold: 10, item: 3 + (rng() < 0.5 ? 1 : 0), itemBoost: 1.5, globe: 2 }); game.banner = { text: `${e.name} FALLS`, sub: '', t: 0, color: PAL.gold0 }; }
-  else if (e.tier === 'rare') dropLoot(e.x, e.y, { gold: 3, item: rng() < 0.6 ? 1 : 0, itemBoost: 1, globe: rng() < 0.4 ? 1 : 0 });
-  else dropLoot(e.x, e.y, { gold: rng() < 0.3 ? 1 : 0, item: rng() < 0.025 ? 1 : 0, globe: rng() < (e.minion ? 0.1 : 0.06) ? 1 : 0 });
+  else if (e.boss) { /* wardenSlain drops the loot */ }
+  else if (e.tier === 'elite') { if (!e.minion) SAVE.eliteKills = (SAVE.eliteKills || 0) + 1; dropLoot(e.x, e.y, { gold: 10, item: 2, itemBoost: 1.5, globe: 2 }); game.banner = { text: `${e.name} FALLS`, sub: '', t: 0, color: PAL.gold0 }; }
+  else if (e.tier === 'rare') dropLoot(e.x, e.y, { gold: 3, item: rng() < 0.45 ? 1 : 0, itemBoost: 1, globe: rng() < 0.4 ? 1 : 0 });
+  else dropLoot(e.x, e.y, { gold: rng() < 0.3 ? 1 : 0, item: rng() < 0.015 ? 1 : 0, globe: rng() < (e.minion ? 0.1 : 0.06) ? 1 : 0 });
 }
 
 // ---------------------------------------------------------------- gore ---
@@ -2168,25 +2286,35 @@ const POWERS = {
 const SET_TEXT = ["2 PIECES: +10% DAMAGE.", '4 PIECES: +1 DASH CHARGE, +15% DAMAGE.'];
 const SALVAGE = [5, 15, 40, 120, 200];
 let itemSeq = 0;
-function rollItem(boost = 0) {
+// il: item level, the Station (1-15) the piece dropped on.
+function rollItem(boost = 0, il = curDiff().n) {
   let total = 0; const w = RARITY.map((r, i) => r.w * (i ? 1 + boost * i : Math.max(0.2, 1 - boost * 0.5)));
   for (const x of w) total += x;
   let roll = rng() * total, ri = 0;
   for (; ri < w.length - 1 && roll > w[ri]; ri++) roll -= w[ri];
   const slot = pick(Object.keys(SLOTS)), base = pick(SLOTS[slot]);
   const name = ri === 0 ? `${pick(ADJ)} ${base}` : ri === 1 ? `${base} ${pick(SUFFIX)}` : ri === 2 ? `${pick(RARE_A)} ${base}` : ri === 3 ? LEGENDARIES[slot] : `ODILE'S ${base}`;
-  return makeItem(slot, ri, name);
+  return makeItem(slot, ri, name, undefined, il);
 }
-function makeItem(slot, ri, name, keys) {
+function makeItem(slot, ri, name, keys, il = 1) {
   const k = TIER_K[ri], roll = (key) => { const S = STAT[key]; return Math.max(1, Math.round((S.lo + rng() * (S.hi - S.lo)) * k)); };
   const n = [0, 1 + Math.floor(rng() * 2), 2 + Math.floor(rng() * 2), 3, 3][ri];
   const extra = keys || Object.keys(STAT).filter((x) => x !== SLOT_BASE[slot]).sort(() => rng() - 0.5).slice(0, n);
   const stats = [[SLOT_BASE[slot], roll(SLOT_BASE[slot])], ...extra.map((x) => [x, roll(x)])];
-  return { id: `${Date.now().toString(36)}${(itemSeq++).toString(36)}`, name, slot, ri, rarity: RARITY[ri].id, stats, power: ri === 3 ? slot : null, set: ri === 4, isNew: true };
+  return { id: `${Date.now().toString(36)}${(itemSeq++).toString(36)}`, name, slot, ri, rarity: RARITY[ri].id, stats, power: ri === 3 ? slot : null, set: ri === 4, isNew: true, il };
 }
+const worn0 = (it) => game.inv && game.inv.sel && game.inv.sel.from === 'bag' ? SAVE.equip[it.slot] : null;
 const statLine = ([key, v]) => `+${v}${STAT[key].pct ? '%' : ''} ${STAT[key].label}`;
 // A rough worth for comparisons: stats weighted, powers count extra.
-const itemScore = (it) => !it ? 0 : it.stats.reduce((a, [key, v]) => a + v / ((STAT[key].lo + STAT[key].hi) / 2), 0) + (it.power ? 4 : 0) + (it.set ? 2 : 0);
+// Sanctity: a piece's raw power, set by its item level. It grows by
+// POWER_STEP per level, as monster health does per Station.
+const itemSanctity = (it) => Math.round(10 * stationPower((it.il || 1) - 1));
+const stationSanctity = (i) => Math.round(10 * stationPower(i));
+// Your Sanctity: the average over all eight slots (an empty slot counts as
+// Station I gear, so a new Saint starts at power 1).
+const playerSanctity = () => Math.round(SLOT_ORDER.reduce((a, sl) => a + (SAVE.equip && SAVE.equip[sl] ? itemSanctity(SAVE.equip[sl]) : 10), 0) / SLOT_ORDER.length);
+// A rough worth for comparisons: Sanctity first, then stats; powers count extra.
+const itemScore = (it) => !it ? 0 : itemSanctity(it) * 0.4 + it.stats.reduce((a, [key, v]) => a + v / ((STAT[key].lo + STAT[key].hi) / 2), 0) + (it.power ? 4 : 0) + (it.set ? 2 : 0);
 
 // ------------------------------------------------------------ the bag ---
 const BAG_SIZE = 30;
@@ -2209,7 +2337,9 @@ function gearStats() {
   if (g.setN >= 2) g.dmg += 10; if (g.setN >= 4) g.dmg += 15;
   // Stigmata taken this run.
   g.dmg += wound('wrath') * 15; g.crit += wound('luck') * 8; g.hp += wound('vigil') * 25; g.speed += wound('swift') * 10; g.fervor += wound('fervent') * 30; g.lok += wound('letting') * 2;
-  g.dmgMul = 1 + g.dmg / 100; g.armorK = 1 - Math.min(60, g.armor) / 100; g.cdrK = 1 - Math.min(50, g.cdr) / 100; g.dashK = 1 - Math.min(50, g.dash) / 100;
+  // Sanctity multiplies damage, and health a little less (as monster damage climbs).
+  g.power = playerSanctity() / 10;
+  g.dmgMul = (1 + g.dmg / 100) * g.power; g.armorK = 1 - Math.min(60, g.armor) / 100; g.cdrK = 1 - Math.min(50, g.cdr) / 100; g.dashK = 1 - Math.min(50, g.dash) / 100;
   g.charges = T.dash.charges + (g.powers.has('dashCharge') ? 1 : 0) + (g.setN >= 4 ? 1 : 0);
   return g;
 }
@@ -2218,7 +2348,7 @@ function applyGear(fill = false) {
   G = gearStats();
   if (!player) return;
   const share = player.maxHp ? player.hp / player.maxHp : 1;
-  player.maxHp = 100 + G.hp; player.hp = fill ? player.maxHp : Math.max(1, Math.round(player.maxHp * share));
+  player.maxHp = Math.round((100 + G.hp) * Math.pow(G.power, 0.85)); player.hp = fill ? player.maxHp : Math.max(1, Math.round(player.maxHp * share));
   player.charges = fill ? G.charges : Math.min(player.charges, G.charges);
 }
 function bagAdd(it) {
@@ -2729,7 +2859,17 @@ function update(realDt) {
     if (game.run.pending > 0 && game.state === 'play' && game.real >= (game.stigAt || 0)) openStigmata();
     safe('floor', () => updateFloor(dt));
     // A monster whose update throws is removed rather than freezing the game.
-    for (const e of enemies) if (!e.dead) safe(`enemy ${e.type}`, () => updateEnemy(e, dt), () => { e.dead = true; });
+    // Sleepers wake when the Saint comes near or when they are hurt; a
+    // monster left far behind goes back to sleep (a leash), so only the
+    // fight around the Saint costs anything.
+    awake = [];
+    for (const e of enemies) if (!e.dead) {
+      const far = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
+      if (e.asleep) { if (far < 300 || (e.hp < e.maxHp && far < 700)) wake(e); else continue; }
+      else if (far > 760 && !e.boss && e.state === 'move' && e.type !== 'imp') { e.asleep = true; continue; }
+      awake.push(e);
+      safe(`enemy ${e.type}`, () => updateEnemy(e, dt), () => { e.dead = true; });
+    }
     enemies = enemies.filter((e) => !e.dead);
     safe('abilities', () => updateAbilities(dt));
     safe('hazards', () => updateHazards(dt));
@@ -2814,7 +2954,7 @@ function render() {
   // Shadows.
   ctx.fillStyle = 'rgba(11,7,16,0.45)';
   const shadow = (x, y, rx) => { ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y), rx, Math.max(2, rx * 0.4), 0, 0, Math.PI * 2); ctx.fill(); };
-  for (const e of enemies) if (e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0)) shadow(e.x, e.y, e.r * 1.3 * (e.def.fly ? 0.7 : 1));
+  for (const e of enemies) if (e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 60)) shadow(e.x, e.y, e.r * 1.3 * (e.def.fly ? 0.7 : 1));
   shadow(player.x, player.y, 8);
   for (const g of gibs) shadow(g.x, g.y, 3);
   for (const f of falls) shadow(f.e.x, f.e.y, f.e.r * 1.3);
@@ -2824,7 +2964,7 @@ function render() {
   for (const g of ghosts) spr('saint', 'dash', g.i, g.x, g.y, { flip: g.face < 0, white: true, alpha: 0.45 * (1 - g.t / 0.2) });
   // Y-sorted actors and props.
   const th = thuriblePos();
-  const actors = [player, ...(player.xb ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0)), ...falls.map((f) => ({ fall: f, y: f.y })), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, 90))];
+  const actors = [player, ...(player.xb ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 90)), ...falls.map((f) => ({ fall: f, y: f.y })), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, 90))];
   actors.sort((a, b) => a.y - b.y);
   for (const a of actors) {
     // One actor that fails to draw is skipped; the canvas state is put back.
@@ -3069,9 +3209,9 @@ function drawEnemy(e) {
 }
 
 // The name, health and curses of the Rare or Elite you are fighting.
-function renderNameplate(e) {
-  const col = e.tier === 'elite' ? PAL.gold0 : e.tier === 'imp' ? PAL.gold1 : '#7cc4ff', w = 170, x = Math.round(W / 2 - w / 2), y = 20;
-  text(e.name, W / 2, 7, col, { align: 'center' });
+function renderNameplate(e, oy = 0) {
+  const col = e.tier === 'elite' ? PAL.gold0 : e.tier === 'imp' ? PAL.gold1 : '#7cc4ff', w = 170, x = Math.round(W / 2 - w / 2), y = 20 + oy;
+  text(e.name, W / 2, 7 + oy, col, { align: 'center' });
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, 8);
   ctx.fillStyle = e.tier === 'elite' ? PAL.gold4 : PAL.holy4; ctx.fillRect(x - 1, y - 1, w + 2, 6);
   ctx.fillStyle = PAL.blood4; ctx.fillRect(x, y, w, 4);
@@ -3218,52 +3358,43 @@ function mapIcon(name, x, y, col) {
   ctx.fillStyle = col;
   for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) if (g[r][c] === '1') ctx.fillRect(x + c, y + r, 1, 1);
 }
+// Icons on the dungeon map at scale k (pixels per tile): shrines and chests
+// you have seen, the Waystone, the Warden (always), monsters near you.
+function drawMapMarks(ox, oy, k, mx, my, mw, mh) {
+  const seen = (x, y) => room.seen[Math.floor(y / TILE) * room.w + Math.floor(x / TILE)];
+  const at = (x, y) => [Math.round(ox + x / TILE * k), Math.round(oy + y / TILE * k)];
+  const icon = (name, x, y, col) => { const [px, py] = at(x, y); if (px > mx - 4 && px < mx + mw + 4 && py > my - 4 && py < my + mh + 4) mapIcon(name, px - 2, py - 4, col); };
+  for (const r of room.rooms) {
+    if (r.shrine && !r.shrine.used && seen(r.shrine.x, r.shrine.y)) icon('shrine', r.shrine.x, r.shrine.y, PAL.holy1);
+    if (r.chest && !r.chest.open && seen(r.chest.x, r.chest.y)) icon('treasury', r.chest.x, r.chest.y, PAL.gold1);
+  }
+  for (const e of enemies) {
+    if (e.dead || e.boss || Math.abs(e.x - player.x) > 300 || Math.abs(e.y - player.y) > 200) continue;
+    const [px, py] = at(e.x, e.y); ctx.fillStyle = e.tier === 'elite' ? PAL.gold0 : e.tier === 'rare' ? PAL.holy1 : PAL.blood0; ctx.fillRect(px, py, k > 1 ? 2 : 1, k > 1 ? 2 : 1);
+  }
+  if (game.waystone) icon('start', game.waystone.x, game.waystone.y, PAL.holy1);
+  if (game.warden && !game.warden.dead) icon('exit', game.warden.x, game.warden.y, Math.floor(game.real * 4) % 2 ? PAL.blood0 : PAL.gold0);
+}
 // The minimap: a framed panel left of the pause button. In the Undercroft it
 // shows the room grid (fog over unknown rooms); in Vael, the street.
 function renderMinimap() {
   const right = HUD.pause.x - HUD.pause.r - 6, my = 8;
   if (room.rooms) {
-    const cw = 24, chh = 14, gap = 6, pad = 5, cols = GRID.cols, rows = GRID.rows;
-    const mw = cols * cw + (cols - 1) * gap + pad * 2, mh = rows * chh + (rows - 1) * gap + pad * 2, mx = right - mw;
+    // The Undercroft: the explored map around the Saint, one pixel per tile,
+    // filling in as you walk (see revealAround).
+    const mw = 112, mh = 70, mx = right - mw;
     gild(mx, my, mw, mh);
     ctx.fillStyle = 'rgba(11,7,16,0.88)'; ctx.fillRect(mx, my, mw, mh);
-    const cell = (r) => [mx + pad + r.gx * (cw + gap), my + pad + r.gy * (chh + gap)];
-    // Corridors between known rooms.
-    for (const r of room.rooms) for (const id of r.links) {
-      const q = room.rooms[id]; if (id < r.id || !(r.known && q.known) || !(r.visited || q.visited)) continue;
-      const [ax, ay] = cell(r), [bx, by] = cell(q), locked = (r.locked && r.state === 'active') || (q.locked && q.state === 'active');
-      ctx.fillStyle = PAL.outline;
-      if (r.gy === q.gy) { const x0 = Math.min(ax, bx) + cw, y = ay + chh / 2 - 2; ctx.fillRect(x0 - 1, y, gap + 2, 4); ctx.fillStyle = locked ? PAL.blood1 : PAL.stone3; ctx.fillRect(x0, y + 1, gap, 2); }
-      else { const y0 = Math.min(ay, by) + chh, x = ax + cw / 2 - 2; ctx.fillRect(x, y0 - 1, 4, gap + 2); ctx.fillStyle = locked ? PAL.blood1 : PAL.stone3; ctx.fillRect(x + 1, y0, 2, gap); }
-    }
-    for (const r of room.rooms) {
-      if (!r.known) continue;
-      const [x, y] = cell(r), cur = r === game.curRoom;
-      // Body with cut corners and a darker lower lip for depth.
-      ctx.fillStyle = PAL.outline; ctx.fillRect(x, y - 1, cw, chh + 2); ctx.fillRect(x - 1, y, cw + 2, chh);
-      ctx.fillStyle = !r.visited ? PAL.ink3 : r.state === 'clear' ? PAL.stone2 : PAL.stone3;
-      ctx.fillRect(x, y, cw, chh);
-      ctx.fillStyle = !r.visited ? PAL.ink2 : r.state === 'clear' ? PAL.stone3h : PAL.stone4;
-      ctx.fillRect(x, y + chh - 2, cw, 2);
-      if (r.visited) { ctx.fillStyle = r.state === 'clear' ? PAL.stone1 : PAL.stone2h; ctx.fillRect(x, y, cw, 1); }
-      if (cur) {
-        const pulse = Math.floor(game.real * 3) % 2 === 0;
-        ctx.strokeStyle = r.state === 'active' ? PAL.blood0 : pulse ? PAL.gold0 : PAL.gold1; ctx.lineWidth = 1;
-        ctx.strokeRect(x - 1.5, y - 1.5, cw + 3, chh + 3);
-      }
-      const icon = r.type === 'combat' ? null : r.type;
-      const col = { exit: PAL.blood0, elite: PAL.gold0, shrine: PAL.holy1, treasury: PAL.gold1, start: PAL.gold1 }[r.type];
-      const spent = (r.type === 'elite' && r.state === 'clear') || (r.type === 'shrine' && r.shrine && r.shrine.used) || (r.type === 'treasury' && r.chest && r.chest.open);
-      if (icon && !cur && !spent) mapIcon(icon, x + cw / 2 - 2, y + chh / 2 - 3, col);
-      // Inside the current room: enemies and the player.
-      if (cur) {
-        const fx = (wx) => x + 1 + Math.round((wx / TILE - r.x0) / (r.x1 - r.x0 + 1) * (cw - 2)), fy = (wy) => y + 1 + Math.round((wy / TILE - r.y0) / (r.y1 - r.y0 + 1) * (chh - 2));
-        for (const e of enemies) if (!e.dead && e.room === r.id) { ctx.fillStyle = e.tier === 'elite' ? PAL.gold0 : e.tier === 'rare' ? PAL.holy1 : PAL.blood0; ctx.fillRect(fx(e.x), fy(e.y), 1, 1); }
-        const px = Math.max(x, Math.min(x + cw - 2, fx(player.x) - 1)), py = Math.max(y, Math.min(y + chh - 2, fy(player.y) - 1));
-        ctx.fillStyle = PAL.outline; ctx.fillRect(px - 1, py - 1, 4, 4);
-        ctx.fillStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.fillRect(px, py, 2, 2);
-      }
-    }
+    ctx.save(); ctx.beginPath(); ctx.rect(mx, my, mw, mh); ctx.clip();
+    const ox = Math.round(mx + mw / 2 - player.x / TILE), oy = Math.round(my + mh / 2 - player.y / TILE);
+    ctx.drawImage(room.fog, ox, oy);
+    drawMapMarks(ox, oy, 1, mx, my, mw, mh);
+    ctx.restore();
+    const pulse = Math.floor(game.real * 4) % 2;
+    ctx.fillStyle = PAL.outline; ctx.fillRect(mx + mw / 2 - 2, my + mh / 2 - 2, 5, 5);
+    ctx.fillStyle = pulse ? PAL.white : PAL.gold0; ctx.fillRect(mx + mw / 2 - 1, my + mh / 2 - 1, 3, 3);
+    text('M', mx + mw - 8, my + mh - 10, PAL.stone2, { small: true });
+    HUD.minimap = { x: mx, y: my, w: mw, h: mh };
     return { mx, my, mw, mh };
   }
   // Vael: a little picture of the street around you, with badges for each
@@ -3293,7 +3424,25 @@ function renderMinimap() {
 const NPC_BADGE = { odile: 'npc', vane: 'relic', pell: 'market', plushseller: 'plush', barkeep: 'tavern', hollis: 'forge', beggar: 'npc', crier: 'npc' };
 const NPC_ROLE = { odile: 'SISTER ODILE, YOUR KEEPER', vane: 'ARCHDEACON VANE', pell: 'BROTHER PELL, CURIO SELLER', plushseller: 'THE PLUSH SELLER', barkeep: 'THE BOOKIE, WAGERS', hollis: 'HOLLIS THE SMITH', beggar: 'OLD BARNABY', crier: 'THE TOWN CRIER' };
 // The full town map: the whole street, every site and person, and a legend.
+// The whole explored Undercroft, scaled to fit, with every mark.
+function renderDungeonMap() {
+  ctx.fillStyle = 'rgba(11,7,16,0.82)'; ctx.fillRect(0, 0, W, H);
+  const pw = W - 24, ph = H - 24, x0 = 12, y0 = 12;
+  gild(x0, y0, pw, ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(x0, y0, pw, ph);
+  text(`${room.name}, ${curDiff().name}`, x0 + 10, y0 + 8, PAL.gold1);
+  text('TAP ANYWHERE TO CLOSE', x0 + pw - 10, y0 + 8, PAL.stone2, { align: 'right', small: true, outline: null });
+  const k = Math.max(1, Math.floor(Math.min((pw - 20) / room.w, (ph - 44) / room.h)));
+  const mw = room.w * k, mh = room.h * k, ox = Math.round(x0 + pw / 2 - mw / 2), oy = Math.round(y0 + 24 + (ph - 44 - mh) / 2);
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(room.fog, ox, oy, mw, mh);
+  drawMapMarks(ox, oy, k, x0, y0, pw, ph);
+  const px = Math.round(ox + player.x / TILE * k), py = Math.round(oy + player.y / TILE * k);
+  ctx.fillStyle = PAL.outline; ctx.fillRect(px - 3, py - 3, 7, 7); ctx.fillStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.fillRect(px - 2, py - 2, 5, 5);
+  const T0 = game.toll;
+  const line = game.waystone ? 'THE WARDEN IS SLAIN. FIND THE WAYSTONE.' : game.warden ? 'THE WARDEN HUNTS YOU.' : T0 ? `THE TOLL ${Math.floor(T0.v / T0.max * 100)}%. WHEN IT IS FULL THE WARDEN COMES.` : '';
+  text(line, x0 + 10, y0 + ph - 14, PAL.cloth1, { small: true, outline: null });
+}
 function renderTownMap() {
+  if (room.rooms) return renderDungeonMap();
   ctx.fillStyle = 'rgba(11,7,16,0.82)'; ctx.fillRect(0, 0, W, H);
   const pw = W - 24, x0 = 12, y0 = 10, ph = H - 20;
   gild(x0, y0, pw, ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(x0, y0, pw, ph);
@@ -3317,7 +3466,7 @@ function renderTownMap() {
   // Legend: sites with their lock state, then people.
   const ly = dy + 14, cols = Math.max(3, Math.floor((pw - 16) / 230)), colW = Math.floor((pw - 16) / cols);
   const entries = [{ b: 'descend', name: 'THE DESCENT (CATHEDRAL DOORS)', sub: 'OPEN', col: PAL.flame1 },
-    ...SITES.map((S) => ({ b: S.badge, name: S.name, sub: siteDone(S) ? 'COMING SOON' : `LOCKED: ${S.need.replace('FINISH A DESCENT ON ', 'CLEAR ON ').replace('REACH LEVEL 20 IN ONE DESCENT', 'LEVEL 20 IN ONE RUN')}`, col: siteDone(S) ? PAL.stone1 : PAL.blood0 })),
+    ...SITES.map((S) => ({ b: S.badge, name: S.name, sub: siteDone(S) ? 'COMING SOON' : `LOCKED: ${S.need.replace('SLAY THE WARDEN OF ', 'WARDEN OF ').replace('REACH LEVEL 20 IN ONE DESCENT', 'LEVEL 20 IN ONE RUN')}`, col: siteDone(S) ? PAL.stone1 : PAL.blood0 })),
     ...Object.entries(NPC_ROLE).map(([id, name]) => ({ b: NPC_BADGE[id], name, sub: 'TALK', col: PAL.stone1 }))];
   const rows = Math.ceil(entries.length / cols), rowH = Math.min(22, Math.floor((y0 + ph - 4 - ly) / rows));
   entries.forEach((e, i) => { const c = Math.floor(i / rows), r = i % rows, ex = mx + c * colW, ey = ly + r * rowH;
@@ -3815,6 +3964,7 @@ function renderInventory() {
   const pw = [...G.powers].map((k) => POWERS[Object.keys(POWERS).find((q) => POWERS[q].key === k)].text);
   const sy = D.y + 150;
   text(`HP ${player.maxHp}`, D.x, sy, PAL.blood0, { small: true, outline: null });
+  text(`SANCTITY ${playerSanctity()}`, D.x + 64, sy, PAL.gold1, { small: true, outline: null });
   if (!lines.length) text('NOTHING WORN', D.x, sy + 10, PAL.stone2, { small: true, outline: null });
   lines.slice(0, 12).forEach((l, i) => text(l, D.x + (i % 2) * 96, sy + 10 + Math.floor(i / 2) * 9, l.startsWith('SAINT') ? RARITY[4].color : PAL.cloth1, { small: true, outline: null }));
   let py = sy + 12 + Math.ceil(Math.min(12, lines.length) / 2) * 9;
@@ -3846,7 +3996,10 @@ function renderInventory() {
   const R0 = RARITY[it.ri];
   let y = C.y + 6;
   for (const l of wrap(it.name, Math.floor((C.w - 12) / 7))) { text(l, C.x + 6, y, R0.color); y += 12; }
-  text(`${R0.name} ${it.slot.toUpperCase()}`, C.x + 6, y, PAL.stone1, { small: true, outline: null }); y += 12;
+  text(`${R0.name} ${it.slot.toUpperCase()}`, C.x + 6, y, PAL.stone1, { small: true, outline: null }); y += 10;
+  text(`SANCTITY ${itemSanctity(it)}`, C.x + 6, y, PAL.gold1, { small: true, outline: null }); text(`STATION ${ROMAN[(it.il || 1) - 1]}`, C.x + C.w - 6, y, PAL.stone2, { small: true, outline: null, align: 'right' });
+  if (worn0(it)) { const dv = itemSanctity(it) - itemSanctity(worn0(it)); if (dv) text(`${dv > 0 ? '+' : ''}${dv}`, C.x + 76, y, dv > 0 ? PAL.flame1 : PAL.blood0, { small: true, outline: null }); }
+  y += 12;
   const worn = game.inv.sel.from === 'bag' ? SAVE.equip[it.slot] : null;
   for (const st of it.stats) {
     text(statLine(st), C.x + 6, y, PAL.cloth0, { small: true, outline: null });
@@ -3929,6 +4082,9 @@ addEventListener('error', (e) => logError('event', e.error || e.message));
 addEventListener('unhandledrejection', (e) => logError('promise', e.reason));
 addEventListener('resize', resize);
 resize();
+// Saves from before the Stations start the new ladder at Station I (gear
+// and gold are kept; old gear counts as Station I gear).
+if (!SAVE.stations) { SAVE.cleared = -1; SAVE.diff = 0; SAVE.stations = 1; persist(); }
 gearInit(); G = gearStats();
 loadAssets().then(() => {
   if (location.search.includes('run')) { tut.on = false; newRun(); }

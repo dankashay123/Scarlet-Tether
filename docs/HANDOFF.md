@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-18, after round 8. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 9. Read this first, then `CLAUDE.md`.
 
 ## Where the game stands
 
@@ -26,17 +26,35 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
     the Bleeding Vigil (Vigil Trials), Martyrdom, the Canonry. None of
     the features behind them exist yet.
   - Town minimap with badges; tap it or press M for the full map and legend.
-- **The descent:** a descent panel at the cathedral doors shows every number
-  (difficulty, monster health/damage, waves, gold, gear odds, rarity odds,
-  XP, death penalty). Four difficulty tiers (Pilgrim, Zealot, Martyr,
-  Saint), each unlocked by clearing the one before.
-  - A floor is 9 rooms on a 3×3 grid (32–40 × 22–28 tiles), laid out the
-    OWL way: open floors, one mirrored plan per room (`r.plan`), a 7-tile
-    back-wall rhythm (pilaster, torch stand, statue, window or banner),
-    clutter in corners, a stone ledge over black on the south side.
-  - Gates lock behind you and waves spawn. Room types: vestibule, combat,
-    Champion's Hall (elite), shrine, treasury and the Warden's chamber,
-    whose Waystone ends the run.
+- **The descent (round 9, modelled on Diablo 3 rifts and Torchlight
+  Infinite Timemarks, with our own names):**
+  - **The Fifteen Stations of the Wound** (`DIFF`, Station I–XV) are the
+    difficulty ladder, in four bands: Pilgrim I–IV, Zealot V–VIII, Martyr
+    IX–XII, Saint XIII–XV. A Station opens when you slay the Warden of the
+    one before (`SAVE.cleared` = highest Station index cleared). Monster
+    health climbs by `POWER_STEP` (1.36) per Station plus 5%, damage a
+    little slower; rares/elites gain a curse at IX and XIII.
+  - The descent panel at the cathedral doors shows the Station, every
+    number, and your Sanctity against what the Station expects.
+  - **The map** is new every descent: 11–12 rooms grown as a random blob
+    on a 4×4 grid of cells (`GRID`), joined by corridors with a few loops,
+    no locked gates. Every room but the Vestibule starts packed
+    (`populate()`): clusters of commons, a chance of a blue rare pack, gold
+    elite packs in two Champion's Halls, a shrine and one or two
+    treasuries. About 220–290 monsters per map. Monsters sleep until the
+    Saint is near (or they are hurt) and go back to sleep when left far
+    behind (`awake` list), so the frame cost stays low.
+  - **Fog of war:** the minimap is the explored map around the Saint (one
+    pixel per tile, `room.fog`), filling in as you walk (`revealAround`,
+    15 tiles). Tap it or press M for the full explored map.
+  - **The Toll** (the progress bar at the top): every kill rings it
+    (commons 1, rares 4, elites 12; `tollValue`). It needs about 68% of the
+    map's monsters. When it is full a banner says THE WARDEN COMES and the
+    **Warden** appears near the Saint (`spawnWarden`): a random elite grown
+    1.45×, 2,400 health at Station I, three extra rites from
+    `WARDEN_SKILLS`, phases at 66% and 33% (faster, a burst of shots,
+    adds), its own boss bar, never staggered or executed. Slaying it drops
+    4 pieces, opens the next Station and raises the Waystone home.
 - **Combat:** a floating auto-aiming crossbow, dash with perfect-dodge
   slow-mo, two rites (holy-water vial, chain), Reckoning (the ultimate,
   charged by Zeal), executions, Carnage bonus.
@@ -47,7 +65,13 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
     auto skills.
 - **Loot:** gold, health orbs, gear in 5 rarities (common, blessed,
   consecrated, hallowed, Saint's set) across 8 slots (hood, mantle, gloves,
-  girdle, pendant, seal, charm, greaves). A 30-slot bag with AUTO EQUIP and
+  girdle, pendant, seal, charm, greaves). Every piece has an item level,
+  the Station it dropped on (`it.il`), which sets its **Sanctity**
+  (10 × 1.36^(il−1)). Your Sanctity is the average over the eight slots
+  (an empty slot counts 10); it multiplies your damage, and your health by
+  its 0.85 power, matching the monsters' climb. So Station I gear cannot
+  carry you up the ladder. Drop rates were trimmed (commons 1.5%, rares
+  45%, elites 2 pieces) and rarity odds rise with the Station. A 30-slot bag with AUTO EQUIP and
   SELL MANY. On death the Choir takes half your gold and every other piece
   found that run; worn gear is safe. Saved in localStorage (`hollow-saint`).
 - **Audio:** Kenney SFX, OpenGameArt music and ambience (`docs/CREDITS.md`).
@@ -86,8 +110,12 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 4. **Build the first locked feature.** Pell's curio stall is the smallest:
    a shop panel with 6 items rerolled per descent, priced by rarity. Then
    the Ember Forge (reroll one stat, temper rarity), then bounties.
-5. **The Bellwright boss.** A Warden's-chamber boss with 3 telegraphed
-   phases, a health bar and a guaranteed hallowed drop.
+5. **Tune the descent from play.** Toll size (68% of the map), Warden
+   health and skills, monster counts per room and drop rates are first
+   guesses. Watch how long a Station takes at matched Sanctity (aim for
+   6–10 minutes) and adjust `populate()`, `TOLL_VALUE` and `WARDEN`.
+   Give each Warden its own art and a signature attack (the Bellwright,
+   who rings a bell that slams the floor in rings).
 6. **Vigil Trials (endless mode).** One timed descent that gets harder each
    level; a candle timer on the HUD; leaderboard in localStorage.
 7. **Juice.** Screen-shake tuning, hit-flash on every enemy, bigger damage
@@ -106,6 +134,13 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 9:** the descent rebuilt the D3/TLI way: 15 Stations gated by
+  Wardens, random packed maps with fog-of-war minimap and full map, the
+  Toll and the Warden boss, item levels and Sanctity for loot balance,
+  sleeping/leashed monsters for speed. Old saves restart at Station I
+  (gear kept). Town site unlocks moved to Stations V, IX and XV.
+  `tools/tests/floor.cjs` now plays a whole descent (walk, Toll, Warden,
+  phases, Waystone, tally).
 - **Round 8:** monster animation pass. 8-frame planted-foot walks for all
   30 monsters (`stride()` in `tools/models/base.mjs`), `<id>_hit` and
   `<id>_die` anims made by `reactions()` (re-renders the model tipped back

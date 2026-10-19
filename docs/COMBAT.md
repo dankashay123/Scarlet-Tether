@@ -1,5 +1,7 @@
 # Hollow Saint — Combat, Monsters, Loot and Town (v1)
 
+> Round 9 changed the descent: rooms no longer lock or send waves. A map is 11–12 random rooms packed with monsters, kills fill the Toll, and a full Toll brings the Warden (the Station boss). Difficulty is the Fifteen Stations. See `docs/HANDOFF.md` for the current rules; the room and wave notes below are history.
+
 Our own battle design, built for short mobile runs. This file extends
 `GDD.md`; where they differ, this file is newer.
 

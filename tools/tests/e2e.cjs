@@ -5,7 +5,7 @@ const S = process.argv[2];
 (async () => {
   const b = await chromium.launch(); const p = await (await b.newContext({ ...devices['iPhone 13 landscape'] })).newPage();
   const errs = []; p.on('pageerror', (e) => errs.push(String(e.stack || e).slice(0, 300)));
-  const st = () => p.evaluate(() => ({ state: HS.game.state, scene: HS.game.scene, step: HS.tut.step, on: HS.tut.on }));
+  const st = () => p.evaluate(() => ({ state: HS.game.state, scene: HS.game.scene, step: HS.tut.step, on: HS.tut.on, hp: HS.player && Math.round(HS.player.hp) }));
   const tap = async (x, y) => { const pos = await p.evaluate(([x, y]) => { const r = document.getElementById('screen').getBoundingClientRect(); return [r.left + x / HS.W * r.width, r.top + y / HS.H * r.height]; }, [x, y]); await p.touchscreen.tap(pos[0], pos[1]); };
   const closeDialog = async () => { for (let i = 0; i < 20 && (await st()).state === 'dialog'; i++) { await tap(200, 150); await p.waitForTimeout(120); } };
   await p.goto('http://localhost:8123/'); await p.waitForTimeout(900);
