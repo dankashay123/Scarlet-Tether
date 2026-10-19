@@ -79,6 +79,19 @@ screen.
 | Inquisitor | Three telegraphed dash-slashes in a row. |
 | Weeping Effigy | Teleports; fires a fan of tear beams. |
 
+## Round 16 attacks
+
+Added to most monsters by `MORE_ATTACKS` in `index.html`:
+
+- **Snipe:** a red sighting line tracks the Saint, freezes, then a very fast shot. Step off the line.
+- **Blight:** a pool under the Saint that ticks every 0.2 s, even through a dash. Walk out.
+- **Nova:** a big circle round the monster that bursts after a delay, sometimes leaving a pool.
+- **Barrage:** a rain of small blasts round the Saint, one after another.
+- **Homing shots:** slow shots that turn toward the Saint. Dash across them.
+- **The Sentence:** a sigil over the Saint and a closing ring. It bursts for heavy damage unless the Saint dashes (or Martyr's Ward is up).
+
+New affixes: BLIGHTED (fast pools), SENTENCING, HAWK-EYED (snipes).
+
 ## Affixes
 
 Every affix is telegraphed and dodgeable ("Learn the fight").

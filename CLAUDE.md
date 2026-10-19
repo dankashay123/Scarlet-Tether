@@ -53,6 +53,7 @@ node tools/tests/dev.cjs <outDir>     # dev menu: every tab, sets into the bag, 
 node tools/tests/round14.cjs <outDir> # Penitent Cells, banners, rite colours, Nave props, settings, the Warden's fall
 node tools/tests/rites2.cjs <outDir>  # the Rites panel and all 12 rites cast in a crowd
 node tools/tests/round15.cjs <outDir> # worn quiver and Habit look, bounty board, suspend and resume across a reload
+node tools/tests/punish.cjs <outDir>  # round 16 monster attacks (snipe, blight, nova, barrage, homing, the Sentence) and the Censer panel
 node tools/tests/balance.cjs [stations] [profiles] # difficulty check: DPS, Warden seconds and blows to die per Station, gear matched and behind
 node tools/tests/perf.cjs [secs]      # dense crowd: frame times, % of time frozen by hitstop, canvases made, slowest systems
 node tools/tests/err.cjs              # prints page errors and state
@@ -85,6 +86,8 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **Slots:** 10 (eight vestments in `GEAR_SLOTS`, plus `bow` and `quiver`). Set pieces carry `it.set`, arms carry `it.wset`.
 - **Settings:** read player options with `opt(k)` (`OPT_DEF` holds defaults). Respect `LOWFX` for anything decorative.
 - **Performance:** never build a canvas per frame or per hit. `text()` caches each string, so anything with changing digits goes glyph by glyph (it does this by itself). Freeze frames go through `hitStop()`. Check crowds with `tools/tests/perf.cjs`.
+- **Monster attacks:** `MON` lists each kit; `MORE_ATTACKS` adds the round 16 ones. Damage is written at the old scale and multiplied by `MON_DMG`; shot speed by `SHOT_K`. Every attack needs a telegraph (windup tell, circle, `aim` line or the Sentence ring).
+- **The Censer:** `CENSER_UP` holds its 12 upgrades, unlocked by lifetime deeds (`SAVE.life`, bumped by `bumpBounty`). Read them with `censerUp(id)`.
 - **Strata:** `STRATA` and `useStratum(k)` swap the dungeon sheets for the `_d` copies (built by the `DROWN` ramp remap in `tools/sprites.mjs`). Give a monster `stratum: 2` to put it in Stratum II's pools.
 - **Town:** two streets. Plan x below `TOWN_SPLIT` is the upper street, the rest the lower street `ROW_DY` further south (`townX`, `townRow`). Sites carry `S.row`; site `dy` already includes the row.
 - **Seeds:** descent maps and their monsters come from `rng`, which `newRun` seeds (`run.seed`) so a suspended run rebuilds the same map. Never use `Math.random` in map building or `populate()`.

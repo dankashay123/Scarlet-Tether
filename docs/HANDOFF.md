@@ -209,7 +209,9 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## Next steps (ideas, roughly in priority order)
 
-1. **Tune from play.** Run `tools/tests/balance.cjs` after any balance change. Set and arms multipliers, cell goals (`CELLS`),
+1. **Tune the new attacks from play.** Watch which of `MORE_ATTACKS` feel
+   unfair; telegraphs must stay readable in a crowd.
+2. **Tune from play.** Run `tools/tests/balance.cjs` after any balance change. Set and arms multipliers, cell goals (`CELLS`),
    shop prices, forge costs, Devotion pace, Toll size, Warden health and
    enrage. Use the dev menu to try each set quickly.
 2. **Bounty board.** Three small goals per descent paying gold and Devotion.
@@ -225,6 +227,20 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 16 (punishing foes, the Censer):** monsters hit harder
+  (`MON_DMG` 1.25, plus up to +40% by Station V in `DIFF`), shots fly 35%
+  faster (`SHOT_K`), lobs land sooner, hurt i-frames 0.6 to 0.4 s, and heal
+  per kill is capped at 3% of health a second. Most monsters learn one more
+  attack (`MORE_ATTACKS`): `snipe` (a sighting line, then a very fast
+  shot), `blight` (pools under the Saint that tick every 0.2 s and ignore
+  i-frames), `nova` (a delayed blast round the monster), `barrage` (a rain
+  of small blasts), homing shots (`home`), and the Sentence (a mark that
+  bursts unless the Saint dashes or is warded). New affixes: BLIGHTED,
+  SENTENCING, HAWK-EYED. An idle Saint in a crowd now falls in about 5 s
+  (was 12 to 16 s). The Censer: a tappable icon on the bag's paper doll
+  opens its panel (what it does, live numbers, 12 upgrades in `CENSER_UP`).
+  Upgrades light by lifetime deeds (`SAVE.life` via `bumpBounty`, deaths,
+  descents, Vigil best) and stay lit. Test: `tools/tests/punish.cjs`.
 - **Round 15f (Rites panel polish):** the bag's RITES button moved to the
   bottom left, with the three chosen rites shown beside it. The Rites panel
   was redone: roomier cards (round icon socket, set stripe, cooldown, SET
