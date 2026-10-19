@@ -225,6 +225,12 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 15d:** 20 more Hallowed pieces (`LEGENDS`, 30 in all, two or
+  three per slot; many lean on the new rites, such as the Stormwright's
+  Gloves, the Pall of Seven Wards, the Seal of Judgement). The Ashen Altar
+  (town site, opens after 3 descents; `SAVE.altar`): burn a Hallowed piece
+  to learn its power for good, then set one learned power each in the
+  vestment, arms and relic sockets; they count as worn (`gearStats`).
 - **Round 15c:** the worn quiver shows on the Saint's back in its set's
   colours (`weapon` `quiver_<set>`, `G.quiver`); Odile's Habit has a
   starter look (brown homespun, cream collar; `SKINS.habit`). The bounty
