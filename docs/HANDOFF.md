@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-19, after round 24. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 25. Read this first, then `CLAUDE.md`.
 The history of every round is at the bottom; the sections above it describe
 the game as it is now.
 
@@ -33,10 +33,10 @@ Desktop works with keys. 55–60 fps in dense crowds.
   on dark stone. Every pixel is on the palette (`tools/palette.mjs`, 25
   ramps; `rose` was added in round 18 for the Bloodrose Keys).
 - **Vael, the town:** two short streets (`TOWN_SPLIT`, `ROW_DY`) with
-  townsfolk and nine sites: Pell's curio stall, the Plush stall, the
-  Bounty Board, the Scrying Pool, the Ember Forge, the Ashen Altar, the
-  Penitent Cells, Martyrdom, the Canonry, plus the Pilgrim Road (Stratum
-  II). Some still say "coming soon" (Scrying Pool, Martyrdom).
+  townsfolk and ten sites: Pell's curio stall, the Plush stall, the
+  Bounty Board, the Scrying Pool (wagers), the Ember Forge, the Ashen
+  Altar, the Penitent Cells, Martyrdom (the vow), the Vigil Roll, the
+  Canonry, plus the Pilgrim Road (Stratum II). Every site is open now.
 - **The descent:** the Descent panel at the cathedral doors picks a Station
   (I–XV, `DIFF`), a stratum (the Undercroft or the Drowned Nave), omens,
   and now also holds **the Bleeding Vigil** (top-right button). Maps are
@@ -90,39 +90,45 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## Next steps (ideas, building on what is there)
 
-The first five are the owner's picks from round 24's suggestions.
-
-1. **Warden fight music.** Each Warden has a roar, a sting and a fall; add a
-   battle loop that plays while it lives (ducking the stratum music) and
-   drops back when it falls. OpenGameArt works from here; Freesound does
-   not. Add it as a `music()` recipe in `tools/build-sfx.py`.
-2. **A "best kept" board in Vael.** Show the highest Vigil levels kept and
-   the time left, and the Wardens whose halos you have earned, each earned
-   halo on a little stand.
-3. **The Scrying Pool.** Wager gold on how deep a run gets (Toll filled,
-   Warden slain, the Waystone), with the odds shown up front.
-4. **Martyrdom.** One life, doubled rewards. A fall there could earn a look
-   of its own (a cracked halo in `HALOS`, earned like the Warden halos).
-5. **Sound settings.** Separate sliders for music, effects and voices, and a
-   "fewer monster cries" toggle (`deathVoice` already thins them in crowds).
-6. **A training yard in Vael.** A dummy and a monster summoner so players
+1. **A training yard in Vael.** A dummy and a monster summoner so players
    can learn the round 16 attacks (snipe, blight, Sentence) safely.
-7. **Rite depth.** Let rites gain ranks with use, and give each set a
+2. **Rite depth.** Let rites gain ranks with use, and give each set a
    rite-specific 6-piece twist, so the Rites panel becomes a build screen.
-8. **Stratum III.** A third look (the Ossuary Spire or a burnt chapter
-   house) with its own two Wardens (each needs a roar, a fall and an earned
-   halo), reusing the `STRATA` remap pipeline and its own music.
-9. **A second playable saint.** A short-range melee saint with its own
+3. **Stratum III.** A third look (the Ossuary Spire or a burnt chapter
+   house) with its own two Wardens (each needs a roar, a fall, an earned
+   halo, a stand on the Vigil Roll and battle music), reusing `STRATA`.
+4. **Death recap.** After a fall, show what hit you hardest and a tip for
+   that attack.
+5. **The pool's crowd.** Let the crowd at the Scrying Pool cheer or jeer
+   when a wager settles in Vael, and show past wagers (won and lost).
+6. **A second playable saint.** A short-range melee saint with its own
    rites, to reuse the sets and Stations.
-10. **Art pass on small icons.** Review every sheet with `CHUNKY=2`: the
-    Chrism vial on the ground, weed mats.
-11. **Death recap.** After a fall, show what hit you hardest and a tip for
-    that attack.
-12. **Tune from play.** `tools/tests/balance.cjs`, `perf.cjs` and the
-    survival check in round 16's notes after any balance change.
+7. **Art pass on small icons.** Review every sheet with `CHUNKY=2`: the
+   Chrism vial on the ground, weed mats.
+8. **Tune from play.** Wager odds (`WAGER_MARKS`, `wagerOdds`), the
+   vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
 
+- **Round 25 (Warden music, the pool, the vow, the Vigil Roll, sound
+  settings):** a living Warden plays its own battle loop (`music_warden`,
+  Juhani Junkala's Epic Boss Battle; `music_warden_nave`, an epic Toccata
+  and Fugue in the Drowned Nave); `update()` switches on `game.warden` and
+  the fall ducks the music. Settings gained VOICES (a third bus,
+  `AUDIO.voiceBus`, for `die_`, `roar`, `fall_` sounds) and MONSTER CRIES
+  (all, rares and elites, off; `deathVoice`). The Scrying Pool
+  (`openPool`): pick a Station, a stake (up to `wagerCap`) and a mark
+  (`WAGER_MARKS`: the Toll rung, the Warden falls, home with the
+  Waystone); odds from `wagerOdds` are fixed when placed and paid by
+  `settleWager` in `bankRun` from `run.reach` (1 Warden came, 2 slain, 3
+  home). Martyrdom (`openMartyr`, `SAVE.vow`): the next Station descent is
+  a Martyr's (`run.martyr`, kept across suspend): gear and gold x2, a fall
+  loses all gold and every found piece, and a fall with the Toll half rung
+  earns the cracked halo (`HALOS` `cracked`, `ramp`/`crack`, earned by
+  `earnLook('martyr')`). The Vigil Roll (`openRoll`, `SAVE.vigilRoll` via
+  `rollVigil`) stands right of the cathedral with a halo stand per
+  earnable halo (`vigilroll`, `halostand` in `town.mjs`, frame = earned
+  index + 1). `tools/tests/round25.cjs` covers it.
 - **Round 24 (music, voices, more looks):** Vael plays Christislord's chant
   (`music_town`); the sung version (`amb_choir`) runs in step with it and
   rises as the Saint nears the cathedral doors while the organ falls away

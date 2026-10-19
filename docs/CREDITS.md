@@ -50,6 +50,8 @@ OpenGameArt.org unless marked.
 | [Chant](https://opengameart.org/content/chant) (Gregorian chant) | christislord | the sung chant near the cathedral doors, in step with Vael's music |
 | [Evil Temple Ambiance Loop](https://opengameart.org/content/evil-temple-ambiance-loop) | HaelDB (CC0 of its CC0/OGA-BY dual licence) | the Undercroft (Stratum I) |
 | [Underwater Theme II](https://opengameart.org/content/underwater-theme-ii) | CleytonKauffman | the Drowned Nave (Stratum II) |
+| [Boss Battle Music](https://opengameart.org/content/boss-battle-music) (Epic Boss Battle, seamless loop) | Juhani Junkala (subspaceaudio) | a Warden's battle in the Undercroft and the Vigil |
+| [Epic Version: Toccata and Fugue](https://opengameart.org/content/epic-version-toccata-and-fugue) (after J. S. Bach) | eldritch-grim | a Warden's battle in the Drowned Nave |
 | [String and piano horror stings](https://opengameart.org/content/string-and-piano-horror-stings) | congusbongus | the Warden's sting |
 | [Dungeon Ambience](https://opengameart.org/content/dungeon-ambience) | yd | the Bleeding Vigil |
 | [Mild wind background noise](https://opengameart.org/content/mild-wind-background-noise) | bashar3a | town wind |

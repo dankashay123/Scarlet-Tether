@@ -220,6 +220,9 @@ SFX['music_town'] = lambda: music('music_town', 'chant-instrumental', 'ChantInst
 SFX['amb_choir'] = lambda: music('amb_choir', 'chant', 'chant_0.ogg', 0, None, 4, lu=-21)
 SFX['music_undercroft'] = lambda: music('music_undercroft', 'evil-temple-ambiance-loop', 'evil_temple.ogg', seamless=True, lu=-20)
 SFX['music_nave'] = lambda: music('music_nave', 'underwater-theme-ii', 'Underwater Theme II.ogg', 0, None, 4, lu=-21)
+# A Warden's battle: orchestral in the Undercroft and the Vigil, the organ in the Drowned Nave.
+SFX['music_warden'] = lambda: music('music_warden', 'boss-battle-music', 'Juhani Junkala - Epic Boss Battle [Seamlessly Looping].wav', seamless=True, lu=-20)
+SFX['music_warden_nave'] = lambda: music('music_warden_nave', 'epic-version-toccata-and-fugue', 'epic_version_-_toccata_and_fugue.wav', 0, 140, 4, lu=-20)
 SFX['sting_warden'] = lambda: build('sting_warden', [L('string-and-piano-horror-stings', 'abyss_0.ogg', fade=0.5)], fade=1.0, rev=(0.3, 2.4, 2500), lu=-12)
 
 # Loops (ambience near a site).

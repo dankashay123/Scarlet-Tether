@@ -31,7 +31,8 @@ const TM = {
   hole: { ramp: 'ink', bias: -0.5, min: 5 }, moss: { ramp: 'moss', min: 2, bias: -0.2 }, bark: { ramp: 'shroud', spec: 0.05, min: 1 },
   cloth: { ramp: 'cloth', max: 6 }, canvasR: { ramp: 'crimson', spec: 0.04 }, canvasV: { ramp: 'violet', spec: 0.04 }, canvasG: { ramp: 'gold', spec: 0.04 },
   bannerR: { ramp: 'crimson', spec: 0.05, bias: -0.05 }, bone: { ramp: 'bone', spec: 0.2 }, shroud: { ramp: 'shroud' },
-  water: { ramp: 'violet', spec: 0.9, bias: 0.05 },
+  water: { ramp: 'violet', spec: 0.9, bias: 0.05 }, rose: { ramp: 'rose', spec: 0.3 }, roseDeep: { ramp: 'rose', bias: -0.2, min: 2 },
+  ...Object.fromEntries(['bone', 'pot', 'cloth', 'blood', 'stone', 'teal', 'moss', 'sand'].map((r) => [`halo_${r}`, { ramp: r, spec: 0.7, min: 0 }])),
   glass_flame: { ramp: 'flame', spec: 0.9 }, glass_holy: { ramp: 'holy', spec: 0.9, min: 1 }, glass_crimson: { ramp: 'crimson', spec: 0.9 }, glass_violet: { ramp: 'violet', spec: 0.9 }, coal: { ramp: 'ink', bias: -0.1, min: 2 },
 };
 
@@ -861,6 +862,43 @@ function waymark(i) {
   return outlineAll(fr);
 }
 
+// The Vigil Roll: a tall stele by the cathedral where the best kept Vigils
+// are cut, a bloodrose carved at its crown, candles burning at its feet.
+function vigilRoll(i) {
+  const W = 48, H = 74, S = new View(), G = groundY(H, 6);
+  S.add(slabBox(4, G - 5, 44, G, 6, 12, 'stoneB', 0.4), 0);
+  const face = ashlar(slabBox(9, G - 50, 39, G - 5, 3.5, 7, 'stone', 0.6), { ch: 9, bw: 15, seed: 7, chip: 0.25 });
+  S.add(face, 0);
+  S.add(disc(24, G - 50, 15, -3.5, 3.5, 'stone'), 1.5);
+  S.add(slabBox(7, G - 9, 41, G - 5, 4.2, 9, 'stoneC', 0.5), 0);
+  // The bloodrose at its crown.
+  for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2 - Math.PI / 2; S.add(sphere([24 + Math.cos(a) * 3, G - 53 + Math.sin(a) * 3, 3.6], 2.6, 'rose'), 1); }
+  S.add(sphere([24, G - 53, 4.6], 2, 'roseDeep'), 0.6);
+  // Candles in iron cups at its feet.
+  for (const x of [7.5, 40.5]) { S.add(rod([x, G - 6, 4], [x, G - 13, 4], 1.3, 'bone'), 0.2); S.add(slabBox(x - 2, G - 7, x + 2, G - 5, 4, 4, 'iron', 0.4), 0); }
+  const fr = R(S, W, H, { ground: H - 1 });
+  // Lines cut into the face: the names of the kept Vigils, gilt.
+  for (let r = 0; r < 5; r++) { const y = Math.round(sy(G - 42 + r * 6, 3.5)), w = [20, 16, 18, 14, 17][r]; pline(fr, 24 - w / 2, y, 24 + w / 2, y, r === 0 ? 'gold1' : 'stone3'); pline(fr, 24 - w / 2, y + 1, 24 + w / 2, y + 1, r === 0 ? 'gold2' : 'stone4'); }
+  for (const x of [7.5, 40.5]) flame(fr, x, Math.round(sy(G - 13.5, 4)), 4 + ((i + (x > 20 ? 1 : 0)) % 2), 2, i * 1.9 + x);
+  return outlineAll(fr);
+}
+// A little stand for an earned halo: a stone post with a red cushion. Frame 0
+// stands empty; frames 1-8 hold each earned halo (its palette ramp).
+const STAND_HALOS = ['bone', 'pot', 'cloth', 'blood', 'stone', 'teal', 'moss', 'sand'];
+function haloStand(i) {
+  const W = 24, H = 44, S = new View(), G = groundY(H, 4);
+  S.add(slabBox(5, G - 4, 19, G, 4, 8, 'stoneB', 0.4), 0);
+  S.add(bumpy2(slabBox(8, G - 18, 16, G - 4, 3, 5, 'stone', 0.5), 4), 1);
+  S.add(slabBox(6, G - 20, 18, G - 18, 3.5, 7, 'stoneC', 0.4), 1);
+  S.add(ellipsoid([12, G - 21.5, 3], [5, 2, 3.5], 'bannerR'), 1);
+  const ramp = STAND_HALOS[i - 1];
+  if (ramp) S.add(ringXY([12, G - 32, 3], 6.4, 1.6, `halo_${ramp}`), 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  // The cracked halo: a gap knocked out of its right side.
+  if (ramp === 'sand') { const y0 = Math.round(sy(G - 36, 3)) & ~1; for (let y = y0; y < y0 + 4; y++) for (let x = 16; x < 22; x++) fr.px[y * fr.w + x] = -1; }
+  return outlineAll(fr);
+}
+
 function noticeBoard() {
   const W = 39, H = 52, S = new View(), G = groundY(H, 2);
   for (const x of [5, 34]) S.add(rod([x, 4, 0], [x, G, 0], 1.6, 'timber'), 0);
@@ -1186,6 +1224,8 @@ export default {
     waymark: () => [0, 1].map(waymark),
     stake: () => [0, 1, 2].map(stake),
     board: () => [noticeBoard()],
+    vigilroll: () => [0, 1, 2].map(vigilRoll),
+    halostand: () => [0, 1, 2, 3, 4, 5, 6, 7, 8].map(haloStand),
     stocks: () => [stocks()],
     pool: () => [0, 1, 2].map(pool),
     tall: () => [0, 1, 2, 3, 4, 5].map(tallHouse),
