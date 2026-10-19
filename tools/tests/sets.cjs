@@ -18,10 +18,11 @@ const S = process.argv[2];
     await p.evaluate((id) => {
       HS.game.state = 'play'; HS.SAVE.equip = {}; HS.SAVE.bag = [];
       for (const sl of HS.VSETS[id].slots) { const it = HS.makeItem(sl, 4, `${HS.VSETS[id].piece} ${sl.toUpperCase()}`, undefined, 6); it.set = id; it.isNew = false; HS.SAVE.equip[sl] = it; }
+      for (const sl of ['bow', 'quiver']) { const it = HS.armsItem(id, sl, 6); it.isNew = false; HS.SAVE.equip[sl] = it; }
       HS.applyGear(true);
     }, id);
-    const info = await p.evaluate((id) => JSON.stringify({ skin: HS.G.skin, sheet: HS.saintSheet(), n: HS.G.sets[id], charges: HS.G.charges }), id);
-    await p.evaluate(() => { HS.openInventory(); HS.game.inv.sel = { from: 'equip', slot: Object.keys(HS.SAVE.equip)[0] }; }); await p.waitForTimeout(250);
+    const info = await p.evaluate((id) => JSON.stringify({ skin: HS.G.skin, xskin: HS.G.xskin, arms: HS.G.wsets[id], sheet: HS.saintSheet(), n: HS.G.sets[id], charges: HS.G.charges }), id);
+    await p.evaluate(() => { HS.openInventory(); HS.game.inv.sel = { from: 'equip', slot: 'bow' }; }); await p.waitForTimeout(250);
     await p.screenshot({ path: `${S}/shots/s-${id}-card.png` });
     // Fight with it.
     await p.evaluate(() => { HS.game.state = 'play'; HS.game.nextDiff = 4; HS.game.nextStratum = 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.player.hp = HS.player.maxHp = 1e6; });
@@ -36,7 +37,7 @@ const S = process.argv[2];
         if (k === 4) { P.penance = 999; HS.input.pen = true; HS.game.fervor = 100; }
       }, k);
       await p.waitForTimeout(250);
-      const st = await p.evaluate(() => ({ nails: HS.player.nails || 0, stride: (HS.player.strideT || 0) > HS.game.time, pool: !!HS.player.inPool, bound: HS.game.boundN || 0, rain: HS.player.rainT > 0, fervor: Math.round(HS.game.fervor), guard: +HS.setGuard().toFixed(2), trail: HS.skillFx.some((f) => f.kind === 'trail') }));
+      const st = await p.evaluate(() => ({ nails: HS.player.nails || 0, stride: (HS.player.strideT || 0) > HS.game.time, pool: !!HS.player.inPool, bound: HS.game.boundN || 0, rain: HS.player.rainT > 0, fervor: Math.round(HS.game.fervor), guard: +HS.setGuard().toFixed(2), trail: HS.skillFx.some((f) => f.kind === 'trail'), great: HS.bolts.some((b) => b.great), burn: HS.enemies.some((e) => !e.dead && e.burn > 0), slowed: HS.enemies.some((e) => (e.boltSlowT || 0) > HS.game.time), pools: HS.pools.length }));
       for (const [key, v] of Object.entries(st)) if (v && v !== 1) seen[key] = Math.max(seen[key] || 0, +v);
       if (k === 6) await p.screenshot({ path: `${S}/shots/s-${id}-fight.png` });
     }

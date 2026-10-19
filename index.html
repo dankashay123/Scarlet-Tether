@@ -122,7 +122,7 @@ const BOLT_FX = {
   confessor: { trail: '178,188,203', crit: '154,106,230', spark: 'violet0' },
   choir: { trail: '255,90,74', crit: '255,209,85', spark: 'ember0' },
 };
-const boltFx = () => BOLT_FX[(G && G.skin) || null];
+const boltFx = () => BOLT_FX[(G && G.xskin) || null];
 const saintSheet = () => (G && G.skin && SPR[`saint_${G.skin}`] ? `saint_${G.skin}` : 'saint');
 function frameOf(sheet, anim, i) { const a = SPR[sheet].anims[anim]; return a[((i % a.length) + a.length) % a.length]; }
 // Draw a frame with its anchor at pixel (x, y). Default anchor: sheet anchor, else bottom-centre.
@@ -1456,7 +1456,7 @@ const featOut = (L, x, y) => Math.hypot(x - L.close.x, y - L.close.y) < L.close.
 function drawItemCard(it, C, worn = null, pick = -1) {
   const R0 = RARITY[it.ri]; let y = C.y + 6;
   for (const l of wrapW(it.name, C.w - 12)) { text(l, C.x + 6, y, R0.color); y += 12; }
-  text(`${R0.name} ${it.slot.toUpperCase()}`, C.x + 6, y, PAL.stone1, { small: true, outline: null }); y += 10;
+  text(`${R0.name} ${SLOT_NAME[it.slot] || it.slot.toUpperCase()}`, C.x + 6, y, PAL.stone1, { small: true, outline: null }); y += 10;
   text(`SANCTITY ${itemSanctity(it)}`, C.x + 6, y, PAL.gold1, { small: true, outline: null });
   text(`STATION ${ROMAN[(it.il || 1) - 1]}`, C.x + C.w - 6, y, PAL.stone2, { small: true, outline: null, align: 'right' });
   if (worn && worn !== it) { const dv = itemSanctity(it) - itemSanctity(worn); if (dv) text(`${dv > 0 ? '+' : ''}${dv}`, C.x + 80, y, dv > 0 ? PAL.flame1 : PAL.blood0, { small: true, outline: null }); }
@@ -1469,7 +1469,7 @@ function drawItemCard(it, C, worn = null, pick = -1) {
     rows.push({ x: C.x + 3, y: y - 2, w: C.w - 6, h: 10, i }); y += 10;
   });
   if (it.power) { y += 3; for (const l of wrapW(POWERS[it.power].text, C.w - 12, true)) { text(l, C.x + 6, y, PAL.ember1, { small: true, outline: null }); y += 9; } }
-  if (it.set) { y += 3; for (const [t, col] of setLines(it)) for (const l of wrapW(t, C.w - 12, true)) { text(l, C.x + 6, y, col, { small: true, outline: null }); y += 9; } }
+  if (it.set || it.wset) { y += 3; for (const [t, col] of setLines(it)) for (const l of wrapW(t, C.w - 12, true)) { text(l, C.x + 6, y, col, { small: true, outline: null }); y += 9; } }
   return { y, rows };
 }
 const bestIl = () => Math.max(1, Math.min(15, (SAVE.cleared ?? -1) + 1)); // the highest Station whose Warden you slew
@@ -1487,6 +1487,7 @@ function shopStock() {
     for (let k = 0; k < 6; k++) {
       let roll = Math.random() * 100, ri = 1; for (let i = 1; i < 5; i++) { if (roll < w[i]) { ri = i; break; } roll -= w[i]; }
       const setId = ri === 4 ? (il >= 4 ? pick(MAIN_SETS) : 'habit') : null;
+      if (setId && setId !== 'habit' && rng() < 0.3) { const it = armsItem(setId, rng() < 0.5 ? 'bow' : 'quiver', il); it.price = Math.round(SHOP_PRICE[ri] * (1 + (il - 1) * 0.6) / 5) * 5; items.push(it); continue; }
       const slot = setId ? pick(VSETS[setId].slots) : pick(Object.keys(SLOTS)), base = pick(SLOTS[slot]);
       const name = ri === 1 ? `${base} ${pick(SUFFIX)}` : ri === 2 ? `${pick(RARE_A)} ${base}` : ri === 3 ? LEGENDARIES[slot] : `${VSETS[setId].piece} ${base}`;
       const it = makeItem(slot, ri, name, undefined, il); if (setId) it.set = setId; it.price = Math.round(SHOP_PRICE[ri] * (1 + (il - 1) * 0.6) / 5) * 5; items.push(it);
@@ -1676,6 +1677,11 @@ function devSet(id, wear) {
   else { let n = 0; for (const it of made) if (SAVE.bag.length < BAG_SIZE) { SAVE.bag.push(it); n++; } toast(n < made.length ? `BAG FULL: ${n} OF ${made.length} ADDED` : `${S.name} IN YOUR BAG`, 2); }
   game.toastColor = RARITY[4].color; persist();
 }
+// A set's crossbow and quiver into the bag.
+function devArms(id) {
+  let n = 0; for (const sl of ['bow', 'quiver']) if (SAVE.bag.length < BAG_SIZE) { SAVE.bag.push(armsItem(id, sl, devIl())); n++; }
+  persist(); toast(n < 2 ? 'BAG FULL' : `${ARMS[id].name} IN YOUR BAG`, 2); game.toastColor = RARITY[4].color;
+}
 function devItem(n) {
   let k = 0;
   for (let i = 0; i < n && SAVE.bag.length < BAG_SIZE; i++, k++) {
@@ -1708,7 +1714,7 @@ function devRows() {
   const L = (t, w = 1, col) => ({ t, lab: true, w, col });
   switch (DEV_TABS[DEV.tab]) {
     case 'SETS': return [
-      ...MAIN_SETS.map((id) => [L(VSETS[id].name, 2, RARITY[4].color), B('BAG 6', () => devSet(id, false)), B('WEAR 6', () => devSet(id, true))]),
+      ...MAIN_SETS.map((id) => [L(VSETS[id].name, 1, RARITY[4].color), B('BAG 6', () => devSet(id, false)), B('WEAR 6', () => devSet(id, true)), B('ARMS 2', () => devArms(id))]),
       [B(`< STATION ${ROMAN[DEV.il - 1]} >`, (d) => { DEV.il = 1 + cyc(DEV.il - 1, 15, d); }), B('HABIT TO BAG', () => devSet('habit', false)), B('LESSER VOW', () => { const it = makeItem('seal', 3, 'THE LESSER VOW', undefined, devIl()); it.power = 'vow'; if (SAVE.bag.length < BAG_SIZE) SAVE.bag.push(it); persist(); toast('THE LESSER VOW IN YOUR BAG', 1.5); }), B('OPEN BAG', () => openInventory())],
       [B('CLEAR BAG', () => { SAVE.bag = []; persist(); toast('BAG EMPTIED', 1); }), B('TAKE ALL OFF', () => { for (const sl of Object.keys(SAVE.equip)) { if (SAVE.equip[sl] && SAVE.bag.length < BAG_SIZE) SAVE.bag.push(SAVE.equip[sl]); delete SAVE.equip[sl]; } applyGear(); persist(); toast('ALL GEAR IN THE BAG', 1.2); }), B('TEMPER WORN', () => { for (const it of Object.values(SAVE.equip)) if (it) it.il = devIl(); applyGear(); persist(); toast(`WORN GEAR AT STATION ${ROMAN[DEV.il - 1]}`, 1.5); }), L(G && G.skin ? `SKIN: ${G.skin.toUpperCase()}` : 'SKIN: NONE')],
     ];
@@ -2805,6 +2811,15 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   if (e.hp <= 0) killEnemy(e, dirx, diry);
 }
 
+// The set arms' effects when a bolt strikes.
+function boltArms(b, e) {
+  if (b.fire) e.burn = T.thurible.burn.time;
+  if (sbw('font')) { e.boltSlowT = game.time + 1.5; if (e.dead && pools.length < 14) pools.push({ x: e.x, y: e.y, r: 16, t: T.flask.time - 1.6 }); }
+  if (b.bind && !e.boss) { for (const o of [e, ...nearestFoes(e.x, e.y, 3, 60).filter((q) => q !== e && !q.boss).slice(0, 2)]) { o.bound = Math.max(o.bound || 0, 1.5); sparks(o.x, o.y - o.hy, PAL.iron0, 4); } sfx('chain', { vol: 0.5, rate: 1.3, gap: 0.2 }); }
+  if (b.crit && G.powers.has('quiverZeal')) addFervor(1);
+  if (b.crit && sbw('choir') && player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + 2);
+  if (sbw('choir') && player.rainT > 0) { for (const o of nearestFoes(e.x, e.y, 4, 26)) if (o !== e) hurtEnemy(o, 4, false, 0, 0, 20, { status: true, color: PAL.ember1 }); sparks(e.x, e.y - e.hy, PAL.ember0, 3); }
+}
 // Damage dealt after the vestment sets: kind is the source (bolt, nova, trail, pool).
 function setFoeK(e, kind) {
   let k = 1;
@@ -2928,11 +2943,14 @@ const RARITY = [
   { id: 'relic', name: 'HALLOWED', color: '#ff7a1f', rgb: '255,122,31', w: 3.5 },
   { id: 'set', name: 'VESTMENT SET', color: '#7fdc6c', rgb: '127,220,108', w: 0.9 },
 ];
-const SLOTS = { hood: ['HOOD', 'COWL', 'VEIL'], mantle: ['MANTLE', 'SHROUD', 'PALL'], gloves: ['GLOVES', 'GAUNTLETS', 'MITTS'], girdle: ['GIRDLE', 'CINCTURE', 'CORD'], greaves: ['GREAVES', 'SABATONS', 'SANDALS'], rosary: ['PENDANT', 'LOCKET', 'TALISMAN'], seal: ['SEAL', 'SIGNET', 'BAND'], relic: ['CHARM', 'KNUCKLEBONE', 'TOOTH'] };
+const SLOTS = { hood: ['HOOD', 'COWL', 'VEIL'], mantle: ['MANTLE', 'SHROUD', 'PALL'], gloves: ['GLOVES', 'GAUNTLETS', 'MITTS'], girdle: ['GIRDLE', 'CINCTURE', 'CORD'], greaves: ['GREAVES', 'SABATONS', 'SANDALS'], rosary: ['PENDANT', 'LOCKET', 'TALISMAN'], seal: ['SEAL', 'SIGNET', 'BAND'], relic: ['CHARM', 'KNUCKLEBONE', 'TOOTH'] , bow: ['CROSSBOW', 'ARBALEST', 'REPEATER'], quiver: ['QUIVER', 'BOLT-CASE', 'NAIL-POUCH'] };
+// The eight vestment slots (the sets' pieces); bow and quiver are the arms.
+const SLOT_NAME = { rosary: 'PENDANT', relic: 'CHARM', bow: 'CROSSBOW' };
+const GEAR_SLOTS = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic'];
 const ADJ = ['WORN', 'FRAYED', 'MOTHEATEN', 'PLAIN', 'STAINED'];
 const SUFFIX = ['OF THE FOX', 'OF THE WICK', 'OF THE VIGIL', 'OF EMBERS', 'OF TALLOW', 'OF THE CROW', 'OF ASHES', 'OF THE LAMB'];
 const RARE_A = ['DOLOR', 'GALL', 'MARROW', 'ASHEN', 'HOLLOW', 'VESPER', 'GRAVE', 'TITHE', 'CANDLE', 'SAINT'];
-const LEGENDARIES = { hood: 'HOOD OF ASH-CHOIR', mantle: 'MANTLE OF THE NINTH WOUND', girdle: 'GIRDLE OF THE UNFED', gloves: 'HANDS THAT COUNTED COINS', greaves: 'THE LONG DESCENT', rosary: 'LOCKET OF UNSAID WORDS', seal: 'SEAL OF THE FIRST TITHE', relic: 'THE WEEPING KNUCKLE' };
+const LEGENDARIES = { hood: 'HOOD OF ASH-CHOIR', mantle: 'MANTLE OF THE NINTH WOUND', girdle: 'GIRDLE OF THE UNFED', gloves: 'HANDS THAT COUNTED COINS', greaves: 'THE LONG DESCENT', rosary: 'LOCKET OF UNSAID WORDS', seal: 'SEAL OF THE FIRST TITHE', relic: 'THE WEEPING KNUCKLE' , bow: 'THE SILENT ARBALEST', quiver: 'THE BOTTOMLESS CASE' };
 // Item stats. Each slot has a base stat; extra rolls come from the pool.
 // Values are per roll at common; rarer tiers multiply them.
 const STAT = {
@@ -2942,8 +2960,8 @@ const STAT = {
   speed: { label: 'MOVE SPEED', lo: 2, hi: 5, pct: true }, cdr: { label: 'RITE COOLDOWN', lo: 4, hi: 8, pct: true },
   armor: { label: 'ARMOR', lo: 2, hi: 5, pct: true }, lok: { label: 'HEAL ON KILL', lo: 1, hi: 2 },
 };
-const SLOT_BASE = { hood: 'hp', mantle: 'armor', gloves: 'dmg', girdle: 'hp', greaves: 'speed', rosary: 'fervor', seal: 'crit', relic: 'cdr' };
-const SLOT_ORDER = ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'seal', 'relic', 'greaves'];
+const SLOT_BASE = { hood: 'hp', mantle: 'armor', gloves: 'dmg', girdle: 'hp', greaves: 'speed', rosary: 'fervor', seal: 'crit', relic: 'cdr', bow: 'dmg', quiver: 'crit' };
+const SLOT_ORDER = ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'seal', 'relic', 'greaves', 'bow', 'quiver'];
 const TIER_K = [1, 1.25, 1.55, 1.9, 2.1];
 // Relic-touched (legendary) powers, one per slot.
 const POWERS = {
@@ -2951,12 +2969,13 @@ const POWERS = {
   gloves: { key: 'fire', text: 'THE CROSSBOW FIRES 20% FASTER.' }, girdle: { key: 'globe', text: 'HEALTH ORBS HEAL TWICE AS MUCH.' },
   greaves: { key: 'dashCharge', text: '+1 DASH CHARGE.' }, rosary: { key: 'decay', text: 'ZEAL FADES HALF AS FAST.' },
   seal: { key: 'critX', text: 'CRITICAL BOLTS DEAL TRIPLE DAMAGE.' }, relic: { key: 'penance', text: 'RECKONING CHARGES 40% FASTER.' },
+  bow: { key: 'twin', text: 'THE CROSSBOW FIRES ONE MORE NAIL.' }, quiver: { key: 'quiverZeal', text: 'CRITICAL NAILS GIVE 1 ZEAL.' },
   vow: { key: 'vow', text: 'THE LESSER VOW: VESTMENT SETS NEED ONE FEWER PIECE (NEVER UNDER 2).' },
 };
 // Vestment sets (docs/SETS.md). Each main set is 6 pieces in fixed slots;
 // at 4 pieces the Saint wears its skin. Odile's Habit is the starter set.
 const VSETS = {
-  habit: { name: "ODILE'S HABIT", piece: "ODILE'S", slots: Object.keys(SLOTS), bonus: [[2, '+10% DAMAGE.'], [4, '+1 DASH CHARGE, +15% DAMAGE.']] },
+  habit: { name: "ODILE'S HABIT", piece: "ODILE'S", slots: GEAR_SLOTS, bonus: [[2, '+10% DAMAGE.'], [4, '+1 DASH CHARGE, +15% DAMAGE.']] },
   nails: { name: 'THE HUNDRED NAILS', piece: 'NAILBEARER\'S', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BOLTS PIERCE ONE MORE FOE AND SPLIT AT THE LAST.'], [4, 'HITS ADD NAIL STACKS (50 MAX): EACH IS 1% LESS DAMAGE TAKEN.'], [6, 'BOLTS DEAL +8% PER NAIL STACK.']] },
   stride: { name: "THE PENITENT'S STRIDE", piece: "PENITENT'S", slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+1 DASH CHARGE. DASHES LEAVE HOLY FIRE.'], [4, 'PERFECT DODGES REFILL DASHES AND HALVE DAMAGE FOR 2 S.'], [6, 'FOR 4 S AFTER A DASH, BOLTS, NOVA AND FIRE DEAL X4. DASHED FOES ARE BRANDED.']] },
   font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, 'IN YOUR OWN POOL: 40% LESS DAMAGE, DOUBLE ZEAL.'], [6, 'POOLS DEAL X5, DRAW FOES IN; KILLS IN THEM SPEED THE VIAL.']] },
@@ -2964,12 +2983,26 @@ const VSETS = {
   choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, 'IN RECKONING: NO ROOTS OR SLOWS, KILLS HEAL 2%.'], [6, 'RECKONING LASTS WHILE ZEAL REMAINS. X3 DAMAGE WHILE IT BURNS.']] },
 };
 const MAIN_SETS = ['nails', 'stride', 'font', 'confessor', 'choir'];
+// Each set's arms: a crossbow and a quiver, a separate 2-piece bonus that
+// leans on the same skill. A set crossbow also sets the crossbow's look.
+const ARMS = {
+  nails: { name: 'ARMS OF THE HUNDRED NAILS', bow: "THE NAILWRIGHT'S ARBALEST", quiver: 'THE HUNDREDFOLD QUIVER', bonus: 'EVERY 5TH BOLT IS A GREAT NAIL: X3 DAMAGE, PIERCES EVERY FOE.' },
+  stride: { name: "ARMS OF THE PENITENT'S STRIDE", bow: 'THE PILGRIM\'S EMBER-BOW', quiver: 'THE QUIVER OF COALS', bonus: 'AFTER A DASH, YOUR NEXT 6 BOLTS SET FOES ALIGHT.' },
+  font: { name: 'ARMS OF THE DROWNED FONT', bow: 'THE ASPERGILL ARBALEST', quiver: 'THE BRIMMING CASE', bonus: 'BOLTS SLOW FOES 30%. FOES THEY SLAY LEAVE A SMALL POOL.' },
+  confessor: { name: 'ARMS OF THE LAST CONFESSOR', bow: 'THE PENANCE ENGINE', quiver: 'THE QUIVER OF LINKS', bonus: 'EVERY 8TH BOLT CHAINS ITS FOE AND 2 NEAR IT FOR 1.5 S.' },
+  choir: { name: 'ARMS OF THE BURNING CHOIR', bow: 'THE CANTICLE BOW', quiver: 'THE QUIVER OF CANDLES', bonus: 'CRITS CHARGE RECKONING TWICE AS FAST. IN RECKONING, BOLTS BURST INTO FLAME.' },
+};
+const armsCount = (id) => (G && G.wsets[id]) || 0;
+const sbw = (id) => armsCount(id) >= 2;
+// A set crossbow or quiver for a set.
+function armsItem(id, slot, il) { const it = makeItem(slot, 4, ARMS[id][slot], undefined, il); it.wset = id; it.set = false; return it; }
 const setOf = (it) => VSETS[it.set === true ? 'habit' : it.set];
 // Pieces counted for a set (the Lesser Vow adds one once two are worn).
 const setCount = (id) => (G && G.sets[id]) || 0;
 const sb = (id, n) => setCount(id) >= n;
 // The card lines for a set piece: name and count, then each bonus, lit when active.
 function setLines(it) {
+  if (it.wset) { const A = ARMS[it.wset], n = armsCount(it.wset); return [[`${A.name} ${Math.min(n, 2)}/2`, RARITY[4].color], [`2: ${A.bonus}`, n >= 2 ? RARITY[4].color : PAL.stone2]]; }
   const S = setOf(it), id = it.set === true ? 'habit' : it.set, n = setCount(id), max = S.bonus[S.bonus.length - 1][0];
   return [[`${S.name} ${Math.min(n, max)}/${max}`, RARITY[4].color], ...S.bonus.map(([k, t]) => [`${k}: ${t}`, n >= k ? RARITY[4].color : PAL.stone2])];
 }
@@ -2983,6 +3016,7 @@ function rollItem(boost = 0, il = curDiff().n) {
   for (; ri < w.length - 1 && roll > w[ri]; ri++) roll -= w[ri];
   // Set pieces: Odile's Habit below Station IV, the five main sets from IV up.
   const setId = ri === 4 ? (il >= 4 ? pick(MAIN_SETS) : 'habit') : null;
+  if (setId && setId !== 'habit' && rng() < 0.3) return armsItem(setId, rng() < 0.5 ? 'bow' : 'quiver', il);
   const slot = setId ? pick(VSETS[setId].slots) : pick(Object.keys(SLOTS)), base = pick(SLOTS[slot]);
   const vow = ri === 3 && slot === 'seal' && rng() < 0.35;
   const name = ri === 0 ? `${pick(ADJ)} ${base}` : ri === 1 ? `${base} ${pick(SUFFIX)}` : ri === 2 ? `${pick(RARE_A)} ${base}` : ri === 3 ? (vow ? 'THE LESSER VOW' : LEGENDARIES[slot]) : `${VSETS[setId].piece} ${base}`;
@@ -3008,7 +3042,7 @@ const stationSanctity = (i) => Math.round(10 * stationPower(i));
 // Station I gear, so a new Saint starts at power 1).
 const playerSanctity = () => Math.round(SLOT_ORDER.reduce((a, sl) => a + (SAVE.equip && SAVE.equip[sl] ? itemSanctity(SAVE.equip[sl]) : 10), 0) / SLOT_ORDER.length);
 // A rough worth for comparisons: Sanctity first, then stats; powers count extra.
-const itemScore = (it) => !it ? 0 : itemSanctity(it) * 0.4 + it.stats.reduce((a, [key, v]) => a + v / ((STAT[key].lo + STAT[key].hi) / 2), 0) + (it.power ? 4 : 0) + (it.set ? 2 : 0);
+const itemScore = (it) => !it ? 0 : itemSanctity(it) * 0.4 + it.stats.reduce((a, [key, v]) => a + v / ((STAT[key].lo + STAT[key].hi) / 2), 0) + (it.power ? 4 : 0) + (it.set || it.wset ? 2 : 0);
 
 // ------------------------------------------------------------ the bag ---
 const BAG_SIZE = 30;
@@ -3016,7 +3050,7 @@ function gearInit() {
   SAVE.equip = SAVE.equip || {};
   SAVE.bag = SAVE.bag || [];
   for (const it of SAVE.bag) it.run = false; // a run left unfinished keeps what it found
-  for (const it of [...SAVE.bag, ...Object.values(SAVE.equip)]) if (it && it.set === true) it.set = 'habit'; // old Saint's set pieces
+  for (const it of [...SAVE.bag, ...Object.values(SAVE.equip)]) { if (it && it.set === true) it.set = 'habit'; if (it && it.wset) it.set = false; } // old Saint's set pieces
   // Old saves kept a flat stash of names; turn them into real items once.
   if (SAVE.stash && SAVE.stash.length) {
     const map = { '+DAMAGE': 'dmg', '+CRIT CHANCE': 'crit', '+MAX HP': 'hp', '+DASH RECHARGE': 'dash', '+FERVOR GAIN': 'fervor', '+GOLD FIND': 'gold', '+MOVE SPEED': 'speed', '+MIRACLE COOLDOWN': 'cdr', '+ARMOR': 'armor', '+LIFE ON KILL': 'lok' };
@@ -3027,13 +3061,15 @@ function gearInit() {
 // Totals from everything worn.
 let G = null;
 function gearStats() {
-  const g = { dmg: 0, crit: 0, hp: 0, dash: 0, fervor: 0, gold: 0, speed: 0, cdr: 0, armor: 0, lok: 0, powers: new Set(), sets: {} };
-  for (const it of Object.values(SAVE.equip || {})) { if (!it) continue; for (const [key, v] of it.stats) g[key] += v; if (it.power) g.powers.add(POWERS[it.power].key); if (it.set) { const id = it.set === true ? 'habit' : it.set; g.sets[id] = (g.sets[id] || 0) + 1; } }
+  const g = { dmg: 0, crit: 0, hp: 0, dash: 0, fervor: 0, gold: 0, speed: 0, cdr: 0, armor: 0, lok: 0, powers: new Set(), sets: {}, wsets: {} };
+  for (const it of Object.values(SAVE.equip || {})) { if (!it) continue; for (const [key, v] of it.stats) g[key] += v; if (it.power) g.powers.add(POWERS[it.power].key); if (it.set) { const id = it.set === true ? 'habit' : it.set; g.sets[id] = (g.sets[id] || 0) + 1; } if (it.wset) g.wsets[it.wset] = (g.wsets[it.wset] || 0) + 1; }
   if (g.powers.has('vow')) for (const id in g.sets) if (g.sets[id] >= 2) g.sets[id]++;
   const has = (id, n) => (g.sets[id] || 0) >= n;
   if (has('habit', 2)) g.dmg += 10; if (has('habit', 4)) g.dmg += 15;
   // The skin: the set with the most pieces, from 4 up.
   g.skin = MAIN_SETS.filter((id) => has(id, 4)).sort((a, b) => g.sets[b] - g.sets[a])[0] || null;
+  // The crossbow's look: a set crossbow first, else the robe's skin.
+  const bow = SAVE.equip && SAVE.equip.bow; g.xskin = (bow && bow.wset) || g.skin;
   // Stigmata taken this run.
   g.dmg += wound('wrath') * 15; g.crit += wound('luck') * 8; g.hp += wound('vigil') * 25; g.speed += wound('swift') * 10; g.fervor += wound('fervent') * 30; g.lok += wound('letting') * 2;
   // Sanctity multiplies damage, and health a little less (as monster damage climbs).
@@ -3251,7 +3287,7 @@ function drawFloatBow() {
   const x = xb.x - Math.cos(xb.ang) * xb.recoil * 5, y = xb.y - Math.sin(xb.ang) * xb.recoil * 5;
   // A soft shadow on the floor far below.
   ctx.fillStyle = 'rgba(11,7,16,0.25)'; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(player.y + 4), 7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-  sprC('weapon', G && G.skin ? `xbow_${G.skin}` : 'xbow', i, x, y, { white: xb.flash > 0.75 });
+  sprC('weapon', G && G.xskin ? `xbow_${G.xskin}` : 'xbow', i, x, y, { white: xb.flash > 0.75 });
 }
 function drawFloatBowGlow() {
   const xb = player.xb; if (!xb || player.hp <= 0) return;
@@ -3277,10 +3313,14 @@ function updateCrossbow(dt) {
   const tx = t.x + t.kx * 0.05, ty = t.y - t.hy;
   const d = Math.hypot(tx - sx, ty - sy) || 1;
   const crit = rng() < T.crossbow.crit + G.crit / 100;
-  const base = Math.atan2(ty - sy, tx - sx), n = 1 + wound('split');
+  const base = Math.atan2(ty - sy, tx - sx), n = 1 + wound('split') + (G.powers.has('twin') ? 1 : 0);
+  // Set arms: every 5th shot a great nail, every 8th binds, embers after a dash.
+  const shot = player.shotN = (player.shotN || 0) + 1;
+  const great = sbw('nails') && shot % 5 === 0, bind = sbw('confessor') && shot % 8 === 0, fire = sbw('stride') && player.emberShots > 0;
+  if (fire) player.emberShots--;
   // Height above the floor: starts at the bow, sinks to the target's chest (walls are tested at floor level).
   const z0 = player.y - sy, zv = (t.hy - z0) / (d / T.crossbow.speed);
-  for (let k = 0; k < n; k++) { const a = base + (k - (n - 1) / 2) * 0.16; bolts.push({ z: z0, zv, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce') + (sb('nails', 2) ? 1 : 0), hit: new Set(), crit, trail: [] }); }
+  for (let k = 0; k < n; k++) { const a = base + (k - (n - 1) / 2) * 0.16; bolts.push({ z: z0, zv, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce') + (sb('nails', 2) ? 1 : 0) + (great ? 99 : 0), hit: new Set(), crit, trail: [], great, bind, fire }); }
   sfx('shoot');
   xb.recoil = 1; xb.flash = 1;
   playFx('fx', 'impact', sx, sy, 40, { small: true, skip: 2 });
@@ -3301,8 +3341,9 @@ function updateBolts(dt) {
         if (Math.abs(b.x - e.x) < hr && Math.abs(b.y - hy) < hr + 2) {
           b.hit.add(e);
           const sp = Math.hypot(b.vx, b.vy), [lo, hi] = T.crossbow.dmg;
-          hurtEnemy(e, Math.round(rand(lo, hi + 1) * (b.crit ? (G.powers.has('critX') ? 3 : 2) * (1 + wound('heavy') * 0.5) : 1)), b.crit, b.vx / sp, b.vy / sp, 60, { kind: 'bolt' });
-          if (G.skin) sparks(b.x, b.y, PAL[boltFx().spark], 2);
+          hurtEnemy(e, Math.round(rand(lo, hi + 1) * (b.crit ? (G.powers.has('critX') ? 3 : 2) * (1 + wound('heavy') * 0.5) : 1) * (b.great ? 3 : 1)), b.crit, b.vx / sp, b.vy / sp, 60, { kind: 'bolt' });
+          boltArms(b, e);
+          if (G.xskin) sparks(b.x, b.y, PAL[boltFx().spark], 2);
           if (sb('nails', 4)) { player.nails = Math.min(50, (player.nails || 0) + 1); player.nailT = game.time; }
           if (b.crit) { onWoundCrit(e); if (sb('choir', 2)) addFervor(1.5); }
           if (b.pierce-- <= 0) {
@@ -3367,6 +3408,7 @@ function updateStatus(e, dt) {
       break;
     }
   }
+  if ((e.boltSlowT || 0) > game.time) e.slowK *= 0.7;
   if (e.bound > 0) e.bound -= dt;
 }
 
@@ -3523,6 +3565,7 @@ function updatePlayer(dt) {
       const d = Math.hypot(dx, dy); p.dashDx = dx / d; p.dashDy = dy / d;
       p.dashT = T.dash.time; p.dashStart = game.time; p.dashX = p.x; p.dashY = p.y; onWoundDash(); sfx('dash');
       if (sb('stride', 6)) p.strideT = game.time + 4;
+      if (sbw('stride')) p.emberShots = 6;
       p.iframes = Math.max(p.iframes, T.dash.iframes); p.perfectUsed = false;
       if (Math.abs(dx) > 0.1) p.face = Math.sign(dx);
       playFx('fx', 'smoke', p.x, p.y - 4, 18, { alpha: 0.6 });
@@ -3760,10 +3803,10 @@ function render() {
   if (game.scene === 'town') drawTownWorld();
   for (const g of gibs) spr('fx', g.anim, g.i, g.x, g.y - g.z, { ax: 5, ay: 5 });
   for (const p of parts) { ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x), Math.round(p.y - p.z), p.s || 1, p.s || 1); }
-  const boltAnim = G && G.skin ? `bolt_${G.skin}` : 'bolt';
+  const boltAnim = G && G.xskin ? `bolt_${G.xskin}` : 'bolt';
   for (const b of bolts) {
     const f = frameOf('fx', boltAnim, 0);
-    ctx.save(); ctx.translate(Math.round(b.x), Math.round(b.y)); ctx.rotate(Math.atan2(b.vy, b.vx));
+    ctx.save(); ctx.translate(Math.round(b.x), Math.round(b.y)); ctx.rotate(Math.atan2(b.vy, b.vx)); if (b.great) ctx.scale(2, 2);
     ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -f.w + 3, -Math.floor(f.h / 2), f.w, f.h); ctx.restore();
   }
   for (const f of fxs) {
@@ -4646,7 +4689,7 @@ function renderXpBar() {
 // ------------------------------------------------------- the inventory ---
 // Paper doll with eight slots on the left, the bag in the middle, and the
 // chosen item's card on the right. The game is paused while it is open.
-const ICON_OF = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic'];
+const ICON_OF = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic', 'bow', 'quiver'];
 function openInventory() { game.state = 'inv'; game.inv = { sel: null }; SAVE.bag.sort((a, b) => b.ri - a.ri || ICON_OF.indexOf(a.slot) - ICON_OF.indexOf(b.slot)); sfx('tap'); }
 function closeInventory() { for (const it of SAVE.bag) it.isNew = false; persist(); game.state = 'play'; game.inv = null; sfx('tap'); }
 function invLayout() {
@@ -4654,7 +4697,9 @@ function invLayout() {
   const cell = 27, cols = 6, rows = 5;
   const doll = { x: x0 + 12, y: y0 + 34, w: 186 };
   const slots = {};
-  SLOT_ORDER.forEach((sl, i) => { const right = i >= 4, row = i % 4; slots[sl] = { x: doll.x + (right ? doll.w - cell : 0), y: doll.y + 4 + row * (cell + 9), w: cell, h: cell }; });
+  // Five slots a side: vestments, then the crossbow (left) and quiver (right).
+  const ec = 25;
+  [['hood', 'mantle', 'gloves', 'girdle', 'bow'], ['rosary', 'seal', 'relic', 'greaves', 'quiver']].forEach((col, side) => col.forEach((sl, row) => { slots[sl] = { x: doll.x + (side ? doll.w - ec : 0), y: doll.y + 2 + row * (ec + 4), w: ec, h: ec }; }));
   const bag = { x: doll.x + doll.w + 14, y: y0 + 46, cell, cols, rows };
   const card = { x: bag.x + cols * (cell + 3) + 10, y: y0 + 34 }; card.w = x0 + pw - 12 - card.x; card.h = ph - 46;
   const close = { x: x0 + pw - 14, y: y0 + 14, r: 10 };
@@ -4762,14 +4807,15 @@ function renderInventory() {
   // Totals under the doll.
   const SHORT = { dmg: 'DAMAGE', crit: 'CRIT', hp: 'MAX HP', dash: 'DASH CD', fervor: 'ZEAL', gold: 'GOLD', speed: 'SPEED', cdr: 'RITE CD', armor: 'ARMOR', lok: 'HEAL/KILL' };
   const lines = Object.keys(STAT).filter((k) => G[k]).map((k) => `+${G[k]}${STAT[k].pct ? '%' : ''} ${SHORT[k]}`);
-  for (const [id, n] of Object.entries(G.sets)) if (n >= 2) lines.push(`${VSETS[id].name.replace(/^THE /, '')} ${n}`);
+  const setL = [...Object.entries(G.sets).filter(([, n]) => n >= 2).map(([id, n]) => `${VSETS[id].name.replace(/^THE /, '')} ${n}`), ...Object.entries(G.wsets).filter(([, n]) => n >= 2).map(([id]) => `ARMS: ${VSETS[id].name.replace(/^THE /, '')}`)];
   const pw = [...G.powers].map((k) => POWERS[Object.keys(POWERS).find((q) => POWERS[q].key === k)].text);
   const sy = D.y + 150;
   text(`HP ${player.maxHp}`, D.x, sy, PAL.blood0, { small: true, outline: null });
   text(`SANCTITY ${playerSanctity()}`, D.x + 64, sy, PAL.gold1, { small: true, outline: null });
   if (!lines.length) text('NOTHING WORN', D.x, sy + 10, PAL.stone2, { small: true, outline: null });
-  lines.slice(0, 12).forEach((l, i) => text(l, D.x + (i % 2) * 96, sy + 10 + Math.floor(i / 2) * 9, l.startsWith('+') ? PAL.cloth1 : RARITY[4].color, { small: true, outline: null }));
+  lines.slice(0, 12).forEach((l, i) => text(l, D.x + (i % 2) * 96, sy + 10 + Math.floor(i / 2) * 9, PAL.cloth1, { small: true, outline: null }));
   let py = sy + 12 + Math.ceil(Math.min(12, lines.length) / 2) * 9;
+  for (const l of setL) { text(l, D.x, py - 2, RARITY[4].color, { small: true, outline: null }); py += 9; }
   for (const t of pw) for (const l of wrap(t, 30)) { if (py < L.y0 + L.ph - 10) text(l, D.x, py, PAL.ember1, { small: true, outline: null }); py += 9; }
   // The bag.
   const B = L.bag;
@@ -4798,7 +4844,7 @@ function renderInventory() {
   const R0 = RARITY[it.ri];
   let y = C.y + 6;
   for (const l of wrap(it.name, Math.floor((C.w - 12) / 7))) { text(l, C.x + 6, y, R0.color); y += 12; }
-  text(`${R0.name} ${it.slot.toUpperCase()}`, C.x + 6, y, PAL.stone1, { small: true, outline: null }); y += 10;
+  text(`${R0.name} ${SLOT_NAME[it.slot] || it.slot.toUpperCase()}`, C.x + 6, y, PAL.stone1, { small: true, outline: null }); y += 10;
   text(`SANCTITY ${itemSanctity(it)}`, C.x + 6, y, PAL.gold1, { small: true, outline: null }); text(`STATION ${ROMAN[(it.il || 1) - 1]}`, C.x + C.w - 6, y, PAL.stone2, { small: true, outline: null, align: 'right' });
   if (worn0(it)) { const dv = itemSanctity(it) - itemSanctity(worn0(it)); if (dv) text(`${dv > 0 ? '+' : ''}${dv}`, C.x + 76, y, dv > 0 ? PAL.flame1 : PAL.blood0, { small: true, outline: null }); }
   y += 12;
@@ -4810,7 +4856,7 @@ function renderInventory() {
   }
   if (worn) for (const st of worn.stats) if (!it.stats.some((q) => q[0] === st[0])) { text(`-${st[1]}${STAT[st[0]].pct ? '%' : ''} ${STAT[st[0]].label}`, C.x + 6, y, PAL.blood0, { small: true, outline: null }); y += 10; }
   if (it.power) { y += 3; for (const l of wrap(POWERS[it.power].text, Math.floor((C.w - 12) / 6))) { text(l, C.x + 6, y, PAL.ember1, { small: true, outline: null }); y += 9; } }
-  if (it.set) { y += 3; for (const [t, col] of setLines(it)) for (const l of wrap(t, Math.floor((C.w - 12) / 6))) { text(l, C.x + 6, y, col, { small: true, outline: null }); y += 9; } }
+  if (it.set || it.wset) { y += 3; for (const [t, col] of setLines(it)) for (const l of wrap(t, Math.floor((C.w - 12) / 6))) { text(l, C.x + 6, y, col, { small: true, outline: null }); y += 9; } }
   if (worn) { const d = itemScore(it) - itemScore(worn); text(d > 0.2 ? 'BETTER THAN WORN' : d < -0.2 ? 'WORSE THAN WORN' : 'SIDEGRADE', C.x + 6, C.y + C.h - 40, d > 0.2 ? PAL.flame1 : d < -0.2 ? PAL.blood0 : PAL.stone1, { small: true, outline: null }); }
   if (game.inv.sel.from === 'bag') { invButton(L.btnA, 'WEAR', PAL.gold3); invButton(L.btnB, `SELL ${SALVAGE[it.ri]}`, PAL.crimson3); }
   else invButton(L.btnA, 'TAKE OFF', PAL.stone4, SAVE.bag.length < BAG_SIZE);
@@ -4908,7 +4954,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

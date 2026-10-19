@@ -182,6 +182,21 @@ function scourge(i) {
 // 24x24, three-quarter view, outlined, lit from the top-left.
 function icon(fn, size = 24) { const S = new Scene(); fn(S); return render(S, size, size, MATS, { contrast: 1.35 }); }
 const ICONS = {
+  // The crossbow, aimed up-right: wood stock, gilt prod, iron nail.
+  bow: () => { const f = icon((S) => {
+    S.add(capsule([4.5, 19.5, 2], [17.5, 6.5, 2], 1.7, 1.4, 'wood'), 0);
+    S.add(capsule([4, 20, 2], [6.5, 21.5, 2], 2.2, 2.2, 'wood'), 1);
+    S.add(capsule([17.5, 6.5, 2.5], [11.5, 3, 2.5], 1.4, 0.9, 'gold'), 0.8);
+    S.add(capsule([17.5, 6.5, 2.5], [21, 12.5, 2.5], 1.4, 0.9, 'gold'), 0.8);
+    S.add(capsule([9, 15, 3.6], [20, 4, 3.6], 0.6, 0.6, 'iron'), 0);
+  }); pline(f, 11.5, 3, 13, 10.5, 'bone1'); pline(f, 21, 12.5, 13, 10.5, 'bone1'); return f; },
+  // The quiver: a leather case, gilt bands, nail heads showing.
+  quiver: () => icon((S) => {
+    S.add(rotZ(capsule([12, 8, 2], [12, 20, 2], 3.6, 3.2, 'leather'), [12, 14], 0.35), 0);
+    S.paint({ f: (x, y) => Math.abs(y - 10.5 + (x - 12) * 0.35) - 0.7, mat: 'gold' });
+    S.paint({ f: (x, y) => Math.abs(y - 18 + (x - 12) * 0.35) - 0.7, mat: 'gold' });
+    for (const dx of [-1.8, 0.4, 2.4]) S.add(capsule([12.5 + dx, 6, 2.5], [14.2 + dx, 1.8, 2.5], 0.8, 0.8, 'iron'), 0.3);
+  }),
   hood: () => { const f = icon((S) => {
     S.add(ellipsoid([12, 11, 2], [7, 7.5, 6], 'crimson'), 0);
     S.add(capsule([9, 6, 0], [5, 2.5, -2], 3, 1, 'crimson'), 2);
@@ -286,7 +301,7 @@ export default {
     scourge: () => [0, 1].map(scourge),
   },
   loot: {
-    item: () => ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic'].map((k) => ICONS[k]()),
+    item: () => ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic', 'bow', 'quiver'].map((k) => ICONS[k]()),
     coin: () => [0, 1].map(coin),
     gold: () => [0, 1, 2].map(goldPile),
     globe: () => [0, 1].map(globe),
