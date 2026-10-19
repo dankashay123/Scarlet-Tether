@@ -111,6 +111,22 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## History by round
 
+- **Round 26 (a rite per set, ranks, twists, aimed Reckonings, death
+  recap):** six new rites so every slot has one per set (`RITES`): Rite I
+  Iron Brand (Confessor, aimed spot, binds) and Hymn of Cinders (Choir,
+  rolling fire, Zeal per hit); Rite II Crown of Nails (Nails, a ring of
+  bolts) and Aspersion (Font, heal and a pool); Reckoning Pilgrimage of
+  Fire (Stride, dashes refill and leave fire and a nova) and the Great
+  Penance (Confessor, binds and judges all in sight, +50% damage via
+  `e.judgedT`). Each has a rite Wound and an icon (`GLYPH` in `props.mjs`).
+  Ranks: `SAVE.riteXp`, `RANK_AT`, `riteRank`, `bumpRite` (5% off the
+  cooldown per rank, +0.4 S for a Reckoning). Twists: `TWIST`, `twist(id)`
+  with six pieces of the rite's set (second casts run through `later()`).
+  Judgement and the Great Font can be aimed from the Reckoning button
+  (`player.penAim`, `AIM_ZONE`). Death recap: `noteHurt` logs damage by
+  monster and attack (`damagePlayer`/`hurtPlayerRaw` take `how`),
+  `deathRecap` picks the top three and a tip (`HURT_TIP`), drawn by
+  `renderRecap` beside the receipt. `tools/tests/round26.cjs`.
 - **Round 25.3 (drag to aim, no pop on leaving):** hold an aimable rite's
   button and drag to aim (`AIMABLE`: Holy Water lands where you point,
   Baptism, Nail Storm, Ember Step and the Chain go that way); the outline

@@ -92,9 +92,11 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '25.3';
+const BUILD = '26.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '26.1': ['SIX NEW RITES: EVERY SET NOW HAS A RITE IN EVERY SLOT.', 'RITES RANK UP AS YOU USE THEM. SIX PIECES OF A SET GIVE ITS RITES A TWIST.',
+    'DRAG THE RECKONING BUTTON TO AIM JUDGEMENT OR PLACE THE GREAT FONT.', 'AFTER A DEATH: WHAT HURT YOU MOST, AND A TIP.'],
   '25.3': ['HOLD AND DRAG A RITE BUTTON TO AIM IT. RELEASE TO CAST. DRAG BACK TO CANCEL.', 'NO MORE SOUND POP WHEN YOU LEAVE THE GAME.'],
   '25.2': ['SHORTER, CLEARER TEXT THROUGHOUT THE GAME.'],
   '25.1': ['NEW: WARDEN BATTLE MUSIC.',
@@ -507,7 +509,8 @@ function pointerDown(id, cx, cy) {
   if (game.scene === 'wound') for (const k of ['m1', 'm2', 'pen']) if (hitBtn(HUD[k], x, y)) {
     HUD[k].pressed = 0.12;
     // Aimable rites: hold and drag to aim, release to cast. A plain tap still auto-aims.
-    if (k !== 'pen' && AIMABLE[riteOf(k).id] && player[`${k}cd`] <= 0 && !game.aim) { game.aim = { id, k, bx: HUD[k].x, by: HUD[k].y, dx: 0, dy: 0, on: false, was: false }; return; }
+    const ready = k === 'pen' ? player.penance >= T.penance.charge && player.rainT <= 0 : player[`${k}cd`] <= 0;
+    if (AIMABLE[riteOf(k).id] && ready && !game.aim) { game.aim = { id, k, bx: HUD[k].x, by: HUD[k].y, dx: 0, dy: 0, on: false, was: false }; return; }
     input[k] = true; return;
   }
   if ((opt('hand') === 'left' ? x > W * 0.55 : x < W * 0.45) && stick.id === null) { Object.assign(stick, { id, ox: x, oy: y, x, y, active: true }); return; }
@@ -533,7 +536,7 @@ function pointerUp(id) {
   if (id === stick.id) { stick.id = null; stick.active = false; }
 }
 // Rites that can be aimed, and the shape their preview draws.
-const AIMABLE = { water: 'point', wave: 'wave', storm: 'fan', step: 'leap', chain: 'chain' };
+const AIMABLE = { water: 'point', wave: 'wave', storm: 'fan', step: 'leap', chain: 'chain', brand: 'point', hymn: 'wave', pillars: 'zone', font: 'zone' };
 const AIM_R = 46, AIM_DEAD = 10; // drag distance for full range; below this it cancels
 const aimOf = (A) => ({ k: A.k, a: Math.atan2(A.dy, A.dx), f: Math.min(1, Math.hypot(A.dx, A.dy) / AIM_R) });
 
@@ -1237,7 +1240,7 @@ function bankRun(died) {
   for (const it of SAVE.bag) it.run = false;
   R.lostItems = lost.length;
   SAVE.bestLevel = Math.max(SAVE.bestLevel || 1, R.level);
-  game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time, gold: R.gold, tithe: R.tithe, items: R.items, lostItems: R.lostItems, rooms: room.rooms.filter((q) => q.state === 'clear').length, total: room.rooms.length, vigil: !!R.vigil, pool, martyr: !!R.martyr, where: R.vigil ? (R.vigilResult ? (R.vigilResult.up ? `${R.vigil} KEPT, +${R.vigilResult.up}` : `${R.vigil}, CANDLE OUT`) : `${R.vigil}, FALLEN`) : `${DIFF[R.diff].rn}${R.martyr ? ', VOW' : ''}${R.omens && R.omens.length ? ` +${R.omens.length} OMEN${R.omens.length > 1 ? 'S' : ''}` : ''}` };
+  game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time, gold: R.gold, tithe: R.tithe, items: R.items, lostItems: R.lostItems, rooms: room.rooms.filter((q) => q.state === 'clear').length, total: room.rooms.length, vigil: !!R.vigil, pool, martyr: !!R.martyr, recap: died && !R.cell ? deathRecap(R) : null, where: R.vigil ? (R.vigilResult ? (R.vigilResult.up ? `${R.vigil} KEPT, +${R.vigilResult.up}` : `${R.vigil}, CANDLE OUT`) : `${R.vigil}, FALLEN`) : `${DIFF[R.diff].rn}${R.martyr ? ', VOW' : ''}${R.omens && R.omens.length ? ` +${R.omens.length} OMEN${R.omens.length > 1 ? 'S' : ''}` : ''}` };
   persist();
 }
 function renderRoomStatus() {
@@ -1446,7 +1449,7 @@ function newRun() {
     if (r.shrine) { const p = r.shrine; room.interact.push({ x: p.x, y: p.y + 4, r: 26, label: 'PRAY', icon: 'talk', use() { useShrine(p); this.done = true; } }); }
     if (r.chest) { const p = r.chest; room.interact.push({ x: p.x, y: p.y + 4, r: 24, label: 'OPEN', icon: 'talk', use() { openChest(p); this.done = true; } }); }
   }
-  game.warden = null; game.event = null; game.zaps = [];
+  game.warden = null; game.event = null; game.zaps = []; game.later = [];
   const R0 = game.run;
   if (R0.vigil) { R0.df = vigilDiff(R0.vigil); game.vigil = { t: VIGIL_TIME, out: false, L: R0.vigil }; }
   else { game.vigil = null; if (R0.omens.length) R0.df = applyOmens(DIFF[R0.diff], R0.omens); }
@@ -2136,7 +2139,7 @@ function drawCellBanners() {
 // columns of cards on the left, the chosen card's details on the right.
 function riteLayout() {
   const pw = Math.min(660, W - 12), ph = Math.min(H - 12, 300), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
-  const dw = Math.max(170, Math.min(250, Math.round(pw * 0.42))), lx = x0 + 10, lw = pw - dw - 30, ch = Math.floor((ph - 62 - 8 - 9) / 4), tw = Math.floor((lw - 8) / 3);
+  const dw = Math.max(170, Math.min(250, Math.round(pw * 0.42))), lx = x0 + 10, lw = pw - dw - 30, ch = Math.floor((ph - 62 - 8 - 15) / 6), tw = Math.floor((lw - 8) / 3);
   return { pw, ph, x0, y0, lw, ch, close: { x: x0 + pw - 14, y: y0 + 13, r: 10 }, detail: { x: x0 + pw - dw - 10, y: y0 + 34, w: dw, h: ph - 42 },
     tab: (c) => ({ x: lx + c * (tw + 4), y: y0 + 33, w: tw, h: 22 }),
     // card(c, i): row i of the list (the list shows the slot whose tab is open).
@@ -2157,6 +2160,12 @@ const RITE_MORE = {
   pillars: { syn: 'KILLS IN RECKONING HEAL YOU.', pow: 'fastPillars' },
   font: { syn: 'WIDER, SLOWS FOES AND PROTECTS YOU.', pow: 'bigPools' },
   volley: { syn: 'EVERY SHOT PIERCES, SPLITS AND ADDS NAIL STACKS.', pow: 'longReck' },
+  brand: { syn: 'BOUND FOES TAKE 25% MORE.', pow: 'longBind' },
+  hymn: { syn: 'ZEAL FADES HALF AS FAST.', pow: 'burnVuln' },
+  nailring: { syn: 'NAILS PIERCE, SPLIT AND ADD NAIL STACKS.', pow: 'longShot' },
+  asperse: { syn: 'ITS POOL IS 30% WIDER AND SLOWS MORE.', pow: 'bigPools' },
+  pilgrim: { syn: 'DASHES LEAVE HOLY FIRE.', pow: 'hotTrail' },
+  greatpen: { syn: 'BOUND FOES TAKE 25% MORE.', pow: 'longBind' },
 };
 function openRites(back) { game.ritesBack = back || game.state; game.state = 'rites'; game.riteFocus = game.riteFocus || 'm1'; sfx('tap'); }
 // Small text that must fit a width: drop a leading THE, try a short form,
@@ -2202,9 +2211,9 @@ function renderRites() {
     ctx.fillStyle = `rgba(${rgb},${syn || sel ? 0.95 : 0.45})`; ctx.fillRect(b.x, b.y, 3, b.h);
     if (sel) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 2; ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2); }
     const cy = b.y + Math.round(b.h / 2), tx = b.x + 34, tw = b.x + b.w - 6 - tx;
-    riteSocket(b.x + 18, cy, 11, r.icon, 0.72, sel ? PAL.gold2 : syn ? `rgb(${rgb})` : PAL.ink3, sel ? 1 : 0.75);
+    const sr = Math.min(11, Math.floor(b.h / 2) - 2); riteSocket(b.x + 18, cy, sr, r.icon, sr / 11 * 0.72, sel ? PAL.gold2 : syn ? `rgb(${rgb})` : PAL.ink3, sel ? 1 : 0.75);
     text(fitText(r.name, tw - 34), tx, cy - 10, sel ? PAL.gold1 : PAL.cloth0, small);
-    text(r.cd ? `${r.cd} S` : 'ZEAL', b.x + b.w - 6, cy - 10, PAL.stone1, { ...small, align: 'right' });
+    text(`${r.cd ? `${r.cd} S` : 'ZEAL'}  R${riteRank(r.id)}`, b.x + b.w - 6, cy - 10, riteRank(r.id) > 1 ? PAL.gold1 : PAL.stone1, { ...small, align: 'right' });
     text(fitText(VSETS[r.set].name.replace(/^THE /, ''), tw - 26, SET_SHORT[r.set]), tx, cy + 2, syn ? `rgb(${rgb})` : PAL.stone2, small);
     if (syn) text('SET', b.x + b.w - 6, cy + 2, RARITY[4].color, { ...small, align: 'right' });
   });
@@ -2229,7 +2238,11 @@ function renderRiteDetail(L, slot) {
   sprC('ui', 'set_' + r.set, 0, D.x + 16, y + 6);
   text(fitText(VSETS[r.set].name, D.w - 36), D.x + 30, y + 3, `rgb(${rgb})`, small); y += 17;
   para(M.syn, syn ? PAL.cloth1 : PAL.stone2);
-  y += 1; para(syn ? (arms && worn < 2 ? 'ACTIVE THROUGH ITS ARMS' : `ACTIVE, ${worn} OF 6 WORN`) : `WEAR 2 PIECES OR ITS ARMS. ${worn} OF 6 WORN.`, syn ? RARITY[4].color : PAL.stone2); y += 4;
+  y += 1; para(syn ? (arms && worn < 2 ? 'ACTIVE THROUGH ITS ARMS' : `ACTIVE, ${worn} OF 6 WORN`) : `WEAR 2 PIECES OR ITS ARMS. ${worn} OF 6 WORN.`, syn ? RARITY[4].color : PAL.stone2);
+  para(`6 PIECES: ${TWIST[r.id]}`, twist(r.id) ? RARITY[4].color : PAL.stone2);
+  // Rank: casts so far and what the next rank needs.
+  const rk = riteRank(r.id), xp = (SAVE.riteXp && SAVE.riteXp[r.id]) || 0, nx = RANK_AT[rk - 1];
+  para(`RANK ${rk} OF 5${rk > 1 ? (r.cd ? `: COOLDOWN -${(rk - 1) * 5}%` : `: +${((rk - 1) * 0.4).toFixed(1)} S`) : ''}${nx ? `. ${xp}/${nx} CASTS` : ''}`, rk > 1 ? PAL.gold1 : PAL.stone1); y += 4;
   const lg = LEGENDS.find((g) => g.key === M.pow);
   if (!lg || y > D.y + D.h - 34) return;
   ctx.fillStyle = PAL.ink3; ctx.fillRect(D.x + 8, y, D.w - 16, 1); y += 7;
@@ -3855,14 +3868,14 @@ function performAttack(e) {
     case 'swipe': {
       const hx = e.x + Math.cos(ang) * a.reach * 0.6, hy = e.y + Math.sin(ang) * a.reach * 0.6;
       const near2 = (x, y) => Math.hypot(x - hx, y - hy) < a.reach * 0.7;
-      damagePlayer(e, a.dmg * k, [[player.x, player.y], [player.dashX ?? player.x, player.dashY ?? player.y]].filter(([x, y]) => near2(x, y)));
+      damagePlayer(e, a.dmg * k, [[player.x, player.y], [player.dashX ?? player.x, player.dashY ?? player.y]].filter(([x, y]) => near2(x, y)), 'swipe');
       break;
     }
     case 'cone': {
       const pdx = player.x - e.x, pdy = player.y - e.y, pd = Math.hypot(pdx, pdy);
       let da = Math.atan2(pdy, pdx) - ang; da = Math.atan2(Math.sin(da), Math.cos(da));
-      if (pd < a.len && Math.abs(da) < a.arc / 2) { damagePlayer(e, a.dmg * k, [[player.x, player.y]]); if (a.slow) player.slowT = a.slow; }
-      else if (game.time - player.dashStart < T.dash.perfectWindow + 0.05 && player.dashX !== undefined && Math.hypot(player.dashX - e.x, player.dashY - e.y) < a.len) damagePlayer(e, a.dmg * k, [[player.dashX, player.dashY]]);
+      if (pd < a.len && Math.abs(da) < a.arc / 2) { damagePlayer(e, a.dmg * k, [[player.x, player.y]], 'cone'); if (a.slow) player.slowT = a.slow; }
+      else if (game.time - player.dashStart < T.dash.perfectWindow + 0.05 && player.dashX !== undefined && Math.hypot(player.dashX - e.x, player.dashY - e.y) < a.len) damagePlayer(e, a.dmg * k, [[player.dashX, player.dashY]], 'cone');
       hazards.push({ kind: 'flash', x: e.x, y: e.y - 6, ang, len: a.len, arc: a.arc, t: 0, dur: 0.18, color: a.slow ? '200,240,255' : '255,90,74' });
       break;
     }
@@ -3923,7 +3936,7 @@ function actUpdate(e, dt) {
     if (e.subWind > 0) { e.subWind -= dt; e.ang = Math.atan2(player.y - e.y, player.x - e.x); return; }
     e.actT -= dt;
     const bumped = moveCircle(e, Math.cos(e.ang) * a.speed * dt, Math.sin(e.ang) * a.speed * dt, e.r);
-    if (!e.hitDone && Math.hypot(player.x - e.x, player.y - e.y) < e.r + 10) { e.hitDone = true; damagePlayer(e, a.dmg * e.dmgK, [[player.x, player.y]]); }
+    if (!e.hitDone && Math.hypot(player.x - e.x, player.y - e.y) < e.r + 10) { e.hitDone = true; damagePlayer(e, a.dmg * e.dmgK, [[player.x, player.y]], 'lunge'); }
     if (rng() < 0.5) parts.push({ kind: 'spark', x: e.x, y: e.y - 4, z: 0, vx: rand(-20, 20), vy: rand(-20, 20), vz: 0, c: PAL.stone1, life: 0.25 });
     if (e.actT <= 0 || bumped) {
       if (bumped && e.def.tier === 'elite') { game.shake = 4; e.flash = 0.1; }
@@ -3965,7 +3978,7 @@ function updateHazards(dt) {
       if (h.t >= h.delay && !h.done) {
         h.done = true;
         const inside = Math.hypot(px - h.x, (py - h.y) / 0.7) < h.r;
-        if (inside && h.dmg) damagePlayer(h.src || {}, h.dmg, [[px, py]]);
+        if (inside && h.dmg) damagePlayer(h.src || {}, h.dmg, [[px, py]], 'circle');
         if (inside && h.slow) player.slowT = h.slow;
         if (inside && h.root && !(player.iframes > 0)) player.rootT = h.root;
         if (h.pool) addPool(h.x, h.y, h.r * 0.9, h.poolLife || 4, h.poolDps || 10, h.pool, h.src, h.poolRate);
@@ -3978,13 +3991,13 @@ function updateHazards(dt) {
       if (h.done && h.t > h.gone) h.dead = true;
     } else if (h.kind === 'pool') {
       h.tick -= dt;
-      if (Math.hypot(px - h.x, (py - h.y) / 0.6) < h.r && h.tick <= 0) { h.tick = h.rate || 0.5; if (player.iframes <= 0 || h.rate < 0.5) hurtPlayerRaw(h.dps * h.tick, PAL.ember1); if (h.pool === 'frost') player.slowT = 0.6; }
+      if (Math.hypot(px - h.x, (py - h.y) / 0.6) < h.r && h.tick <= 0) { h.tick = h.rate || 0.5; if (player.iframes <= 0 || h.rate < 0.5) hurtPlayerRaw(h.dps * h.tick, PAL.ember1, 'pool', h.src); if (h.pool === 'frost') player.slowT = 0.6; }
       if (h.t > h.life) h.dead = true;
     } else if (h.kind === 'ring') {
       if (h.wait > 0) { h.wait -= dt; continue; }
       h.R += h.speed * dt;
       const dd = Math.hypot(px - h.x, (py - h.y) / 0.6);
-      if (!h.hit && Math.abs(dd - h.R) < 7) { h.hit = true; const was = player.hp; damagePlayer(h.src, h.dmg, [[px, py]]); if (h.root && player.hp < was) player.rootT = h.root; if (h.slow && player.hp < was) player.slowT = h.slow; }
+      if (!h.hit && Math.abs(dd - h.R) < 7) { h.hit = true; const was = player.hp; damagePlayer(h.src, h.dmg, [[px, py]], 'ring'); if (h.root && player.hp < was) player.rootT = h.root; if (h.slow && player.hp < was) player.slowT = h.slow; }
       if (h.R > h.max) h.dead = true;
     } else if (h.kind === 'line') {
       if (h.t >= h.delay && h.t < h.delay + h.dur && !h.hit) {
@@ -3992,7 +4005,7 @@ function updateHazards(dt) {
         if (segDist(px, py - 12, h.x, h.y, ex, ey) < h.w / 2 + 5) {
           h.hit = true;
           if (h.pull && !(player.iframes > 0)) { const s = h.pull; player.pull = { x: s.x + Math.cos(Math.atan2(py - s.y, px - s.x)) * 22, y: s.y + Math.sin(Math.atan2(py - s.y, px - s.x)) * 16, t: 0.35 }; }
-          if (h.dmg) damagePlayer(h.src, h.dmg, [[px, py]]);
+          if (h.dmg) damagePlayer(h.src, h.dmg, [[px, py]], 'line');
         }
       }
       if (h.t > h.delay + h.dur + 0.15) h.dead = true;
@@ -4008,7 +4021,7 @@ function updateHazards(dt) {
   for (const e of enemies) {
     if (e.dead || !e.pack || !e.affixes.includes('chained') || e.state === 'spawn') continue;
     const mates = e.pack.members.filter((m) => !m.dead && m !== e && m.affixes.includes('chained') && m.state !== 'spawn');
-    for (const m of mates) if (m.x > e.x && segDist(px, py, e.x, e.y - 10, m.x, m.y - 10) < 6 && (player.chainT || 0) <= game.time) { player.chainT = game.time + 0.4; hurtPlayerRaw(8, PAL.ember1); }
+    for (const m of mates) if (m.x > e.x && segDist(px, py, e.x, e.y - 10, m.x, m.y - 10) < 6 && (player.chainT || 0) <= game.time) { player.chainT = game.time + 0.4; hurtPlayerRaw(8, PAL.ember1, 'chain', e); }
   }
   for (const s of shots) {
     s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt;
@@ -4017,7 +4030,7 @@ function updateHazards(dt) {
       const a1 = a0 + Math.max(-s.home * dt, Math.min(s.home * dt, da)); s.vx = Math.cos(a1) * sp; s.vy = Math.sin(a1) * sp;
     }
     if (solidAt(s.x, s.y + 12)) { s.life = 0; sparks(s.x, s.y, PAL.stone1, 2); continue; }
-    if (Math.hypot(s.x - px, s.y - (py - 12)) < 7) { s.life = 0; damagePlayer(s.src, s.dmg, [[px, py]]); }
+    if (Math.hypot(s.x - px, s.y - (py - 12)) < 7) { s.life = 0; damagePlayer(s.src, s.dmg, [[px, py]], s.home ? 'homing' : 'shot'); }
   }
   shots = shots.filter((s) => s.life > 0);
 }
@@ -4036,12 +4049,31 @@ function setGuard() {
   if ((player.wardT || 0) > game.time) k *= 0.4;
   return k;
 }
-function hurtPlayerRaw(dmg, color) {
+// What hurt the Saint this run, for the recap after a death.
+function noteHurt(src, how, dmg) {
+  const R = game.run; if (!R || game.scene !== 'wound') return;
+  const key = `${(src && src.type) || '-'}|${how || 'hit'}`; (R.hurt = R.hurt || {})[key] = (R.hurt[key] || 0) + dmg;
+}
+const HURT_HOW = { swipe: 'SWINGS', cone: 'CONE ATTACKS', lunge: 'CHARGES', circle: 'SLAMS', ring: 'RINGS', line: 'AIMED SHOTS', shot: 'SHOTS', homing: 'HOMING SHOTS', pool: 'POOLS', chain: 'CHAINS', reflect: 'REFLECTED DAMAGE', sentence: 'THE SENTENCE', hit: 'HITS' };
+const HURT_TIP = {
+  swipe: 'WATCH FOR THE WIND-UP, THEN DASH AWAY.', cone: 'CONE ATTACKS HIT IN FRONT. DASH TO THE SIDE.', lunge: 'CHARGES GO IN A STRAIGHT LINE. DASH SIDEWAYS.',
+  circle: 'LEAVE THE RED CIRCLE BEFORE IT FILLS.', ring: 'DASH THROUGH A RING AS IT REACHES YOU.', line: 'A RED LINE MEANS A SHOT IS COMING. STEP OFF IT.',
+  shot: 'MOVE ACROSS SHOTS, NOT AWAY FROM THEM.', homing: 'HOMING SHOTS TURN SLOWLY. DASH AT THE LAST MOMENT.', pool: 'DO NOT STAND IN POOLS. THEY HURT EVERY TICK.',
+  chain: 'DO NOT WALK BETWEEN CHAINED FOES.', reflect: 'PENITENT FOES HURT YOU BACK. KILL THEM QUICKLY.', sentence: 'THE SENTENCE BURSTS. DASH TO CLEAR IT.', hit: 'KEEP MOVING AND DASH THROUGH ATTACKS.',
+};
+// The three things that hurt most, and a tip for the worst.
+function deathRecap(R) {
+  const all = Object.entries(R.hurt || {}), sum = all.reduce((a, [, v]) => a + v, 0); if (!sum) return null;
+  const top = all.sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => { const [type, how] = k.split('|'); return { who: (MON[type] && MON[type].name) || 'THE FLOOR', how: HURT_HOW[how] || 'HITS', tip: HURT_TIP[how] || HURT_TIP.hit, pct: Math.round(v / sum * 100) }; });
+  const weak = !R.vigil && playerSanctity() < stationSanctity(R.diff) * 0.7;
+  return { top, tip: weak ? 'YOUR GEAR IS BELOW THIS STATION. TRY AN EASIER ONE.' : top[0].tip };
+}
+function hurtPlayerRaw(dmg, color, how, src) {
   if (DEV.god) return;
   if (game.buff && game.buff.kind === 'warding') dmg *= 0.5;
   dmg *= setGuard();
   if (game.scene === 'wound') dmg *= curDiff().dmg;
-  dmg = Math.max(1, Math.round(dmg * G.armorK));
+  dmg = Math.max(1, Math.round(dmg * G.armorK)); noteHurt(src, how, dmg);
   player.hp -= dmg; player.hurt = Math.max(player.hurt, 0.15); sfx('hurt', { vol: 0.5, gap: 0.3 });
   nums.push({ x: player.x + rand(-4, 4), y: player.y - 52, v: dmg, t: 0, color, small: true });
   if (player.hp <= 0) { player.hp = 0; die(); }
@@ -4150,7 +4182,7 @@ function drawShots() {
 }
 
 // --------------------------------------------------------- taking damage ---
-function damagePlayer(src, dmg, contacts) {
+function damagePlayer(src, dmg, contacts, how) {
   if (!contacts.length || DEV.god) return;
   const dashing = game.time - player.dashStart <= T.dash.iframes;
   if (dashing && game.time - player.dashStart <= T.dash.perfectWindow + 0.05 && !player.perfectUsed) { perfectDodge(); return; }
@@ -4159,7 +4191,7 @@ function damagePlayer(src, dmg, contacts) {
   if (Math.hypot(cx - player.x, cy - player.y) > 1) return; // only the dash origin was in reach: a plain miss
   if (game.buff && game.buff.kind === 'warding') dmg *= 0.5;
   if (game.scene === 'wound') dmg *= curDiff().dmg;
-  dmg = Math.max(1, Math.round(dmg * G.armorK * setGuard()));
+  dmg = Math.max(1, Math.round(dmg * G.armorK * setGuard())); noteHurt(src, how, dmg);
   player.hp -= dmg; player.iframes = T.hurtIframes; player.hurt = 0.3; game.lastHit = src.type; sfx('hurt'); buzz(35);
   if (G.powers.has('ashRing') && (player.ashT || 0) < game.time) { player.ashT = game.time + 2; fireRing(14); }
   game.shake = Math.max(game.shake, 4); game.hitstop = 0.05;
@@ -4204,7 +4236,7 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   const hy = e.y - e.hy;
   if (blocked) { sparks(e.x + e.face * 10, hy, PAL.gold0, 5); sfx('block'); playFx('fx', 'impact', e.x + e.face * 10, hy, 30); }
   else if (dirx || diry) { bleed(e.x, hy, crit ? 5 : 2, dirx); if (!opts.status) { sfx('hit' + Math.floor(rng() * 3), { vol: crit ? 1.3 : 1 }); } if (!opts.status) playFx('fx', 'impact', e.x - dirx * 4, hy, 30, { small: !crit }); }
-  if (e.affixes.includes('penitent') && !e.illusion) { game.reflect = (game.reflect || 0) + dmg * 0.04; if (game.reflect >= 2) { hurtPlayerRaw(game.reflect, PAL.violet1); game.reflect = 0; } }
+  if (e.affixes.includes('penitent') && !e.illusion) { game.reflect = (game.reflect || 0) + dmg * 0.04; if (game.reflect >= 2) { hurtPlayerRaw(game.reflect, PAL.violet1, 'reflect', e); game.reflect = 0; } }
   if (e.affixes.includes('mirrored') && !e.illusion) for (const th of [0.75, 0.4]) if (before > th && e.hp / e.maxHp <= th) for (let k = 0; k < 2; k++) {
     const m = spawnMonster(e.type, e.x + rand(-20, 20), e.y + rand(-14, 14), { tier: e.tier, illusion: true, life: 9, room: e.room, hpK: 0.15 });
     m.state = 'move'; m.dmgK = 0.3; playFx('fx', 'smoke', m.x, m.y - 8, 14);
@@ -4237,6 +4269,7 @@ function setFoeK(e, kind) {
   if (kind === 'bolt' && G.powers.has('cruel') && (e.bound > 0 || e.slowK < 1)) k *= 1.4;
   if (kind === 'bolt' && G.powers.has('heavyBolts')) k *= 2;
   if (e.bound > 0 && sb('confessor', 2)) k *= 1.25;
+  if (e.judgedT > game.time) k *= 1.5;
   if (player.rainT > 0 && sb('choir', 6)) k *= 3;
   return k;
 }
@@ -4909,22 +4942,52 @@ const RITES = {
     { id: 'wave', name: 'BAPTISM', set: 'font', icon: 'wave', cd: 7, text: 'A WAVE KNOCKS FOES BACK AND LEAVES THREE POOLS.' },
     { id: 'storm', name: 'NAIL STORM', set: 'nails', icon: 'storm', cd: 5, text: 'A FAN OF 11 NAILS. EVERY ONE COUNTS AS A BOLT.' },
     { id: 'step', name: 'EMBER STEP', set: 'stride', icon: 'step', cd: 5, text: 'A LONG LEAP THAT LEAVES FIRE. COUNTS AS A DASH.' },
+    { id: 'brand', name: 'IRON BRAND', set: 'confessor', icon: 'brand', cd: 7, text: 'HURL A HOT IRON. FOES WHERE IT LANDS ARE BOUND FOR 1.5 S.' },
+    { id: 'hymn', name: 'HYMN OF CINDERS', set: 'choir', icon: 'hymn', cd: 6, text: 'A ROLLING FIRE BURNS FOES IN A LINE. EACH HIT GIVES 2 ZEAL.' },
   ],
   m2: [
     { id: 'chain', name: 'CHAIN OF PENANCE', set: 'confessor', icon: 'chain', cd: 8, text: 'BIND A FOE AND THOSE NEAR IT, THEN DRAG THEM IN.' },
     { id: 'shackle', name: 'SHACKLE CIRCLE', set: 'confessor', icon: 'shackle', cd: 9, text: 'BIND EVERY FOE AROUND YOU FOR 2 S.' },
     { id: 'censer', name: 'CENSER BLAZE', set: 'choir', icon: 'censer', cd: 6, text: 'A RING OF FIRE SETS FOES ALIGHT AND GIVES 15 ZEAL.' },
     { id: 'ward', name: "MARTYR'S WARD", set: 'stride', icon: 'ward', cd: 10, text: '3 S OF 60% LESS DAMAGE. YOUR NEXT DASH IS PERFECT.' },
+    { id: 'nailring', name: 'CROWN OF NAILS', set: 'nails', icon: 'nailring', cd: 8, text: 'FIRES 16 NAILS IN A RING AROUND YOU. EACH COUNTS AS A BOLT.' },
+    { id: 'asperse', name: 'ASPERSION', set: 'font', icon: 'asperse', cd: 10, text: 'HEAL 15% AND LEAVE A HOLY POOL AT YOUR FEET.' },
   ],
   pen: [
     { id: 'rain', name: 'RAIN OF RECKONING', set: 'choir', icon: 'penance', text: 'HITS EVERY FOE ON SCREEN.' },
     { id: 'pillars', name: 'JUDGEMENT', set: 'choir', icon: 'pillars', text: 'PILLARS OF LIGHT HIT THE STRONGEST FOES.' },
     { id: 'font', name: 'THE GREAT FONT', set: 'font', icon: 'font', text: 'A LARGE HOLY POOL FOLLOWS YOU.' },
     { id: 'volley', name: 'THE HUNDREDFOLD', set: 'nails', icon: 'volley', text: 'THE CROSSBOW FIRES 3X AS FAST AND EVERY SHOT SPLITS.' },
+    { id: 'pilgrim', name: 'PILGRIMAGE OF FIRE', set: 'stride', icon: 'pilgrim', text: 'DASHES RECHARGE AT ONCE, LEAVE FIRE AND RELEASE A RING OF LIGHT.' },
+    { id: 'greatpen', name: 'THE GREAT PENANCE', set: 'confessor', icon: 'greatpen', text: 'EVERY 1.5 S, FOES IN SIGHT ARE BOUND FOR 1 S AND TAKE 50% MORE DAMAGE.' },
   ],
 };
+// Every rite by id.
+const RITE_BY = Object.fromEntries(Object.values(RITES).flat().map((r) => [r.id, r]));
+// Rites rank up with use: casts needed for ranks 2-5. Each rank takes 5%
+// off the cooldown (a Reckoning lasts 0.4 S longer instead).
+const RANK_AT = [15, 45, 100, 200];
+const riteRank = (id) => 1 + RANK_AT.filter((n) => ((SAVE.riteXp && SAVE.riteXp[id]) || 0) >= n).length;
+function bumpRite(id) {
+  const X = (SAVE.riteXp = SAVE.riteXp || {}), r0 = riteRank(id); X[id] = (X[id] || 0) + 1;
+  const r1 = riteRank(id); if (r1 > r0 && player) { toast(`${RITE_BY[id].name} RANK ${r1}`, 2); game.toastColor = PAL.gold1; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: '255,209,85' }); sfx('levelup', { vol: 0.6 }); }
+}
+// With six pieces of its set worn, each rite gains a twist.
+const TWIST = {
+  water: 'THROWS A SECOND VIAL.', wave: 'A SECOND WAVE FOLLOWS.', storm: 'A SECOND FAN FIRES 0.3 S LATER.', step: 'LANDING RELEASES A RING OF FIRE.',
+  brand: 'A SECOND IRON LANDS 0.4 S LATER.', hymn: 'A SECOND FIRE ROLLS 0.3 S LATER.',
+  chain: 'A SECOND CHAIN FLIES TO ANOTHER FOE.', shackle: 'BOUND FOES ALSO BURN.', censer: 'A SECOND BLAZE 0.5 S LATER.', ward: 'ALSO HEALS 20%.',
+  nailring: 'A SECOND RING FIRES 0.3 S LATER.', asperse: 'ALSO REFILLS YOUR DASHES.',
+  rain: 'LASHES FALL TWICE AS OFTEN.', pillars: 'TWO PILLARS FALL AT ONCE.', font: 'THE POOL IS TWICE AS WIDE.', volley: 'LASTS 2 S LONGER.',
+  pilgrim: 'LASTS 2 S LONGER.', greatpen: 'BOUND FOES ALSO BURN.',
+};
+const twist = (id) => sb(RITE_BY[id].set, 6);
+// Run something a little later in game time (a rite's second strike).
+function later(sec, fn) { (game.later = game.later || []).push({ at: game.time + sec, fn }); }
+function runLater() { const L = game.later; if (!L || !L.length) return; const now = game.time; game.later = L.filter((q) => q.at > now); for (const q of L) if (q.at <= now) q.fn(); }
+
 const riteOf = (slot) => RITES[slot].find((r) => r.id === (SAVE.rites && SAVE.rites[slot])) || RITES[slot][0];
-const riteCd = (slot) => (riteOf(slot).cd || 6) * G.cdrK * (slot === 'm1' && riteOf('m1').id === 'water' ? Math.pow(0.85, wound('flask')) : 1) * (riteOf(slot).id === 'censer' && G.powers.has('censerPlus') ? 0.6 : 1);
+const riteCd = (slot) => (riteOf(slot).cd || 6) * (1 - 0.05 * (riteRank(riteOf(slot).id) - 1)) * G.cdrK * (slot === 'm1' && riteOf('m1').id === 'water' ? Math.pow(0.85, wound('flask')) : 1) * (riteOf(slot).id === 'censer' && G.powers.has('censerPlus') ? 0.6 : 1);
 // One bolt, as the crossbow fires them (Nail Storm uses it too).
 function spawnBolt(sx, sy, a, crit, o = {}) {
   bolts.push({ z: 18, zv: 0, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce') + (sb('nails', 2) ? 1 : 0) + (G.powers.has('longShot') ? 2 : 0), hit: new Set(), crit, trail: [], ...o });
@@ -4943,7 +5006,7 @@ function castShackle() {
   const links = enemies.filter((e) => !e.dead && !e.boss && e.state !== 'spawn' && Math.hypot(e.x - player.x, (e.y - player.y) / 0.8) < 95 * (1 + wound('riteShackle') * 0.2));
   rings.push({ x: player.x, y: player.y, t: 0, max: 0.4, r: 95 * (1 + wound('riteShackle') * 0.2), color: riteFx().chain, flat: true }); sfx('chain');
   if (!links.length) return;
-  for (const e of links) { e.bound = 2 + (G.powers.has('longBind') ? 2 : 0) + wound('riteShackle') * 0.5; if (e.state === 'windup') { e.state = 'move'; e.t = 0; } hurtEnemy(e, 10, false, 0, 0, 0, { status: true, color: PAL.iron0 }); }
+  for (const e of links) { e.bound = 2 + (G.powers.has('longBind') ? 2 : 0) + wound('riteShackle') * 0.5; if (twist('shackle')) e.burn = T.thurible.burn.time * 1.5; if (e.state === 'windup') { e.state = 'move'; e.t = 0; } hurtEnemy(e, 10, false, 0, 0, 0, { status: true, color: PAL.iron0 }); }
   chains.push({ x: player.x, y: player.y - 25, target: links[0], links, t: 2 - T.chain.bind, phase: 'bind' });
 }
 // A ring of fire around the Saint (Censer Blaze, the Mantle of Falling Ash).
@@ -4961,20 +5024,27 @@ function castCenser() {
 function castWard() { player.wardT = game.time + (G.powers.has('wardLong') ? 6 : 3) + wound('riteWard'); if (wound('riteWard')) player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.05 * wound('riteWard')); player.freePerfect = true; if (G.powers.has('wardLong')) player.charges = G.charges; rings.push({ x: player.x, y: player.y - 20, t: 0, max: 0.5, r: 40, color: '216,247,255' }); sfx('shrine', { rate: 1.4, vol: 0.6 }); }
 function castM1(aim) {
   const r = riteOf('m1').id;
-  if (r === 'water') return castFlask(aim);
-  if (r === 'wave') castWave(aim); else if (r === 'storm') castStorm(aim); else if (r === 'step') startDash(player, { len: 1.9, step: true, dir: aim && aim.a });
+  if (r === 'water') { castFlask(aim); if (twist('water')) castFlask(aim ? { ...aim, a: aim.a + 0.35 } : null, true); return; }
+  if (r === 'wave') { castWave(aim); if (twist('wave')) later(0.3, () => castWave(aim)); }
+  else if (r === 'storm') { castStorm(aim); if (twist('storm')) later(0.3, () => castStorm(aim)); }
+  else if (r === 'step') { startDash(player, { len: 1.9, step: true, dir: aim && aim.a }); if (twist('step')) later(T.dash.time * 1.9, () => fireRing(20)); }
+  else if (r === 'brand') { castBrand(aim); if (twist('brand')) later(0.4, () => castBrand(aim)); }
+  else if (r === 'hymn') { castHymn(aim); if (twist('hymn')) later(0.3, () => castHymn(aim)); }
   player.m1cd = riteCd('m1'); player.castT = 0.28;
 }
 function castM2(aim) {
   const r = riteOf('m2').id;
-  if (r === 'chain') return castChain(aim);
-  if (r === 'shackle') castShackle(); else if (r === 'censer') castCenser(); else if (r === 'ward') castWard();
+  if (r === 'chain') { castChain(aim); if (player.m2cd > 0 && twist('chain')) castChain(null, chains.length && chains[chains.length - 1].target); return; }
+  if (r === 'shackle') castShackle(); else if (r === 'censer') { castCenser(); if (twist('censer')) later(0.5, () => fireRing(18)); }
+  else if (r === 'ward') { castWard(); if (twist('ward')) player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.2); }
+  else if (r === 'nailring') { castNailring(); if (twist('nailring')) later(0.3, castNailring); }
+  else if (r === 'asperse') castAsperse();
   player.m2cd = riteCd('m2'); player.castT = 0.28;
 }
 // Where an aimed rite lands (shared by the cast and its preview).
-const aimPoint = (aim) => { const d = Math.max(24, aim.f * T.flask.range); return { x: player.x + Math.cos(aim.a) * d, y: player.y + Math.sin(aim.a) * d }; };
-function castFlask(aim) {
-  const t = aim ? aimPoint(aim) : bestCluster(T.flask.range);
+const aimPoint = (aim, range = T.flask.range) => { const d = Math.max(24, aim.f * range); return { x: player.x + Math.cos(aim.a) * d, y: player.y + Math.sin(aim.a) * d }; };
+function castFlask(aim, second = false) {
+  const b = !aim && second ? bestCluster(T.flask.range) : null, t = aim ? aimPoint(aim) : second ? (b ? { x: b.x + rand(-50, 50), y: b.y + rand(-30, 30) } : null) : bestCluster(T.flask.range);
   flasks.push({ sx: player.x, sy: player.y - 23, tx: t ? t.x : player.x + player.face * 60, ty: t ? t.y : player.y, t: 0 }); sfx('tap', { rate: 0.6, vol: 0.6 });
   player.m1cd = riteCd('m1'); player.castT = 0.28;
 }
@@ -4990,22 +5060,49 @@ function chainPick(a) {
   }
   return t;
 }
-function castChain(aim) {
+function castChain(aim, skip = null) {
   let t = null, bd = Infinity;
-  if (aim) t = chainPick(aim.a);
+  if (aim && !skip) t = chainPick(aim.a);
   else for (const e of enemies) {
-    if (!inRange(e, T.chain.range)) continue;
+    if (!inRange(e, T.chain.range) || e === skip) continue;
     const d = Math.hypot(e.x - player.x, e.y - player.y) - (e.elite ? 10000 : 0) - (e === player.lock ? 20000 : 0);
     if (d < bd) { bd = d; t = e; }
   }
-  if (!t) { toast('NOTHING TO BIND'); return; }
+  if (!t) { if (!skip) toast('NOTHING TO BIND'); return; }
   chains.push({ x: player.x + player.face * 14, y: player.y - 25, target: t, links: [], t: 0, phase: 'fly' }); sfx('chain');
   player.m2cd = riteCd('m2'); player.castT = 0.28;
 }
-function castPenance() {
-  player.penance = 0; player.rainT = T.penance.time + (G.powers.has('longReck') ? 2 : 0); player.rainTick = 0; sfx('penance'); player.castT = 0.32;
+// Iron Brand: a hot iron lobbed to a spot; foes there are bound.
+function castBrand(aim) {
+  const b = aim ? null : bestCluster(T.flask.range), t = aim ? aimPoint(aim) : b ? { x: b.x, y: b.y } : { x: player.x + player.face * 60, y: player.y };
+  skillFx.push({ kind: 'brand', sx: player.x, sy: player.y - 23, x: t.x, y: t.y, t: 0, max: 0.45, hit: false }); sfx('tap', { rate: 0.5, vol: 0.7 });
+}
+// Hymn of Cinders: a rolling fire along a line.
+function castHymn(aim) {
+  const b = aim ? null : bestCluster(T.flask.range), a = aim ? aim.a : b ? Math.atan2(b.y - player.y, b.x - player.x) : (player.face < 0 ? Math.PI : 0);
+  skillFx.push({ kind: 'hymn', x: player.x, y: player.y, a, t: 0, max: 0.6, L: HYMN_LEN * (1 + wound('riteHymn') * 0.3), hits: new Set(), sp: 0 }); sfx('thurible', { rate: 0.6, vol: 1.2 });
+}
+const HYMN_LEN = 190, BRAND_R = 42, AIM_ZONE = 110;
+// Crown of Nails: a ring of bolts.
+function castNailring() {
+  const n = 16 + wound('riteNailring') * 6;
+  for (let k = 0; k < n; k++) spawnBolt(player.x, player.y - 24, k / n * Math.PI * 2, rng() < T.crossbow.crit + G.crit / 100);
+  sfx('shoot', { rate: 0.7, vol: 1.4 }); game.shake = Math.max(game.shake, 2);
+}
+// Aspersion: heal and a pool underfoot.
+function castAsperse() {
+  const w = wound('riteAsperse'); player.hp = Math.min(player.maxHp, player.hp + player.maxHp * (0.15 + w * 0.05));
+  pools.push({ x: player.x, y: player.y, r: T.flask.radius * 1.2 * (sb('font', 2) ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1) * (1 + w * 0.25), t: 0 });
+  if (twist('asperse')) player.charges = G.charges;
+  rings.push({ x: player.x, y: player.y, t: 0, max: 0.4, r: 50, color: riteFx().glow, flat: true }); sfx('flask'); sfx('heal', { vol: 0.8 });
+}
+const fontR = () => 58 * (G.powers.has('bigPools') ? 1.5 : 1) * (1 + wound('riteFont') * 0.25) * (twist('font') ? 2 : 1);
+function castPenance(aim) {
+  const id = riteOf('pen').id;
+  player.penance = 0; player.rainT = T.penance.time + (G.powers.has('longReck') ? 2 : 0) + (riteRank(id) - 1) * 0.4 + (['volley', 'pilgrim'].includes(id) && twist(id) ? 2 : 0) + (id === 'pilgrim' ? wound('ritePilgrim') : 0);
+  player.rainTick = 0; sfx('penance'); player.castT = 0.32;
   game.shake = Math.max(game.shake, 3); game.flash = 0.1;
-  player.penKind = riteOf('pen').id; player.pilT = 0;
+  player.penKind = id; player.pilT = 0; player.gpT = 0; player.penAim = aim ? aimPoint(aim, 220) : null; bumpRite(id);
   toast(riteOf('pen').name, 1.5);
 }
 
@@ -5016,9 +5113,10 @@ function updateAbilities(dt) {
   if (DEV.nocd) { p.m1cd = 0; p.m2cd = 0; }
   const lucky = (k) => { if (G.powers.has('luckyRite') && p[k] > 0 && rng() < 0.25) { p[k] = 0; nums.push({ x: p.x, y: p.y - 60, v: 'AGAIN', t: 0, color: PAL.gold0, small: true }); } };
   const aim = input.aim; input.aim = null;
-  if (input.m1) { input.m1 = false; if (p.m1cd <= 0) { castM1(aim && aim.k === 'm1' ? aim : null); tut.flags.m1 = true; lucky('m1cd'); } }
-  if (input.m2) { input.m2 = false; if (p.m2cd <= 0) { castM2(aim && aim.k === 'm2' ? aim : null); if (p.m2cd > 0) tut.flags.m2 = true; lucky('m2cd'); } }
-  if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) { castPenance(); tut.flags.pen = true; } }
+  runLater();
+  if (input.m1) { input.m1 = false; if (p.m1cd <= 0) { castM1(aim && aim.k === 'm1' ? aim : null); if (p.m1cd > 0) bumpRite(riteOf('m1').id); tut.flags.m1 = true; lucky('m1cd'); } }
+  if (input.m2) { input.m2 = false; if (p.m2cd <= 0) { castM2(aim && aim.k === 'm2' ? aim : null); if (p.m2cd > 0) bumpRite(riteOf('m2').id); if (p.m2cd > 0) tut.flags.m2 = true; lucky('m2cd'); } }
+  if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) { castPenance(aim && aim.k === 'pen' ? aim : null); tut.flags.pen = true; } }
   updateThurible(dt);
 
   for (const f of flasks) {
@@ -5081,7 +5179,7 @@ function updateAbilities(dt) {
   }
   chains = chains.filter((c) => c.phase !== 'done');
 
-  if (p.rainT <= 0) for (const pl of pools) pl.follow = false;
+  if (p.rainT <= 0) { for (const pl of pools) pl.follow = false; p.penAim = null; }
   if (p.rainT > 0) {
     p.rainT -= dt; p.rainTick -= dt;
     // The Burning Choir: Reckoning drains Zeal instead of ending.
@@ -5090,17 +5188,32 @@ function updateAbilities(dt) {
     if (kind !== 'rain') p.rainTick = 1;
     if (kind === 'pillars' && (p.pilT -= dt) <= 0) { // Judgement: the strongest foe in sight
       p.pilT = (G.powers.has('fastPillars') ? 0.13 : 0.26) * Math.pow(0.8, wound('ritePillars'));
-      const vis = enemies.filter((e) => !e.dead && e.state !== 'spawn' && e.x > cam.x && e.x < cam.x + W && e.y > cam.y && e.y < cam.y + H).sort((a, b) => b.hp - a.hp);
-      const e = vis[Math.floor(rng() * Math.min(3, vis.length))];
-      if (e) skillFx.push({ kind: 'pillar', x: e.x, y: e.y, t: 0, max: 0.7, hit: false, dmg: T.penance.dmg * 3 * (1 + wound('ritePillars') * 0.3) });
+      let vis = enemies.filter((e) => !e.dead && e.state !== 'spawn' && e.x > cam.x && e.x < cam.x + W && e.y > cam.y && e.y < cam.y + H).sort((a, b) => b.hp - a.hp);
+      // Aimed: the strongest foes near the chosen spot, if any are there.
+      if (p.penAim) { const near = vis.filter((e) => Math.hypot(e.x - p.penAim.x, e.y - p.penAim.y) < AIM_ZONE); if (near.length) vis = near; }
+      for (let q = 0; q < (twist('pillars') ? 2 : 1); q++) {
+        const e = vis[Math.floor(rng() * Math.min(3, vis.length))];
+        if (e) skillFx.push({ kind: 'pillar', x: e.x, y: e.y, t: 0, max: 0.7, hit: false, dmg: T.penance.dmg * 3 * (1 + wound('ritePillars') * 0.3) });
+      }
     }
     if (kind === 'font') { // The Great Font: a big pool that keeps to the Saint
+      // Aimed, it stays where it was placed; otherwise it follows the Saint.
       let pl = pools.find((q) => q.follow);
-      if (!pl) pools.push(pl = { x: p.x, y: p.y, r: 58 * (G.powers.has('bigPools') ? 1.5 : 1) * (1 + wound('riteFont') * 0.25), t: 0, follow: true });
-      pl.x = p.x; pl.y = p.y; pl.t = Math.min(pl.t, 0.5);
+      if (!pl) pools.push(pl = { x: p.x, y: p.y, r: fontR(), t: 0, follow: true });
+      if (p.penAim) { pl.x = p.penAim.x; pl.y = p.penAim.y; } else { pl.x = p.x; pl.y = p.y; } pl.t = Math.min(pl.t, 0.5);
+    }
+    if (kind === 'pilgrim') p.charges = G.charges; // dashes recharge at once (the fire and ring come from startDash)
+    if (kind === 'greatpen' && (p.gpT -= dt) <= 0) { // the Great Penance: everything in sight is bound and judged
+      p.gpT = 1.5;
+      for (const e of enemies) if (!e.dead && e.state !== 'spawn' && e.x > cam.x && e.x < cam.x + W && e.y > cam.y && e.y < cam.y + H) {
+        if (!e.boss) e.bound = Math.max(e.bound || 0, 1 + wound('riteGreatpen') * 0.5);
+        e.judgedT = game.time + 1.5; if (twist('greatpen')) e.burn = T.thurible.burn.time * 1.5;
+        rings.push({ x: e.x, y: e.y, t: 0, max: 0.35, r: 18, color: riteFx().chain, flat: true });
+      }
+      sfx('chain', { rate: 0.8, gap: 0.2 }); game.shake = Math.max(game.shake, 2);
     }
     while (p.rainTick <= 0) {
-      p.rainTick += T.penance.every;
+      p.rainTick += T.penance.every * (twist('rain') ? 0.5 : 1);
       const vis = enemies.filter((e) => !e.dead && e.state !== 'spawn' && e.x > cam.x && e.x < cam.x + W && e.y > cam.y && e.y < cam.y + H);
       let x, y;
       if (vis.length && rng() < 0.7) { const e = pick(vis); x = e.x + rand(-6, 6); y = e.y + rand(-4, 4); }
@@ -5131,6 +5244,7 @@ function startDash(p, { len = 1, step = false, dir = null } = {}) {
   if (sb('stride', 6)) p.strideT = game.time + 4;
   if (sbw('stride')) p.emberShots = 6;
   p.iframes = Math.max(p.iframes, T.dash.iframes * len); p.perfectUsed = false;
+  if (p === player && p.rainT > 0 && p.penKind === 'pilgrim') { p.stepTrail = true; skillFx.push({ kind: 'nova', x: p.x, y: p.y, t: 0, max: 0.3, r: 64 * WS, dmg: 16, hits: new Set() }); }
   if (p.sentence) cleanseSentence(p);
   if (Math.abs(dx) > 0.1) p.face = Math.sign(dx);
   playFx('fx', 'smoke', p.x, p.y - 4, 18, { alpha: 0.6 });
@@ -5148,7 +5262,7 @@ function updatePlayer(dt) {
     const S = p.sentence; S.t -= dt;
     if ((p.wardT || 0) > game.time) cleanseSentence(p);
     else if (S.t <= 0) {
-      p.sentence = null; hurtPlayerRaw(S.dmg, PAL.blood0); game.shake = Math.max(game.shake, 6); game.flash = 0.1;
+      p.sentence = null; hurtPlayerRaw(S.dmg, PAL.blood0, 'sentence', S.src); game.shake = Math.max(game.shake, 6); game.flash = 0.1;
       rings.push({ x: p.x, y: p.y - 6, t: 0, max: 0.4, r: S.r, color: '224,32,46', flat: true }); playFx('fx', 'burst', p.x, p.y - 18, 26, { big: true });
       for (const o of enemies) if (!o.dead && Math.hypot(o.x - p.x, o.y - p.y) < S.r) o.flash = 0.1;
     }
@@ -5770,6 +5884,7 @@ function drawAbilitiesGlow() {
   for (const pl of pools) glow(pl.x, pl.y, pl.r * 1.3, `rgba(${RF.glow},${0.3 * Math.min(1, (T.flask.time - pl.t) / 0.5)})`);
   for (const f of flasks) { const k = f.t / T.flask.flight; glow(f.sx + (f.tx - f.sx) * k, f.sy + (f.ty - f.sy) * k - Math.sin(k * Math.PI) * 36, 10, `rgba(${RF.glow},0.6)`); }
   for (const l of lashes) if (l.hit) glow(l.x, l.y, 18, `rgba(${RF.rain},${0.6 * (1 - (l.t - 0.12) / 0.18)})`);
+  for (const f of skillFx) if (f.kind === 'hymn' && f.t < f.max) { const d = f.L * Math.min(1, f.t / f.max); glow(f.x + Math.cos(f.a) * d, f.y + Math.sin(f.a) * d * 0.8 - 6, 30, 'rgba(255,122,31,0.55)'); }
   for (const c of chains) {
     if (c.phase === 'fly') glow(c.x, c.y, 10, `rgba(${RF.chain},0.5)`);
     else if (c.phase === 'bind' && RF.chain !== '238,242,247') for (const e of c.links) if (!e.dead) glow(e.x, e.y - e.hy, 12, `rgba(${RF.chain},0.45)`);
@@ -5873,13 +5988,18 @@ function renderAim() {
   ctx.save(); ctx.strokeStyle = col; ctx.fillStyle = fill; ctx.lineWidth = 2;
   const line = (x0, y0, x1, y1) => { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); };
   const head = (x, y, a) => { ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * 8, y + Math.sin(a) * 8); ctx.lineTo(x + Math.cos(a + 2.5) * 8, y + Math.sin(a + 2.5) * 8); ctx.lineTo(x + Math.cos(a - 2.5) * 8, y + Math.sin(a - 2.5) * 8); ctx.closePath(); ctx.fillStyle = col; ctx.fill(); ctx.fillStyle = fill; };
-  if (kind === 'point') {
-    const t = aimPoint(A), r = T.flask.radius * (sb('font', 2) ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1);
+  const id = riteOf(A.k).id;
+  if (kind === 'zone') { // a Reckoning placed on the floor: the Font's pool, or where Judgement's pillars fall
+    const t = aimPoint(A, 220), r = id === 'font' ? fontR() : AIM_ZONE;
+    ctx.setLineDash([4, 4]); line(px, py - 20, t.x, t.y);
+    ctx.beginPath(); ctx.ellipse(t.x, t.y, r, r * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+  } else if (kind === 'point') {
+    const t = aimPoint(A), r = id === 'brand' ? BRAND_R : T.flask.radius * (sb('font', 2) ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1);
     ctx.setLineDash([4, 4]); line(px, py - 20, t.x, t.y); ctx.setLineDash([]);
     ctx.beginPath(); ctx.ellipse(t.x, t.y, r, r * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   } else if (kind === 'wave') {
     // Matches castWave: 160 out, squashed 0.8 in depth, 34 wide each side.
-    const L = 160, ex = px + c * L, ey = py + s0 * L * 0.8, a2 = Math.atan2(ey - py, ex - px), nx = -Math.sin(a2) * 34, ny = Math.cos(a2) * 34;
+    const L = id === 'hymn' ? HYMN_LEN * (1 + wound('riteHymn') * 0.3) : 160, hw = id === 'hymn' ? 26 : 34, ex = px + c * L, ey = py + s0 * L * 0.8, a2 = Math.atan2(ey - py, ex - px), nx = -Math.sin(a2) * hw, ny = Math.cos(a2) * hw;
     ctx.beginPath(); ctx.moveTo(px + nx, py + ny); ctx.lineTo(ex + nx, ey + ny); ctx.lineTo(ex - nx, ey - ny); ctx.lineTo(px - nx, py - ny); ctx.closePath(); ctx.fill(); ctx.stroke(); head(ex, ey, a2);
   } else if (kind === 'fan') {
     const n = (G.powers.has('bigStorm') ? 21 : 11) + wound('riteStorm') * 4, sp = G.powers.has('bigStorm') ? 0.07 : 0.11, half = (n - 1) / 2 * sp, L = Math.min(170, T.crossbow.range * 0.8), oy = py - 30;
@@ -6182,12 +6302,13 @@ function renderReceipt(survived = false) {
   const k = Math.min(1, Math.max(0, game.deathT - (survived ? 0 : 0.7)) * 1.5);
   ctx.fillStyle = `rgba(11,7,16,${0.8 * k})`; ctx.fillRect(0, 0, W, H);
   if (k < 1) return;
-  const r = game.receipt, w = 260, h = r.pool ? 190 : 176, x = Math.round(W / 2 - w / 2), y = Math.round(H / 2 - h / 2);
+  const r = game.receipt, w = 260, h = r.pool ? 190 : 176, rc = !survived && r.recap, rw = rc ? Math.min(200, W - w - 26) : 0;
+  const x = Math.round(W / 2 - (w + (rc ? rw + 8 : 0)) / 2), y = Math.round(H / 2 - h / 2), mid = x + w / 2;
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
   ctx.fillStyle = PAL.bone1; ctx.fillRect(x, y, w, h);
   ctx.fillStyle = PAL.bone0; ctx.fillRect(x, y, w, 2);
   for (let i = 0; i < w; i += 4) { ctx.fillStyle = PAL.bone1; ctx.fillRect(x + i, y + h, 2, 2); }
-  const line = (s, yy, c = PAL.ink1, al = 'center') => text(s, al === 'center' ? W / 2 : x + 10, y + yy, c, { outline: null, align: al });
+  const line = (s, yy, c = PAL.ink1, al = 'center') => text(s, al === 'center' ? mid : x + 10, y + yy, c, { outline: null, align: al });
   line('HOLLOW SAINT', 10, PAL.crimson3);
   line(survived ? 'DESCENT COMPLETE' : 'YOU DIED', 23);
   ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 36, w - 20, 1);
@@ -6196,13 +6317,30 @@ function renderReceipt(survived = false) {
   row('TIME', `${m}:${s}`, 44); row(r.vigil ? 'THE VIGIL' : 'THE STATION', r.where, 57); row('KILLS', String(r.kills), 70); row('GOLD GATHERED', String(r.gold), 83);
   row(survived ? 'GEAR FOUND' : 'LOST', survived ? String(r.items.length) : `${r.tithe} GOLD, ${r.lostItems} GEAR`, 96);
   const best = [...r.items].sort((a, b) => b.ri - a.ri)[0];
-  if (best) text(best.name, W / 2, y + 138, RARITY[best.ri].color, { align: 'center', outline: PAL.ink1, shadow: false });
+  if (best) text(fitText(best.name, w - 16, null, false), mid, y + 138, RARITY[best.ri].color, { align: 'center', outline: PAL.ink1, shadow: false });
   ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 107, w - 20, 1);
   if (survived) { line('EVERYTHING KEPT.', 113, PAL.crimson3); }
   else { line(r.martyr ? 'VOW FAILED. ALL FINDS LOST.' : 'HALF YOUR GOLD AND FINDS LOST.', 113, PAL.crimson3); }
   if (best) line('FINEST FIND', 126, PAL.stone1);
-  if (r.pool) text(fitText(r.pool.text, w - 16), W / 2, y + 154, r.pool.won ? PAL.gold3 : PAL.crimson3, { align: 'center', small: true, outline: null });
+  if (r.pool) text(fitText(r.pool.text, w - 16), mid, y + 154, r.pool.won ? PAL.gold3 : PAL.crimson3, { align: 'center', small: true, outline: null });
+  if (rc) renderRecap(r.recap, x + w + 8, y, rw, h);
   if (game.deathT > 1.4 && Math.floor(game.real * 2) % 2 === 0) line(survived ? 'TAP TO RETURN TO VAEL' : 'TAP TO RETURN TO VAEL', h - 18);
+}
+
+// What hurt most, beside the receipt after a death.
+function renderRecap(R, x, y, w, h) {
+  const small = { small: true, outline: null };
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, h + 2); ctx.fillStyle = PAL.ink2; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = PAL.ink3; ctx.fillRect(x, y, w, 16); text('WHAT HURT MOST', x + 8, y + 5, PAL.gold1, small);
+  R.top.forEach((q, i) => {
+    const yy = y + 24 + i * 28;
+    text(fitText(q.who, w - 44), x + 8, yy, PAL.cloth0, small); text(`${q.pct}%`, x + w - 8, yy, i ? PAL.stone1 : PAL.blood0, { ...small, align: 'right' });
+    text(fitText(q.how, w - 16), x + 8, yy + 10, PAL.stone2, small);
+    ctx.fillStyle = PAL.ink1; ctx.fillRect(x + 8, yy + 19, w - 16, 3); ctx.fillStyle = i ? PAL.stone2 : PAL.blood1; ctx.fillRect(x + 8, yy + 19, Math.round((w - 16) * q.pct / 100), 3);
+  });
+  let yy = y + 24 + R.top.length * 28 + 4; ctx.fillStyle = PAL.ink3; ctx.fillRect(x + 8, yy - 4, w - 16, 1);
+  text('TIP', x + 8, yy, PAL.gold1, small); yy += 11;
+  for (const l of wrapW(R.tip, w - 16, true)) { if (yy > y + h - 10) break; text(l, x + 8, yy, PAL.cloth1, small); yy += 10; }
 }
 
 // ---------------------------------------------------------- Stigmata ---
@@ -6240,6 +6378,12 @@ const WOUNDS = [
   { id: 'ritePillars', name: 'SWIFT JUDGEMENT', rite: 'pillars', r: 1, max: 3, icon: 'rite:pillars', text: () => 'PILLARS FALL 25% FASTER AND HIT 30% HARDER.' },
   { id: 'riteFont', name: 'THE DEEPER FONT', rite: 'font', r: 1, max: 3, icon: 'rite:font', text: () => 'THE GREAT FONT IS 25% WIDER.' },
   { id: 'riteVolley', name: 'THE THOUSANDFOLD', rite: 'volley', r: 1, max: 3, icon: 'rite:volley', text: () => 'THE HUNDREDFOLD FIRES 20% FASTER STILL.' },
+  { id: 'riteBrand', name: 'RED-HOT IRON', rite: 'brand', r: 0, max: 3, icon: 'rite:brand', text: () => 'IRON BRAND BINDS 0.5 S LONGER AND HITS 40% HARDER.' },
+  { id: 'riteHymn', name: 'LOUDER HYMN', rite: 'hymn', r: 0, max: 3, icon: 'rite:hymn', text: () => 'HYMN OF CINDERS ROLLS 30% FARTHER AND HITS 40% HARDER.' },
+  { id: 'riteNailring', name: 'WIDER CROWN', rite: 'nailring', r: 0, max: 3, icon: 'rite:nailring', text: () => 'CROWN OF NAILS FIRES 6 MORE NAILS.' },
+  { id: 'riteAsperse', name: 'FULL ASPERGILL', rite: 'asperse', r: 0, max: 3, icon: 'rite:asperse', text: () => 'ASPERSION HEALS 5% MORE AND ITS POOL IS 25% WIDER.' },
+  { id: 'ritePilgrim', name: 'THE LONGER ROAD', rite: 'pilgrim', r: 1, max: 3, icon: 'rite:pilgrim', text: () => 'PILGRIMAGE OF FIRE LASTS 1 S LONGER.' },
+  { id: 'riteGreatpen', name: 'HEAVIER PENANCE', rite: 'greatpen', r: 1, max: 3, icon: 'rite:greatpen', text: () => 'THE GREAT PENANCE BINDS 0.5 S LONGER.' },
   { id: 'choir', name: 'WRATH OF THE CHOIR', r: 2, max: 2, icon: 'choir', text: (n) => `EVERY ${14 - n * 3} KILLS A SIGIL BURSTS AROUND YOU.` },
 ];
 const WOUND_RARITY = [{ name: 'WOUND', col: '#c2b6aa', w: 10 }, { name: 'DEEP WOUND', col: '#8ae0ff', w: 5 }, { name: 'STIGMA', col: '#ffd155', w: 2.2 }];
@@ -6364,6 +6508,17 @@ function updateSkills(dt) {
     }
     if (f.kind === 'nova' && !f.done) { const r = f.r * Math.min(1, f.t / f.max); for (const e of enemies) if (!e.dead && !f.hits.has(e) && Math.hypot(e.x - f.x, (e.y - f.y) / 0.7) < r) { f.hits.add(e); const dx = e.x - f.x, dy = e.y - f.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, f.dmg, false, dx / d, dy / d, 120, { kind: 'nova' }); } }
     // Baptism: a wave that rolls out, hurls foes back and drops pools.
+    if (f.kind === 'brand' && !f.hit && f.t >= f.max - 0.05) {
+      f.hit = true; const w = wound('riteBrand');
+      for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - f.x, (e.y - f.y) / 0.7) < BRAND_R) { if (!e.boss) e.bound = Math.max(e.bound || 0, 1.5 + w * 0.5 + (G.powers.has('longBind') ? 2 : 0)); if (e.state === 'windup' && !e.boss) { e.state = 'move'; e.t = 0; } hurtEnemy(e, 16 * (1 + w * 0.4), false, 0, 0, 0, { status: true, color: PAL.ember1 }); }
+      for (const [r, c] of [[BRAND_R, '255,122,31'], [BRAND_R * 0.6, '238,242,247']]) rings.push({ x: f.x, y: f.y, t: 0, max: 0.4, r, color: c, flat: true });
+      sparks(f.x, f.y, PAL.ember1, 8); playFx('fx', 'burst', f.x, f.y - 4, 26); sfx('chain', { rate: 0.7 }); game.shake = Math.max(game.shake, 2);
+    }
+    if (f.kind === 'hymn') {
+      const d = f.L * Math.min(1, f.t / f.max), hx = f.x + Math.cos(f.a) * d, hy = f.y + Math.sin(f.a) * d * 0.8, w = wound('riteHymn');
+      for (const e of enemies) if (!e.dead && e.state !== 'spawn' && !f.hits.has(e) && Math.hypot(e.x - hx, e.y - hy) < 26 + e.r) { f.hits.add(e); e.burn = T.thurible.burn.time * 1.5; hurtEnemy(e, 12 * (1 + w * 0.4), false, Math.cos(f.a), Math.sin(f.a), 40, { color: PAL.ember1 }); addFervor(2); }
+      if ((f.sp -= dt) <= 0 && f.t < f.max) { f.sp = 0.03; parts.push({ kind: 'spark', x: hx + rand(-10, 10), y: hy + rand(-6, 6), z: 0, vx: rand(-20, 20), vy: rand(-20, 20), vz: rand(30, 80), c: pick([PAL.ember0, PAL.ember1, PAL.ember2]), life: 0.45 }); }
+    }
     if (f.kind === 'wave') {
       const d = 160 * Math.min(1, f.t / f.max), wx = f.x + Math.cos(f.a) * d, wy = f.y + Math.sin(f.a) * d * 0.8;
       for (const e of enemies) if (!e.dead && e.state !== 'spawn' && !f.hits.has(e) && Math.hypot(e.x - wx, e.y - wy) < 34 + e.r) { f.hits.add(e); hurtEnemy(e, 14 * (1 + wound('riteWave') * 0.5), false, Math.cos(f.a), Math.sin(f.a), e.boss ? 0 : 220, { kind: 'pool', color: PAL.holy1 }); }
@@ -6389,6 +6544,8 @@ function onWoundCrit(e) {
 function onWoundDash() { const nv = wound('nova'); if (nv) skillFx.push({ kind: 'nova', x: player.x, y: player.y, t: 0, max: 0.3, r: 64 * WS, dmg: 10 + nv * 8, hits: new Set() }); }
 function drawSkillsGround() {
   for (const f of skillFx) {
+    if (f.kind === 'brand' && !f.hit) { const k = Math.min(1, f.t / f.max), x = f.sx + (f.x - f.sx) * k, y = f.sy + (f.y - f.sy) * k - Math.sin(k * Math.PI) * 40; ctx.fillStyle = PAL.outline; ctx.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6); ctx.fillStyle = PAL.ember1; ctx.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4); ctx.fillStyle = PAL.ember0; ctx.fillRect(Math.round(x) - 1, Math.round(y) - 2, 2, 2); }
+    if (f.kind === 'hymn' && f.t < f.max) { const d = f.L * Math.min(1, f.t / f.max), hx = f.x + Math.cos(f.a) * d, hy = f.y + Math.sin(f.a) * d * 0.8; ctx.fillStyle = 'rgba(214,64,26,0.35)'; ctx.beginPath(); ctx.ellipse(hx, hy, 24, 14, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,192,74,0.5)'; ctx.beginPath(); ctx.ellipse(hx, hy, 12, 7, 0, 0, Math.PI * 2); ctx.fill(); }
     if (f.kind === 'wave') { // a curling crest in the rite's colour
       const k = Math.min(1, f.t / f.max), d = 160 * k, wx = f.x + Math.cos(f.a) * d, wy = f.y + Math.sin(f.a) * d * 0.8, R = riteFx().pool;
       ctx.globalAlpha = 1 - k * 0.6; ctx.strokeStyle = PAL[R + '1']; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(wx, wy, 34, 22, f.a, -1.1, 1.1); ctx.stroke();
@@ -6770,7 +6927,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

@@ -436,6 +436,13 @@ const GLYPH = {
   pillars: (u, v) => [[-0.42, -0.15], [0, -0.55], [0.42, -0.3]].some(([x, t]) => Math.abs(u - x) < 0.11 && v > t && v < 0.5) || (Math.abs(v - 0.55) < 0.07 && Math.abs(u) < 0.6),
   font: (u, v) => (v < 0.02 && v > -0.45 && Math.hypot(u / 1.25, v + 0.45) < 0.62 && Math.hypot(u / 1.25, v + 0.6) > 0.36) || (Math.abs(u) < 0.09 && v >= 0 && v < 0.4) || (Math.abs(v - 0.45) < 0.08 && Math.abs(u) < 0.34),
   volley: (u, v) => [-0.32, 0, 0.32].some((o) => seg(u, v, -0.45 + o, 0.45 + o, 0.35 + o, -0.35 + o, 0.07) || (Math.hypot(u - (0.35 + o), v - (-0.35 + o)) < 0.13)),
+  // The round 26 rites: one per set in every slot.
+  brand: (u, v) => Math.abs(Math.hypot(u, v) - 0.52) < 0.09 || (Math.abs(u) < 0.09 && Math.abs(v) < 0.38) || (Math.abs(v) < 0.09 && Math.abs(u) < 0.38),
+  hymn: (u, v) => Math.hypot((u + 0.22) / 1.25, v - 0.38) < 0.2 || (Math.abs(u - 0.02) < 0.07 && v > -0.55 && v < 0.38) || seg(u, v, 0.02, -0.55, 0.42, -0.25, 0.08) || seg(u, v, 0.42, -0.25, 0.4, -0.02, 0.07),
+  nailring: (u, v) => Math.abs(Math.hypot(u, v) - 0.2) < 0.07 || [0, 1, 2, 3, 4, 5, 6, 7].some((k) => { const a = k * Math.PI / 4; return seg(u, v, Math.cos(a) * 0.32, Math.sin(a) * 0.32, Math.cos(a) * 0.62, Math.sin(a) * 0.62, 0.07); }),
+  asperse: (u, v) => [[-0.36, 0.34], [0.36, 0.34], [0, -0.2]].some(([x, y]) => Math.hypot(u - x, v - y) < 0.18 || (v < y && v > y - 0.34 && Math.abs(u - x) < (v - (y - 0.34)) * 0.5)),
+  pilgrim: (u, v) => (Math.abs(u) < 0.1 && v > 0 && v < 0.62) || (Math.abs(v - 0.62) < 0.08 && Math.abs(u) < 0.28) || Math.hypot(u, v + 0.18) < 0.24 || (v < -0.18 && v > -0.66 && Math.abs(u - Math.sin((v + 0.66) * 4) * 0.05) < (v + 0.66) * 0.5),
+  greatpen: (u, v) => seg(u, v, -0.45, -0.45, 0.45, 0.45, 0.07) || seg(u, v, -0.45, 0.45, 0.45, -0.45, 0.07) || [[-0.48, -0.48], [0.48, -0.48], [-0.48, 0.48], [0.48, 0.48]].some(([x, y]) => { const d = Math.hypot(u - x, v - y); return d < 0.17 && d > 0.07; }),
 };
 // Map badges for the town map: a small coloured disc, lit from the top-left,
 // with a pale glyph and a heavy outline. Order matches MAP_BADGES in index.html.
@@ -515,8 +522,8 @@ export default {
   ui: {
     ...Object.fromEntries(Object.entries(FRAME_STYLES).flatMap(([k, [m, g]]) => [[`frame_corner${k}`, () => [frameCorner(m, g)]], [`frame_crest${k}`, () => [frameCrest(m, g)]], [`frame_stud${k}`, () => [frameStud(m, g)]]])),
     dash: () => [button(50, GLYPH.dash)], flask: () => [button(40, GLYPH.flask)], chain: () => [button(40, GLYPH.chain)], penance: () => [button(44, GLYPH.penance)],
-    ...Object.fromEntries(['wave', 'storm', 'step', 'shackle', 'censer', 'ward'].map((k) => [k, () => [button(40, GLYPH[k])]])),
-    ...Object.fromEntries(['pillars', 'font', 'volley'].map((k) => [k, () => [button(44, GLYPH[k])]])),
+    ...Object.fromEntries(['wave', 'storm', 'step', 'shackle', 'censer', 'ward', 'brand', 'hymn', 'nailring', 'asperse'].map((k) => [k, () => [button(40, GLYPH[k])]])),
+    ...Object.fromEntries(['pillars', 'font', 'volley', 'pilgrim', 'greatpen'].map((k) => [k, () => [button(44, GLYPH[k])]])),
     dagger: () => [button(40, GLYPH.dagger)], pause: () => [button(28, GLYPH.pause)], talk: () => [button(50, GLYPH.talk)], descend: () => [button(50, GLYPH.descend)],
     lock: () => [button(50, BADGE_GLYPH.lock)], map: () => [button(26, BADGE_GLYPH.board)],
     badge: () => MAP_BADGES.map(([g, ramp]) => badge(15, ramp, g)), badgeBig: () => MAP_BADGES.map(([g, ramp]) => badge(21, ramp, g)),

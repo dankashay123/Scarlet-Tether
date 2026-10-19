@@ -59,6 +59,7 @@ node tools/tests/round22.cjs <outDir> [WxH] # one of each Hallowed piece: their 
 node tools/tests/round23.cjs <outDir> [WxH] # the Plush stall (buy, wear, recoloured Saint), set icons, Hallowed twinkles, every sound decoded
 node tools/tests/round24.cjs <outDir> [WxH] # music per place, the choir by the cathedral, Warden voices, bolt and dash trails, an earned halo
 node tools/tests/round25.cjs <outDir> [WxH] # Warden music, voice settings, the Scrying Pool, Martyrdom's vow, the Vigil Roll
+node tools/tests/round26.cjs <outDir> [WxH] # six new rites, ranks, twists, aimed Judgement and Font, the death recap
 node tools/tests/aim.cjs <outDir> [WxH]   # drag to aim each rite, cancel, plain tap
 node tools/tests/menus.cjs <outDir> [WxH] # every menu window at one phone size (run at 932x430, 844x390, 667x375)
 node tools/tests/round19.cjs <outDir> # altar odds per row, pity, grinding, burn animations, what a Vigil pays
@@ -113,6 +114,8 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **Orientation:** always landscape; held upright the canvas is turned a quarter (`PORTRAIT`). Map every touch through `toLocal`.
 - **The Vigil:** opened from the Descent panel; each run spends a Bloodrose Key (`SAVE.vkeys`, `dropVkey`). Its extra rewards live in `VIGIL_PAY` and `vigilPayout`.
 - **Wagers and the vow:** `WAGER_MARKS`, `wagerOdds`, `settleWager` (the Scrying Pool; `run.reach`); `SAVE.vow` and `run.martyr` (Martyrdom).
+- **Rites:** every slot has one rite per set (6 each). A new rite needs an icon (`GLYPH` in `props.mjs`), a `RITE_MORE` line, a `TWIST` line, a rite Wound, and a `bumpRite` call path. Ranks: `RANK_AT`. Delayed second strikes: `later(sec, fn)`.
+- **Death recap:** pass `how` to `damagePlayer`/`hurtPlayerRaw` for any new attack, and give it a `HURT_HOW` name and `HURT_TIP`.
 - **Aiming rites:** `AIMABLE` lists rites that take a drag (and their preview shape in `renderAim`); a new aimable rite takes `aim` (`{a, f}`) in its cast function.
 - **The altar:** odds are `burnChance` (`ALTAR_WIN` + Chrism + `ALTAR_PITY` per past failure); `grindAtAltar` mills three pieces into a Chrism.
 - **Writing style:** keep docs and code comments plain and short. Player-facing text says only what the player needs, in plain words: no flourishes, no lore asides in UI, no "you slay it" phrasing (the owner finds it reads as AI-made). Use KILL, not SLAY. Townsfolk chatter is character dialogue and may keep its voice.
