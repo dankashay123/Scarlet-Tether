@@ -49,10 +49,13 @@ node tools/tests/vigil.cjs <outDir>   # density by Station, the Bleeding Vigil, 
 node tools/tests/town2.cjs <outDir>   # Pell's stall, the Ember Forge, the Canonry (Devotion)
 node tools/tests/sets.cjs <outDir>    # vestment sets: Odile's Gift, each skin and set card, each set's bonuses in a fight
 node tools/tests/stratum.cjs <outDir> # Stratum II: panel button, a Drowned Nave run, both of its Wardens
+node tools/tests/dev.cjs <outDir>     # dev menu: every tab, sets into the bag, descend, summon, toggles
 node tools/tests/perf.cjs [secs]      # dense crowd: frame times, % of time frozen by hitstop, canvases made, slowest systems
 node tools/tests/err.cjs              # prints page errors and state
 node tools/sprites.mjs --audit        # lists any animation still drawn by the old hand-drawn code
 ```
+
+**Dev menu:** open with `?dev` (it stays on), the backquote key, or five taps on PAUSED; then the DEV button on the pause screen. Tabs: sets (whole sets into the bag or worn), items, hero (god mode, levels, Wounds), world (descend to any Station or stratum, summon any Warden or monster, reveal map), unlock, debug (fps, profile, hitboxes, game speed). Add new tools to `devRows()`.
 
 Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test writes screenshots to `<outDir>/shots/` and prints `errors 0 []` when clean. `?fps` shows frames per second and the ms our own code takes per frame. Look at the screenshots yourself; the user cares most about how it looks.
 

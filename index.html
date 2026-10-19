@@ -360,6 +360,8 @@ addEventListener('mousemove', (e) => { if (stick.id === 'm') pointerMove('m', e.
 addEventListener('mouseup', () => pointerUp('m'));
 addEventListener('keydown', (e) => {
   keys.add(e.code);
+  if (e.code === 'Backquote') { if (game.state === 'dev') closeDev(); else if (game.state === 'play' || game.state === 'pause') openDev(); return; }
+  if (game.state === 'dev') { if (e.code === 'Escape') closeDev(); return; }
   if (game.state === 'stig') { if (game.stig.t > 0.35 && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) pickStigma(+e.code.slice(5) - 1); return; }
   if (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyK') input.dash = true;
   if (e.code === 'KeyE' || e.code === 'KeyJ') { if (game.state === 'descent') descentTap(-1, -1); else if (game.state === 'play' && game.interact && !game.execTarget) game.interact.use(); else input.execute = true; }
@@ -1199,6 +1201,7 @@ function playFx(sheet, anim, x, y, fps = 24, o = {}) { if (fxs.length > 70 && !o
 // Per-device progress (tutorial seen, descents, last death). The full
 // versioned save system is a later slice item.
 const SAVE = (() => { try { return JSON.parse(localStorage.getItem('hollow-saint') || '{}'); } catch { return {}; } })();
+if (/[?&]dev\b/.test(location.search)) SAVE.dev = true;
 function persist() { try { localStorage.setItem('hollow-saint', JSON.stringify(SAVE)); } catch { /* private mode */ } }
 
 // ---------------------------------------------------------------- town ---
@@ -1650,6 +1653,132 @@ function giftTap(x, y) {
     toast(`TWO PIECES OF ${S.name}`, 2.5); game.toastColor = RARITY[4].color;
     if (!SAVE.gifts) game.state = 'play';
   });
+}
+
+// ------------------------------------------------------------ dev menu ---
+// Open with ?dev (stays on), the backquote key, or tap PAUSED five times.
+// From the pause screen: the DEV button. Tabs of buttons; a "< X >" button
+// steps back on its left half and forward on its right half.
+const DEV = { tab: 0, il: 6, ri: 4, slot: 0, warden: 0, mon: 0, wound: 0, stn: 0, strat: 1, vigil: 1, god: false, nocd: false, boxes: false, fps: false, speed: 1, confirm: 0, taps: 0, tapT: 0 };
+const DEV_TABS = ['SETS', 'ITEMS', 'HERO', 'WORLD', 'UNLOCK', 'DEBUG'];
+const devOn = () => !!SAVE.dev;
+const showFps = () => DEV.fps || location.search.includes('fps');
+const devBtn = () => ({ x: 10, y: H - 30, w: 60, h: 20 });
+function openDev() { SAVE.dev = true; persist(); game.devBack = game.state === 'dev' ? 'play' : game.state; game.state = 'dev'; sfx('tap'); }
+function closeDev() { game.state = game.devBack && game.devBack !== 'dev' ? game.devBack : 'play'; sfx('tap'); }
+const cyc = (i, n, d) => (i + d + n) % n;
+const devIl = () => DEV.il;
+// A whole set, made at the chosen item level.
+function devSet(id, wear) {
+  const S = VSETS[id], made = [];
+  for (const sl of S.slots) { const it = makeItem(sl, 4, `${S.piece} ${pick(SLOTS[sl])}`, undefined, devIl()); it.set = id; it.isNew = !wear; made.push(it); }
+  if (wear) { for (const it of made) { const old = SAVE.equip[it.slot]; if (old && SAVE.bag.length < BAG_SIZE) SAVE.bag.push(old); SAVE.equip[it.slot] = it; } applyGear(); toast(`WEARING ${S.name}`, 2); }
+  else { let n = 0; for (const it of made) if (SAVE.bag.length < BAG_SIZE) { SAVE.bag.push(it); n++; } toast(n < made.length ? `BAG FULL: ${n} OF ${made.length} ADDED` : `${S.name} IN YOUR BAG`, 2); }
+  game.toastColor = RARITY[4].color; persist();
+}
+function devItem(n) {
+  let k = 0;
+  for (let i = 0; i < n && SAVE.bag.length < BAG_SIZE; i++, k++) {
+    let it;
+    do { it = rollItem(0, devIl()); } while (it.ri !== DEV.ri || (DEV.slot && it.slot !== Object.keys(SLOTS)[DEV.slot - 1]));
+    SAVE.bag.push(it);
+  }
+  persist(); toast(`${k} ${RARITY[DEV.ri].name} ADDED`, 1.5);
+}
+const devWardens = () => Object.keys(MON).filter((k) => MON[k].warden);
+const devMons = () => Object.keys(MON).filter((k) => !MON[k].warden && MON[k].tier !== 'imp');
+const inRun = () => game.scene === 'wound';
+function devReveal() {
+  const R = room; if (!R.seen) return;
+  const g = R.fogCtx;
+  for (let y = 0; y < R.h; y++) for (let x = 0; x < R.w; x++) {
+    const i = y * R.w + x; if (R.seen[i]) continue; R.seen[i] = 1;
+    if (!R.baseSolid[i]) { g.fillStyle = PAL.stone2; g.fillRect(x, y, 1, 1); }
+    else if (!R.baseSolid[i - 1] || !R.baseSolid[i + 1] || !R.baseSolid[i - R.w] || !R.baseSolid[i + R.w]) { g.fillStyle = PAL.cloth1; g.fillRect(x, y, 1, 1); }
+  }
+}
+function devSpawn(id, o = {}) {
+  if (!inRun()) return toast('ONLY IN A DESCENT', 1.2);
+  const a = rng() * Math.PI * 2, P = player;
+  return spawnMonster(id, P.x + Math.cos(a) * 70, P.y + Math.sin(a) * 45, { room: game.curRoom && game.curRoom.id, ...o });
+}
+// Rows of buttons for a tab: { t: label, f: (dir) => ..., on: lit, w: columns, lab: plain text }.
+function devRows() {
+  const B = (t, f, o = {}) => ({ t, f, ...o });
+  const L = (t, w = 1, col) => ({ t, lab: true, w, col });
+  switch (DEV_TABS[DEV.tab]) {
+    case 'SETS': return [
+      ...MAIN_SETS.map((id) => [L(VSETS[id].name, 2, RARITY[4].color), B('BAG 6', () => devSet(id, false)), B('WEAR 6', () => devSet(id, true))]),
+      [B(`< STATION ${ROMAN[DEV.il - 1]} >`, (d) => { DEV.il = 1 + cyc(DEV.il - 1, 15, d); }), B('HABIT TO BAG', () => devSet('habit', false)), B('LESSER VOW', () => { const it = makeItem('seal', 3, 'THE LESSER VOW', undefined, devIl()); it.power = 'vow'; if (SAVE.bag.length < BAG_SIZE) SAVE.bag.push(it); persist(); toast('THE LESSER VOW IN YOUR BAG', 1.5); }), B('OPEN BAG', () => openInventory())],
+      [B('CLEAR BAG', () => { SAVE.bag = []; persist(); toast('BAG EMPTIED', 1); }), B('TAKE ALL OFF', () => { for (const sl of Object.keys(SAVE.equip)) { if (SAVE.equip[sl] && SAVE.bag.length < BAG_SIZE) SAVE.bag.push(SAVE.equip[sl]); delete SAVE.equip[sl]; } applyGear(); persist(); toast('ALL GEAR IN THE BAG', 1.2); }), B('TEMPER WORN', () => { for (const it of Object.values(SAVE.equip)) if (it) it.il = devIl(); applyGear(); persist(); toast(`WORN GEAR AT STATION ${ROMAN[DEV.il - 1]}`, 1.5); }), L(G && G.skin ? `SKIN: ${G.skin.toUpperCase()}` : 'SKIN: NONE')],
+    ];
+    case 'ITEMS': return [
+      [B(`< ${RARITY[DEV.ri].name} >`, (d) => { DEV.ri = cyc(DEV.ri, RARITY.length, d); }, { w: 2 }), B(`< ${DEV.slot ? Object.keys(SLOTS)[DEV.slot - 1].toUpperCase() : 'ANY SLOT'} >`, (d) => { DEV.slot = cyc(DEV.slot, Object.keys(SLOTS).length + 1, d); }), B(`< STATION ${ROMAN[DEV.il - 1]} >`, (d) => { DEV.il = 1 + cyc(DEV.il - 1, 15, d); })],
+      [B('ADD 1', () => devItem(1)), B('ADD 5', () => devItem(5)), B('FILL BAG', () => devItem(BAG_SIZE)), B('DROP HERE', () => { if (!inRun()) return toast('ONLY IN A DESCENT', 1.2); dropLoot(player.x + 20, player.y, { item: 3, itemBoost: 3 }); })],
+      [B('+10000 GOLD', () => { if (inRun()) game.run.gold += 10000; else SAVE.gold = (SAVE.gold || 0) + 10000; persist(); toast('+10000 GOLD', 1); }), B('SELL BAG', () => { let g = 0; for (const it of SAVE.bag) g += SALVAGE[it.ri]; SAVE.bag = []; SAVE.gold = (SAVE.gold || 0) + g; persist(); toast(`SOLD FOR ${g}`, 1.2); }), B('RESTOCK PELL', () => { SAVE.shop = null; toast("PELL'S STALL RESTOCKED", 1.2); }), B('OPEN BAG', () => openInventory())],
+      [L(`BAG ${SAVE.bag.length}/${BAG_SIZE}   SANCTITY ${playerSanctity()}   GOLD ${SAVE.gold || 0}`, 4, PAL.stone1)],
+    ];
+    case 'HERO': return [
+      [B(DEV.god ? 'GOD MODE ON' : 'GOD MODE OFF', () => { DEV.god = !DEV.god; }, { on: DEV.god }), B(DEV.nocd ? 'NO COOLDOWNS ON' : 'NO COOLDOWNS OFF', () => { DEV.nocd = !DEV.nocd; }, { on: DEV.nocd }), B('FULL HEAL', () => { player.hp = player.maxHp; }), B('FULL ZEAL', () => { game.fervor = 100; player.penance = T.penance.charge; })],
+      [B('+1 LEVEL', () => { if (!inRun()) return toast('ONLY IN A DESCENT', 1.2); gainXp(xpNeed(game.run.level)); }), B('+5 LEVELS', () => { if (!inRun()) return toast('ONLY IN A DESCENT', 1.2); for (let i = 0; i < 5; i++) gainXp(xpNeed(game.run.level + i)); }), B('+2000 DEVOTION', () => gainDevotion(2000)), B('+10 VIRTUE PTS', () => { SAVE.devPts = (SAVE.devPts || 0) + 10; persist(); })],
+      [B(`< ${WOUNDS[DEV.wound].name} >`, (d) => { DEV.wound = cyc(DEV.wound, WOUNDS.length, d); }, { w: 2 }), B('TAKE WOUND', () => { if (!inRun()) return toast('ONLY IN A DESCENT', 1.2); const w = WOUNDS[DEV.wound]; game.run.wounds[w.id] = Math.min(w.max, (game.run.wounds[w.id] || 0) + 1); applyGear(); toast(`${w.name} ${game.run.wounds[w.id]}/${w.max}`, 1.2); }), B('CLEAR WOUNDS', () => { if (game.run) game.run.wounds = {}; applyGear(); })],
+      [B('ALL SKILL WOUNDS', () => { if (!inRun()) return toast('ONLY IN A DESCENT', 1.2); for (const w of WOUNDS) if (w.r === 2 || w.id === 'orbit' || w.id === 'nova') game.run.wounds[w.id] = w.max; applyGear(); }), B('SHRINE BUFF', () => { const ks = Object.keys(SHRINES); game.buff = { kind: ks[Math.floor(rng() * ks.length)], t: 30 }; }), B('KILL ME', () => { DEV.god = false; player.hp = 1; hurtPlayerRaw(99999, PAL.blood0); closeDev(); }), L(`HP ${Math.round(player ? player.hp : 0)}/${player ? player.maxHp : 0}`)],
+    ];
+    case 'WORLD': return [
+      [B('GO TO TOWN', () => { enterTown(false); }), B(`< STATION ${ROMAN[DEV.stn]} >`, (d) => { DEV.stn = cyc(DEV.stn, DIFF.length, d); }), B(`< STRATUM ${DEV.strat} >`, (d) => { DEV.strat = cyc(DEV.strat - 1, 2, d) + 1; }), B('DESCEND', () => { tut.on = false; game.nextStratum = DEV.strat; game.nextDiff = DEV.stn; game.nextOmens = []; game.nextVigil = 0; game.state = 'loading'; game.loadT = 0; game.loadOdds = ODDS[0]; })],
+      [B(`< ${MON[devWardens()[DEV.warden]].name} >`, (d) => { DEV.warden = cyc(DEV.warden, devWardens().length, d); }, { w: 2 }), B('SUMMON WARDEN', () => { if (!inRun()) return toast('ONLY IN A DESCENT', 1.2); if (game.warden) killEnemy(game.warden, 1, 0); spawnWarden(devWardens()[DEV.warden]); closeDev(); }), B('FILL TOLL', () => { if (game.toll && !game.toll.done) { game.toll.v = game.toll.max; game.toll.done = true; spawnWarden(); closeDev(); } })],
+      [B(`< ${MON[devMons()[DEV.mon]].name} >`, (d) => { DEV.mon = cyc(DEV.mon, devMons().length, d); }, { w: 2 }), B('SPAWN 1', () => devSpawn(devMons()[DEV.mon])), B('SPAWN 10', () => { for (let i = 0; i < 10; i++) devSpawn(devMons()[DEV.mon]); })],
+      [B('SPAWN AS RARE', () => devSpawn(devMons()[DEV.mon], { tier: 'rare' })), B('SPAWN AS ELITE', () => devSpawn(devMons()[DEV.mon], { tier: 'elite', affixes: AFFIX_POOL.slice().sort(() => rng() - 0.5).slice(0, 2) })), B('KILL ALL NEAR', () => { for (const e of enemies) if (!e.dead && !e.boss && Math.hypot(e.x - player.x, e.y - player.y) < 260) killEnemy(e, 0, 0); }), B('REVEAL MAP', () => devReveal())],
+      [B('IMP', () => devSpawn('imp')), B('END DESCENT', () => { if (!inRun()) return; finishDescent(); }), B(`< VIGIL ${DEV.vigil} >`, (d) => { DEV.vigil = Math.max(1, Math.min(60, DEV.vigil + d)); }), B('LIGHT VIGIL', () => { tut.on = false; beginVigil(DEV.vigil); })],
+    ];
+    case 'UNLOCK': return [
+      [B('ALL STATIONS', () => { SAVE.cleared = DIFF.length - 1; persist(); toast('EVERY STATION OPEN', 1.2); }), B('ALL TOWN SITES', () => { SAVE.descents = Math.max(SAVE.descents || 0, 20); SAVE.cleared = Math.max(SAVE.cleared ?? -1, 4); persist(); toast('EVERY SITE OPEN', 1.2); }), B('VIGIL 1-30', () => { SAVE.vigilOpen = 30; persist(); }), B("+1 ODILE'S GIFT", () => { SAVE.gifts = (SAVE.gifts || 0) + 1; persist(); toast('TALK TO SISTER ODILE', 1.2); })],
+      [B('OPEN THE GIFT', () => { SAVE.gifts = Math.max(1, SAVE.gifts || 0); openGift(); }), B('SKIP TUTORIAL', () => { tut.on = false; SAVE.tutDone = true; persist(); }), B('RESET TUTORIAL', () => { SAVE.tutDone = false; persist(); toast('TUTORIAL RUNS NEXT TIME', 1.2); }), B('CLEAR ERRORS', () => { ERRS.length = 0; try { localStorage.removeItem('hollow-saint-errors'); } catch { /* private mode */ } })],
+      [B(DEV.confirm ? 'TAP AGAIN TO WIPE' : 'RESET SAVE', () => { if (!DEV.confirm) { DEV.confirm = 1; return; } try { localStorage.removeItem('hollow-saint'); } catch { /* private mode */ } location.href = location.pathname + '?dev'; }, { on: !!DEV.confirm, w: 2 }), B('HIDE DEV MENU', () => { SAVE.dev = false; persist(); closeDev(); toast('DEV MENU HIDDEN (?dev BRINGS IT BACK)', 2); }, { w: 2 })],
+      [L(`CLEARED ${SAVE.cleared ?? -1}  DESCENTS ${SAVE.descents || 0}  DEVOTION ${SAVE.devLvl || 0}  GIFTS ${SAVE.gifts || 0}`, 4, PAL.stone1)],
+    ];
+    case 'DEBUG': return [
+      [B(DEV.fps ? 'FPS ON' : 'FPS OFF', () => { DEV.fps = !DEV.fps; }, { on: DEV.fps }), B(PROFON ? 'PROFILE ON' : 'PROFILE OFF', () => { PROFON = !PROFON; }, { on: PROFON }), B(DEV.boxes ? 'HITBOXES ON' : 'HITBOXES OFF', () => { DEV.boxes = !DEV.boxes; }, { on: DEV.boxes }), B(`< SPEED X${DEV.speed} >`, (d) => { const v = [0.25, 0.5, 1, 2, 3]; DEV.speed = v[cyc(v.indexOf(DEV.speed), v.length, d)]; })],
+      [L(`FOES ${enemies.filter((e) => !e.dead).length}  BOLTS ${bolts.length}  PARTS ${parts.length}  FX ${fxs.length}  NUMS ${nums.length}  TEXT ${TEXT_CACHE.size}`, 4, PAL.stone1)],
+      [L(PROFON ? Object.entries(PROF).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `${k} ${(v / 50).toFixed(1)}`).join('  ').toUpperCase() : 'TURN ON PROFILE FOR MS PER SYSTEM', 4, PAL.stone1)],
+      [L(ERRS.length ? `LAST ERROR: ${ERRS[ERRS.length - 1].msg}`.slice(0, 80).toUpperCase() : 'NO ERRORS LOGGED', 4, ERRS.length ? PAL.blood0 : PAL.flame1)],
+    ];
+  }
+  return [];
+}
+function devLayout() {
+  const pw = Math.min(640, W - 12), ph = H - 12, x0 = Math.round(W / 2 - pw / 2), y0 = 6;
+  const tabW = Math.floor((pw - 44) / DEV_TABS.length);
+  return { pw, ph, x0, y0, tabW, tabY: y0 + 24, cy: y0 + 50, colW: Math.floor((pw - 24 - 15) / 4), close: { x: x0 + pw - 14, y: y0 + 13, r: 10 } };
+}
+function devCells(L) {
+  const out = [];
+  devRows().forEach((row, r) => { let c = 0; for (const it of row) { const w = it.w || 1; out.push({ it, x: L.x0 + 12 + c * (L.colW + 5), y: L.cy + r * 26, w: L.colW * w + 5 * (w - 1), h: 21 }); c += w; } });
+  return out;
+}
+function renderDev() {
+  const L = devLayout();
+  ctx.fillStyle = 'rgba(11,7,16,0.8)'; ctx.fillRect(0, 0, W, H);
+  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 22);
+  text('DEV MENU', L.x0 + 10, L.y0 + 7, PAL.flame1); text(game.scene === 'wound' ? `IN A DESCENT: STATION ${ROMAN[(game.run && game.run.diff) || 0]}` : 'IN VAEL', L.x0 + 90, L.y0 + 8, PAL.stone2, { small: true, outline: null });
+  sprC('ui', 'close', 0, L.close.x, L.close.y);
+  DEV_TABS.forEach((t, i) => { const r = { x: L.x0 + 12 + i * L.tabW, y: L.tabY, w: L.tabW - 4, h: 20 }; invButton(r, t, i === DEV.tab ? PAL.gold3 : PAL.ink3, true); });
+  for (const c of devCells(L)) {
+    if (c.it.lab) { for (const [i, l] of wrapW(c.it.t, c.w - 4, true).slice(0, 2).entries()) text(l, c.x + 2, c.y + 3 + i * 9, c.it.col || PAL.cloth1, { small: true, outline: null }); continue; }
+    invButton(c, c.it.t, c.it.on ? PAL.flame3 || PAL.gold3 : PAL.crimson3, true);
+  }
+}
+function devTap(x, y) {
+  const L = devLayout();
+  if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) return closeDev();
+  for (let i = 0; i < DEV_TABS.length; i++) if (inRect({ x: L.x0 + 12 + i * L.tabW, y: L.tabY, w: L.tabW - 4, h: 20 }, x, y)) { DEV.tab = i; DEV.confirm = 0; sfx('tap', { vol: 0.5 }); return; }
+  for (const c of devCells(L)) if (!c.it.lab && inRect(c, x, y)) {
+    const keep = c.it.t.startsWith('TAP AGAIN') || c.it.t === 'RESET SAVE';
+    if (!keep) DEV.confirm = 0;
+    try { c.it.f(x < c.x + c.w / 2 ? -1 : 1); } catch (err) { logError('dev', err); toast(`FAILED: ${err.message}`.toUpperCase().slice(0, 40), 2); }
+    sfx('tap', { vol: 0.5 }); return;
+  }
 }
 
 // ------------------------------------------------- the Bleeding Vigil ---
@@ -2519,6 +2648,7 @@ function setGuard() {
   return k;
 }
 function hurtPlayerRaw(dmg, color) {
+  if (DEV.god) return;
   if (game.buff && game.buff.kind === 'warding') dmg *= 0.5;
   dmg *= setGuard();
   if (game.scene === 'wound') dmg *= curDiff().dmg;
@@ -2617,7 +2747,7 @@ function drawShots() {
 
 // --------------------------------------------------------- taking damage ---
 function damagePlayer(src, dmg, contacts) {
-  if (!contacts.length) return;
+  if (!contacts.length || DEV.god) return;
   const dashing = game.time - player.dashStart <= T.dash.iframes;
   if (dashing && game.time - player.dashStart <= T.dash.perfectWindow + 0.05 && !player.perfectUsed) { perfectDodge(); return; }
   if (player.iframes > 0) return;
@@ -3276,6 +3406,7 @@ function updateAbilities(dt) {
   const p = player;
   const hk = game.buff && game.buff.kind === 'haste' ? 1.5 : 1;
   p.m1cd = Math.max(0, p.m1cd - dt * hk); p.m2cd = Math.max(0, p.m2cd - dt * hk);
+  if (DEV.nocd) { p.m1cd = 0; p.m2cd = 0; }
   if (input.m1) { input.m1 = false; if (p.m1cd <= 0) { castFlask(); tut.flags.m1 = true; } }
   if (input.m2) { input.m2 = false; if (p.m2cd <= 0) { castChain(); if (p.m2cd > 0) tut.flags.m2 = true; } }
   if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) { castPenance(); tut.flags.pen = true; } }
@@ -3467,7 +3598,7 @@ function update(realDt) {
   game.shake = Math.max(0, game.shake - realDt * 20);
   if (game.hitstop > 0) { game.hitstop -= realDt; return; }
   if (game.slowmo > 0) { game.slowmo -= realDt; game.timeScale = T.slowmo.scale; } else game.timeScale = 1;
-  const dt = realDt * game.timeScale;
+  const dt = realDt * game.timeScale * DEV.speed;
   game.time += dt;
   game.fervorT += dt;
   if (game.fervorT > T.fervor.decayDelay) game.fervor = Math.max(0, game.fervor - T.fervor.decay * (G.powers.has('decay') || sb('choir', 2) ? 0.5 : 1) * dt);
@@ -3613,6 +3744,11 @@ function render() {
     } catch (err) { logError('draw', err); }
     ctx.restore();
   }
+  if (DEV.boxes) { // dev: body circles (blue) and hurt circles (red)
+    ctx.lineWidth = 1;
+    for (const e of enemies) if (!e.dead && onScreen(e.x, e.y, cx, cy, 60)) { ctx.strokeStyle = 'rgba(90,180,255,0.9)'; ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r, e.r * 0.6, 0, 0, Math.PI * 2); ctx.stroke(); ctx.strokeStyle = 'rgba(255,90,74,0.9)'; ctx.beginPath(); ctx.arc(e.x, e.y - e.hy, e.hr, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(127,220,108,0.9)'; ctx.beginPath(); ctx.ellipse(player.x, player.y, player.r, player.r * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
+  }
   mark('actors');
   if (game.interact && game.state === 'play') {
     const it = game.interact, ty = it.who ? it.y - 40 : it.door ? it.y - 30 : it.y - 46;
@@ -3708,6 +3844,7 @@ function render() {
   mark('hud');
   if (game.state === 'pause') {
     overlay('PAUSED', 'TAP TO RESUME');
+    if (devOn()) invButton(devBtn(), 'DEV', PAL.flame3 || PAL.gold3);
     // The latest caught error, so a player can send it to us.
     if (ERRS.length) { const e = ERRS[ERRS.length - 1]; text(`BUG LOGGED: ${e.msg}`.slice(0, 70).toUpperCase(), W / 2, H - 14, PAL.iron1, { align: 'center', small: true }); }
   }
@@ -3723,6 +3860,7 @@ function render() {
   if (game.state === 'forge') renderForge();
   if (game.state === 'canonry') renderCanonry();
   if (game.state === 'gift') renderGift();
+  if (game.state === 'dev') renderDev();
   if (game.state === 'map') renderTownMap();
   if (game.state === 'loading') renderLoading();
   blit();
@@ -4154,10 +4292,10 @@ function renderHud() {
   text(String(gold), mx + 12, my + mh + 7, PAL.gold1);
   if (game.scene === 'wound') text(`${game.kills} SLAIN`, mx + mw, my + mh + 7, PAL.stone1, { align: 'right' });
   // The shrine blessing sits on its own line under the portrait (below the FPS readout when shown).
-  if (game.buff) { const S = SHRINES[game.buff.kind]; text(`${S.name.replace('SHRINE OF ', '')} ${Math.ceil(game.buff.t)}`, 8, location.search.includes('fps') ? 56 : 46, `rgb(${S.rgb})`); }
+  if (game.buff) { const S = SHRINES[game.buff.kind]; text(`${S.name.replace('SHRINE OF ', '')} ${Math.ceil(game.buff.t)}`, 8, showFps() ? 56 : 46, `rgb(${S.rgb})`); }
   // Vestment set state: nail stacks, the Penitent's window, standing in a pool.
   { const st = sb('nails', 4) && player.nails ? `NAILS ${player.nails}` : (player.strideT || 0) > game.time ? `STRIDE ${Math.ceil(player.strideT - game.time)}` : player.inPool ? 'IN THE FONT' : '';
-    if (st) text(st, 8, (location.search.includes('fps') ? 56 : 46) + (game.buff ? 11 : 0), RARITY[4].color, { small: true }); }
+    if (st) text(st, 8, (showFps() ? 56 : 46) + (game.buff ? 11 : 0), RARITY[4].color, { small: true }); }
   const ms = game.massacre;
   if (ms && ms.n >= 5 && game.time - ms.last < 1.2) text(`x${ms.n}`, 14, Math.round(H * 0.42), Math.floor(game.real * 8) % 2 ? PAL.blood0 : PAL.gold0, { sc: 2 });
   // Bottom-right: dash, Miracles, Penance.
@@ -4184,7 +4322,7 @@ function renderHud() {
   if (game.toast) text(game.toast.msg, W / 2, Math.round(H * 0.3) + (game.banner ? 40 : 0), game.toastColor || PAL.cloth0, { align: 'center' });
   if (game.toast && game.toast.t < 0.05) game.toastColor = null;
   renderTutorial();
-  if (location.search.includes('fps')) text(`${Math.round(fpsAvg)} FPS ${(game.cpu || 0).toFixed(1)}MS ${enemies.length}`, 8, 44, PAL.flame1);
+  if (showFps()) text(`${Math.round(fpsAvg)} FPS ${(game.cpu || 0).toFixed(1)}MS ${enemies.length}`, 8, 44, PAL.flame1);
 }
 
 function overlay(title, sub) {
@@ -4688,7 +4826,12 @@ function onTap(x, y) {
       enterTown();
       return true;
     }
-    case 'pause': sfx('tap'); game.state = 'play'; return true;
+    case 'pause': {
+      if (devOn() && inRect(devBtn(), x, y)) { openDev(); return true; }
+      // Five quick taps on the title turn the dev menu on.
+      if (Math.abs(y - (H / 2 - 14)) < 22 && Math.abs(x - W / 2) < 90) { DEV.taps = game.real - DEV.tapT < 0.6 ? DEV.taps + 1 : 1; DEV.tapT = game.real; if (DEV.taps >= 5) { DEV.taps = 0; openDev(); } return true; }
+      sfx('tap'); game.state = 'play'; return true;
+    }
     case 'inv': invTap(x, y); return true;
     case 'stig': stigTap(x, y); return true;
     case 'loading': return true;
@@ -4699,6 +4842,7 @@ function onTap(x, y) {
     case 'forge': forgeTap(x, y); return true;
     case 'canonry': canonryTap(x, y); return true;
     case 'gift': giftTap(x, y); return true;
+    case 'dev': devTap(x, y); return true;
     case 'map': sfx('tap'); game.state = 'play'; return true;
     case 'dialog': {
       const d = game.dialog;
@@ -4730,7 +4874,7 @@ function logError(where, err) {
   try { localStorage.setItem('hollow-saint-errors', JSON.stringify(ERRS)); } catch { /* private mode */ }
 }
 const PROF = {}; // per-system ms, filled only with ?prof
-const PROFON = location.search.includes('prof');
+let PROFON = location.search.includes('prof');
 function safe(where, fn, onFail) { const t0 = PROFON ? performance.now() : 0; try { fn(); if (PROFON) { const k = where.startsWith('enemy') ? 'enemies' : where; PROF[k] = (PROF[k] || 0) * 0.98 + (performance.now() - t0); } } catch (err) { logError(where, err); if (onFail) try { onFail(); } catch { /* give up quietly */ } } }
 function frame(t) {
   requestAnimationFrame(frame);
@@ -4764,7 +4908,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

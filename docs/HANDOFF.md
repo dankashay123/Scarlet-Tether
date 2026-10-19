@@ -214,6 +214,7 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 14a:** dev menu (`devRows()`, `?dev`, pause screen DEV button, backquote key). New test: `tools/tests/dev.cjs`.
 - **Round 13:** a crossbow, bolt and bolt colours per set skin; hand-posed
   `cast`, `hit` and `die` frames for the Saint (death shows the fall for
   0.7 s before the receipt). Crowd stutter fixed: kill hitstops chained
