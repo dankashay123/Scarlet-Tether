@@ -64,8 +64,14 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
       bone spikes toward the Saint, triple charge, risen, shockwave.
     - **Our Lady of Nails** (iron saint, halo of nails): `volley` (four
       fans of nails), chain pull, a cross of spikes, a ring of nails.
-    All have phases at 66% and 33% (faster, a burst of shots, adds), a
-    boss bar, and are never staggered or executed. Slaying one drops 4
+    Wardens are meant to punish (`WARDEN`): ×1.8 health and ×1.6 damage on
+    top of their MON stats. At 66% and 33% each learns its `phases` moves
+    (a bigger peal, eight-stream spiral, five beams, a cross of spikes,
+    six-shot nail volleys and so on), gets faster, and by the last phase
+    chains attacks with almost no recovery. After 100 s it enrages (double
+    damage, much faster); the boss bar counts down WRATH. The Bellwright's
+    peals and bells root the Saint; Candlemass's pools burn harder. The
+    tutorial's Warden is gentler. Never staggered or executed. Slaying one drops 4
     pieces, opens the next Station and raises the Waystone home.
   - **Density** climbs with the Station: more and bigger clusters, more
     rare packs, a third champion hall from Station VIII. About 240
@@ -173,6 +179,9 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 10b:** Wardens made punishing: more health and damage, new
+  moves per phase, near-zero recovery in the last phase, an enrage timer,
+  roots on bell attacks.
 - **Round 10:** five unique Wardens (models, kits, new attack types
   `peal`, `pattern`, `volley`, `sweep`), loot beams, density by Station,
   the Bleeding Vigil (timed endless trial), knells, Shrine of Judgement,

@@ -16,7 +16,11 @@ const S = process.argv[2];
     }, id);
     const seen = new Set();
     for (let k = 0; k < 12; k++) { await p.waitForTimeout(500); const w = await p.evaluate(() => { const w = HS.game.warden; return w && w.atk && w.state !== 'move' ? w.atk.type : null; }); if (w) seen.add(w); if (k === 5) await p.screenshot({ path: `${S}/shots/w-${id}.png` }); }
-    console.log(id, await p.evaluate(() => { const w = HS.game.warden; return JSON.stringify({ hp: Math.round(w.hp), max: w.maxHp, hazards: HS.hazardsN }); }), 'used', [...seen].join(','));
+    // Into both phases, then past the enrage time.
+    for (const k of [0.6, 0.3]) { await p.evaluate((k) => { const w = HS.game.warden; w.hp = w.maxHp * k; }, k); for (let j = 0; j < 8; j++) { await p.waitForTimeout(400); const w = await p.evaluate(() => { const w = HS.game.warden; return w && w.atk && w.state !== 'move' ? w.atk.type : null; }); if (w) seen.add(w); } }
+    await p.evaluate(() => { HS.game.warden.bornT -= 999; }); await p.waitForTimeout(600);
+    await p.screenshot({ path: `${S}/shots/w-${id}-enraged.png` });
+    console.log(id, await p.evaluate(() => { const w = HS.game.warden; return JSON.stringify({ max: w.maxHp, dmgK: +w.dmgK.toFixed(2), phase: w.phase, enraged: !!w.enraged, attacks: w.def.attacks.length }); }), 'used', [...seen].join(','));
   }
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();
 })();
