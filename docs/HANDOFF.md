@@ -90,27 +90,35 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## Next steps (ideas, building on what is there)
 
-1. **A "best kept" board in Vael.** Show the highest Vigil levels kept and
-   the time left, now that the Vigil pays its own rewards.
-2. **Finish the "coming soon" sites.** The Scrying Pool (wager gold on how
-   deep a run gets) and Martyrdom (one life, doubled rewards).
-3. **A training yard in Vael.** A dummy and a monster summoner so players
+The first five are the owner's picks from round 24's suggestions.
+
+1. **Warden fight music.** Each Warden has a roar, a sting and a fall; add a
+   battle loop that plays while it lives (ducking the stratum music) and
+   drops back when it falls. OpenGameArt works from here; Freesound does
+   not. Add it as a `music()` recipe in `tools/build-sfx.py`.
+2. **A "best kept" board in Vael.** Show the highest Vigil levels kept and
+   the time left, and the Wardens whose halos you have earned, each earned
+   halo on a little stand.
+3. **The Scrying Pool.** Wager gold on how deep a run gets (Toll filled,
+   Warden slain, the Waystone), with the odds shown up front.
+4. **Martyrdom.** One life, doubled rewards. A fall there could earn a look
+   of its own (a cracked halo in `HALOS`, earned like the Warden halos).
+5. **Sound settings.** Separate sliders for music, effects and voices, and a
+   "fewer monster cries" toggle (`deathVoice` already thins them in crowds).
+6. **A training yard in Vael.** A dummy and a monster summoner so players
    can learn the round 16 attacks (snipe, blight, Sentence) safely.
-4. **Warden fight music.** Each Warden has a roar, a sting and a fall; a
-   battle loop while it lives (ducking the stratum music) would finish it.
-   OpenGameArt works from here; Freesound does not.
-5. **Rite depth.** Let rites gain ranks with use, and give each set a
+7. **Rite depth.** Let rites gain ranks with use, and give each set a
    rite-specific 6-piece twist, so the Rites panel becomes a build screen.
-6. **Stratum III.** A third look (the Ossuary Spire or a burnt chapter
-   house) with its own two Wardens, reusing the `STRATA` remap pipeline.
-7. **A second playable saint.** A short-range melee saint with its own
+8. **Stratum III.** A third look (the Ossuary Spire or a burnt chapter
+   house) with its own two Wardens (each needs a roar, a fall and an earned
+   halo), reusing the `STRATA` remap pipeline and its own music.
+9. **A second playable saint.** A short-range melee saint with its own
    rites, to reuse the sets and Stations.
-8. **Art pass on small icons.** Review every sheet with `CHUNKY=2`: the
-   set pieces could get their own icons too (like the Hallowed ones), the
-   Chrism vial on the ground, weed mats.
-9. **Death recap.** After a fall, show what hit you hardest and a tip for
-   that attack.
-10. **Tune from play.** `tools/tests/balance.cjs`, `perf.cjs` and the
+10. **Art pass on small icons.** Review every sheet with `CHUNKY=2`: the
+    Chrism vial on the ground, weed mats.
+11. **Death recap.** After a fall, show what hit you hardest and a tip for
+    that attack.
+12. **Tune from play.** `tools/tests/balance.cjs`, `perf.cjs` and the
     survival check in round 16's notes after any balance change.
 
 ## History by round
