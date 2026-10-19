@@ -192,8 +192,10 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
    faces losing eyes, rough item icons, bolder effects for big pixels.
 5. **Juice.** Hit-flash tuning, bigger crit numbers, coin fountains on elite
    and Warden deaths, a short slow-mo when a Warden falls, footstep dust.
-6. **Set bonuses and Warden trophies.** Saint's set pieces grant 2- and
-   4-piece bonuses; each Warden slain hangs a trophy in town.
+6. **Build the five vestment sets** designed in `docs/SETS.md` (the
+   Hundred Nails, the Penitent's Stride, the Drowned Font, the Last
+   Confessor, the Burning Choir; 2/4/6-piece bonuses, the Lesser Vow,
+   Odile's Gift). Then Warden trophies in town.
 7. **Phone polish.** Haptics, safe-area insets, a settings panel (music/SFX
    volume, screen shake, left-handed controls), save export/import.
 8. **Suspend and resume.** Save a run mid-map so a closed tab returns to it.
