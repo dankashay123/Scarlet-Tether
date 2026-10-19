@@ -127,6 +127,10 @@ Desktop works with keys. 55–60 fps in dense crowds.
   Chrism from Vigil 20, and a Chrism 60% + 2% a level of the time
   (`vigilPayout`). The Vigil panel's rows share the room above the
   buttons so they fit short screens. Test: `tools/tests/round19.cjs`.
+  The Ashen Altar now has its own sculpted model in Vael (`town2`
+  `ashaltar`: a stepped stone altar, crimson cloth and gold cross, two
+  candles, an iron bowl of ash and embers, three frames of fire). It took
+  the forge yard's well's place; the site badge sits above it (`S.lift`).
 - **Round 18 (Rites tabs, the Vigil moves, Bloodrose Keys, always
   landscape):** the Rites panel now has slot tabs (Rite I, Rite II,
   Reckoning) over one wide column of cards, smaller icons, and text that

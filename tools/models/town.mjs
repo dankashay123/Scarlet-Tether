@@ -771,6 +771,38 @@ function well() {
   return fr;
 }
 
+// The Ashen Altar: a stepped stone altar under a crimson cloth with a gold
+// cross, two tall candles, and an iron bowl of ash and embers where
+// Hallowed pieces are burned. Three frames of fire.
+function ashAltar(i) {
+  const W = 64, H = 62, S = new View(), G = groundY(H, 8);
+  S.add(slabBox(2, G - 3, 62, G, 8, 16, 'stoneB', 0.4), 0);
+  S.add(slabBox(6, G - 6, 58, G - 3, 6.5, 13, 'stoneC', 0.4), 0);
+  S.add(ashlar(slabBox(10, G - 26, 54, G - 6, 5, 10, 'stone', 0.5), { ch: 5, bw: 9, seed: 5, chip: 0.4 }), 0);
+  for (const x of [13, 47]) S.add(slabBox(x, G - 22, x + 4, G - 9, 5.2, 1.2, 'stoneDark', 0.3), 0, 'sub');
+  S.add(slabBox(7, G - 30, 57, G - 26, 6.5, 13.5, 'stoneC', 0.6), 0);
+  // The cloth over the top and down the front, gold-hemmed, with a cross.
+  S.add(slabBox(18, G - 31.2, 46, G - 29.6, 6.9, 13.8, 'bannerR', 0.2), 0);
+  S.add(slabBox(18, G - 30, 46, G - 12, 7.1, 0.8, 'bannerR', 0.2), 0);
+  S.add(slabBox(18, G - 14, 46, G - 12, 7.6, 0.8, 'gold', 0.2), 0);
+  S.add(slabBox(31, G - 27, 33, G - 16, 7.7, 0.7, 'gold', 0.2), 0);
+  S.add(slabBox(28, G - 24.5, 36, G - 22.5, 7.7, 0.7, 'gold', 0.2), 0);
+  // The ash bowl on a short iron foot.
+  const yc = G - 41;
+  S.add(rod([32, G - 31, 0], [32, yc + 6, 0], 2.2, 'iron'), 0.5);
+  S.add(ellipsoid([32, G - 31.5, 0], [4.5, 1.2, 3], 'iron'), 0.6);
+  S.add(clip(sphere([32, yc, 0], 9, 'iron'), (x, y) => (yc + 0.5) - y), 0);
+  S.add(clip(sphere([32, yc, 0], 7.6, 'iron'), (x, y) => (yc + 0.5) - y), 0, 'sub');
+  S.add(lump([32, yc + 2.2, 0], 6.6, 'stoneC', 7, 0.9), 0);
+  // Candlesticks at the two ends.
+  for (const x of [11.5, 52.5]) { S.add(rod([x, G - 30, -2], [x, G - 33, -2], 1.8, 'gold'), 0.4); S.add(rod([x, G - 33, -2], [x, G - 42, -2], 1.4, 'bone'), 0.3); }
+  const fr = R(S, W, H, { ground: H - 1 });
+  flame(fr, 32, Math.round(sy(yc, 0)), 6 + (i % 2) * 2, 7, i * 2.1);
+  for (let k = 0; k < 6; k++) dot(fr, 26 + Math.floor(hash(k, i, 9) * 13), Math.round(sy(yc + 1, 3)) + (k & 1), k % 2 ? 'ember2' : 'ember1');
+  for (const x of [11.5, 52.5]) flame(fr, x, Math.round(sy(G - 42.5, -2)), 5 + ((i + (x > 30 ? 1 : 0)) % 2), 3, i * 1.7 + x);
+  return outlineAll(fr);
+}
+
 function noticeBoard() {
   const W = 39, H = 52, S = new View(), G = groundY(H, 2);
   for (const x of [5, 34]) S.add(rod([x, 4, 0], [x, G, 0], 1.6, 'timber'), 0);
@@ -1091,6 +1123,7 @@ export default {
     tree: () => [deadTree()],
     fence: () => [fence()],
     well: () => [well()],
+    ashaltar: () => [0, 1, 2].map(ashAltar),
     board: () => [noticeBoard()],
     stocks: () => [stocks()],
     pool: () => [0, 1, 2].map(pool),

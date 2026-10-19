@@ -1436,7 +1436,8 @@ function makeTown() {
   // The forge.
   lights.push({ x: 1186, y: base - 16, r: 130, c: 'ember', a: 1, flick: 1 });
   place('anvil', 1222, base + 29, 1, { sheet: 'town', anim: 'anvil' });
-  place('well', 1378, base + 104, 2);
+  // The Ashen Altar (it took the old well's place in the forge yard).
+  place('ashaltar', 1378, base + 104, 3, { ph: 0 }); lights.push({ x: 1378, y: base + 64, r: 90, c: 'ember', a: 0.9, flick: 2 });
   brazier(1300, base + 31); lamp(1443, base + 169);
   // The Quiet Acre: tombs, dead trees, crows and fog.
   for (let k = 0; k < 18; k++) { const x = 1521 + rng() * 494, y = base + 39 + rng() * 195; if (Math.abs(x - 1664) < 65 && y < base + 78) continue; const t = place('tomb', x, y, 1, { frame: Math.floor(rng() * 3) }); if (rng() < 0.4) crows.push({ x: t.x, y: t.y - 14, hx: t.x, hy: t.y - 14, state: 'sit', t: rng() * 3, vx: 0, vy: 0 }); }
@@ -1530,7 +1531,7 @@ const SITES = [
   { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 880, dy: 64, what: 'THREE BOUNTIES AT A TIME FOR GOLD, DEVOTION AND FINE GEAR. CLAIM ALL THREE FOR A HALLOWED PIECE.', need: 'SLAY 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
   { id: 'pool', name: 'THE SCRYING POOL', badge: 'pool', x: 1060, dy: 110, what: 'WAGERS. BET YOUR GOLD ON HOW DEEP YOU GET. THE CROWD PAYS OUT.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
   { id: 'forge', name: 'THE EMBER FORGE', badge: 'forge', x: 1250, dy: 50, what: 'REFORGE A PIECE OF GEAR TO REROLL ONE STAT, OR TEMPER IT TO RAISE ITS RARITY.', need: 'SLAY THE WARDEN OF STATION II', prog: () => [(SAVE.cleared ?? -1) >= 1 ? 1 : 0, 1] },
-  { id: 'altar', name: 'THE ASHEN ALTAR', badge: 'relic', x: 1310, dy: 150, what: 'BURN A HALLOWED PIECE TO LEARN ITS POWER FOREVER, THEN SET ONE LEARNED POWER EACH FOR VESTMENTS, ARMS AND RELICS.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
+  { id: 'altar', name: 'THE ASHEN ALTAR', badge: 'relic', x: 1378, dy: 140, lift: 34, what: 'BURN A HALLOWED PIECE TO LEARN ITS POWER FOREVER, THEN SET ONE LEARNED POWER EACH FOR VESTMENTS, ARMS AND RELICS.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
   { id: 'cells', name: 'THE PENITENT CELLS', badge: 'lock', x: 1950, dy: 44, what: 'ONE TRIAL FOR EACH VESTMENT SET: NINETY SECONDS OF WAVES THAT TEST WHAT THE SET DOES. ABSOLVE A CELL TO HANG ITS BANNER.', need: 'WEAR ALL SIX PIECES OF ANY SET', prog: () => [Math.max(0, ...MAIN_SETS.map((id) => Math.min(6, (G && G.sets[id]) || 0))), 6] },
   { id: 'martyr', name: 'MARTYRDOM', badge: 'saint', x: 2215, dy: 70, what: 'ONE LIFE. IF YOU FALL, EVERYTHING YOU CARRY IS LOST, BUT GOLD AND GEAR ARE DOUBLED.', need: 'FINISH 10 DESCENTS', prog: () => [SAVE.descents || 0, 10] },
   { id: 'canonry', name: 'THE CANONRY', badge: 'relic', x: 2470, dy: 40, what: 'CANONIZATION. SPEND ASH FROM YOUR DEATHS ON PERMANENT VIRTUES: HEALTH, DAMAGE, LUCK.', need: 'FINISH ONE DESCENT', prog: () => [Math.min(1, SAVE.descents || 0), 1] },
@@ -2600,7 +2601,7 @@ function renderSite() {
 // Floating badges over each site, with a lock until it opens.
 function drawSiteMarkers(cx, cy) {
   for (const S of SITES) {
-    const x = S.x - cx, y = room.top * TILE + S.dy - 42 - cy + Math.round(Math.sin(game.real * 2 + S.x) * 2);
+    const x = S.x - cx, y = room.top * TILE + S.dy - 42 - (S.lift || 0) - cy + Math.round(Math.sin(game.real * 2 + S.x) * 2);
     if (x < -20 || x > W + 20) continue;
     badge(S.badge, x, y);
     if (!siteDone(S)) mapIcon('lock', x + 4, y + 2, PAL.cloth0);
