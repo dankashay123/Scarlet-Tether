@@ -54,6 +54,7 @@ node tools/tests/round14.cjs <outDir> # Penitent Cells, banners, rite colours, N
 node tools/tests/rites2.cjs <outDir>  # the Rites panel and all 12 rites cast in a crowd
 node tools/tests/round15.cjs <outDir> # worn quiver and Habit look, bounty board, suspend and resume across a reload
 node tools/tests/round18.cjs <outDir> # Rites tabs at three phone sizes, the Vigil in the Descent panel, Bloodrose Keys, upright play
+node tools/tests/round19.cjs <outDir> # altar odds per row, pity, grinding, burn animations, what a Vigil pays
 node tools/tests/altar.cjs <outDir>   # altar price, failure and Chrism, Hallowed drop share, levels paced to the map
 node tools/tests/punish.cjs <outDir>  # round 16 monster attacks (snipe, blight, nova, barrage, homing, the Sentence) and the Censer panel
 node tools/tests/balance.cjs [stations] [profiles] # difficulty check: DPS, Warden seconds and blows to die per Station, gear matched and behind
@@ -99,7 +100,8 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **Layouts:** dungeon rooms follow the Otherworld Legends recipe in `docs/ART_COMPARISON.md`: open floors, one mirrored plan per room, a mirrored back-wall rhythm, clutter in corners, nothing floating. Review with `tools/tests/rooms.cjs`.
 - **UI sizes:** the view varies per device (whole-number scaling): game widths run about 445 to 620 px and heights 250 to 290. Place UI from `W`/`H`, fit text with `fitText`/`wrapW`, and check panels at those sizes (`tools/tests/round18.cjs` shows how).
 - **Orientation:** always landscape; held upright the canvas is turned a quarter (`PORTRAIT`). Map every touch through `toLocal`.
-- **The Vigil:** opened from the Descent panel; each run spends a Bloodrose Key (`SAVE.vkeys`, `dropVkey`).
+- **The Vigil:** opened from the Descent panel; each run spends a Bloodrose Key (`SAVE.vkeys`, `dropVkey`). Its extra rewards live in `VIGIL_PAY` and `vigilPayout`.
+- **The altar:** odds are `burnChance` (`ALTAR_WIN` + Chrism + `ALTAR_PITY` per past failure); `grindAtAltar` mills three pieces into a Chrism.
 - **Writing style:** keep docs and code comments plain and short.
 - **Replies:** after every completed prompt, end the reply with a short list of what was done and 5 suggestions for what to do next (the owner's standing request).
 - **Finishing a round:** run the tests and soak, look at the screenshots, update `docs/HANDOFF.md` (state, history, next ideas) and this file, then push the branch and `master`.

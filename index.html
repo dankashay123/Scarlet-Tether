@@ -911,6 +911,20 @@ function wardenPhase(e) {
   for (let k = 0; k < n; k++) shotAt(e, (k / n) * Math.PI * 2, { ...a, dmg: a.dmg * e.dmgK });
   for (let k = 0; k < 2 + want; k++) { const m = spawnMonster(pick(['risen', 'acolyte', 'flagellant']), e.x + rand(-40, 40), e.y + rand(-30, 30), { room: e.room, minion: true }); m.state = 'move'; }
 }
+// What a Vigil pays beyond the Stations: Chrism twice as often and of better
+// kinds as the level climbs; its Warden always pays a set piece from
+// VIGIL_PAY.set and a Hallowed Chrism from VIGIL_PAY.hallowed.
+const VIGIL_PAY = { chrismK: 2, tierK: 0.04, warden: (L) => Math.min(1, 0.6 + L * 0.02), set: 12, hallowed: 20 };
+function makeSetPiece(il) {
+  const id = pick(MAIN_SETS), slot = pick(VSETS[id].slots), it = makeItem(slot, 4, `${VSETS[id].piece} ${pick(SLOTS[slot])}`, undefined, il);
+  it.set = id; return it;
+}
+function vigilPayout(e, L) {
+  maybeChrism(e.x, e.y, VIGIL_PAY.warden(L));
+  const pop = (o) => drops.push({ x: e.x + rand(-20, 20), y: e.y + rand(4, 16), z: 10, vx: rand(-60, 60), vy: rand(-30, 40), vz: rand(100, 160), t: 0, ...o });
+  if (L >= VIGIL_PAY.set) pop({ kind: 'item', item: makeSetPiece(curDiff().n) });
+  if (L >= VIGIL_PAY.hallowed) pop({ kind: 'chrism', tier: 3 });
+}
 // Bloodrose Keys open the Bleeding Vigil. Wardens of Station X and deeper
 // drop one half of the time.
 const VKEY_FROM = 10, VKEY_CHANCE = 0.5;
@@ -931,7 +945,7 @@ function wardenSlain(e) {
     persist();
     game.run.vigilResult = { L, left, up };
     game.banner = { text: up ? `VIGIL ${L} KEPT` : 'THE WARDEN FALLS', sub: up ? `VIGIL ${L + up} IS OPEN TO YOU` : 'THE CANDLE WAS OUT. THE VIGIL DOES NOT RISE.', t: 0, color: up ? PAL.gold0 : PAL.stone1 };
-    dropLoot(e.x, e.y, { gold: 30, item: up ? 3 + Math.floor(L / 5) : 2, itemBoost: 2 + L * 0.06, globe: 2, warden: true }); dropVkey(e);
+    dropLoot(e.x, e.y, { gold: 30, item: up ? 3 + Math.floor(L / 5) : 2, itemBoost: 2 + L * 0.06, globe: 2, warden: true }); dropVkey(e); vigilPayout(e, L);
   } else {
     const first = (SAVE.cleared ?? -1) < df.n - 1;
     bumpBounty('wardens'); if (game.time - (e.bornT || 0) < 75) bumpBounty('fast');
@@ -2150,11 +2164,14 @@ const ALTAR_WIN = 0.3;
 const CHRISM = [{ name: 'COMMON CHRISM', add: 0.1 }, { name: 'BLESSED CHRISM', add: 0.2 }, { name: 'CONSECRATED CHRISM', add: 0.3 }, { name: 'HALLOWED CHRISM', add: 0.7 }];
 const chrisms = () => { SAVE.chrism = SAVE.chrism || [0, 0, 0, 0]; return SAVE.chrism; };
 const burnCost = (it) => Math.round(250 * (1 + ((it.il || 1) - 1) * 0.6) / 10) * 10;
-const burnChance = (ci) => Math.min(1, ALTAR_WIN + (ci >= 0 ? CHRISM[ci].add : 0));
+// Each failed burn adds ALTAR_PITY to the next, until one succeeds.
+const ALTAR_PITY = 0.05, altarPity = () => (SAVE.altarPity || 0) * ALTAR_PITY;
+const burnChance = (ci) => Math.min(1, ALTAR_WIN + (ci >= 0 ? CHRISM[ci].add : 0) + altarPity());
+const GRIND_N = 3, GRIND_W = [60, 28, 10, 2]; // three Hallowed pieces ground into one Chrism, by kind
 // A Chrism drop: very rare, better kinds rarer still.
 function maybeChrism(x, y, chance) {
   if (rng() >= chance) return;
-  const n = curDiff().n, w = [70, 22 * (1 + n * 0.05), 7 * (1 + n * 0.08), 1 * (1 + n * 0.12)];
+  const n = curDiff().n, v = 1 + (curDiff().vigil || 0) * VIGIL_PAY.tierK, w = [70, 22 * (1 + n * 0.05) * v, 7 * (1 + n * 0.08) * v, 1 * (1 + n * 0.12) * v];
   let r = rng() * w.reduce((a, b) => a + b, 0), tier = 0; for (; tier < 3 && r > w[tier]; tier++) r -= w[tier];
   drops.push({ kind: 'chrism', tier, x, y, z: 6, vx: rand(-50, 50), vy: rand(-30, 30), vz: rand(70, 120), t: 0 });
 }
@@ -2166,7 +2183,7 @@ function altarGeo(L) {
   const det = { x: L.list.x, w: L.list.w, h: 100 }; det.y = L.y0 + L.ph - det.h - 8;
   const n = Math.max(1, Math.floor((det.y - 6 - (L.y0 + 44)) / 27));
   return { det, n, row: (i) => ({ x: L.list.x, y: L.y0 + 44 + i * 27, w: L.list.w, h: 24 }), page: { x: L.list.x + L.list.w - 52, y: L.y0 + 28, w: 52, h: 14 },
-    chip: (i) => ({ x: det.x + 50 + i * Math.floor((det.w - 54) / 4), y: det.y + 42, w: Math.floor((det.w - 54) / 4) - 4, h: 16 }), burn: { x: det.x + det.w - 98, y: det.y + det.h - 24, w: 92, h: 20 } };
+    chip: (i) => ({ x: det.x + 50 + i * Math.floor((det.w - 54) / 4), y: det.y + 42, w: Math.floor((det.w - 54) / 4) - 4, h: 16 }), burn: { x: det.x + det.w - 98, y: det.y + det.h - 24, w: 92, h: 20 }, grind: { x: det.x + det.w - 136, y: det.y + det.h - 24, w: 130, h: 20 } };
 }
 const altarRow = (L, i) => altarGeo(L).row(i);
 const altarSock = (L, i) => ({ x: L.card.x, y: L.card.y + i * Math.floor(L.card.h / 3), w: L.card.w, h: Math.floor(L.card.h / 3) - 4 });
@@ -2191,10 +2208,16 @@ function renderAltar() {
     if (sel) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 2; ctx.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2); }
     text(it.name, r.x + 8, r.y + 4, known ? PAL.stone1 : RARITY[3].color, small);
     text(`${SLOT_NAME[it.slot] || it.slot.toUpperCase()}, STATION ${ROMAN[(it.il || 1) - 1] || it.il}`, r.x + 8, r.y + 14, PAL.stone2, small);
-    text(known ? 'LEARNED' : `${burnCost(it)}`, r.x + r.w - 6, r.y + 9, known ? PAL.stone2 : PAL.gold1, { ...small, align: 'right' });
-    if (!known) sprC('loot', 'coin', 0, r.x + r.w - 12 - textW(`${burnCost(it)}`, 1, true), r.y + 12);
+    if (known) text('LEARNED', r.x + r.w - 6, r.y + 9, PAL.stone2, { ...small, align: 'right' });
+    else {
+      const ch = burnChance(C[game.altarChrism] > 0 ? game.altarChrism : -1);
+      text(`${burnCost(it)}`, r.x + r.w - 6, r.y + 4, PAL.gold1, { ...small, align: 'right' });
+      sprC('loot', 'coin', 0, r.x + r.w - 12 - textW(`${burnCost(it)}`, 1, true), r.y + 7);
+      text(`${Math.round(ch * 100)}%`, r.x + r.w - 6, r.y + 14, ch >= 1 ? RARITY[4].color : ch >= 0.5 ? PAL.gold1 : PAL.blood0, { ...small, align: 'right' });
+    }
   });
   renderAltarDetail(L, Gm, A, C, small);
+  renderAltarFx(L, Gm);
   ALTAR_SOCKETS.forEach(([k, label, slots], i) => {
     const b = altarSock(L, i), id = A.sockets[k], P = id && POWERS[id], Lg = id && LEGENDS.find((q) => q.id === id);
     ctx.fillStyle = PAL.ink2; ctx.fillRect(b.x, b.y, b.w, b.h);
@@ -2211,9 +2234,11 @@ function renderAltarDetail(L, Gm, A, C, small) {
   ctx.fillStyle = PAL.ink2; ctx.fillRect(D.x, D.y, D.w, D.h);
   ctx.fillStyle = 'rgba(255,122,31,0.12)'; ctx.fillRect(D.x, D.y, D.w, 36);
   if (!it) {
-    text('TAP A PIECE TO READ ITS POWER', D.x + D.w / 2, D.y + 12, PAL.stone1, { ...small, align: 'center' });
-    text(`CHRISM HELD: ${C.map((n, i) => `${n}`).join(' / ')}`, D.x + D.w / 2, D.y + 30, PAL.stone2, { ...small, align: 'center' });
-    wrapW(`THE FLAME TAKES ONLY ${Math.round(ALTAR_WIN * 100)}% OF OFFERINGS. THE REST BURN TO ASH. A CHRISM RAISES THE ODDS.`, D.w - 16, true).slice(0, 3).forEach((l, i) => text(l, D.x + 8, D.y + 52 + i * 10, PAL.stone2, small));
+    text('TAP A PIECE TO READ ITS POWER', D.x + D.w / 2, D.y + 8, PAL.stone1, { ...small, align: 'center' });
+    text(`CHRISM HELD: ${C.join(' / ')}`, D.x + D.w / 2, D.y + 22, PAL.stone2, { ...small, align: 'center' });
+    const pity = altarPity();
+    wrapW(`THE FLAME TAKES ${Math.round(ALTAR_WIN * 100)}%${pity ? ` (+${Math.round(pity * 100)}% ASH)` : ''}. CHRISM RAISES IT. GRIND ${GRIND_N} PIECES INTO ONE CHRISM.`, D.w - 16, true).slice(0, 3).forEach((l, i) => text(l, D.x + 8, D.y + 40 + i * 10, PAL.stone2, small));
+    invButton(Gm.grind, `GRIND ${GRIND_N} TO CHRISM`, PAL.violet3, altarFodder().length >= GRIND_N);
     return;
   }
   const known = A.known.includes(it.power), P = POWERS[it.power], ci = C[game.altarChrism] > 0 ? game.altarChrism : -1, ch = burnChance(ci), cost = burnCost(it);
@@ -2231,12 +2256,14 @@ function renderAltarDetail(L, Gm, A, C, small) {
   if (known) text('THE ALTAR ALREADY KNOWS THIS POWER.', D.x + 8, D.y + 66, PAL.stone2, small);
   else {
     text(`SUCCESS ${Math.round(ch * 100)}%`, D.x + 8, D.y + 66, ch >= 1 ? RARITY[4].color : PAL.gold1, small);
+    if (altarPity()) text(`+${Math.round(altarPity() * 100)}% ASH`, D.x + 8 + textW(`SUCCESS ${Math.round(ch * 100)}%`, 1, true) + 6, D.y + 66, PAL.stone1, small);
     text(ch >= 1 ? 'THE FLAME WILL TAKE IT.' : 'ON FAILURE THE PIECE IS LOST.', D.x + 8, D.y + 77, PAL.stone2, small);
   }
   invButton(Gm.burn, `BURN ${cost}`, PAL.ember3 || PAL.crimson3, !known && (SAVE.gold || 0) >= cost);
 }
 function altarTap(x, y) {
   const L = featLayout(), A = altar(), list = altarFodder(), Gm = altarGeo(L), C = chrisms();
+  if (game.altarFx && game.real - game.altarFx.t0 < ALTAR_FX_T) return; // let the flame finish
   if (featOut(L, x, y)) { game.state = 'play'; sfx('tap'); return; }
   const pages = Math.max(1, Math.ceil(list.length / Gm.n));
   if (pages > 1 && inRect(Gm.page, x, y)) { game.altarPage = ((game.altarPage || 0) + 1) % pages; sfx('tap', { vol: 0.5 }); return; }
@@ -2245,7 +2272,7 @@ function altarTap(x, y) {
   if (it) {
     CHRISM.forEach((c, i) => { if (inRect(Gm.chip(i), x, y)) { if (!C[i]) { toast(`NO ${c.name} HELD`, 1.4); return; } game.altarChrism = game.altarChrism === i ? -1 : i; sfx('tap', { vol: 0.5 }); } });
     if (inRect(Gm.burn, x, y)) burnAtAltar(it);
-  }
+  } else if (inRect(Gm.grind, x, y)) grindAtAltar();
   ALTAR_SOCKETS.forEach(([k, , slots], i) => {
     const b = altarSock(L, i), btn = { x: b.x + b.w - 74, y: b.y + 2, w: 70, h: 16 };
     if (!inRect(btn, x, y)) return;
@@ -2261,9 +2288,65 @@ function burnAtAltar(it, roll = Math.random()) {
   const ci = C[game.altarChrism] > 0 ? game.altarChrism : -1, ok = roll < burnChance(ci);
   SAVE.gold -= cost; if (ci >= 0) C[ci]--; if (ci >= 0 && !C[ci]) game.altarChrism = -1;
   SAVE.bag = SAVE.bag.filter((q) => q !== it); game.altarSel = null;
-  if (ok) { A.known.push(it.power); sfx('shrine', { rate: 0.8 }); toast(`THE ALTAR LEARNS: ${it.name}`, 2.2); game.toastColor = RARITY[3].color; game.flash = 0.1; }
-  else { sfx('break', { rate: 0.6 }); toast('THE FLAME REFUSES IT. THE PIECE IS ASH.', 2.4); game.toastColor = PAL.stone1; game.shake = 4; }
+  if (ok) { A.known.push(it.power); SAVE.altarPity = 0; sfx('shrine', { rate: 0.8 }); }
+  else { SAVE.altarPity = (SAVE.altarPity || 0) + 1; sfx('break', { rate: 0.6 }); }
+  game.altarFx = { kind: ok ? 'win' : 'ash', t0: game.real, name: it.name };
   persist(); return ok;
+}
+// Grind three Hallowed pieces (learned ones first, then the lowest item
+// level) into one Chrism.
+function grindAtAltar(roll = Math.random()) {
+  const A = altar(), C = chrisms(), list = altarFodder();
+  if (list.length < GRIND_N) { toast(`THE MILL WANTS ${GRIND_N} HALLOWED PIECES`, 1.6); return; }
+  const use = [...list].sort((a, b) => (A.known.includes(b.power) ? 1 : 0) - (A.known.includes(a.power) ? 1 : 0) || (a.il || 1) - (b.il || 1)).slice(0, GRIND_N);
+  SAVE.bag = SAVE.bag.filter((q) => !use.includes(q));
+  let r = roll * GRIND_W.reduce((a, b) => a + b, 0), tier = 0; for (; tier < 3 && r > GRIND_W[tier]; tier++) r -= GRIND_W[tier];
+  C[tier]++; persist(); sfx('chest', { rate: 0.8 });
+  game.altarFx = { kind: 'grind', t0: game.real, name: CHRISM[tier].name, tier };
+  return tier;
+}
+// The altar's flame: tongues of fire rise over the left column, then a
+// golden burst (learned), a grey drift of ash (refused) or a new vial (ground).
+const ALTAR_FX_T = 1.7;
+function renderAltarFx(L, Gm) {
+  const F = game.altarFx; if (!F) return;
+  const t = game.real - F.t0; if (t > ALTAR_FX_T + 0.6) { game.altarFx = null; return; }
+  const X = L.list.x, Wd = L.list.w, cx = Math.round(X + Wd / 2), top = L.y0 + 30, bot = L.y0 + L.ph - 8, cy = Math.round((top + bot) / 2);
+  const fade = t > ALTAR_FX_T ? 1 - (t - ALTAR_FX_T) / 0.6 : 1;
+  ctx.save(); ctx.globalAlpha = fade;
+  ctx.fillStyle = PAL.ink1; ctx.fillRect(X, top, Wd, bot - top);
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(X + 4, top + 4, Wd - 8, bot - top - 8);
+  const rise = Math.min(1, t / 0.6), hot = F.kind === 'ash' ? Math.max(0, 1 - (t - 0.6) / 0.6) : 1;
+  // Flames: blocky tongues in palette steps, rising from the floor of the panel.
+  // Overlapping tongues that narrow to a point, outer red to a white-gold core.
+  const n = 11, step = (Wd - 16) / n, base = bot - 6;
+  for (const [layer, col, wk, hk] of [[0, PAL.ember3, 1, 1], [1, PAL.ember2, 0.72, 0.8], [2, PAL.ember1, 0.46, 0.58], [3, PAL.ember0, 0.24, 0.34]]) {
+    ctx.fillStyle = col;
+    for (let i = 0; i < n; i++) {
+      const fx = X + 8 + (i + 0.5) * step, flick = Math.sin(i * 2.3 + t * 9) * 0.5 + Math.sin(i * 1.7 + t * 13) * 0.3;
+      const h = (40 + 26 * flick) * rise * hot * hk, w0 = step * 1.5 * wk;
+      for (let y = 0; y < h; y += 2) { const w = Math.round(w0 * (1 - y / h) / 2) * 2; if (w < 2) break; ctx.fillRect(Math.round((fx - w / 2 + Math.sin(y * 0.15 + t * 7 + i) * 2) / 2) * 2, Math.round((base - y) / 2) * 2, w, 2); }
+    }
+  }
+  if (hot > 0) { ctx.fillStyle = PAL.ember3; ctx.fillRect(X + 4, base, Wd - 8, bot - base - 4); }
+  if (t > 0.6) {
+    const k = Math.min(1, (t - 0.6) / 0.5);
+    if (F.kind === 'win') {
+      for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2 + t, r0 = 10 + 56 * k; ctx.fillStyle = i % 2 ? PAL.gold0 : PAL.white; ctx.fillRect(Math.round((cx + Math.cos(a) * r0) / 2) * 2 - 2, Math.round((cy + Math.sin(a) * r0 * 0.6) / 2) * 2 - 2, 4, 4); }
+      const R = 14 + 50 * k; ctx.fillStyle = PAL.gold0;
+      for (let i = 0; i < 40; i++) { const a = i / 40 * Math.PI * 2; ctx.fillRect(Math.round((cx + Math.cos(a) * R) / 2) * 2 - 1, Math.round((cy + Math.sin(a) * R * 0.6) / 2) * 2 - 1, 2, 2); }
+      glow(cx, cy, 30 + 20 * k, `rgba(255,209,85,${0.5 * (1 - k * 0.5)})`);
+      text('THE ALTAR LEARNS', cx, cy - 14, PAL.gold0, { align: 'center' }); text(fitText(F.name, Wd - 16), cx, cy + 2, RARITY[3].color, { align: 'center', small: true });
+    } else if (F.kind === 'ash') {
+      for (let i = 0; i < 16; i++) { const sx = X + 10 + ((i * 37) % (Wd - 20)), sy = Math.round((bot - 10 - (t - 0.6) * (30 + (i % 5) * 14)) / 2) * 2; ctx.fillStyle = i % 3 ? PAL.stone3 : PAL.stone2; ctx.fillRect(Math.round(sx / 2) * 2 + Math.round(Math.sin(t * 3 + i) * 3), sy, i % 4 ? 4 : 6, i % 4 ? 4 : 6); }
+      text('THE FLAME REFUSES IT', cx, cy - 14, PAL.stone1, { align: 'center' }); text(fitText(`${F.name} IS ASH`, Wd - 16), cx, cy + 2, PAL.stone2, { align: 'center', small: true });
+    } else {
+      glow(cx, cy - 4, 26 + 6 * Math.sin(t * 6), `rgba(${RARITY[F.tier].rgb},0.6)`);
+      ctx.save(); ctx.translate(cx, cy - 4); ctx.scale(2, 2); sprC('loot', 'chrism', F.tier, 0, 0); ctx.restore();
+      text(F.name, cx, cy + 22, RARITY[F.tier].color, { align: 'center' });
+    }
+  }
+  ctx.restore();
 }
 
 // ------------------------------------------------------------ settings ---
@@ -2470,17 +2553,22 @@ function renderVigil() {
   text('VIGIL LEVEL', L.x0 + L.pw / 2, L.y0 + 30, PAL.stone2, { align: 'center', small: true, outline: null });
   text(String(P.L), L.x0 + L.pw / 2, L.y0 + 43, PAL.blood0, { align: 'center', sc: 2 });
   text(`OPEN UP TO ${SAVE.vigilOpen || 1}   BEST KEPT ${SAVE.vigilBest || 'NONE'}`, L.x0 + L.pw / 2, L.y0 + 66, PAL.stone1, { align: 'center', small: true, outline: null });
+  const L0 = P.L, wk = playerSanctity() >= need * 0.7, X = (v) => (v >= 100 ? Math.round(v) : +v.toFixed(1));
   const lines = [
     ['THE CANDLE', '10 MINUTES TO FILL THE TOLL AND SLAY THE WARDEN.', PAL.gold1],
-    ['THE DEAD', `MONSTER HEALTH X${df.hp >= 100 ? Math.round(df.hp) : +df.hp.toFixed(1)}, DAMAGE X${+df.dmg.toFixed(1)}, ${Math.round(df.dens * (1 + (df.n - 1) * 0.07) * 100)}% DENSITY.`, PAL.blood0],
-    ['NO GEAR', 'MONSTERS DROP GOLD AND KNELLS, NEVER GEAR. ONLY THE WARDEN PAYS.', PAL.cloth0],
-    ['THE WARDEN', `${3 + Math.floor(P.L / 5)} PIECES OF STATION ${ROMAN[df.n - 1]} GEAR IF YOU KEEP THE VIGIL.`, PAL.flame1],
-    ['RISING', 'FINISH WITH 5 MINUTES LEFT: +3 LEVELS. 3 MINUTES: +2. IN TIME: +1.', PAL.cloth0],
-    ['THE KEY', `A BLOODROSE KEY LIGHTS THE CANDLE. YOU HOLD ${SAVE.vkeys || 0}. WARDENS OF STATION ${ROMAN[VKEY_FROM - 1]} AND DEEPER DROP THEM, ONE TIME IN TWO.`, SAVE.vkeys ? PAL.rose1 : PAL.blood0],
-    ['YOUR GEAR', `SANCTITY ${playerSanctity()} / ${need}${playerSanctity() >= need * 0.7 ? '' : '  (TOO WEAK HERE)'}`, playerSanctity() >= need * 0.7 ? PAL.cloth0 : PAL.blood0],
+    ['THE DEAD', `HEALTH X${X(df.hp)}, DAMAGE X${X(df.dmg)}, ${Math.round(df.dens * (1 + (df.n - 1) * 0.07) * 100)}% DENSITY.`, PAL.blood0],
+    ['DROPS', 'GOLD, KNELLS AND CHRISM (TWICE AS OFTEN). NO GEAR.', PAL.cloth0],
+    ['THE WARDEN', `${3 + Math.floor(L0 / 5)} PIECES OF ${ROMAN[df.n - 1]} GEAR, CHRISM ${Math.round(VIGIL_PAY.warden(L0) * 100)}%${L0 >= VIGIL_PAY.set ? ', A SET PIECE' : ''}${L0 >= VIGIL_PAY.hallowed ? ', A HALLOWED CHRISM' : ''}.`, PAL.flame1],
+    ['DEEPER', `A SET PIECE FROM ${VIGIL_PAY.set}, A HALLOWED CHRISM FROM ${VIGIL_PAY.hallowed}.`, L0 >= VIGIL_PAY.set ? RARITY[4].color : PAL.stone1],
+    ['RISING', '5 MINUTES LEFT: +3 LEVELS. 3 MINUTES: +2. IN TIME: +1.', PAL.cloth0],
+    ['THE KEY', `ONE BLOODROSE KEY. YOU HOLD ${SAVE.vkeys || 0}. WARDENS OF ${ROMAN[VKEY_FROM - 1]}+ DROP THEM.`, SAVE.vkeys ? PAL.rose1 : PAL.blood0],
+    ['YOUR GEAR', `SANCTITY ${playerSanctity()} / ${need}${wk ? '' : ' (TOO WEAK)'}`, wk ? PAL.cloth0 : PAL.blood0],
   ];
-  let ly = L.y0 + 84;
-  lines.forEach(([a, b, c]) => { const ws = wrapW(b, L.pw - 130, true); text(a, L.x0 + 16, ly, PAL.gold1, { small: true, outline: null }); ws.forEach((l, j) => text(l, L.x0 + 110, ly + j * 9, c, { small: true, outline: null })); ly += Math.max(17, ws.length * 9 + 6); });
+  // Rows share what height there is above the buttons.
+  const vx = L.x0 + 100, vw = L.x0 + L.pw - 12 - vx, wrapped = lines.map(([, b]) => wrapW(b, vw, true));
+  const room = L.go.y - 6 - (L.y0 + 82), need9 = wrapped.reduce((a, w) => a + w.length * 9, 0), gap = Math.max(2, Math.min(8, Math.floor((room - need9) / lines.length)));
+  let ly = L.y0 + 82;
+  lines.forEach(([a, , c], i) => { text(a, L.x0 + 16, ly, PAL.gold1, { small: true, outline: null }); wrapped[i].forEach((l, j) => text(l, vx, ly + j * 9, c, { small: true, outline: null })); ly += wrapped[i].length * 9 + gap; });
   invButton(L.back, 'CANCEL', PAL.stone4);
   invButton(L.go, SAVE.vkeys > 0 ? 'LIGHT THE CANDLE' : 'NO KEY', PAL.crimson3, SAVE.vkeys > 0);
   vigilButton(L);
@@ -3655,7 +3743,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   if (e.pack && e.affixes.includes('vengeful')) for (const m of e.pack.members) if (!m.dead && m !== e && m.affixes.includes('vengeful')) { m.dmgK *= 1.25; m.scaleK *= 1.12; m.hp = Math.min(m.maxHp, m.hp + m.maxHp * 0.2); rings.push({ x: m.x, y: m.y - 12, t: 0, max: 0.4, r: 30, color: '224,32,46' }); }
   if (e.def.split && e.scaleK > 0.7) for (let k = 0; k < e.def.split; k++) { const c = spawnMonster(e.type, e.x + rand(-16, 16), e.y + rand(-10, 10), { tier: e.tier, affixes: e.affixes.filter((a) => a !== 'hale'), room: e.room, scaleK: 0.6, hpK: 0.25, name: e.name }); c.state = 'move'; }
   // Loot.
-  maybeChrism(e.x, e.y, e.type === 'imp' ? 0.15 : e.tier === 'elite' ? (e.minion ? 0.002 : 0.05) : e.tier === 'rare' ? 0.01 : 0.0004);
+  maybeChrism(e.x, e.y, (e.type === 'imp' ? 0.15 : e.tier === 'elite' ? (e.minion ? 0.002 : 0.05) : e.tier === 'rare' ? 0.01 : 0.0004) * (curDiff().vigil ? VIGIL_PAY.chrismK : 1));
   if (e.type === 'imp') { dropLoot(e.x, e.y, { gold: 22, item: 3, itemBoost: 2, globe: 1 }); game.banner = { text: 'THE IMP IS SLAIN', sub: 'ITS SACK SPLITS OPEN', t: 0, color: PAL.gold0 }; }
   else if (e.boss) { /* wardenSlain drops the loot */ }
   else if (e.tier === 'elite') { if (!e.minion) SAVE.eliteKills = (SAVE.eliteKills || 0) + 1; dropLoot(e.x, e.y, { gold: 10, item: 1, itemBoost: 1.5, globe: 2 }); game.banner = { text: `${e.name} FALLS`, sub: '', t: 0, color: PAL.gold0 }; }
@@ -3969,7 +4057,7 @@ function drawDrops() {
     const y = d.y - d.z - (d.z === 0 ? Math.round(Math.sin(game.real * 4 + d.x) * 1) : 0);
     if (d.kind === 'gold') spr('loot', 'gold', d.amount > 7 ? 2 : d.amount > 4 ? 1 : 0, d.x, y + 4);
     if (d.kind === 'globe') sprC('loot', 'globe', Math.floor(game.real * 3) % 2, d.x, y - 4);
-    if (d.kind === 'chrism') sprC('fx', 'flask', 0, d.x, y - 5);
+    if (d.kind === 'chrism') sprC('loot', 'chrism', d.tier, d.x, y - 5);
     if (d.kind === 'vkey') sprC('loot', 'vkey', 0, d.x, y - 9);
     if (d.kind === 'knell') { const kx = Math.round(d.x), ky = Math.round(y - 6); ctx.fillStyle = PAL.outline; ctx.fillRect(kx - 4, ky - 5, 8, 9); ctx.fillStyle = PAL.gold1; ctx.fillRect(kx - 3, ky - 4, 6, 6); ctx.fillStyle = PAL.gold0; ctx.fillRect(kx - 2, ky - 4, 2, 4); ctx.fillStyle = PAL.gold3; ctx.fillRect(kx - 1, ky + 2, 2, 2); }
     if (d.kind === 'item') {
@@ -5977,7 +6065,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

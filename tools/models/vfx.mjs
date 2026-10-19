@@ -127,14 +127,14 @@ function thurible(i) {
   return f;
 }
 // Holy water: a round glass flask with a cork.
-function flask() {
+function flask(mat = 'holy') {
   const S = new Scene();
-  S.add(sphere([8, 11, 2], 5, 'holy'), 0);
-  S.add(capsule([8, 6.5, 2], [8, 3.5, 2], 1.8, 1.6, 'holy'), 1);
+  S.add(sphere([8, 11, 2], 5, mat), 0);
+  S.add(capsule([8, 6.5, 2], [8, 3.5, 2], 1.8, 1.6, mat), 1);
   S.add(capsule([8, 3.2, 2.2], [8, 1.4, 2.2], 1.7, 1.7, 'wood'), 0);
   S.paint({ f: (x, y) => Math.abs(y - 5.6) - 0.5, mat: 'gold' });
   const f = render(S, 16, 17, MATS, { contrast: 1.4 });
-  put(f, 6, 9, 'white'); put(f, 6, 10, 'holy0'); put(f, 7, 8, 'holy0');
+  put(f, 6, 9, 'white'); put(f, 6, 10, `${mat}0`); put(f, 7, 8, `${mat}0`);
   return f;
 }
 // Chain links: one face-on, one edge-on, so a run of links alternates.
@@ -319,6 +319,8 @@ export default {
     gold: () => [0, 1, 2].map(goldPile),
     globe: () => [0, 1].map(globe),
     vkey: () => [roseKey()],
+    // Chrism vials by kind: common, blessed, consecrated, Hallowed.
+    chrism: () => ['cloth', 'holy', 'gold', 'ember'].map((m) => flask(m)),
     wax: () => [orb('pot', { tail: true })], bone: () => [orb('bone', { r: 3.6 })], tear: () => [orb('holy', { tail: true })],
     feather: () => [orb('cloth', { r: 3.4, tail: true })], spit: () => [orb('rot', { tail: true })], ember: () => [orb('ember', { tail: true })],
     violet: () => [orb('violet')], blood: () => [orb('blood', { tail: true })], frost: () => [orb('holy', { r: 4.6 })], bomb: () => [orb('ink', { r: 4.8 })],

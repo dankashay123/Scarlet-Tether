@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-19, after round 18. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 19. Read this first, then `CLAUDE.md`.
 The history of every round is at the bottom; the sections above it describe
 the game as it is now.
 
@@ -66,8 +66,8 @@ Desktop works with keys. 55–60 fps in dense crowds.
   set Arms; Odile's Habit is the starter set. Sets drop from Station VI.
 - **Account systems:** Devotion and Virtues (Canonry), the Ember Forge
   (reforge, temper), the Ashen Altar (burn a Hallowed piece to learn its
-  power for good: gold price, 30% success, Chrism raises the odds; three
-  sockets), the Censer's 12 deed upgrades (tap the censer on the bag's
+  power for good: gold price, 30% success plus 5% per past failure, Chrism
+  raises the odds, three spare pieces grind into a Chrism; three sockets), the Censer's 12 deed upgrades (tap the censer on the bag's
   paper doll), the Bounty Board, Penitent Cells, Odile's Gift, suspend and
   resume.
 - **Settings and tools:** settings panel (effects, shake, numbers, sound,
@@ -89,16 +89,15 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## Next steps (ideas, building on what is there)
 
-1. **Vigil rewards worth the key.** A Vigil-only drop table: better odds of
-   Chrism, a guaranteed set piece at high levels, and a leaderboard-style
-   "best kept" board in Vael.
+1. **A "best kept" board in Vael.** Show the highest Vigil levels kept and
+   the time left, now that the Vigil pays its own rewards.
 2. **Finish the "coming soon" sites.** The Scrying Pool (wager gold on how
    deep a run gets), Martyrdom (one life, doubled rewards), the Plush stall
    (cosmetic halos and robe colours bought with gold).
 3. **A training yard in Vael.** A dummy and a monster summoner so players
    can learn the round 16 attacks (snipe, blight, Sentence) safely.
-4. **Altar extras.** Turn three unwanted Hallowed pieces into a Chrism;
-   a burning animation that differs for success and failure.
+4. **Altar sound.** Its own crackle for the flame and a chime for a learned
+   power (today it borrows the shrine and break sounds).
 5. **Rite depth.** Let rites gain ranks with use, and give each set a
    rite-specific 6-piece twist, so the Rites panel becomes a build screen.
 6. **Stratum III.** A third look (the Ossuary Spire or a burnt chapter
@@ -114,6 +113,20 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## History by round
 
+- **Round 19 (altar extras, Vigil rewards):** every altar row shows its
+  price and its odds with the chosen Chrism. Each failed burn adds 5% to
+  the next until one succeeds (`ALTAR_PITY`, `SAVE.altarPity`). GRIND 3 TO
+  CHRISM mills three Hallowed pieces (learned ones first, then the lowest
+  item level) into one Chrism, by kind 60/28/10/2% (`grindAtAltar`,
+  `GRIND_W`). Burning and grinding play a flame on the altar's left column
+  (`renderAltarFx`): a golden ring when the power is learned, grey ash when
+  refused, the new vial when ground; taps wait for it. Each Chrism kind has
+  its own vial (`loot` `chrism`, four frames). The Vigil pays more
+  (`VIGIL_PAY`): Chrism twice as often and of better kinds as the level
+  climbs, its Warden always pays a set piece from Vigil 12 and a Hallowed
+  Chrism from Vigil 20, and a Chrism 60% + 2% a level of the time
+  (`vigilPayout`). The Vigil panel's rows share the room above the
+  buttons so they fit short screens. Test: `tools/tests/round19.cjs`.
 - **Round 18 (Rites tabs, the Vigil moves, Bloodrose Keys, always
   landscape):** the Rites panel now has slot tabs (Rite I, Rite II,
   Reckoning) over one wide column of cards, smaller icons, and text that
