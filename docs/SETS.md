@@ -175,3 +175,20 @@ Built: one 90 s wave trial per set (`CELLS`). Goals: Nails 150 small foes,
 Stride 90 chargers, Font 140 of a slow tide, Confessor 24 rares, Choir 60
 with an elite each wave. Absolving hangs a banner on the Cathedral; the
 first time also gives the set's missing arms.
+
+## Round 27 tuning
+
+Measured with `tools/tests/setbal.cjs` (Station VI, each set whole with its
+arms and its own rites, seeded crowds). Numbers live in `SETK` in
+`index.html`; the set cards in the game show them.
+
+| Set | Change |
+|---|---|
+| The Hundred Nails | 6: +4% per nail stack (was 8%) |
+| The Penitent's Stride | 6: X6 for 5 S after a dash (was X4 for 4 S), and every dash releases a nova |
+| The Drowned Font | 6: pools deal X2.5 (was X5) |
+| The Last Confessor | 2: bound foes take 40% more (was 25%); 6: bound foes take double damage, burst when they die, and the crush deals X12 (was X5) |
+| The Burning Choir | 6: X1.25 damage in Reckoning (was X3); Zeal drains 18 a second while it lasts (was 12) |
+
+After tuning each whole set clears about 10-15 kills a second in the test
+crowd (before: 5 to 16).
