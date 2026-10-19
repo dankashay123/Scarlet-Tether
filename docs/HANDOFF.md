@@ -111,6 +111,15 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## History by round
 
+- **Round 25.3 (drag to aim, no pop on leaving):** hold an aimable rite's
+  button and drag to aim (`AIMABLE`: Holy Water lands where you point,
+  Baptism, Nail Storm, Ember Step and the Chain go that way); the outline
+  draws from the Saint (`renderAim`) and a knob shows on the button. Release
+  casts (`input.aim` into `castM1`/`castM2`); dragging back inside
+  `AIM_DEAD` cancels; a plain tap still auto-aims. Shackle Circle, Censer
+  Blaze and Martyr's Ward hit around you and stay tap-only. Leaving the page
+  fades the audio over 60 ms before suspending (`goAway`/`comeBack` in
+  `AUDIO`), which removes the pop on swiping home. `tools/tests/aim.cjs`.
 - **Round 25.2 (plain text):** every instruction, panel, toast, banner,
   tutorial step and change note was rewritten short and plain (the owner
   found flourishes like "it needs no aim: stay close and let it work" read
