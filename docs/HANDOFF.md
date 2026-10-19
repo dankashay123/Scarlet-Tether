@@ -225,6 +225,13 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 15a:** choosable rites (`RITES`, `riteOf`, the Rites panel from
+  pause, the bag or the T key). Three slots, four rites each, every rite
+  feeding one set's hooks: Holy Water, Baptism (Font); Nail Storm,
+  the Hundredfold (Nails); Ember Step, Martyr's Ward (Stride); Chain of
+  Penance, Shackle Circle (Confessor); Censer Blaze, Rain of Reckoning,
+  Judgement (Choir); the Great Font (Font). Dashes go through
+  `startDash()`. New test: `tools/tests/rites2.cjs`.
 - **Round 14:** set arms (crossbow and quiver slots, 2-piece bonuses), the
   Penitent Cells and Cathedral banners, set-coloured rites, Drowned Nave
   props and drips, settings panel, the Warden's fall. Dev menu grew ARMS

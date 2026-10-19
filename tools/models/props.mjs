@@ -390,6 +390,16 @@ const GLYPH = {
   bag: (u, v) => (Math.hypot(u / 1.05, v - 0.16) < 0.46 && v > -0.18) || (Math.abs(u) < 0.2 && v > -0.42 && v < -0.1) || (Math.abs(v + 0.34) < 0.07 && Math.abs(u) < 0.34),
   close: (u, v) => seg(u, v, -0.38, -0.38, 0.38, 0.38, 0.13) || seg(u, v, -0.38, 0.38, 0.38, -0.38, 0.13),
   knob: (u, v) => (Math.abs(u) < 0.13 && Math.abs(v) < 0.5) || (Math.abs(v) < 0.13 && Math.abs(u) < 0.5),
+  // Rite icons (index.html RITES).
+  wave: (u, v) => [0.3, 0.62].some((R) => Math.abs(Math.hypot(u + 0.55, v) - R) < 0.09 && u > -0.5) || (Math.abs(Math.hypot(u + 0.55, v) - 0.95) < 0.09 && Math.abs(v) < 0.6),
+  storm: (u, v) => [-0.7, -0.35, 0, 0.35, 0.7].some((k) => seg(u, v, -0.45, 0.45, -0.45 + Math.cos(k - 0.8) * 0.95, 0.45 + Math.sin(k - 0.8) * 0.95, 0.07)) || Math.hypot(u + 0.45, v - 0.45) < 0.15,
+  step: (u, v) => { const t = (v + 0.55) / 0.85; return (t > 0 && t < 1 && Math.abs(u - 0.15) < Math.sin(t * Math.PI * 0.9) * 0.3 * t + 0.02) || seg(u, v, -0.6, 0.45, 0.1, 0.45, 0.08) || seg(u, v, -0.6, 0.2, -0.1, 0.2, 0.06); },
+  shackle: (u, v) => Math.abs(Math.hypot(u, v) - 0.42) < 0.08 || [0, 1, 2, 3].some((k) => { const a = k * Math.PI / 2 + 0.78, d = Math.hypot(u - Math.cos(a) * 0.62, v - Math.sin(a) * 0.62); return d < 0.16 && d > 0.06; }),
+  censer: (u, v) => Math.hypot(u, v) < 0.2 || [0, 1, 2, 3, 4, 5].some((k) => { const a = k * Math.PI / 3 + 0.5, x = Math.cos(a) * 0.5, y = Math.sin(a) * 0.5; return Math.hypot(u - x, v - y) < 0.13; }),
+  ward: (u, v) => (Math.abs(u) < 0.42 && v > -0.5 && v < 0.05) || (v >= 0.05 && v < 0.6 && Math.abs(u) < (0.6 - v) * 0.8) ? !(Math.abs(u) < 0.07 && v > -0.35 && v < 0.35) && !(Math.abs(v + 0.1) < 0.07 && Math.abs(u) < 0.25) : false,
+  pillars: (u, v) => [[-0.42, -0.15], [0, -0.55], [0.42, -0.3]].some(([x, t]) => Math.abs(u - x) < 0.11 && v > t && v < 0.5) || (Math.abs(v - 0.55) < 0.07 && Math.abs(u) < 0.6),
+  font: (u, v) => (v < 0.02 && v > -0.45 && Math.hypot(u / 1.25, v + 0.45) < 0.62 && Math.hypot(u / 1.25, v + 0.6) > 0.36) || (Math.abs(u) < 0.09 && v >= 0 && v < 0.4) || (Math.abs(v - 0.45) < 0.08 && Math.abs(u) < 0.34),
+  volley: (u, v) => [-0.32, 0, 0.32].some((o) => seg(u, v, -0.45 + o, 0.45 + o, 0.35 + o, -0.35 + o, 0.07) || (Math.hypot(u - (0.35 + o), v - (-0.35 + o)) < 0.13)),
 };
 // Map badges for the town map: a small coloured disc, lit from the top-left,
 // with a pale glyph and a heavy outline. Order matches MAP_BADGES in index.html.
@@ -468,6 +478,8 @@ export default {
   },
   ui: {
     dash: () => [button(50, GLYPH.dash)], flask: () => [button(40, GLYPH.flask)], chain: () => [button(40, GLYPH.chain)], penance: () => [button(44, GLYPH.penance)],
+    ...Object.fromEntries(['wave', 'storm', 'step', 'shackle', 'censer', 'ward'].map((k) => [k, () => [button(40, GLYPH[k])]])),
+    ...Object.fromEntries(['pillars', 'font', 'volley'].map((k) => [k, () => [button(44, GLYPH[k])]])),
     dagger: () => [button(40, GLYPH.dagger)], pause: () => [button(28, GLYPH.pause)], talk: () => [button(50, GLYPH.talk)], descend: () => [button(50, GLYPH.descend)],
     lock: () => [button(50, BADGE_GLYPH.lock)], map: () => [button(26, BADGE_GLYPH.board)],
     badge: () => MAP_BADGES.map(([g, ramp]) => badge(15, ramp, g)), badgeBig: () => MAP_BADGES.map(([g, ramp]) => badge(21, ramp, g)),

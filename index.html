@@ -377,6 +377,8 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Backquote') { if (game.state === 'dev') closeDev(); else if (game.state === 'play' || game.state === 'pause') openDev(); return; }
   if (game.state === 'dev') { if (e.code === 'Escape') closeDev(); return; }
   if (game.state === 'settings') { if (e.code === 'Escape') game.state = 'pause'; return; }
+  if (game.state === 'rites') { if (e.code === 'Escape') game.state = game.ritesBack || 'play'; return; }
+  if (e.code === 'KeyT' && (game.state === 'play' || game.state === 'pause')) { openRites(game.state); return; }
   if (game.state === 'stig') { if (game.stig.t > 0.35 && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) pickStigma(+e.code.slice(5) - 1); return; }
   if (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyK') input.dash = true;
   if (e.code === 'KeyE' || e.code === 'KeyJ') { if (game.state === 'descent') descentTap(-1, -1); else if (game.state === 'play' && game.interact && !game.execTarget) game.interact.use(); else input.execute = true; }
@@ -1772,6 +1774,46 @@ function drawCellBanners() {
   });
 }
 
+// ------------------------------------------------------------- rites panel ---
+// Pick one rite per slot. Opened from the pause screen or the bag.
+function riteLayout() {
+  const pw = Math.min(640, W - 12), ph = Math.min(H - 12, 300), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
+  const colW = Math.floor((pw - 24 - 12) / 3), ch = Math.floor((ph - 44 - 9) / 4);
+  return { pw, ph, x0, y0, colW, ch, close: { x: x0 + pw - 14, y: y0 + 13, r: 10 }, card: (c, r) => ({ x: x0 + 12 + c * (colW + 6), y: y0 + 42 + r * (ch + 3), w: colW, h: ch }) };
+}
+const RITE_SLOTS = [['m1', 'RITE I'], ['m2', 'RITE II'], ['pen', 'RECKONING']];
+function openRites(back) { game.ritesBack = back || game.state; game.state = 'rites'; sfx('tap'); }
+function renderRites() {
+  const L = riteLayout();
+  ctx.fillStyle = 'rgba(11,7,16,0.8)'; ctx.fillRect(0, 0, W, H);
+  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 22);
+  text('RITES', L.x0 + 10, L.y0 + 7, PAL.gold1); text('EACH LEANS ON ONE VESTMENT SET', L.x0 + 60, L.y0 + 8, PAL.stone2, { small: true, outline: null });
+  sprC('ui', 'close', 0, L.close.x, L.close.y);
+  RITE_SLOTS.forEach(([slot, label], c) => {
+    const x = L.x0 + 12 + c * (L.colW + 6); text(label, x + 2, L.y0 + 29, PAL.cloth1, { small: true, outline: null });
+    RITES[slot].forEach((r, i) => {
+      const b = L.card(c, i), sel = riteOf(slot).id === r.id;
+      ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(b.x, b.y, b.w, b.h);
+      if (sel) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 1; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1); }
+      ctx.save(); ctx.translate(b.x + 15, b.y + 15); ctx.scale(0.6, 0.6); sprC('ui', r.icon, 0, 0, 0, { alpha: sel ? 1 : 0.7 }); ctx.restore();
+      text(r.name, b.x + 30, b.y + 4, sel ? PAL.gold1 : PAL.cloth0, { small: true, outline: null });
+      const syn = sb(r.set, 2) || sbw(r.set);
+      text(VSETS[r.set].name.replace(/^THE /, ''), b.x + 30, b.y + 13, syn ? RARITY[4].color : PAL.stone2, { small: true, outline: null });
+      wrapW(r.text, b.w - 8, true).slice(0, Math.max(1, Math.floor((b.h - 26) / 10))).forEach((l, k) => text(l, b.x + 4, b.y + 26 + k * 10, PAL.stone1, { small: true, outline: null }));
+    });
+  });
+}
+function ritesTap(x, y) {
+  const L = riteLayout();
+  if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { game.state = game.ritesBack === 'rites' ? 'play' : game.ritesBack || 'play'; sfx('tap'); return; }
+  RITE_SLOTS.forEach(([slot], c) => RITES[slot].forEach((r, i) => {
+    if (!inRect(L.card(c, i), x, y)) return;
+    SAVE.rites = SAVE.rites || {}; SAVE.rites[slot] = r.id; persist(); sfx('tap', { vol: 0.6 });
+    if (player) { if (slot === 'm1') player.m1cd = Math.max(player.m1cd, 1); if (slot === 'm2') player.m2cd = Math.max(player.m2cd, 1); }
+  }));
+}
+
 // ------------------------------------------------------------ settings ---
 // From the pause screen. Saved in SAVE.opts.
 const OPT_DEF = { fx: 'full', shake: true, nums: 'all', haptics: true, music: 2, sound: 3, hand: 'right' };
@@ -1780,6 +1822,7 @@ function setOpt(k, v) { SAVE.opts = SAVE.opts || {}; SAVE.opts[k] = v; persist()
 // A short buzz where the browser allows it (Android; iPhone Safari has no vibration).
 function buzz(ms) { if (opt('haptics') && navigator.vibrate) try { navigator.vibrate(ms); } catch { /* not allowed */ } }
 const setBtn = () => ({ x: W - 100, y: H - 30, w: 90, h: 20 });
+const ritesBtn = () => ({ x: Math.round(W / 2 - 45), y: H - 30, w: 90, h: 20 });
 const OPT_ROWS = [
   { k: 'fx', name: 'EFFECTS', vals: ['full', 'low'], show: (v) => (v === 'full' ? 'FULL' : 'LOW (OLDER PHONES)') },
   { k: 'shake', name: 'SCREEN SHAKE', vals: [true, false], show: (v) => (v ? 'ON' : 'OFF') },
@@ -2804,6 +2847,7 @@ function setGuard() {
   if (sb('stride', 4) && (player.guardT || 0) > game.time) k *= 0.5;
   if (sb('font', 4) && player.inPool) k *= 0.6;
   if (sb('confessor', 4)) k *= 1 - Math.min(40, (game.boundN || 0) * 8) / 100;
+  if ((player.wardT || 0) > game.time) k *= 0.4;
   return k;
 }
 function hurtPlayerRaw(dmg, color) {
@@ -3132,7 +3176,7 @@ const VSETS = {
   habit: { name: "ODILE'S HABIT", piece: "ODILE'S", slots: GEAR_SLOTS, bonus: [[2, '+10% DAMAGE.'], [4, '+1 DASH CHARGE, +15% DAMAGE.']] },
   nails: { name: 'THE HUNDRED NAILS', piece: 'NAILBEARER\'S', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BOLTS PIERCE ONE MORE FOE AND SPLIT AT THE LAST.'], [4, 'HITS ADD NAIL STACKS (50 MAX): EACH IS 1% LESS DAMAGE TAKEN.'], [6, 'BOLTS DEAL +8% PER NAIL STACK.']] },
   stride: { name: "THE PENITENT'S STRIDE", piece: "PENITENT'S", slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+1 DASH CHARGE. DASHES LEAVE HOLY FIRE.'], [4, 'PERFECT DODGES REFILL DASHES AND HALVE DAMAGE FOR 2 S.'], [6, 'FOR 4 S AFTER A DASH, BOLTS, NOVA AND FIRE DEAL X4. DASHED FOES ARE BRANDED.']] },
-  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, 'IN YOUR OWN POOL: 40% LESS DAMAGE, DOUBLE ZEAL.'], [6, 'POOLS DEAL X5, DRAW FOES IN; KILLS IN THEM SPEED THE VIAL.']] },
+  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, 'IN YOUR OWN POOL: 40% LESS DAMAGE, DOUBLE ZEAL.'], [6, 'POOLS DEAL X5 AND DRAW FOES IN. KILLS IN THEM SPEED THE VIAL.']] },
   confessor: { name: 'THE LAST CONFESSOR', piece: 'CONFESSOR\'S', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, 'THE CHAIN BINDS 3 MORE. BOUND FOES TAKE 25% MORE.'], [4, 'EACH BOUND FOE: 8% LESS DAMAGE TAKEN (40% MAX).'], [6, 'THE CHAIN ENDS BY CRUSHING THEM TOGETHER FOR X5. ELITE KILLS RESET IT.']] },
   choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, 'IN RECKONING: NO ROOTS OR SLOWS, KILLS HEAL 2%.'], [6, 'RECKONING LASTS WHILE ZEAL REMAINS. X3 DAMAGE WHILE IT BURNS.']] },
 };
@@ -3460,14 +3504,15 @@ function updateCrossbow(dt) {
   player.target = chooseTarget();
   updateFloatBow(dt);
   if (!player.target || player.fireCd > 0) return;
-  player.fireCd = T.crossbow.cooldown * (G.powers.has('fire') ? 0.8 : 1) * Math.pow(0.85, wound('quick'));
+  const volley = player.rainT > 0 && player.penKind === 'volley';
+  player.fireCd = T.crossbow.cooldown * (G.powers.has('fire') ? 0.8 : 1) * Math.pow(0.85, wound('quick')) * (volley ? 0.33 : 1);
   const t = player.target, xb = player.xb;
   player.face = t.x < player.x ? -1 : 1;
   const [sx, sy] = bowTip();
   const tx = t.x + t.kx * 0.05, ty = t.y - t.hy;
   const d = Math.hypot(tx - sx, ty - sy) || 1;
   const crit = rng() < T.crossbow.crit + G.crit / 100;
-  const base = Math.atan2(ty - sy, tx - sx), n = 1 + wound('split') + (G.powers.has('twin') ? 1 : 0);
+  const base = Math.atan2(ty - sy, tx - sx), n = 1 + wound('split') + (G.powers.has('twin') ? 1 : 0) + (volley ? 2 : 0);
   // Set arms: every 5th shot a great nail, every 8th binds, embers after a dash.
   const shot = player.shotN = (player.shotN || 0) + 1;
   const great = sbw('nails') && shot % 5 === 0, bind = sbw('confessor') && shot % 8 === 0, fire = sbw('stride') && player.emberShots > 0;
@@ -3576,10 +3621,74 @@ function bestCluster(R) {
   }
   return best;
 }
+// The rites: three slots, four choices each, picked at the Rites panel.
+// Each leans on one vestment set's hooks (pools, binds, dashes, bolts,
+// Reckoning), so the right set makes it far stronger.
+const RITES = {
+  m1: [
+    { id: 'water', name: 'HOLY WATER', set: 'font', icon: 'flask', cd: 6, text: 'LOB A VIAL. ITS POOL BURNS AND SLOWS.' },
+    { id: 'wave', name: 'BAPTISM', set: 'font', icon: 'wave', cd: 7, text: 'A WAVE ROLLS AHEAD, HURLS FOES BACK AND LEAVES THREE POOLS.' },
+    { id: 'storm', name: 'NAIL STORM', set: 'nails', icon: 'storm', cd: 5, text: 'A FAN OF 11 NAILS. EVERY ONE COUNTS AS A BOLT.' },
+    { id: 'step', name: 'EMBER STEP', set: 'stride', icon: 'step', cd: 5, text: 'A LONG LEAP THAT LEAVES FIERCE FIRE. COUNTS AS A DASH.' },
+  ],
+  m2: [
+    { id: 'chain', name: 'CHAIN OF PENANCE', set: 'confessor', icon: 'chain', cd: 8, text: 'BIND A FOE AND THOSE NEAR IT, THEN DRAG THEM IN.' },
+    { id: 'shackle', name: 'SHACKLE CIRCLE', set: 'confessor', icon: 'shackle', cd: 9, text: 'BIND EVERY FOE AROUND YOU FOR 2 S.' },
+    { id: 'censer', name: 'CENSER BLAZE', set: 'choir', icon: 'censer', cd: 6, text: 'A RING OF FIRE SETS FOES ALIGHT AND GIVES 15 ZEAL.' },
+    { id: 'ward', name: "MARTYR'S WARD", set: 'stride', icon: 'ward', cd: 10, text: '3 S OF 60% LESS DAMAGE. YOUR NEXT DASH IS PERFECT.' },
+  ],
+  pen: [
+    { id: 'rain', name: 'RAIN OF RECKONING', set: 'choir', icon: 'penance', text: 'LASHES OF LIGHT FALL ON EVERYTHING IN SIGHT.' },
+    { id: 'pillars', name: 'JUDGEMENT', set: 'choir', icon: 'pillars', text: 'PILLARS OF LIGHT HAMMER THE STRONGEST FOES.' },
+    { id: 'font', name: 'THE GREAT FONT', set: 'font', icon: 'font', text: 'A GREAT HOLY POOL FOLLOWS YOU WHILE IT LASTS.' },
+    { id: 'volley', name: 'THE HUNDREDFOLD', set: 'nails', icon: 'volley', text: 'THE CROSSBOW FIRES THREE TIMES AS FAST, EVERY SHOT SPLITS.' },
+  ],
+};
+const riteOf = (slot) => RITES[slot].find((r) => r.id === (SAVE.rites && SAVE.rites[slot])) || RITES[slot][0];
+const riteCd = (slot) => (riteOf(slot).cd || 6) * G.cdrK * (slot === 'm1' && riteOf('m1').id === 'water' ? Math.pow(0.85, wound('flask')) : 1);
+// One bolt, as the crossbow fires them (Nail Storm uses it too).
+function spawnBolt(sx, sy, a, crit, o = {}) {
+  bolts.push({ z: 18, zv: 0, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce') + (sb('nails', 2) ? 1 : 0), hit: new Set(), crit, trail: [], ...o });
+}
+function castWave() {
+  const t = bestCluster(T.flask.range), a = t ? Math.atan2(t.y - player.y, t.x - player.x) : (player.face < 0 ? Math.PI : 0);
+  skillFx.push({ kind: 'wave', x: player.x, y: player.y, a, t: 0, max: 0.55, hits: new Set(), drops: 0 }); sfx('flask', { rate: 0.7 });
+}
+function castStorm() {
+  const t = player.target || bestCluster(200), a = t ? Math.atan2(t.y - t.hy - (player.y - 30), t.x - player.x) : (player.face < 0 ? Math.PI : 0);
+  for (let k = 0; k < 11; k++) spawnBolt(player.x + player.face * 10, player.y - 30, a + (k - 5) * 0.11, rng() < T.crossbow.crit + G.crit / 100);
+  sfx('shoot', { rate: 0.8, vol: 1.4 }); game.shake = Math.max(game.shake, 2);
+}
+function castShackle() {
+  const links = enemies.filter((e) => !e.dead && !e.boss && e.state !== 'spawn' && Math.hypot(e.x - player.x, (e.y - player.y) / 0.8) < 95);
+  rings.push({ x: player.x, y: player.y, t: 0, max: 0.4, r: 95, color: riteFx().chain, flat: true }); sfx('chain');
+  if (!links.length) return;
+  for (const e of links) { e.bound = 2; if (e.state === 'windup') { e.state = 'move'; e.t = 0; } hurtEnemy(e, 10, false, 0, 0, 0, { status: true, color: PAL.iron0 }); }
+  chains.push({ x: player.x, y: player.y - 25, target: links[0], links, t: 2 - T.chain.bind, phase: 'bind' });
+}
+function castCenser() {
+  for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - player.x, (e.y - player.y) / 0.8) < 85) { const dx = e.x - player.x, dy = e.y - player.y, d = Math.hypot(dx, dy) || 1; e.burn = T.thurible.burn.time * 1.5; hurtEnemy(e, 18, false, dx / d, dy / d, 90, { color: PAL.ember1 }); }
+  for (const [r, c] of [[85, '255,122,31'], [60, '255,192,74']]) rings.push({ x: player.x, y: player.y - 6, t: 0, max: 0.45, r, color: c, flat: true });
+  for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2; parts.push({ kind: 'spark', x: player.x + Math.cos(a) * 30, y: player.y + Math.sin(a) * 20, z: 0, vx: Math.cos(a) * 90, vy: Math.sin(a) * 60, vz: 0, c: pick([PAL.ember0, PAL.ember1]), life: 0.4 }); }
+  addFervor(15); sfx('thurible', { rate: 0.7, vol: 1.4 }); game.shake = Math.max(game.shake, 3);
+}
+function castWard() { player.wardT = game.time + 3; player.freePerfect = true; rings.push({ x: player.x, y: player.y - 20, t: 0, max: 0.5, r: 40, color: '216,247,255' }); sfx('shrine', { rate: 1.4, vol: 0.6 }); }
+function castM1() {
+  const r = riteOf('m1').id;
+  if (r === 'water') return castFlask();
+  if (r === 'wave') castWave(); else if (r === 'storm') castStorm(); else if (r === 'step') startDash(player, { len: 1.9, step: true });
+  player.m1cd = riteCd('m1'); player.castT = 0.28;
+}
+function castM2() {
+  const r = riteOf('m2').id;
+  if (r === 'chain') return castChain();
+  if (r === 'shackle') castShackle(); else if (r === 'censer') castCenser(); else if (r === 'ward') castWard();
+  player.m2cd = riteCd('m2'); player.castT = 0.28;
+}
 function castFlask() {
   const t = bestCluster(T.flask.range);
   flasks.push({ sx: player.x, sy: player.y - 23, tx: t ? t.x : player.x + player.face * 60, ty: t ? t.y : player.y, t: 0 }); sfx('tap', { rate: 0.6, vol: 0.6 });
-  player.m1cd = T.flask.cd * G.cdrK * Math.pow(0.85, wound('flask')); player.castT = 0.28;
+  player.m1cd = riteCd('m1'); player.castT = 0.28;
 }
 function castChain() {
   let t = null, bd = Infinity;
@@ -3590,12 +3699,13 @@ function castChain() {
   }
   if (!t) { toast('NOTHING TO BIND'); return; }
   chains.push({ x: player.x + player.face * 14, y: player.y - 25, target: t, links: [], t: 0, phase: 'fly' }); sfx('chain');
-  player.m2cd = T.chain.cd * G.cdrK; player.castT = 0.28;
+  player.m2cd = riteCd('m2'); player.castT = 0.28;
 }
 function castPenance() {
   player.penance = 0; player.rainT = T.penance.time; player.rainTick = 0; sfx('penance'); player.castT = 0.32;
   game.shake = Math.max(game.shake, 3); game.flash = 0.1;
-  toast('RAIN OF RECKONING', 1.5);
+  player.penKind = riteOf('pen').id; player.pilT = 0;
+  toast(riteOf('pen').name, 1.5);
 }
 
 function updateAbilities(dt) {
@@ -3603,8 +3713,8 @@ function updateAbilities(dt) {
   const hk = game.buff && game.buff.kind === 'haste' ? 1.5 : 1;
   p.m1cd = Math.max(0, p.m1cd - dt * hk); p.m2cd = Math.max(0, p.m2cd - dt * hk);
   if (DEV.nocd) { p.m1cd = 0; p.m2cd = 0; }
-  if (input.m1) { input.m1 = false; if (p.m1cd <= 0) { castFlask(); tut.flags.m1 = true; } }
-  if (input.m2) { input.m2 = false; if (p.m2cd <= 0) { castChain(); if (p.m2cd > 0) tut.flags.m2 = true; } }
+  if (input.m1) { input.m1 = false; if (p.m1cd <= 0) { castM1(); tut.flags.m1 = true; } }
+  if (input.m2) { input.m2 = false; if (p.m2cd <= 0) { castM2(); if (p.m2cd > 0) tut.flags.m2 = true; } }
   if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) { castPenance(); tut.flags.pen = true; } }
   updateThurible(dt);
 
@@ -3668,10 +3778,24 @@ function updateAbilities(dt) {
   }
   chains = chains.filter((c) => c.phase !== 'done');
 
+  if (p.rainT <= 0) for (const pl of pools) pl.follow = false;
   if (p.rainT > 0) {
     p.rainT -= dt; p.rainTick -= dt;
     // The Burning Choir: Reckoning drains Zeal instead of ending.
     if (sb('choir', 6) && p.rainT < 0.2 && game.fervor > 1) { p.rainT = 0.2; game.fervor -= 12 * dt; }
+    const kind = p.penKind || 'rain';
+    if (kind !== 'rain') p.rainTick = 1;
+    if (kind === 'pillars' && (p.pilT -= dt) <= 0) { // Judgement: the strongest foe in sight
+      p.pilT = 0.26;
+      const vis = enemies.filter((e) => !e.dead && e.state !== 'spawn' && e.x > cam.x && e.x < cam.x + W && e.y > cam.y && e.y < cam.y + H).sort((a, b) => b.hp - a.hp);
+      const e = vis[Math.floor(rng() * Math.min(3, vis.length))];
+      if (e) skillFx.push({ kind: 'pillar', x: e.x, y: e.y, t: 0, max: 0.7, hit: false, dmg: T.penance.dmg * 3 });
+    }
+    if (kind === 'font') { // The Great Font: a big pool that keeps to the Saint
+      let pl = pools.find((q) => q.follow);
+      if (!pl) pools.push(pl = { x: p.x, y: p.y, r: 58, t: 0, follow: true });
+      pl.x = p.x; pl.y = p.y; pl.t = Math.min(pl.t, 0.5);
+    }
     while (p.rainTick <= 0) {
       p.rainTick += T.penance.every;
       const vis = enemies.filter((e) => !e.dead && e.state !== 'spawn' && e.x > cam.x && e.x < cam.x + W && e.y > cam.y && e.y < cam.y + H);
@@ -3695,6 +3819,21 @@ function updateAbilities(dt) {
 }
 
 // --------------------------------------------------------------- player ---
+// A dash (also Ember Step, which runs longer and always leaves fire).
+function startDash(p, { len = 1, step = false } = {}) {
+  let dx = input.mx, dy = input.my;
+  if (Math.hypot(dx, dy) < 0.2) { dx = p.face; dy = 0; }
+  const d = Math.hypot(dx, dy); p.dashDx = dx / d; p.dashDy = dy / d;
+  p.dashT = T.dash.time * len; p.dashLen = len; p.stepTrail = step; p.dashStart = game.time; p.dashX = p.x; p.dashY = p.y; onWoundDash(); sfx('dash');
+  if (sb('stride', 6)) p.strideT = game.time + 4;
+  if (sbw('stride')) p.emberShots = 6;
+  p.iframes = Math.max(p.iframes, T.dash.iframes * len); p.perfectUsed = false;
+  if (Math.abs(dx) > 0.1) p.face = Math.sign(dx);
+  playFx('fx', 'smoke', p.x, p.y - 4, 18, { alpha: 0.6 });
+  tut.flags.dashed = (tut.flags.dashed || 0) + 1;
+  // Martyr's Ward: the next dash is a perfect dodge.
+  if (p.freePerfect) { p.freePerfect = false; perfectDodge(); }
+}
 function updatePlayer(dt) {
   const p = player;
   unstick(p, p.r);
@@ -3713,19 +3852,7 @@ function updatePlayer(dt) {
   if (p.charges < G.charges) { p.recharge += dt; if (p.recharge >= T.dash.recharge * G.dashK) { p.recharge = 0; p.charges++; } }
   if (input.dash) {
     input.dash = false;
-    if (p.charges > 0 && p.dashT <= 0) {
-      p.charges--;
-      let dx = input.mx, dy = input.my;
-      if (Math.hypot(dx, dy) < 0.2) { dx = p.face; dy = 0; }
-      const d = Math.hypot(dx, dy); p.dashDx = dx / d; p.dashDy = dy / d;
-      p.dashT = T.dash.time; p.dashStart = game.time; p.dashX = p.x; p.dashY = p.y; onWoundDash(); sfx('dash');
-      if (sb('stride', 6)) p.strideT = game.time + 4;
-      if (sbw('stride')) p.emberShots = 6;
-      p.iframes = Math.max(p.iframes, T.dash.iframes); p.perfectUsed = false;
-      if (Math.abs(dx) > 0.1) p.face = Math.sign(dx);
-      playFx('fx', 'smoke', p.x, p.y - 4, 18, { alpha: 0.6 });
-      tut.flags.dashed = (tut.flags.dashed || 0) + 1;
-    }
+    if (p.charges > 0 && p.dashT <= 0) { p.charges--; startDash(p); }
   }
   game.execTarget = enemies.find((e) => !e.dead && e.state === 'stagger' && Math.hypot(e.x - p.x, e.y - p.y) < 90) || null;
   if (input.execute) {
@@ -3738,7 +3865,7 @@ function updatePlayer(dt) {
     p.dashT -= dt; vx = p.dashDx * T.dash.speed; vy = p.dashDy * T.dash.speed;
     if (sb('stride', 6)) for (const e of enemies) if (!e.dead && Math.hypot(e.x - p.x, e.y - p.y) < 16 + e.r) e.brandT = game.time + 6;
     // The Penitent's Stride: the dash leaves a line of holy fire.
-    if (p.dashT <= 0 && sb('stride', 2)) skillFx.push({ kind: 'trail', x0: p.dashX, y0: p.dashY, x1: p.x, y1: p.y, t: 0, max: 2, tick: 0 });
+    if (p.dashT <= 0 && (sb('stride', 2) || p.stepTrail)) skillFx.push({ kind: 'trail', x0: p.dashX, y0: p.dashY, x1: p.x, y1: p.y, t: 0, max: p.stepTrail ? 3 : 2, tick: 0, k: p.stepTrail ? 2 : 1 });
     p.ghostT -= dt;
     if (p.ghostT <= 0) { p.ghostT = 0.025; ghosts.push({ x: p.x, y: p.y, face: p.face, i: Math.floor((T.dash.time - p.dashT) / T.dash.time * 3), t: 0 }); }
     p.anim = 'dash';
@@ -4051,6 +4178,7 @@ function render() {
     overlay('PAUSED', 'TAP TO RESUME');
     if (devOn()) invButton(devBtn(), 'DEV', PAL.flame3 || PAL.gold3);
     invButton(setBtn(), 'SETTINGS', PAL.gold3);
+    invButton(ritesBtn(), 'RITES', PAL.crimson3);
     // The latest caught error, so a player can send it to us.
     if (ERRS.length) { const e = ERRS[ERRS.length - 1]; text(`BUG LOGGED: ${e.msg}`.slice(0, 70).toUpperCase(), W / 2, H - 14, PAL.iron1, { align: 'center', small: true }); }
   }
@@ -4069,6 +4197,7 @@ function render() {
   if (game.state === 'dev') renderDev();
   if (game.state === 'settings') renderSettings();
   if (game.state === 'cells') renderCells();
+  if (game.state === 'rites') renderRites();
   if (game.state === 'map') renderTownMap();
   if (game.state === 'loading') renderLoading();
   blit();
@@ -4528,8 +4657,9 @@ function renderHud() {
   button(HUD.dash, { active: p.charges > 0, cd: p.charges === 0 ? dashK : 0 });
   for (let i = 0; i < G.charges; i++) { const x = HUD.dash.x - (G.charges - 1) * 4.5 - 2.5 + i * 9, y = HUD.dash.y + HUD.dash.r + 3; ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, 7, 4); ctx.fillStyle = i < p.charges ? PAL.gold1 : PAL.ink3; ctx.fillRect(x, y, 5, 2); }
   if (game.scene === 'wound') {
-  button(HUD.m1, { active: p.m1cd <= 0, cd: p.m1cd / (T.flask.cd * G.cdrK), cdText: p.m1cd > 0 ? String(Math.ceil(p.m1cd)) : '' });
-  button(HUD.m2, { active: p.m2cd <= 0, cd: p.m2cd / (T.chain.cd * G.cdrK), cdText: p.m2cd > 0 ? String(Math.ceil(p.m2cd)) : '' });
+  HUD.m1.icon = riteOf('m1').icon; HUD.m2.icon = riteOf('m2').icon; HUD.pen.icon = riteOf('pen').icon;
+  button(HUD.m1, { active: p.m1cd <= 0, cd: p.m1cd / riteCd('m1'), cdText: p.m1cd > 0 ? String(Math.ceil(p.m1cd)) : '' });
+  button(HUD.m2, { active: p.m2cd <= 0, cd: p.m2cd / riteCd('m2'), cdText: p.m2cd > 0 ? String(Math.ceil(p.m2cd)) : '' });
   const penReady = p.penance >= T.penance.charge && p.rainT <= 0;
   if (penReady) { ctx.globalCompositeOperation = 'lighter'; glow(HUD.pen.x, HUD.pen.y, 28 + Math.sin(game.real * 6) * 4, 'rgba(224,32,46,0.6)'); ctx.globalCompositeOperation = 'source-over'; }
   button(HUD.pen, { active: penReady, ring: penReady ? 1 : p.penance / T.penance.charge, ringColor: penReady ? PAL.blood0 : PAL.blood2 });
@@ -4796,8 +4926,14 @@ function updateSkills(dt) {
       playFx('fx', 'impact', f.x, f.y - 10, 22, { big: true });
     }
     if (f.kind === 'nova' && !f.done) { const r = f.r * Math.min(1, f.t / f.max); for (const e of enemies) if (!e.dead && !f.hits.has(e) && Math.hypot(e.x - f.x, (e.y - f.y) / 0.7) < r) { f.hits.add(e); const dx = e.x - f.x, dy = e.y - f.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, f.dmg, false, dx / d, dy / d, 120, { kind: 'nova' }); } }
+    // Baptism: a wave that rolls out, hurls foes back and drops pools.
+    if (f.kind === 'wave') {
+      const d = 160 * Math.min(1, f.t / f.max), wx = f.x + Math.cos(f.a) * d, wy = f.y + Math.sin(f.a) * d * 0.8;
+      for (const e of enemies) if (!e.dead && e.state !== 'spawn' && !f.hits.has(e) && Math.hypot(e.x - wx, e.y - wy) < 34 + e.r) { f.hits.add(e); hurtEnemy(e, 14, false, Math.cos(f.a), Math.sin(f.a), e.boss ? 0 : 220, { kind: 'pool', color: PAL.holy1 }); }
+      while (f.drops < 3 && d >= 50 * (f.drops + 1)) { const k = 50 * ++f.drops; pools.push({ x: f.x + Math.cos(f.a) * k, y: f.y + Math.sin(f.a) * k * 0.8, r: 24 * (sb('font', 2) ? 1.3 : 1), t: 0 }); }
+    }
     // The holy fire a Penitent's dash leaves: foes on the line burn.
-    if (f.kind === 'trail' && (f.tick -= dt) <= 0) { f.tick = 0.3; const lx = f.x1 - f.x0, ly = f.y1 - f.y0, L2 = lx * lx + ly * ly || 1; for (const e of enemies) { if (e.dead || e.state === 'spawn') continue; const u = Math.max(0, Math.min(1, ((e.x - f.x0) * lx + (e.y - f.y0) * ly) / L2)); if (Math.hypot(e.x - f.x0 - lx * u, e.y - f.y0 - ly * u) < 10 + e.r) hurtEnemy(e, 5, false, 0, 0, 0, { status: true, color: PAL.ember1, kind: 'trail' }); } }
+    if (f.kind === 'trail' && (f.tick -= dt) <= 0) { f.tick = 0.3; const lx = f.x1 - f.x0, ly = f.y1 - f.y0, L2 = lx * lx + ly * ly || 1; for (const e of enemies) { if (e.dead || e.state === 'spawn') continue; const u = Math.max(0, Math.min(1, ((e.x - f.x0) * lx + (e.y - f.y0) * ly) / L2)); if (Math.hypot(e.x - f.x0 - lx * u, e.y - f.y0 - ly * u) < 10 + e.r) hurtEnemy(e, 5 * (f.k || 1), false, 0, 0, 0, { status: true, color: PAL.ember1, kind: 'trail' }); } }
     if (f.kind === 'choir' && !f.hit && f.t >= 0.55) { f.hit = true; game.shake = 6; game.flash = 0.08; sfx('elite', { vol: 0.5, rate: 1.5, gap: 0.2 }); for (const e of nearestFoes(f.x, f.y, 99, f.r)) { const dx = e.x - f.x, dy = e.y - f.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, f.dmg, true, dx / d, dy / d, 140); } }
   }
   skillFx = skillFx.filter((f) => f.t < f.max);
@@ -4816,6 +4952,11 @@ function onWoundCrit(e) {
 function onWoundDash() { const nv = wound('nova'); if (nv) skillFx.push({ kind: 'nova', x: player.x, y: player.y, t: 0, max: 0.3, r: 64 * WS, dmg: 10 + nv * 8, hits: new Set() }); }
 function drawSkillsGround() {
   for (const f of skillFx) {
+    if (f.kind === 'wave') { // a curling crest in the rite's colour
+      const k = Math.min(1, f.t / f.max), d = 160 * k, wx = f.x + Math.cos(f.a) * d, wy = f.y + Math.sin(f.a) * d * 0.8, R = riteFx().pool;
+      ctx.globalAlpha = 1 - k * 0.6; ctx.strokeStyle = PAL[R + '1']; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(wx, wy, 34, 22, f.a, -1.1, 1.1); ctx.stroke();
+      ctx.strokeStyle = PAL[R + '0']; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(wx + Math.cos(f.a) * 3, wy + Math.sin(f.a) * 3, 34, 22, f.a, -0.9, 0.9); ctx.stroke(); ctx.globalAlpha = 1;
+    }
     if (f.kind === 'trail') { // the Penitent's holy fire: a smouldering line
       const fade = Math.min(1, (f.max - f.t) / 0.5), n = Math.max(2, Math.round(Math.hypot(f.x1 - f.x0, f.y1 - f.y0) / 6));
       for (let k = 0; k <= n; k++) { const u = k / n, x = f.x0 + (f.x1 - f.x0) * u, y = f.y0 + (f.y1 - f.y0) * u, fl = Math.sin(game.real * 14 + k * 1.7) * 0.5 + 0.5; glow(x, y - 2, 7 + fl * 3, `rgba(255,122,31,${0.35 * fade})`); ctx.fillStyle = `rgba(255,192,74,${(0.5 + fl * 0.4) * fade})`; ctx.fillRect(Math.round(x) - 1, Math.round(y - 2 - fl * 4), 2, 2); }
@@ -4890,7 +5031,8 @@ function invLayout() {
   const auto = { x: bag.x, y: by, w: bw, h: 20 }, sell = { x: bag.x + bw + 6, y: by, w: bw, h: 20 };
   // Bulk-sell choices fill the card while open.
   const opts = [0, 1, 2, 3].map((i) => ({ x: card.x + 6, y: card.y + 40 + i * 36, w: card.w - 12, h: 22 }));
-  return { pw, ph, x0, y0, doll, slots, bag, card, close, btnA, btnB, auto, sell, opts };
+  const rites = { x: x0 + 196, y: y0 + 5, w: 62, h: 18 };
+  return { pw, ph, x0, y0, doll, slots, bag, card, close, btnA, btnB, auto, sell, opts, rites };
 }
 // Auto equip: for each slot, wear the best piece from the bag if it beats
 // what is worn. Pieces are compared by itemScore (every stat against its
@@ -4927,6 +5069,7 @@ function selItem() { const s = game.inv && game.inv.sel; if (!s) return null; re
 function invTap(x, y) {
   const L = invLayout();
   if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || x < 0 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { closeInventory(); return; }
+  if (inRect(L.rites, x, y)) { openRites('inv'); return; }
   if (game.inv.selling) {
     const i = L.opts.findIndex((r) => inRect(r, x, y));
     if (i >= 0) bulkSell(SELL_RULES[i]);
@@ -4975,6 +5118,7 @@ function renderInventory() {
   ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
   ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
   text('VESTMENTS AND GEAR', L.x0 + 12, L.y0 + 9, PAL.gold1);
+  invButton(L.rites, 'RITES', PAL.crimson3);
   const gold = game.scene === 'wound' ? game.run.gold : SAVE.gold || 0;
   sprC('loot', 'coin', 0, L.close.x - 64, L.y0 + 13); text(String(gold), L.close.x - 57, L.y0 + 9, PAL.gold1);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
@@ -5022,7 +5166,7 @@ function renderInventory() {
   // The card.
   const C = L.card;
   ctx.fillStyle = PAL.ink2; ctx.fillRect(C.x, C.y, C.w, C.h);
-  if (!it) { wrap('CHOOSE A PIECE TO READ IT. WORN GEAR IS SAFE IF YOU FALL; THE CHOIR TAKES HALF OF WHAT YOU CARRY.', Math.floor((C.w - 12) / 6)).forEach((l, i) => text(l, C.x + 6, C.y + 8 + i * 10, PAL.stone1, { small: true, outline: null })); return; }
+  if (!it) { wrap('CHOOSE A PIECE TO READ IT. WORN GEAR IS SAFE IF YOU FALL. THE CHOIR TAKES HALF OF WHAT YOU CARRY.', Math.floor((C.w - 12) / 6)).forEach((l, i) => text(l, C.x + 6, C.y + 8 + i * 10, PAL.stone1, { small: true, outline: null })); return; }
   const R0 = RARITY[it.ri];
   let y = C.y + 6;
   for (const l of wrap(it.name, Math.floor((C.w - 12) / 7))) { text(l, C.x + 6, y, R0.color); y += 12; }
@@ -5057,6 +5201,7 @@ function onTap(x, y) {
     case 'pause': {
       if (devOn() && inRect(devBtn(), x, y)) { openDev(); return true; }
       if (inRect(setBtn(), x, y)) { game.state = 'settings'; sfx('tap'); return true; }
+      if (inRect(ritesBtn(), x, y)) { openRites('pause'); return true; }
       // Five quick taps in the bottom-left corner turn the dev menu on.
       if (!devOn() && x < 70 && y > H - 40) { DEV.taps = game.real - DEV.tapT < 0.8 ? DEV.taps + 1 : 1; DEV.tapT = game.real; if (DEV.taps >= 5) { DEV.taps = 0; openDev(); } return true; }
       sfx('tap'); game.state = 'play'; return true;
@@ -5074,6 +5219,7 @@ function onTap(x, y) {
     case 'dev': devTap(x, y); return true;
     case 'settings': settingsTap(x, y); return true;
     case 'cells': cellsTap(x, y); return true;
+    case 'rites': ritesTap(x, y); return true;
     case 'map': sfx('tap'); game.state = 'play'; return true;
     case 'dialog': {
       const d = game.dialog;
@@ -5139,7 +5285,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { openRites, ritesTap, riteLayout, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>
