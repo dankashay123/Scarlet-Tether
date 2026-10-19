@@ -803,6 +803,43 @@ function ashAltar(i) {
   return outlineAll(fr);
 }
 
+// The Canonry's lectern: a stone pedestal with a gilt cross, a reading desk
+// and the open Book of Virtues, a candle burning beside it.
+function lectern(i) {
+  const W = 38, H = 56, S = new View(), G = groundY(H, 6);
+  S.add(slabBox(6, G - 4, 32, G, 6, 12, 'stoneB', 0.4), 0);
+  S.add(ashlar(slabBox(12, G - 28, 26, G - 4, 4, 7, 'stone', 0.5), { ch: 5, bw: 7, seed: 3, chip: 0.3 }), 0);
+  S.add(slabBox(18, G - 24, 20, G - 10, 4.6, 0.6, 'gold', 0.2), 0);
+  S.add(slabBox(15, G - 20, 23, G - 18, 4.6, 0.6, 'gold', 0.2), 0);
+  S.add(slabBox(5, G - 33, 33, G - 28, 5, 11, 'wood', 0.5), 0);
+  S.add(slabBox(6, G - 35, 32, G - 33, 4.6, 9.4, 'bannerR', 0.3), 0);
+  S.add(slabBox(7.5, G - 38, 18.6, G - 35, 4.2, 8.4, 'bone', 0.5), 0);
+  S.add(slabBox(19.4, G - 38, 30.5, G - 35, 4.2, 8.4, 'bone', 0.5), 0);
+  S.add(slabBox(18.5, G - 36, 19.5, G - 30, 4.9, 0.6, 'bannerR', 0.1), 0);
+  S.add(rod([33.5, G - 4, -2], [33.5, G - 26, -2], 1.1, 'iron'), 0.3);
+  S.add(rod([33.5, G - 26, -2], [33.5, G - 33, -2], 1.4, 'bone'), 0.3);
+  const fr = R(S, W, H, { ground: H - 1 });
+  for (let r = 0; r < 3; r++) { const y = Math.round(sy(G - 37 + r, 4.2)); pline(fr, 9, y, 16, y, 'bone3'); pline(fr, 21, y, 28, y, 'bone3'); }
+  flame(fr, 33.5, Math.round(sy(G - 33.5, -2)), 5 + (i % 2), 3, i * 1.9);
+  return outlineAll(fr);
+}
+
+// Martyrdom's stake: a charred post with a crossbar and iron chains, on a
+// heap of kindling ringed with stones, embers still alive at its foot.
+function stake(i) {
+  const W = 44, H = 66, S = new View(), G = groundY(H, 8);
+  for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2; S.add(lump([22 + Math.cos(a) * 15, G - 2, Math.sin(a) * 6], 2.6, k % 2 ? 'stoneC' : 'stoneB', k + 3, 0.6), 0.5); }
+  for (const [x0, z0, x1, z1] of [[9, 4, 33, -3], [11, -4, 35, 3], [14, 5, 28, -5], [16, -5, 31, 5]]) S.add(rod([x0, G - 4, z0], [x1, G - 7, z1], 1.7, 'woodB'), 0.4);
+  S.add(rod([22, G - 6, 0], [22, 6, 0], 2.4, 'timber'), 0.3);
+  S.add(rod([12, 15, 0], [32, 15, 0], 1.8, 'timber'), 0.3);
+  for (let k = 0; k < 4; k++) S.add(torusY([22, 26 + k * 3.2, 0], 3.4, 0.9, 'iron'), 0.2);
+  S.add(rod([25, 32, 1], [28, 40, 2], 0.7, 'iron'), 0.2);
+  const fr = R(S, W, H, { ground: H - 1 });
+  for (let k = 0; k < 7; k++) dot(fr, 12 + Math.floor(hash(k, i, 5) * 21), Math.round(sy(G - 5, 2)) + (k & 1), k % 3 ? 'ember2' : 'ember1');
+  flame(fr, 20 + (i % 3), Math.round(sy(G - 6, 4)), 4 + (i % 2) * 2, 5, i * 2.7);
+  return outlineAll(fr);
+}
+
 function noticeBoard() {
   const W = 39, H = 52, S = new View(), G = groundY(H, 2);
   for (const x of [5, 34]) S.add(rod([x, 4, 0], [x, G, 0], 1.6, 'timber'), 0);
@@ -1124,6 +1161,8 @@ export default {
     fence: () => [fence()],
     well: () => [well()],
     ashaltar: () => [0, 1, 2].map(ashAltar),
+    lectern: () => [0, 1, 2].map(lectern),
+    stake: () => [0, 1, 2].map(stake),
     board: () => [noticeBoard()],
     stocks: () => [stocks()],
     pool: () => [0, 1, 2].map(pool),

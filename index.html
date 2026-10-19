@@ -89,9 +89,24 @@ function resize() {
 function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 
 // ------------------------------------------------------------- assets ---
+// BUILD names this version. Raise it whenever a round ships: assets load
+// with it in their URL (so phones never keep stale sheets), and a running
+// game that finds a newer BUILD on the server reloads itself in Vael.
+const BUILD = '20.1';
+async function checkBuild() {
+  try {
+    const t = await (await fetch(`${location.pathname}?build=${Date.now()}`, { cache: 'no-store' })).text(), m = t.match(/const BUILD = '([^']+)'/);
+    if (!m || m[1] === BUILD) return;
+    if (typeof game !== 'undefined' && game.scene === 'wound') { game.newBuild = true; return; }
+    try { snapRun(); } catch { /* nothing to keep */ }
+    location.replace(`${location.pathname}?v=${m[1]}${location.search.replace(/^\?/, '&').replace(/&v=[^&]*/, '')}`);
+  } catch { /* offline: keep playing */ }
+}
+setTimeout(checkBuild, 4000);
+addEventListener('visibilitychange', () => { if (!document.hidden) checkBuild(); });
 let SPR, PAL, IMG = {}, WHITE = {}, TINT = {};
 async function loadAssets() {
-  SPR = await (await fetch('assets/sprites/sprites.json')).json();
+  SPR = await (await fetch(`assets/sprites/sprites.json?v=${BUILD}`)).json();
   PAL = SPR.palette;
   await Promise.all(Object.keys(SPR).filter((k) => k !== 'palette').map((name) => new Promise((ok, fail) => {
     const im = new Image();
@@ -110,7 +125,7 @@ async function loadAssets() {
       }
       ok();
     };
-    im.onerror = fail; im.src = `assets/sprites/${SPR[name].image}`;
+    im.onerror = fail; im.src = `assets/sprites/${SPR[name].image}?v=${BUILD}`;
   })));
 }
 
@@ -246,7 +261,7 @@ const AUDIO = (() => {
       A.sfxBus = A.ctx.createGain(); A.sfxBus.connect(A.master);
       A.musicBus = A.ctx.createGain(); A.musicBus.gain.value = 0.55; A.musicBus.connect(A.master);
       A.setVol();
-      for (const n of SFX) fetch(`assets/audio/${n}.mp3`).then((r) => r.arrayBuffer()).then((b) => new Promise((ok, no) => A.ctx.decodeAudioData(b, ok, no))).then((d) => { A.buf[n] = d; }).catch(() => {});
+      for (const n of SFX) fetch(`assets/audio/${n}.mp3?v=${BUILD}`).then((r) => r.arrayBuffer()).then((b) => new Promise((ok, no) => A.ctx.decodeAudioData(b, ok, no))).then((d) => { A.buf[n] = d; }).catch(() => {});
       // The dash whoosh is synthesised: a swept band of noise.
       const sr = A.ctx.sampleRate, len = Math.floor(sr * 0.22), wb = A.ctx.createBuffer(1, len, sr), ch = wb.getChannelData(0);
       let lp = 0; for (let i = 0; i < len; i++) { const t = i / len, k = 0.04 + 0.5 * t; lp += (Math.random() * 2 - 1 - lp) * k; ch[i] = lp * Math.sin(Math.PI * t) ** 1.5 * 1.8; }
@@ -1299,6 +1314,13 @@ const NPC_INFO = {
   odile: { name: 'SISTER ODILE', lines: () => SAVE.descents || SAVE.deaths
     ? [pick(["UP YOU GET. THE WOUND WON'T BLEED ITSELF.", "YOUR BED WAS STILL WARM WHEN I CHANGED THE SHEETS. THAT'S NEW.", "THE CHOIR SAYS YOU'RE DOING WONDERFULLY. THE CHOIR SAYS THAT EVERY YEAR."])]
     : ['AH. AWAKE AT LAST, SAINT.', "DON'T FRET IF YOU REMEMBER NOTHING. NONE OF YOU EVER DO.", 'THE WOUND WAITS BENEATH THE CATHEDRAL. THE VESTRY DOORS WILL TAKE YOU DOWN.', 'THE WHOLE CITY WILL BE WATCHING. TRY TO DIE INTERESTINGLY.'] },
+  cinder: { name: 'BROTHER CINDER', lines: () => [
+    'I KEEP THE ASHEN ALTAR. LAY A HALLOWED PIECE IN ITS BOWL AND THE FLAME MAY LEARN ITS POWER, FOR GOOD.',
+    `IT TAKES ONLY ${Math.round(ALTAR_WIN * 100)} IN A HUNDRED. THE REST IS ASH, AND YOUR GOLD WITH IT. EACH REFUSAL WARMS IT A LITTLE FOR THE NEXT.`,
+    ...((SAVE.altarPity || 0) ? [`IT REMEMBERS YOUR LAST ${SAVE.altarPity} OFFERING${SAVE.altarPity > 1 ? 'S' : ''}. +${Math.round(altarPity() * 100)} IN A HUNDRED, NEXT TIME.`] : []),
+    'CHRISM IS HOLY OIL. POUR IT ON AND THE FLAME LISTENS. A HALLOWED CHRISM NEVER FAILS.',
+    'PIECES THE ALTAR ALREADY KNOWS ARE NO USE TO IT. GRIND THREE AND I WILL PRESS YOU A CHRISM.',
+    'THE BLEEDING VIGIL PAYS IN CHRISM. THE DEEPER THE VIGIL, THE BETTER THE OIL.'] },
   hollis: { name: 'HOLLIS THE SMITH', lines: () => ["FORGE STAYS COLD TILL THE CHOIR PAYS ME.", 'BRING ME BONE DUST AND MARROW AND WE WILL TALK VESTMENTS.'] },
   pell: { name: 'BROTHER PELL', lines: () => ["GENUINE SAINT'S TOENAILS. THREE FOR A COPPER.", "DON'T LOOK AT YOUR FEET. WHY WOULD YOU LOOK AT YOUR FEET?"] },
   barkeep: { name: 'THE BOOKIE', lines: () => [`THE LAMB IS GIVING ${ODDS[(SAVE.descents || 0) % ODDS.length]} YOU DON'T COME BACK UP.`, 'I TOOK THE BET. AGAINST YOU. NOTHING PERSONAL.'] },
@@ -1472,7 +1494,9 @@ function makeTown() {
   for (const [x, y] of [[2270, base + 240], [2410, base + 240]]) st('bench', x, y);
   for (const x of [2140, 2540]) st('shrine_small', x, base + 250);
   for (let x = 2560; x < 3060; x += 120) { st('planter', x, base + 110 + (x % 3) * 30, { frame: (x / 120 | 0) % 2 }); st('pot', x + 50, base + 220); }
-  // The cathedral steps.
+  // The cathedral steps, Martyrdom's stake and the Canonry's lectern.
+  place('stake', 2244, base + 74, 2, { ph: 0 }); lights.push({ x: 2244, y: base + 64, r: 60, c: 'ember', a: 0.7, flick: 4 });
+  place('lectern', 2444, base + 48, 2, { ph: 0 }); lights.push({ x: 2444, y: base + 20, r: 50, c: 'gold', a: 0.6 });
   for (const x of [2197, 2483]) brazier(x, base + 34);
   for (let k = 0; k < 8; k++) { const x = 2262 + k * 16, y = base + 14 + (k % 2) * 4; room_candles.push({ x, y }); }
   lights.push({ x: 2340, y: base - 182, r: 91, c: 'violet', a: 0.8 }, { x: 2340, y: base - 39, r: 91, c: 'gold', a: 0.8 });
@@ -1485,6 +1509,7 @@ function makeTown() {
   person('town2', 'plushseller', 692, base + 34, { talk: 'plushseller' });
   person('town', 'barkeep', 879, base + 36, { talk: 'barkeep' });
   person('town', 'hollis', 1157, base + 31, { talk: 'hollis' });
+  person('town2', 'priest_walk', 1424, base + 108, { talk: 'cinder', face: -1, still: true });
   person('town2', 'beggar', 156, base + 91, { talk: 'beggar', bark: 'beggar' });
   person('town', 'crier', 650, base + 143, { talk: 'crier', walk: { x0: 468, x1: 832, speed: 18 } });
   // Walkers along the street, each with their own lane.
@@ -1492,7 +1517,7 @@ function makeTown() {
   for (let k = 0; k < 14; k++) { const [id, bark] = kinds[k % kinds.length]; const x0 = 78 + rng() * 2470, span = 195 + rng() * 390; person('town2', `${id}_walk`, x0 + rng() * span, base + 52 + rng() * 195, { walk: { x0, x1: Math.min(3055, x0 + span), speed: id === 'penitent' ? 10 : 14 + rng() * 10 }, bark, talk: id }); }
   // The crowd at the scrying pool.
   for (let k = 0; k < 6; k++) { const a = Math.PI * (0.15 + k * 0.14); person('town2', k % 2 ? 'peasant2_walk' : 'peasant_walk', 988 + Math.cos(a) * 73, base + 107 + Math.sin(a) * 34, { face: Math.cos(a) > 0 ? -1 : 1, bark: 'crowd', still: true }); }
-  // Children playing Saint and Bellwright round the well.
+  // Children playing Saint and Bellwright round the altar.
   person('town2', 'kid', 1378, base + 156, { circle: { cx: 1378, cy: base + 143, r: 44, a: 0, speed: 1.6 }, bark: 'kid' });
   person('town2', 'kid2', 1378, base + 156, { circle: { cx: 1378, cy: base + 143, r: 44, a: 1.2, speed: 1.6 }, bark: 'kid' });
   interact.push({ x: CATHEDRAL_X, y: baseB + 8, r: 36, label: 'DESCEND', icon: 'descend', door: true, use: () => startDescent() });
@@ -1532,9 +1557,9 @@ const SITES = [
   { id: 'pool', name: 'THE SCRYING POOL', badge: 'pool', x: 1060, dy: 110, what: 'WAGERS. BET YOUR GOLD ON HOW DEEP YOU GET. THE CROWD PAYS OUT.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
   { id: 'forge', name: 'THE EMBER FORGE', badge: 'forge', x: 1250, dy: 50, what: 'REFORGE A PIECE OF GEAR TO REROLL ONE STAT, OR TEMPER IT TO RAISE ITS RARITY.', need: 'SLAY THE WARDEN OF STATION II', prog: () => [(SAVE.cleared ?? -1) >= 1 ? 1 : 0, 1] },
   { id: 'altar', name: 'THE ASHEN ALTAR', badge: 'relic', x: 1378, dy: 140, lift: 34, what: 'BURN A HALLOWED PIECE TO LEARN ITS POWER FOREVER, THEN SET ONE LEARNED POWER EACH FOR VESTMENTS, ARMS AND RELICS.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
-  { id: 'cells', name: 'THE PENITENT CELLS', badge: 'lock', x: 1950, dy: 44, what: 'ONE TRIAL FOR EACH VESTMENT SET: NINETY SECONDS OF WAVES THAT TEST WHAT THE SET DOES. ABSOLVE A CELL TO HANG ITS BANNER.', need: 'WEAR ALL SIX PIECES OF ANY SET', prog: () => [Math.max(0, ...MAIN_SETS.map((id) => Math.min(6, (G && G.sets[id]) || 0))), 6] },
-  { id: 'martyr', name: 'MARTYRDOM', badge: 'saint', x: 2215, dy: 70, what: 'ONE LIFE. IF YOU FALL, EVERYTHING YOU CARRY IS LOST, BUT GOLD AND GEAR ARE DOUBLED.', need: 'FINISH 10 DESCENTS', prog: () => [SAVE.descents || 0, 10] },
-  { id: 'canonry', name: 'THE CANONRY', badge: 'relic', x: 2470, dy: 40, what: 'CANONIZATION. SPEND ASH FROM YOUR DEATHS ON PERMANENT VIRTUES: HEALTH, DAMAGE, LUCK.', need: 'FINISH ONE DESCENT', prog: () => [Math.min(1, SAVE.descents || 0), 1] },
+  { id: 'cells', name: 'THE PENITENT CELLS', badge: 'lock', x: 1664, dy: 30, lift: 30, what: 'ONE TRIAL FOR EACH VESTMENT SET: NINETY SECONDS OF WAVES THAT TEST WHAT THE SET DOES. ABSOLVE A CELL TO HANG ITS BANNER.', need: 'WEAR ALL SIX PIECES OF ANY SET', prog: () => [Math.max(0, ...MAIN_SETS.map((id) => Math.min(6, (G && G.sets[id]) || 0))), 6] },
+  { id: 'martyr', name: 'MARTYRDOM', badge: 'saint', x: 2244, dy: 76, lift: 40, what: 'ONE LIFE. IF YOU FALL, EVERYTHING YOU CARRY IS LOST, BUT GOLD AND GEAR ARE DOUBLED.', need: 'FINISH 10 DESCENTS', prog: () => [SAVE.descents || 0, 10] },
+  { id: 'canonry', name: 'THE CANONRY', badge: 'relic', x: 2444, dy: 50, lift: 30, what: 'CANONIZATION. SPEND ASH FROM YOUR DEATHS ON PERMANENT VIRTUES: HEALTH, DAMAGE, LUCK.', need: 'FINISH ONE DESCENT', prog: () => [Math.min(1, SAVE.descents || 0), 1] },
 ];
 for (const S of SITES) { S.row = townRow(S.x); S.x = townX(S.x); S.dy = townY(S.dy) + S.row * ROW_DY; }
 const siteDone = (s) => { const [a, b] = s.prog(); return a >= b; };
@@ -1559,8 +1584,8 @@ function featLayout() {
 }
 function featFrame(L, title, col = PAL.gold1) {
   ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 26);
   text(title, L.x0 + 12, L.y0 + 9, col);
   sprC('loot', 'coin', 0, L.close.x - 64, L.y0 + 13); text(String(SAVE.gold || 0), L.close.x - 57, L.y0 + 9, PAL.gold1);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
@@ -1613,7 +1638,8 @@ function shopStock() {
   return SAVE.shop.items;
 }
 function openShop() { shopStock(); game.shop = { sel: 0 }; game.state = 'shop'; sfx('tap'); }
-const shopRow = (L, i) => ({ x: L.list.x, y: L.list.y + 16 + i * 34, w: L.list.w, h: 30 });
+// Six rows sharing what height there is (short phones get slimmer rows).
+const shopRow = (L, i) => { const step = Math.min(34, Math.floor((L.y0 + L.ph - 10 - (L.list.y + 16)) / 6)); return { x: L.list.x, y: L.list.y + 16 + i * step, w: L.list.w, h: step - 3 }; };
 function renderShop() {
   const L = featLayout(), items = SAVE.shop.items, it = items[game.shop.sel];
   featFrame(L, "PELL'S CURIO STALL");
@@ -1622,10 +1648,11 @@ function renderShop() {
     const r = shopRow(L, i), sel = i === game.shop.sel;
     ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
     if (q.sold) { text('SOLD', r.x + r.w / 2, r.y + 11, PAL.stone2, { align: 'center' }); return; }
-    itemSlot({ x: r.x + 3, y: r.y + 2, w: 26, h: 26 }, q);
-    text(q.name.length > 22 ? q.name.slice(0, 21) + '.' : q.name, r.x + 34, r.y + 5, RARITY[q.ri].color, { small: true, outline: null });
-    text(`SANCTITY ${itemSanctity(q)}`, r.x + 34, r.y + 17, PAL.stone1, { small: true, outline: null });
-    text(String(q.price), r.x + r.w - 6, r.y + 11, (SAVE.gold || 0) >= q.price ? PAL.gold1 : PAL.blood0, { align: 'right' });
+    const sz = Math.min(26, r.h - 2), my = r.y + Math.round(r.h / 2);
+    itemSlot({ x: r.x + 3, y: r.y + Math.round((r.h - sz) / 2), w: sz, h: sz }, q);
+    text(fitText(q.name, r.w - sz - 60), r.x + sz + 8, my - 9, RARITY[q.ri].color, { small: true, outline: null });
+    text(`SANCTITY ${itemSanctity(q)}`, r.x + sz + 8, my + 2, PAL.stone1, { small: true, outline: null });
+    text(String(q.price), r.x + r.w - 6, my - 4, (SAVE.gold || 0) >= q.price ? PAL.gold1 : PAL.blood0, { align: 'right' });
   });
   if (it && !it.sold) {
     drawItemCard(it, L.card, SAVE.equip[it.slot]);
@@ -1652,16 +1679,16 @@ const forgeItems = () => [...SLOT_ORDER.map((sl) => SAVE.equip[sl]).filter(Boole
 const reforgeCost = (it) => Math.round(REFORGE_COST[it.ri] * (1 + (it.reforged || 0) * 0.5) * (1 + ((it.il || 1) - 1) * 0.3) / 5) * 5;
 const temperCost = (it) => Math.max(0, Math.round((stationSanctity(bestIl() - 1) - itemSanctity(it)) * TEMPER_K[it.ri] / 5) * 5);
 function openForge() { game.forge = { sel: 0, stat: 1 }; game.state = 'forge'; sfx('tap'); }
-const forgeCell = (L, i) => ({ x: L.list.x + (i % 8) * 31, y: L.list.y + 14 + Math.floor(i / 8) * 31, w: 27, h: 27 });
+const forgeCell = (L, i) => { const n = Math.max(4, Math.min(8, Math.floor((L.list.w + 4) / 31))); return { x: L.list.x + (i % n) * 31, y: L.list.y + 14 + Math.floor(i / n) * 31, w: 27, h: 27 }; };
 function renderForge() {
   const L = featLayout(), items = forgeItems(), F = game.forge, it = items[F.sel];
   featFrame(L, 'THE EMBER FORGE', PAL.ember1);
-  text('WORN FIRST, THEN THE BAG. TAP A PIECE, THEN A STAT.', L.list.x, L.list.y, PAL.stone2, { small: true, outline: null });
+  text(fitText('WORN FIRST, THEN THE BAG. TAP A PIECE, THEN A STAT.', L.list.w, 'TAP A PIECE, THEN A STAT.'), L.list.x, L.list.y, PAL.stone2, { small: true, outline: null });
   items.forEach((q, i) => { if (forgeCell(L, i).y < L.y0 + L.ph - 30) itemSlot(forgeCell(L, i), q, { sel: i === F.sel }); });
   if (!it) { text('NOTHING TO WORK ON.', L.card.x + 6, L.card.y + 8, PAL.stone1, { small: true, outline: null }); return; }
   const c = drawItemCard(it, L.card, null, F.stat);
   const rc = reforgeCost(it), tc = temperCost(it), canT = (it.il || 1) < bestIl();
-  text(F.stat > 0 ? 'REFORGE: THE MARKED STAT BECOMES ANOTHER.' : 'REFORGE: REROLL THE MARKED STAT.', L.card.x + 6, L.btnA.y - 22, PAL.stone1, { small: true, outline: null });
+  text(fitText(F.stat > 0 ? 'REFORGE: THE MARKED STAT BECOMES ANOTHER.' : 'REFORGE: REROLL THE MARKED STAT.', L.card.w - 10, F.stat > 0 ? 'REFORGE: A NEW STAT.' : 'REFORGE: REROLL IT.'), L.card.x + 6, L.btnA.y - 22, PAL.stone1, { small: true, outline: null });
   text(canT ? `TEMPER: RAISE IT TO STATION ${ROMAN[bestIl() - 1]}.` : 'TEMPER: AT YOUR BEST STATION.', L.card.x + 6, L.btnA.y - 12, PAL.stone1, { small: true, outline: null });
   invButton(L.btnA, `REFORGE ${rc}`, PAL.crimson3, (SAVE.gold || 0) >= rc);
   invButton(L.btnB, canT ? `TEMPER ${tc}` : 'TEMPERED', PAL.gold3, canT && (SAVE.gold || 0) >= tc);
@@ -1702,12 +1729,13 @@ function gainDevotion(n) {
   while (SAVE.devXp >= devNeed(SAVE.devLvl)) { SAVE.devXp -= devNeed(SAVE.devLvl); SAVE.devLvl++; SAVE.devPts = (SAVE.devPts || 0) + 1; if (player && game.scene === 'wound') nums.push({ x: player.x, y: player.y - 84, v: `DEVOTION ${SAVE.devLvl}`, t: 0, color: PAL.holy0, crit: true }); }
 }
 function openCanonry() { game.state = 'canonry'; sfx('tap'); }
-const virtueRow = (L, i) => ({ x: L.x0 + 14, y: L.y0 + 70 + i * 30, w: L.pw - 28, h: 26 });
+// One column when there is room, two on short phones.
+const virtueRow = (L, i) => { const two = L.y0 + 70 + 6 * 30 > L.y0 + L.ph - 8, w = two ? Math.floor((L.pw - 34) / 2) : L.pw - 28; return two ? { x: L.x0 + 14 + (i % 2) * (w + 6), y: L.y0 + 70 + Math.floor(i / 2) * 30, w, h: 26, two } : { x: L.x0 + 14, y: L.y0 + 70 + i * 30, w, h: 26 }; };
 function renderCanonry() {
   const L = featLayout();
   ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 26);
   text('THE CANONRY', L.x0 + 12, L.y0 + 9, PAL.holy1); sprC('ui', 'close', 0, L.close.x, L.close.y);
   const lv = SAVE.devLvl || 0, pts = SAVE.devPts || 0, need = devNeed(lv);
   text(`DEVOTION ${lv}`, L.x0 + 14, L.y0 + 34, PAL.gold1, { sc: 2 });
@@ -1718,9 +1746,9 @@ function renderCanonry() {
     const r = virtueRow(L, i), n = virtue(v.id), full = n >= v.max;
     ctx.fillStyle = PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
     text(v.name, r.x + 8, r.y + 4, PAL.gold1);
-    text(`+${+(n * v.per).toFixed(1)}${v.unit}`, r.x + 120, r.y + 4, PAL.cloth0);
-    text(`${n}/${v.max}`, r.x + r.w - 70, r.y + 4, PAL.stone1, { align: 'right' });
-    text(`+${v.per}${v.unit} A POINT`, r.x + 8, r.y + 15, PAL.stone2, { small: true, outline: null });
+    text(`${n}/${v.max}`, r.x + r.w - 62, r.y + 4, PAL.stone1, { align: 'right' });
+    if (r.two) text(fitText(`+${+(n * v.per).toFixed(1)}${v.unit} (+${v.per} A POINT)`, r.w - 74, `+${+(n * v.per).toFixed(1)}${v.unit} (+${v.per})`), r.x + 8, r.y + 15, PAL.cloth1, { small: true, outline: null });
+    else { text(`+${+(n * v.per).toFixed(1)}${v.unit}`, r.x + 120, r.y + 4, PAL.cloth0); text(`+${v.per}${v.unit} A POINT`, r.x + 8, r.y + 15, PAL.stone2, { small: true, outline: null }); }
     invButton({ x: r.x + r.w - 56, y: r.y + 3, w: 50, h: 20 }, full ? 'MAX' : '+1', PAL.holy3 || PAL.ink3, pts > 0 && !full);
   });
 }
@@ -1743,8 +1771,8 @@ const setOwned = (id) => [...Object.values(SAVE.equip || {}), ...(SAVE.bag || []
 function renderGift() {
   const L = featLayout();
   ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 26);
   text("ODILE'S GIFT", L.x0 + 12, L.y0 + 9, RARITY[4].color); sprC('ui', 'close', 0, L.close.x, L.close.y);
   wrapW('"CHOOSE YOUR VESTMENTS, CHILD. I SEWED TWO PIECES OF EACH." TWO PIECES YOU LACK, AT YOUR BEST STATION.', L.pw - 28).slice(0, 2).forEach((l, i) => text(l, L.x0 + 14, L.y0 + 34 + i * 10, PAL.cloth1, { small: true, outline: null }));
   MAIN_SETS.forEach((id, i) => {
@@ -1791,8 +1819,8 @@ function openCells() { game.state = 'cells'; sfx('tap'); }
 function renderCells() {
   const L = featLayout();
   ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 26);
   text('THE PENITENT CELLS', L.x0 + 12, L.y0 + 9, PAL.gold1); sprC('ui', 'close', 0, L.close.x, L.close.y);
   MAIN_SETS.forEach((id, i) => {
     const r = cellRow(L, i), C = CELLS[id], worn = sb(id, 6), done = cellDone(id);
@@ -1878,8 +1906,8 @@ function openRites(back) { game.ritesBack = back || game.state; game.state = 'ri
 // Small text that must fit a width: drop a leading THE, try a short form,
 // then trim letters.
 const SET_SHORT = { nails: 'NAILS', stride: 'STRIDE', font: 'FONT', confessor: 'CONFESSOR', choir: 'CHOIR', habit: 'HABIT' };
-function fitText(s, w, short) {
-  const fits = (t) => textW(t, 1, true) <= w;
+function fitText(s, w, short, small = true) {
+  const fits = (t) => textW(t, 1, small) <= w;
   if (fits(s)) return s;
   const t = s.replace(/^THE /, ''); if (fits(t)) return t;
   if (short && fits(short)) return short;
@@ -1895,8 +1923,8 @@ function riteSocket(x, y, r, icon, scale, ring, alpha = 1) {
 function renderRites() {
   const L = riteLayout(), small = { small: true, outline: null }, focus = game.riteFocus || 'm1';
   ctx.fillStyle = 'rgba(11,7,16,0.8)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 26);
   ctx.fillStyle = PAL.gold3; ctx.fillRect(L.x0, L.y0 + 26, L.pw, 1);
   text('RITES', L.x0 + 12, L.y0 + 9, PAL.gold1);
   text(fitText('CHOOSE ONE FOR EACH SLOT. EACH LEANS ON A VESTMENT SET.', L.pw - 100), L.x0 + 64, L.y0 + 10, PAL.stone1, small);
@@ -2000,8 +2028,8 @@ function openCenser(back) { game.censerBack = back || game.state; game.state = '
 function renderCenser() {
   const L = censerLayout(), small = { small: true, outline: null }, n = CENSER_UP.filter((u) => censerUp(u.id)).length;
   ctx.fillStyle = 'rgba(11,7,16,0.8)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26); ctx.fillStyle = PAL.gold3; ctx.fillRect(L.x0, L.y0 + 26, L.pw, 1);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 26); ctx.fillStyle = PAL.gold3; ctx.fillRect(L.x0, L.y0 + 26, L.pw, 1);
   text('THE CENSER', L.x0 + 12, L.y0 + 9, PAL.gold1);
   text(`${n} OF ${CENSER_UP.length} UPGRADES`, L.x0 + 98, L.y0 + 10, PAL.stone1, small);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
@@ -2033,15 +2061,16 @@ function renderCenser() {
     ctx.fillStyle = on ? PAL.ember1 : PAL.ink3; ctx.fillRect(r.x, r.y, 3, r.h);
     text(u.name, r.x + 8, r.y + 4, on ? PAL.gold1 : PAL.cloth1, small);
     text(on ? 'LIT' : `${have}/${u.need}`, r.x + r.w - 5, r.y + 4, on ? PAL.ember0 : PAL.stone1, { ...small, align: 'right' });
-    const nl = Math.max(1, Math.floor((r.h - 25) / 9));
-    wrapW(u.text, r.w - 14, true).slice(0, nl).forEach((l, j) => text(l, r.x + 8, r.y + 14 + j * 9, on ? PAL.cloth0 : PAL.stone1, small));
-    const by = r.y + r.h - 10, dw = textW(u.deed, 1, true);
-    text(u.deed, r.x + 8, by, on ? PAL.ember2 : PAL.stone2, small);
+    // Short rows keep two lines: what it does once lit, how to earn it before.
+    const short = r.h < 38, by = short ? r.y + r.h - 11 : r.y + r.h - 10, line = short && on ? fitText(u.text, r.w - 14) : u.deed, dw = textW(line, 1, true);
+    if (!short) wrapW(u.text, r.w - 14, true).slice(0, Math.max(1, Math.floor((r.h - 25) / 9))).forEach((l, j) => text(l, r.x + 8, r.y + 14 + j * 9, on ? PAL.cloth0 : PAL.stone1, small));
+    text(line, r.x + 8, by, short && on ? PAL.cloth0 : on ? PAL.ember2 : PAL.stone2, small);
     if (!on) { const bx = r.x + 14 + dw, bw = r.x + r.w - 6 - bx; if (bw > 8) { ctx.fillStyle = PAL.ink0; ctx.fillRect(bx, by + 1, bw, 3); ctx.fillStyle = PAL.ember1; ctx.fillRect(bx, by + 1, Math.round(bw * k), 3); } }
   });
 }
 function censerTap(x, y) {
   const L = censerLayout();
+  CENSER_UP.forEach((u, i) => { if (inRect(L.row(i), x, y)) { toast(`${u.name}: ${u.text}`, 2.6); game.toastColor = censerUp(u.id) ? PAL.ember0 : PAL.stone1; } });
   if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { game.state = game.censerBack || 'play'; sfx('tap'); }
 }
 // The censer's numbers after its upgrades (Wounds included).
@@ -2076,17 +2105,17 @@ function openBoard() { bounties(); game.state = 'board'; sfx('tap'); }
 function renderBoard() {
   const L = featLayout(), B = bounties(), il = bestIl();
   ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 26);
   text('THE BOUNTY BOARD', L.x0 + 12, L.y0 + 9, PAL.gold1); sprC('ui', 'close', 0, L.close.x, L.close.y);
   text(`EACH PAYS ${150 * il} GOLD, ${250 * il} DEVOTION AND A FINE PIECE OF GEAR`, L.x0 + 14, L.y0 + 30, PAL.stone1, { small: true, outline: null });
   B.list.forEach((b, i) => {
     const r = bountyRow(L, i), D = BOUNTIES[b.id], done = b.have >= b.need;
     ctx.fillStyle = PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
     text(D.text(b.need), r.x + 8, r.y + 5, b.claimed ? PAL.stone2 : done ? PAL.gold1 : PAL.cloth0);
-    const bw = r.w - 100; ctx.fillStyle = PAL.outline; ctx.fillRect(r.x + 7, r.y + 22, bw + 2, 7); ctx.fillStyle = PAL.ink3; ctx.fillRect(r.x + 8, r.y + 23, bw, 5);
+    const bw = r.w - 150; ctx.fillStyle = PAL.outline; ctx.fillRect(r.x + 7, r.y + 22, bw + 2, 7); ctx.fillStyle = PAL.ink3; ctx.fillRect(r.x + 8, r.y + 23, bw, 5);
     ctx.fillStyle = done ? PAL.gold1 : PAL.blood1; ctx.fillRect(r.x + 8, r.y + 23, Math.round(bw * b.have / b.need), 5);
-    text(`${b.have}/${b.need}`, r.x + bw + 14, r.y + 20, PAL.stone1, { small: true, outline: null });
+    text(`${b.have}/${b.need}`, r.x + bw + 14, r.y + 21, PAL.stone1, { small: true, outline: null });
     invButton({ x: r.x + r.w - 62, y: r.y + 9, w: 56, h: 20 }, b.claimed ? 'PAID' : 'CLAIM', PAL.gold3, done && !b.claimed);
   });
   const all = B.list.every((b) => b.claimed);
@@ -2138,7 +2167,7 @@ let askedResume = false;
 function renderResume() {
   const S = SAVE.suspend, pw = Math.min(360, W - 20), ph = 120, x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
   ctx.fillStyle = 'rgba(11,7,16,0.78)'; ctx.fillRect(0, 0, W, H);
-  gild(x0, y0, pw, ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(x0, y0, pw, ph);
+  panelFrame(x0, y0, pw, ph);
   text('A DESCENT WAS LEFT UNFINISHED', W / 2, y0 + 12, PAL.gold1, { align: 'center' });
   text(`${DIFF[S.diff].name}${S.stratum === 2 ? ', THE DROWNED NAVE' : ''}. ${S.kills} SLAIN, ${S.gold} GOLD.`, W / 2, y0 + 32, PAL.cloth1, { align: 'center', small: true });
   text('THE DEAD YOU LAID TO REST STAY AT REST.', W / 2, y0 + 46, PAL.stone2, { align: 'center', small: true });
@@ -2191,8 +2220,8 @@ const altarSock = (L, i) => ({ x: L.card.x, y: L.card.y + i * Math.floor(L.card.
 function renderAltar() {
   const L = featLayout(), A = altar(), list = altarFodder(), Gm = altarGeo(L), small = { small: true, outline: null }, C = chrisms();
   ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 26);
   text('THE ASHEN ALTAR', L.x0 + 12, L.y0 + 9, RARITY[3].color); sprC('ui', 'close', 0, L.close.x, L.close.y);
   const gold = SAVE.gold || 0; sprC('loot', 'coin', 0, L.close.x - 64, L.y0 + 13); text(String(gold), L.close.x - 57, L.y0 + 9, PAL.gold1);
   text(`POWERS LEARNED ${A.known.length}/${LEGENDS.length}`, L.list.x, L.y0 + 31, PAL.stone1, small);
@@ -2375,8 +2404,8 @@ function setLayout() {
 function renderSettings() {
   const L = setLayout();
   ctx.fillStyle = 'rgba(11,7,16,0.78)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 22); text('SETTINGS', L.x0 + 10, L.y0 + 7, PAL.gold1); sprC('ui', 'close', 0, L.close.x, L.close.y);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 22); text('SETTINGS', L.x0 + 10, L.y0 + 7, PAL.gold1); sprC('ui', 'close', 0, L.close.x, L.close.y);
   OPT_ROWS.forEach((r, i) => { const b = L.row(i); text(r.name, L.x0 + 14, b.y + 6, PAL.cloth0); invButton(b, `< ${r.show(opt(r.k))} >`, PAL.crimson3, true); });
 }
 function settingsTap(x, y) {
@@ -2499,8 +2528,8 @@ function devCells(L) {
 function renderDev() {
   const L = devLayout();
   ctx.fillStyle = 'rgba(11,7,16,0.8)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 22);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 22);
   text('DEV MENU', L.x0 + 10, L.y0 + 7, PAL.flame1); text(game.scene === 'wound' ? `IN A DESCENT: STATION ${ROMAN[(game.run && game.run.diff) || 0]}` : 'IN VAEL', L.x0 + 90, L.y0 + 8, PAL.stone2, { small: true, outline: null });
   sprC('ui', 'close', 0, L.close.x, L.close.y);
   DEV_TABS.forEach((t, i) => { const r = { x: L.x0 + 12 + i * L.tabW, y: L.tabY, w: L.tabW - 4, h: 20 }; invButton(r, t, i === DEV.tab ? PAL.gold3 : PAL.ink3, true); });
@@ -2545,8 +2574,8 @@ function vigilTap(x, y) {
 function renderVigil() {
   const L = descentLayout(), P = game.vigilPick, df = vigilDiff(P.L), need = stationSanctity(Math.min(14, Math.floor((P.L - 1) * 0.5)));
   ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 26);
   text('THE BLEEDING VIGIL', L.x0 + 12, L.y0 + 9, PAL.blood0);
   text('A TIMED DESCENT THAT NEVER ENDS', L.x0 + L.pw / 2 + 40, L.y0 + 9, PAL.cloth1, { align: 'center' });
   sprC('ui', 'close', 0, L.close.x, L.close.y);
@@ -2578,9 +2607,8 @@ function siteLayout() { const pw = Math.min(330, W - 16), ph = 172, x0 = Math.ro
 function renderSite() {
   const L = siteLayout(), S = game.site.s, done = siteDone(S), [a, b] = S.prog();
   ctx.fillStyle = 'rgba(11,7,16,0.7)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 28);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 28);
   badge(S.badge, L.x0 + 18, L.y0 + 14, true);
   text(S.name, L.x0 + 34, L.y0 + 9, PAL.gold1);
   let y = L.y0 + 38;
@@ -2728,6 +2756,7 @@ function drawNpc(n) {
 }
 
 function enterTown(wake = true) {
+  if (game.newBuild) { game.newBuild = false; setTimeout(checkBuild, 500); }
   useStratum(1);
   makeTown();
   if (game.run) game.run.wounds = {}; // Stigmata last only for the run
@@ -2849,9 +2878,8 @@ function descentTap(x, y) {
 function renderDescent() {
   const L = descentLayout(), D = game.descent, df = DIFF[D.i], open = diffOpen(D.i);
   ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 26);
   text('THE DESCENT', L.x0 + 12, L.y0 + 9, PAL.gold1);
   text('THE FIFTEEN STATIONS OF THE WOUND', L.x0 + L.pw / 2, L.y0 + 9, PAL.cloth1, { align: 'center' });
   const st2 = (D.stratum || 1) === 2, open2 = (SAVE.cleared ?? -1) >= 2;
@@ -4951,6 +4979,7 @@ function render() {
   if (game.state === 'resume') renderResume();
   if (game.state === 'map') renderTownMap();
   if (game.state === 'loading') renderLoading();
+  if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h); FRAME = null; }
   blit();
 }
 
@@ -5207,6 +5236,58 @@ function edge(rgb, a) {
 }
 
 // ----------------------------------------------------------------- HUD ---
+// ------------------------------------------------------------ windows ---
+// Every menu window: a drop shadow, an iron band with a gilt inner rule,
+// a faint diamond lattice behind the content, gilt corner brackets with
+// crimson gems, a crest on the bottom edge and studs on the sides.
+let LATTICE = null;
+function lattice() {
+  if (LATTICE) return LATTICE;
+  const c = document.createElement('canvas'); c.width = c.height = 16; const g = c.getContext('2d');
+  g.fillStyle = PAL.ink1; g.fillRect(0, 0, 16, 16); g.fillStyle = PAL.ink1h;
+  for (let k = 0; k < 8; k++) { g.fillRect(8 + k, k, 1, 1); g.fillRect(16 - k, 8 + k, 1, 1); g.fillRect(8 - k, 16 - k, 1, 1); g.fillRect(k, 8 - k, 1, 1); }
+  return (LATTICE = ctx.createPattern(c, 'repeat'));
+}
+function ornament(anim, x, y, fx = 1, fy = 1) {
+  const f = frameOf('ui', anim, 0); if (!f) return;
+  ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(fx, fy); ctx.drawImage(IMG.ui, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h); ctx.restore();
+}
+// Drawn inside the window's rect, so windows that fill the screen keep
+// their whole frame; content sits 6 px in.
+let FRAME = null;
+function panelFrame(x, y, w, h) {
+  FRAME = { x, y, w, h };
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(x + 4, y + 4, w, h);
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = PAL.ink3; ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+  ctx.fillStyle = PAL.ink4; ctx.fillRect(x + 1, y + 1, w - 2, 1); ctx.fillRect(x + 1, y + 1, 1, h - 2);
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(x + 1, y + h - 2, w - 2, 1); ctx.fillRect(x + w - 2, y + 1, 1, h - 2);
+  ctx.fillStyle = PAL.gold3; ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
+  ctx.fillStyle = PAL.gold1; ctx.fillRect(x + 3, y + 3, w - 6, 1); ctx.fillRect(x + 3, y + 3, 1, h - 6);
+  ctx.fillStyle = PAL.gold4; ctx.fillRect(x + 3, y + h - 4, w - 6, 1); ctx.fillRect(x + w - 4, y + 3, 1, h - 6);
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
+  ctx.fillStyle = lattice(); ctx.fillRect(x + 5, y + 5, w - 10, h - 10);
+  ctx.fillStyle = 'rgba(11,7,16,0.45)'; ctx.fillRect(x + 5, y + 5, w - 10, 2); ctx.fillRect(x + 5, y + 5, 2, h - 10);
+  frameOrnaments(x, y, w, h);
+}
+// Corners, crest and studs go on last so content never hides them.
+function frameOrnaments(x, y, w, h) {
+  const o = -2;
+  ornament('frame_corner', x + o, y + o); ornament('frame_corner', x + w - o, y + o, -1, 1);
+  ornament('frame_corner', x + o, y + h - o, 1, -1); ornament('frame_corner', x + w - o, y + h - o, -1, -1);
+  const cr = frameOf('ui', 'frame_crest', 0); ornament('frame_crest', x + w / 2 - cr.w / 2, y + h - cr.h + 3);
+  const st = frameOf('ui', 'frame_stud', 0); if (h > 80) for (const sx of [x - 3, x + w + 3 - st.w]) ornament('frame_stud', sx, y + h / 2 - st.h / 2);
+}
+// A window's title band: a raised plate with a gilt rule and end diamonds.
+function headerBar(x, y, w, h = 26) {
+  if (FRAME && FRAME.x === x && FRAME.y === y) { x += 5; y += 5; w -= 10; h -= 5; }
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = PAL.ink3; ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y + 2, w, 1);
+  ctx.fillStyle = 'rgba(11,7,16,0.35)'; ctx.fillRect(x, y + h - 4, w, 3);
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x, y + h, w, 1);
+  ctx.fillStyle = PAL.gold3; ctx.fillRect(x + 10, y + h - 1, w - 20, 1);
+  ctx.fillStyle = PAL.gold1; for (const dx of [x + 6, x + w - 7]) { ctx.fillRect(dx, y + h - 2, 1, 3); ctx.fillRect(dx - 1, y + h - 1, 3, 1); }
+}
 function gild(x, y, w, h) { // gilded pixel frame with bevel
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
   ctx.fillStyle = PAL.gold3; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
@@ -5314,14 +5395,14 @@ function renderMinimap() {
   return { mx, my, mw, mh };
 }
 // Named townsfolk on the map.
-const NPC_BADGE = { odile: 'npc', vane: 'relic', pell: 'market', plushseller: 'plush', barkeep: 'tavern', hollis: 'forge', beggar: 'npc', crier: 'npc' };
-const NPC_ROLE = { odile: 'SISTER ODILE, YOUR KEEPER', vane: 'ARCHDEACON VANE', pell: 'BROTHER PELL, CURIO SELLER', plushseller: 'THE PLUSH SELLER', barkeep: 'THE BOOKIE, WAGERS', hollis: 'HOLLIS THE SMITH', beggar: 'OLD BARNABY', crier: 'THE TOWN CRIER' };
+const NPC_BADGE = { cinder: 'relic', odile: 'npc', vane: 'relic', pell: 'market', plushseller: 'plush', barkeep: 'tavern', hollis: 'forge', beggar: 'npc', crier: 'npc' };
+const NPC_ROLE = { cinder: 'BROTHER CINDER, THE ALTAR', odile: 'SISTER ODILE, YOUR KEEPER', vane: 'ARCHDEACON VANE', pell: 'BROTHER PELL, CURIO SELLER', plushseller: 'THE PLUSH SELLER', barkeep: 'THE BOOKIE, WAGERS', hollis: 'HOLLIS THE SMITH', beggar: 'OLD BARNABY', crier: 'THE TOWN CRIER' };
 // The full town map: the whole street, every site and person, and a legend.
 // The whole explored Undercroft, scaled to fit, with every mark.
 function renderDungeonMap() {
   ctx.fillStyle = 'rgba(11,7,16,0.82)'; ctx.fillRect(0, 0, W, H);
   const pw = W - 24, ph = H - 24, x0 = 12, y0 = 12;
-  gild(x0, y0, pw, ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(x0, y0, pw, ph);
+  panelFrame(x0, y0, pw, ph);
   text(`${room.name}, ${curDiff().name}`, x0 + 10, y0 + 8, PAL.gold1);
   text('TAP ANYWHERE TO CLOSE', x0 + pw - 10, y0 + 8, PAL.stone2, { align: 'right', small: true, outline: null });
   const k = Math.max(1, Math.floor(Math.min((pw - 20) / room.w, (ph - 44) / room.h)));
@@ -5338,8 +5419,8 @@ function renderTownMap() {
   if (room.rooms) return renderDungeonMap();
   ctx.fillStyle = 'rgba(11,7,16,0.82)'; ctx.fillRect(0, 0, W, H);
   const pw = W - 24, x0 = 12, y0 = 10, ph = H - 20;
-  gild(x0, y0, pw, ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(x0, y0, pw, ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(x0, y0, pw, 24);
+  panelFrame(x0, y0, pw, ph);
+  headerBar(x0, y0, pw, 24);
   text('VAEL, CITY OF THE WOUND', x0 + 12, y0 + 8, PAL.gold1);
   text('TAP ANYWHERE TO CLOSE', x0 + pw - 12, y0 + 9, PAL.stone2, { align: 'right', small: true, outline: null });
   const srcY = room.top * TILE - 120, srcH = room.ph - srcY, k = Math.min((pw - 16) * 0.58 / room.pw, (ph - 46) / srcH), mx = x0 + 8, my = y0 + 34;
@@ -5481,8 +5562,7 @@ function renderTitle() {
 
 function renderDialog() {
   const d = game.dialog, x = 70, w = W - 140, h = 64, y = H - h - 12;
-  gild(x, y, w, h);
-  ctx.fillStyle = 'rgba(21,15,28,0.95)'; ctx.fillRect(x, y, w, h);
+  panelFrame(x, y, w, h);
   const npc = room.npcs.find((n) => (n.talk || n.npc) === d.id && Math.hypot(n.x - player.x, n.y - player.y) < 60) || room.npcs.find((n) => (n.talk || n.npc) === d.id);
   if (npc) { ctx.save(); ctx.beginPath(); ctx.rect(x + 4, y + 4, 34, h - 8); ctx.clip(); ctx.fillStyle = PAL.ink2; ctx.fillRect(x + 4, y + 4, 34, h - 8); ctx.translate(x + 21, y + h + 22); ctx.scale(2, 2); spr(npc.sheet || 'town', npc.npc, npc.npc.endsWith('_walk') ? 2 : Math.floor(game.real * 2), 0, 0); ctx.restore(); }
   text(d.name, x + 46, y + 6, PAL.gold1, { outline: null });
@@ -5638,8 +5718,7 @@ function renderStigmata() {
     const c = S.cards[i], R0 = WOUND_RARITY[c.r], rank = wound(c.id), lift = Math.round((1 - Math.min(1, S.t * 3 - i * 0.25)) * 30);
     if (lift >= 30) return;
     const y = r.y + Math.max(0, lift);
-    gild(r.x, y, r.w, r.h);
-    ctx.fillStyle = PAL.ink1; ctx.fillRect(r.x, y, r.w, r.h);
+    panelFrame(r.x, y, r.w, r.h);
     ctx.fillStyle = R0.col; ctx.globalAlpha = 0.18; ctx.fillRect(r.x, y, r.w, 64); ctx.globalAlpha = 1;
     ctx.fillStyle = R0.col; ctx.fillRect(r.x, y + 64, r.w, 1);
     if (c.r === 2) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(r.x + r.w / 2, y + 32, 40 + Math.sin(game.real * 4) * 4, 'rgba(255,209,85,0.25)'); ctx.restore(); }
@@ -5871,19 +5950,23 @@ function itemSlot(r, it, { ghost = null, sel = false } = {}) {
   } else if (ghost) sprC('loot', 'item', ICON_OF.indexOf(ghost), r.x + r.w / 2, r.y + r.h / 2, { alpha: 0.18 });
   if (sel) { ctx.strokeStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.lineWidth = 1; ctx.strokeRect(r.x - 1.5, r.y - 1.5, r.w + 3, r.h + 3); }
 }
+// A plate button: ink outline with cut corners, a gilt rim when it can be
+// pressed, a lit top edge and a shaded foot.
 function invButton(r, label, col, on = true) {
-  ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
-  ctx.fillStyle = on ? col : PAL.ink3; ctx.fillRect(r.x, r.y, r.w, r.h);
-  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(r.x, r.y, r.w, 2);
-  ctx.fillStyle = 'rgba(11,7,16,0.3)'; ctx.fillRect(r.x, r.y + r.h - 3, r.w, 3);
-  text(label, r.x + r.w / 2, r.y + 6, on ? PAL.white : PAL.stone2, { align: 'center' });
+  const { x, y, w, h } = r;
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 2, w + 2, h + 4); ctx.fillRect(x - 2, y - 1, w + 4, h + 2);
+  ctx.fillStyle = on ? PAL.gold3 : PAL.ink3; ctx.fillRect(x, y - 1, w, h + 2); ctx.fillRect(x - 1, y, w + 2, h);
+  ctx.fillStyle = on ? col : PAL.ink2; ctx.fillRect(x + 1, y, w - 2, h);
+  ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x + 1, y, w - 2, 2);
+  ctx.fillStyle = 'rgba(11,7,16,0.35)'; ctx.fillRect(x + 1, y + h - 3, w - 2, 3);
+  if (on) { ctx.fillStyle = PAL.gold1; ctx.fillRect(x, y - 1, w, 1); }
+  text(fitText(label, w - 6, null, false), x + w / 2, y + Math.round(h / 2) - 4, on ? PAL.white : PAL.stone2, { align: 'center' });
 }
 function renderInventory() {
   const L = invLayout(), it = selItem();
   ctx.fillStyle = 'rgba(11,7,16,0.72)'; ctx.fillRect(0, 0, W, H);
-  gild(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  headerBar(L.x0, L.y0, L.pw, 26);
   text('VESTMENTS AND GEAR', L.x0 + 12, L.y0 + 9, PAL.gold1);
   const gold = game.scene === 'wound' ? game.run.gold : SAVE.gold || 0;
   sprC('loot', 'coin', 0, L.close.x - 64, L.y0 + 13); text(String(gold), L.close.x - 57, L.y0 + 9, PAL.gold1);

@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-19, after round 19. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 20. Read this first, then `CLAUDE.md`.
 The history of every round is at the bottom; the sections above it describe
 the game as it is now.
 
@@ -113,6 +113,23 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## History by round
 
+- **Round 20 (framed menus, self-updating builds, landmarks):** every
+  menu window now uses `panelFrame` (an iron band with a gilt rule, a faint
+  diamond lattice, sculpted gilt corner brackets with crimson gems, a crest
+  on the bottom edge and side studs; `ui` `frame_corner`, `frame_crest`,
+  `frame_stud`) and `headerBar` (a raised title plate with a gilt rule).
+  The frame is drawn inside the window's rect, and the ornaments are
+  redrawn after the content. Buttons (`invButton`) got cut corners, a gilt
+  rim when pressable, and labels that fit. Short phones: shop rows share
+  the height, the Canonry goes two columns, Censer rows keep two lines (tap
+  a row for its full text), the Forge grid wraps to the list width.
+  Phones kept stale builds (the owner saw last round's altar), so `BUILD`
+  now versions every asset URL and `checkBuild()` reloads into a newer
+  build (in Vael; a run waits until the Saint is back in town). **Raise
+  `BUILD` every round.** Brother Cinder stands by the altar and explains
+  burning, pity, Chrism and grinding. New landmarks: Martyrdom's chained
+  stake and the Canonry's lectern (`town2` `stake`, `lectern`); the Cells'
+  badge moved onto the mausoleum door. Test: `tools/tests/menus.cjs`.
 - **Round 19 (altar extras, Vigil rewards):** every altar row shows its
   price and its odds with the chosen Chrism. Each failed burn adds 5% to
   the next until one succeeds (`ALTAR_PITY`, `SAVE.altarPity`). GRIND 3 TO

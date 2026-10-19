@@ -363,6 +363,39 @@ function web() {
 
 // ---------------------------------------------------------- HUD buttons ---
 // Pale discs with a lit rim and a bold ink glyph, like Otherworld Legends.
+// ------------------------------------------------------- window frames ---
+// Gilt ornaments for every menu window (drawn by panelFrame in index.html):
+// a corner bracket with a curl and a crimson gem (top-left; mirrored for the
+// others), a crest for the bottom edge and a stud for the sides.
+function frameCorner() {
+  const S = new Scene();
+  S.add(capsule([5, 4, 1], [24, 4, 1], 1.7, 1.2, 'gold'), 0);
+  S.add(capsule([4, 5, 1], [4, 24, 1], 1.7, 1.2, 'gold'), 0);
+  S.add(sphere([24.5, 4, 1], 1.9, 'gold'), 0.5); S.add(sphere([4, 24.5, 1], 1.9, 'gold'), 0.5);
+  S.add(torus([5.5, 5.5, 1.5], 3.8, 1.2, Math.PI / 2, 'gold'), 0.4);
+  S.add(sphere([5.5, 5.5, 2.4], 2.8, 'crimson'), 0.2);
+  const f = R(S, 28, 28, M, { contrast: 1.35 });
+  put(f, 4, 4, 'white');
+  return f;
+}
+function frameCrest() {
+  const S = new Scene();
+  S.add(ellipsoid([17, 7, 0], [9, 4.6, 2.2], 'gold'), 0);
+  S.add(capsule([3, 7, 0], [31, 7, 0], 1.3, 0.8, 'gold'), 0.8);
+  S.add(sphere([3, 7, 0.5], 1.7, 'gold'), 0.4); S.add(sphere([31, 7, 0.5], 1.7, 'gold'), 0.4);
+  S.add(sphere([17, 7, 2], 3, 'crimson'), 0.3);
+  const f = R(S, 34, 14, M, { contrast: 1.35 });
+  put(f, 16, 5, 'white');
+  return f;
+}
+function frameStud() {
+  const S = new Scene();
+  S.add(torus([6, 6, 0.5], 3.4, 1.2, Math.PI / 2, 'gold'), 0);
+  S.add(sphere([6, 6, 1.2], 2.2, 'crimson'), 0.3);
+  const f = R(S, 12, 12, M, { contrast: 1.35 });
+  put(f, 5, 5, 'white');
+  return f;
+}
 function button(size, glyph) {
   const S = new Scene(), r = size / 2 - 1.6, c = size / 2;
   S.add(ellipsoid([c, c, 0], [r, r, r * 0.32], 'cloth'), 0);
@@ -477,6 +510,7 @@ export default {
     gib: () => [0, 1, 2, 3].map((i) => gib(i, false)), wardenGib: () => [0, 1, 2, 3].map((i) => gib(i, true)),
   },
   ui: {
+    frame_corner: () => [frameCorner()], frame_crest: () => [frameCrest()], frame_stud: () => [frameStud()],
     dash: () => [button(50, GLYPH.dash)], flask: () => [button(40, GLYPH.flask)], chain: () => [button(40, GLYPH.chain)], penance: () => [button(44, GLYPH.penance)],
     ...Object.fromEntries(['wave', 'storm', 'step', 'shackle', 'censer', 'ward'].map((k) => [k, () => [button(40, GLYPH[k])]])),
     ...Object.fromEntries(['pillars', 'font', 'volley'].map((k) => [k, () => [button(44, GLYPH[k])]])),
