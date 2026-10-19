@@ -192,3 +192,11 @@ arms and its own rites, seeded crowds). Numbers live in `SETK` in
 
 After tuning each whole set clears about 10-15 kills a second in the test
 crowd (before: 5 to 16).
+
+## Round 28: four pieces
+
+Four pieces of any set add +25% damage and a smaller form of the set's
+six-piece damage (six pieces replace it): Nails +2% bolt damage per stack,
+Stride X2 for 3 S after a dash, Font pools X1.5, Confessor bound foes take
+30% more, Choir X1.1 in Reckoning (`SETK.*4`). In `setbal.cjs` the 4+2 mixes
+moved from 3.7-10 to 5-11 kills a second (no set: about 3.5; whole sets 8-15).

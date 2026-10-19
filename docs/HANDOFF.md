@@ -117,7 +117,8 @@ Desktop works with keys. 55–60 fps in dense crowds.
   Eight passives are earned by lifetime deeds (`stat`, `need`, `deed`;
   `passEarned`): Blood Tithe, Elite Hunter, Warden-Breaker, Holy Burst, Last
   Stand, Deft Feet (`perfWin`), Shrinekeeper, Relic Sense. Four pieces of
-  any set add +25% damage (`SETK.four`). `tools/tests/grind.cjs` works out
+  any set add +25% damage (`SETK.four`) and a smaller form of the set's
+  six-piece damage (`SETK.*4`; mixes went from 3.7-10 to 5-11 kills a second). `tools/tests/grind.cjs` works out
   the gear a full clear drops per Station: about 9-17 pieces a run, a
   Hallowed every 3-7 runs, and 620-890 runs (70-100 hours at 7 minutes) to
   finish one chosen six-piece set from drops alone (Odile's Gift, Vigil set
