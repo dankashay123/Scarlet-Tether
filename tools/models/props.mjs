@@ -367,6 +367,15 @@ const BADGE_GLYPH = {
   pool: (u, v) => { const d = Math.hypot(u, v * 1.8); return (d < 0.55 && d > 0.36) || (Math.abs(v + 0.02) < 0.05 && Math.abs(u) < 0.2); },
   saint: (u, v) => (Math.abs(Math.hypot(u / 1.6, v + 0.5) - 0.2) < 0.08) || Math.hypot(u, v + 0.12) < 0.2 || (v > 0.08 && v < 0.58 && Math.abs(u) < 0.1 + (v - 0.08) * 0.75),
 };
+// Vestment set badges (docs/SETS.md).
+Object.assign(BADGE_GLYPH, {
+  nails: (u, v) => [-0.32, 0, 0.32].some((x) => (Math.abs(u - x) < 0.08 && v > -0.38 && v < 0.5 - Math.abs(u - x) * 0) || (Math.abs(u - x) < 0.17 && Math.abs(v + 0.42) < 0.08)),
+  stride: (u, v) => (v > 0 && Math.hypot(u, v - 0.18) < 0.36) || (v <= 0 && v > -0.62 && Math.abs(u - Math.sin((v + 0.62) * 5) * 0.08) < (v + 0.62) * 0.58),
+  font: (u, v) => (v < 0.02 && v > -0.5 && Math.hypot(u / 1.3, v + 0.5) < 0.6 && Math.hypot(u / 1.3, v + 0.5) > 0.0 && v > -0.5 + 0.0 && Math.hypot(u / 1.3, v + 0.62) > 0.32 ? true : false) || (Math.abs(u) < 0.09 && v >= 0 && v < 0.4) || (Math.abs(v - 0.46) < 0.09 && Math.abs(u) < 0.34),
+  confessor: (u, v) => [[-0.34, 0.3], [0, 0], [0.34, -0.3]].some(([x, y]) => { const d = Math.hypot(u - x, (v - y) * 1.2); return d < 0.26 && d > 0.11; }),
+  choir: (u, v) => [-0.36, 0, 0.36].some((x) => (Math.abs(u - x) < 0.11 && v > 0 && v < 0.55) || Math.hypot((u - x) / 0.14, (v + 0.3) / 0.22) < 1),
+});
+const SET_BADGES = [['nails', 'crimson'], ['stride', 'ember'], ['font', 'holy'], ['confessor', 'slate'], ['choir', 'gold']];
 function badge(size, ramp, glyph) {
   const S = new Scene(), r = size / 2 - 1.2, c = size / 2;
   S.add(ellipsoid([c, c, 0], [r, r, r * 0.5], 'disc'), 0);
@@ -416,6 +425,7 @@ export default {
     dagger: () => [button(40, GLYPH.dagger)], pause: () => [button(28, GLYPH.pause)], talk: () => [button(50, GLYPH.talk)], descend: () => [button(50, GLYPH.descend)],
     lock: () => [button(50, BADGE_GLYPH.lock)], map: () => [button(26, BADGE_GLYPH.board)],
     badge: () => MAP_BADGES.map(([g, ramp]) => badge(15, ramp, g)), badgeBig: () => MAP_BADGES.map(([g, ramp]) => badge(21, ramp, g)),
+    ...Object.fromEntries(SET_BADGES.map(([g, ramp]) => [`set_${g}`, () => [badge(21, ramp, g)]])),
     ring: () => [ring()], knob: () => [button(32, GLYPH.knob)], bag: () => [button(26, GLYPH.bag)], close: () => [button(22, GLYPH.close)],
   },
 };

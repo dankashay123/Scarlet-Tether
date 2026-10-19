@@ -1,10 +1,9 @@
 // The Saint's animation set, sculpted (see base.mjs for the model).
-import { saintModel } from './base.mjs';
+import { saintModel, SKINS } from './base.mjs';
 
 const A = (f) => Object.assign(f, { ax: 22, ay: 62 });
-export default {
-  saint: {
-    idle: () => [0, 1, 2, 3].map((i) => A(saintModel({ bob: i >= 2 ? 1 : 0, halo: [0, -1, -1, 0][i], cape: [0, -1, -1, 0][i], blink: i === 3 }))),
+const anims = (skin) => ({
+    idle: () => [0, 1, 2, 3].map((i) => A(saintModel({ skin, bob: i >= 2 ? 1 : 0, halo: [0, -1, -1, 0][i], cape: [0, -1, -1, 0][i], blink: i === 3 }))),
     // An 8-frame walk: the planted foot slides back along the ground while
     // the other swings forward in an arc, knee bent; the body is lowest just
     // after each contact and highest as the legs pass.
@@ -14,12 +13,13 @@ export default {
       const b = leg(t + 0.5), f = leg(t);
       // Bob a whole chunky pixel (2 px) through contact and recoil; a 1 px bob
       // re-cuts the 2x2 blocks and the Saint shimmers.
-      return A(saintModel({ bob: i % 4 < 2 ? 2 : 0, legs: [b.x, f.x], lift: [b.up, f.up], bend: [b.bend, f.bend], cape: -4, lean: 1 }));
+      return A(saintModel({ skin, bob: i % 4 < 2 ? 2 : 0, legs: [b.x, f.x], lift: [b.up, f.up], bend: [b.bend, f.bend], cape: -4, lean: 1 }));
     }),
     dash: () => [
-      A(saintModel({ lean: 2, legs: -4, lift: [1, 0], cape: -6, halo: 1 })),
-      A(saintModel({ lean: 3, legs: -6, lift: [2, 1], cape: -9, halo: 2 })),
-      A(saintModel({ lean: 1.5, legs: -3, lift: [0, 1], cape: -5, halo: 1 })),
+      A(saintModel({ skin,  lean: 2, legs: -4, lift: [1, 0], cape: -6, halo: 1 })),
+      A(saintModel({ skin,  lean: 3, legs: -6, lift: [2, 1], cape: -9, halo: 2 })),
+      A(saintModel({ skin,  lean: 1.5, legs: -3, lift: [0, 1], cape: -5, halo: 1 })),
     ],
-  },
-};
+});
+// One sheet per vestment set skin: saint_nails, saint_font and so on.
+export default { saint: anims(null), ...Object.fromEntries(Object.keys(SKINS).map((k) => [`saint_${k}`, anims(k)])) };

@@ -1,7 +1,12 @@
 # Vestment sets
 
-Design for five main gear sets (round 12 plan; nothing built yet). Our own
-names throughout.
+Five main gear sets, built in round 12. Our own names throughout.
+
+In game: `VSETS`, `MAIN_SETS`, `sb(id, n)` (pieces worn), `setGuard()`
+(damage taken), `setFoeK()` (damage dealt by source), Odile's Gift
+(`openGift`). Skins: `SKINS` in `tools/models/base.mjs` make the sheets
+`saint_<set>` and `portrait_<set>`; `saintSheet()` picks one at 4 pieces.
+Set icons: `ui` `set_<set>`. Test: `tools/tests/sets.cjs`.
 
 ## What we take from Diablo 3
 
@@ -34,7 +39,7 @@ names throughout.
 - **Odile's Gift:** the first time you slay the Wardens of III, VI and IX,
   Sister Odile gives you 2 pieces of a set of your choice (6 in all, so one
   full set).
-- **Penitent Cells** (later): one small fixed trial room per set, opened
+- **Penitent Cells** (not built yet): one small fixed trial room per set, opened
   by wearing the full set. Clearing it hangs a banner in the Cathedral.
 - Today's 4-piece "Odile's" set stays as the **starter set, Odile's
   Habit** (drops from Station I; 2: +10% damage, 4: +1 dash charge and
@@ -123,16 +128,22 @@ Play: build Zeal fast, then hold Reckoning as long as the killing lasts.
   in its own skill, and about half a Station elsewhere.
 - Numbers are first guesses; tune from play with the descent knobs.
 
-## Build notes
+## How it is built
 
-- `rollItem`: rarity `set` picks a set id and one of its 6 slots;
-  `it.set` holds the set id instead of `true`.
-- `gearStats`: count pieces per set (`g.sets[id]`), apply the Lesser Vow,
-  then each set's hooks (flags read by the crossbow, dash, vial, chain and
-  Reckoning code).
-- Inventory card: list the set's bonuses and grey the ones not yet active.
-- Sprites: 5 robe recolours of the Saint (palette ramp swap, as with the
-  Drowned Nave) plus one small sculpted detail each, and 5 set icons.
+- `rollItem` and the curio stall: rarity `set` picks a set (Odile's Habit
+  below Station IV) and one of its slots; `it.set` holds the set id (old
+  saves' `true` becomes `habit`). 35% of Hallowed seals are the Lesser Vow.
+- `gearStats` counts pieces per set (`g.sets`), adds the Vow and picks
+  `g.skin`. The crossbow, dash, vial, chain and Reckoning code read
+  `sb(id, n)`.
+- Item cards list the set's bonuses, lit when active. The HUD shows NAILS,
+  STRIDE or IN THE FONT under the portrait.
+- Skins are sculpted, not recoloured sheets: each set swaps the Saint's
+  cloth materials and adds a detail (Nails: gilt crown, iron mantle,
+  quiver; Stride: cream cape, smouldering soles and hem; Font: deep blue
+  robes, silver trim, glowing vial; Confessor: slate robes, cream hood, a
+  chain from the fist; Choir: white mantle, crown of lit candles). The
+  crowned skins drop the halo.
 
 Research sources:
 [PCGamesN, new class sets](https://www.pcgamesn.com/diablo-iii/new-class-sets),

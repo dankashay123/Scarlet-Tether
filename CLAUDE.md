@@ -23,7 +23,7 @@ owner's preferences and a prioritised list of ideas to tackle next.
 | `docs/GDD.md` | Design bible (source of truth) + the v5 art spec |
 | `docs/COMBAT.md` | Rooms, 30 monsters, affixes, loot, town layout |
 | `docs/ROADMAP.md` | Vertical-slice checklist |
-| `docs/SETS.md` | The five vestment sets (design, not built yet) |
+| `docs/SETS.md` | The five vestment sets: design and how they are built |
 
 ## Commands
 
@@ -47,6 +47,7 @@ node tools/tests/rites.cjs [secs]     # both rites at once in a crowd, plus inje
 node tools/tests/wardens.cjs <outDir> # summons each of the five Wardens and photographs it mid-fight
 node tools/tests/vigil.cjs <outDir>   # density by Station, the Bleeding Vigil, the Reliquary, Judgement, omens
 node tools/tests/town2.cjs <outDir>   # Pell's stall, the Ember Forge, the Canonry (Devotion)
+node tools/tests/sets.cjs <outDir>    # vestment sets: Odile's Gift, each skin and set card, each set's bonuses in a fight
 node tools/tests/stratum.cjs <outDir> # Stratum II: panel button, a Drowned Nave run, both of its Wardens
 node tools/tests/err.cjs              # prints page errors and state
 node tools/sprites.mjs --audit        # lists any animation still drawn by the old hand-drawn code
@@ -72,6 +73,7 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **Floor tiles:** stay 16 px (`TILE`). Back walls are 3 tiles tall plus a cap: `hall.wall` = [top, cap, upper, lower, mid].
 - **Shipping:** work on a branch, then push to `master`. The owner asked for every finished round to go to master; GitHub Pages deploys from it. End commits with the attribution lines the session asks for.
 - **Names:** never borrow names or terms from other games (the owner removed all Blasphemous and Diablo terms for copyright). Our terms: Zeal (resource), Reckoning (ultimate), Rites (skills), the Fifteen Stations (difficulty, I–XV, in bands Pilgrim/Zealot/Martyr/Saint), the Toll (progress bar), the Warden (the Station boss; five of them), Sanctity (gear power from item level), the Bleeding Vigil (timed endless trial), knells (Toll orbs), omens (map curses), the Weeping Reliquary (an event), Hallowed (top rarity), Vigil Trials (endless mode), health orbs, Carnage bonus, Devotion (account level) and its Virtues (spent at the Canonry), reforge and temper (the Ember Forge), Pell's curio stall, the vestment sets (the Hundred Nails, the Penitent's Stride, the Drowned Font, the Last Confessor, the Burning Choir, Odile's Habit, the Lesser Vow, Odile's Gift, Penitent Cells), Stratum II the Drowned Nave (Silt Wretch, Nave Eel, Tide Cantor, the Tide-Bishop, the Drowned Organist).
+- **Saint skins:** `SKINS` in `tools/models/base.mjs` (materials + one detail per set) build `saint_<set>` and `portrait_<set>`; `saintSheet()` in `index.html` picks one at 4 set pieces. Draw the Saint through `saintSheet()`, never `'saint'` directly.
 - **Strata:** `STRATA` and `useStratum(k)` swap the dungeon sheets for the `_d` copies (built by the `DROWN` ramp remap in `tools/sprites.mjs`). Give a monster `stratum: 2` to put it in Stratum II's pools.
 - **Descent maps:** 11–12 rooms grown at random on a 4×4 grid (`GRID`), packed by `populate()`; no gates or waves. Balance numbers live in `DIFF` (Stations), `TOLL_VALUE`, `WARDEN` and `itemSanctity`.
 - **Layouts:** dungeon rooms follow the Otherworld Legends recipe in `docs/ART_COMPARISON.md`: open floors, one mirrored plan per room, a mirrored back-wall rhythm, clutter in corners, nothing floating. Review with `tools/tests/rooms.cjs`.

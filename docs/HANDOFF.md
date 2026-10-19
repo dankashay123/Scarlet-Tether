@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-19, after round 11. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 12. Read this first, then `CLAUDE.md`.
 
 **Every reply that completes a prompt ends with two lists: what was done,
 and 5 suggestions for what to do next.** (The owner's standing request;
@@ -102,6 +102,14 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   - **Omens:** at the cathedral doors take one or two random omens (more
     monsters, more health, more damage, more curses, faster monsters);
     each pays +40% gold, +30% gear and rarer gear (`OMENS`, `applyOmens`).
+- **Vestment sets** (round 12, `docs/SETS.md`): five 6-piece sets with 2/4/6
+  bonuses built around one skill each (the Hundred Nails: crossbow; the
+  Penitent's Stride: dash; the Drowned Font: holy water; the Last
+  Confessor: chain; the Burning Choir: Reckoning). At 4 pieces the Saint
+  and the HUD portrait wear the set's sculpted skin. Odile's Habit is the
+  4-piece starter set (below Station IV). The Lesser Vow (a Hallowed seal)
+  counts one extra piece. Odile's Gift: after the Wardens of III, VI and
+  IX, talk to Sister Odile for two pieces of a set you choose.
 - **Stratum II, the Drowned Nave** (round 11): after the Warden of III the
   descent panel shows a STRATUM button. The Nave is a flooded look
   (`STRATA`, `useStratum`): its sheets (`hall_d`, `floor_d`, `walldecor_d`,
@@ -192,10 +200,10 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
    faces losing eyes, rough item icons, bolder effects for big pixels.
 5. **Juice.** Hit-flash tuning, bigger crit numbers, coin fountains on elite
    and Warden deaths, a short slow-mo when a Warden falls, footstep dust.
-6. **Build the five vestment sets** designed in `docs/SETS.md` (the
-   Hundred Nails, the Penitent's Stride, the Drowned Font, the Last
-   Confessor, the Burning Choir; 2/4/6-piece bonuses, the Lesser Vow,
-   Odile's Gift). Then Warden trophies in town.
+6. **Penitent Cells and set tuning.** One small trial room per set,
+   opened by wearing it; tune the 6-piece multipliers from play; set
+   effects on the crossbow bolts (gold nails, blue water bolts); Warden
+   trophies in town.
 7. **Phone polish.** Haptics, safe-area insets, a settings panel (music/SFX
    volume, screen shake, left-handed controls), save export/import.
 8. **Suspend and resume.** Save a run mid-map so a closed tab returns to it.
@@ -205,6 +213,9 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 12:** the five vestment sets in game: drops, 2/4/6 bonuses, set
+  cards, set icons, a sculpted Saint skin and HUD portrait per set, the
+  Lesser Vow, Odile's Gift. New test: `tools/tests/sets.cjs`.
 - **Round 11:** Pell's curio stall, the Ember Forge (reforge, temper), the
   Canonry with Devotion and Virtues, and Stratum II (the Drowned Nave:
   recoloured sheets, Silt Wretch, Nave Eel, Tide Cantor, the Tide-Bishop
