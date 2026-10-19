@@ -92,9 +92,10 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '21.1';
+const BUILD = '22.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '22.1': ['EVERY HALLOWED PIECE NOW HAS ITS OWN ICON, IN THE BAG, THE ALTAR AND ON THE GROUND.', "THE ALTAR'S LIST SHOWS EACH PIECE'S ICON BESIDE ITS NAME."],
   '21.1': ["THE ALTAR'S MEMORY: TAP A SOCKET TO SEE EVERY POWER IT CAN HOLD, THEN SET ONE.",
     'THE FORGE, THE CANONRY AND THE VIGIL HAVE FRAMES OF THEIR OWN: IRON, SILVER AND CRIMSON.',
     'A WAYMARK NOW STANDS AT THE PILGRIM ROAD.',
@@ -2250,8 +2251,9 @@ function renderAltar() {
     ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
     ctx.fillStyle = known ? PAL.ink3 : RARITY[3].color; ctx.fillRect(r.x, r.y, 3, r.h);
     if (sel) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 2; ctx.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2); }
-    text(it.name, r.x + 8, r.y + 4, known ? PAL.stone1 : RARITY[3].color, small);
-    text(`${SLOT_NAME[it.slot] || it.slot.toUpperCase()}, STATION ${ROMAN[(it.il || 1) - 1] || it.il}`, r.x + 8, r.y + 14, PAL.stone2, small);
+    itemIcon(it, r.x + 14, r.y + r.h / 2, { alpha: known ? 0.45 : 1 });
+    text(fitText(it.name, r.w - 74), r.x + 28, r.y + 4, known ? PAL.stone1 : RARITY[3].color, small);
+    text(`${SLOT_NAME[it.slot] || it.slot.toUpperCase()}, STATION ${ROMAN[(it.il || 1) - 1] || it.il}`, r.x + 28, r.y + 14, PAL.stone2, small);
     if (known) text('LEARNED', r.x + r.w - 6, r.y + 9, PAL.stone2, { ...small, align: 'right' });
     else {
       const ch = burnChance(C[game.altarChrism] > 0 ? game.altarChrism : -1);
@@ -2273,7 +2275,7 @@ function renderAltar() {
     text(`${known}/${all}`, b.x + b.w - 76, b.y + 5, PAL.stone2, { ...small, align: 'right' });
     invButton({ x: b.x + b.w - 70, y: b.y + 2, w: 66, h: 16 }, 'CHOOSE', PAL.crimson3, known > 0);
     const cy = b.y + 20, sz = Math.min(26, b.h - 24);
-    itemSlot({ x: b.x + 8, y: cy, w: sz, h: sz }, Lg ? { slot: Lg.slot, ri: 3 } : null, { ghost: slots[0] });
+    itemSlot({ x: b.x + 8, y: cy, w: sz, h: sz }, Lg ? { slot: Lg.slot, ri: 3, power: Lg.id } : null, { ghost: slots[0] });
     text(fitText(Lg ? Lg.name : 'EMPTY', b.w - sz - 22), b.x + sz + 14, cy + 1, Lg ? RARITY[3].color : PAL.stone2, small);
     if (P) wrapW(P.text, b.w - sz - 22, true).slice(0, Math.max(1, Math.floor((b.h - 34) / 9))).forEach((l, j) => text(l, b.x + sz + 14, cy + 11 + j * 9, PAL.ember1, small));
   });
@@ -2311,8 +2313,8 @@ function renderAltarPick() {
     ctx.fillStyle = on ? PAL.ink3 : PAL.ink1; ctx.fillRect(r.x, r.y, r.w, r.h);
     if (on) { ctx.globalAlpha = 0.2; ctx.fillStyle = RARITY[3].color; ctx.fillRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2); ctx.globalAlpha = 1; ctx.strokeStyle = RARITY[3].color; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1); }
     ctx.fillStyle = 'rgba(11,7,16,0.4)'; ctx.fillRect(r.x, r.y + r.h - 3, r.w, 3);
-    const ic = G.named ? r.h : r.w, k = ic >= 32 ? 1.5 : 1;
-    ctx.save(); ctx.translate(Math.round(r.x + ic / 2), Math.round(r.y + r.h / 2)); ctx.scale(k, k); sprC('loot', 'item', ICON_OF.indexOf(L.slot), 0, 0, { alpha: on ? 1 : 0.22 }); ctx.restore();
+    const ic = G.named ? r.h : r.w, k = Math.min(r.h, r.w) >= 38 ? 1.5 : 1;
+    ctx.save(); ctx.translate(Math.round(r.x + ic / 2), Math.round(r.y + r.h / 2)); ctx.scale(k, k); itemIcon({ slot: L.slot, power: L.id }, 0, 0, { alpha: on ? 1 : 0.22 }); ctx.restore();
     if (G.named) { const ws = wrapW(L.name.replace(/^THE /, ''), r.w - ic - 8, true).slice(0, 2), ty = r.y + Math.round(r.h / 2) - ws.length * 5 + 1; ws.forEach((l, j) => text(fitText(l, r.w - ic - 8), r.x + ic + 3, ty + j * 10, on ? RARITY[3].color : PAL.stone2, small)); }
     if (!on) mapIcon('lock', r.x + ic - 8, r.y + r.h - 9, PAL.stone2);
     if (inSock) { ctx.fillStyle = PAL.outline; ctx.fillRect(r.x + r.w - 8, r.y + 1, 7, 7); ctx.fillStyle = PAL.crimson1; ctx.fillRect(r.x + r.w - 7, r.y + 2, 5, 5); ctx.fillStyle = PAL.crimson0; ctx.fillRect(r.x + r.w - 7, r.y + 2, 2, 2); }
@@ -4188,8 +4190,7 @@ function drawDrops() {
     if (d.kind === 'vkey') sprC('loot', 'vkey', 0, d.x, y - 9);
     if (d.kind === 'knell') { const kx = Math.round(d.x), ky = Math.round(y - 6); ctx.fillStyle = PAL.outline; ctx.fillRect(kx - 4, ky - 5, 8, 9); ctx.fillStyle = PAL.gold1; ctx.fillRect(kx - 3, ky - 4, 6, 6); ctx.fillStyle = PAL.gold0; ctx.fillRect(kx - 2, ky - 4, 2, 4); ctx.fillStyle = PAL.gold3; ctx.fillRect(kx - 1, ky + 2, 2, 2); }
     if (d.kind === 'item') {
-      const ic = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic'].indexOf(d.item.slot);
-      sprC('loot', 'item', ic, d.x, y - 10);
+      itemIcon(d.item, d.x, y - 10);
     }
   }
 }
@@ -5961,6 +5962,8 @@ function renderXpBar() {
 // Paper doll with eight slots on the left, the bag in the middle, and the
 // chosen item's card on the right. The game is paused while it is open.
 const ICON_OF = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic', 'bow', 'quiver'];
+// A piece's icon: each Hallowed piece has its own (loot 'legend', in LEGENDS order), the rest share their slot's.
+function itemIcon(it, x, y, o) { const li = it && it.power ? LEGENDS.findIndex((L) => L.id === it.power) : -1; if (li >= 0) sprC('loot', 'legend', li, x, y, o); else sprC('loot', 'item', ICON_OF.indexOf(it.slot), x, y, o); }
 function openInventory() { game.state = 'inv'; game.inv = { sel: null }; SAVE.bag.sort((a, b) => b.ri - a.ri || ICON_OF.indexOf(a.slot) - ICON_OF.indexOf(b.slot)); sfx('tap'); }
 function closeInventory() { for (const it of SAVE.bag) it.isNew = false; persist(); game.state = 'play'; game.inv = null; sfx('tap'); }
 function invLayout() {
@@ -6049,7 +6052,7 @@ function itemSlot(r, it, { ghost = null, sel = false } = {}) {
     const col = RARITY[it.ri].color;
     ctx.strokeStyle = col; ctx.globalAlpha = it.ri ? 0.9 : 0.35; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1); ctx.globalAlpha = 1;
     if (it.ri >= 2) { ctx.globalAlpha = 0.18; ctx.fillStyle = col; ctx.fillRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2); ctx.globalAlpha = 1; }
-    sprC('loot', 'item', ICON_OF.indexOf(it.slot), r.x + r.w / 2, r.y + r.h / 2);
+    itemIcon(it, r.x + r.w / 2, r.y + r.h / 2);
     if (it.isNew) { ctx.fillStyle = PAL.outline; ctx.fillRect(r.x + r.w - 6, r.y + 1, 5, 5); ctx.fillStyle = PAL.gold0; ctx.fillRect(r.x + r.w - 5, r.y + 2, 3, 3); }
   } else if (ghost) sprC('loot', 'item', ICON_OF.indexOf(ghost), r.x + r.w / 2, r.y + r.h / 2, { alpha: 0.18 });
   if (sel) { ctx.strokeStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.lineWidth = 1; ctx.strokeRect(r.x - 1.5, r.y - 1.5, r.w + 3, r.h + 3); }
@@ -6101,7 +6104,7 @@ function renderInventory() {
   text(`SANCTITY ${playerSanctity()}`, D.x + 64, sy, PAL.gold1, { small: true, outline: null });
   if (!lines.length) text('NOTHING WORN', D.x, sy + 10, PAL.stone2, { small: true, outline: null });
   lines.slice(0, 12).forEach((l, i) => text(l, D.x + (i % 2) * 96, sy + 10 + Math.floor(i / 2) * 9, PAL.cloth1, { small: true, outline: null }));
-  let py = sy + 12 + Math.ceil(Math.min(12, lines.length) / 2) * 9;
+  let py = sy + 12 + Math.max(1, Math.ceil(Math.min(12, lines.length) / 2)) * 9;
   for (const l of setL) { if (py < L.rites.y - 6) text(l, D.x, py - 2, RARITY[4].color, { small: true, outline: null }); py += 9; }
   for (const t of pw) for (const l of wrap(t, 30)) { if (py < L.rites.y - 8) text(l, D.x, py, PAL.ember1, { small: true, outline: null }); py += 9; }
   // The rites button, bottom left, with the three chosen rites beside it.

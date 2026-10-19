@@ -181,75 +181,171 @@ function scourge(i) {
 // ------------------------------------------------------------ item icons ---
 // 24x24, three-quarter view, outlined, lit from the top-left.
 function icon(fn, size = 24) { const S = new Scene(); fn(S); return render(S, size, size, MATS, { contrast: 1.35 }); }
-const ICONS = {
+// Slot icons: a body (the sculpt) and an optional post pass (hand-placed pixels).
+const BODY = {
   // The crossbow, aimed up-right: wood stock, gilt prod, iron nail.
-  bow: () => { const f = icon((S) => {
+  bow: (S) => {
     S.add(capsule([4.5, 19.5, 2], [17.5, 6.5, 2], 1.7, 1.4, 'wood'), 0);
     S.add(capsule([4, 20, 2], [6.5, 21.5, 2], 2.2, 2.2, 'wood'), 1);
     S.add(capsule([17.5, 6.5, 2.5], [11.5, 3, 2.5], 1.4, 0.9, 'gold'), 0.8);
     S.add(capsule([17.5, 6.5, 2.5], [21, 12.5, 2.5], 1.4, 0.9, 'gold'), 0.8);
     S.add(capsule([9, 15, 3.6], [20, 4, 3.6], 0.6, 0.6, 'iron'), 0);
-  }); pline(f, 11.5, 3, 13, 10.5, 'bone1'); pline(f, 21, 12.5, 13, 10.5, 'bone1'); return f; },
+  },
   // The quiver: a leather case, gilt bands, nail heads showing.
-  quiver: () => icon((S) => {
+  quiver: (S) => {
     S.add(rotZ(capsule([12, 8, 2], [12, 20, 2], 3.6, 3.2, 'leather'), [12, 14], 0.35), 0);
     S.paint({ f: (x, y) => Math.abs(y - 10.5 + (x - 12) * 0.35) - 0.7, mat: 'gold' });
     S.paint({ f: (x, y) => Math.abs(y - 18 + (x - 12) * 0.35) - 0.7, mat: 'gold' });
     for (const dx of [-1.8, 0.4, 2.4]) S.add(capsule([12.5 + dx, 6, 2.5], [14.2 + dx, 1.8, 2.5], 0.8, 0.8, 'iron'), 0.3);
-  }),
-  hood: () => { const f = icon((S) => {
+  },
+  hood: (S) => {
     S.add(ellipsoid([12, 11, 2], [7, 7.5, 6], 'crimson'), 0);
     S.add(capsule([9, 6, 0], [5, 2.5, -2], 3, 1, 'crimson'), 2);
     S.add(ellipsoid([12, 19, 2], [8.5, 3, 5], 'crimson'), 2);
     S.sub(ellipsoid([14.5, 12.5, 7], [3.8, 4.6, 5], 'void'), 0.6);
     S.paint({ f: (x, y, z) => Math.abs(y - 20.5) - 0.7, mat: 'gold' });
-  }); return f; },
-  mantle: () => icon((S) => {
-    // A cloak hung from its shoulders: a wide drape with deep folds and a gilt clasp.
+  },
+  // A cloak hung from its shoulders: a wide drape with deep folds and a gilt clasp.
+  mantle: (S) => {
     S.add(ellipsoid([12, 7, 2], [7.5, 3, 4], 'violet'), 0);
     for (let k = -2; k <= 2; k++) S.add(capsule([12 + k * 2.6, 7, 2 + Math.abs(k) * -0.4], [12 + k * 3.6, 20.5, 2.5 - Math.abs(k) * 0.6], 2, 2.3, 'violet'), 1.4);
     S.sub(ellipsoid([12, 5.4, 4], [2.4, 1.6, 4]), 0.5);
     S.paint({ f: (x, y) => Math.abs(y - 21) - 0.9, mat: 'gold' });
     S.add(sphere([12, 8.4, 5.6], 1.5, 'gold'), 0);
-  }),
-  gloves: () => icon((S) => {
+  },
+  gloves: (S) => {
     S.add(ellipsoid([11, 13, 2], [5, 5.5, 3], 'leather'), 0);
     for (let k = 0; k < 4; k++) S.add(capsule([8 + k * 2.2, 9, 2.5], [8.4 + k * 2.4, 3.5 + Math.abs(k - 1.5), 2.5], 1.1, 1, 'leather'), 0.8);
     S.add(capsule([15.5, 12, 2.5], [19, 9, 2.5], 1.3, 1.1, 'leather'), 0.8);
     S.add(box([11, 19.5, 2], [5.2, 2, 3], 0.8, 'iron'), 0.8);
     S.paint({ f: (x, y) => Math.abs(y - 18.4) - 0.6, mat: 'gold' });
-  }),
-  girdle: () => icon((S) => {
+  },
+  girdle: (S) => {
     S.add(torus([12, 12, 2], 8, 1.7, 1.15, 'leather'), 0);
     S.add(box([12, 15, 4.5], [3, 2.6, 1], 0.6, 'gold'), 0);
     S.sub(box([12, 15, 6], [1.5, 1.1, 1.5], 0.3), 0);
     S.add(capsule([14, 16.5, 4], [16, 22, 3], 1, 0.8, 'leather'), 0.5);
-  }),
-  greaves: () => icon((S) => {
+  },
+  greaves: (S) => {
     S.add(capsule([10, 4, 2], [10, 15, 2], 3.6, 3, 'iron'), 0);
     S.add(ellipsoid([12, 18.5, 2], [5.5, 2.6, 3.4], 'iron'), 1.5);
     S.add(ellipsoid([10, 10, 3.2], [3.4, 2.4, 2], 'iron'), 0.8);
     S.paint({ f: (x, y) => Math.abs(y - 5) - 0.7, mat: 'gold' });
     S.paint({ f: (x, y) => Math.abs(y - 15.6) - 0.6, mat: 'gold' });
-  }),
-  rosary: () => { const f = icon((S) => {
+  },
+  rosary: (S) => {
     for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; S.add(sphere([12 + Math.cos(a) * 6.5, 9 + Math.sin(a) * 5, 2], 1.5, k % 4 === 0 ? 'gold' : 'blood'), 0); }
     S.add(capsule([12, 14.5, 2], [12, 16.5, 2], 0.7, 0.7, 'gold'), 0);
     S.add(box([12, 19.5, 2.5], [0.9, 3.4, 0.8], 0.3, 'gold'), 0);
     S.add(box([12, 18.5, 2.5], [2.6, 0.9, 0.8], 0.3, 'gold'), 0);
-  }); return f; },
-  seal: () => { const f = icon((S) => {
+  },
+  seal: (S) => {
     S.add(torus([12, 13, 2], 5.8, 1.6, 1.05, 'gold'), 0);
     S.add(ellipsoid([12, 8, 3], [3.8, 2.6, 3], 'gold'), 0.8);
     S.add(ellipsoid([12, 7.4, 5], [2.4, 1.6, 1.4], 'blood'), 0);
-  }); dot(f, 11, 6, 'white'); return f; },
-  relic: () => { const f = icon((S) => {
+  },
+  relic: (S) => {
     S.add(bumpy(capsule([8, 16, 2], [16, 8, 2], 2.4, 2, 'bone'), 0.4, 0.6), 0);
     S.add(sphere([6.5, 17.5, 2], 3, 'bone'), 1.2);
     S.add(sphere([17.5, 6.5, 2], 3, 'bone'), 1.2);
     S.add(box([12, 12, 2.5], [3.2, 1.2, 2.6], 0.5, 'gold'), 0);
-  }); return f; },
+  },
 };
+const POST = {
+  bow: (f) => { pline(f, 11.5, 3, 13, 10.5, 'bone1'); pline(f, 21, 12.5, 13, 10.5, 'bone1'); },
+  seal: (f) => { dot(f, 11, 6, 'white'); },
+};
+const ICONS = Object.fromEntries(Object.keys(BODY).map((k) => [k, () => { const f = icon(BODY[k]); if (POST[k]) POST[k](f); return f; }]));
+
+// Hallowed pieces: each keeps its slot's shape but swaps materials (remap)
+// and adds its own mark, so the thirty read apart at a glance. Order
+// follows LEGENDS in index.html (the loot sheet's 'legend' frames).
+function remapScene(S, map) {
+  const m = (p) => (p && p.mat && map[p.mat] ? { ...p, mat: map[p.mat] } : p);
+  return { add: (p, k, op) => S.add(m(p), k, op), sub: (p, k) => S.sub(p, k), paint: (p) => S.paint(m(p)) };
+}
+function legendIcon(slot, map, extra, post) {
+  const f = icon((S) => { BODY[slot](remapScene(S, map)); if (extra) extra(S); });
+  if (POST[slot] && !map.noPost) POST[slot](f);
+  if (post) post(f);
+  return f;
+}
+const flames = (S, pts, r = 1.4) => { for (const [x, y] of pts) S.add(ellipsoid([x, y, 4], [r, r * 1.5, r], 'ember'), 0.6); };
+const LEGEND_ICONS = [
+  // 0 Hood of Ash-Choir: an ash-grey hood, embers inside.
+  () => legendIcon('hood', { crimson: 'stone', gold: 'ink' }, (S) => S.add(sphere([14.5, 13, 3], 1.6, 'ember'), 0)),
+  // 1 Mantle of the Ninth Wound: a crimson mantle split by a bleeding wound.
+  () => legendIcon('mantle', { violet: 'crimson' }, (S) => S.add(rotZ(capsule([8, 12, 4.5], [16, 17, 4.5], 0.9, 0.9, 'blood'), [12, 14], 0), 0)),
+  // 2 Hands That Counted Coins: gilt gloves over a stack of coins.
+  () => legendIcon('gloves', { leather: 'gold', iron: 'wood' }, (S) => { for (let k = 0; k < 3; k++) S.add(ellipsoid([19, 20 - k * 2, 3], [3, 1, 2.6], 'gold'), 0.3); }),
+  // 3 Girdle of the Unfed: a cord of bone, ribs hanging from it.
+  () => legendIcon('girdle', { leather: 'bone', gold: 'iron' }, (S) => { for (const x of [8, 12, 16]) S.add(capsule([x, 18, 3], [x - 1, 22, 3], 0.8, 0.6, 'bone'), 0.3); }),
+  // 4 The Long Descent: tall slate greaves.
+  () => legendIcon('greaves', { iron: 'slate', gold: 'iron' }, (S) => S.add(capsule([10, 1.5, 2], [10, 5, 2], 3, 3, 'slate'), 1)),
+  // 5 Locket of Unsaid Words: a silver chain, a violet heart locket.
+  () => legendIcon('rosary', { blood: 'iron', gold: 'iron' }, (S) => S.add(ellipsoid([12, 19.5, 3.5], [3.4, 3, 2], 'violet'), 0)),
+  // 6 Seal of the First Tithe: a ring crowned with a great coin.
+  () => legendIcon('seal', { blood: 'gold' }, (S) => S.add(ellipsoid([12, 6.5, 5], [4.6, 4.6, 1.2], 'gold'), 0), (f) => { pline(f, 12, 4, 12, 9, 'gold3'); }),
+  // 7 The Weeping Knuckle: a bone that weeps blue tears.
+  () => legendIcon('relic', { gold: 'holy' }, (S) => { for (const [x, y] of [[9, 20], [14, 21], [19, 13]]) S.add(ellipsoid([x, y, 3], [1.2, 1.8, 1.2], 'holy'), 0); }),
+  // 8 The Silent Arbalest: a black crossbow with a violet nail.
+  () => legendIcon('bow', { wood: 'ink', gold: 'slate', iron: 'violet', noPost: true }, null, (f) => { pline(f, 11.5, 3, 13, 10.5, 'violet2'); pline(f, 21, 12.5, 13, 10.5, 'violet2'); }),
+  // 9 The Bottomless Case: a quiver whose mouth is a violet void.
+  () => legendIcon('quiver', { leather: 'violet', iron: 'void' }, (S) => S.add(ellipsoid([14, 5, 4], [3.6, 2, 1], 'eyeHoly'), 0)),
+  // 10 The Lesser Vow: a plain iron band with a green set-stone.
+  () => legendIcon('seal', { gold: 'iron', blood: 'flame' }),
+  // 11 The Crown of Thorns: a ring of thorny briar.
+  () => icon((S) => {
+    S.add(torus([12, 13, 2], 7, 1.8, 1.25, 'shroud'), 0);
+    for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2; S.add(capsule([12 + Math.cos(a) * 7, 13 + Math.sin(a) * 4, 2], [12 + Math.cos(a) * 9.5, 13 + Math.sin(a) * 4 - 3, 2], 0.9, 0.3, 'wood'), 0.3); }
+    for (const [x, y] of [[6, 16], [17, 17]]) S.add(sphere([x, y, 4], 1.2, 'blood'), 0);
+  }),
+  // 12 Veil of the Still Water: a blue veil with a single drop.
+  () => legendIcon('hood', { crimson: 'holy', gold: 'iron' }, (S) => S.add(ellipsoid([9, 21.5, 4], [1.4, 2, 1.4], 'holy'), 0)),
+  // 13 Mantle of Falling Ash: a soot mantle, embers at its hem.
+  () => legendIcon('mantle', { violet: 'ink', gold: 'ember' }, (S) => flames(S, [[7, 20], [12, 21], [17, 20]], 1.1)),
+  // 14 The Pall of Seven Wards: a white pall with a gilt cross.
+  () => legendIcon('mantle', { violet: 'cloth' }, (S) => { S.add(box([12, 14, 5], [0.9, 4, 0.6], 0.3, 'gold'), 0); S.add(box([12, 12.5, 5], [3, 0.9, 0.6], 0.3, 'gold'), 0); }),
+  // 15 Hands of the Jailer: an iron gauntlet hung with chain.
+  () => legendIcon('gloves', { leather: 'iron', gold: 'slate' }, (S) => { for (let k = 0; k < 3; k++) S.add(torus([19, 14 + k * 3, 3], 1.4, 0.6, k % 2 ? 0 : Math.PI / 2, 'iron'), 0); }),
+  // 16 The Stormwright's Gloves: nails bristling from the fingers.
+  () => legendIcon('gloves', { leather: 'wood' }, (S) => { for (let k = 0; k < 4; k++) S.add(capsule([8.4 + k * 2.4, 3.5 + Math.abs(k - 1.5), 3], [8.4 + k * 3, 0.5, 3], 0.7, 0.4, 'iron'), 0); }),
+  // 17 Cincture of Embers: a belt of glowing coals.
+  () => legendIcon('girdle', { leather: 'emberLit', gold: 'iron' }, (S) => flames(S, [[6, 9], [18, 9], [12, 6]], 1.2)),
+  // 18 The Tithe-Belt: a coin purse hung from the belt.
+  () => legendIcon('girdle', { leather: 'wood' }, (S) => { S.add(ellipsoid([16, 20, 3], [3.4, 3, 2.6], 'leather'), 0); S.add(ellipsoid([16, 17, 4.5], [2, 1, 1], 'gold'), 0); }),
+  // 19 Sabatons of the Ember Step: iron greaves with fire at the heel.
+  () => legendIcon('greaves', { gold: 'ember' }, (S) => flames(S, [[6, 19], [17.5, 18]], 1.6)),
+  // 20 The Pilgrim's Sandals: a wooden sole and leather straps.
+  () => icon((S) => {
+    S.add(ellipsoid([12, 19, 2], [7.5, 2.2, 3.6], 'wood'), 0);
+    for (const y of [11, 15]) S.add(torus([12, y, 2], 4.6, 0.9, 1.2, 'leather'), 0);
+    S.add(capsule([12, 6, 3], [12, 18, 3], 0.9, 0.9, 'leather'), 0);
+    S.add(ellipsoid([12, 5, 3.5], [2.4, 2, 1.2], 'bone'), 0);
+  }),
+  // 21 Locket of the Last Hymn: a gold chain, a white flame-lit oval.
+  () => legendIcon('rosary', { blood: 'gold' }, (S) => S.add(ellipsoid([12, 19.5, 3.5], [2.8, 3.4, 1.6], 'eyeHoly'), 0)),
+  // 22 The Censer-Bearer's Chain: a little thurible on its chain.
+  () => legendIcon('rosary', { blood: 'iron' }, (S) => { S.add(sphere([12, 19.5, 3], 3.4, 'gold'), 0); S.add(ellipsoid([12, 18.5, 5.5], [2, 1.2, 1], 'ember'), 0); }),
+  // 23 Seal of Judgement: a ring with a pillar of light for a stone.
+  () => legendIcon('seal', { blood: 'eyeHoly' }, (S) => S.add(box([12, 4, 4], [1.4, 3.6, 1], 0.4, 'holy'), 0)),
+  // 24 The Gambler's Knucklebone: a bone die, pips and all.
+  () => { const f = icon((S) => { S.add(box([12, 12, 2], [6.5, 6.5, 6.5], 1.6, 'bone'), 0); }, 24); for (const [x, y] of [[8, 8], [12, 12], [16, 16], [16, 8], [8, 16]]) dot(f, x, y, x === 12 ? 'blood0' : 'ink1'); return f; },
+  // 25 The Saint's Molar: a molar with a gilt halo.
+  () => icon((S) => {
+    S.add(ellipsoid([12, 12, 2], [6, 5, 4], 'bone'), 0);
+    for (const x of [8.5, 15.5]) S.add(capsule([x, 15, 2], [x + (x < 12 ? -1 : 1), 21, 2], 2, 1.2, 'bone'), 1.2);
+    S.add(torus([12, 4.5, 2], 4.5, 1, 1.25, 'halo'), 0);
+  }),
+  // 26 The Longway Arbalest: pale wood, a long gilt bolt.
+  () => legendIcon('bow', { wood: 'sand', iron: 'gold' }, (S) => S.add(capsule([4, 22, 3.6], [22, 2, 3.6], 0.6, 0.6, 'gold'), 0)),
+  // 27 The Penitent's Prod: a heavy crimson crossbow, spiked.
+  () => legendIcon('bow', { wood: 'crimsonDark', gold: 'iron' }, (S) => { for (const [x, y] of [[9, 13], [13, 9]]) S.add(capsule([x, y, 2], [x - 2, y - 2, 2], 0.9, 0.3, 'iron'), 0); }),
+  // 28 The Brazier Quiver: a quiver burning at the mouth.
+  () => legendIcon('quiver', { leather: 'iron', iron: 'ember' }, (S) => flames(S, [[13, 3], [16, 4], [11, 5]], 1.4)),
+  // 29 The Quiver of No Mercy: black leather bound in chain.
+  () => legendIcon('quiver', { leather: 'ink', gold: 'iron', iron: 'blood' }, (S) => { for (let k = 0; k < 3; k++) S.add(torus([9 + k * 3, 14 + k * 1.2, 4], 1.3, 0.6, k % 2 ? 0 : Math.PI / 2, 'iron'), 0); }),
+];
 
 // -------------------------------------------------------------- loot bits ---
 function coin(i) {
@@ -315,6 +411,7 @@ export default {
   },
   loot: {
     item: () => ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic', 'bow', 'quiver'].map((k) => ICONS[k]()),
+    legend: () => LEGEND_ICONS.map((f) => f()),
     coin: () => [0, 1].map(coin),
     gold: () => [0, 1, 2].map(goldPile),
     globe: () => [0, 1].map(globe),

@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-19, after round 21. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 22. Read this first, then `CLAUDE.md`.
 The history of every round is at the bottom; the sections above it describe
 the game as it is now.
 
@@ -61,7 +61,7 @@ Desktop works with keys. 55–60 fps in dense crowds.
   rite Wounds only appear for chosen rites.
 - **Gear:** 10 slots (8 vestments, crossbow, quiver), 5 rarities, item
   level = Station (Sanctity). Hallowed pieces (30 in `LEGENDS`) are rare
-  (about 1.5–2.5% of drops). Five 6-piece vestment sets with 2/4/6
+  (about 1.5–2.5% of drops), each with its own icon (loot `legend`). Five 6-piece vestment sets with 2/4/6
   bonuses, each with its own Saint skin, crossbow and bolts, plus 2-piece
   set Arms; Odile's Habit is the starter set. Sets drop from Station VI.
 - **Account systems:** Devotion and Virtues (Canonry), the Ember Forge
@@ -105,8 +105,9 @@ Desktop works with keys. 55–60 fps in dense crowds.
    house) with its own two Wardens, reusing the `STRATA` remap pipeline.
 7. **A second playable saint.** A short-range melee saint with its own
    rites, to reuse the sets and Stations.
-8. **Art pass on small icons.** Review every sheet with `CHUNKY=2`: item
-   icons, the Chrism vial on the ground, weed mats.
+8. **Art pass on small icons.** Review every sheet with `CHUNKY=2`: the
+   set pieces could get their own icons too (like the Hallowed ones), the
+   Chrism vial on the ground, weed mats.
 9. **Death recap.** After a fall, show what hit you hardest and a tip for
    that attack.
 10. **Tune from play.** `tools/tests/balance.cjs`, `perf.cjs` and the
@@ -114,6 +115,16 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## History by round
 
+- **Round 22 (an icon for every Hallowed piece):** `LEGEND_ICONS` in
+  `tools/models/vfx.mjs` builds 30 icons into loot `legend`, in `LEGENDS`
+  order. Each reuses its slot's sculpt (`BODY`) with materials swapped
+  (`remapScene`) and its own mark (embers, a thorn crown, a die, a molar
+  with a halo...). `itemIcon(it, x, y, o)` in `index.html` picks it for any
+  piece with `it.power`: the bag, the paper doll, shops, drops on the
+  ground, the altar list (now with an icon on each row), its socket cards
+  and THE ALTAR'S MEMORY. The memory's icons only grow 1.5x on cards 38 px
+  and taller. The bag's power list no longer overlaps NOTHING WORN.
+  `tools/tests/round22.cjs` puts one of each in the bag.
 - **Round 21 (the altar's memory, build notes, frame styles):** tapping an
   altar socket opens THE ALTAR'S MEMORY (`renderAltarPick`, our take on
   a power collection): every Hallowed power that fits the socket as a
