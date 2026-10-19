@@ -39,8 +39,9 @@ const S = process.argv[2];
   await p.waitForTimeout(200); await p.screenshot({ path: `${S}/shots/q5-altar.png` });
   // Burn three with a Hallowed Chrism each (sure to take): tap the row, the chrism, then BURN.
   await p.evaluate(() => { HS.SAVE.gold = 99999; HS.SAVE.chrism = [0, 0, 0, 3]; });
-  for (let k = 0; k < 3; k++) await p.evaluate(() => { const L = HS.featLayout(), G = HS.altarGeo(L), r = G.row(0); HS.altarTap(r.x + 20, r.y + 10); const c = G.chip(3); if (HS.game.altarChrism !== 3) HS.altarTap(c.x + 5, c.y + 5); HS.altarTap(G.burn.x + 5, G.burn.y + 5); });
-  for (let i = 0; i < 3; i++) await p.evaluate((i) => { const b = HS.altarSock(HS.featLayout(), i); HS.altarTap(b.x + b.w - 10, b.y + 8); }, i);
+  for (let k = 0; k < 3; k++) await p.evaluate(() => { HS.game.altarFx = null; const L = HS.featLayout(), G = HS.altarGeo(L), r = G.row(0); HS.altarTap(r.x + 20, r.y + 10); const c = G.chip(3); if (HS.game.altarChrism !== 3) HS.altarTap(c.x + 5, c.y + 5); HS.altarTap(G.burn.x + 5, G.burn.y + 5); });
+  // Each socket: tap it to open the altar's memory, tap the learned power, then SET IT.
+  for (const [i, k] of [[0, 'vest'], [1, 'arms'], [2, 'relic']]) await p.evaluate(([i, k]) => { HS.game.altarFx = null; const b = HS.altarSock(HS.featLayout(), i); HS.altarTap(b.x + 20, b.y + b.h / 2); const L = HS.altarPickLegends(k), G = HS.altarPickGeo(), j = L.findIndex((q) => HS.SAVE.altar.known.includes(q.id)); const c = G.cell(j); HS.altarTap(c.x + 4, c.y + 4); HS.altarTap(G.set.x + 5, G.set.y + 5); HS.altarTap(1, 1); }, [i, k]);
   await p.waitForTimeout(200); await p.screenshot({ path: `${S}/shots/q6-altar-set.png` });
   log.push('altar ' + await p.evaluate(() => JSON.stringify({ known: HS.SAVE.altar.known, sockets: HS.SAVE.altar.sockets, powers: [...HS.G.powers], bag: HS.SAVE.bag.length, legends: HS.LEGENDS.length })));
   console.log(log.join('\n'));

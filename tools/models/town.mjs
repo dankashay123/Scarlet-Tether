@@ -840,6 +840,27 @@ function stake(i) {
   return outlineAll(fr);
 }
 
+// The Pilgrim Road's waymark: a stone milestone with a carved arrow and a
+// lantern hung from an iron arm.
+function waymark(i) {
+  const W = 34, H = 60, S = new View(), G = groundY(H, 5);
+  S.add(slabBox(5, G - 4, 25, G, 5, 10, 'stoneB', 0.4), 0);
+  S.add(bumpy2(slabBox(8, G - 34, 22, G - 4, 3.5, 7, 'stone', 0.8), 2), 0);
+  S.add(slabBox(6, G - 38, 24, G - 34, 4.5, 9, 'stoneC', 0.6), 0);
+  S.add(rod([22, G - 33, 0], [30, G - 33, 0], 0.9, 'iron'), 0.3);
+  S.add(rod([29.5, G - 33, 0], [29.5, G - 30, 0], 0.6, 'iron'), 0.2);
+  S.add(slabBox(26.5, G - 30, 32.5, G - 22, 1.5, 3, 'iron', 0.5), 0);
+  S.add(slabBox(27.5, G - 29, 31.5, G - 23, 1.7, 0.6, 'hole', 0.2), 0);
+  const fr = R(S, W, H, { ground: H - 1 });
+  // A gilt pilgrim's cross painted on the face.
+  const fy = (y) => Math.round(sy(y, 3.5));
+  for (let y = G - 30; y <= G - 12; y++) { dot(fr, 14, fy(y), 'gold1'); dot(fr, 15, fy(y), 'gold2'); }
+  for (let x = 11; x <= 18; x++) { dot(fr, x, fy(G - 25), 'gold1'); dot(fr, x, fy(G - 24), 'gold2'); }
+  const lx = 29, ly = Math.round(sy(G - 26, 1.7));
+  for (const [dx, dy, c] of [[0, 0, i % 2 ? 'ember1' : 'ember0'], [1, 0, 'ember1'], [0, -1, 'gold0'], [1, -1, i % 2 ? 'gold0' : 'ember0'], [0, 1, 'ember2'], [1, 1, 'ember2']]) dot(fr, lx + dx, ly + dy, c);
+  return outlineAll(fr);
+}
+
 function noticeBoard() {
   const W = 39, H = 52, S = new View(), G = groundY(H, 2);
   for (const x of [5, 34]) S.add(rod([x, 4, 0], [x, G, 0], 1.6, 'timber'), 0);
@@ -1162,6 +1183,7 @@ export default {
     well: () => [well()],
     ashaltar: () => [0, 1, 2].map(ashAltar),
     lectern: () => [0, 1, 2].map(lectern),
+    waymark: () => [0, 1].map(waymark),
     stake: () => [0, 1, 2].map(stake),
     board: () => [noticeBoard()],
     stocks: () => [stocks()],

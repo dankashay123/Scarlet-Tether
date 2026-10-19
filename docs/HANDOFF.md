@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-19, after round 20. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 21. Read this first, then `CLAUDE.md`.
 The history of every round is at the bottom; the sections above it describe
 the game as it is now.
 
@@ -84,7 +84,8 @@ Desktop works with keys. 55–60 fps in dense crowds.
   own names (never borrow names or terms from other games).
 - They want the game hard: monsters punish mistakes, drops are rare,
   progress needs farming. Every hit must still be telegraphed.
-- Ship each finished round to `master`. Keep updates short, lead with the
+- Ship each finished round to `master`. Raise `BUILD` and add its lines
+  to `CHANGES` every round (the owner sees them on their phone). Keep updates short, lead with the
   outcome, attach screenshots.
 
 ## Next steps (ideas, building on what is there)
@@ -113,6 +114,20 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## History by round
 
+- **Round 21 (the altar's memory, build notes, frame styles):** tapping an
+  altar socket opens THE ALTAR'S MEMORY (`renderAltarPick`, our take on
+  a power collection): every Hallowed power that fits the socket as a
+  grid of cards (icon and name; icons only on small phones), learned ones
+  lit, the socketed one marked with a gem. Tap one to read it, then SET IT
+  or EMPTY. Socket cards show the set power's icon and how many are
+  learned. A returning Saint on a new build sees A NEW BUILD once in Vael
+  with that build's lines (`CHANGES[BUILD]`, `SAVE.seenBuild`); a new
+  player does not. Windows take a style: `panelFrame(x, y, w, h, style)`
+  with `_iron` (the Forge), `_silver` (the Canonry), `_blood` (the
+  Vigil); each style has its own corners, crest and studs (`ui`
+  `frame_corner_iron` and so on). The Pilgrim Road has a waymark
+  (`town2` `waymark`); the stall badges are centred on their stalls.
+  Test: `tools/tests/round21.cjs`.
 - **Round 20 (framed menus, self-updating builds, landmarks):** every
   menu window now uses `panelFrame` (an iron band with a gilt rule, a faint
   diamond lattice, sculpted gilt corner brackets with crimson gems, a crest
