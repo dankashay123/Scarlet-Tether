@@ -378,6 +378,7 @@ addEventListener('keydown', (e) => {
   if (game.state === 'dev') { if (e.code === 'Escape') closeDev(); return; }
   if (game.state === 'settings') { if (e.code === 'Escape') game.state = 'pause'; return; }
   if (game.state === 'rites') { if (e.code === 'Escape') game.state = game.ritesBack || 'play'; return; }
+  if (game.state === 'resume') { if (e.code === 'Escape') { SAVE.suspend = null; persist(); game.state = 'play'; } return; }
   if (e.code === 'KeyT' && (game.state === 'play' || game.state === 'pause')) { openRites(game.state); return; }
   if (game.state === 'stig') { if (game.stig.t > 0.35 && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) pickStigma(+e.code.slice(5) - 1); return; }
   if (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyK') input.dash = true;
@@ -389,7 +390,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyN') AUDIO.setMuted(!AUDIO.muted); // N mutes; M opens the town map
   if (e.code === 'KeyI' || e.code === 'KeyB') { if (game.state === 'play') openInventory(); else if (game.state === 'inv') closeInventory(); }
   if (e.code === 'Escape' && game.state === 'inv') { closeInventory(); return; }
-  if (e.code === 'Escape' && ['descent', 'site', 'map', 'vigil', 'shop', 'forge', 'canonry', 'gift', 'cells'].includes(game.state)) { game.state = 'play'; return; }
+  if (e.code === 'Escape' && ['descent', 'site', 'map', 'vigil', 'shop', 'forge', 'canonry', 'gift', 'cells', 'board'].includes(game.state)) { game.state = 'play'; return; }
   if (e.code === 'KeyM' && (game.scene === 'town' || game.scene === 'wound')) { if (game.state === 'play') game.state = 'map'; else if (game.state === 'map') game.state = 'play'; }
   if (game.state === 'descent' && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) { const D = game.descent; D.i = (D.i + (e.code === 'ArrowLeft' ? DIFF.length - 1 : 1)) % DIFF.length; }
   if (e.code === 'Enter' || (e.code === 'Space' && game.state !== 'play')) onTap(-1, -1);
@@ -919,6 +920,7 @@ function wardenSlain(e) {
     dropLoot(e.x, e.y, { gold: 30, item: up ? 3 + Math.floor(L / 5) : 2, itemBoost: 2 + L * 0.06, globe: 2, warden: true });
   } else {
     const first = (SAVE.cleared ?? -1) < df.n - 1;
+    bumpBounty('wardens'); if (game.time - (e.bornT || 0) < 75) bumpBounty('fast');
     SAVE.cleared = Math.max(SAVE.cleared ?? -1, df.n - 1);
     if (first && [3, 6, 9].includes(df.n)) { SAVE.gifts = (SAVE.gifts || 0) + 1; toast("SISTER ODILE HAS A GIFT FOR YOU IN VAEL", 3); }
     persist();
@@ -927,8 +929,11 @@ function wardenSlain(e) {
   }
   for (const d of drops) if (d.kind !== 'globe') d.vac = true;
   addFervor(25);
-  // The Waystone rises where the Warden fell (nudged onto open floor).
-  let wx = Math.floor(e.x / TILE), wy = Math.floor(e.y / TILE);
+  raiseWaystone(e.x, e.y);
+}
+// The Waystone rises where the Warden fell (nudged onto open floor).
+function raiseWaystone(x, y) {
+  let wx = Math.floor(x / TILE), wy = Math.floor(y / TILE);
   for (let rr = 0; rr < 6 && room.isSolid(wx, wy); rr++) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!room.isSolid(wx + dx * rr, wy + dy * rr)) { wx += dx * rr; wy += dy * rr; break; }
   const px = (wx + 0.5) * TILE, py = (wy + 1) * TILE;
   game.waystone = { kind: 'waystone', sheet: 'town', anim: 'waystone', x: px, y: py, ph: 0 };
@@ -981,7 +986,7 @@ function updateReliquary(dt) {
   }
   if (E.kills >= E.need) {
     E.done = true; E.p.frame = 1;
-    game.banner = { text: 'THE RELIQUARY OPENS', sub: 'ITS SAINT IS GRATEFUL', t: 0, color: PAL.gold0 };
+    game.banner = { text: 'THE RELIQUARY OPENS', sub: 'ITS SAINT IS GRATEFUL', t: 0, color: PAL.gold0 }; bumpBounty('reliquary');
     dropLoot(E.p.x, E.p.y + 6, { gold: 16, item: 3, itemBoost: 1.5, globe: 1 }); sfx('chest');
     rings.push({ x: E.p.x, y: E.p.y - 8, t: 0, max: 0.7, r: 60, color: '255,209,85' });
   } else if (E.t <= 0) { E.done = true; game.banner = { text: 'THE RELIQUARY FALLS SILENT', sub: 'TOO FEW OF THE DEAD WERE LAID TO REST', t: 0, color: PAL.stone1 }; dropLoot(E.p.x, E.p.y + 6, { gold: 4 }); }
@@ -1005,7 +1010,7 @@ function revealAround(px, py) {
   }
 }
 function finishDescent() {
-  SAVE.descents = (SAVE.descents || 0) + 1;
+  SAVE.descents = (SAVE.descents || 0) + 1; bumpBounty('descents');
   SAVE.cleared = Math.max(SAVE.cleared ?? -1, game.run.diff || 0);
   bankRun(false);
   game.state = 'tally'; game.deathT = 0;
@@ -1013,6 +1018,7 @@ function finishDescent() {
 // Keep the gold and finds (or tithe half of them on death).
 function bankRun(died) {
   const R = game.run;
+  SAVE.suspend = null;
   R.tithe = died ? Math.floor(R.gold / 2) : 0;
   SAVE.gold = (SAVE.gold || 0) + R.gold - R.tithe;
   // On death the Choir takes every other relic found this run (worn ones are safe).
@@ -1209,7 +1215,13 @@ function useStratum(k) {
   IMG0 = IMG0 || { ...IMG };
   for (const n of ['hall', 'floor', 'walldecor', 'props']) IMG[n] = k === 2 && IMG0[`${n}_d`] ? IMG0[`${n}_d`] : IMG0[n];
 }
+// A tiny seeded generator: the same seed builds the same map and monsters,
+// so a descent left unfinished can be rebuilt and resumed.
+function seeded(a) { return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function newRun() {
+  const resume = game.resumeRun; game.resumeRun = null;
+  const seed = resume ? resume.seed : (Math.random() * 2 ** 31) | 0;
+  rng = seeded(seed);
   const strat = game.nextVigil ? 1 : (game.nextStratum || 1);
   useStratum(strat); game.buildStratum = strat;
   makeDungeon();
@@ -1229,10 +1241,13 @@ function newRun() {
   if (R0.vigil) { R0.df = vigilDiff(R0.vigil); game.vigil = { t: VIGIL_TIME, out: false, L: R0.vigil }; }
   else { game.vigil = null; if (R0.omens.length) R0.df = applyOmens(DIFF[R0.diff], R0.omens); }
   game.nextVigil = 0;
-  R0.cell = game.nextCell || null; game.nextCell = null;
-  if (R0.cell) { game.toll = null; room.name = `PENITENT CELL: ${VSETS[R0.cell].name.replace(/^THE /, '')}`; game.cell = { id: R0.cell, t: CELL_TIME, kills: 0, spawnT: 1.5, end: 0 }; return; }
+  R0.cell = game.nextCell || null; game.nextCell = null; R0.seed = seed; R0.dead = [];
+  if (R0.cell) { rng = Math.random; game.toll = null; room.name = `PENITENT CELL: ${VSETS[R0.cell].name.replace(/^THE /, '')}`; game.cell = { id: R0.cell, t: CELL_TIME, kills: 0, spawnT: 1.5, end: 0 }; return; }
   game.cell = null;
   populate();
+  enemies.forEach((e, i) => { e.sid = i; });
+  rng = Math.random;
+  if (resume) resumeRun(resume);
   if (tutStep() && tutStep().start && tutStep().scene === 'wound') tutStep().start();
 }
 
@@ -1484,7 +1499,7 @@ const SITES = [
   { id: 'road', name: 'THE PILGRIM ROAD', badge: 'gate', x: 91, dy: 30, what: 'STRATUM II: THE DROWNED NAVE. A FLOODED CATHEDRAL WITH ITS OWN DEAD AND TWO WARDENS OF ITS OWN.', need: 'SLAY THE WARDEN OF STATION III', prog: () => [(SAVE.cleared ?? -1) >= 2 ? 1 : 0, 1], doneText: 'OPEN. CHOOSE THE DROWNED NAVE AT THE CATHEDRAL DOORS.' },
   { id: 'stall', name: "PELL'S CURIO STALL", badge: 'market', x: 540, dy: 34, what: 'BUY GEAR WITH GOLD. THE STOCK CHANGES AFTER EVERY DESCENT.', need: 'FINISH 1 DESCENT', prog: () => [SAVE.descents || 0, 1] },
   { id: 'plush', name: 'THE PLUSH STALL', badge: 'plush', x: 740, dy: 34, what: "NEW VESTMENT COLOURS AND HALOS FOR THE SAINT. LOOKS ONLY.", need: 'FALL 5 TIMES', prog: () => [SAVE.deaths || 0, 5] },
-  { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 880, dy: 64, what: 'HUNT NAMED ELITES FOR GOLD AND A GUARANTEED CONSECRATED PIECE OF GEAR.', need: 'SLAY 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
+  { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 880, dy: 64, what: 'THREE BOUNTIES AT A TIME FOR GOLD, DEVOTION AND FINE GEAR. CLAIM ALL THREE FOR A HALLOWED PIECE.', need: 'SLAY 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
   { id: 'pool', name: 'THE SCRYING POOL', badge: 'pool', x: 1060, dy: 110, what: 'WAGERS. BET YOUR GOLD ON HOW DEEP YOU GET. THE CROWD PAYS OUT.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
   { id: 'forge', name: 'THE EMBER FORGE', badge: 'forge', x: 1250, dy: 50, what: 'REFORGE A PIECE OF GEAR TO REROLL ONE STAT, OR TEMPER IT TO RAISE ITS RARITY.', need: 'SLAY THE WARDEN OF STATION II', prog: () => [(SAVE.cleared ?? -1) >= 1 ? 1 : 0, 1] },
   { id: 'vigil', name: 'THE BLEEDING VIGIL', badge: 'rift', x: 1664, dy: 60, what: 'VIGIL TRIALS. ONE ENDLESS, TIMED DESCENT THAT GROWS HARDER WITH EVERY LEVEL. BEAT THE CANDLE BEFORE IT BURNS OUT FOR BETTER GEAR.', need: 'SLAY THE WARDEN OF STATION IV', prog: () => [(SAVE.cleared ?? -1) >= 3 ? 1 : 0, 1] },
@@ -1500,6 +1515,7 @@ function openSite(s) {
   if (s.id === 'stall' && siteDone(s)) return openShop();
   if (s.id === 'forge' && siteDone(s)) return openForge();
   if (s.id === 'canonry' && siteDone(s)) return openCanonry();
+  if (s.id === 'board' && siteDone(s)) return openBoard();
   game.site = { s, t: 0 }; game.state = 'site'; sfx('tap');
 }
 
@@ -1840,6 +1856,108 @@ function ritesTap(x, y) {
     if (player) { if (slot === 'm1') player.m1cd = Math.max(player.m1cd, 1); if (slot === 'm2') player.m2cd = Math.max(player.m2cd, 1); }
   }));
 }
+
+// --------------------------------------------------------- bounty board ---
+// Three bounties at a time. Progress counts across descents; claim each at
+// the board. Claim all three for the Board's Purse; a new three are posted
+// after your next descent.
+const BOUNTIES = {
+  elites: { need: 4, text: (n) => `SLAY ${n} ELITES` }, rares: { need: 15, text: (n) => `SLAY ${n} RARE FOES` },
+  kills: { need: 900, text: (n) => `LAY ${n} OF THE DEAD TO REST` }, wardens: { need: 2, text: (n) => `SLAY ${n} WARDENS` },
+  fast: { need: 1, text: () => 'SLAY A WARDEN IN UNDER 75 S' }, reliquary: { need: 1, text: () => 'OPEN A WEEPING RELIQUARY' },
+  descents: { need: 2, text: (n) => `FINISH ${n} DESCENTS` }, shrines: { need: 4, text: (n) => `PRAY AT ${n} SHRINES` },
+  chests: { need: 3, text: (n) => `OPEN ${n} TREASURY CHESTS` }, carnage: { need: 5, text: (n) => `EARN ${n} CARNAGE BONUSES` },
+};
+function bounties() {
+  const B = SAVE.bounty;
+  if (!B || (B.list.every((b) => b.claimed) && (SAVE.descents || 0) >= B.next)) {
+    const ids = Object.keys(BOUNTIES).sort(() => Math.random() - 0.5).slice(0, 3);
+    SAVE.bounty = { list: ids.map((id) => ({ id, need: BOUNTIES[id].need, have: 0, claimed: false })), next: 0 }; persist();
+  }
+  return SAVE.bounty;
+}
+function bumpBounty(id, n = 1) { const B = SAVE.bounty; if (!B || tut.on) return; for (const b of B.list) if (b.id === id && !b.claimed) b.have = Math.min(b.need, b.have + n); }
+const bountyRow = (L, i) => ({ x: L.x0 + 14, y: L.y0 + 40 + i * 44, w: L.pw - 28, h: 38 });
+function openBoard() { bounties(); game.state = 'board'; sfx('tap'); }
+function renderBoard() {
+  const L = featLayout(), B = bounties(), il = bestIl();
+  ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
+  gild(L.x0, L.y0, L.pw, L.ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(L.x0, L.y0, L.pw, L.ph);
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0, L.y0, L.pw, 26);
+  text('THE BOUNTY BOARD', L.x0 + 12, L.y0 + 9, PAL.gold1); sprC('ui', 'close', 0, L.close.x, L.close.y);
+  text(`EACH PAYS ${150 * il} GOLD, ${250 * il} DEVOTION AND A FINE PIECE OF GEAR`, L.x0 + 14, L.y0 + 30, PAL.stone1, { small: true, outline: null });
+  B.list.forEach((b, i) => {
+    const r = bountyRow(L, i), D = BOUNTIES[b.id], done = b.have >= b.need;
+    ctx.fillStyle = PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+    text(D.text(b.need), r.x + 8, r.y + 5, b.claimed ? PAL.stone2 : done ? PAL.gold1 : PAL.cloth0);
+    const bw = r.w - 100; ctx.fillStyle = PAL.outline; ctx.fillRect(r.x + 7, r.y + 22, bw + 2, 7); ctx.fillStyle = PAL.ink3; ctx.fillRect(r.x + 8, r.y + 23, bw, 5);
+    ctx.fillStyle = done ? PAL.gold1 : PAL.blood1; ctx.fillRect(r.x + 8, r.y + 23, Math.round(bw * b.have / b.need), 5);
+    text(`${b.have}/${b.need}`, r.x + bw + 14, r.y + 20, PAL.stone1, { small: true, outline: null });
+    invButton({ x: r.x + r.w - 62, y: r.y + 9, w: 56, h: 20 }, b.claimed ? 'PAID' : 'CLAIM', PAL.gold3, done && !b.claimed);
+  });
+  const all = B.list.every((b) => b.claimed);
+  text(all ? 'THE BOARD IS CLEARED. NEW BOUNTIES AFTER YOUR NEXT DESCENT.' : "CLAIM ALL THREE FOR THE BOARD'S PURSE: A HALLOWED PIECE.", L.x0 + 14, L.y0 + 40 + 3 * 44 + 4, all ? PAL.flame1 : PAL.stone2, { small: true, outline: null });
+}
+function boardTap(x, y) {
+  const L = featLayout(), B = bounties();
+  if (featOut(L, x, y)) { game.state = 'play'; sfx('tap'); return; }
+  B.list.forEach((b, i) => {
+    const r = bountyRow(L, i);
+    if (!inRect({ x: r.x + r.w - 62, y: r.y + 9, w: 56, h: 20 }, x, y) || b.claimed || b.have < b.need) return;
+    const il = bestIl(); b.claimed = true;
+    SAVE.gold = (SAVE.gold || 0) + 150 * il; gainDevotion(250 * il);
+    let it; do { it = rollItem(4, il); } while (it.ri < 2);
+    bagAdd(it); toast(`BOUNTY PAID: ${it.name}`, 2.5); game.toastColor = RARITY[it.ri].color; sfx('gold');
+    if (B.list.every((q) => q.claimed)) { let h; do { h = rollItem(6, il); } while (h.ri !== 3); bagAdd(h); B.next = (SAVE.descents || 0) + 1; game.banner = { text: "THE BOARD'S PURSE", sub: h.name, t: 0, color: RARITY[3].color }; }
+    persist();
+  });
+}
+
+// ------------------------------------------------------ suspend, resume ---
+// A descent is saved every few seconds and when the page hides. Coming back
+// to Vael offers to rebuild it from its seed: the slain stay slain, the map
+// you walked stays drawn, and the Toll, gold and Wounds are as you left them.
+const rle = (a) => { const out = []; let v = 0, n = 0; for (const x of a) { if ((x ? 1 : 0) === v) n++; else { out.push(n); v ^= 1; n = 1; } } out.push(n); return out.join(','); };
+const unrle = (str, len) => { const a = new Uint8Array(len); let i = 0, v = 0; for (const n of str.split(',').map(Number)) { if (v) a.fill(1, i, i + n); i += n; v ^= 1; } return a; };
+function snapRun() {
+  const R = game.run;
+  if (game.scene !== 'wound' || !R || R.vigil || R.cell || tut.on || game.state === 'dead' || game.state === 'tally' || !player || player.hp <= 0) return;
+  SAVE.suspend = { seed: R.seed, diff: R.diff, stratum: R.stratum, omens: R.omens, gold: R.gold, level: R.level, xp: R.xp, pending: R.pending, wounds: R.wounds, kills: game.kills,
+    toll: game.toll ? { v: game.toll.v, done: game.toll.done } : null, warden: !!(game.warden && !game.warden.dead), stone: !!game.waystone,
+    px: Math.round(player.x), py: Math.round(player.y), hpK: player.hp / player.maxHp, dead: R.dead, seen: room.seen ? rle(room.seen) : '', items: SAVE.bag.filter((it) => it.run).map((it) => it.id), at: Date.now() };
+  persist();
+}
+function resumeRun(S) {
+  const R = game.run, dead = new Set(S.dead || []);
+  enemies = enemies.filter((e) => !dead.has(e.sid)); R.dead = [...dead];
+  Object.assign(R, { gold: S.gold, level: S.level, xp: S.xp, pending: 0, wounds: S.wounds || {} });
+  game.kills = S.kills || 0; applyGear(true);
+  player.x = S.px; player.y = S.py; player.hp = Math.max(1, Math.round(player.maxHp * (S.hpK || 1)));
+  if (S.seen && room.seen) { const a = unrle(S.seen, room.seen.length), g = room.fogCtx, RM = room; for (let i = 0; i < a.length; i++) if (a[i]) { RM.seen[i] = 1; const x = i % RM.w, y = (i / RM.w) | 0; if (!RM.baseSolid[i]) { g.fillStyle = PAL.stone2; g.fillRect(x, y, 1, 1); } else if (!RM.baseSolid[i - 1] || !RM.baseSolid[i + 1] || !RM.baseSolid[i - RM.w] || !RM.baseSolid[i + RM.w]) { g.fillStyle = PAL.cloth1; g.fillRect(x, y, 1, 1); } } }
+  const ids = new Set(S.items || []); for (const it of SAVE.bag) if (ids.has(it.id)) it.run = true;
+  if (S.toll && game.toll) { game.toll.v = S.toll.v; game.toll.done = S.toll.done; }
+  if (S.stone) raiseWaystone(player.x + 30, player.y);
+  else if (S.toll && S.toll.done) spawnWarden();
+  game.banner = { text: 'THE DESCENT RESUMES', sub: `${DIFF[R.diff].name}, ${game.kills} SLAIN`, t: 0, color: PAL.gold0 };
+}
+let askedResume = false;
+function renderResume() {
+  const S = SAVE.suspend, pw = Math.min(360, W - 20), ph = 120, x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
+  ctx.fillStyle = 'rgba(11,7,16,0.78)'; ctx.fillRect(0, 0, W, H);
+  gild(x0, y0, pw, ph); ctx.fillStyle = PAL.ink1; ctx.fillRect(x0, y0, pw, ph);
+  text('A DESCENT WAS LEFT UNFINISHED', W / 2, y0 + 12, PAL.gold1, { align: 'center' });
+  text(`${DIFF[S.diff].name}${S.stratum === 2 ? ', THE DROWNED NAVE' : ''}. ${S.kills} SLAIN, ${S.gold} GOLD.`, W / 2, y0 + 32, PAL.cloth1, { align: 'center', small: true });
+  text('THE DEAD YOU LAID TO REST STAY AT REST.', W / 2, y0 + 46, PAL.stone2, { align: 'center', small: true });
+  invButton(resumeBtns().go, 'RESUME', PAL.gold3); invButton(resumeBtns().no, 'ABANDON', PAL.crimson3);
+}
+const resumeBtns = () => { const y = Math.round(H / 2 + 22); return { go: { x: Math.round(W / 2 - 112), y, w: 104, h: 22 }, no: { x: Math.round(W / 2 + 8), y, w: 104, h: 22 } }; };
+function resumeTap(x, y) {
+  const B = resumeBtns(), S = SAVE.suspend;
+  if (inRect(B.go, x, y) && S) { game.resumeRun = S; SAVE.suspend = null; Object.assign(game, { nextDiff: S.diff, nextStratum: S.stratum, nextOmens: S.omens || [], nextVigil: 0, nextCell: null }); tut.on = false; game.state = 'loading'; game.loadT = 0; game.loadOdds = ODDS[0]; sfx('tap'); }
+  else if (inRect(B.no, x, y)) { SAVE.suspend = null; persist(); game.state = 'play'; sfx('tap'); }
+}
+addEventListener('visibilitychange', () => { if (document.hidden) try { snapRun(); } catch { /* best effort */ } });
+addEventListener('pagehide', () => { try { snapRun(); } catch { /* best effort */ } });
 
 // ------------------------------------------------------------ settings ---
 // From the pause screen. Saved in SAVE.opts.
@@ -2206,6 +2324,9 @@ function enterTown(wake = true) {
   game.buff = null; game.banner = null; game.focus = null;
   game.scene = 'town'; game.state = 'play'; game.cardAt = game.real; game.time = 0; game.fervor = 0; game.kills = 0; game.waystone = null;
   if (wake && !SAVE.metOdile) { SAVE.metOdile = true; persist(); talk('odile'); }
+  if (SAVE.suspend && !askedResume && game.state === 'play') game.state = 'resume';
+  else if (askedResume && SAVE.suspend) { SAVE.suspend = null; persist(); }
+  askedResume = true;
 }
 
 function talk(id) {
@@ -3073,6 +3194,8 @@ function killEnemy(e, dirx, diry, executed = false) {
   if (e.illusion) { playFx('fx', 'smoke', e.x, e.y - 8, 14); return; }
   addToll(e);
   if (e.cell && game.cell) game.cell.kills++;
+  if (e.sid !== undefined && game.run && game.run.dead) game.run.dead.push(e.sid);
+  bumpBounty('kills'); if (e.tier === 'rare' && !e.minion) bumpBounty('rares'); if (e.tier === 'elite' && !e.minion && !e.boss) bumpBounty('elites');
   if (e.boss) wardenSlain(e);
   if (game.event && !game.event.done && Math.hypot(e.x - game.event.p.x, e.y - game.event.p.y) < 260) game.event.kills++;
   // Knells: rares and elites drop bell-shards that ring the Toll when gathered.
@@ -3295,9 +3418,11 @@ function gearStats() {
   const has = (id, n) => (g.sets[id] || 0) >= n;
   if (has('habit', 2)) g.dmg += 10; if (has('habit', 4)) g.dmg += 15;
   // The skin: the set with the most pieces, from 4 up.
-  g.skin = MAIN_SETS.filter((id) => has(id, 4)).sort((a, b) => g.sets[b] - g.sets[a])[0] || null;
-  // The crossbow's look: a set crossbow first, else the robe's skin.
-  const bow = SAVE.equip && SAVE.equip.bow; g.xskin = (bow && bow.wset) || g.skin;
+  g.skin = MAIN_SETS.filter((id) => has(id, 4)).sort((a, b) => g.sets[b] - g.sets[a])[0] || (has('habit', 4) ? 'habit' : null);
+  // The crossbow's look: a set crossbow first, else the robe's skin (Odile's Habit keeps the plain bow).
+  const bow = SAVE.equip && SAVE.equip.bow; g.xskin = (bow && bow.wset) || (MAIN_SETS.includes(g.skin) ? g.skin : null);
+  // The quiver on the Saint's back (none with the Hundred Nails' own quiver).
+  const qv = SAVE.equip && SAVE.equip.quiver; g.quiver = qv && g.skin !== 'nails' ? `quiver${qv.wset ? '_' + qv.wset : ''}` : null;
   // Stigmata taken this run.
   g.dmg += wound('wrath') * 15; g.crit += wound('luck') * 8; g.hp += wound('vigil') * 25; g.speed += wound('swift') * 10; g.fervor += wound('fervent') * 30; g.lok += wound('letting') * 2;
   // Sanctity multiplies damage, and health a little less (as monster damage climbs).
@@ -3444,7 +3569,7 @@ function updateMassacre() {
   if (m.n >= 10) {
     const bonus = m.n * 3;
     game.run.gold += bonus; addFervor(m.n + (sb('choir', 6) ? 20 : 0));
-    game.banner = { text: `CARNAGE!  ${m.n} KILLS`, sub: `+${bonus} GOLD`, t: 0, color: PAL.blood0 };
+    game.banner = { text: `CARNAGE!  ${m.n} KILLS`, sub: `+${bonus} GOLD`, t: 0, color: PAL.blood0 }; bumpBounty('carnage');
   }
   m.n = 0;
 }
@@ -3465,6 +3590,7 @@ function hitBreakables(x, y, r) { for (const p of room.props) if (p.breakable &&
 // Shrines (temporary buffs) and treasury chests.
 const SHRINES = { judgement: { name: 'SHRINE OF JUDGEMENT', sub: 'HOLY LIGHTNING STRIKES YOUR FOES', t: 15, rgb: '216,247,255' }, fervor: { name: 'SHRINE OF ZEAL', sub: 'DOUBLE DAMAGE', t: 25, rgb: '224,32,46' }, haste: { name: 'SHRINE OF HASTE', sub: 'SWIFTER FEET AND FASTER RITES', t: 25, rgb: '95,220,108' }, warding: { name: 'SHRINE OF WARDING', sub: 'HALF DAMAGE TAKEN', t: 25, rgb: '138,224,255' }, plenty: { name: 'SHRINE OF PLENTY', sub: 'A RAIN OF GOLD', t: 20, rgb: '255,209,85' } };
 function useShrine(p) {
+  bumpBounty('shrines');
   if (p.used) return; sfx('shrine');
   p.used = true; p.frame = p.frame; const S = SHRINES[p.shrineKind];
   game.buff = { kind: p.shrineKind, t: S.t, max: S.t };
@@ -3473,6 +3599,7 @@ function useShrine(p) {
   if (p.shrineKind === 'plenty') dropLoot(p.x, p.y, { gold: 18 });
 }
 function openChest(p) {
+  bumpBounty('chests');
   if (p.open) return; sfx('chest');
   p.open = true; p.frame = 1;
   dropLoot(p.x, p.y + 6, { gold: 10, item: 2, itemBoost: 1, globe: 1 });
@@ -3954,6 +4081,7 @@ function update(realDt) {
   if (game.hitstop > 0) { game.hitstop -= realDt; return; }
   if (game.slowmo > 0) { game.slowmo -= realDt; game.timeScale = T.slowmo.scale; } else game.timeScale = 1;
   const dt = realDt * game.timeScale * DEV.speed;
+  if (game.state === 'play' && game.scene === 'wound' && (game.snapT = (game.snapT || 0) - realDt) <= 0) { game.snapT = 5; snapRun(); }
   // The Drowned Nave drips.
   if (game.scene === 'wound' && game.run && game.run.stratum === 2 && (game.dripT = (game.dripT || 0) - realDt) <= 0) { game.dripT = rand(0.35, 2); sfx('drip', { vol: rand(0.25, 0.7), rate: rand(0.75, 1.35), gap: 0.05 }); }
   game.time += dt;
@@ -4228,6 +4356,8 @@ function render() {
   if (game.state === 'settings') renderSettings();
   if (game.state === 'cells') renderCells();
   if (game.state === 'rites') renderRites();
+  if (game.state === 'board') renderBoard();
+  if (game.state === 'resume') renderResume();
   if (game.state === 'map') renderTownMap();
   if (game.state === 'loading') renderLoading();
   blit();
@@ -4310,6 +4440,7 @@ function drawPlayer() {
   if (game.state === 'dead' || p.hp <= 0) { anim = 'die'; i = Math.min(3, Math.floor((game.deathT || 0) / 0.13)); }
   else if (p.anim !== 'dash' && (p.castT || 0) > 0) { anim = 'cast'; i = p.castT > 0.2 ? 0 : 1; }
   else if (p.anim !== 'dash' && p.hurt > 0.1) { anim = 'hit'; i = p.hurt > 0.22 ? 0 : 1; }
+  if (G.quiver && anim !== 'die') spr('weapon', G.quiver, 0, p.x - p.face * 10, p.y - 23 + (anim === 'run' && i % 4 < 2 ? 2 : 0), { flip: p.face < 0 });
   spr(saintSheet(), anim, i, p.x, p.y, { flip: p.face < 0, white: anim !== 'die' && (p.hurt > 0.25 || blink) });
 }
 
@@ -4409,7 +4540,7 @@ const RITE_FX = {
   confessor: { pool: 'violet', glow: '154,106,230', chain: '154,106,230', rain: '154,106,230', edge: '67,42,128' },
   choir: { pool: 'crimson', glow: '255,90,74', chain: '255,209,85', rain: '255,90,74', edge: '181,29,54' },
 };
-const riteFx = () => RITE_FX[(G && G.skin) || null];
+const riteFx = () => RITE_FX[(G && G.skin) || null] || RITE_FX.null;
 function drawChainLine(x0, y0, x1, y1) {
   const d = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.floor(d / 7)), a = Math.atan2(y1 - y0, x1 - x0);
   for (let i = 0; i <= n; i++) {
@@ -5246,6 +5377,8 @@ function onTap(x, y) {
     case 'settings': settingsTap(x, y); return true;
     case 'cells': cellsTap(x, y); return true;
     case 'rites': ritesTap(x, y); return true;
+    case 'board': boardTap(x, y); return true;
+    case 'resume': resumeTap(x, y); return true;
     case 'map': sfx('tap'); game.state = 'play'; return true;
     case 'dialog': {
       const d = game.dialog;
@@ -5311,7 +5444,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { openRites, ritesTap, riteLayout, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

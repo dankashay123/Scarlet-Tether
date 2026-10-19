@@ -176,6 +176,10 @@ function chain(S, pts, mat) {
   for (let i = 0; i < pts.length; i++) S.add(torus(pts[i], 1.25, 0.75, i % 2 ? 1.5 : 0.25, mat), 0);
 }
 export const SKINS = {
+  // Odile's Habit, the starter set: brown homespun under a cream collar, a rope belt.
+  habit: {
+    mats: { robe: 'shroud', robeDark: 'shroud', hood: 'shroud', cowl: 'cream', cape: 'shroud', tabard: 'creamDark', trim: 'leather', capeHem: 'leather', cross: 'gold', hose: 'slateDark' },
+  },
   // The Hundred Nails: a gilt crown on the hood, iron shoulders, a quiver of nails.
   nails: {
     mats: { cowl: 'steel', cross: 'gold' }, crown: true,

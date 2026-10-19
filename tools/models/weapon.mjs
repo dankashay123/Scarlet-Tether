@@ -71,8 +71,20 @@ function crossbow(ang, my, skin = null) {
   return f;
 }
 
+// The quiver worn on the Saint's back (drawn behind the Saint, facing right):
+// a leather case with nail heads, banded in its set's colours.
+const QUIVER = { null: ['leather', 'gold'], nails: ['crimsonDark', 'gold'], stride: ['charred', 'emberHot'], font: ['silver', 'blueRobe'], confessor: ['slateDark', 'steel'], choir: ['cream', 'limb'] };
+function quiver(skin) {
+  const [body, band] = QUIVER[skin], S = new Scene();
+  S.add(capsule([9, 6, 0], [6, 20, 0], 2.6, 2.4, body), 0);
+  for (const y of [9, 17]) S.paint({ f: (x, yy) => Math.abs(yy - y + (x - 7.5) * 0.2) - 0.9, mat: band });
+  for (const dx of [-1.6, 0.6, 2.6]) S.add(capsule([9 + dx, 6, 0.5], [10.6 + dx, 1.6, 0.5], 0.8, 0.8, 'steel'), 0.3);
+  return Object.assign(render(S, 18, 24, M, { contrast: 1.35 }), { ax: 9, ay: 23 });
+}
+
 export default {
   weapon: {
+    ...Object.fromEntries(Object.keys(QUIVER).map((k) => [k === 'null' ? 'quiver' : `quiver_${k}`, () => [quiver(k)]])),
     xbow: () => Array.from({ length: 16 }, (_, i) => { const a = i * Math.PI / 8; return crossbow(a, Math.cos(a) < -0.01 ? -1 : 1); }),
     ...Object.fromEntries(Object.keys(XSKIN).map((k) => [`xbow_${k}`, () => Array.from({ length: 16 }, (_, i) => { const a = i * Math.PI / 8; return crossbow(a, Math.cos(a) < -0.01 ? -1 : 1, k); })])),
   },

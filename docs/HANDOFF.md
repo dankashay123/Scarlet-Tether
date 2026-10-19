@@ -225,6 +225,16 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## History by round
 
+- **Round 15c:** the worn quiver shows on the Saint's back in its set's
+  colours (`weapon` `quiver_<set>`, `G.quiver`); Odile's Habit has a
+  starter look (brown homespun, cream collar; `SKINS.habit`). The bounty
+  board (`BOUNTIES`, `bumpBounty`): three bounties counted across
+  descents, each paying gold, Devotion and a Consecrated or better piece;
+  all three pay the Board's Purse (a Hallowed piece). Suspend and resume:
+  maps are built from a seed (`seeded`, `run.seed`), the run is saved
+  every 5 s and when the page hides (`snapRun`), and Vael offers to rebuild
+  it (`resumeRun`: slain stay slain, fog, Toll, gold, Wounds, Warden or
+  Waystone). New test: `tools/tests/round15.cjs`.
 - **Round 15b:** more monsters (about 450 at Station I, 850 at VIII, 1,100
   at XV; `MAX_FOES` caps a map) and the Warden comes at 90% of the map's
   Toll (`TOLL_SHARE`). Vael folded into two streets about 1,200 px wide
