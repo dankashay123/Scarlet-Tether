@@ -46,6 +46,7 @@ const S = process.argv[2], SECS = +(process.argv[3] || 180);
       const L = await p.evaluate(() => HS.invLayout());
       for (let i = 0; i < 3; i++) { const c = Math.floor(Math.random() * 6), r = Math.floor(Math.random() * 2); await tap(L.bag.x + c * 30 + 13, L.bag.y + r * 30 + 13); await p.waitForTimeout(80); }
       await tap(L.btnA.x + 10, L.btnA.y + 8); await p.waitForTimeout(80); await p.keyboard.press('KeyI');
+    } else if (st.state !== 'play') { await p.keyboard.press('Escape'); await p.waitForTimeout(150); // any other panel (dev, settings, cells, shop...)
     } else if (st.state === 'play') {
       const k = keys[Math.floor(Math.random() * 4)];
       await p.keyboard.down(k);

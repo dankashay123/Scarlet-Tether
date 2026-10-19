@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-19, after round 13. Read this first, then `CLAUDE.md`.
+Last updated 2026-10-19, after round 14. Read this first, then `CLAUDE.md`.
 
 **Every reply that completes a prompt ends with two lists: what was done,
 and 5 suggestions for what to do next.** (The owner's standing request;
@@ -111,6 +111,30 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   counts one extra piece. Odile's Gift: after the Wardens of III, VI and
   IX, talk to Sister Odile for two pieces of a set you choose. Each skin
   has its own crossbow, bolts and bolt colours (round 13).
+- **Set arms** (round 14): two new slots, crossbow and quiver (Sanctity now
+  averages 10 slots). Each set has a 2-piece Arms set (`ARMS`, `it.wset`,
+  `sbw(id)`): Arms of the Hundred Nails (every 5th bolt a great nail),
+  of the Penitent's Stride (ember bolts after a dash), of the Drowned Font
+  (slowing bolts, pools on kills), of the Last Confessor (every 8th bolt
+  binds), of the Burning Choir (crits charge Reckoning, flame bursts in
+  Reckoning). A set crossbow sets the crossbow's look (`G.xskin`). 30% of
+  set drops from Station IV are arms.
+- **Penitent Cells** (round 14, town site near the Quiet Acre): one 90 s
+  wave trial per set, opened by wearing all six pieces (`CELLS`,
+  `updateCell`). Absolving one hangs its banner on the Cathedral front and
+  the first time pays the set's missing arms.
+- **Rite colours** (round 14): holy water, the chain and Reckoning take the
+  robe's colour (`RITE_FX`).
+- **The Drowned Nave's own pieces** (round 14): organ pipes on the back
+  wall, half-sunk pews, kelp in corners, weed mats on the floor, a dripping
+  ambience (synthesised `drip`).
+- **Settings** (round 14, pause screen): effects full/low, screen shake,
+  damage numbers all/crits/off, haptics (Android only; iPhone Safari has no
+  vibration), music and sound levels, left-handed controls (`SAVE.opts`,
+  `opt()`).
+- **The Warden's fall** (round 14): a long slow-motion beat, flash and a
+  fountain of coins that lands before it is drawn in.
+- **Dev menu** (round 14): `?dev`, then DEV on the pause screen.
 - **Stratum II, the Drowned Nave** (round 11): after the Warden of III the
   descent panel shows a STRATUM button. The Nave is a flooded look
   (`STRATA`, `useStratum`): its sheets (`hall_d`, `floor_d`, `walldecor_d`,
@@ -185,35 +209,26 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
 
 ## Next steps (ideas, roughly in priority order)
 
-1. **Tune the descent from play.** Toll size (68% of the map), Warden
-   health, phases and enrage (100 s), monster counts, drop rates, shop
-   prices, forge costs and Devotion pace are first guesses. Aim for 6–10
-   minutes per Station at matched Sanctity and a 60–90 s Warden fight.
-   Knobs: `populate()`, `TOLL_VALUE`, `WARDEN`, `DIFF`, `vigilDiff`,
-   `SHOP_PRICE`, `REFORGE_COST`, `TEMPER_K`, `devNeed`, `VIRTUES`.
-2. **Give the Drowned Nave its own dressing.** It is a recolour today:
-   add drowned props (fallen organ pipes, kelp, half-sunk pews), deep
-   water channels in room plans, a drip and slosh ambience, and one more
-   common (a drowned choir moth) so the stratum feels new, not tinted.
-3. **Bounty board.** Three small goals per descent (slay a named elite,
-   open the Reliquary, finish under 8 minutes) paying gold and Devotion.
-4. **Chunky-grid art fixes.** Review every sheet with `CHUNKY=2`: small
-   faces losing eyes, rough item icons, bolder effects for big pixels.
-5. **Juice (mind the cost).** Hit-flash tuning, bigger crit numbers, coin fountains on elite
-   and Warden deaths, a short slow-mo when a Warden falls, footstep dust.
-6. **Penitent Cells and set tuning.** One small trial room per set,
-   opened by wearing it; tune the 6-piece multipliers from play; set
-   effects on the crossbow bolts (gold nails, blue water bolts); Warden
-   trophies in town.
-7. **Phone polish.** Haptics, safe-area insets, a settings panel (music/SFX
-   volume, screen shake, left-handed controls), save export/import.
-8. **Suspend and resume.** Save a run mid-map so a closed tab returns to it.
-9. **Character choice.** A second playable saint (melee, short range).
-10. **Hand-made reactions.** Hand-posed hit and death frames for the elites
-    and Wardens instead of the whole-body tilt.
+1. **Tune from play.** Set and arms multipliers, cell goals (`CELLS`),
+   shop prices, forge costs, Devotion pace, Toll size, Warden health and
+   enrage. Use the dev menu to try each set quickly.
+2. **Bounty board.** Three small goals per descent paying gold and Devotion.
+3. **Chunky-grid art pass.** Review every sheet with `CHUNKY=2`: small
+   faces, item icons, the weed mats (they read a little like lily pads).
+4. **Set looks for Odile's Habit and the arms on the doll.** Show the worn
+   quiver on the Saint's back; a starter look for the Habit.
+5. **More Nave room plans.** Deep water channels with bridges, a flooded
+   organ loft for the Organist's arena.
+6. **Suspend and resume.** Save a run mid-map so a closed tab returns to it.
+7. **Character choice.** A second playable saint (melee, short range).
+8. **Season-style events.** A rotating weekly omen with a set showcased.
 
 ## History by round
 
+- **Round 14:** set arms (crossbow and quiver slots, 2-piece bonuses), the
+  Penitent Cells and Cathedral banners, set-coloured rites, Drowned Nave
+  props and drips, settings panel, the Warden's fall. Dev menu grew ARMS
+  and cell buttons. New test: `tools/tests/round14.cjs`.
 - **Round 14a:** dev menu (`devRows()`, `?dev`, pause screen DEV button, backquote key). New test: `tools/tests/dev.cjs`.
 - **Round 13:** a crossbow, bolt and bolt colours per set skin; hand-posed
   `cast`, `hit` and `die` frames for the Saint (death shows the fall for

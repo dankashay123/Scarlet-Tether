@@ -154,3 +154,24 @@ Research sources:
 [Blizzard Watch, season 20 patch notes](https://blizzardwatch.com/2020/03/05/diablo-3-season-20-patch-notes/),
 [Season of Grandeur](https://blizzplanet.substack.com/p/diablo-iii-season-16-the-season-of-grandeur),
 [Season 37 preview](https://www.icy-veins.com/forums/topic/85351-diablo-3-season-37-official-preview/).
+
+## Arms (round 14)
+
+Each set also has two weapon pieces, a crossbow and a quiver, with their own
+2-piece bonus that leans on the same skill. They drop as set rarity from
+Station IV (30% of set drops). A set crossbow sets the crossbow's look.
+
+| Arms | Crossbow | Quiver | 2-piece |
+|---|---|---|---|
+| Hundred Nails | The Nailwright's Arbalest | The Hundredfold Quiver | Every 5th bolt is a great nail: x3 damage, pierces every foe |
+| Penitent's Stride | The Pilgrim's Ember-Bow | The Quiver of Coals | After a dash, the next 6 bolts set foes alight |
+| Drowned Font | The Aspergill Arbalest | The Brimming Case | Bolts slow 30%; foes they slay leave a small pool |
+| Last Confessor | The Penance Engine | The Quiver of Links | Every 8th bolt binds its foe and 2 near it for 1.5 s |
+| Burning Choir | The Canticle Bow | The Quiver of Candles | Crits charge Reckoning twice as fast; in Reckoning bolts burst into flame |
+
+## Penitent Cells (round 14)
+
+Built: one 90 s wave trial per set (`CELLS`). Goals: Nails 150 small foes,
+Stride 90 chargers, Font 140 of a slow tide, Confessor 24 rares, Choir 60
+with an elite each wave. Absolving hangs a banner on the Cathedral; the
+first time also gives the set's missing arms.

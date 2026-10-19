@@ -17,6 +17,8 @@ const has = (f, x, y) => { x = Math.round(x); y = Math.round(y); return x >= 0 &
 
 const M = {
   ...MM,
+  pipe: { ramp: 'iron', spec: 0.6, bias: -0.12, min: 1 }, verd: { ramp: 'teal', spec: 0.2 }, water: { ramp: 'teal', bias: -0.1, min: 3, spec: 0.8 }, waterHi: { ramp: 'holy', min: 1, max: 3 },
+  kelp: { ramp: 'moss', spec: 0.25, min: 1 }, kelpDark: { ramp: 'moss', bias: -0.3, min: 4 },
   wood: { ramp: 'wood', spec: 0.12, bias: 0.02, min: 1 },
   woodDark: { ramp: 'wood', spec: 0.08, bias: -0.16, min: 2 },
   plank: { ramp: 'wood', spec: 0.1, bias: -0.02, min: 2 },
@@ -117,6 +119,50 @@ function pew() {
   }
   for (const x of [cx - 10, cx + 10]) S.add(box([x, G - 4, 2.6], [0.9, 4, 0.9], 0.3, 'woodDark'), 0);
   return R(S, 46, 32, M, view(G, d));
+}
+
+// ------------------------------------------------- the Drowned Nave ---
+// A broken run of organ pipes: tarnished, green at the seams, one toppled.
+function organ() {
+  const S = new Scene(), G = 60, cx = 20, d = 4;
+  S.add(box([cx, G - 3, 0], [18, 3, d + 1], 0.8, 'stoneDark'), 0);
+  const pipes = [[-14, 24, 2.2], [-7, 38, 2.6], [0, 50, 3], [7, 36, 2.6], [14, 20, 2.2]];
+  for (const [dx, h, r] of pipes) {
+    S.add(capsule([cx + dx, G - 6, 0], [cx + dx, G - 6 - h, 0], r, r, 'pipe'), 0);
+    // The pipe's mouth, a dark notch on its face, and a green-stained foot.
+    S.sub(ellipsoid([cx + dx, G - 11 - h * 0.25, r], [r * 0.7, 1.6, 1.4]), 0);
+  }
+  S.paint({ f: (x, y) => Math.abs(y - (G - 8)) - 1.2, mat: 'verd' });
+  S.paint({ f: (x, y) => Math.abs(y - (G - 32)) - 0.8, mat: 'verd' });
+  S.add(capsule([cx - 17, G - 2, 4], [cx + 3, G - 13, 4], 2.2, 2.2, 'pipe'), 0);
+  const fr = R(S, 42, 64, M, view(G, d, 0.25));
+  for (const [x, y] of [[9, 40], [27, 30], [20, 55]]) if (has(fr, x, y)) put(fr, x, y, 'moss2');
+  return fr;
+}
+// A pew sunk at one end in standing water.
+function sunkpew() {
+  const S = new Scene(), G = 30, cx = 23, d = 5;
+  S.add(rotZ(box([cx, G - 9, 0.5], [20, 1.3, 4.2], 0.6, 'wood'), [cx + 18, G - 4], -0.22), 0);
+  S.add(rotZ(box([cx, G - 15, -4.2], [20, 5, 0.9], 0.5, 'plank'), [cx + 18, G - 4], -0.22), 0.3);
+  S.add(rotZ(box([cx + 20.5, G - 10, -0.2], [1.5, 10, 4.8], 0.6, 'woodDark'), [cx + 18, G - 4], -0.22), 0.3);
+  S.add(ellipsoid([cx - 10, G - 0.4, 1], [16, 1, 7], 'water'), 0);
+  S.add(ellipsoid([cx - 14, G - 0.6, 3], [5, 0.6, 2], 'waterHi'), 0);
+  return R(S, 46, 34, M, view(G, d));
+}
+// Kelp swaying in still water: three strands, three frames.
+function kelp(i) {
+  const S = new Scene(), G = 30, cx = 10, w = [0, 1, 0, -1][i % 4];
+  for (const [dx, h, ph] of [[-3, 22, 0], [1, 27, 1.3], [4, 18, 2.4]]) {
+    let x = cx + dx, y = G;
+    for (let k = 0; k < 5; k++) { const nx = cx + dx + Math.sin(k * 0.9 + ph) * 2 + w * k * 0.5, ny = G - (k + 1) * h / 5; S.add(capsule([x, y, 0], [nx, ny, 0], 1.6 - k * 0.2, 1.4 - k * 0.2, 'kelp'), 0.6); x = nx; y = ny; }
+  }
+  return R(S, 20, 32, M, { ground: G });
+}
+// A flat mat of drowned weed, baked into the floor.
+function weedmat() {
+  const S = new Scene();
+  for (const [x, y, r] of [[8, 6, 5], [15, 7, 4], [11, 9, 4], [19, 5, 3]]) S.add(ellipsoid([x, y, 0], [r, r * 0.45, 1], 'kelpDark'), 1.5);
+  return R(S, 26, 14, M, {});
 }
 
 // ----------------------------------------------------------------- altar ---
@@ -410,7 +456,7 @@ function pilaster() {
 
 export default {
   hall: { crate: () => [crate()], pilaster: () => [pilaster()], pillar: () => [0, 1].map(pillar) },
-  props: { sarcophagus: () => [sarcophagus()], statue: () => [weepingSaint()] },
+  props: { sarcophagus: () => [sarcophagus()], statue: () => [weepingSaint()], organ: () => [organ()], sunkpew: () => [sunkpew()], kelp: () => [0, 1, 2, 3].map(kelp), weedmat: () => [weedmat()] },
   loot: {
     chest: () => [chest(false), chest(true)], pew: () => [pew()], altar: () => [altar()],
     shrine: () => ['fervor', 'haste', 'warding', 'plenty'].map(shrine), coffin: () => [coffin(false), coffin(true)],
