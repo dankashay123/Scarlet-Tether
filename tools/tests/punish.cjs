@@ -4,6 +4,7 @@
 // homing, the Sentence) fires at the Saint; then a dash must cleanse a
 // Sentence, and standing still under one must hurt. Then the Censer: its
 // icon in the bag, its panel, deeds unlocking upgrades, and their effects.
+// Last, level-up Wounds: only those of the chosen rites are offered.
 const { chromium, devices } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const S = process.argv[2];
 (async () => {
@@ -43,5 +44,15 @@ const S = process.argv[2];
   await p.waitForTimeout(2500); await p.screenshot({ path: `${S}/shots/c-fight.png` });
   await p.evaluate(() => { HS.SAVE.censerDev = false; });
   console.log('censer lit', lit, 'stats', st0, '->', st1);
+  // Rite Wounds follow the chosen rites.
+  const offered = await p.evaluate(() => {
+    HS.SAVE.rites = { m1: 'storm', m2: 'ward', pen: 'volley' }; HS.game.state = 'play'; HS.game.run.wounds = {};
+    const seen = new Set(); for (let k = 0; k < 400; k++) for (const w of HS.rollStigmata()) if (w.rite) seen.add(w.id);
+    return [...seen].sort().join(',');
+  });
+  await p.evaluate(() => { window.HS_AUTOSTIG = false; HS.game.run.wounds = {}; HS.game.stig = { cards: HS.WOUNDS.filter((w) => ['riteStorm', 'riteWard', 'riteVolley'].includes(w.id)), t: 1 }; HS.game.state = 'stig'; });
+  await p.waitForTimeout(400); await p.screenshot({ path: `${S}/shots/w-rites.png` });
+  await p.evaluate(() => { HS.pickStigma(0); window.HS_AUTOSTIG = true; });
+  console.log('rite wounds offered', offered, 'storm rank', await p.evaluate(() => HS.game.run.wounds.riteStorm));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();
 })();

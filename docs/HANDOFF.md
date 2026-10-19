@@ -240,7 +240,10 @@ A playable vertical slice on iPhone landscape (desktop works with keys) at
   (was 12 to 16 s). The Censer: a tappable icon on the bag's paper doll
   opens its panel (what it does, live numbers, 12 upgrades in `CENSER_UP`).
   Upgrades light by lifetime deeds (`SAVE.life` via `bumpBounty`, deaths,
-  descents, Vigil best) and stay lit. Test: `tools/tests/punish.cjs`.
+  descents, Vigil best) and stay lit. Level-up Wounds tied to a rite
+  (`rite` in `WOUNDS`) are offered only while that rite is chosen; every
+  rite now has one (Deep Vial, Longer Chains, and ten new ones such as
+  Stormwright and Martyr's Resolve). Test: `tools/tests/punish.cjs`.
 - **Round 15f (Rites panel polish):** the bag's RITES button moved to the
   bottom left, with the three chosen rites shown beside it. The Rites panel
   was redone: roomier cards (round icon socket, set stripe, cooldown, SET

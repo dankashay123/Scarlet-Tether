@@ -88,6 +88,7 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **Performance:** never build a canvas per frame or per hit. `text()` caches each string, so anything with changing digits goes glyph by glyph (it does this by itself). Freeze frames go through `hitStop()`. Check crowds with `tools/tests/perf.cjs`.
 - **Monster attacks:** `MON` lists each kit; `MORE_ATTACKS` adds the round 16 ones. Damage is written at the old scale and multiplied by `MON_DMG`; shot speed by `SHOT_K`. Every attack needs a telegraph (windup tell, circle, `aim` line or the Sentence ring).
 - **The Censer:** `CENSER_UP` holds its 12 upgrades, unlocked by lifetime deeds (`SAVE.life`, bumped by `bumpBounty`). Read them with `censerUp(id)`.
+- **Wounds:** level-up cards in `WOUNDS`. A Wound with `rite` is offered only while that rite is chosen; give each new rite one.
 - **Strata:** `STRATA` and `useStratum(k)` swap the dungeon sheets for the `_d` copies (built by the `DROWN` ramp remap in `tools/sprites.mjs`). Give a monster `stratum: 2` to put it in Stratum II's pools.
 - **Town:** two streets. Plan x below `TOWN_SPLIT` is the upper street, the rest the lower street `ROW_DY` further south (`townX`, `townRow`). Sites carry `S.row`; site `dy` already includes the row.
 - **Seeds:** descent maps and their monsters come from `rng`, which `newRun` seeds (`run.seed`) so a suspended run rebuilds the same map. Never use `Math.random` in map building or `populate()`.
