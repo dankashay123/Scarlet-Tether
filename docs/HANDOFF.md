@@ -79,7 +79,8 @@ Desktop works with keys. 55–60 fps in dense crowds.
   done and (2) 5 suggestions for what to do next.**
 - Graphics matter most. The target is Otherworld Legends: chunky, crisp
   pixel art, nothing that looks AI-made. They check text layout on a phone
-  closely: no overlapping or clipped text.
+  closely: no overlapping or clipped text. Game text must be plain and
+  short, only what the player needs (no flourishes).
 - Systems borrow from Diablo 3 and Torchlight Infinite, always under our
   own names (never borrow names or terms from other games).
 - They want the game hard: monsters punish mistakes, drops are rare,
@@ -110,6 +111,13 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## History by round
 
+- **Round 25.2 (plain text):** every instruction, panel, toast, banner,
+  tutorial step and change note was rewritten short and plain (the owner
+  found flourishes like "it needs no aim: stay close and let it work" read
+  as AI-made). SLAY became KILL everywhere; Warden lore lines were dropped
+  (the banner shows "WARDEN OF STATION N"); the receipt is plain (YOU DIED,
+  KILLS, LOST). Townsfolk chatter keeps its voice. The rule is in
+  `CLAUDE.md` under Writing style.
 - **Round 25 (Warden music, the pool, the vow, the Vigil Roll, sound
   settings):** a living Warden plays its own battle loop (`music_warden`,
   Juhani Junkala's Epic Boss Battle; `music_warden_nave`, an epic Toccata

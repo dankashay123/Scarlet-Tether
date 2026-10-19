@@ -113,6 +113,6 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **The Vigil:** opened from the Descent panel; each run spends a Bloodrose Key (`SAVE.vkeys`, `dropVkey`). Its extra rewards live in `VIGIL_PAY` and `vigilPayout`.
 - **Wagers and the vow:** `WAGER_MARKS`, `wagerOdds`, `settleWager` (the Scrying Pool; `run.reach`); `SAVE.vow` and `run.martyr` (Martyrdom).
 - **The altar:** odds are `burnChance` (`ALTAR_WIN` + Chrism + `ALTAR_PITY` per past failure); `grindAtAltar` mills three pieces into a Chrism.
-- **Writing style:** keep docs and code comments plain and short.
+- **Writing style:** keep docs and code comments plain and short. Player-facing text says only what the player needs, in plain words: no flourishes, no lore asides in UI, no "you slay it" phrasing (the owner finds it reads as AI-made). Use KILL, not SLAY. Townsfolk chatter is character dialogue and may keep its voice.
 - **Replies:** after every completed prompt, end the reply with a short list of what was done and 5 suggestions for what to do next (the owner's standing request).
 - **Finishing a round:** run the tests and soak, look at the screenshots, update `docs/HANDOFF.md` (state, history, next ideas) and this file, then push the branch and `master`.

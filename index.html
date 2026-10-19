@@ -92,22 +92,23 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '25.1';
+const BUILD = '25.2';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
-  '25.1': ['WARDENS NOW FIGHT TO THEIR OWN MUSIC: AN ORCHESTRA IN THE UNDERCROFT, THE ORGAN IN THE DROWNED NAVE.',
-    "THE SCRYING POOL IS OPEN: WAGER GOLD ON HOW DEEP YOU GET. MARTYRDOM IS OPEN: ONE LIFE, DOUBLE SPOILS, AND A CRACKED HALO FOR THOSE WHO FALL.",
-    'THE VIGIL ROLL STANDS BY THE CATHEDRAL: YOUR BEST VIGILS AND EVERY HALO YOU HAVE EARNED.', 'SETTINGS: SEPARATE VOICE VOLUME, AND FEWER OR NO MONSTER CRIES.'],
-  '24.1': ["NEW MUSIC: VAEL SINGS A CHANT, AND THE CHOIR JOINS IN BY THE CATHEDRAL DOORS. EACH STRATUM HAS ITS OWN MUSIC.",
-    'EVERY WARDEN HAS ITS OWN ROAR, A STING WHEN IT COMES, AND ITS OWN DEATH. MONSTERS CRY OUT AS THEY FALL.',
-    'THE PLUSH STALL SELLS BOLT TRAILS AND DASH SHADOWS. SLAY A WARDEN AT STATION X OR DEEPER TO EARN ITS HALO.'],
-  '23.1': ['NEW SOUNDS THROUGHOUT: A REAL CROSSBOW, WET HITS, BELLS AND GONGS IN A STONE HALL, A WARDEN ROAR.',
-    'THE PLUSH STALL IS OPEN: ROBE DYES AND HALOS FOR GOLD.', 'SET PIECES SHOW THEIR SET COLOURS. HALLOWED PIECES SHIMMER.', "THE ASHEN ALTAR HAS ITS OWN FLAME AND CHIME, AND ITS FIRE CRACKLES AS YOU PASS."],
-  '22.1': ['EVERY HALLOWED PIECE NOW HAS ITS OWN ICON, IN THE BAG, THE ALTAR AND ON THE GROUND.', "THE ALTAR'S LIST SHOWS EACH PIECE'S ICON BESIDE ITS NAME."],
-  '21.1': ["THE ALTAR'S MEMORY: TAP A SOCKET TO SEE EVERY POWER IT CAN HOLD, THEN SET ONE.",
-    'THE FORGE, THE CANONRY AND THE VIGIL HAVE FRAMES OF THEIR OWN: IRON, SILVER AND CRIMSON.',
-    'A WAYMARK NOW STANDS AT THE PILGRIM ROAD.',
-    'THE GAME UPDATES ITSELF, AND TELLS YOU WHAT CHANGED.'],
+  '25.2': ['SHORTER, CLEARER TEXT THROUGHOUT THE GAME.'],
+  '25.1': ['NEW: WARDEN BATTLE MUSIC.',
+    'NEW: THE SCRYING POOL (BET GOLD) AND MARTYRDOM (ONE LIFE, DOUBLE LOOT).',
+    'NEW: THE VIGIL ROLL BY THE CATHEDRAL. YOUR BEST VIGILS AND EARNED HALOS.', 'NEW SETTINGS: VOICE VOLUME AND MONSTER CRIES.'],
+  '24.1': ['NEW MUSIC FOR VAEL AND EACH STRATUM.',
+    'NEW WARDEN AND MONSTER SOUNDS.',
+    'PLUSH STALL: BOLT AND DASH TRAILS. KILL A WARDEN AT STATION X+ TO EARN ITS HALO.'],
+  '23.1': ['NEW SOUND EFFECTS.',
+    'NEW: THE PLUSH STALL. ROBE COLOURS AND HALOS.', 'SET PIECES SHOW THEIR SET COLOURS. HALLOWED PIECES SHIMMER.', 'NEW ALTAR SOUNDS.'],
+  '22.1': ['EVERY HALLOWED PIECE HAS ITS OWN ICON.', 'THE ALTAR LIST SHOWS ICONS.'],
+  '21.1': ['ALTAR: TAP A SOCKET TO CHOOSE ITS POWER.',
+    'NEW FRAMES FOR THE FORGE, CANONRY AND VIGIL.',
+    'A WAYMARK AT THE PILGRIM ROAD.',
+    'THE GAME NOW UPDATES ITSELF.'],
 };
 async function checkBuild() {
   try {
@@ -1022,7 +1023,7 @@ function spawnWarden(force) {
   e.boss = true; e.title = `WARDEN OF ${df.name}`; e.phase = 0; e.dmgK *= soft ? 1.1 : WARDEN.dmgK; e.bornT = game.time + (soft ? 50 : 0);
   e.cds = e.def.attacks.map(() => rand(1, 2.5));
   game.warden = e; if (game.run) game.run.reach = Math.max(game.run.reach || 0, 1);
-  game.banner = { text: e.name, sub: d.lore, t: 0, color: PAL.blood0 };
+  game.banner = { text: e.name, sub: e.title, t: 0, color: PAL.blood0 };
   toast('THE TOLL IS FULL. THE WARDEN COMES.', 2.5);
   game.shake = 8; game.flash = 0.12; sfx('elite', { rate: 0.6, vol: 1.4, gap: 0 }); sfx(AUDIO.has(`roar_${id}`) ? `roar_${id}` : 'roar', { gap: 0 }); sfx('sting_warden', { gap: 0 }); AUDIO.duck(5);
   rings.push({ x, y: y - 12, t: 0, max: 0.9, r: 110, color: '224,32,46' });
@@ -1031,7 +1032,7 @@ function spawnWarden(force) {
 function wardenPhase(e) {
   if (!e.enraged && game.time - e.bornT > WARDEN.enrage) {
     e.enraged = true; e.dmgK *= 2; e.cdK *= 0.6; e.speedK *= 1.25;
-    game.banner = { text: 'THE WARDEN WILL NOT BE DENIED', sub: 'IT HAS WAITED LONG ENOUGH. IT HITS TWICE AS HARD.', t: 0, color: PAL.blood0 };
+    game.banner = { text: 'THE WARDEN IS ENRAGED', sub: 'IT NOW DEALS DOUBLE DAMAGE.', t: 0, color: PAL.blood0 };
     game.shake = 8; sfx('elite', { rate: 0.5, vol: 1.4, gap: 0 });
   }
   const want = e.hp / e.maxHp <= 0.33 ? 2 : e.hp / e.maxHp <= 0.66 ? 1 : 0;
@@ -1087,7 +1088,7 @@ function wardenSlain(e) {
     if (up) { SAVE.vigilBest = Math.max(SAVE.vigilBest || 0, L); SAVE.vigilOpen = Math.max(SAVE.vigilOpen || 1, L + up); rollVigil(L, left); }
     persist();
     game.run.vigilResult = { L, left, up };
-    game.banner = { text: up ? `VIGIL ${L} KEPT` : 'THE WARDEN FALLS', sub: up ? `VIGIL ${L + up} IS OPEN TO YOU` : 'THE CANDLE WAS OUT. THE VIGIL DOES NOT RISE.', t: 0, color: up ? PAL.gold0 : PAL.stone1 };
+    game.banner = { text: up ? `VIGIL ${L} KEPT` : 'THE WARDEN FALLS', sub: up ? `VIGIL ${L + up} UNLOCKED` : 'OUT OF TIME. NO LEVEL GAINED.', t: 0, color: up ? PAL.gold0 : PAL.stone1 };
     dropLoot(e.x, e.y, { gold: 30, item: up ? 3 + Math.floor(L / 5) : 2, itemBoost: 2 + L * 0.06, globe: 2, warden: true }); dropVkey(e); vigilPayout(e, L);
   } else {
     const first = (SAVE.cleared ?? -1) < df.n - 1;
@@ -1095,7 +1096,7 @@ function wardenSlain(e) {
     SAVE.cleared = Math.max(SAVE.cleared ?? -1, df.n - 1);
     if (first && [3, 6, 9].includes(df.n)) { SAVE.gifts = (SAVE.gifts || 0) + 1; toast("SISTER ODILE HAS A GIFT FOR YOU IN VAEL", 3); }
     persist();
-    game.banner = { text: 'THE WARDEN FALLS', sub: first && df.n < 15 ? `STATION ${ROMAN[df.n]} IS OPEN TO YOU` : 'THE WAYSTONE WAKES', t: 0, color: PAL.gold0 };
+    game.banner = { text: 'THE WARDEN FALLS', sub: first && df.n < 15 ? `STATION ${ROMAN[df.n]} UNLOCKED` : 'USE THE WAYSTONE TO RETURN', t: 0, color: PAL.gold0 };
     dropLoot(e.x, e.y, { gold: 25, item: WARDEN.items, itemBoost: 2, globe: 2, warden: true }); maybeChrism(e.x, e.y, 0.4); dropVkey(e);
   }
   for (const d of drops) if (d.kind !== 'globe') d.vac = true;
@@ -1126,7 +1127,7 @@ function updateFloor(dt) {
   if (game.warden && !game.warden.dead) wardenPhase(game.warden);
   // The Vigil's candle.
   const V = game.vigil;
-  if (V && !V.out && !game.waystone) { V.t -= dt; if (V.t <= 0) { V.t = 0; V.out = true; game.banner = { text: 'THE CANDLE GOES OUT', sub: 'SLAY THE WARDEN ANYWAY. THE VIGIL WILL NOT RISE.', t: 0, color: PAL.blood0 }; sfx('gate_lock', { rate: 0.6 }); } }
+  if (V && !V.out && !game.waystone) { V.t -= dt; if (V.t <= 0) { V.t = 0; V.out = true; game.banner = { text: 'OUT OF TIME', sub: 'NO VIGIL LEVEL THIS TIME.', t: 0, color: PAL.blood0 }; sfx('gate_lock', { rate: 0.6 }); } }
   // Shrine of Judgement: holy lightning on the nearest foes.
   if (game.buff && game.buff.kind === 'judgement') { game.zapT = (game.zapT || 0) - dt; if (game.zapT <= 0) { game.zapT = 0.35; for (const e of nearestFoes(player.x, player.y, 2, 170)) { const dx = e.x - player.x, dy = e.y - player.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, 14 + game.run.level * 1.5, rng() < 0.2, dx / d, dy / d, 30, { color: PAL.holy0 }); game.zaps.push({ x0: player.x, y0: player.y - 40, x1: e.x, y1: e.y - e.hy, t: 0 }); } if (game.zaps.length) sfx('chain', { rate: 1.8, vol: 0.4, gap: 0.2 }); } }
   for (const z of game.zaps) z.t += dt; game.zaps = game.zaps.filter((z) => z.t < 0.14);
@@ -1144,7 +1145,7 @@ function placeReliquary(r) {
 }
 function startReliquary(p) {
   game.event = { p, t: 30, kills: 0, need: 30, spawnT: 0 };
-  game.banner = { text: 'THE RELIQUARY WEEPS', sub: 'LAY 30 OF THE DEAD TO REST BEFORE IT FALLS SILENT', t: 0, color: PAL.blood0 };
+  game.banner = { text: 'THE RELIQUARY WEEPS', sub: 'KILL 30 FOES NEAR IT IN 30 S', t: 0, color: PAL.blood0 };
   sfx('elite', { rate: 0.8 }); game.shake = 4;
 }
 function updateReliquary(dt) {
@@ -1157,10 +1158,10 @@ function updateReliquary(dt) {
   }
   if (E.kills >= E.need) {
     E.done = true; E.p.frame = 1;
-    game.banner = { text: 'THE RELIQUARY OPENS', sub: 'ITS SAINT IS GRATEFUL', t: 0, color: PAL.gold0 }; bumpBounty('reliquary');
+    game.banner = { text: 'THE RELIQUARY OPENS', sub: 'REWARDS DROPPED', t: 0, color: PAL.gold0 }; bumpBounty('reliquary');
     dropLoot(E.p.x, E.p.y + 6, { gold: 16, item: 3, itemBoost: 1.5, globe: 1 }); maybeChrism(E.p.x, E.p.y + 6, 0.25); sfx('chest');
     rings.push({ x: E.p.x, y: E.p.y - 8, t: 0, max: 0.7, r: 60, color: '255,209,85' });
-  } else if (E.t <= 0) { E.done = true; game.banner = { text: 'THE RELIQUARY FALLS SILENT', sub: 'TOO FEW OF THE DEAD WERE LAID TO REST', t: 0, color: PAL.stone1 }; dropLoot(E.p.x, E.p.y + 6, { gold: 4 }); }
+  } else if (E.t <= 0) { E.done = true; game.banner = { text: 'THE RELIQUARY FALLS SILENT', sub: 'NOT ENOUGH KILLS', t: 0, color: PAL.stone1 }; dropLoot(E.p.x, E.p.y + 6, { gold: 4 }); }
 }
 // ---------------------------------------------------------- fog of war ---
 // The map fills in as the Saint explores: every tile within REVEAL tiles is
@@ -1214,7 +1215,7 @@ function renderRoomStatus() {
   const wd = game.warden;
   if (wd && !wd.dead) return renderBossBar(wd);
   const T0 = game.toll, w = 150, x = Math.round(W / 2 - w / 2), y = 9;
-  if (game.waystone) text('THE WARDEN IS SLAIN. TAKE THE WAYSTONE HOME.', W / 2, y, PAL.holy1, { align: 'center' });
+  if (game.waystone) text('WARDEN KILLED. USE THE WAYSTONE TO RETURN.', W / 2, y, PAL.holy1, { align: 'center' });
   else if (game.cell) {
     const c = game.cell, goal = CELLS[c.id].goal;
     text('ABSOLUTION', x - 6, y - 1, RARITY[4].color, { align: 'right' });
@@ -1230,7 +1231,7 @@ function renderRoomStatus() {
     const fw = Math.round(w * T0.v / T0.max);
     ctx.fillStyle = PAL.blood1; ctx.fillRect(x, y, fw, 5); ctx.fillStyle = PAL.blood0; ctx.fillRect(x, y, fw, 1);
     text(`${Math.floor(T0.v / T0.max * 100)}%`, x + w + 6, y - 1, PAL.cloth0);
-    if (game.run && game.run.martyr) text("THE MARTYR'S VOW: ONE LIFE, DOUBLE SPOILS", W / 2, y + 10, PAL.blood0, { align: 'center', small: true });
+    if (game.run && game.run.martyr) text("MARTYR'S VOW: ONE LIFE, DOUBLE LOOT", W / 2, y + 10, PAL.blood0, { align: 'center', small: true });
   }
   renderTrialHud();
   if (game.focus && !game.focus.boss) renderNameplate(game.focus, game.vigil || (game.event && !game.event.done) ? 30 : 20);
@@ -1419,7 +1420,7 @@ function newRun() {
   R0.cell = game.nextCell || null; game.nextCell = null; R0.seed = seed; R0.dead = [];
   // The Martyr's vow is spent on the descent it was taken for.
   R0.martyr = !!game.nextMartyr && !R0.vigil && !R0.cell && !tut.on; game.nextMartyr = false;
-  if (R0.martyr && !resume) { SAVE.vow = false; persist(); setTimeout(() => { game.banner = { text: "THE MARTYR'S VOW", sub: 'ONE LIFE. GOLD AND GEAR FALL DOUBLED.', t: 0, color: PAL.blood0 }; }, 1500); }
+  if (R0.martyr && !resume) { SAVE.vow = false; persist(); setTimeout(() => { game.banner = { text: "THE MARTYR'S VOW", sub: 'ONE LIFE. DOUBLE GOLD AND GEAR.', t: 0, color: PAL.blood0 }; }, 1500); }
   if (R0.cell) { rng = Math.random; game.toll = null; room.name = `PENITENT CELL: ${VSETS[R0.cell].name.replace(/^THE /, '')}`; game.cell = { id: R0.cell, t: CELL_TIME, kills: 0, spawnT: 1.5, end: 0 }; return; }
   game.cell = null;
   populate();
@@ -1450,16 +1451,16 @@ function persist() { try { localStorage.setItem('hollow-saint', JSON.stringify(S
 // Gilded Lamb, with townsfolk to talk to. Shops open in later slice items.
 const NPC_INFO = {
   odile: { name: 'SISTER ODILE', lines: () => SAVE.descents || SAVE.deaths
-    ? [pick(["UP YOU GET. THE WOUND WON'T BLEED ITSELF.", "YOUR BED WAS STILL WARM WHEN I CHANGED THE SHEETS. THAT'S NEW.", "THE CHOIR SAYS YOU'RE DOING WONDERFULLY. THE CHOIR SAYS THAT EVERY YEAR."])]
-    : ['AH. AWAKE AT LAST, SAINT.', "DON'T FRET IF YOU REMEMBER NOTHING. NONE OF YOU EVER DO.", 'THE WOUND WAITS BENEATH THE CATHEDRAL. THE VESTRY DOORS WILL TAKE YOU DOWN.', 'THE WHOLE CITY WILL BE WATCHING. TRY TO DIE INTERESTINGLY.'] },
+    ? [pick(['UP YOU GET, SAINT.', 'BACK AGAIN.', 'THE WOUND IS WAITING.'])]
+    : ['AWAKE AT LAST, SAINT.', 'THE CATHEDRAL DOORS TAKE YOU DOWN INTO THE WOUND.'] },
   cinder: { name: 'BROTHER CINDER', lines: () => [
-    'I KEEP THE ASHEN ALTAR. LAY A HALLOWED PIECE IN ITS BOWL AND THE FLAME MAY LEARN ITS POWER, FOR GOOD.',
-    `IT TAKES ONLY ${Math.round(ALTAR_WIN * 100)} IN A HUNDRED. THE REST IS ASH, AND YOUR GOLD WITH IT. EACH REFUSAL WARMS IT A LITTLE FOR THE NEXT.`,
-    ...((SAVE.altarPity || 0) ? [`IT REMEMBERS YOUR LAST ${SAVE.altarPity} OFFERING${SAVE.altarPity > 1 ? 'S' : ''}. +${Math.round(altarPity() * 100)} IN A HUNDRED, NEXT TIME.`] : []),
-    'CHRISM IS HOLY OIL. POUR IT ON AND THE FLAME LISTENS. A HALLOWED CHRISM NEVER FAILS.',
-    'PIECES THE ALTAR ALREADY KNOWS ARE NO USE TO IT. GRIND THREE AND I WILL PRESS YOU A CHRISM.',
-    'THE BLEEDING VIGIL PAYS IN CHRISM. THE DEEPER THE VIGIL, THE BETTER THE OIL.'] },
-  hollis: { name: 'HOLLIS THE SMITH', lines: () => ["FORGE STAYS COLD TILL THE CHOIR PAYS ME.", 'BRING ME BONE DUST AND MARROW AND WE WILL TALK VESTMENTS.'] },
+    'BURN A HALLOWED PIECE HERE TO LEARN ITS POWER.',
+    `IT WORKS ${Math.round(ALTAR_WIN * 100)}% OF THE TIME. EACH FAILURE RAISES THE NEXT CHANCE.`,
+    ...((SAVE.altarPity || 0) ? [`NEXT BURN: +${Math.round(altarPity() * 100)}% FROM ${SAVE.altarPity} FAILURE${SAVE.altarPity > 1 ? 'S' : ''}.`] : []),
+    'CHRISM RAISES THE CHANCE. HALLOWED CHRISM NEVER FAILS.',
+    'GRIND THREE KNOWN PIECES INTO A CHRISM.',
+    'THE BLEEDING VIGIL DROPS CHRISM. HIGHER VIGILS DROP BETTER CHRISM.'] },
+  hollis: { name: 'HOLLIS THE SMITH', lines: () => ["FORGE STAYS COLD TILL THE CHOIR PAYS ME.", 'KILL THE WARDEN OF STATION II AND I WILL OPEN THE FORGE.'] },
   pell: { name: 'BROTHER PELL', lines: () => ["GENUINE SAINT'S TOENAILS. THREE FOR A COPPER.", "DON'T LOOK AT YOUR FEET. WHY WOULD YOU LOOK AT YOUR FEET?"] },
   barkeep: { name: 'THE BOOKIE', lines: () => [`THE LAMB IS GIVING ${ODDS[(SAVE.descents || 0) % ODDS.length]} YOU DON'T COME BACK UP.`, 'I TOOK THE BET. AGAINST YOU. NOTHING PERSONAL.'] },
   crier: { name: 'THE TOWN CRIER', lines: () => SAVE.lastDeath
@@ -1502,7 +1503,7 @@ const BARKS = {
   beggar: ['ALMS FOR AN OLD SAINT?', 'I WAS CHOSEN ONCE, YOU KNOW.'],
 };
 Object.assign(NPC_INFO, {
-  vane: { name: 'ARCHDEACON VANE', lines: () => ['THE CANONRY IS NOT YET OPEN TO YOU, SAINT.', 'BRING ME ASH FROM YOUR MARTYRDOM AND WE SHALL SPEAK OF VIRTUES.', 'THE CROWD ADORES YOU. KEEP DYING BEAUTIFULLY.'] },
+  vane: { name: 'ARCHDEACON VANE', lines: () => ['THE CANONRY OPENS AFTER YOUR FIRST DESCENT.', 'SPEND DEVOTION HERE ON PERMANENT BONUSES.'] },
   plushseller: { name: 'THE PLUSH SELLER', lines: () => ['GENUINE PLUSH SAINTS! HAND STITCHED!', `THIS YEAR'S ONE HAS YOUR SCARS. ALL ${(SAVE.deaths || 0) + 3} OF THEM.`] },
   beggar: { name: 'OLD BARNABY', lines: () => ['I WAS A SAINT ONCE. THEY LET ME KEEP THE HALO.', 'IT BURNS, AT NIGHT. LIKE A CANDLE THAT WON\'T GO OUT.', 'DON\'T LET THEM PUT YOU IN THE POOL.'] },
   guard: { name: 'GATE GUARD', lines: () => [pick(BARKS.guard)] },
@@ -1694,17 +1695,17 @@ const room_candles = [];
 const MAP_BADGES = ['gate', 'market', 'plush', 'tavern', 'forge', 'acre', 'descend', 'rift', 'lock', 'npc', 'board', 'relic', 'pool', 'saint'];
 const badge = (name, x, y, big = false, o = {}) => sprC('ui', big ? 'badgeBig' : 'badge', MAP_BADGES.indexOf(name), x, y, o);
 const SITES = [
-  { id: 'road', name: 'THE PILGRIM ROAD', badge: 'gate', x: 140, dy: 46, lift: 36, what: 'STRATUM II: THE DROWNED NAVE. A FLOODED CATHEDRAL WITH ITS OWN DEAD AND TWO WARDENS OF ITS OWN.', need: 'SLAY THE WARDEN OF STATION III', prog: () => [(SAVE.cleared ?? -1) >= 2 ? 1 : 0, 1], doneText: 'OPEN. CHOOSE THE DROWNED NAVE AT THE CATHEDRAL DOORS.' },
-  { id: 'stall', name: "PELL'S CURIO STALL", badge: 'market', x: 588, dy: 34, what: 'BUY GEAR WITH GOLD. THE STOCK CHANGES AFTER EVERY DESCENT.', need: 'FINISH 1 DESCENT', prog: () => [SAVE.descents || 0, 1] },
-  { id: 'plush', name: 'THE PLUSH STALL', badge: 'plush', x: 692, dy: 34, what: "NEW VESTMENT COLOURS AND HALOS FOR THE SAINT. LOOKS ONLY.", need: 'FALL 5 TIMES', prog: () => [SAVE.deaths || 0, 5] },
-  { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 880, dy: 64, what: 'THREE BOUNTIES AT A TIME FOR GOLD, DEVOTION AND FINE GEAR. CLAIM ALL THREE FOR A HALLOWED PIECE.', need: 'SLAY 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
-  { id: 'pool', name: 'THE SCRYING POOL', badge: 'pool', x: 1060, dy: 110, what: 'WAGERS. BET YOUR GOLD ON HOW DEEP YOU GET. THE CROWD PAYS OUT.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
-  { id: 'forge', name: 'THE EMBER FORGE', badge: 'forge', x: 1250, dy: 50, what: 'REFORGE A PIECE OF GEAR TO REROLL ONE STAT, OR TEMPER IT TO RAISE ITS RARITY.', need: 'SLAY THE WARDEN OF STATION II', prog: () => [(SAVE.cleared ?? -1) >= 1 ? 1 : 0, 1] },
-  { id: 'altar', name: 'THE ASHEN ALTAR', badge: 'relic', x: 1378, dy: 140, lift: 34, what: 'BURN A HALLOWED PIECE TO LEARN ITS POWER FOREVER, THEN SET ONE LEARNED POWER EACH FOR VESTMENTS, ARMS AND RELICS.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
-  { id: 'cells', name: 'THE PENITENT CELLS', badge: 'lock', x: 1664, dy: 30, lift: 30, what: 'ONE TRIAL FOR EACH VESTMENT SET: NINETY SECONDS OF WAVES THAT TEST WHAT THE SET DOES. ABSOLVE A CELL TO HANG ITS BANNER.', need: 'WEAR ALL SIX PIECES OF ANY SET', prog: () => [Math.max(0, ...MAIN_SETS.map((id) => Math.min(6, (G && G.sets[id]) || 0))), 6] },
-  { id: 'martyr', name: 'MARTYRDOM', badge: 'saint', x: 2244, dy: 76, lift: 40, what: 'TAKE THE VOW: ONE LIFE, AND GOLD AND GEAR FALL DOUBLED. FALL, AND EVERYTHING YOU FOUND IS LOST.', need: 'FINISH 10 DESCENTS', prog: () => [SAVE.descents || 0, 10] },
-  { id: 'roll', name: 'THE VIGIL ROLL', badge: 'board', x: 2730, dy: 44, lift: 46, what: 'THE BEST VIGILS YOU HAVE KEPT, CUT IN STONE, AND EVERY HALO YOU HAVE EARNED ON ITS STAND.', need: 'FINISH 1 DESCENT', prog: () => [Math.min(1, SAVE.descents || 0), 1] },
-  { id: 'canonry', name: 'THE CANONRY', badge: 'relic', x: 2444, dy: 50, lift: 30, what: 'CANONIZATION. SPEND ASH FROM YOUR DEATHS ON PERMANENT VIRTUES: HEALTH, DAMAGE, LUCK.', need: 'FINISH ONE DESCENT', prog: () => [Math.min(1, SAVE.descents || 0), 1] },
+  { id: 'road', name: 'THE PILGRIM ROAD', badge: 'gate', x: 140, dy: 46, lift: 36, what: 'STRATUM II: THE DROWNED NAVE. NEW MONSTERS AND TWO NEW WARDENS.', need: 'KILL THE WARDEN OF STATION III', prog: () => [(SAVE.cleared ?? -1) >= 2 ? 1 : 0, 1], doneText: 'CHOOSE IT AT THE CATHEDRAL DOORS.' },
+  { id: 'stall', name: "PELL'S CURIO STALL", badge: 'market', x: 588, dy: 34, what: 'BUY GEAR. NEW STOCK AFTER EACH DESCENT.', need: 'FINISH 1 DESCENT', prog: () => [SAVE.descents || 0, 1] },
+  { id: 'plush', name: 'THE PLUSH STALL', badge: 'plush', x: 692, dy: 34, what: 'ROBE COLOURS, HALOS AND TRAILS. COSMETIC.', need: 'FALL 5 TIMES', prog: () => [SAVE.deaths || 0, 5] },
+  { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 880, dy: 64, what: 'THREE BOUNTIES FOR GOLD, DEVOTION AND GEAR. CLAIM ALL THREE FOR A HALLOWED PIECE.', need: 'KILL 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
+  { id: 'pool', name: 'THE SCRYING POOL', badge: 'pool', x: 1060, dy: 110, what: 'BET GOLD ON HOW FAR YOUR NEXT DESCENT GOES.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
+  { id: 'forge', name: 'THE EMBER FORGE', badge: 'forge', x: 1250, dy: 50, what: 'REFORGE: REROLL ONE STAT. TEMPER: RAISE A PIECE TO YOUR BEST STATION.', need: 'KILL THE WARDEN OF STATION II', prog: () => [(SAVE.cleared ?? -1) >= 1 ? 1 : 0, 1] },
+  { id: 'altar', name: 'THE ASHEN ALTAR', badge: 'relic', x: 1378, dy: 140, lift: 34, what: 'BURN A HALLOWED PIECE TO LEARN ITS POWER. SET ONE POWER EACH FOR VESTMENTS, ARMS AND RELICS.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
+  { id: 'cells', name: 'THE PENITENT CELLS', badge: 'lock', x: 1664, dy: 30, lift: 30, what: 'A 90 SECOND TRIAL FOR EACH VESTMENT SET. CLEAR ONE TO EARN ITS BANNER.', need: 'WEAR ALL SIX PIECES OF ANY SET', prog: () => [Math.max(0, ...MAIN_SETS.map((id) => Math.min(6, (G && G.sets[id]) || 0))), 6] },
+  { id: 'martyr', name: 'MARTYRDOM', badge: 'saint', x: 2244, dy: 76, lift: 40, what: 'ONE LIFE, DOUBLE GOLD AND GEAR. DIE AND YOU LOSE EVERYTHING YOU FOUND.', need: 'FINISH 10 DESCENTS', prog: () => [SAVE.descents || 0, 10] },
+  { id: 'roll', name: 'THE VIGIL ROLL', badge: 'board', x: 2730, dy: 44, lift: 46, what: 'YOUR BEST VIGILS AND EARNED HALOS.', need: 'FINISH 1 DESCENT', prog: () => [Math.min(1, SAVE.descents || 0), 1] },
+  { id: 'canonry', name: 'THE CANONRY', badge: 'relic', x: 2444, dy: 50, lift: 30, what: 'SPEND DEVOTION POINTS ON PERMANENT BONUSES.', need: 'FINISH ONE DESCENT', prog: () => [Math.min(1, SAVE.descents || 0), 1] },
 ];
 for (const S of SITES) { S.row = townRow(S.x); S.x = townX(S.x); S.dy = townY(S.dy) + S.row * ROW_DY; }
 const siteDone = (s) => { const [a, b] = s.prog(); return a >= b; };
@@ -1807,7 +1808,7 @@ function renderShop() {
     drawItemCard(it, L.card, SAVE.equip[it.slot]);
     const can = (SAVE.gold || 0) >= it.price && (SAVE.bag.length < BAG_SIZE || !SAVE.equip[it.slot]);
     invButton({ ...L.btnA, w: L.btnA.w * 2 + 6 }, can ? `BUY FOR ${it.price}` : (SAVE.gold || 0) < it.price ? 'NOT ENOUGH GOLD' : 'BAG IS FULL', PAL.gold3, can);
-  } else text('PELL HAS NOTHING ELSE TODAY.', L.card.x + 6, L.card.y + 8, PAL.stone1, { small: true, outline: null });
+  } else text('SOLD OUT.', L.card.x + 6, L.card.y + 8, PAL.stone1, { small: true, outline: null });
 }
 function shopTap(x, y) {
   const L = featLayout(), items = SAVE.shop.items;
@@ -1832,7 +1833,7 @@ const forgeCell = (L, i) => { const n = Math.max(4, Math.min(8, Math.floor((L.li
 function renderForge() {
   const L = featLayout(), items = forgeItems(), F = game.forge, it = items[F.sel];
   featFrame(L, 'THE EMBER FORGE', PAL.ember1, '_iron');
-  text(fitText('WORN FIRST, THEN THE BAG. TAP A PIECE, THEN A STAT.', L.list.w, 'TAP A PIECE, THEN A STAT.'), L.list.x, L.list.y, PAL.stone2, { small: true, outline: null });
+  text(fitText('TAP A PIECE, THEN A STAT.', L.list.w, 'TAP A PIECE, THEN A STAT.'), L.list.x, L.list.y, PAL.stone2, { small: true, outline: null });
   items.forEach((q, i) => { if (forgeCell(L, i).y < L.y0 + L.ph - 30) itemSlot(forgeCell(L, i), q, { sel: i === F.sel }); });
   if (!it) { text('NOTHING TO WORK ON.', L.card.x + 6, L.card.y + 8, PAL.stone1, { small: true, outline: null }); return; }
   const c = drawItemCard(it, L.card, null, F.stat);
@@ -1890,7 +1891,7 @@ function renderCanonry() {
   text(`DEVOTION ${lv}`, L.x0 + 14, L.y0 + 34, PAL.gold1, { sc: 2 });
   const bw = L.pw - 200, bx = L.x0 + 160; gild(bx, L.y0 + 38, bw, 7); ctx.fillStyle = PAL.ink2; ctx.fillRect(bx, L.y0 + 38, bw, 7); ctx.fillStyle = PAL.holy1; ctx.fillRect(bx, L.y0 + 38, Math.round(bw * (SAVE.devXp || 0) / need), 7);
   text(`${Math.floor(SAVE.devXp || 0)} / ${need}`, bx + bw, L.y0 + 48, PAL.stone1, { align: 'right', small: true, outline: null });
-  text(pts ? `${pts} POINT${pts > 1 ? 'S' : ''} TO SPEND` : 'EVERY KILL ADDS TO YOUR DEVOTION. IT NEVER RESETS.', L.x0 + 14, L.y0 + 56, pts ? PAL.flame1 : PAL.stone1, { small: true, outline: null });
+  text(pts ? `${pts} POINT${pts > 1 ? 'S' : ''} TO SPEND` : 'KILLS RAISE DEVOTION.', L.x0 + 14, L.y0 + 56, pts ? PAL.flame1 : PAL.stone1, { small: true, outline: null });
   VIRTUES.forEach((v, i) => {
     const r = virtueRow(L, i), n = virtue(v.id), full = n >= v.max;
     ctx.fillStyle = PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
@@ -1951,7 +1952,7 @@ function renderPlush() {
     ctx.save(); ctx.beginPath(); ctx.rect(C.x, C.y, C.w, C.h); ctx.clip(); ctx.strokeStyle = `rgba(${c0},0.7)`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx - 34, by); ctx.stroke(); ctx.fillStyle = `rgb(${c0})`; ctx.fillRect(bx - 2, by - 2, 6, 4); ctx.fillStyle = PAL.white; ctx.fillRect(bx + 2, by - 1, 2, 2); ctx.restore(); }
   const c = (P.sel && list.find((q) => q.id === P.sel)) || null, own = c && plushOwn(P.tab, c.id), worn = c && plushWorn(P.tab) === c.id;
   text(c ? fitText(c.name, C.w - 16, c.short) : 'TRY ON A LOOK', C.x + 8, C.y + 8, c ? PAL.gold1 : PAL.stone1, small);
-  const note = c && c.earn && !own ? (c.earn === 'martyr' ? "FALL UNDER THE MARTYR'S VOW WITH THE TOLL HALF RUNG OR MORE TO EARN IT." : `SLAY ${MON[c.earn].name} AT STATION ${ROMAN[EARN_FROM - 1]} OR DEEPER TO EARN IT.`) : c && c.earn ? 'EARNED, NEVER SOLD. IT SPARKLES.' : ['LOOKS ONLY. YOUR VESTMENTS STILL SHOW THEIR SET.', 'LOOKS ONLY. A SET SKIN KEEPS ITS OWN CROWN.', 'THE TRAIL YOUR BOLTS LEAVE. LOOKS ONLY.', 'THE SHADOWS YOUR DASH LEAVES. LOOKS ONLY.'][P.tab];
+  const note = c && c.earn && !own ? (c.earn === 'martyr' ? "EARNED BY DYING UNDER THE MARTYR'S VOW WITH THE TOLL AT 50% OR MORE." : `EARNED BY KILLING ${MON[c.earn].name} AT STATION ${ROMAN[EARN_FROM - 1]}+.`) : c && c.earn ? 'EARNED.' : ['COSMETIC.', 'COSMETIC. SET SKINS KEEP THEIR OWN HEADWEAR.', 'BOLT TRAIL. COSMETIC.', 'DASH TRAIL. COSMETIC.'][P.tab];
   wrapW(note, C.w - 16, true).forEach((l, j) => text(l, C.x + 8, C.y + 20 + j * 9, c && c.earn && !own ? PAL.rose1 : PAL.stone2, small));
   if (c && !(c.earn && !own)) invButton(Gm.btn, worn ? 'WORN' : own ? 'WEAR' : `BUY ${c.price}`, worn ? PAL.ink3 : own ? PAL.crimson3 : PAL.gold3, !worn && (own || (SAVE.gold || 0) >= c.price));
 }
@@ -1963,7 +1964,7 @@ function plushTap(x, y) {
   const c = P.sel && plushList(P.tab).find((q) => q.id === P.sel), T0 = PLUSH_TABS[P.tab];
   if (c && inRect(Gm.btn, x, y)) {
     const tag = `${T0.pre}:${c.id}`;
-    if (!K.own.includes(tag)) { if (c.earn) return; if (!spend(c.price)) { toast(`THE PLUSH SELLER WANTS ${c.price} GOLD`, 1.6); return; } K.own.push(tag); toast(`${c.name}! IT SUITS YOU`, 1.8); game.toastColor = PAL.gold1; }
+    if (!K.own.includes(tag)) { if (c.earn) return; if (!spend(c.price)) { toast(`NEED ${c.price} GOLD`, 1.6); return; } K.own.push(tag); toast(`BOUGHT ${c.name}`, 1.8); game.toastColor = PAL.gold1; }
     K[T0.key] = c.id; persist(); sfx('shrine', { rate: 1.4, vol: 0.5 });
   }
 }
@@ -1971,7 +1972,7 @@ function plushTap(x, y) {
 function earnHalo(e) { if (curDiff().n >= EARN_FROM) earnLook(e.type); }
 function earnLook(how) {
   const H0 = HALOS.find((q) => q.earn === how), K = looks(); if (!H0 || K.own.includes(`h:${H0.id}`)) return;
-  K.own.push(`h:${H0.id}`); persist(); setTimeout(() => { toast(`${H0.name} IS YOURS. WEAR IT AT THE PLUSH STALL`, 3.2); game.toastColor = PAL.rose1; }, 1800);
+  K.own.push(`h:${H0.id}`); persist(); setTimeout(() => { toast(`EARNED ${H0.name}`, 3.2); game.toastColor = PAL.rose1; }, 1800);
 }
 function canonryTap(x, y) {
   const L = featLayout();
@@ -1995,7 +1996,7 @@ function renderGift() {
   panelFrame(L.x0, L.y0, L.pw, L.ph);
   headerBar(L.x0, L.y0, L.pw, 26);
   text("ODILE'S GIFT", L.x0 + 12, L.y0 + 9, RARITY[4].color); sprC('ui', 'close', 0, L.close.x, L.close.y);
-  wrapW('"CHOOSE YOUR VESTMENTS, CHILD. I SEWED TWO PIECES OF EACH." TWO PIECES YOU LACK, AT YOUR BEST STATION.', L.pw - 28).slice(0, 2).forEach((l, i) => text(l, L.x0 + 14, L.y0 + 34 + i * 10, PAL.cloth1, { small: true, outline: null }));
+  wrapW('CHOOSE A SET: TWO PIECES YOU LACK, AT YOUR BEST STATION.', L.pw - 28).slice(0, 2).forEach((l, i) => text(l, L.x0 + 14, L.y0 + 34 + i * 10, PAL.cloth1, { small: true, outline: null }));
   MAIN_SETS.forEach((id, i) => {
     const r = giftRow(L, i), S = VSETS[id], own = new Set(setOwned(id).map((it) => it.slot)).size;
     ctx.fillStyle = PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
@@ -2027,11 +2028,11 @@ function giftTap(x, y) {
 // the Cathedral; the first time also pays the set's missing arms.
 const CELL_TIME = 90;
 const CELLS = {
-  nails: { goal: 150, mix: ['rat', 'crawler', 'risen'], per: 9, every: 2.2, line: 'A HUNDRED SMALL SINS. NAIL EVERY ONE.' },
-  stride: { goal: 90, mix: ['flagellant', 'crawler', 'acolyte'], per: 6, every: 2.4, line: 'THEY CHARGE. DO NOT BE WHERE THEY STRIKE.' },
-  font: { goal: 140, mix: ['risen', 'mourner', 'risen'], per: 10, every: 2.6, line: 'THE TIDE OF THE DEAD. HOLD THE FONT.' },
-  confessor: { goal: 24, mix: ['jailer', 'bishop', 'choirboy'], per: 2, every: 4, tier: 'rare', line: 'THE UNREPENTANT. BIND THEM, BREAK THEM.' },
-  choir: { goal: 60, mix: ['risen', 'acolyte', 'flagellant'], per: 5, every: 3, elite: true, line: 'THE CHOIR SINGS. ANSWER IT WITH FIRE.' },
+  nails: { goal: 150, mix: ['rat', 'crawler', 'risen'], per: 9, every: 2.2, line: 'SWARMS OF WEAK FOES.' },
+  stride: { goal: 90, mix: ['flagellant', 'crawler', 'acolyte'], per: 6, every: 2.4, line: 'CHARGING FOES. DODGE THEM.' },
+  font: { goal: 140, mix: ['risen', 'mourner', 'risen'], per: 10, every: 2.6, line: 'A LARGE HORDE.' },
+  confessor: { goal: 24, mix: ['jailer', 'bishop', 'choirboy'], per: 2, every: 4, tier: 'rare', line: 'TOUGH RARE FOES.' },
+  choir: { goal: 60, mix: ['risen', 'acolyte', 'flagellant'], per: 5, every: 3, elite: true, line: 'ELITE FOES.' },
 };
 const SET_RGB = { nails: '232,56,63', stride: '255,122,31', font: '63,164,240', confessor: '154,106,230', choir: '255,209,85' };
 const cellDone = (id) => !!(SAVE.cells && SAVE.cells[id]);
@@ -2048,7 +2049,7 @@ function renderCells() {
     ctx.fillStyle = PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
     sprC('ui', 'set_' + id, 0, r.x + 13, r.y + 14);
     text(VSETS[id].name.replace(/^THE /, ''), r.x + 28, r.y + 4, done ? PAL.gold1 : RARITY[4].color);
-    text(done ? 'ABSOLVED. ITS BANNER HANGS IN THE CATHEDRAL.' : `${C.line} ${C.goal} IN ${CELL_TIME} S.`, r.x + 28, r.y + 16, PAL.stone1, { small: true, outline: null });
+    text(done ? 'CLEARED. BANNER EARNED.' : `${C.line} ${C.goal} IN ${CELL_TIME} S.`, r.x + 28, r.y + 16, PAL.stone1, { small: true, outline: null });
     invButton({ x: r.x + r.w - 62, y: r.y + 4, w: 56, h: 20 }, worn ? 'ENTER' : 'WEAR 6', PAL.gold3, worn);
   });
 }
@@ -2075,13 +2076,13 @@ function updateCell(dt) {
   }
   if (c.kills >= C.goal) {
     const first = !cellDone(c.id); SAVE.cells = SAVE.cells || {}; SAVE.cells[c.id] = true;
-    game.banner = { text: 'THE CELL IS ABSOLVED', sub: first ? 'ITS BANNER WILL HANG IN THE CATHEDRAL' : 'ABSOLVED AGAIN', t: 0, color: PAL.gold0 };
+    game.banner = { text: 'THE CELL IS ABSOLVED', sub: first ? 'BANNER EARNED' : 'ABSOLVED AGAIN', t: 0, color: PAL.gold0 };
     if (first) { const have = new Set([...Object.values(SAVE.equip), ...SAVE.bag].filter((it) => it && it.wset === c.id).map((it) => it.slot)); for (const sl of ['bow', 'quiver']) if (!have.has(sl)) bagAdd(armsItem(c.id, sl, bestIl())); }
     game.run.gold += 150 * (game.run.diff + 1); persist();
     for (const e of enemies) if (!e.dead && e.cell) killEnemy(e, 0, 0);
     c.end = 2.6; game.slowmo = 0.8; return;
   }
-  if (c.t <= 0) { game.banner = { text: 'THE CELL HOLDS YOU', sub: `${c.kills} OF ${C.goal}. WEAR IT BETTER AND RETURN.`, t: 0, color: PAL.blood0 }; c.end = 2.6; }
+  if (c.t <= 0) { game.banner = { text: 'TRIAL FAILED', sub: `${c.kills} OF ${C.goal} KILLS`, t: 0, color: PAL.blood0 }; c.end = 2.6; }
 }
 // Banners of absolved cells on the Cathedral front.
 function drawCellBanners() {
@@ -2110,18 +2111,18 @@ function riteLayout() {
 const RITE_SLOTS = [['m1', 'RITE I'], ['m2', 'RITE II'], ['pen', 'RECKONING']];
 // What each rite gains from its set, and the Hallowed power that bends it.
 const RITE_MORE = {
-  water: { syn: 'POOLS ARE 30% WIDER AND SLOW FOES 40%. STAND IN ONE TO TAKE LESS HARM AND GAIN ZEAL TWICE AS FAST.', pow: 'bigPools' },
-  wave: { syn: 'ITS THREE POOLS ARE WIDER AND SLOW, AND THEY SHIELD YOU LIKE THE VIAL\'S.', pow: 'bigPools' },
-  storm: { syn: 'EVERY NAIL PIERCES AND SPLITS LIKE A BOLT, AND EACH HIT ADDS A NAIL STACK.', pow: 'bigStorm' },
-  step: { syn: 'THE LEAP IS A DASH: IT LEAVES HOLY FIRE, CAN BE A PERFECT DODGE AND OPENS THE X4 WINDOW.', pow: 'hotTrail' },
-  chain: { syn: 'BINDS 3 MORE FOES, BOUND FOES TAKE 25% MORE, AND AT SIX THEY BURST TOGETHER.', pow: 'longBind' },
-  shackle: { syn: 'BOUND FOES TAKE 25% MORE, AND EACH ONE HELD GUARDS YOU 8%, UP TO 40%.', pow: 'longBind' },
-  censer: { syn: 'ZEAL FADES HALF AS FAST, SO EACH BLAZE BRINGS RECKONING SOONER.', pow: 'censerPlus' },
-  ward: { syn: 'THE FREE PERFECT DODGE REFILLS EVERY DASH AND GIVES 2 S OF PENANCE.', pow: 'wardLong' },
-  rain: { syn: 'KILLS IN RECKONING HEAL YOU. AT SIX IT BURNS WHILE ZEAL LASTS, ALL DAMAGE X3.', pow: 'longReck' },
-  pillars: { syn: 'KILLS IN RECKONING HEAL YOU. AT SIX IT BURNS WHILE ZEAL LASTS, ALL DAMAGE X3.', pow: 'fastPillars' },
-  font: { syn: 'THE GREAT POOL IS WIDER AND SLOWS, AND IT SHIELDS YOU AS YOU WALK.', pow: 'bigPools' },
-  volley: { syn: 'EVERY SHOT PIERCES AND SPLITS, AND THE STORM OF BOLTS PILES NAIL STACKS FAST.', pow: 'longReck' },
+  water: { syn: 'POOLS 30% WIDER, SLOW 40%. IN A POOL: LESS DAMAGE TAKEN, DOUBLE ZEAL.', pow: 'bigPools' },
+  wave: { syn: 'ITS POOLS ARE WIDER, SLOW FOES AND PROTECT YOU.', pow: 'bigPools' },
+  storm: { syn: 'NAILS PIERCE, SPLIT AND ADD NAIL STACKS.', pow: 'bigStorm' },
+  step: { syn: 'COUNTS AS A DASH: LEAVES HOLY FIRE AND CAN PERFECT DODGE.', pow: 'hotTrail' },
+  chain: { syn: 'BINDS 3 MORE. BOUND FOES TAKE 25% MORE.', pow: 'longBind' },
+  shackle: { syn: 'BOUND FOES TAKE 25% MORE. EACH ONE: 8% LESS DAMAGE TAKEN (40% MAX).', pow: 'longBind' },
+  censer: { syn: 'ZEAL FADES HALF AS FAST.', pow: 'censerPlus' },
+  ward: { syn: 'ITS PERFECT DODGE REFILLS DASHES AND HALVES DAMAGE FOR 2 S.', pow: 'wardLong' },
+  rain: { syn: 'KILLS IN RECKONING HEAL YOU.', pow: 'longReck' },
+  pillars: { syn: 'KILLS IN RECKONING HEAL YOU.', pow: 'fastPillars' },
+  font: { syn: 'WIDER, SLOWS FOES AND PROTECTS YOU.', pow: 'bigPools' },
+  volley: { syn: 'EVERY SHOT PIERCES, SPLITS AND ADDS NAIL STACKS.', pow: 'longReck' },
 };
 function openRites(back) { game.ritesBack = back || game.state; game.state = 'rites'; game.riteFocus = game.riteFocus || 'm1'; sfx('tap'); }
 // Small text that must fit a width: drop a leading THE, try a short form,
@@ -2148,7 +2149,7 @@ function renderRites() {
   headerBar(L.x0, L.y0, L.pw, 26);
   ctx.fillStyle = PAL.gold3; ctx.fillRect(L.x0, L.y0 + 26, L.pw, 1);
   text('RITES', L.x0 + 12, L.y0 + 9, PAL.gold1);
-  text(fitText('CHOOSE ONE FOR EACH SLOT. EACH LEANS ON A VESTMENT SET.', L.pw - 100), L.x0 + 64, L.y0 + 10, PAL.stone1, small);
+  text(fitText('CHOOSE ONE PER SLOT. EACH SUITS A VESTMENT SET.', L.pw - 100), L.x0 + 64, L.y0 + 10, PAL.stone1, small);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
   // Slot tabs, each with the rite chosen for it.
   RITE_SLOTS.forEach(([slot, label], c) => {
@@ -2221,18 +2222,18 @@ function ritesTap(x, y) {
 const lifeBump = (k, n = 1) => { const L = SAVE.life || (SAVE.life = {}); L[k] = (L[k] || 0) + n; };
 const lifeOf = (k) => k === 'deaths' ? SAVE.deaths || 0 : k === 'descents' ? SAVE.descents || 0 : k === 'vigil' ? SAVE.vigilBest || 0 : (SAVE.life && SAVE.life[k]) || 0;
 const CENSER_UP = [
-  { id: 'coals', name: 'KINDLED COALS', stat: 'kills', need: 1000, deed: 'SLAY 1,000 FOES', text: 'THE CENSER HITS 30% HARDER.' },
+  { id: 'coals', name: 'KINDLED COALS', stat: 'kills', need: 1000, deed: 'KILL 1,000 FOES', text: 'THE CENSER HITS 30% HARDER.' },
   { id: 'swing', name: "THE PILGRIM'S SWING", stat: 'descents', need: 10, deed: 'FINISH 10 DESCENTS', text: 'IT SWINGS 30% FASTER.' },
   { id: 'ashes', name: 'ASHES OF THE FALLEN', stat: 'deaths', need: 5, deed: 'FALL 5 TIMES', text: 'UNDER 30% HEALTH IT FLARES WITH FIRE.' },
   { id: 'zeal', name: 'SWEET SMOKE', stat: 'shrines', need: 25, deed: 'PRAY AT 25 SHRINES', text: 'EVERY CENSER HIT GIVES 1 ZEAL.' },
-  { id: 'chain', name: 'THE LONGER CHAIN', stat: 'kills', need: 10000, deed: 'SLAY 10,000 FOES', text: 'IT SWINGS 25% WIDER.' },
-  { id: 'cinders', name: 'ELITE CINDERS', stat: 'elites', need: 100, deed: 'SLAY 100 ELITES', text: 'DOUBLE DAMAGE TO RARES AND ELITES.' },
+  { id: 'chain', name: 'THE LONGER CHAIN', stat: 'kills', need: 10000, deed: 'KILL 10,000 FOES', text: 'IT SWINGS 25% WIDER.' },
+  { id: 'cinders', name: 'ELITE CINDERS', stat: 'elites', need: 100, deed: 'KILL 100 ELITES', text: 'DOUBLE DAMAGE TO RARES AND ELITES.' },
   { id: 'martyr', name: "MARTYR'S SMOKE", stat: 'deaths', need: 25, deed: 'FALL 25 TIMES', text: 'FOES IT HITS ARE SLOWED 30%.' },
   { id: 'still', name: 'THE STILL HAND', stat: 'perfects', need: 100, deed: 'MAKE 100 PERFECT DODGES', text: 'PERFECT DODGES MAKE IT ERUPT.' },
-  { id: 'ember', name: "THE WARDEN'S EMBER", stat: 'wardens', need: 10, deed: 'SLAY 10 WARDENS', text: 'ITS BURN LASTS 2X AND IS 50% HOTTER.' },
+  { id: 'ember', name: "THE WARDEN'S EMBER", stat: 'wardens', need: 10, deed: 'KILL 10 WARDENS', text: 'ITS BURN LASTS 2X AND IS 50% HOTTER.' },
   { id: 'tithe', name: 'THE GILDED THURIBLE', stat: 'gold', need: 100000, deed: 'BANK 100,000 GOLD', text: 'BURNING FOES IT HITS MAY DROP GOLD.' },
   { id: 'vigil', name: 'VIGIL INCENSE', stat: 'vigil', need: 10, deed: 'REACH VIGIL 10', text: 'BURNING FOES TAKE 15% MORE DAMAGE.' },
-  { id: 'bowl', name: 'A SECOND BOWL', stat: 'kills', need: 50000, deed: 'SLAY 50,000 FOES', text: 'ONE MORE CENSER SWINGS ROUND YOU.' },
+  { id: 'bowl', name: 'A SECOND BOWL', stat: 'kills', need: 50000, deed: 'KILL 50,000 FOES', text: 'ONE MORE CENSER SWINGS ROUND YOU.' },
 ];
 const censerUp = (id) => { const u = CENSER_UP.find((q) => q.id === id); return !!u && (lifeOf(u.stat) >= u.need || !!(SAVE.censerDev)); };
 // Tell the Saint when a deed unlocks an upgrade (checked now and then).
@@ -2266,14 +2267,14 @@ function renderCenser() {
   glow(cx, cy, 22, 'rgba(255,122,31,0.35)');
   ctx.save(); ctx.translate(cx, cy + 2); ctx.scale(2, 2); sprC('fx', 'thurible', Math.floor(game.real * 6), 0, 0); ctx.restore();
   let y = L.y0 + 98;
-  for (const l of wrapW('THE THURIBLE OF EMBERS SWINGS ROUND YOU ON ITS CHAIN. IT STRIKES EVERY FOE IT TOUCHES AND SETS IT BURNING. IT NEEDS NO AIM: STAY CLOSE AND LET IT WORK.', w - 14, true)) { text(l, X + 7, y, PAL.cloth1, small); y += 10; }
+  for (const l of wrapW('SWINGS AROUND YOU, HITTING AND BURNING FOES.', w - 14, true)) { text(l, X + 7, y, PAL.cloth1, small); y += 10; }
   y += 4; ctx.fillStyle = PAL.ink3; ctx.fillRect(X + 7, y, w - 14, 1); y += 6;
   const st = censerStats();
   for (const [k, v] of [['HIT', `${st.dmg}`], ['BURN', `${st.burn}/S FOR ${st.burnT} S`], ['REACH', `${st.reach}`], ['SWING', `${st.speed}/S`], ['BOWLS', `${st.n}`]]) {
     if (y > L.y0 + L.ph - 16) break;
     text(k, X + 7, y, PAL.stone2, small); text(v, X + w - 7, y, PAL.ember0, { ...small, align: 'right' }); y += 10;
   }
-  y += 6; for (const l of wrapW('DEEDS ACROSS ALL YOUR DESCENTS LIGHT ITS UPGRADES. ONCE LIT, THEY STAY LIT.', w - 14, true)) { if (y > L.y0 + L.ph - 18) break; text(l, X + 7, y, PAL.stone2, small); y += 10; }
+  y += 6; for (const l of wrapW('UPGRADES UNLOCK FROM LIFETIME DEEDS AND ARE PERMANENT.', w - 14, true)) { if (y > L.y0 + L.ph - 18) break; text(l, X + 7, y, PAL.stone2, small); y += 10; }
   // Right: the twelve upgrades.
   CENSER_UP.forEach((u, i) => {
     const r = L.row(i), on = censerUp(u.id), have = Math.min(u.need, lifeOf(u.stat)), k = have / u.need;
@@ -2306,9 +2307,9 @@ function censerStats() {
 // the board. Claim all three for the Board's Purse; a new three are posted
 // after your next descent.
 const BOUNTIES = {
-  elites: { need: 4, text: (n) => `SLAY ${n} ELITES` }, rares: { need: 15, text: (n) => `SLAY ${n} RARE FOES` },
-  kills: { need: 900, text: (n) => `LAY ${n} OF THE DEAD TO REST` }, wardens: { need: 2, text: (n) => `SLAY ${n} WARDENS` },
-  fast: { need: 1, text: () => 'SLAY A WARDEN IN UNDER 75 S' }, reliquary: { need: 1, text: () => 'OPEN A WEEPING RELIQUARY' },
+  elites: { need: 4, text: (n) => `KILL ${n} ELITES` }, rares: { need: 15, text: (n) => `KILL ${n} RARE FOES` },
+  kills: { need: 900, text: (n) => `KILL ${n} FOES` }, wardens: { need: 2, text: (n) => `KILL ${n} WARDENS` },
+  fast: { need: 1, text: () => 'KILL A WARDEN IN UNDER 75 S' }, reliquary: { need: 1, text: () => 'OPEN A WEEPING RELIQUARY' },
   descents: { need: 2, text: (n) => `FINISH ${n} DESCENTS` }, shrines: { need: 4, text: (n) => `PRAY AT ${n} SHRINES` },
   chests: { need: 3, text: (n) => `OPEN ${n} TREASURY CHESTS` }, carnage: { need: 5, text: (n) => `EARN ${n} CARNAGE BONUSES` },
 };
@@ -2329,7 +2330,7 @@ function renderBoard() {
   panelFrame(L.x0, L.y0, L.pw, L.ph);
   headerBar(L.x0, L.y0, L.pw, 26);
   text('THE BOUNTY BOARD', L.x0 + 12, L.y0 + 9, PAL.gold1); sprC('ui', 'close', 0, L.close.x, L.close.y);
-  text(`EACH PAYS ${150 * il} GOLD, ${250 * il} DEVOTION AND A FINE PIECE OF GEAR`, L.x0 + 14, L.y0 + 30, PAL.stone1, { small: true, outline: null });
+  text(`EACH PAYS ${150 * il} GOLD, ${250 * il} DEVOTION AND A PIECE OF GEAR`, L.x0 + 14, L.y0 + 30, PAL.stone1, { small: true, outline: null });
   B.list.forEach((b, i) => {
     const r = bountyRow(L, i), D = BOUNTIES[b.id], done = b.have >= b.need;
     ctx.fillStyle = PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
@@ -2340,7 +2341,7 @@ function renderBoard() {
     invButton({ x: r.x + r.w - 62, y: r.y + 9, w: 56, h: 20 }, b.claimed ? 'PAID' : 'CLAIM', PAL.gold3, done && !b.claimed);
   });
   const all = B.list.every((b) => b.claimed);
-  text(all ? 'THE BOARD IS CLEARED. NEW BOUNTIES AFTER YOUR NEXT DESCENT.' : "CLAIM ALL THREE FOR THE BOARD'S PURSE: A HALLOWED PIECE.", L.x0 + 14, L.y0 + 40 + 3 * 44 + 4, all ? PAL.flame1 : PAL.stone2, { small: true, outline: null });
+  text(all ? 'ALL CLAIMED. NEW BOUNTIES AFTER YOUR NEXT DESCENT.' : 'CLAIM ALL THREE FOR A HALLOWED PIECE.', L.x0 + 14, L.y0 + 40 + 3 * 44 + 4, all ? PAL.flame1 : PAL.stone2, { small: true, outline: null });
 }
 function boardTap(x, y) {
   const L = featLayout(), B = bounties();
@@ -2352,7 +2353,7 @@ function boardTap(x, y) {
     SAVE.gold = (SAVE.gold || 0) + 150 * il; gainDevotion(250 * il);
     let it; do { it = rollItem(4, il); } while (it.ri < 2);
     bagAdd(it); toast(`BOUNTY PAID: ${it.name}`, 2.5); game.toastColor = RARITY[it.ri].color; sfx('gold');
-    if (B.list.every((q) => q.claimed)) { let h; do { h = rollItem(6, il); } while (h.ri !== 3); bagAdd(h); B.next = (SAVE.descents || 0) + 1; game.banner = { text: "THE BOARD'S PURSE", sub: h.name, t: 0, color: RARITY[3].color }; }
+    if (B.list.every((q) => q.claimed)) { let h; do { h = rollItem(6, il); } while (h.ri !== 3); bagAdd(h); B.next = (SAVE.descents || 0) + 1; game.banner = { text: 'ALL BOUNTIES CLAIMED', sub: h.name, t: 0, color: RARITY[3].color }; }
     persist();
   });
 }
@@ -2362,9 +2363,9 @@ function boardTap(x, y) {
 // are fixed when the wager is placed: Stations below your deepest pay less,
 // the one you have never beaten pays more. One wager at a time.
 const WAGER_MARKS = [
-  { name: 'THE TOLL IS RUNG', short: 'THE TOLL IS RUNG', base: 1.5, text: 'THE WARDEN COMES' },
-  { name: 'THE WARDEN FALLS', short: 'THE WARDEN FALLS', base: 2.1, text: 'YOU SLAY IT' },
-  { name: 'THE WAYSTONE HOME', short: 'YOU COME HOME', base: 2.6, text: 'YOU TAKE THE WAYSTONE HOME ALIVE' },
+  { name: 'FILL THE TOLL', short: 'FILLING THE TOLL', base: 1.5, text: '' },
+  { name: 'KILL THE WARDEN', short: 'KILLING THE WARDEN', base: 2.1, text: '' },
+  { name: 'RETURN ALIVE', short: 'RETURNING ALIVE', base: 2.6, text: 'KILL THE WARDEN AND USE THE WAYSTONE' },
 ];
 const WAGER_STAKES = [50, 100, 250, 500, 1000, 2500, 5000];
 const wagerCap = (i) => 250 * (i + 1);
@@ -2378,7 +2379,7 @@ function settleWager(R) {
   SAVE.wager = null;
   const won = (R.reach || 0) > Wg.mark, pay = Math.round(Wg.stake * Wg.k);
   if (won) { SAVE.gold = (SAVE.gold || 0) + pay; SAVE.poolWon = (SAVE.poolWon || 0) + pay - Wg.stake; }
-  return { won, text: won ? `THE POOL PAYS ${pay} GOLD: ${WAGER_MARKS[Wg.mark].short}` : `THE POOL KEEPS YOUR ${Wg.stake} GOLD` };
+  return { won, text: won ? `WAGER WON: +${pay} GOLD` : `WAGER LOST: ${Wg.stake} GOLD` };
 }
 function openPool() {
   const i = Math.max(0, Math.min(DIFF.length - 1, SAVE.diff || 0));
@@ -2397,7 +2398,7 @@ function renderPool() {
   panelFrame(L.x0, L.y0, L.pw, L.ph, '_silver'); headerBar(L.x0, L.y0, L.pw, 26);
   text('THE SCRYING POOL', L.x0 + 12, L.y0 + 9, PAL.violet0 || PAL.gold1); sprC('ui', 'close', 0, L.close.x, L.close.y);
   sprC('loot', 'coin', 0, L.close.x - 64, L.y0 + 13); text(String(SAVE.gold || 0), L.close.x - 57, L.y0 + 9, PAL.gold1);
-  wrapW('THE CROWD BETS ON HOW DEEP YOU GET. PICK A STATION, A STAKE AND A MARK. THE ODDS ARE FIXED WHEN YOU WAGER.', Gm.w, true).slice(0, 2).forEach((l, j) => text(l, Gm.x, L.y0 + 31 + j * 9, PAL.stone1, small));
+  wrapW('BET ON HOW FAR YOUR NEXT DESCENT GOES. ODDS ARE LOCKED WHEN YOU BET.', Gm.w, true).slice(0, 2).forEach((l, j) => text(l, Gm.x, L.y0 + 31 + j * 9, PAL.stone1, small));
   if (Wg) {
     // A wager stands: show it, and let it be withdrawn.
     const y = Gm.st.y, pay = Math.round(Wg.stake * Wg.k);
@@ -2406,7 +2407,7 @@ function renderPool() {
     [['STATION', DIFF[Wg.diff].name, DIFF[Wg.diff].col], ['THE MARK', WAGER_MARKS[Wg.mark].name, PAL.cloth0], ['STAKE', `${Wg.stake} GOLD`, PAL.gold1], ['ODDS', `X${Wg.k}`, PAL.flame1], ['IT PAYS', `${pay} GOLD`, PAL.gold0]]
       .forEach(([a, b, c], j) => { text(a, Gm.x + 8, y + 24 + j * 13, PAL.stone1, small); text(b, Gm.x + Gm.w - 8, y + 24 + j * 13, c, { ...small, align: 'right' }); });
     const ny = y + 24 + 5 * 13 + 4;
-    if (ny + 20 < Gm.go.y - 10) wrapW(`IT WAITS FOR YOUR NEXT DESCENT AT ${DIFF[Wg.diff].name}. A VIGIL DOES NOT COUNT.`, Gm.w - 16, true).forEach((l, j) => text(l, Gm.x + 8, ny + j * 9, PAL.stone2, small));
+    if (ny + 20 < Gm.go.y - 10) wrapW(`SETTLES ON YOUR NEXT DESCENT AT ${DIFF[Wg.diff].name}. VIGILS DO NOT COUNT.`, Gm.w - 16, true).forEach((l, j) => text(l, Gm.x + 8, ny + j * 9, PAL.stone2, small));
     invButton(Gm.go, 'WITHDRAW', PAL.stone4);
     return;
   }
@@ -2418,28 +2419,28 @@ function renderPool() {
     const r = Gm.mark(k), sel = P.mark === k, odds = wagerOdds(P.i, k);
     ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
     const my = r.y + Math.round(r.h / 2);
-    text(M.name, r.x + 8, my - 8, sel ? PAL.gold0 : PAL.cloth0); text(M.text, r.x + 8, my + 2, PAL.stone2, small);
+    text(M.name, r.x + 8, M.text ? my - 8 : my - 4, sel ? PAL.gold0 : PAL.cloth0); if (M.text) text(M.text, r.x + 8, my + 2, PAL.stone2, small);
     text(`X${odds}`, r.x + r.w - 92, my - 4, PAL.flame1, { align: 'right' });
     text(`PAYS ${Math.round(stake * odds)}`, r.x + r.w - 8, my - 4, PAL.gold1, { align: 'right' });
     if (sel) { ctx.strokeStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.lineWidth = 1; ctx.strokeRect(r.x - 1.5, r.y - 1.5, r.w + 3, r.h + 3); }
   });
   const front = (SAVE.cleared ?? -1) + 1;
-  text(fitText(P.i >= front ? 'A STATION YOU HAVE NEVER BEATEN PAYS MORE.' : P.i < front - 1 ? 'BELOW YOUR DEEPEST: THE CROWD PAYS LESS.' : 'YOUR DEEPEST STATION: FAIR ODDS.', Gm.go.x - Gm.x - 8), Gm.x, Gm.go.y + 6, PAL.stone1, small);
+  text(fitText(P.i >= front ? 'NEW STATION: HIGHER ODDS.' : P.i < front - 1 ? 'EASIER STATION: LOWER ODDS.' : 'YOUR BEST STATION: NORMAL ODDS.', Gm.go.x - Gm.x - 8), Gm.x, Gm.go.y + 6, PAL.stone1, small);
   invButton(Gm.go, 'WAGER', PAL.crimson3, (SAVE.gold || 0) >= stake);
 }
 function poolTap(x, y) {
   const P = game.pool, Gm = poolGeo(), L = Gm.L, Wg = SAVE.wager;
   if (featOut(L, x, y)) { game.state = 'play'; sfx('tap'); return; }
-  if (Wg) { if (inRect(Gm.go, x, y)) { SAVE.gold = (SAVE.gold || 0) + Wg.stake; SAVE.wager = null; persist(); toast(`THE POOL RETURNS ${Wg.stake} GOLD`, 1.6); sfx('gold'); } return; }
+  if (Wg) { if (inRect(Gm.go, x, y)) { SAVE.gold = (SAVE.gold || 0) + Wg.stake; SAVE.wager = null; persist(); toast(`REFUNDED ${Wg.stake} GOLD`, 1.6); sfx('gold'); } return; }
   const half = (b) => (x < b.x + b.w / 2 ? -1 : 1);
   if (inRect(Gm.st, x, y)) { let i = P.i; do { i = (i + half(Gm.st) + DIFF.length) % DIFF.length; } while (!diffOpen(i)); P.i = i; sfx('tap', { vol: 0.5 }); return; }
   if (inRect(Gm.sk, x, y)) { const n = poolStakes(P.i).length; P.s = (Math.min(P.s, n - 1) + half(Gm.sk) + n) % n; sfx('tap', { vol: 0.5 }); return; }
   for (let k = 0; k < 3; k++) if (inRect(Gm.mark(k), x, y)) { P.mark = k; sfx('tap', { vol: 0.5 }); return; }
   if (inRect(Gm.go, x, y)) {
     const st = poolStakes(P.i), stake = st[Math.min(P.s, st.length - 1)];
-    if (!spend(stake)) { toast(`YOU NEED ${stake} GOLD`, 1.6); return; }
+    if (!spend(stake)) { toast(`NEED ${stake} GOLD`, 1.6); return; }
     SAVE.wager = { diff: P.i, mark: P.mark, stake, k: wagerOdds(P.i, P.mark) }; persist();
-    toast('THE CROWD ROARS. YOUR WAGER STANDS.', 2); game.toastColor = PAL.gold1;
+    toast('WAGER PLACED', 2); game.toastColor = PAL.gold1;
   }
 }
 
@@ -2459,20 +2460,20 @@ function renderMartyr() {
   if (own && !LOWFX) twinkles(sx, sy - 32 * sc, 6 * sc, 0.3, 4, 2);
   text(own ? 'YOURS' : 'NOT EARNED', sx, sy + 6, own ? PAL.rose1 : PAL.stone2, { ...small, align: 'center' });
   const tw = L.pw - 24 - 30 * sc - 20; let y = L.y0 + 34;
-  for (const [t, c] of [["TAKE THE VOW AND YOUR NEXT DESCENT IS A MARTYR'S: ONE LIFE, AND GOLD AND GEAR FALL DOUBLED.", PAL.cloth0],
-    ['FALL, AND THE CHOIR TAKES ALL THE GOLD AND EVERY PIECE OF GEAR YOU FOUND. WORN GEAR IS SAFE.', PAL.blood0],
-    [own ? 'YOU HAVE FALLEN A MARTYR. THE CRACKED HALO IS YOURS: WEAR IT AT THE PLUSH STALL.' : 'FALL WITH THE TOLL HALF RUNG OR MORE, AND THE CHOIR GIVES YOU A CRACKED HALO.', PAL.rose1],
-    ['THE VOW HOLDS UNTIL YOUR NEXT DESCENT AT A STATION. A VIGIL DOES NOT SPEND IT.', PAL.stone1]]) {
+  for (const [t, c] of [['NEXT DESCENT: ONE LIFE, DOUBLE GOLD AND GEAR.', PAL.cloth0],
+    ['DIE AND YOU LOSE ALL GOLD AND GEAR FOUND. WORN GEAR IS SAFE.', PAL.blood0],
+    [own ? 'CRACKED HALO EARNED. WEAR IT AT THE PLUSH STALL.' : 'DIE WITH THE TOLL AT 50% OR MORE TO EARN THE CRACKED HALO.', PAL.rose1],
+    ['USED ON YOUR NEXT STATION DESCENT. VIGILS DO NOT USE IT.', PAL.stone1]]) {
     for (const l of wrapW(t, tw, true)) { text(l, L.x0 + 12, y, c, small); y += 10; } y += 4;
   }
-  y += 2; text(`VOWS KEPT ${SAVE.vowsKept || 0}     MARTYRS FALLEN ${SAVE.vowsFallen || 0}`, L.x0 + 12, Math.min(y, Gm.go.y - 16), PAL.gold1, small);
-  if (vow) text('THE VOW IS TAKEN', L.x0 + 12, Gm.go.y + 6, PAL.blood0);
+  y += 2; text(`VOWS KEPT ${SAVE.vowsKept || 0}     VOWS FAILED ${SAVE.vowsFallen || 0}`, L.x0 + 12, Math.min(y, Gm.go.y - 16), PAL.gold1, small);
+  if (vow) text('VOW TAKEN', L.x0 + 12, Gm.go.y + 6, PAL.blood0);
   invButton(Gm.go, vow ? 'BREAK THE VOW' : 'TAKE THE VOW', vow ? PAL.stone4 : PAL.crimson3);
 }
 function martyrTap(x, y) {
   const Gm = martyrGeo();
   if (featOut(Gm.L, x, y)) { game.state = 'play'; sfx('tap'); return; }
-  if (inRect(Gm.go, x, y)) { SAVE.vow = !SAVE.vow; persist(); if (SAVE.vow) { sfx('gate_lock', { rate: 0.7 }); toast("THE VOW IS TAKEN. DESCEND WHEN YOU ARE READY.", 2.2); game.toastColor = PAL.blood0; } else sfx('tap'); }
+  if (inRect(Gm.go, x, y)) { SAVE.vow = !SAVE.vow; persist(); if (SAVE.vow) { sfx('gate_lock', { rate: 0.7 }); toast('VOW TAKEN', 2.2); game.toastColor = PAL.blood0; } else sfx('tap'); }
 }
 
 // ------------------------------------------------------- the Vigil Roll ---
@@ -2495,7 +2496,7 @@ function renderRoll() {
   text('BEST KEPT VIGILS', lx + 6, top + 3, PAL.gold1, small);
   const roll = (SAVE.vigilRoll && SAVE.vigilRoll.length) ? SAVE.vigilRoll : SAVE.vigilBest ? [{ L: SAVE.vigilBest, left: null }] : [];
   const rh = Math.max(14, Math.min(22, Math.floor((bot - top - 18) / 5)));
-  if (!roll.length) wrapW('NO VIGIL KEPT YET. A BLOODROSE KEY OPENS THE BLEEDING VIGIL AT THE CATHEDRAL DOORS.', lw - 12, true).forEach((l, j) => text(l, lx + 6, top + 20 + j * 10, PAL.stone2, small));
+  if (!roll.length) wrapW('NO VIGILS YET. START ONE WITH A BLOODROSE KEY AT THE CATHEDRAL DOORS.', lw - 12, true).forEach((l, j) => text(l, lx + 6, top + 20 + j * 10, PAL.stone2, small));
   roll.forEach((v, k) => {
     const y = top + 18 + k * rh;
     if (k % 2 === 0) { ctx.fillStyle = 'rgba(56,48,71,0.5)'; ctx.fillRect(lx + 2, y - 2, lw - 4, rh - 2); }
@@ -2546,16 +2547,16 @@ function resumeRun(S) {
   R.reach = S.stone ? 2 : S.toll && S.toll.done ? 1 : 0;
   if (S.stone) raiseWaystone(player.x + 30, player.y);
   else if (S.toll && S.toll.done) spawnWarden();
-  game.banner = { text: 'THE DESCENT RESUMES', sub: `${DIFF[R.diff].name}, ${game.kills} SLAIN`, t: 0, color: PAL.gold0 };
+  game.banner = { text: 'THE DESCENT RESUMES', sub: `${DIFF[R.diff].name}, ${game.kills} KILLED`, t: 0, color: PAL.gold0 };
 }
 let askedResume = false;
 function renderResume() {
   const S = SAVE.suspend, pw = Math.min(360, W - 20), ph = 120, x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
   ctx.fillStyle = 'rgba(11,7,16,0.78)'; ctx.fillRect(0, 0, W, H);
   panelFrame(x0, y0, pw, ph);
-  text('A DESCENT WAS LEFT UNFINISHED', W / 2, y0 + 12, PAL.gold1, { align: 'center' });
-  text(`${DIFF[S.diff].name}${S.stratum === 2 ? ', THE DROWNED NAVE' : ''}. ${S.kills} SLAIN, ${S.gold} GOLD.`, W / 2, y0 + 32, PAL.cloth1, { align: 'center', small: true });
-  text('THE DEAD YOU LAID TO REST STAY AT REST.', W / 2, y0 + 46, PAL.stone2, { align: 'center', small: true });
+  text('UNFINISHED DESCENT', W / 2, y0 + 12, PAL.gold1, { align: 'center' });
+  text(`${DIFF[S.diff].name}${S.stratum === 2 ? ', THE DROWNED NAVE' : ''}. ${S.kills} KILLED, ${S.gold} GOLD.`, W / 2, y0 + 32, PAL.cloth1, { align: 'center', small: true });
+  text('KILLED MONSTERS STAY DEAD.', W / 2, y0 + 46, PAL.stone2, { align: 'center', small: true });
   invButton(resumeBtns().go, 'RESUME', PAL.gold3); invButton(resumeBtns().no, 'ABANDON', PAL.crimson3);
 }
 const resumeBtns = () => { const y = Math.round(H / 2 + 22); return { go: { x: Math.round(W / 2 - 112), y, w: 104, h: 22 }, no: { x: Math.round(W / 2 + 8), y, w: 104, h: 22 } }; };
@@ -2613,7 +2614,7 @@ function renderAltar() {
   const pages = Math.max(1, Math.ceil(list.length / Gm.n)); game.altarPage = Math.min(game.altarPage || 0, pages - 1);
   if (pages > 1) text(`< ${game.altarPage + 1}/${pages} >`, Gm.page.x + Gm.page.w, L.y0 + 31, PAL.gold1, { ...small, align: 'right' });
   if (!list.length) {
-    wrapW('BRING HALLOWED PIECES IN YOUR BAG. BURNING ONE TEACHES THE ALTAR ITS POWER FOREVER, IF THE FLAME TAKES IT.', L.list.w, true).forEach((l, i) => text(l, L.list.x, L.y0 + 46 + i * 10, PAL.stone2, small));
+    wrapW('BURN A HALLOWED PIECE FROM YOUR BAG. IF IT WORKS, ITS POWER IS LEARNED FOR GOOD.', L.list.w, true).forEach((l, i) => text(l, L.list.x, L.y0 + 46 + i * 10, PAL.stone2, small));
   }
   list.slice(game.altarPage * Gm.n, (game.altarPage + 1) * Gm.n).forEach((it, i) => {
     const r = Gm.row(i), known = A.known.includes(it.power), sel = game.altarSel === it.id;
@@ -2694,7 +2695,7 @@ function renderAltarPick() {
   ctx.fillStyle = PAL.outline; ctx.fillRect(D.x - 1, D.y - 1, D.w + 2, D.h + 2);
   ctx.fillStyle = PAL.ink2; ctx.fillRect(D.x, D.y, D.w, D.h);
   ctx.fillStyle = 'rgba(255,122,31,0.12)'; ctx.fillRect(D.x, D.y, D.w, 14);
-  if (!L) { text('TAP A POWER TO READ IT. LIT ONES ARE LEARNED.', D.x + D.w / 2, D.y + 26, PAL.stone1, { ...small, align: 'center' }); }
+  if (!L) { text('TAP A POWER TO READ IT.', D.x + D.w / 2, D.y + 26, PAL.stone1, { ...small, align: 'center' }); }
   else {
     const on = A.known.includes(L.id), inSock = A.sockets[P.k] === L.id;
     text(fitText(L.name, D.w - 110), D.x + 8, D.y + 4, on ? RARITY[3].color : PAL.stone1, small);
@@ -2743,7 +2744,7 @@ function renderAltarDetail(L, Gm, A, C, small) {
   else {
     text(`SUCCESS ${Math.round(ch * 100)}%`, D.x + 8, D.y + 66, ch >= 1 ? RARITY[4].color : PAL.gold1, small);
     if (altarPity()) text(`+${Math.round(altarPity() * 100)}% ASH`, D.x + 8 + textW(`SUCCESS ${Math.round(ch * 100)}%`, 1, true) + 6, D.y + 66, PAL.stone1, small);
-    text(ch >= 1 ? 'THE FLAME WILL TAKE IT.' : 'ON FAILURE THE PIECE IS LOST.', D.x + 8, D.y + 77, PAL.stone2, small);
+    text(ch >= 1 ? 'SUCCESS IS CERTAIN.' : 'ON FAILURE THE PIECE IS LOST.', D.x + 8, D.y + 77, PAL.stone2, small);
   }
   invButton(Gm.burn, `BURN ${cost}`, PAL.ember3 || PAL.crimson3, !known && (SAVE.gold || 0) >= cost);
 }
@@ -2765,7 +2766,7 @@ function altarTap(x, y) {
 function burnAtAltar(it, roll = Math.random()) {
   const A = altar(), C = chrisms(), cost = burnCost(it);
   if (A.known.includes(it.power)) return;
-  if ((SAVE.gold || 0) < cost) { toast(`THE ALTAR ASKS ${cost} GOLD`, 1.6); return; }
+  if ((SAVE.gold || 0) < cost) { toast(`NEED ${cost} GOLD`, 1.6); return; }
   const ci = C[game.altarChrism] > 0 ? game.altarChrism : -1, ok = roll < burnChance(ci);
   SAVE.gold -= cost; if (ci >= 0) C[ci]--; if (ci >= 0 && !C[ci]) game.altarChrism = -1;
   SAVE.bag = SAVE.bag.filter((q) => q !== it); game.altarSel = null;
@@ -2778,7 +2779,7 @@ function burnAtAltar(it, roll = Math.random()) {
 // level) into one Chrism.
 function grindAtAltar(roll = Math.random()) {
   const A = altar(), C = chrisms(), list = altarFodder();
-  if (list.length < GRIND_N) { toast(`THE MILL WANTS ${GRIND_N} HALLOWED PIECES`, 1.6); return; }
+  if (list.length < GRIND_N) { toast(`NEED ${GRIND_N} HALLOWED PIECES`, 1.6); return; }
   const use = [...list].sort((a, b) => (A.known.includes(b.power) ? 1 : 0) - (A.known.includes(a.power) ? 1 : 0) || (a.il || 1) - (b.il || 1)).slice(0, GRIND_N);
   SAVE.bag = SAVE.bag.filter((q) => !use.includes(q));
   let r = roll * GRIND_W.reduce((a, b) => a + b, 0), tier = 0; for (; tier < 3 && r > GRIND_W[tier]; tier++) r -= GRIND_W[tier];
@@ -2818,10 +2819,10 @@ function renderAltarFx(L, Gm) {
       const R = 14 + 50 * k; ctx.fillStyle = PAL.gold0;
       for (let i = 0; i < 40; i++) { const a = i / 40 * Math.PI * 2; ctx.fillRect(Math.round((cx + Math.cos(a) * R) / 2) * 2 - 1, Math.round((cy + Math.sin(a) * R * 0.6) / 2) * 2 - 1, 2, 2); }
       glow(cx, cy, 30 + 20 * k, `rgba(255,209,85,${0.5 * (1 - k * 0.5)})`);
-      text('THE ALTAR LEARNS', cx, cy - 14, PAL.gold0, { align: 'center' }); text(fitText(F.name, Wd - 16), cx, cy + 2, RARITY[3].color, { align: 'center', small: true });
+      text('POWER LEARNED', cx, cy - 14, PAL.gold0, { align: 'center' }); text(fitText(F.name, Wd - 16), cx, cy + 2, RARITY[3].color, { align: 'center', small: true });
     } else if (F.kind === 'ash') {
       for (let i = 0; i < 16; i++) { const sx = X + 10 + ((i * 37) % (Wd - 20)), sy = Math.round((bot - 10 - (t - 0.6) * (30 + (i % 5) * 14)) / 2) * 2; ctx.fillStyle = i % 3 ? PAL.stone3 : PAL.stone2; ctx.fillRect(Math.round(sx / 2) * 2 + Math.round(Math.sin(t * 3 + i) * 3), sy, i % 4 ? 4 : 6, i % 4 ? 4 : 6); }
-      text('THE FLAME REFUSES IT', cx, cy - 14, PAL.stone1, { align: 'center' }); text(fitText(`${F.name} IS ASH`, Wd - 16), cx, cy + 2, PAL.stone2, { align: 'center', small: true });
+      text('THE BURN FAILED', cx, cy - 14, PAL.stone1, { align: 'center' }); text(fitText(`${F.name} WAS LOST`, Wd - 16), cx, cy + 2, PAL.stone2, { align: 'center', small: true });
     } else {
       glow(cx, cy - 4, 26 + 6 * Math.sin(t * 6), `rgba(${RARITY[F.tier].rgb},0.6)`);
       ctx.save(); ctx.translate(cx, cy - 4); ctx.scale(2, 2); sprC('loot', 'chrism', F.tier, 0, 0); ctx.restore();
@@ -3043,7 +3044,7 @@ function vigilTap(x, y) {
   if (Math.hypot(x - L.prev.x, y - L.prev.y) < L.prev.r + 8) { P.L = P.L > 1 ? P.L - 1 : open; sfx('tap', { vol: 0.5 }); return; }
   if (Math.hypot(x - L.next.x, y - L.next.y) < L.next.r + 8) { P.L = P.L < open ? P.L + 1 : 1; sfx('tap', { vol: 0.5 }); return; }
   if (inRect(L.go, x, y)) {
-    if (!(SAVE.vkeys > 0)) { toast(`YOU NEED A BLOODROSE KEY. WARDENS OF STATION ${ROMAN[VKEY_FROM - 1]} AND DEEPER DROP THEM.`, 3); return; }
+    if (!(SAVE.vkeys > 0)) { toast(`NEED A BLOODROSE KEY. WARDENS AT STATION ${ROMAN[VKEY_FROM - 1]}+ DROP THEM.`, 3); return; }
     SAVE.vkeys--; persist(); beginVigil(P.L);
   }
 }
@@ -3053,7 +3054,7 @@ function renderVigil() {
   panelFrame(L.x0, L.y0, L.pw, L.ph, '_blood');
   headerBar(L.x0, L.y0, L.pw, 26);
   text('THE BLEEDING VIGIL', L.x0 + 12, L.y0 + 9, PAL.blood0);
-  text('A TIMED DESCENT THAT NEVER ENDS', L.x0 + L.pw / 2 + 40, L.y0 + 9, PAL.cloth1, { align: 'center' });
+  text('A TIMED, ENDLESS TRIAL', L.x0 + L.pw / 2 + 40, L.y0 + 9, PAL.cloth1, { align: 'center' });
   sprC('ui', 'close', 0, L.close.x, L.close.y);
   for (const [b, ch] of [[L.prev, '<'], [L.next, '>']]) { ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 1, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = PAL.ink3; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); text(ch, b.x, b.y - 5, PAL.gold1, { align: 'center' }); }
   text('VIGIL LEVEL', L.x0 + L.pw / 2, L.y0 + 30, PAL.stone2, { align: 'center', small: true, outline: null });
@@ -3061,7 +3062,7 @@ function renderVigil() {
   text(`OPEN UP TO ${SAVE.vigilOpen || 1}   BEST KEPT ${SAVE.vigilBest || 'NONE'}`, L.x0 + L.pw / 2, L.y0 + 66, PAL.stone1, { align: 'center', small: true, outline: null });
   const L0 = P.L, wk = playerSanctity() >= need * 0.7, X = (v) => (v >= 100 ? Math.round(v) : +v.toFixed(1));
   const lines = [
-    ['THE CANDLE', '10 MINUTES TO FILL THE TOLL AND SLAY THE WARDEN.', PAL.gold1],
+    ['THE CANDLE', '10 MINUTES TO FILL THE TOLL AND KILL THE WARDEN.', PAL.gold1],
     ['THE DEAD', `HEALTH X${X(df.hp)}, DAMAGE X${X(df.dmg)}, ${Math.round(df.dens * (1 + (df.n - 1) * 0.07) * 100)}% DENSITY.`, PAL.blood0],
     ['DROPS', 'GOLD, KNELLS AND CHRISM (TWICE AS OFTEN). NO GEAR.', PAL.cloth0],
     ['THE WARDEN', `${3 + Math.floor(L0 / 5)} PIECES OF ${ROMAN[df.n - 1]} GEAR, CHRISM ${Math.round(VIGIL_PAY.warden(L0) * 100)}%${L0 >= VIGIL_PAY.set ? ', A SET PIECE' : ''}${L0 >= VIGIL_PAY.hallowed ? ', A HALLOWED CHRISM' : ''}.`, PAL.flame1],
@@ -3076,7 +3077,7 @@ function renderVigil() {
   let ly = L.y0 + 82;
   lines.forEach(([a, , c], i) => { text(a, L.x0 + 16, ly, PAL.gold1, { small: true, outline: null }); wrapped[i].forEach((l, j) => text(l, vx, ly + j * 9, c, { small: true, outline: null })); ly += wrapped[i].length * 9 + gap; });
   invButton(L.back, 'CANCEL', PAL.stone4);
-  invButton(L.go, SAVE.vkeys > 0 ? 'LIGHT THE CANDLE' : 'NO KEY', PAL.crimson3, SAVE.vkeys > 0);
+  invButton(L.go, SAVE.vkeys > 0 ? 'START' : 'NO KEY', PAL.crimson3, SAVE.vkeys > 0);
   vigilButton(L);
 }
 function siteLayout() { const pw = Math.min(330, W - 16), ph = 172, x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2); return { pw, ph, x0, y0, ok: { x: x0 + pw / 2 - 50, y: y0 + ph - 32, w: 100, h: 22 } }; }
@@ -3092,7 +3093,7 @@ function renderSite() {
   y += 6;
   if (done) {
     text('UNLOCKED', L.x0 + 12, y, PAL.flame1); y += 13;
-    for (const l of wrapW(S.doneText || 'COMING IN A LATER BUILD. THE CHOIR IS STILL HANGING THE BELLS.', L.pw - 24, true)) { text(l, L.x0 + 12, y, PAL.stone1, { small: true, outline: null }); y += 10; }
+    for (const l of wrapW(S.doneText || 'COMING SOON.', L.pw - 24, true)) { text(l, L.x0 + 12, y, PAL.stone1, { small: true, outline: null }); y += 10; }
   } else {
     badge('lock', L.x0 + 19, y + 4);
     for (const l of wrapW(`UNLOCKED WHEN YOU ${S.need}`, L.pw - 44)) { text(l, L.x0 + 32, y, PAL.blood0); y += 12; }
@@ -3263,10 +3264,10 @@ function talk(id) {
 const POWER_STEP = 1.36;
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV'];
 const BANDS = [
-  { name: 'PILGRIM', col: '#c2b6aa', text: 'THE FIRST STEPS DOWN. FOR THE NEWLY SHRIVEN.' },
-  { name: 'ZEALOT', col: '#8ae0ff', text: 'THE DEAD REMEMBER YOU NOW. THEY HIT HARDER.' },
-  { name: 'MARTYR', col: '#ffd155', text: 'RARES AND ELITES WEAR ONE MORE CURSE.' },
-  { name: 'SAINT', col: '#ff7a1f', text: 'ONLY THE CANONIZED COME BACK FROM HERE.' },
+  { name: 'PILGRIM', col: '#c2b6aa', text: 'THE EASIEST STATIONS.' },
+  { name: 'ZEALOT', col: '#8ae0ff', text: 'MONSTERS HIT HARDER.' },
+  { name: 'MARTYR', col: '#ffd155', text: 'RARES AND ELITES HAVE ONE MORE CURSE.' },
+  { name: 'SAINT', col: '#ff7a1f', text: 'RARES AND ELITES HAVE TWO MORE CURSES.' },
 ];
 const stationPower = (i) => Math.pow(POWER_STEP, i);
 // Monsters climb faster than gear (round 15): each Station is MON_STEP / POWER_STEP
@@ -3281,7 +3282,7 @@ const DIFF = ROMAN.map((rn, i) => {
     gold: 1 + i * 0.35, drop: 1 + i * 0.02, boost: i * 0.14, xp: 1 + i * 0.2, aff: (i >= 8 ? 1 : 0) + (i >= 12 ? 1 : 0), lv: 1 + i * 3 };
 });
 const diffOpen = (i) => i === 0 || (SAVE.cleared ?? -1) >= i - 1;
-const diffNeed = (i) => `SLAY THE WARDEN OF STATION ${ROMAN[i - 1]}`;
+const diffNeed = (i) => `KILL THE WARDEN OF STATION ${ROMAN[i - 1]}`;
 // The Bleeding Vigil, our timed trial: endless levels, two per Station step,
 // still climbing past Station XV. Density rises with every level.
 const VIGIL_TIME = 600;
@@ -3298,7 +3299,7 @@ const OMENS = [
   { id: 'restless', name: 'THE RESTLESS', text: 'MONSTERS 40% MORE NUMEROUS', dens: 1.4 },
   { id: 'iron', name: 'IRON FLESH', text: 'MONSTERS HAVE 50% MORE HEALTH', hp: 1.5 },
   { id: 'wrath', name: 'WRATH', text: 'MONSTERS DEAL 35% MORE DAMAGE', dmg: 1.35 },
-  { id: 'curses', name: 'MANY CURSES', text: 'RARES AND ELITES BEAR ONE MORE CURSE', aff: 1 },
+  { id: 'curses', name: 'MANY CURSES', text: 'RARES AND ELITES HAVE ONE MORE CURSE', aff: 1 },
   { id: 'swift', name: 'SWIFT DEATH', text: 'MONSTERS MOVE 20% FASTER', speed: 1.2 },
 ];
 const OMEN_PAY = { drop: 1.3, boost: 0.4, gold: 1.4 };
@@ -3347,7 +3348,7 @@ function descentTap(x, y) {
   if (Math.hypot(x - L.prev.x, y - L.prev.y) < L.prev.r + 8) { D.i = (D.i + DIFF.length - 1) % DIFF.length; sfx('tap', { vol: 0.5 }); return; }
   if (Math.hypot(x - L.next.x, y - L.next.y) < L.next.r + 8) { D.i = (D.i + 1) % DIFF.length; sfx('tap', { vol: 0.5 }); return; }
   if (inRect(L.vig, x, y)) { openVigil(); return; }
-  if (inRect(L.strat, x, y)) { if ((SAVE.cleared ?? -1) >= 2) { D.stratum = (D.stratum || 1) === 1 ? 2 : 1; sfx('tap', { vol: 0.6 }); } else toast('SLAY THE WARDEN OF STATION III TO OPEN THE DROWNED NAVE', 2); return; }
+  if (inRect(L.strat, x, y)) { if ((SAVE.cleared ?? -1) >= 2) { D.stratum = (D.stratum || 1) === 1 ? 2 : 1; sfx('tap', { vol: 0.6 }); } else toast('KILL THE WARDEN OF STATION III TO OPEN THE DROWNED NAVE', 2); return; }
   if (inRect(L.omen, x, y)) { const n = ((D.omens || []).length + 1) % 3; D.omens = [...OMENS].sort(() => Math.random() - 0.5).slice(0, n).map((o) => o.id); sfx('tap', { vol: 0.6 }); return; }
   if (inRect(L.go, x, y) && diffOpen(D.i)) beginDescent(D.i);
 }
@@ -3382,7 +3383,7 @@ function renderDescent() {
   head(0, 'THE MAP');
   [['MONSTER LEVEL', `${df.lv}-${df.lv + 2}`], ['MONSTER HEALTH', x(df.hp), red(df.hp)], ['MONSTER DAMAGE', x(df.dmg), red(df.dmg)],
     ['CURSES ON RARES', `${1 + df.aff}-${2 + df.aff}`, df.aff ? PAL.blood0 : PAL.cloth0], ['CURSES ON ELITES', `${2 + df.aff}-${3 + df.aff}`, df.aff ? PAL.blood0 : PAL.cloth0],
-    ['WARDEN HEALTH', `${Math.round(WARDEN.hp * WARDEN.hpK * df.hp).toLocaleString('en-US')}`, PAL.blood0], ['SLAY THE WARDEN', D.i < 14 ? `OPENS ${ROMAN[D.i + 1]}` : 'THE LAST STATION', PAL.flame1],
+    ['WARDEN HEALTH', `${Math.round(WARDEN.hp * WARDEN.hpK * df.hp).toLocaleString('en-US')}`, PAL.blood0], ['KILL THE WARDEN', D.i < 14 ? `OPENS ${ROMAN[D.i + 1]}` : 'THE LAST STATION', PAL.flame1],
     ['ELITE PACKS', '2-3'], ['FULL TOLL', 'THE WARDEN COMES'], ['THE TOLL', 'KILLS RING IT'], ['LAYOUT', 'NEW EVERY TIME'], ['ROOMS', '11-12'], ['MONSTERS', 'PACKED']]
     .slice(0, nRows).forEach(([a, b, c], i) => row(0, i, a, b, c));
   head(1, 'REWARDS');
@@ -3412,12 +3413,12 @@ function renderDescent() {
   // The price of falling, and the buttons.
   const fy = top + colH + 6;
   const Wg = SAVE.wager, vow = !!SAVE.vow;
-  if (full) text(fitText(vow ? "THE MARTYR'S VOW: GOLD AND GEAR FALL DOUBLED. FALL AND THE CHOIR TAKES ALL YOU FOUND." : 'IF YOU FALL: THE CHOIR TITHES HALF YOUR GOLD AND EVERY OTHER PIECE OF GEAR YOU CARRY.', L.pw - 24), L.x0 + 12, fy, PAL.blood0, { small: true, outline: null });
-  if (full) text(fitText(Wg ? `THE POOL: ${Wg.stake} GOLD THAT ${WAGER_MARKS[Wg.mark].short} AT ${DIFF[Wg.diff].name}${Wg.diff === D.i ? '' : ' (NOT THIS STATION)'}.` : 'WORN GEAR IS SAFE. SLAY THE WARDEN AND TAKE THE WAYSTONE HOME TO KEEP IT ALL.', L.pw - 24), L.x0 + 12, fy + 10, Wg ? PAL.gold1 : PAL.stone1, { small: true, outline: null });
+  if (full) text(fitText(vow ? "MARTYR'S VOW: DOUBLE GOLD AND GEAR. DIE AND YOU LOSE EVERYTHING YOU FOUND." : 'IF YOU DIE: YOU LOSE HALF YOUR GOLD AND HALF THE GEAR YOU FOUND.', L.pw - 24), L.x0 + 12, fy, PAL.blood0, { small: true, outline: null });
+  if (full) text(fitText(Wg ? `WAGER: ${Wg.stake} GOLD ON ${WAGER_MARKS[Wg.mark].short} AT ${DIFF[Wg.diff].name}${Wg.diff === D.i ? '' : ' (NOT THIS STATION)'}.` : 'WORN GEAR IS SAFE. RETURN BY THE WAYSTONE TO KEEP EVERYTHING.', L.pw - 24), L.x0 + 12, fy + 10, Wg ? PAL.gold1 : PAL.stone1, { small: true, outline: null });
   // Omens: optional curses that pay more.
   const oy = full ? fy + 22 : fy;
   if (full || om.length) text(om.length ? `OMENS: ${om.map((id) => OMENS.find((o) => o.id === id).text).join('. ')}.` : `DESCENTS ${SAVE.descents || 0}   HIGHEST STATION CLEARED ${(SAVE.cleared ?? -1) >= 0 ? ROMAN[SAVE.cleared] : 'NONE'}`, L.x0 + 12, oy, om.length ? PAL.blood0 : PAL.stone2, { small: true, outline: null });
-  if (om.length) text(`EACH OMEN PAYS +${Math.round((OMEN_PAY.gold - 1) * 100)}% GOLD AND +${Math.round((OMEN_PAY.drop - 1) * 100)}% GEAR, RARER.`, L.x0 + 12, oy + 10, PAL.flame1, { small: true, outline: null });
+  if (om.length) text(`EACH OMEN: +${Math.round((OMEN_PAY.gold - 1) * 100)}% GOLD, +${Math.round((OMEN_PAY.drop - 1) * 100)}% GEAR, BETTER RARITY.`, L.x0 + 12, oy + 10, PAL.flame1, { small: true, outline: null });
   invButton(L.omen, om.length === 2 ? 'TWO OMENS (TAP: NONE)' : om.length ? 'ONE OMEN (TAP: TWO)' : 'TAKE AN OMEN', PAL.violet3 || PAL.ink3, true);
   invButton(L.back, 'CANCEL', PAL.stone4);
   invButton(L.go, open ? 'DESCEND' : 'LOCKED', PAL.crimson3, open);
@@ -3441,17 +3442,17 @@ function wrap(s, n) {
 // ------------------------------------------------------------ tutorial ---
 // Guided first steps. "SKIP TUTORIAL" ends it for good.
 const TUT = [
-  { scene: 'town', text: 'WELCOME, SAINT. DRAG ON THE LEFT SIDE OF THE SCREEN TO WALK.', target: 'joy', done: () => tut.flags.moved > 60 },
-  { scene: 'town', text: 'TALK TO THE TOWNSFOLK. WALK UP TO ANYONE AND TAP TALK.', target: 'act', done: () => tut.flags.talked },
-  { scene: 'town', text: 'THE VESTRY DOORS LEAD DOWN INTO THE WOUND. WALK TO THEM AND TAP DESCEND.', target: 'act', done: () => game.scene === 'wound' },
-  { scene: 'wound', text: 'THE WOUND IS FULL OF THE RESTLESS DEAD, AND IT IS NEVER THE SAME TWICE. WALK ON AND FIND THEM.', done: () => game.kills >= 1 || room.rooms && room.rooms.some((q) => q.state !== 'idle' && q.type !== 'start') },
-  { scene: 'wound', text: 'YOUR CROSSBOW FIRES BY ITSELF: ELITES FIRST, THEN THE NEAREST. TAP AN ENEMY TO LOCK ON.', done: () => game.kills >= 4 },
-  { scene: 'wound', text: 'TAP DASH TO DODGE THROUGH ATTACKS. RED SHAPES ON THE FLOOR WARN YOU WHERE A HIT WILL LAND.', target: 'dash', done: () => tut.flags.dashed >= 2 },
-  { scene: 'wound', text: 'TAP HOLY WATER TO THROW A VIAL. IT AIMS ITSELF AT THE THICKEST CROWD.', target: 'm1', done: () => tut.flags.m1 },
-  { scene: 'wound', text: 'TAP THE CHAIN TO BIND UP TO FOUR FOES TOGETHER.', target: 'm2', done: () => tut.flags.m2 || tut.t > 12 },
-  { scene: 'wound', text: "KILLS FEED THE CROWD'S ZEAL AND FILL THE RED RING. IT IS FULL: TAP RECKONING.", target: 'pen', start: () => { player.penance = T.penance.charge; }, done: () => tut.flags.pen || tut.t > 15 },
-  { scene: 'wound', text: 'RED ORBS HEAL. GOLD AND GEAR SPILL FROM THE DEAD. BLUE MONSTERS ARE RARE, GOLD ARE ELITE: READ THEIR CURSES UNDER THEIR NAME.', done: () => tut.t > 8 },
-  { scene: 'wound', text: 'EVERY KILL RINGS THE TOLL AT THE TOP. WHEN IT IS FULL, THE WARDEN OF THE STATION COMES FOR YOU. SLAY IT AND ITS WAYSTONE CARRIES YOU HOME.', target: 'toll', done: () => tut.t > 9 },
+  { scene: 'town', text: 'DRAG ON THE LEFT SIDE OF THE SCREEN TO WALK.', target: 'joy', done: () => tut.flags.moved > 60 },
+  { scene: 'town', text: 'WALK UP TO SOMEONE AND TAP TALK.', target: 'act', done: () => tut.flags.talked },
+  { scene: 'town', text: 'WALK TO THE CATHEDRAL DOORS AND TAP DESCEND.', target: 'act', done: () => game.scene === 'wound' },
+  { scene: 'wound', text: 'FIND THE MONSTERS.', done: () => game.kills >= 1 || room.rooms && room.rooms.some((q) => q.state !== 'idle' && q.type !== 'start') },
+  { scene: 'wound', text: 'YOUR CROSSBOW FIRES ON ITS OWN. TAP AN ENEMY TO TARGET IT.', done: () => game.kills >= 4 },
+  { scene: 'wound', text: 'TAP DASH TO DODGE. RED SHAPES SHOW WHERE ATTACKS WILL LAND.', target: 'dash', done: () => tut.flags.dashed >= 2 },
+  { scene: 'wound', text: 'TAP HOLY WATER TO THROW A VIAL AT THE BIGGEST GROUP.', target: 'm1', done: () => tut.flags.m1 },
+  { scene: 'wound', text: 'TAP THE CHAIN TO BIND UP TO FOUR FOES.', target: 'm2', done: () => tut.flags.m2 || tut.t > 12 },
+  { scene: 'wound', text: 'KILLS FILL THE RED RING. WHEN IT IS FULL, TAP RECKONING.', target: 'pen', start: () => { player.penance = T.penance.charge; }, done: () => tut.flags.pen || tut.t > 15 },
+  { scene: 'wound', text: 'RED ORBS HEAL. BLUE MONSTERS ARE RARE, GOLD ONES ARE ELITE. THEIR CURSES SHOW UNDER THEIR NAME.', done: () => tut.t > 8 },
+  { scene: 'wound', text: 'KILLS FILL THE TOLL AT THE TOP. WHEN IT IS FULL, THE WARDEN COMES. KILL IT, THEN USE THE WAYSTONE TO RETURN.', target: 'toll', done: () => tut.t > 9 },
 ];
 const tut = { on: !SAVE.tutorialDone, step: 0, t: 0, flags: { moved: 0 } };
 function tutStep() { return tut.on ? TUT[tut.step] : null; }
@@ -3540,40 +3541,40 @@ const MON = {
   siltWretch: { name: 'SILT WRETCH', tier: 'common', stratum: 2, hp: 30, speed: 26, r: 6, hy: 13, hr: 9, move: 'chase', fervor: 3, attacks: [A('lunge', { range: 42, windup: 0.5, cd: 2, dmg: 9, speed: 160, time: 0.22 })] },
   naveEel: { name: 'NAVE EEL', tier: 'common', stratum: 2, hp: 22, speed: 40, r: 6, hy: 6, hr: 11, move: 'chase', fervor: 3, attacks: [A('lunge', { range: 62, windup: 0.55, cd: 2.2, dmg: 10, speed: 210, time: 0.25 })] },
   cantor: { name: 'TIDE CANTOR', tier: 'rare', stratum: 2, hp: 170, speed: 16, r: 9, hy: 24, hr: 13, move: 'kite', keep: 110, fervor: 12, attacks: [A('ring', { n: 14, range: 170, windup: 0.6, cd: 3.5, dmg: 8, speed: 95, shot: 'tear' }), A('lob', { n: 3, spreadR: 40, rad: 20, range: 200, windup: 0.7, cd: 5, dmg: 8, pool: 'frost', poolLife: 4, poolDps: 6 })] },
-  tideBishop: { name: 'THE TIDE-BISHOP', tier: 'elite', warden: true, stratum: 2, sheet: 'mon_warden', hp: 2700, speed: 15, r: 16, hy: 38, hr: 24, move: 'chase', fervor: 40, lore: 'HE BLESSED THE FLOOD. NOW HE LEADS ITS PROCESSION.', attacks: [
+  tideBishop: { name: 'THE TIDE-BISHOP', tier: 'elite', warden: true, stratum: 2, sheet: 'mon_warden', hp: 2700, speed: 15, r: 16, hy: 38, hr: 24, move: 'chase', fervor: 40, attacks: [
     A('shockwave', { range: 170, windup: 0.9, cd: 5, dmg: 15, speed: 110, max: 220, slow: 1.2 }),
     A('pull', { len: 180, range: 180, windup: 0.6, cd: 6, dmg: 10 }),
     A('pattern', { shape: 'ring', at: 'player', n: 8, radius: 60, rad: 20, delay: 1, range: 250, windup: 0.7, cd: 8, dmg: 12, pool: 'frost' }),
     A('summon', { monster: 'naveEel', n: 3, range: 300, windup: 0.6, cd: 11 })],
     phases: [[A('peal', { range: 210, windup: 0.9, cd: 7, dmg: 14, speed: 110, max: 240, n: 4, gap: 0.4, slow: 1.2 })], [A('pattern', { shape: 'cross', at: 'player', n: 13, step: 26, rad: 18, delay: 0.7, range: 260, windup: 0.6, cd: 6, dmg: 16, pool: 'frost' }), A('lob', { n: 6, spreadR: 60, rad: 20, range: 240, windup: 0.6, cd: 4, dmg: 12, pool: 'frost', poolLife: 5, poolDps: 10 })]] },
-  organist: { name: 'THE DROWNED ORGANIST', tier: 'elite', warden: true, stratum: 2, sheet: 'mon_warden', hp: 2500, speed: 14, r: 15, hy: 36, hr: 22, move: 'kite', keep: 120, fervor: 40, lore: 'THE ORGAN STILL PLAYS UNDER THE WATER. HE IS THE ONE PLAYING IT.', attacks: [
+  organist: { name: 'THE DROWNED ORGANIST', tier: 'elite', warden: true, stratum: 2, sheet: 'mon_warden', hp: 2500, speed: 14, r: 15, hy: 36, hr: 22, move: 'kite', keep: 120, fervor: 40, attacks: [
     A('sweep', { beams: 2, dur: 2.5, rate: 0.2, spin: 0.8, len: 230, range: 260, windup: 0.9, cd: 8, dmg: 12 }),
     A('volley', { n: 5, arc: 0.8, shots: 4, rate: 0.3, range: 230, windup: 0.6, cd: 5, dmg: 7, speed: 135, shot: 'violet' }),
     A('peal', { range: 180, windup: 0.9, cd: 6, dmg: 13, speed: 105, max: 210, n: 3, gap: 0.45 }),
     A('summon', { monster: 'cantor', n: 1, range: 300, windup: 0.7, cd: 14 })],
     phases: [[A('ring', { n: 30, range: 220, windup: 0.6, cd: 4, dmg: 9, speed: 100, shot: 'violet' })], [A('sweep', { beams: 4, dur: 3, rate: 0.18, spin: 1, len: 250, range: 280, windup: 0.8, cd: 8, dmg: 14 }), A('pattern', { shape: 'ring', at: 'self', n: 14, radius: 110, rad: 18, delay: 0.9, range: 260, windup: 0.7, cd: 7, dmg: 14, style: 'bell' })]] },
   // The five Wardens (one comes when the Toll is full). Own sheet, own kits.
-  bellwright: { name: 'THE BELLWRIGHT', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2600, speed: 16, r: 16, hy: 36, hr: 24, move: 'chase', fervor: 40, lore: 'HE RANG THE BELL THAT WOKE THE DEAD. HE HAS NOT STOPPED.', phases: [[A('peal', { range: 200, windup: 0.9, cd: 7, dmg: 16, speed: 115, max: 240, n: 5, gap: 0.35, root: 0.6 })], [A('pattern', { shape: 'ring', at: 'player', n: 10, radius: 80, rad: 22, delay: 0.85, range: 260, windup: 0.6, cd: 6, dmg: 18, style: 'bell', root: 0.5 }), A('slam', { range: 56, rad: 48, windup: 0.7, cd: 3.5, dmg: 26 })]], attacks: [
+  bellwright: { name: 'THE BELLWRIGHT', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2600, speed: 16, r: 16, hy: 36, hr: 24, move: 'chase', fervor: 40, phases: [[A('peal', { range: 200, windup: 0.9, cd: 7, dmg: 16, speed: 115, max: 240, n: 5, gap: 0.35, root: 0.6 })], [A('pattern', { shape: 'ring', at: 'player', n: 10, radius: 80, rad: 22, delay: 0.85, range: 260, windup: 0.6, cd: 6, dmg: 18, style: 'bell', root: 0.5 }), A('slam', { range: 56, rad: 48, windup: 0.7, cd: 3.5, dmg: 26 })]], attacks: [
     A('slam', { range: 48, rad: 34, windup: 0.8, cd: 2.6, dmg: 20 }),
     A('peal', { range: 170, windup: 1, cd: 6, dmg: 14, speed: 105, max: 210, n: 3, gap: 0.45, root: 0.5 }),
     A('pattern', { shape: 'ring', at: 'player', n: 6, radius: 58, rad: 22, delay: 1, range: 230, windup: 0.7, cd: 7, dmg: 16, style: 'bell', root: 0.4 }),
     A('summon', { monster: 'risen', n: 3, range: 300, windup: 0.6, cd: 11 })] },
-  candlemass: { name: 'MOTHER CANDLEMASS', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2400, speed: 13, r: 16, hy: 38, hr: 22, move: 'kite', keep: 110, fervor: 40, lore: 'EVERY CANDLE LIT FOR THE DEAD BURNS ON HER STILL.', phases: [[A('spiral', { streams: 8, dur: 3.5, rate: 0.1, range: 260, windup: 0.8, cd: 9, dmg: 8, speed: 95, shot: 'ember' })], [A('pattern', { shape: 'ring', at: 'self', n: 16, radius: 100, rad: 18, delay: 0.9, range: 260, windup: 0.7, cd: 8, dmg: 12, pool: 'fire' })]], attacks: [
+  candlemass: { name: 'MOTHER CANDLEMASS', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2400, speed: 13, r: 16, hy: 38, hr: 22, move: 'kite', keep: 110, fervor: 40, phases: [[A('spiral', { streams: 8, dur: 3.5, rate: 0.1, range: 260, windup: 0.8, cd: 9, dmg: 8, speed: 95, shot: 'ember' })], [A('pattern', { shape: 'ring', at: 'self', n: 16, radius: 100, rad: 18, delay: 0.9, range: 260, windup: 0.7, cd: 8, dmg: 12, pool: 'fire' })]], attacks: [
     A('lob', { n: 5, spreadR: 50, rad: 20, range: 210, windup: 0.7, cd: 4, dmg: 12, pool: 'fire', poolLife: 6, poolDps: 20 }),
     A('spiral', { streams: 5, dur: 3, rate: 0.12, range: 230, windup: 0.8, cd: 8, dmg: 7, speed: 90, shot: 'ember' }),
     A('pattern', { shape: 'ring', at: 'player', n: 10, radius: 70, rad: 16, delay: 1, range: 250, windup: 0.8, cd: 9, dmg: 10, pool: 'fire' }),
     A('ring', { n: 24, range: 200, windup: 0.7, cd: 5, dmg: 8, speed: 85, shot: 'ember' })] },
-  cardinal: { name: 'THE HOLLOW CARDINAL', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2200, speed: 20, r: 14, hy: 38, hr: 20, move: 'kite', keep: 120, fly: true, fervor: 40, lore: 'THE ROBES STILL PREACH. NO ONE HAS WORN THEM IN A HUNDRED YEARS.', phases: [[A('sweep', { beams: 5, dur: 3, rate: 0.18, spin: 1, len: 260, range: 280, windup: 0.8, cd: 9, dmg: 14 })], [A('spread', { n: 13, arc: 2.2, range: 230, windup: 0.45, cd: 2.2, dmg: 9, speed: 120, shot: 'violet' }), A('blink', { range: 320, min: 60, windup: 0.2, cd: 3 })]], attacks: [
+  cardinal: { name: 'THE HOLLOW CARDINAL', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2200, speed: 20, r: 14, hy: 38, hr: 20, move: 'kite', keep: 120, fly: true, fervor: 40, phases: [[A('sweep', { beams: 5, dur: 3, rate: 0.18, spin: 1, len: 260, range: 280, windup: 0.8, cd: 9, dmg: 14 })], [A('spread', { n: 13, arc: 2.2, range: 230, windup: 0.45, cd: 2.2, dmg: 9, speed: 120, shot: 'violet' }), A('blink', { range: 320, min: 60, windup: 0.2, cd: 3 })]], attacks: [
     A('sweep', { beams: 3, dur: 2.4, rate: 0.2, spin: 0.9, len: 240, range: 260, windup: 0.9, cd: 8, dmg: 12 }),
     A('blink', { range: 320, min: 60, windup: 0.3, cd: 5 }),
     A('spread', { n: 7, arc: 1, range: 210, windup: 0.5, cd: 2.4, dmg: 9, speed: 115, shot: 'violet' }),
     A('summon', { monster: 'acolyte', n: 4, range: 300, windup: 0.7, cd: 12 })] },
-  charnelKing: { name: 'THE CHARNEL KING', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2800, speed: 18, r: 14, hy: 36, hr: 20, move: 'chase', fervor: 40, lore: 'HE RULES THE OSSUARY BY RIGHT OF THE MOST BONES.', phases: [[A('pattern', { shape: 'cross', at: 'player', n: 13, step: 24, rad: 16, delay: 0.7, range: 260, windup: 0.6, cd: 6, dmg: 18, style: 'thorn' })], [A('summon', { monster: 'gravewarden', n: 2, range: 300, windup: 0.7, cd: 12 }), A('multidash', { n: 5, range: 220, windup: 0.6, cd: 6, dmg: 20, speed: 250, time: 0.3 })]], attacks: [
+  charnelKing: { name: 'THE CHARNEL KING', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2800, speed: 18, r: 14, hy: 36, hr: 20, move: 'chase', fervor: 40, phases: [[A('pattern', { shape: 'cross', at: 'player', n: 13, step: 24, rad: 16, delay: 0.7, range: 260, windup: 0.6, cd: 6, dmg: 18, style: 'thorn' })], [A('summon', { monster: 'gravewarden', n: 2, range: 300, windup: 0.7, cd: 12 }), A('multidash', { n: 5, range: 220, windup: 0.6, cd: 6, dmg: 20, speed: 250, time: 0.3 })]], attacks: [
     A('pattern', { shape: 'line', at: 'self', n: 8, step: 24, rad: 16, delay: 0.6, range: 230, windup: 0.7, cd: 4.5, dmg: 16, style: 'thorn' }),
     A('multidash', { n: 3, range: 210, windup: 0.8, cd: 6, dmg: 18, speed: 230, time: 0.35 }),
     A('summon', { monster: 'risen', n: 5, range: 300, windup: 0.7, cd: 10 }),
     A('shockwave', { range: 150, windup: 0.9, cd: 6, dmg: 16, speed: 120, max: 180 })] },
-  ladyOfNails: { name: 'OUR LADY OF NAILS', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2500, speed: 14, r: 15, hy: 38, hr: 20, move: 'chase', fervor: 40, lore: 'A STATUE OF A MARTYR, MADE OF WHAT KILLED HER.', phases: [[A('volley', { n: 7, arc: 0.9, shots: 6, rate: 0.25, range: 240, windup: 0.5, cd: 6, dmg: 8, speed: 150, shot: 'bone' })], [A('ring', { n: 36, range: 220, windup: 0.6, cd: 4, dmg: 9, speed: 110, shot: 'bone' }), A('pattern', { shape: 'ring', at: 'player', n: 12, radius: 64, rad: 14, delay: 0.7, range: 260, windup: 0.5, cd: 5, dmg: 16, style: 'thorn' })]], attacks: [
+  ladyOfNails: { name: 'OUR LADY OF NAILS', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2500, speed: 14, r: 15, hy: 38, hr: 20, move: 'chase', fervor: 40, phases: [[A('volley', { n: 7, arc: 0.9, shots: 6, rate: 0.25, range: 240, windup: 0.5, cd: 6, dmg: 8, speed: 150, shot: 'bone' })], [A('ring', { n: 36, range: 220, windup: 0.6, cd: 4, dmg: 9, speed: 110, shot: 'bone' }), A('pattern', { shape: 'ring', at: 'player', n: 12, radius: 64, rad: 14, delay: 0.7, range: 260, windup: 0.5, cd: 5, dmg: 16, style: 'thorn' })]], attacks: [
     A('volley', { n: 5, arc: 0.7, shots: 4, rate: 0.35, range: 230, windup: 0.6, cd: 5, dmg: 7, speed: 140, shot: 'bone' }),
     A('pull', { len: 170, range: 170, windup: 0.6, cd: 6, dmg: 8 }),
     A('pattern', { shape: 'cross', at: 'player', n: 12, step: 22, rad: 14, delay: 0.8, range: 250, windup: 0.7, cd: 6, dmg: 15, style: 'thorn' }),
@@ -3793,7 +3794,7 @@ function moveEnemy(e, dt, dx, dy, dist) {
     vx = dx / dist * sp * k - dy / dist * sp * 0.9; vy = dy / dist * sp * k + dx / dist * sp * 0.9;
   } else if (d.move === 'flee') {
     if (dist < 160) to(-1.1); else { vx = Math.cos(e.animT) * sp * 0.4; vy = Math.sin(e.animT * 1.3) * sp * 0.4; }
-    if (e.hp < e.maxHp) { e.escape = (e.escape ?? 12) - dt; if (e.escape <= 0) { rings.push({ x: e.x, y: e.y - 10, t: 0, max: 0.6, r: 30, color: '154,106,230' }); playFx('fx', 'smoke', e.x, e.y - 8, 12); e.dead = true; e.escaped = true; toast('THE IMP ESCAPED WITH YOUR TITHE', 2); return; } }
+    if (e.hp < e.maxHp) { e.escape = (e.escape ?? 12) - dt; if (e.escape <= 0) { rings.push({ x: e.x, y: e.y - 10, t: 0, max: 0.6, r: 30, color: '154,106,230' }); playFx('fx', 'smoke', e.x, e.y - 8, 12); e.dead = true; e.escaped = true; toast('THE IMP ESCAPED', 2); return; } }
   }
   if (!d.fly) for (const o of awake) {
     if (o === e || o.dead || o.state === 'spawn') continue;
@@ -4174,7 +4175,7 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
     const m = spawnMonster(e.type, e.x + rand(-20, 20), e.y + rand(-14, 14), { tier: e.tier, illusion: true, life: 9, room: e.room, hpK: 0.15 });
     m.state = 'move'; m.dmgK = 0.3; playFx('fx', 'smoke', m.x, m.y - 8, 14);
   }
-  if (e.type === 'imp' && !e.alarmed) { e.alarmed = true; toast('IT FLEES. KILL IT BEFORE IT ESCAPES!', 1.6); }
+  if (e.type === 'imp' && !e.alarmed) { e.alarmed = true; toast('KILL IT BEFORE IT ESCAPES!', 1.6); }
   const st = e.tier === 'elite' ? 0.08 : 0.15;
   if (e.elite && !e.boss && !e.illusion && !e.staggered && e.hp > 0 && e.hp <= e.maxHp * st && e.tier !== 'imp') { e.staggered = true; e.state = 'stagger'; e.t = 0; e.under = false; toast('STAGGERED: EXECUTE IT', 1.5); }
   if (e.hp <= 0) killEnemy(e, dirx, diry);
@@ -4250,7 +4251,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   if (e.def.split && e.scaleK > 0.7) for (let k = 0; k < e.def.split; k++) { const c = spawnMonster(e.type, e.x + rand(-16, 16), e.y + rand(-10, 10), { tier: e.tier, affixes: e.affixes.filter((a) => a !== 'hale'), room: e.room, scaleK: 0.6, hpK: 0.25, name: e.name }); c.state = 'move'; }
   // Loot.
   maybeChrism(e.x, e.y, (e.type === 'imp' ? 0.15 : e.tier === 'elite' ? (e.minion ? 0.002 : 0.05) : e.tier === 'rare' ? 0.01 : 0.0004) * (curDiff().vigil ? VIGIL_PAY.chrismK : 1));
-  if (e.type === 'imp') { dropLoot(e.x, e.y, { gold: 22, item: 3, itemBoost: 2, globe: 1 }); game.banner = { text: 'THE IMP IS SLAIN', sub: 'ITS SACK SPLITS OPEN', t: 0, color: PAL.gold0 }; }
+  if (e.type === 'imp') { dropLoot(e.x, e.y, { gold: 22, item: 3, itemBoost: 2, globe: 1 }); game.banner = { text: 'THE IMP IS KILLED', sub: 'GOLD DROPPED', t: 0, color: PAL.gold0 }; }
   else if (e.boss) { /* wardenSlain drops the loot */ }
   else if (e.tier === 'elite') { if (!e.minion) SAVE.eliteKills = (SAVE.eliteKills || 0) + 1; dropLoot(e.x, e.y, { gold: 10, item: 1, itemBoost: 1.5, globe: 2 }); game.banner = { text: `${e.name} FALLS`, sub: '', t: 0, color: PAL.gold0 }; }
   else if (e.tier === 'rare') dropLoot(e.x, e.y, { gold: 3, item: rng() < 0.2 ? 1 : 0, itemBoost: 1, globe: rng() < 0.4 ? 1 : 0 });
@@ -4372,7 +4373,7 @@ const SET_FROM = 6; // the five main sets (and their arms) drop from Station VI
 const ARMS = {
   nails: { name: 'ARMS OF THE HUNDRED NAILS', bow: "THE NAILWRIGHT'S ARBALEST", quiver: 'THE HUNDREDFOLD QUIVER', bonus: 'EVERY 5TH BOLT IS A GREAT NAIL: X3 DAMAGE, PIERCES EVERY FOE.' },
   stride: { name: "ARMS OF THE PENITENT'S STRIDE", bow: 'THE PILGRIM\'S EMBER-BOW', quiver: 'THE QUIVER OF COALS', bonus: 'AFTER A DASH, YOUR NEXT 6 BOLTS SET FOES ALIGHT.' },
-  font: { name: 'ARMS OF THE DROWNED FONT', bow: 'THE ASPERGILL ARBALEST', quiver: 'THE BRIMMING CASE', bonus: 'BOLTS SLOW FOES 30%. FOES THEY SLAY LEAVE A SMALL POOL.' },
+  font: { name: 'ARMS OF THE DROWNED FONT', bow: 'THE ASPERGILL ARBALEST', quiver: 'THE BRIMMING CASE', bonus: 'BOLTS SLOW FOES 30%. FOES THEY KILL LEAVE A SMALL POOL.' },
   confessor: { name: 'ARMS OF THE LAST CONFESSOR', bow: 'THE PENANCE ENGINE', quiver: 'THE QUIVER OF LINKS', bonus: 'EVERY 8TH BOLT CHAINS ITS FOE AND 2 NEAR IT FOR 1.5 S.' },
   choir: { name: 'ARMS OF THE BURNING CHOIR', bow: 'THE CANTICLE BOW', quiver: 'THE QUIVER OF CANDLES', bonus: 'CRITS CHARGE RECKONING TWICE AS FAST. IN RECKONING, BOLTS BURST INTO FLAME.' },
 };
@@ -4549,8 +4550,8 @@ function updateDrops(dt) {
     if (!full && d.t > 0.4 && dist < (d.kind === 'item' ? 14 : 10)) {
       d.taken = true; sfx(d.kind === 'gold' ? 'gold' : d.kind === 'globe' ? 'heal' : d.kind === 'knell' ? 'knell' : 'pickup', { gap: d.kind === 'knell' ? 0.07 : 0.045, rate: d.kind === 'item' && d.item.ri >= 3 ? 0.8 : 1 });
       if (d.kind === 'knell') { const T0 = game.toll; if (T0 && !T0.done) { T0.v = Math.min(T0.max, T0.v + 3); nums.push({ x: player.x, y: player.y - 46, v: 'TOLL', t: 0, color: PAL.gold1, small: true }); if (T0.v >= T0.max) { T0.done = true; spawnWarden(); } } }
-      if (d.kind === 'vkey') { SAVE.vkeys = (SAVE.vkeys || 0) + 1; persist(); toast('A BLOODROSE KEY! IT OPENS THE BLEEDING VIGIL', 3); game.toastColor = `rgb(${VKEY_RGB})`; game.flash = 0.12; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.6, r: 50, color: VKEY_RGB }); }
-      if (d.kind === 'chrism') { chrisms()[d.tier]++; persist(); toast(`${CHRISM[d.tier].name}! THE ALTAR WILL WELCOME IT`, 2.6); game.toastColor = RARITY[d.tier].color; game.flash = 0.08; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: RARITY[d.tier].rgb }); }
+      if (d.kind === 'vkey') { SAVE.vkeys = (SAVE.vkeys || 0) + 1; persist(); toast('BLOODROSE KEY FOUND', 3); game.toastColor = `rgb(${VKEY_RGB})`; game.flash = 0.12; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.6, r: 50, color: VKEY_RGB }); }
+      if (d.kind === 'chrism') { chrisms()[d.tier]++; persist(); toast(`${CHRISM[d.tier].name} FOUND`, 2.6); game.toastColor = RARITY[d.tier].color; game.flash = 0.08; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: RARITY[d.tier].rgb }); }
       if (d.kind === 'gold') { d.amount = Math.round(d.amount * (1 + G.gold / 100) * (game.run.martyr ? 2 : 1)); game.run.gold += d.amount; nums.push({ x: player.x + rand(-6, 6), y: player.y - 39, v: `+${d.amount}`, t: 0, color: PAL.gold0, small: true }); }
       if (d.kind === 'globe') { if (G.powers.has('tithe')) addFervor(10); const h = Math.round(player.maxHp * 0.15 * (G.powers.has('globe') ? 2 : 1)); player.hp = Math.min(player.maxHp, player.hp + h); nums.push({ x: player.x, y: player.y - 55, v: `+${h}`, t: 0, color: PAL.flame1, small: false }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.3, r: 20, color: '224,32,46' }); }
       if (d.kind === 'item') { game.run.items.push(d.item); const R = RARITY[d.item.ri]; const auto = !SAVE.equip[d.item.slot]; bagAdd(d.item); if (!auto) { toast(`${d.item.name}`, 2); game.toastColor = R.color; } if (d.item.ri >= 3) { game.flash = 0.06; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: R.rgb }); } }
@@ -4671,7 +4672,7 @@ function breakProp(p) {
 function hitBreakables(x, y, r) { for (const p of room.props) if (p.breakable && Math.hypot(p.x - x, p.y - 6 - y) < r + 8) breakProp(p); }
 
 // Shrines (temporary buffs) and treasury chests.
-const SHRINES = { judgement: { name: 'SHRINE OF JUDGEMENT', sub: 'HOLY LIGHTNING STRIKES YOUR FOES', t: 15, rgb: '216,247,255' }, fervor: { name: 'SHRINE OF ZEAL', sub: 'DOUBLE DAMAGE', t: 25, rgb: '224,32,46' }, haste: { name: 'SHRINE OF HASTE', sub: 'SWIFTER FEET AND FASTER RITES', t: 25, rgb: '95,220,108' }, warding: { name: 'SHRINE OF WARDING', sub: 'HALF DAMAGE TAKEN', t: 25, rgb: '138,224,255' }, plenty: { name: 'SHRINE OF PLENTY', sub: 'A RAIN OF GOLD', t: 20, rgb: '255,209,85' } };
+const SHRINES = { judgement: { name: 'SHRINE OF JUDGEMENT', sub: 'LIGHTNING HITS NEARBY FOES', t: 15, rgb: '216,247,255' }, fervor: { name: 'SHRINE OF ZEAL', sub: 'DOUBLE DAMAGE', t: 25, rgb: '224,32,46' }, haste: { name: 'SHRINE OF HASTE', sub: 'FASTER MOVEMENT AND RITES', t: 25, rgb: '95,220,108' }, warding: { name: 'SHRINE OF WARDING', sub: 'HALF DAMAGE TAKEN', t: 25, rgb: '138,224,255' }, plenty: { name: 'SHRINE OF PLENTY', sub: 'EXTRA GOLD', t: 20, rgb: '255,209,85' } };
 function useShrine(p) {
   bumpBounty('shrines');
   if (p.used) return; sfx('shrine');
@@ -4870,10 +4871,10 @@ function bestCluster(R) {
 // Reckoning), so the right set makes it far stronger.
 const RITES = {
   m1: [
-    { id: 'water', name: 'HOLY WATER', set: 'font', icon: 'flask', cd: 6, text: 'LOB A VIAL. ITS POOL BURNS AND SLOWS.' },
-    { id: 'wave', name: 'BAPTISM', set: 'font', icon: 'wave', cd: 7, text: 'A WAVE ROLLS AHEAD, HURLS FOES BACK AND LEAVES THREE POOLS.' },
+    { id: 'water', name: 'HOLY WATER', set: 'font', icon: 'flask', cd: 6, text: 'THROW A VIAL. ITS POOL BURNS AND SLOWS.' },
+    { id: 'wave', name: 'BAPTISM', set: 'font', icon: 'wave', cd: 7, text: 'A WAVE KNOCKS FOES BACK AND LEAVES THREE POOLS.' },
     { id: 'storm', name: 'NAIL STORM', set: 'nails', icon: 'storm', cd: 5, text: 'A FAN OF 11 NAILS. EVERY ONE COUNTS AS A BOLT.' },
-    { id: 'step', name: 'EMBER STEP', set: 'stride', icon: 'step', cd: 5, text: 'A LONG LEAP THAT LEAVES FIERCE FIRE. COUNTS AS A DASH.' },
+    { id: 'step', name: 'EMBER STEP', set: 'stride', icon: 'step', cd: 5, text: 'A LONG LEAP THAT LEAVES FIRE. COUNTS AS A DASH.' },
   ],
   m2: [
     { id: 'chain', name: 'CHAIN OF PENANCE', set: 'confessor', icon: 'chain', cd: 8, text: 'BIND A FOE AND THOSE NEAR IT, THEN DRAG THEM IN.' },
@@ -4882,10 +4883,10 @@ const RITES = {
     { id: 'ward', name: "MARTYR'S WARD", set: 'stride', icon: 'ward', cd: 10, text: '3 S OF 60% LESS DAMAGE. YOUR NEXT DASH IS PERFECT.' },
   ],
   pen: [
-    { id: 'rain', name: 'RAIN OF RECKONING', set: 'choir', icon: 'penance', text: 'LASHES OF LIGHT FALL ON EVERYTHING IN SIGHT.' },
-    { id: 'pillars', name: 'JUDGEMENT', set: 'choir', icon: 'pillars', text: 'PILLARS OF LIGHT HAMMER THE STRONGEST FOES.' },
-    { id: 'font', name: 'THE GREAT FONT', set: 'font', icon: 'font', text: 'A GREAT HOLY POOL FOLLOWS YOU WHILE IT LASTS.' },
-    { id: 'volley', name: 'THE HUNDREDFOLD', set: 'nails', icon: 'volley', text: 'THE CROSSBOW FIRES THREE TIMES AS FAST, EVERY SHOT SPLITS.' },
+    { id: 'rain', name: 'RAIN OF RECKONING', set: 'choir', icon: 'penance', text: 'HITS EVERY FOE ON SCREEN.' },
+    { id: 'pillars', name: 'JUDGEMENT', set: 'choir', icon: 'pillars', text: 'PILLARS OF LIGHT HIT THE STRONGEST FOES.' },
+    { id: 'font', name: 'THE GREAT FONT', set: 'font', icon: 'font', text: 'A LARGE HOLY POOL FOLLOWS YOU.' },
+    { id: 'volley', name: 'THE HUNDREDFOLD', set: 'nails', icon: 'volley', text: 'THE CROSSBOW FIRES 3X AS FAST AND EVERY SHOT SPLITS.' },
   ],
 };
 const riteOf = (slot) => RITES[slot].find((r) => r.id === (SAVE.rites && SAVE.rites[slot])) || RITES[slot][0];
@@ -5919,7 +5920,7 @@ function renderDungeonMap() {
   const px = Math.round(ox + player.x / TILE * k), py = Math.round(oy + player.y / TILE * k);
   ctx.fillStyle = PAL.outline; ctx.fillRect(px - 3, py - 3, 7, 7); ctx.fillStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.fillRect(px - 2, py - 2, 5, 5);
   const T0 = game.toll;
-  const line = game.waystone ? 'THE WARDEN IS SLAIN. FIND THE WAYSTONE.' : game.warden ? 'THE WARDEN HUNTS YOU.' : T0 ? `THE TOLL ${Math.floor(T0.v / T0.max * 100)}%. WHEN IT IS FULL THE WARDEN COMES.` : '';
+  const line = game.waystone ? 'WARDEN KILLED. FIND THE WAYSTONE.' : game.warden ? 'THE WARDEN IS HERE.' : T0 ? `THE TOLL ${Math.floor(T0.v / T0.max * 100)}%` : '';
   text(line, x0 + 10, y0 + ph - 14, PAL.cloth1, { small: true, outline: null });
 }
 function renderTownMap() {
@@ -5947,7 +5948,7 @@ function renderTownMap() {
   // Legend to the right of the map.
   const lx = mx + Math.round(room.pw * k) + 10, ly = my, lw = x0 + pw - 8 - lx, cols = Math.max(1, Math.floor(lw / 170)), colW = Math.floor(lw / cols);
   const entries = [{ b: 'descend', name: 'THE DESCENT (CATHEDRAL DOORS)', sub: 'OPEN', col: PAL.flame1 },
-    ...SITES.map((S) => ({ b: S.badge, name: S.name, sub: siteDone(S) ? 'COMING SOON' : `LOCKED: ${S.need.replace('SLAY THE WARDEN OF ', 'WARDEN OF ').replace('REACH LEVEL 20 IN ONE DESCENT', 'LEVEL 20 IN ONE RUN')}`, col: siteDone(S) ? PAL.stone1 : PAL.blood0 })),
+    ...SITES.map((S) => ({ b: S.badge, name: S.name, sub: siteDone(S) ? 'COMING SOON' : `LOCKED: ${S.need.replace('KILL THE WARDEN OF ', 'WARDEN OF ').replace('REACH LEVEL 20 IN ONE DESCENT', 'LEVEL 20 IN ONE RUN')}`, col: siteDone(S) ? PAL.stone1 : PAL.blood0 })),
     ...Object.entries(NPC_ROLE).map(([id, name]) => ({ b: NPC_BADGE[id], name, sub: 'TALK', col: PAL.stone1 }))];
   const rows = Math.ceil(entries.length / cols), rowH = Math.min(22, Math.floor((y0 + ph - 4 - ly) / rows));
   entries.forEach((e, i) => { const c = Math.floor(i / rows), r = i % rows, ex = lx + c * colW, ey = ly + r * rowH;
@@ -5980,7 +5981,7 @@ function renderHud() {
   const gold = game.scene === 'wound' ? game.run.gold : SAVE.gold || 0;
   sprC('loot', 'coin', 0, mx + 5, my + mh + 11);
   text(String(gold), mx + 12, my + mh + 7, PAL.gold1);
-  if (game.scene === 'wound') text(`${game.kills} SLAIN`, mx + mw, my + mh + 7, PAL.stone1, { align: 'right' });
+  if (game.scene === 'wound') text(`${game.kills} KILLED`, mx + mw, my + mh + 7, PAL.stone1, { align: 'right' });
   // The shrine blessing sits on its own line under the portrait (below the FPS readout when shown).
   if (game.buff) { const S = SHRINES[game.buff.kind]; text(`${S.name.replace('SHRINE OF ', '')} ${Math.ceil(game.buff.t)}`, 8, showFps() ? 56 : 46, `rgb(${S.rgb})`); }
   // Vestment set state: nail stacks, the Penitent's window, standing in a pool.
@@ -6103,21 +6104,21 @@ function renderReceipt(survived = false) {
   ctx.fillStyle = PAL.bone0; ctx.fillRect(x, y, w, 2);
   for (let i = 0; i < w; i += 4) { ctx.fillStyle = PAL.bone1; ctx.fillRect(x + i, y + h, 2, 2); }
   const line = (s, yy, c = PAL.ink1, al = 'center') => text(s, al === 'center' ? W / 2 : x + 10, y + yy, c, { outline: null, align: al });
-  line('THE CHOIR OF VAEL', 10, PAL.crimson3);
-  line(survived ? 'CERTIFICATE OF SURVIVAL' : 'RECEIPT OF DESCENT', 23);
+  line('HOLLOW SAINT', 10, PAL.crimson3);
+  line(survived ? 'DESCENT COMPLETE' : 'YOU DIED', 23);
   ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 36, w - 20, 1);
   const m = Math.floor(r.time / 60), s = String(Math.floor(r.time % 60)).padStart(2, '0');
   const row = (a, b, yy) => { line(a, yy, PAL.ink1, 'left'); text(b, x + w - 10, y + yy, PAL.ink1, { outline: null, align: 'right' }); };
-  row('TIME IN THE WOUND', `${m}:${s}`, 44); row(r.vigil ? 'THE VIGIL' : 'THE STATION', r.where, 57); row('DEAD LAID TO REST', String(r.kills), 70); row('GOLD GATHERED', String(r.gold), 83);
-  row(survived ? 'GEAR FOUND' : 'TITHED TO THE CHOIR', survived ? String(r.items.length) : `${r.tithe} GOLD, ${r.lostItems} GEAR`, 96);
+  row('TIME', `${m}:${s}`, 44); row(r.vigil ? 'THE VIGIL' : 'THE STATION', r.where, 57); row('KILLS', String(r.kills), 70); row('GOLD GATHERED', String(r.gold), 83);
+  row(survived ? 'GEAR FOUND' : 'LOST', survived ? String(r.items.length) : `${r.tithe} GOLD, ${r.lostItems} GEAR`, 96);
   const best = [...r.items].sort((a, b) => b.ri - a.ri)[0];
   if (best) text(best.name, W / 2, y + 138, RARITY[best.ri].color, { align: 'center', outline: PAL.ink1, shadow: false });
   ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 107, w - 20, 1);
-  if (survived) { line('THE CROWD IS SATISFIED. FOR NOW.', 113, PAL.crimson3); }
-  else { line(r.martyr ? 'A MARTYR. THE CHOIR TAKES ALL.' : 'YOUR TITHE HAS BEEN GRATEFULLY RECEIVED.', 113, PAL.crimson3); }
+  if (survived) { line('EVERYTHING KEPT.', 113, PAL.crimson3); }
+  else { line(r.martyr ? 'VOW FAILED. ALL FINDS LOST.' : 'HALF YOUR GOLD AND FINDS LOST.', 113, PAL.crimson3); }
   if (best) line('FINEST FIND', 126, PAL.stone1);
   if (r.pool) text(fitText(r.pool.text, w - 16), W / 2, y + 154, r.pool.won ? PAL.gold3 : PAL.crimson3, { align: 'center', small: true, outline: null });
-  if (game.deathT > 1.4 && Math.floor(game.real * 2) % 2 === 0) line(survived ? 'TAP TO RETURN TO VAEL' : 'TAP TO WAKE IN THE VESTRY', h - 18);
+  if (game.deathT > 1.4 && Math.floor(game.real * 2) % 2 === 0) line(survived ? 'TAP TO RETURN TO VAEL' : 'TAP TO RETURN TO VAEL', h - 18);
 }
 
 // ---------------------------------------------------------- Stigmata ---
@@ -6139,7 +6140,7 @@ const WOUNDS = [
   { id: 'heavy', name: 'HEAVY NAILS', r: 1, max: 3, icon: 'seal', text: () => 'CRITICAL NAILS DEAL 50% MORE.' },
   { id: 'fervent', name: 'ZEALOUS', r: 0, max: 3, icon: 'rosary', text: () => '+30% ZEAL GAIN.' },
   { id: 'letting', name: 'BLOODLETTING', r: 1, max: 3, icon: 'relic', text: () => '+2 HP FOR EVERY KILL.' },
-  { id: 'crescent', name: 'CRESCENT OF GRACE', r: 2, max: 3, icon: 'crescent', text: (n) => `A GREAT CRESCENT SWEEPS AROUND YOU EVERY ${(3.2 - (n - 1) * 0.5).toFixed(1)} S.` },
+  { id: 'crescent', name: 'CRESCENT OF GRACE', r: 2, max: 3, icon: 'crescent', text: (n) => `A CRESCENT SWEEPS AROUND YOU EVERY ${(3.2 - (n - 1) * 0.5).toFixed(1)} S.` },
   { id: 'pillar', name: 'PILLARS OF LIGHT', r: 2, max: 3, icon: 'pillar', text: (n) => `LIGHT STRIKES ${n + 1} FOES FROM ABOVE EVERY 4 S.` },
   { id: 'orbit', name: 'ORBITING NAILS', r: 1, max: 3, icon: 'orbit', text: (n) => `${2 + n * 2} HOLY NAILS CIRCLE YOU.` },
   { id: 'arc', name: "SAINT'S LIGHTNING", r: 2, max: 3, icon: 'arc', text: (n) => `CRITS ARC TO ${n + 1} MORE FOES.` },
@@ -6221,7 +6222,7 @@ function renderStigmata() {
   const S = game.stig, k = Math.min(1, S.t * 4);
   ctx.fillStyle = `rgba(11,7,16,${0.75 * k})`; ctx.fillRect(0, 0, W, H);
   text(`LEVEL ${game.run.level}`, W / 2, 20, PAL.gold0, { align: 'center', sc: 2 });
-  text('CHOOSE A WOUND TO BEAR', W / 2, 44, PAL.cloth1, { align: 'center' });
+  text('CHOOSE A WOUND', W / 2, 44, PAL.cloth1, { align: 'center' });
   stigLayout().forEach((r, i) => {
     const c = S.cards[i], R0 = WOUND_RARITY[c.r], rank = wound(c.id), lift = Math.round((1 - Math.min(1, S.t * 3 - i * 0.25)) * 30);
     if (lift >= 30) return;
@@ -6557,7 +6558,7 @@ function renderInventory() {
   // The card.
   const C = L.card;
   ctx.fillStyle = PAL.ink2; ctx.fillRect(C.x, C.y, C.w, C.h);
-  if (!it) { wrap('CHOOSE A PIECE TO READ IT. WORN GEAR IS SAFE IF YOU FALL. THE CHOIR TAKES HALF OF WHAT YOU CARRY.', Math.floor((C.w - 12) / 6)).forEach((l, i) => text(l, C.x + 6, C.y + 8 + i * 10, PAL.stone1, { small: true, outline: null })); return; }
+  if (!it) { wrap('TAP A PIECE TO READ IT. WORN GEAR IS SAFE IF YOU DIE.', Math.floor((C.w - 12) / 6)).forEach((l, i) => text(l, C.x + 6, C.y + 8 + i * 10, PAL.stone1, { small: true, outline: null })); return; }
   const R0 = RARITY[it.ri];
   let y = C.y + 6;
   for (const l of wrap(it.name, Math.floor((C.w - 12) / 7))) { text(l, C.x + 6, y, R0.color); y += 12; }
@@ -6630,7 +6631,7 @@ function onTap(x, y) {
       return true;
     }
     case 'dead': if (game.deathT > 2.1) { enterTown(false); talk('odile'); } return true;
-    case 'tally': if (game.deathT > 1.4) { enterTown(false); toast('THE CROWD CHEERS YOUR RETURN', 2.5); } return true;
+    case 'tally': if (game.deathT > 1.4) { enterTown(false); toast('BACK IN VAEL', 2.5); } return true;
   }
   return false;
 }
