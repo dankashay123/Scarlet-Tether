@@ -179,7 +179,7 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   Virtues, three altar powers, three passives, more Wounds); at XV it
   needed 0.3 shots per common and 18 s per Warden. Monster health and
   damage now get a middle-Station bump (`toughHp`, `toughDmg`, through
-  `stationHp`/`stationDmg`): it starts at VI, peaks at XV (x3 health,
+  `stationHp`/`stationDmg`): it starts at VII, peaks at XV (x3 health,
   x1.7 damage) and eases to x1.4 / x1.25 at XXX, where gear has caught up.
   The max build now needs about 1 shot per common and 65 s per Warden at XV,
   and 2-3 shots at XX-XXX. Deep Stations pay more (`DEEP`, `deepPayout`):
@@ -195,7 +195,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   Last Light (below 50% health, +40% / +60%), Bloodletting (cap 3% / 5% a
   second), Gilded Tithe (also 15 / 25 Zeal), Second Breath (2 / 3 s
   unharmed). Combos of ten tier II enchants give about 1.9x kills.
-  SETBAL_NOTE
+  `setbal.cjs` at Station X with and without ten tier II enchants
+  (`ENCH=`): sets go from 3.6-8.7 kills a second to 11.6-15.5 (Stride
+  highest, x2.2; Font gains most, x3.3), so enchants pull the sets
+  together rather than making one run away. No changes to `SETK`.
 
 - **Round 39 (enchant balance, reflect, thirty Stations):** the owner found
   Splinter melting everything, a REMORSEFUL foe's reflect always one-shotting
