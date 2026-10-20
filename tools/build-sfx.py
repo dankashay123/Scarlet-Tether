@@ -169,9 +169,10 @@ def loop(name, pack, file, start, secs, xf=1.5, lu=-24.0, hp=0, lp=0, br='48k'):
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'f64le', '-ar', str(SR), '-ac', '1', '-i', '-', '-b:a', br, os.path.join(OUT, name + '.mp3')], input=y.tobytes(), check=True)
     print(f'{name:10s} {secs:5.2f} s loop')
 
-def music(name, pack, file, start=0.0, secs=None, xf=3.0, lu=-20.0, lp=0, br='96k', seamless=False):
+def music(name, pack, file, start=0.0, secs=None, xf=3.0, lu=-20.0, lp=0, br='96k', seamless=False, tail=0.0):
     """A stereo music loop. A seamless source plays whole; any other has its
-    tail (the xf seconds after `secs`) crossfaded over its head."""
+    tail (the xf seconds after `secs`) crossfaded over its head. `tail`
+    fades the last seconds out, for a seamless source that stops hard."""
     r = subprocess.run(['ffmpeg', '-v', 'error', '-i', find(pack, file), '-ac', '2', '-ar', str(SR), '-f', 'f64le', '-'], capture_output=True, check=True)
     x = np.frombuffer(r.stdout, np.float64).reshape(-1, 2)[int(start * SR):].copy()
     if lp: x = np.stack([onepole(x[:, c], lp, False) for c in (0, 1)], 1)
@@ -179,6 +180,7 @@ def music(name, pack, file, start=0.0, secs=None, xf=3.0, lu=-20.0, lp=0, br='96
     else:
         n = int((secs or (len(x) / SR - xf)) * SR); f = int(xf * SR); w = np.linspace(0, 1, f)[:, None]
         y = x[:n].copy(); y[:f] = x[:f] * np.sqrt(w) + x[n:n + f] * np.sqrt(1 - w)
+    if tail: f = int(tail * SR); y[-f:] *= np.linspace(1, 0, f)[:, None]  # a source that stops hard: no click at the seam
     y *= 10 ** ((lu - 10 * np.log10(np.mean(y ** 2) + 1e-12)) / 20)
     y *= min(1, 0.95 / np.abs(y).max())
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'f64le', '-ar', str(SR), '-ac', '2', '-i', '-', '-b:a', br, os.path.join(OUT, name + '.mp3')], input=y.tobytes(), check=True)
@@ -213,6 +215,11 @@ for k, v in {
     'fall_tideBishop': lambda: build('fall_tideBishop', [L(WATER, 'splash_12.ogg'), L(C80B, 'roar_06.ogg', at=0.1, rate=0.6, db=-3), L(WATER, 'loop_bubbles_1.ogg', at=0.4, db=-6, dur=2.0, fade=0.8)], fade=1.0, rev=(0.4, 2.6, 2200), lu=-9),
     'roar_organist': lambda: build('roar_organist', [L(C80, 'monster_04.ogg', rate=0.9), L(C100, 'gong_01.ogg', rate=0.5, db=-4), L(HORROR, 'horror_effect1.wav', db=-6, dur=2.2)], fade=0.8, rev=(0.55, 3.0, 2200), lu=-9),
     'fall_organist': lambda: build('fall_organist', [L(KI, 'impactBell_heavy_002.ogg', rate=0.55), L(HORROR, 'horror_effect1.wav', skip=2.0, db=-3, dur=2.6, fade=1.0), L(C80B, 'monster_20.ogg', at=0.2, rate=0.7, db=-4)], length=3.6, fade=1.4, rev=(0.6, 3.2, 2200), lu=-9),
+    # Stratum III, the Ossuary Spire: the Ossuarch (grinding bone and stone) and the Ash Widow (a wail and two censers on chains).
+    'roar_ossuarch': lambda: build('roar_ossuarch', [L(TROLL, 'troll-roars_0.ogg', 4, rate=0.7, dur=2.2), L(RPG, 'stones_03.ogg', rate=0.6, db=-4), L(BFH, 'bfh1_rock_breaking_01.ogg', at=0.05, rate=0.75, db=-6), L(BONE, 'Deep Break 9.wav', db=-4, dur=0.4), L(KS, 'lowFrequency_explosion_001.ogg', db=-8)], length=3.0, fade=1.0, rev=(0.45, 2.2, 2200), lu=-10),
+    'fall_ossuarch': lambda: build('fall_ossuarch', [L(BFH, 'bfh1_falling_04.ogg', rate=0.8), L(BONE, 'Deep Break 1.wav', db=-2), L(BONE, 'Deep Break 7.wav', at=0.35, rate=0.85, db=-1), L(BFH, 'bfh1_rock_falling_09.ogg', at=0.5, db=-2), L(BONE, 'Deep Break 9.wav', at=0.7, rate=0.9, db=-2), L(RPG, 'stones_03.ogg', at=0.9, rate=0.8, db=-4), L(BONE, 'Deep Break 10.wav', at=1.0, db=-3), L(C100, 'slam_07.ogg', at=1.3, rate=0.6, db=-3), L(KS, 'lowFrequency_explosion_000.ogg', db=-5)], length=3.6, fade=1.4, rev=(0.6, 3.2, 2200), lu=-9),
+    'roar_ashWidow': lambda: build('roar_ashWidow', [L(CHANT, 'ethereal_chant_Subclip 20_20.wav', rate=0.95, dur=2.0, fade=0.6), L(GHOST, 'qubodup-GhostMoan03.wav', rate=1.3, db=-4, dur=1.8, fade=0.6), L(C80, 'breath.ogg', rate=0.8, db=-6), L(RPG, 'chain_03.ogg', at=0.15, db=-5), L(RPG, 'chain_01.ogg', at=0.6, db=-8)], length=2.8, fade=0.9, rev=(0.45, 2.2), lu=-9),
+    'fall_ashWidow': lambda: build('fall_ashWidow', [L(GHOST, 'qubodup-GhostMoan02.wav', rate=1.15, dur=2.6, fade=1.2), L(CHANT, 'ethereal_chant_Subclip 17_17.wav', rate=0.9, db=-5, dur=2.4, fade=1.2), L(RPG, 'chain_03.ogg', at=0.5), L(BFH, 'bfh1_metal_falling_01.ogg', at=0.7, db=-2), L(RPG, 'chain_02.ogg', at=1.0, db=-4), L(BFH, 'bfh1_metal_hit_05.ogg', at=1.25, db=-6), L(RPG, 'chain_01.ogg', at=1.4, db=-8)], length=3.8, fade=1.4, rev=(0.5, 2.8), lu=-10.5),
 }.items(): SFX[k] = v
 
 # Music: Vael's chant (the sung one rises near the cathedral), each stratum, the Warden's sting.
@@ -223,6 +230,9 @@ SFX['music_nave'] = lambda: music('music_nave', 'underwater-theme-ii', 'Underwat
 # A Warden's battle: orchestral in the Undercroft and the Vigil, the organ in the Drowned Nave.
 SFX['music_warden'] = lambda: music('music_warden', 'boss-battle-music', 'Juhani Junkala - Epic Boss Battle [Seamlessly Looping].wav', seamless=True, lu=-20)
 SFX['music_warden_nave'] = lambda: music('music_warden_nave', 'epic-version-toccata-and-fugue', 'epic_version_-_toccata_and_fugue.wav', 0, 140, 4, lu=-20)
+# The Ossuary Spire (Stratum III): five choral phrases (0-48 s), darkened; its Wardens fight to symphonic metal (24 bars, seamless).
+SFX['music_ossuary'] = lambda: music('music_ossuary', 'cathedral-0', 'cathedral.wav', 0, 48, 3, lu=-21, lp=3000)
+SFX['music_warden_ossuary'] = lambda: music('music_warden_ossuary', 'boss-battle-2-symphonic-metal', 'boss_battle_#2_metal_loop.wav', seamless=True, lu=-20, tail=0.008)
 SFX['sting_warden'] = lambda: build('sting_warden', [L('string-and-piano-horror-stings', 'abyss_0.ogg', fade=0.5)], fade=1.0, rev=(0.3, 2.4, 2500), lu=-12)
 
 # Loops (ambience near a site).
