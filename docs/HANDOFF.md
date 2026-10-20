@@ -189,7 +189,13 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   shows WARDEN EXTRAS and INGREDIENTS. The Vigil follows all thirty Stations
   (`VIGIL_SOFT` 60, `vigilStation`), then grows 3% health and 2% damage a
   level as before. `setbal.cjs` takes `ENCH=` to check sets with enchants.
-  ENCHANT_NOTE
+  `enchbal.cjs` (Station X, two seeds): kill rates are steady between seeds,
+  damage taken and the single-target column are not. The weakest were
+  buffed: Frostbite (slowed foes take 10% / 20% more, tier II slows 40%),
+  Last Light (below 50% health, +40% / +60%), Bloodletting (cap 3% / 5% a
+  second), Gilded Tithe (also 15 / 25 Zeal), Second Breath (2 / 3 s
+  unharmed). Combos of ten tier II enchants give about 1.9x kills.
+  SETBAL_NOTE
 
 - **Round 39 (enchant balance, reflect, thirty Stations):** the owner found
   Splinter melting everything, a REMORSEFUL foe's reflect always one-shotting
