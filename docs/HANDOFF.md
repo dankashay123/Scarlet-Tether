@@ -1,11 +1,12 @@
 # Handoff
 
-Last updated 2026-10-20, after round 36 (build 36.1, on `master`). Read
+Last updated 2026-10-20, after round 37 (build 37.1, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
 **Every reply that completes a prompt ends with two lists: what was done,
-and 5 suggestions for what to do next.** (The owner's standing request;
+and 5 suggestions for what to do next, at least 2 of them revisiting
+things already built.** (The owner's standing request;
 see "The owner's preferences".) When the owner answers with numbers
 ("1, 2, 5" or "All"), they mean those suggestions from the last reply.
 
@@ -127,7 +128,8 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 ## The owner's preferences
 
 - **After every completed prompt, reply with (1) a short list of what was
-  done and (2) 5 suggestions for what to do next.**
+  done and (2) 5 suggestions for what to do next, at least 2 of which go
+  back over things already built (polish, fixes, tuning).**
 - Graphics matter most. The target is Otherworld Legends: chunky, crisp
   pixel art, nothing that looks AI-made. They check text layout on a phone
   closely: no overlapping or clipped text. Game text must be plain and
@@ -170,6 +172,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 37 (Emberstones for gold, enchant previews):** the forge's BUY tab
+  sells Emberstones at 500 gold each in packs of 1, 10 and 50 (packs ask
+  first). The Enchanter's card shows a looping two-second scene of the
+  chosen enchant (`enchPreview`) with the real Saint and Risen sprites,
+  drawn at half size on short phones (crisp, since art is on a 2x2 grid);
+  ingredients become one row of icons when space is short, and a tap on the
+  card names them.
 
 - **Round 36 (aimed auto-roll, refunds, bag shortcuts):** auto-roll has a
   stat picker (ANY STAT or any stat the line can become, `reforgeKeys`); it
