@@ -101,12 +101,13 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '29.3';
+const BUILD = '29.4';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '29.4': ['TIDIER ZEAL BAR: YOUR DAMAGE BONUS AND ZEAL STEP SIT UNDER IT.'],
   '29.3': ['THE ZEAL BAR IS AS WIDE AS THE HEALTH BAR.'],
   '29.2': ['FIXED A BLACK BAND AT THE TOP OF THE SCREEN ON SOME PHONES.', 'THE ZEAL LABEL LINES UP WITH ITS BAR.'],
-  '29.1': ['A NEW, CLEANER FONT FOR ALL TEXT.', 'NEW HEALTH AND ZEAL BARS AT THE TOP LEFT. UNDER ZEAL: YOUR DAMAGE BONUS AND THE NEXT STEP.', 'A SMALLER LEVEL BAR AT THE BOTTOM.'],
+  '29.1': ['A NEW, CLEANER FONT FOR ALL TEXT.', 'NEW HEALTH AND ZEAL BARS AT THE TOP LEFT. UNDER ZEAL: YOUR DAMAGE BONUS.', 'A SMALLER LEVEL BAR AT THE BOTTOM.'],
   '28.1': ['EVERY PASSIVE HAS AN ICON. EIGHT NEW PASSIVES ARE EARNED BY DEEDS.', 'FOUR PIECES OF ANY SET NOW ALSO GIVE +25% DAMAGE.'],
   '27.1': ['PASSIVE SKILLS: THREE SLOTS, OPENED BY DEVOTION. FIND THEM IN THE RITES PANEL.', 'THE WEEPING RELIQUARY NOW SENDS HORDES: KILL 100.',
     'BRIGHTER RITE EFFECTS. BAG ICONS SHOW THEIR RARITY COLOUR, AND SET PIECES WEAR A STAR.', 'GEAR DROPS LESS OFTEN. THE SETS HAVE BEEN REBALANCED.'],
@@ -6356,10 +6357,10 @@ function renderHud() {
   if (game.scene === 'wound') {
     const tier = fervorTier(), framp = ['ember', 'ember', 'crimson', 'gold'][tier], zw = hw;
     hudBar(8, 25, zw, 6, game.fervor / 100, 0, framp, false, 4);
-    // The bar matches the HP bar; its label sits to the right, centred on its height.
-    text(T.fervor.tiers[tier], 8 + zw + 6, 28 - UI_FONT.capSmall / 2 + 0.3, PAL[framp + '1'], { small: true });
+    // Under the bar: the damage bonus on the left, the tier name on the right.
     const bonus = tier * 10 * (game.buff && game.buff.kind === 'fervor' ? 2 : 1);
-    text(`${bonus ? `+${bonus}% DAMAGE` : 'NO BONUS YET'}${tier < 3 ? `   NEXT AT ${(tier + 1) * 25}%` : '   MAX'}`, 8, 34, bonus ? PAL.gold1 : PAL.stone2, { small: true });
+    text(bonus ? `+${bonus}% DAMAGE` : 'NO BONUS YET', 8, 34, bonus ? PAL.gold1 : PAL.stone2, { small: true });
+    text(T.fervor.tiers[tier], 8 + zw, 34, PAL[framp + '1'], { small: true, align: 'right' });
     hudY = 46;
   }
   // Top-right: minimap and pause.
