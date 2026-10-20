@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 38 (build 38.1, on `master`). Read
+Last updated 2026-10-20, after round 39 (build 39.1, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -172,6 +172,26 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 39 (enchant balance, reflect, thirty Stations):** the owner found
+  Splinter melting everything, a REMORSEFUL foe's reflect always one-shotting
+  them, and Station XV too easy. Splinter's bolts are marked (`HIT_BOLT`) and
+  never splinter again, at most 6 bursts a second (it chain-reacted through
+  crowds). Reflect stores 0.4% of the Saint's health per hit, paid every 0.5 s,
+  at most 5% a second, without the Station multiplier (`hurtPlayerRaw`
+  `fixed`); it used to be 4% of damage dealt times the Station multiplier.
+  `tools/tests/enchbal.cjs` (endgame Hundred Nails set, all mythic, dense
+  crowd, two seeds) found Relentless doubling kill rates (rites always up);
+  it now takes at most 0.6 s (II: 1 s) off cooldowns a second (1.3x kills).
+  Other enchants sit within about +-15% kills alone; full 10-slot combos give
+  1.3-1.7x kills and 55-90% less damage taken. Stations run to XXX
+  (`MAX_STATION`, `ROMAN`, three new bands, a fourth extra curse from XXVII);
+  foes at XXX are about 6x tougher against matched gear than at XV. The
+  enchant scenes were removed at the owner's request (the Enchanter card lists
+  ingredients again; `enchPop` is text and ingredients). On narrow views
+  (667x375, game width 445) the bag's item card was 15 px wide: `invLayout`
+  now returns `narrow` and the card covers the bag grid (tap it to go back),
+  doll stats show only the rows that fit, and SANCTITY/STATION wrap.
 
 - **Round 38 (enchant tiers, ingredient pity, bag previews, balance):** each
   enchant has a tier II (`t2` text, `E2()` values), bought with a second set

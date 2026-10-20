@@ -106,6 +106,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 const BUILD = '39.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '39.1': ['NEW: STATIONS XVI TO XXX, IN THREE NEW BANDS: ASCETIC, ANCHORITE AND APOSTLE.',
+    'REMORSEFUL FOES NO LONGER KILL YOU IN ONE HIT: THEY HURT YOU BACK BY A SHARE OF YOUR HEALTH, AT MOST 5% A SECOND.',
+    'SPLINTER\'S BOLTS NO LONGER SET OFF MORE SPLINTERS. RELENTLESS TAKES AT MOST 0.6 S (II: 1 S) OFF COOLDOWNS A SECOND. ENCHANT SCENES ARE GONE.',
+    'ON SMALL PHONES THE BAG\'S ITEM CARD NOW OPENS FULL SIZE. TAP IT TO GO BACK.'],
   '38.1': ['ENCHANTS HAVE A TIER II: A SECOND SET OF INGREDIENTS MAKES ONE STRONGER.', 'EACH WARDEN WITHOUT AN INGREDIENT RAISES THE CHANCE FOR THE NEXT ONE.', 'TAP AN ENCHANT IN THE BAG TO SEE IT AT WORK.'],
   '37.1': ['THE FORGE SELLS EMBERSTONES FOR 500 GOLD EACH (BUY TAB).', 'THE ENCHANTER SHOWS A SHORT SCENE OF EACH ENCHANT AT WORK.'],
   '36.1': ['AUTO-ROLL CAN AIM AT ONE STAT, LIKE MYTHIC DAMAGE, AND SHOWS THE ODDS.', 'REMOVING AN ENCHANT GIVES BACK ONE OF ITS INGREDIENTS.', 'IN VAEL, TAP A ROW IN THE BAG\'S ITEMS TAB TO GO WHERE IT IS USED.'],
@@ -2014,7 +2018,7 @@ function askLayout() {
 }
 // An enchant's card over the bag: what it does and its ingredients.
 function enchPop(id, tier = 1) { game.enchPop = { id, tier }; sfx('tap', { vol: 0.5 }); }
-function popLayout() { const pw = Math.min(300, W - 40), ph = Math.min(150, H - 30); return { pw, ph, x0: Math.round(W / 2 - pw / 2), y0: Math.round(H / 2 - ph / 2) }; }
+function popLayout() { const pw = Math.min(300, W - 40), P = game.enchPop, E = P && ENCH_BY[P.id], lines = E ? wrapW(P.tier > 1 ? E.t2 : E.text, pw - 24, true).length : 2, ph = Math.min(H - 30, 10 + 13 + lines * 9 + 8 + 30 + 30); return { pw, ph, x0: Math.round(W / 2 - pw / 2), y0: Math.round(H / 2 - ph / 2) }; }
 function renderEnchPop() {
   const P = game.enchPop, E = ENCH_BY[P.id], L = popLayout(), small = { small: true, outline: null }, x = L.x0 + 12, w = L.pw - 24;
   ctx.fillStyle = 'rgba(11,7,16,0.6)'; ctx.fillRect(0, 0, W, H);
@@ -7538,7 +7542,11 @@ function invLayout() {
   const ec = 25;
   [['hood', 'mantle', 'gloves', 'girdle', 'bow'], ['rosary', 'seal', 'relic', 'greaves', 'quiver']].forEach((col, side) => col.forEach((sl, row) => { slots[sl] = { x: doll.x + (side ? doll.w - ec : 0), y: doll.y + 2 + row * (ec + 4), w: ec, h: ec }; }));
   const bag = { x: doll.x + doll.w + 14, y: y0 + 46, cell, cols, rows };
-  const card = { x: bag.x + cols * (cell + 3) + 10, y: y0 + 34 }; card.w = x0 + pw - 12 - card.x; card.h = ph - 46;
+  let card = { x: bag.x + cols * (cell + 3) + 10, y: y0 + 34 }; card.w = x0 + pw - 12 - card.x; card.h = ph - 46;
+  // Narrow phones: no room for the card beside the bag, so it covers the bag
+  // while a piece is open (tap the card to go back).
+  const narrow = card.w < 150;
+  if (narrow) card = { x: bag.x, y: y0 + 34, w: x0 + pw - 12 - bag.x, h: ph - 46 };
   const close = { x: x0 + pw - 14, y: y0 + 14, r: 10 };
   const btnA = { x: card.x + 6, y: card.y + card.h - 26, w: Math.floor(card.w / 2) - 9, h: 20 }, btnB = { x: btnA.x + btnA.w + 6, y: btnA.y, w: btnA.w, h: 20 };
   const by = bag.y + rows * (cell + 3) + 16, bw = Math.floor((cols * (cell + 3) - 9) / 2);
@@ -7547,7 +7555,7 @@ function invLayout() {
   const opts = [0, 1, 2, 3].map((i) => ({ x: card.x + 6, y: card.y + 40 + i * 36, w: card.w - 12, h: 22 }));
   const rites = { x: doll.x, y: y0 + ph - 28, w: 72, h: 20 };
   const censer = { x: doll.x + 52, y: doll.y + 16, r: 13 };
-  return { pw, ph, x0, y0, doll, slots, bag, card, close, btnA, btnB, auto, sell, opts, rites, censer };
+  return { pw, ph, x0, y0, doll, slots, bag, card, close, btnA, btnB, auto, sell, opts, rites, censer, narrow };
 }
 // Auto equip: for each slot, wear the best piece from the bag if it beats
 // what is worn. Pieces are compared by itemScore (every stat against its
@@ -7602,11 +7610,14 @@ function invTap(x, y) {
     if (i >= 0) bulkSell(SELL_RULES[i]);
     game.inv.selling = false; game.inv.sel = null; return;
   }
-  if (inRect(L.auto, x, y)) { autoEquip(); return; }
-  if (inRect(L.sell, x, y)) { game.inv.selling = true; game.inv.sel = null; sfx('tap', { vol: 0.5 }); return; }
+  // Narrow phones: the open card covers the bag; a tap on it goes back.
+  if (L.narrow && selItem() && !inRect(L.btnA, x, y) && !inRect(L.btnB, x, y) && inRect(L.card, x, y)) { game.inv.sel = null; sfx('tap', { vol: 0.5 }); return; }
+  const covered = L.narrow && selItem() && inRect(L.card, x, y); // buttons on the card, not the bag under it
+  if (!covered && inRect(L.auto, x, y)) { autoEquip(); return; }
+  if (!covered && inRect(L.sell, x, y)) { game.inv.selling = true; game.inv.sel = null; sfx('tap', { vol: 0.5 }); return; }
   for (const [sl, r] of Object.entries(L.slots)) if (inRect(r, x, y)) { game.inv.sel = SAVE.equip[sl] ? { from: 'equip', slot: sl } : null; sfx('tap', { vol: 0.5 }); return; }
   const b = L.bag, c = Math.floor((x - b.x) / (b.cell + 3)), r = Math.floor((y - b.y) / (b.cell + 3));
-  if (c >= 0 && c < b.cols && r >= 0 && r < b.rows) {
+  if (!covered && c >= 0 && c < b.cols && r >= 0 && r < b.rows) {
     const i = r * b.cols + c, it = SAVE.bag[i];
     if (!it) { game.inv.sel = null; return; }
     const again = game.inv.sel && game.inv.sel.from === 'bag' && game.inv.sel.i === i;
@@ -7747,14 +7758,17 @@ function renderInventory() {
   text(`HP ${player.maxHp}`, D.x, sy, PAL.blood0, { small: true, outline: null });
   text(`SANCTITY ${playerSanctity()}`, D.x + 64, sy, PAL.gold1, { small: true, outline: null });
   if (!lines.length) text('NOTHING WORN', D.x, sy + 10, PAL.stone2, { small: true, outline: null });
-  lines.slice(0, 12).forEach((l, i) => text(l, D.x + (i % 2) * 96, sy + 10 + Math.floor(i / 2) * 9, PAL.cloth1, { small: true, outline: null }));
-  let py = sy + 12 + Math.max(1, Math.ceil(Math.min(12, lines.length) / 2)) * 9;
+  // Only the rows that fit above the RITES button.
+  const fit = Math.max(1, Math.min(6, Math.floor((L.rites.y - 4 - (sy + 10)) / 9))) * 2;
+  lines.slice(0, fit).forEach((l, i) => text(l, D.x + (i % 2) * 96, sy + 10 + Math.floor(i / 2) * 9, PAL.cloth1, { small: true, outline: null }));
+  let py = sy + 12 + Math.max(1, Math.ceil(Math.min(fit, lines.length) / 2)) * 9;
   for (const l of setL) { if (py < L.rites.y - 6) text(l, D.x, py - 2, RARITY[4].color, { small: true, outline: null }); py += 9; }
   // The rites button, bottom left, with the three chosen rites beside it.
   invButton(L.rites, 'RITES', PAL.crimson3);
   RITE_SLOTS.forEach(([slot], i) => riteSocket(L.rites.x + L.rites.w + 16 + i * 24, L.rites.y + 10, 10, riteOf(slot).icon, 0.7, PAL.ink3));
   // The bag.
-  const B = L.bag;
+  const B = L.bag, cover = L.narrow && (it || game.inv.selling);
+  if (!cover) {
   text(`BAG ${SAVE.bag.length}/${BAG_SIZE}`, B.x, B.y - 12, PAL.stone1);
   for (let r = 0; r < B.rows; r++) for (let c = 0; c < B.cols; c++) {
     const i = r * B.cols + c, sel = game.inv.sel && game.inv.sel.from === 'bag' && game.inv.sel.i === i;
@@ -7764,6 +7778,7 @@ function renderInventory() {
   const ups = SLOT_ORDER.filter((sl) => SAVE.bag.some((it) => it.slot === sl && itemScore(it) > itemScore(SAVE.equip[sl]) + 0.2)).length;
   invButton(L.auto, ups ? `AUTO EQUIP ${ups}` : 'AUTO EQUIP', PAL.gold3, SAVE.bag.length > 0);
   invButton(L.sell, 'SELL MANY', PAL.crimson3, SAVE.bag.length > 0);
+  }
   if (game.inv.selling) {
     const C = L.card;
     ctx.fillStyle = PAL.ink2; ctx.fillRect(C.x, C.y, C.w, C.h);
@@ -7775,13 +7790,15 @@ function renderInventory() {
   }
   // The card.
   const C = L.card;
+  if (L.narrow && !it) return;
   ctx.fillStyle = PAL.ink2; ctx.fillRect(C.x, C.y, C.w, C.h);
+  if (L.narrow) text('TAP THE CARD TO GO BACK', C.x + 6, L.btnA.y - 12, PAL.stone2, { small: true, outline: null });
   if (!it) { if (C.w < 100) return; wrap('TAP A PIECE TO READ IT. WORN GEAR IS SAFE IF YOU DIE.', Math.floor((C.w - 12) / 6)).forEach((l, i) => text(l, C.x + 6, C.y + 8 + i * 10, PAL.stone1, { small: true, outline: null })); return; }
   const R0 = RARITY[it.ri];
   let y = C.y + 6;
   for (const l of wrap(it.name, Math.floor((C.w - 12) / 7))) { text(l, C.x + 6, y, R0.color); y += 12; }
   text(`${R0.name} ${SLOT_NAME[it.slot] || it.slot.toUpperCase()}`, C.x + 6, y, PAL.stone1, { small: true, outline: null }); y += 10;
-  text(`SANCTITY ${itemSanctity(it)}`, C.x + 6, y, PAL.gold1, { small: true, outline: null }); text(`STATION ${ROMAN[(it.il || 1) - 1]}`, C.x + C.w - 6, y, PAL.stone2, { small: true, outline: null, align: 'right' });
+  text(`SANCTITY ${itemSanctity(it)}`, C.x + 6, y, PAL.gold1, { small: true, outline: null }); const sw = textW(`SANCTITY ${itemSanctity(it)}`, 1, true) + textW(`STATION ${ROMAN[(it.il || 1) - 1]}`, 1, true) + 8 > C.w - 12; if (sw) y += 10; text(`STATION ${ROMAN[(it.il || 1) - 1]}`, sw ? C.x + 6 : C.x + C.w - 6, y, PAL.stone2, { small: true, outline: null, align: sw ? 'left' : 'right' });
   if (worn0(it)) { const dv = itemSanctity(it) - itemSanctity(worn0(it)); if (dv) text(`${dv > 0 ? '+' : ''}${dv}`, C.x + 76, y, dv > 0 ? PAL.flame1 : PAL.blood0, { small: true, outline: null }); }
   y += 12;
   const worn = game.inv.sel.from === 'bag' ? SAVE.equip[it.slot] : null;
