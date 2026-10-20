@@ -2224,7 +2224,7 @@ const ENCHANTS = [
   { id: 'frostbite', name: 'FROSTBITE', text: 'BOLTS SLOW FOES BY 30% FOR 2 S.', t2: 'BOLTS SLOW FOES BY 30% FOR 4 S.', col: '#6fe0d0', rgb: '111,224,208', ing: ['FONT WATER', 'RIME PEARL', 'COLD ASH'] },
   { id: 'echo', name: "MARTYR'S ECHO", text: 'WHEN HIT, A BLAST STRIKES FOES AROUND YOU. ONCE EVERY 2 S.', t2: 'WHEN HIT, A BIGGER BLAST STRIKES FOES AROUND YOU. ONCE EVERY 1 S.', col: '#ffd155', rgb: '255,209,85', ing: ["MARTYR'S WICK", 'HALO SHARD', 'RELIC TOOTH'] },
   { id: 'lastlight', name: 'LAST LIGHT', text: 'BELOW 30% HEALTH, +50% DAMAGE.', t2: 'BELOW 30% HEALTH, +75% DAMAGE.', col: '#b8ff8f', rgb: '184,255,143', ing: ['GRAVE CANDLE', 'GHOST LIGHT', 'MARSH-FIRE DUST'] },
-  { id: 'relentless', name: 'RELENTLESS', text: 'EACH KILL TAKES 0.2 S OFF BOTH RITE COOLDOWNS.', t2: 'EACH KILL TAKES 0.3 S OFF BOTH RITE COOLDOWNS.', col: '#d4b0ff', rgb: '212,176,255', ing: ['ROSARY CORD', 'SAND OF HOURS', 'AMETHYST EYE'] },
+  { id: 'relentless', name: 'RELENTLESS', text: 'EACH KILL TAKES 0.2 S OFF BOTH RITE COOLDOWNS, UP TO 0.6 S A SECOND.', t2: 'EACH KILL TAKES 0.3 S OFF BOTH RITE COOLDOWNS, UP TO 1 S A SECOND.', col: '#d4b0ff', rgb: '212,176,255', ing: ['ROSARY CORD', 'SAND OF HOURS', 'AMETHYST EYE'] },
   { id: 'phantom', name: 'PHANTOM VOLLEY', text: 'EVERY 4 S, FIRE A RING OF 8 BOLTS.', t2: 'EVERY 3 S, FIRE A RING OF 12 BOLTS.', col: '#8eaeab', rgb: '142,174,171', ing: ['GHOST SILK', 'PHANTOM QUILL', 'DROWNED ECHO'] },
   { id: 'tithe', name: 'GILDED TITHE', text: 'RARE AND ELITE FOES DROP A HEALTH ORB.', t2: 'RARE AND ELITE FOES DROP TWO HEALTH ORBS.', col: '#f2dcb6', rgb: '242,220,182', ing: ['GOLD DUST', 'BEESWAX', 'TITHE COIN'] },
   { id: 'ghoststep', name: 'GHOST STEP', text: 'PERFECT DODGES GIVE BACK A DASH.', t2: 'PERFECT DODGES REFILL ALL YOUR DASHES.', col: '#c2b6aa', rgb: '194,182,170', ing: ['SHROUD THREAD', 'BOTTLED MIST', 'HOLLOW BONE'] },
@@ -2347,7 +2347,13 @@ const ingrChanceLine = () => `NEXT WARDEN OF STATION ${ROMAN[ENCH_FROM - 1]}+: $
 function enchKill(e) {
   if (!G || !G.ench || !G.ench.size || !player) return;
   if (ench('hunger')) { player.hungerN = Math.min(E2('hunger', 30, 45), ((player.hungerT || 0) > game.time ? player.hungerN || 0 : 0) + 1); player.hungerT = game.time + 6; }
-  if (ench('relentless')) { const r = E2('relentless', 0.2, 0.3); player.m1cd = Math.max(0, player.m1cd - r); player.m2cd = Math.max(0, player.m2cd - r); }
+  // Relentless: at most 0.6 s (II: 1 s) off the cooldowns a second, or a
+  // crowd keeps the rites up for good (it doubled kill rates in enchbal.cjs).
+  if (ench('relentless')) {
+    if (game.time - (player.relT || 0) > 1) { player.relT = game.time; player.relGot = 0; }
+    const r = Math.min(E2('relentless', 0.2, 0.3), E2('relentless', 0.6, 1) - (player.relGot || 0));
+    if (r > 0) { player.relGot = (player.relGot || 0) + r; player.m1cd = Math.max(0, player.m1cd - r); player.m2cd = Math.max(0, player.m2cd - r); }
+  }
   if (ench('splinter') && bolts.length < 120 && !(HIT_BOLT && HIT_BOLT.splinter) && (player.splT || 0) <= game.time) {
     player.splT = game.time + 1 / 6;
     for (let k = 0; k < E2('splinter', 3, 5); k++) spawnBolt(e.x, e.y - (e.hy || 10), rng() * Math.PI * 2, false, { dmgK: 0.6, pierce: 0, splinter: true });
