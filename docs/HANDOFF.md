@@ -115,8 +115,8 @@ Desktop works with keys. 55–60 fps in dense crowds.
   its toolbars moved without a resize event. `resize` now sizes and places
   the canvas from `visualViewport`, the body is fixed so the page cannot
   scroll, and a half-second check re-runs `resize` when the view changes.
-  The Zeal tier label is centred on its bar, and bar plus label span the HP
-  bar's width.
+  The Zeal bar is as wide as the HP bar (29.3), its tier name to the right,
+  centred on its height. The vow line under the Toll reads just MARTYR'S VOW.
 
 - **Round 29 (font and HUD):** all text now uses Barlow Semi Condensed
   SemiBold (`assets/fonts/ui.ttf`, font face 'Saint UI', `UI_FONT`).
