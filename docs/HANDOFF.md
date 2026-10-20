@@ -1,12 +1,13 @@
 # Handoff
 
-Last updated 2026-10-19, after round 25. Read this first, then `CLAUDE.md`.
-The history of every round is at the bottom; the sections above it describe
-the game as it is now.
+Last updated 2026-10-20, after round 31 (build 31.1, on `master`). Read
+this first, then `CLAUDE.md`. The history of every round is at the bottom;
+the sections above it describe the game as it is now.
 
 **Every reply that completes a prompt ends with two lists: what was done,
 and 5 suggestions for what to do next.** (The owner's standing request;
-see "The owner's preferences".)
+see "The owner's preferences".) When the owner answers with numbers
+("1, 2, 5" or "All"), they mean those suggestions from the last reply.
 
 ## Starting a new session
 
@@ -14,64 +15,93 @@ see "The owner's preferences".)
    the set and monster details.
 2. Serve the repo (`python3 -m http.server 8123`) and open `/?town` or
    `/?run`. Add `?dev` for the dev menu (sets, items, levels, Stations,
-   Wardens, Bloodrose Keys, Chrism, Censer upgrades).
+   strata I to III, Wardens, Bloodrose Keys, Chrism, Censer upgrades).
+   The server dies between sessions: if a test prints nothing or
+   `ERR_CONNECTION_REFUSED`, start it again.
 3. Work on the branch `round8-monster-anim`, then fast-forward `master` and
    push both. GitHub Pages deploys from `master`.
-4. Before shipping: run the tests listed in `CLAUDE.md` (each prints
-   `errors 0 []`), a soak (`SOAK_DEATH=0.04 node tools/tests/soak.cjs <dir> 150`),
-   and look at the screenshots at phone sizes (game widths run about 445 to
-   620 px, heights 250 to 290). Text must fit: use `fitText` and `wrapW`.
+4. Before shipping: raise `BUILD` and add `CHANGES[BUILD]`; run the tests
+   listed in `CLAUDE.md` (each prints `errors 0 []`), `menus.cjs` at
+   932x430 and 667x375 (and `TEXT=large` once), a soak
+   (`SOAK_DEATH=0.04 node tools/tests/soak.cjs <dir> 150`), and look at the
+   screenshots at phone sizes (game widths run about 445 to 620 px, heights
+   250 to 290). Text must fit: prefer shorter wording to `fitText` chopping.
+5. Big art or sound jobs can go to helper agents in parallel (round 31 did
+   this): give them the art rules from `CLAUDE.md`, tell them not to touch
+   `index.html` or commit, and review their previews yourself before
+   wiring anything in.
 
 ## Where the game stands
 
 A playable action-RPG slice for iPhone, always landscape (held upright the
 canvas turns a quarter, `PORTRAIT` in `resize`, and `toLocal` maps taps).
-Desktop works with keys. 55–60 fps in dense crowds.
+Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 - **Look:** sculpted SDF pixel art on a chunky 2x2 grid (the Otherworld
-  Legends look), whole-number scaling, a 305 px tall view, warm torch light
-  on dark stone. Every pixel is on the palette (`tools/palette.mjs`, 25
-  ramps; `rose` was added in round 18 for the Bloodrose Keys).
+  Legends look), whole-number scaling, a 305 px tall view, torch light on
+  dark stone. Every pixel is on the palette (`tools/palette.mjs`, 25 ramps).
+  `resize()` sizes from `visualViewport` and re-checks twice a second
+  (iPhone Safari's toolbars once left a black band).
+- **Text and HUD (rounds 29-30):** all text is Barlow Semi Condensed
+  SemiBold (`assets/fonts/ui.ttf`), drawn at screen resolution over the
+  pixel art (`text()` queues, `flushText()` draws, `layerBreak()` between
+  windows). HP and Zeal bars sit top left with the damage bonus and Zeal
+  step under them, then the kill streak; a slim level bar is centred at
+  the bottom. Crits are gold, orange or crimson by size; the Zeal bar
+  flashes at each step; big hits shake the HP bar; a red edge pulses below
+  25% health. TEXT SIZE setting (small, normal, large).
 - **Vael, the town:** two short streets (`TOWN_SPLIT`, `ROW_DY`) with
-  townsfolk and ten sites: Pell's curio stall, the Plush stall, the
+  townsfolk and twelve sites: Pell's curio stall, the Plush stall, the
   Bounty Board, the Scrying Pool (wagers), the Ember Forge, the Ashen
-  Altar, the Penitent Cells, Martyrdom (the vow), the Vigil Roll, the
-  Canonry, plus the Pilgrim Road (Stratum II). Every site is open now.
+  Altar, the Penitent Cells, Martyrdom (the vow), the Vigil Roll (ten
+  halo stands), the Canonry, the Training Yard (end of the lower street),
+  and the Pilgrim Road (explains the strata).
 - **The descent:** the Descent panel at the cathedral doors picks a Station
-  (I–XV, `DIFF`), a stratum (the Undercroft or the Drowned Nave), omens,
-  and now also holds **the Bleeding Vigil** (top-right button). Maps are
-  random 11–12 room layouts packed with 500+ monsters (`populate()`,
-  seeded so a suspended run rebuilds the same map). Kills ring **the
-  Toll**; at 90% the **Warden** comes (five in Stratum I, two in the Nave).
-  Monsters climb faster than gear (`MON_STEP` 1.5 against `POWER_STEP`
-  1.36), so progress needs farming (`tools/tests/balance.cjs`).
-- **The Bleeding Vigil** (timed endless trial): each one costs a
-  **Bloodrose Key** (`SAVE.vkeys`), dropped by Wardens of Station X and
-  deeper half the time (`dropVkey`, pink beam). Ten minutes to fill the
-  Toll and slay the Warden; time left raises the Vigil level.
+  (I-XV, `DIFF`), a stratum, omens, and holds the Bleeding Vigil. Three
+  strata: the Undercroft, the Drowned Nave (opens after Station III), the
+  Ossuary Spire (after Station VI; `STRATA`, `STRATA_NEED`). Maps are
+  random 11-12 room layouts packed with 500+ monsters (`populate()`,
+  seeded so a suspended run rebuilds the same map). Kills ring the Toll;
+  at 90% the Warden comes: five in Stratum I, two each in II and III, each
+  with its own roar, fall, earned halo and battle music. Monsters climb
+  faster than gear (`MON_STEP` 1.5 against `POWER_STEP` 1.36), so progress
+  needs farming (`tools/tests/balance.cjs`).
+- **The Training Yard (round 31):** a practice run (`run.yard`): a dummy
+  that shows damage a second, a summon panel at the statue (any foe or
+  Warden, any open Station, foes calm or attacking), no gains, no death.
+- **The Bleeding Vigil** (timed endless trial): each one costs a Bloodrose
+  Key (`SAVE.vkeys`), dropped by Wardens of Station X and deeper half the
+  time. Ten minutes to fill the Toll and kill the Warden.
 - **Combat:** a floating auto-aiming crossbow, dash with a perfect dodge,
-  the Censer (a thurible that swings round the Saint), two rites and a
-  Reckoning chosen from 12 (`RITES`, the Rites panel), Zeal, executions.
-  Monsters are punishing (round 16): `MON_DMG`, faster shots (`SHOT_K`),
-  and new telegraphed attacks (snipe lines, fast-ticking blight pools,
-  novas, barrages, homing shots, the Sentence that only a dash cleanses).
-  22 elite curses. Heal per kill is capped at 3% of health a second.
-- **Run levels:** up to 15 (`MAX_LEVEL`), each 1.22x the last, paced so 15
-  comes at about 75% of the map. Each level offers 3 of 30 Wounds;
+  the Censer, two rites and a Reckoning chosen from 18 (6 per slot, one per
+  set; `RITES`), with ranks from use (`RANK_AT`), 6-piece twists
+  (`TWIST`), and drag-to-aim (`AIMABLE`). Passives: three slots opened by
+  Devotion, 24 in all, 8 earned by deeds (`PASSIVES`). Zeal steps give
+  +10% damage each. Executions, kill streaks and the Carnage bonus.
+  Monsters are punishing: telegraphed snipes, blight pools, novas,
+  barrages, homing shots, the Sentence. A death recap names what hurt most.
+- **Run levels:** up to 15 (`MAX_LEVEL`). Each level offers 3 of the Wounds;
   rite Wounds only appear for chosen rites.
 - **Gear:** 10 slots (8 vestments, crossbow, quiver), 5 rarities, item
-  level = Station (Sanctity). Hallowed pieces (30 in `LEGENDS`) are rare
-  (about 1–1.8% of drops; round 27 lowered all drops, `DROP`), each with its own icon (loot `legend`). Five 6-piece vestment sets with 2/4/6
-  bonuses, each with its own Saint skin, crossbow and bolts, plus 2-piece
-  set Arms; Odile's Habit is the starter set. Sets drop from Station VI.
+  level = Station (Sanctity). Drops are rare on purpose (`DROP`); Hallowed
+  pieces (30 in `LEGENDS`) are about 1-1.8% of drops. Five 6-piece
+  vestment sets with 2/4/6 bonuses (4 pieces also give +25% damage), each
+  with its own Saint skin, crossbow and bolts, plus 2-piece set Arms;
+  Odile's Habit is the starter set. Bag icons show rarity colours and set
+  pieces wear a star. Set strength lives in `SETK` (`setbal.cjs`).
 - **Account systems:** Devotion and Virtues (Canonry), the Ember Forge
   (reforge, temper), the Ashen Altar (burn a Hallowed piece to learn its
-  power for good: gold price, 30% success plus 5% per past failure, Chrism
-  raises the odds, three spare pieces grind into a Chrism; three sockets), the Censer's 12 deed upgrades (tap the censer on the bag's
-  paper doll), the Bounty Board, Penitent Cells, Odile's Gift, suspend and
-  resume.
-- **Settings and tools:** settings panel (effects, shake, numbers, sound,
-  left-handed), dev menu (`devRows()`), `?prof` and `?fps` profiling.
+  power; three sockets; Chrism and pity raise the odds), the Censer's 12
+  deed upgrades, the Bounty Board, Penitent Cells, Odile's Gift, the
+  Scrying Pool, the Martyr's vow, suspend and resume.
+- **Settings and tools:** settings panel (effects, shake, damage numbers,
+  text size, haptics, music, sounds, voices, monster cries, left-handed),
+  dev menu (`devRows()`), `?prof` and `?fps` profiling.
+- **Not yet checked by ear:** the round 31 sounds (`roar_`/`fall_ossuarch`,
+  `roar_`/`fall_ashWidow`, `music_ossuary`, `music_warden_ossuary`) were
+  only measured (loudness, peaks, loop seams). Ask the owner how they
+  sound. A backup battle track ("Heavy Dungeon", MintoDog, CC0) was noted
+  but not downloaded into the repo.
 
 ## The owner's preferences
 
@@ -81,6 +111,13 @@ Desktop works with keys. 55–60 fps in dense crowds.
   pixel art, nothing that looks AI-made. They check text layout on a phone
   closely: no overlapping or clipped text. Game text must be plain and
   short, only what the player needs (no flourishes).
+- They play in iPhone Safari and send screenshots. Reported bugs come from
+  a real phone: overlapping lines, chopped words ("RECKONIN"), a black band
+  at the top. Check at 667x375 as well as 932x430.
+- Text that reads as AI-made bothers them ("you slay it", lore asides in
+  the UI, flourishes). Use KILL, not SLAY. Short, plain labels.
+- HUD taste (round 29): slim bars, a centred "LEVEL N (P%)" label at the
+  bottom, HP and Zeal top left, labels lined up under their bars.
 - Systems borrow from Diablo 3 and Torchlight Infinite, always under our
   own names (never borrow names or terms from other games).
 - They want the game hard: monsters punish mistakes, drops are rare,
@@ -554,6 +591,8 @@ These hosts are allowed now. Notes: Steam's `api/appdetails` and the App Store p
 - Never bob or slide a whole body by 1 px or a fraction: on the 2x2 grid that re-cuts every block and reads as jitter. Move bodies in steps of 2 px (`bobAt()`); elites are scaled by `s` in `shoot()`, so use `2 / s` model units.
 - To test the Vigil or high Stations quickly from the console: `HS.SAVE.cleared = 3` (opens Station V and the Vigil), `HS.SAVE.vigilOpen = 10`.
 - Errors never stop the loop; they are logged instead. If the owner reports a bug, ask what the pause screen says under BUG LOGGED, or read `localStorage['hollow-saint-errors']`.
-- `text()` caches each string as a small canvas (cleared at 600 entries). Use `small: true` for the old thin 5x7 font.
+- `text()` measures (cached in `TEXT_W`, at scale 1) and queues; the real font is drawn after the pixel layer, so text always sits on top of its layer. A window over another window needs `layerBreak()` first, or the lower window's text shows through. `small: true` is the smaller size.
 - Audio starts on the first tap (iOS rule). Music streams through `<audio>` elements, effects are decoded buffers. `AUDIO.set([...])` picks the loops; `sfx(name)` plays an effect.
+- The sound packs are not committed and not in a fresh container: download them again into a scratch folder (layout in `build-sfx.py`'s header) before rebuilding any sound. Treat downloads as untrusted (own folder, `python3 -I`).
+- `node tools/sprites.mjs` takes about 16 s since round 31 (the two Ossuary Wardens are large).
 - Rebuild sound effects with `python3 tools/build-sfx.py <src> [names]` (needs numpy) and music loops with `tools/build-audio.sh <src>`, after downloading the packs in `docs/CREDITS.md`; the sources are not committed. Each recipe in `build-sfx.py` lists its layers; `lu=` is the loudness it is levelled to.
