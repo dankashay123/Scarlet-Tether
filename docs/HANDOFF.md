@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 40 (build 40.1, on `master`). Read
+Last updated 2026-10-20, after round 41 (build 41.1, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -172,6 +172,23 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 41 (steadier enchant test, the Font, a name clash):**
+  `enchbal.cjs` replaced its single-target column (it swung too much) with a
+  guard phase: the Saint stands still and shoots while twelve foes that
+  cannot die ring it; health is held at 60% and net health lost a second
+  (taken less healed) is the measure. It varies about +-25% between seeds,
+  against 3x and more for crowd damage taken. Readings (vs no enchant):
+  Bone Ward 0.38 (II 0.17), Bloodletting 0.44 (II 0.33) after it was raised
+  to 2% / 4% of damage dealt (1% healed about 30 a second at Station X),
+  Thorned Hide and Martyr's Echo 0.65-0.9; Second Breath and Ghost Step
+  need deaths and dodges, which the guard leaves out. Ten tier II enchants
+  heal more than a ring of commons deals at Station X. The Drowned Font was
+  the weakest set at Station X (3.6 kills a second): pools now deal X2 / X4
+  at 4 / 6 pieces (`SETK.font4`, `SETK.font`), 6.6 a second, beside 5.9-9.1
+  for the others (`docs/SETS.md`). `setbal.cjs` takes `ONLY=` to run some
+  builds. The Bloodletting Wound is now BLOOD MEAL (the enchant keeps the
+  name); no other names are used twice.
 
 - **Round 40 (tougher Stations, deep rewards, Vigil to XXX):** the owner
   was killing everything in one shot at Station XV. `balance.cjs` gained a

@@ -61,14 +61,14 @@ node tools/tests/round24.cjs <outDir> [WxH] # music per place, the choir by the 
 node tools/tests/round25.cjs <outDir> [WxH] # Warden music, voice settings, the Scrying Pool, Martyrdom's vow, the Vigil Roll
 node tools/tests/round27.cjs <outDir> [WxH] # the Reliquary horde, passives, cast effects, bag colours and set stars
 node tools/tests/grind.cjs [stations] [mins] # gear a full clear drops per Station, runs per Hallowed, runs for one full set
-node tools/tests/setbal.cjs [secs] [station] [seeds] # set balance: kills and damage taken a second per set and 4+2 mix (seeded); ENCH=id,id,... adds enchants by slot (ENCHT tier)
+node tools/tests/setbal.cjs [secs] [station] [seeds] # set balance: kills and damage taken a second per set and 4+2 mix (seeded); ENCH=id,id,... adds enchants by slot (ENCHT tier); ONLY=none,font runs some builds
 node tools/tests/round26.cjs <outDir> [WxH] # six new rites, ranks, twists, aimed Judgement and Font, the death recap
 node tools/tests/aim.cjs <outDir> [WxH]   # drag to aim each rite, cancel, plain tap
 node tools/tests/menus.cjs <outDir> [WxH] # every menu window at one phone size (run at 932x430, 844x390, 667x375); TEXT=large checks the large text size; prints `text problems N` for text that overlaps, runs off the screen or sits a pixel off its neighbour (`HS.textProblems()`)
 node tools/tests/round31.cjs <outDir> [WxH] # low-health edge, kill streak, the Training Yard, Stratum III and its Wardens, ten halos on the Vigil Roll
 node tools/tests/round30.cjs <outDir> [WxH] # crit numbers by size, the Zeal step flash, the HP shake, text size in settings, HUD and bag
 node tools/tests/round39.cjs <outDir> [WxH] # REMORSEFUL reflect as a share of health, Stations to XXX (panel, bands, item levels)
-node tools/tests/enchbal.cjs [secs] [station] [builds] [seeds] # enchant balance: each enchant at tier I and II and two every-slot combos, kills and damage taken a second in a dense crowd (single-target column is unreliable)
+node tools/tests/enchbal.cjs [secs] [station] [builds] [seeds] # enchant balance: each enchant at tier I and II and two every-slot combos; kills a second in a dense crowd, and `guard` (net health lost a second in a fixed ring of foes that cannot die; steadier than crowd damage taken)
 node tools/tests/round38.cjs <outDir> [WxH] # ingredient pity, enchant tier II, the enchant card over the bag
 node tools/tests/round37.cjs <outDir> [WxH] # the forge's BUY tab, a photo of every enchant's card
 node tools/tests/round36.cjs <outDir> [WxH] # auto-roll aimed at one stat, one ingredient back on removal, ITEMS rows open their sites

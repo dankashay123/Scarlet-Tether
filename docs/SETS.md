@@ -200,3 +200,12 @@ six-piece damage (six pieces replace it): Nails +2% bolt damage per stack,
 Stride X2 for 3 S after a dash, Font pools X1.5, Confessor bound foes take
 30% more, Choir X1.1 in Reckoning (`SETK.*4`). In `setbal.cjs` the 4+2 mixes
 moved from 3.7-10 to 5-11 kills a second (no set: about 3.5; whole sets 8-15).
+
+## Round 41: the Font
+
+At Station X (after round 40 made the middle Stations tougher) the Font was
+the weakest whole set: 3.6 kills a second against 5.5-8.7 for the others.
+Its pools now deal X2 at four pieces (was X1.5) and X4 at six (was X2.5):
+6.6 kills a second, beside Nails 7.6, Stride 7.7, Confessor 9.1 and Choir
+5.9 (`setbal.cjs 20 10`, two seeds). With ten tier II enchants the sets sit
+at 11.6-15.5 (`ENCH=`), so enchants do not make one set run away.
