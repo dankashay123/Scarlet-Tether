@@ -101,9 +101,10 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '33.1';
+const BUILD = '33.2';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '33.2': ['THE DEV MENU IS REORGANISED: HERO, GEAR, FORGE, WORLD, TOWN AND DEBUG TABS WITH A LABEL ON EVERY ROW. NEW FORGE AND ENCHANT TOOLS.'],
   '33.1': ['REFORGING NOW COSTS AN EMBERSTONE, NOT GOLD. EVERY WARDEN DROPS AT LEAST TWO, MORE AT DEEPER STATIONS.',
     'EACH REFORGE ROLLS A QUALITY: COMMON 50%, RARE 30%, EPIC 14%, LEGENDARY 5%, MYTHIC 1%. RARER ROLLS GO HIGHER. THE STAT SHOWS IN ITS COLOUR.',
     'THE FORGE HAS A VALUES TAB WITH EVERY RANGE. NEW: THE ENCHANTER, SOUTH OF THE FORGE. 16 ENCHANTS FROM RARE WARDEN DROPS AT STATION X AND DEEPER.'],
@@ -2012,7 +2013,7 @@ function forgeTap(x, y) {
   for (const r of rows) if (inRect(r, x, y)) { F.stat = r.i; sfx('tap', { vol: 0.5 }); return; }
   if (inRect(L.btnA, x, y)) {
     if (embers() < 1) { toast('NO EMBERSTONES. WARDENS DROP THEM.', 2); return; }
-    SAVE.embers--; const q = rollQuality();
+    SAVE.embers--; const q = devOn() && DEV.q >= 0 ? DEV.q : rollQuality();
     let key = it.stats[F.stat][0];
     if (F.stat > 0) { const have = new Set(it.stats.map((st) => st[0])); key = pick(Object.keys(STAT).filter((k) => !have.has(k))); }
     it.stats[F.stat] = [key, qualRoll(key, it.ri, q), q];
@@ -3311,10 +3312,12 @@ function settingsTap(x, y) {
 // ------------------------------------------------------------ dev menu ---
 // Open with ?dev (stays on), the backquote key, or five quick taps in the
 // bottom-left corner of the pause screen.
-// From the pause screen: the DEV button. Tabs of buttons; a "< X >" button
-// steps back on its left half and forward on its right half.
-const DEV = { cell: 0, tab: 0, il: 6, ri: 4, slot: 0, warden: 0, mon: 0, wound: 0, stn: 0, strat: 1, vigil: 1, god: false, nocd: false, boxes: false, fps: false, speed: 1, confirm: 0, taps: 0, tapT: 0 };
-const DEV_TABS = ['SETS', 'ITEMS', 'HERO', 'WORLD', 'UNLOCK', 'DEBUG'];
+// From the pause screen: the DEV button. Each tab is a list of labelled rows.
+// Grey "< X >" buttons are pickers (left half steps back, right half
+// forward), green or dark buttons are toggles, red buttons do something.
+const DEV = { cell: 0, tab: 0, il: 6, ri: 4, slot: 0, warden: 0, mon: 0, wound: 0, stn: 0, strat: 1, vigil: 1, set: 0, q: -1, ench: 0, god: false, nocd: false, boxes: false, fps: false, speed: 1, confirm: 0, taps: 0, tapT: 0 };
+const DEV_TABS = ['HERO', 'GEAR', 'FORGE', 'WORLD', 'TOWN', 'DEBUG'];
+const DEV_HELP = ['GOD MODE, LEVELS, WOUNDS, DEVOTION AND RITE RANKS.', 'MAKE GEAR AT ANY STATION AND RARITY, WHOLE SETS, THE BAG.', 'EMBERSTONES, REFORGE QUALITY, ENCHANTS AND INGREDIENTS, THE ALTAR.', 'DESCEND ANYWHERE, SUMMON WARDENS AND FOES, THE VIGIL.', 'UNLOCKS, CURRENCIES, LOOKS, CELLS, BOUNTIES AND THE YARD.', 'FPS, PROFILE, HITBOXES, GAME SPEED, ERRORS AND THE SAVE.'];
 const devOn = () => !!SAVE.dev;
 const showFps = () => DEV.fps || location.search.includes('fps');
 const devBtn = () => ({ x: 10, y: H - 30, w: 60, h: 20 });
@@ -3361,83 +3364,121 @@ function devSpawn(id, o = {}) {
   const a = rng() * Math.PI * 2, P = player;
   return spawnMonster(id, P.x + Math.cos(a) * 70, P.y + Math.sin(a) * 45, { room: game.curRoom && game.curRoom.id, ...o });
 }
-// Rows of buttons for a tab: { t: label, f: (dir) => ..., on: lit, w: columns, lab: plain text }.
+// The rows of a tab. Each row is a gold label then up to three cells:
+// B(text, fn, { w: columns, on: toggle state, danger }) or L(text) for plain text.
 function devRows() {
   const B = (t, f, o = {}) => ({ t, f, ...o });
   const L = (t, w = 1, col) => ({ t, lab: true, w, col });
+  const R = (label, ...cells) => ({ label, cells });
+  const run = (f) => () => (inRun() ? f() : toast('ONLY IN A DESCENT', 1.2));
+  const tog = (name, v, f) => B(`${name} ${v ? 'ON' : 'OFF'}`, f, { on: !!v });
+  const slotKey = () => Object.keys(SLOTS)[DEV.slot - 1];
+  const stnPick = () => B(`< STATION ${ROMAN[DEV.il - 1]} >`, (d) => { DEV.il = 1 + cyc(DEV.il - 1, 15, d); });
+  const worn = () => SLOT_ORDER.map((sl) => SAVE.equip[sl]).filter(Boolean);
+  const E = ENCHANTS[DEV.ench];
   switch (DEV_TABS[DEV.tab]) {
-    case 'SETS': return [
-      ...MAIN_SETS.map((id) => [L(VSETS[id].name, 1, RARITY[4].color), B('BAG 6', () => devSet(id, false)), B('WEAR 6', () => devSet(id, true)), B('ARMS 2', () => devArms(id))]),
-      [B(`< STATION ${ROMAN[DEV.il - 1]} >`, (d) => { DEV.il = 1 + cyc(DEV.il - 1, 15, d); }), B('HABIT TO BAG', () => devSet('habit', false)), B('LESSER VOW', () => { const it = makeItem('seal', 3, 'THE LESSER VOW', undefined, devIl()); it.power = 'vow'; if (SAVE.bag.length < BAG_SIZE) SAVE.bag.push(it); persist(); toast('THE LESSER VOW IN YOUR BAG', 1.5); }), B('OPEN BAG', () => openInventory())],
-      [B(`< CELL: ${MAIN_SETS[DEV.cell].toUpperCase()} >`, (d) => { DEV.cell = cyc(DEV.cell, MAIN_SETS.length, d); }), B('ENTER CELL', () => { tut.on = false; game.nextCell = MAIN_SETS[DEV.cell]; game.nextDiff = Math.max(0, SAVE.cleared ?? 0); game.nextStratum = 1; game.nextOmens = []; game.nextVigil = 0; game.state = 'loading'; game.loadT = 0; game.loadOdds = ODDS[0]; }), B('OPEN CELLS', () => openCells()), B('ABSOLVE ALL', () => { SAVE.cells = Object.fromEntries(MAIN_SETS.map((id) => [id, true])); persist(); toast('EVERY BANNER HANGS', 1.2); })],
-      [B('CLEAR BAG', () => { SAVE.bag = []; persist(); toast('BAG EMPTIED', 1); }), B('TAKE ALL OFF', () => { for (const sl of Object.keys(SAVE.equip)) { if (SAVE.equip[sl] && SAVE.bag.length < BAG_SIZE) SAVE.bag.push(SAVE.equip[sl]); delete SAVE.equip[sl]; } applyGear(); persist(); toast('ALL GEAR IN THE BAG', 1.2); }), B('TEMPER WORN', () => { for (const it of Object.values(SAVE.equip)) if (it) it.il = devIl(); applyGear(); persist(); toast(`WORN GEAR AT STATION ${ROMAN[DEV.il - 1]}`, 1.5); }), L(G && G.skin ? `SKIN: ${G.skin.toUpperCase()}` : 'SKIN: NONE')],
-    ];
-    case 'ITEMS': return [
-      [B(`< ${RARITY[DEV.ri].name} >`, (d) => { DEV.ri = cyc(DEV.ri, RARITY.length, d); }, { w: 2 }), B(`< ${DEV.slot ? Object.keys(SLOTS)[DEV.slot - 1].toUpperCase() : 'ANY SLOT'} >`, (d) => { DEV.slot = cyc(DEV.slot, Object.keys(SLOTS).length + 1, d); }), B(`< STATION ${ROMAN[DEV.il - 1]} >`, (d) => { DEV.il = 1 + cyc(DEV.il - 1, 15, d); })],
-      [B('ADD 1', () => devItem(1)), B('ADD 5', () => devItem(5)), B('FILL BAG', () => devItem(BAG_SIZE)), B('DROP HERE', () => { if (!inRun()) return toast('ONLY IN A DESCENT', 1.2); dropLoot(player.x + 20, player.y, { item: 3, itemBoost: 3 }); })],
-      [B('+10000 GOLD', () => { if (inRun()) game.run.gold += 10000; else SAVE.gold = (SAVE.gold || 0) + 10000; persist(); toast('+10000 GOLD', 1); }), B('SELL BAG', () => { let g = 0; for (const it of SAVE.bag) g += SALVAGE[it.ri]; SAVE.bag = []; SAVE.gold = (SAVE.gold || 0) + g; persist(); toast(`SOLD FOR ${g}`, 1.2); }), B('RESTOCK PELL', () => { SAVE.shop = null; toast("PELL'S STALL RESTOCKED", 1.2); }), B('OPEN BAG', () => openInventory())],
-      [L(`BAG ${SAVE.bag.length}/${BAG_SIZE}   SANCTITY ${playerSanctity()}   GOLD ${SAVE.gold || 0}`, 4, PAL.stone1)],
-    ];
     case 'HERO': return [
-      [B(DEV.god ? 'GOD MODE ON' : 'GOD MODE OFF', () => { DEV.god = !DEV.god; }, { on: DEV.god }), B(DEV.nocd ? 'NO COOLDOWNS ON' : 'NO COOLDOWNS OFF', () => { DEV.nocd = !DEV.nocd; }, { on: DEV.nocd }), B('FULL HEAL', () => { player.hp = player.maxHp; }), B('FULL ZEAL', () => { game.fervor = 100; player.penance = T.penance.charge; })],
-      [B('+1 LEVEL', () => { if (!inRun()) return toast('ONLY IN A DESCENT', 1.2); gainXp(xpNeed(game.run.level)); }), B('+5 LEVELS', () => { if (!inRun()) return toast('ONLY IN A DESCENT', 1.2); for (let i = 0; i < 5; i++) gainXp(xpNeed(game.run.level + i)); }), B('+2000 DEVOTION', () => gainDevotion(2000)), B('+10 VIRTUE PTS', () => { SAVE.devPts = (SAVE.devPts || 0) + 10; persist(); })],
-      [B(`< ${WOUNDS[DEV.wound].name} >`, (d) => { DEV.wound = cyc(DEV.wound, WOUNDS.length, d); }, { w: 2 }), B('TAKE WOUND', () => { if (!inRun()) return toast('ONLY IN A DESCENT', 1.2); const w = WOUNDS[DEV.wound]; game.run.wounds[w.id] = Math.min(w.max, (game.run.wounds[w.id] || 0) + 1); applyGear(); toast(`${w.name} ${game.run.wounds[w.id]}/${w.max}`, 1.2); }), B('CLEAR WOUNDS', () => { if (game.run) game.run.wounds = {}; applyGear(); })],
-      [B('ALL SKILL WOUNDS', () => { if (!inRun()) return toast('ONLY IN A DESCENT', 1.2); for (const w of WOUNDS) if (w.r === 2 || w.id === 'orbit' || w.id === 'nova') game.run.wounds[w.id] = w.max; applyGear(); }), B('SHRINE BUFF', () => { const ks = Object.keys(SHRINES); game.buff = { kind: ks[Math.floor(rng() * ks.length)], t: 30 }; }), B('KILL ME', () => { DEV.god = false; player.hp = 1; hurtPlayerRaw(99999, PAL.blood0); closeDev(); }), L(`HP ${Math.round(player ? player.hp : 0)}/${player ? player.maxHp : 0}`)],
+      R('STATE', tog('GOD MODE', DEV.god, () => { DEV.god = !DEV.god; }), tog('NO COOLDOWNS', DEV.nocd, () => { DEV.nocd = !DEV.nocd; }), B('FULL HEAL + ZEAL', () => { player.hp = player.maxHp; game.fervor = 100; player.penance = T.penance.charge; player.charges = G.charges; })),
+      R('LEVELS', B('+1 LEVEL', run(() => gainXp(xpNeed(game.run.level)))), B('+5 LEVELS', run(() => { for (let i = 0; i < 5; i++) gainXp(xpNeed(game.run.level + i)); })), B('MAX LEVEL', run(() => { for (let i = game.run.level; i < MAX_LEVEL; i++) gainXp(xpNeed(i)); }))),
+      R('WOUND', B(`< ${WOUNDS[DEV.wound].name} >`, (d) => { DEV.wound = cyc(DEV.wound, WOUNDS.length, d); }, { w: 2 }), B('TAKE IT', run(() => { const w = WOUNDS[DEV.wound]; game.run.wounds[w.id] = Math.min(w.max, (game.run.wounds[w.id] || 0) + 1); applyGear(); toast(`${w.name} ${game.run.wounds[w.id]}/${w.max}`, 1.2); }))),
+      R('WOUNDS', B('ALL SKILL WOUNDS', run(() => { for (const w of WOUNDS) if (w.r === 2 || w.id === 'orbit' || w.id === 'nova') game.run.wounds[w.id] = w.max; applyGear(); })), B('CLEAR WOUNDS', () => { if (game.run) game.run.wounds = {}; applyGear(); }), B('SHRINE BUFF', () => { const ks = Object.keys(SHRINES); game.buff = { kind: ks[Math.floor(rng() * ks.length)], t: 30 }; })),
+      R('DEVOTION', B('+2000 DEVOTION', () => gainDevotion(2000)), B('+10 VIRTUE PTS', () => { SAVE.devPts = (SAVE.devPts || 0) + 10; persist(); }), B('MAX RITE RANKS', () => { SAVE.riteXp = Object.fromEntries(Object.keys(RITE_BY).map((id) => [id, RANK_AT[RANK_AT.length - 1]])); persist(); toast('EVERY RITE AT RANK 5', 1.2); })),
+      R('TEST', B('KILL ME', () => { DEV.god = false; player.hp = 1; hurtPlayerRaw(99999, PAL.blood0); closeDev(); }, { danger: true }), B('RESET BREATH', run(() => { game.run.breath = false; toast('SECOND BREATH READY', 1.2); })), B('OPEN RITES', () => openRites('dev'))),
+      { info: `HP ${Math.round(player ? player.hp : 0)}/${player ? player.maxHp : 0}   LEVEL ${game.run ? game.run.level : '-'}   DEVOTION ${SAVE.devLvl || 0}   ZEAL ${Math.round(game.fervor || 0)}` },
+    ];
+    case 'GEAR': return [
+      R('MAKE AT', stnPick(), B(`< ${RARITY[DEV.ri].name} >`, (d) => { DEV.ri = cyc(DEV.ri, RARITY.length, d); }), B(`< ${DEV.slot ? slotKey().toUpperCase() : 'ANY SLOT'} >`, (d) => { DEV.slot = cyc(DEV.slot, Object.keys(SLOTS).length + 1, d); })),
+      R('ADD ITEMS', B('ADD 1', () => devItem(1)), B('ADD 5', () => devItem(5)), B('FILL BAG', () => devItem(BAG_SIZE))),
+      R('SET', B(`< ${VSETS[MAIN_SETS[DEV.set]].name} >`, (d) => { DEV.set = cyc(DEV.set, MAIN_SETS.length, d); }), B('WEAR SET + ARMS', () => { devSet(MAIN_SETS[DEV.set], true); devArms(MAIN_SETS[DEV.set]); for (const sl of ['bow', 'quiver']) { const it = SAVE.bag.find((q) => q.wset === MAIN_SETS[DEV.set] && q.slot === sl); if (it) equip(it); } }), B('SET TO BAG', () => devSet(MAIN_SETS[DEV.set], false))),
+      R('SPECIAL', B('HABIT TO BAG', () => devSet('habit', false)), B('LESSER VOW', () => { const it = makeItem('seal', 3, 'THE LESSER VOW', undefined, devIl()); it.power = 'vow'; if (SAVE.bag.length < BAG_SIZE) SAVE.bag.push(it); persist(); toast('THE LESSER VOW IN YOUR BAG', 1.5); }), B('+3 HALLOWED', () => { for (let k = 0; k < 3; k++) { const it = makeItem(pick(Object.keys(SLOTS).filter((q) => LEGENDS.some((L0) => L0.slot === q))), 3, 'X', undefined, devIl()); const lg = pick(LEGENDS.filter((L0) => L0.slot === it.slot)); it.name = lg.name; it.power = lg.id; bagAdd(it); } persist(); toast('THREE HALLOWED PIECES', 1.2); })),
+      R('BAG', B('OPEN BAG', () => openInventory()), B('CLEAR BAG', () => { SAVE.bag = []; persist(); toast('BAG EMPTIED', 1); }, { danger: true }), B('SELL BAG', () => { let g = 0; for (const it of SAVE.bag) g += SALVAGE[it.ri]; SAVE.bag = []; SAVE.gold = (SAVE.gold || 0) + g; persist(); toast(`SOLD FOR ${g}`, 1.2); })),
+      R('WORN', B('TAKE ALL OFF', () => { for (const sl of Object.keys(SAVE.equip)) { if (SAVE.equip[sl] && SAVE.bag.length < BAG_SIZE) SAVE.bag.push(SAVE.equip[sl]); delete SAVE.equip[sl]; } applyGear(); persist(); toast('ALL GEAR IN THE BAG', 1.2); }), B('TEMPER WORN', () => { for (const it of worn()) it.il = devIl(); applyGear(); persist(); toast(`WORN GEAR AT STATION ${ROMAN[DEV.il - 1]}`, 1.5); }), B('DROP LOOT HERE', run(() => dropLoot(player.x + 20, player.y, { item: 3, itemBoost: 3 })))),
+      { info: `BAG ${SAVE.bag.length}/${BAG_SIZE}   SANCTITY ${playerSanctity()}   GOLD ${SAVE.gold || 0}   SKIN ${G && G.skin ? G.skin.toUpperCase() : 'NONE'}` },
+    ];
+    case 'FORGE': return [
+      R('EMBERSTONES', B('+50', () => { SAVE.embers = embers() + 50; persist(); toast('+50 EMBERSTONES', 1.2); }), B('+500', () => { SAVE.embers = embers() + 500; persist(); toast('+500 EMBERSTONES', 1.2); }), B('OPEN FORGE', () => openForge())),
+      R('REFORGE', B(`< NEXT ROLL: ${DEV.q < 0 ? 'RANDOM' : QUALITY[DEV.q].name} >`, (d) => { DEV.q = cyc(DEV.q + 1, QUALITY.length + 1, d) - 1; }, { w: 2 }), B('WORN TO MYTHIC', () => { for (const it of worn()) it.stats = it.stats.map((st) => [st[0], qualRange(st[0], it.ri, 4)[1], 4]); applyGear(); persist(); toast('EVERY WORN STAT AT MYTHIC', 1.2); })),
+      R('ENCHANT', B(`< ${E.name} >`, (d) => { DEV.ench = cyc(DEV.ench, ENCHANTS.length, d); }, { w: 2 }), B('ITS 3 INGREDIENTS', () => { for (let k = 0; k < 3; k++) ingrs()[DEV.ench * 3 + k]++; persist(); toast(`INGREDIENTS FOR ${E.name}`, 1.2); })),
+      R('PUT IT ON', B(`< ${DEV.slot ? (SLOT_NAME[slotKey()] || slotKey()).toUpperCase() : 'ALL WORN'} >`, (d) => { DEV.slot = cyc(DEV.slot, Object.keys(SLOTS).length + 1, d); }), B('PUT ON', () => { let n = 0; for (const it of worn()) if (!DEV.slot || it.slot === slotKey()) { it.ench = E.id; n++; } applyGear(); persist(); toast(n ? `${E.name} ON ${n} PIECE${n > 1 ? 'S' : ''}` : 'NOTHING WORN THERE', 1.2); }), B('ONE OF EACH', () => { worn().forEach((it, i) => { it.ench = ENCHANTS[i % ENCHANTS.length].id; }); applyGear(); persist(); toast('A DIFFERENT ENCHANT ON EACH PIECE', 1.2); })),
+      R('INGREDIENTS', B('+1 OF EACH', () => { const a = ingrs(); for (let i = 0; i < a.length; i++) a[i]++; persist(); toast('ONE OF EACH INGREDIENT', 1.2); }), B('WARDEN DROPS', run(() => wardenMats({ x: player.x + 30, y: player.y }, curDiff()))), B('OPEN ENCHANTER', () => openEnchant())),
+      R('CLEAR', B('CLEAR ENCHANTS', () => { for (const it of [...worn(), ...SAVE.bag]) delete it.ench; applyGear(); persist(); toast('ENCHANTS REMOVED', 1.2); }, { danger: true }), B('CLEAR INGREDIENTS', () => { SAVE.ingr = []; persist(); toast('INGREDIENTS CLEARED', 1.2); }, { danger: true }), B('CLEAR QUALITIES', () => { for (const it of [...worn(), ...SAVE.bag]) it.stats = it.stats.map((st) => [st[0], st[1]]); persist(); toast('STATS BACK TO PLAIN', 1.2); }, { danger: true })),
+      R('ALTAR', B('+4 CHRISM', () => { const C = chrisms(); for (let i = 0; i < 4; i++) C[i]++; persist(); toast('ONE OF EACH CHRISM', 1.2); }), B('LEARN ALL POWERS', () => { altar().known = LEGENDS.map((L0) => L0.id); persist(); toast('THE ALTAR KNOWS EVERY POWER', 1.2); }), B('OPEN ALTAR', () => openAltar())),
+      { info: `EMBERSTONES ${embers()}   INGREDIENTS ${ingrs().filter((n) => n > 0).length}/48   ENCHANTS WORN ${G && G.ench ? G.ench.size : 0}` },
     ];
     case 'WORLD': return [
-      [B('GO TO TOWN', () => { enterTown(false); }), B(`< STATION ${ROMAN[DEV.stn]} >`, (d) => { DEV.stn = cyc(DEV.stn, DIFF.length, d); }), B(`< STRATUM ${DEV.strat} >`, (d) => { DEV.strat = cyc(DEV.strat - 1, 3, d) + 1; }), B('DESCEND', () => { tut.on = false; game.nextStratum = DEV.strat; game.nextDiff = DEV.stn; game.nextOmens = []; game.nextVigil = 0; game.state = 'loading'; game.loadT = 0; game.loadOdds = ODDS[0]; })],
-      [B(`< ${MON[devWardens()[DEV.warden]].name} >`, (d) => { DEV.warden = cyc(DEV.warden, devWardens().length, d); }, { w: 2 }), B('SUMMON WARDEN', () => { if (!inRun()) return toast('ONLY IN A DESCENT', 1.2); if (game.warden) killEnemy(game.warden, 1, 0); spawnWarden(devWardens()[DEV.warden]); closeDev(); }), B('FILL TOLL', () => { if (game.toll && !game.toll.done) { game.toll.v = game.toll.max; game.toll.done = true; spawnWarden(); closeDev(); } })],
-      [B(`< ${MON[devMons()[DEV.mon]].name} >`, (d) => { DEV.mon = cyc(DEV.mon, devMons().length, d); }, { w: 2 }), B('SPAWN 1', () => devSpawn(devMons()[DEV.mon])), B('SPAWN 10', () => { for (let i = 0; i < 10; i++) devSpawn(devMons()[DEV.mon]); })],
-      [B('SPAWN AS RARE', () => devSpawn(devMons()[DEV.mon], { tier: 'rare' })), B('SPAWN AS ELITE', () => devSpawn(devMons()[DEV.mon], { tier: 'elite', affixes: AFFIX_POOL.slice().sort(() => rng() - 0.5).slice(0, 2) })), B('KILL ALL NEAR', () => { for (const e of enemies) if (!e.dead && !e.boss && Math.hypot(e.x - player.x, e.y - player.y) < 260) killEnemy(e, 0, 0); }), B('REVEAL MAP', () => devReveal())],
-      [B('IMP', () => devSpawn('imp')), B('END DESCENT', () => { if (!inRun()) return; finishDescent(); }), B(`< VIGIL ${DEV.vigil} >`, (d) => { DEV.vigil = Math.max(1, Math.min(60, DEV.vigil + d)); }), B('LIGHT VIGIL', () => { tut.on = false; beginVigil(DEV.vigil); })],
+      R('DESCEND', B(`< STATION ${ROMAN[DEV.stn]} >`, (d) => { DEV.stn = cyc(DEV.stn, DIFF.length, d); }), B(`< ${['', 'UNDERCROFT', 'DROWNED NAVE', 'OSSUARY'][DEV.strat]} >`, (d) => { DEV.strat = cyc(DEV.strat - 1, 3, d) + 1; }), B('DESCEND', () => { tut.on = false; game.nextStratum = DEV.strat; game.nextDiff = DEV.stn; game.nextOmens = []; game.nextVigil = 0; game.state = 'loading'; game.loadT = 0; game.loadOdds = ODDS[0]; })),
+      R('THIS RUN', B('GO TO TOWN', () => { enterTown(false); }), B('END DESCENT', run(() => finishDescent())), B('REVEAL MAP', run(() => devReveal()))),
+      R('WARDEN', B(`< ${MON[devWardens()[DEV.warden]].name} >`, (d) => { DEV.warden = cyc(DEV.warden, devWardens().length, d); }, { w: 2 }), B('SUMMON', run(() => { if (game.warden) killEnemy(game.warden, 1, 0); spawnWarden(devWardens()[DEV.warden]); closeDev(); }))),
+      R('MONSTER', B(`< ${MON[devMons()[DEV.mon]].name} >`, (d) => { DEV.mon = cyc(DEV.mon, devMons().length, d); }, { w: 2 }), B('SPAWN 1', () => devSpawn(devMons()[DEV.mon]))),
+      R('SPAWN', B('SPAWN 10', () => { for (let i = 0; i < 10; i++) devSpawn(devMons()[DEV.mon]); }), B('AS RARE', () => devSpawn(devMons()[DEV.mon], { tier: 'rare' })), B('AS ELITE', () => devSpawn(devMons()[DEV.mon], { tier: 'elite', affixes: AFFIX_POOL.slice().sort(() => rng() - 0.5).slice(0, 2) }))),
+      R('FOES', B('FILL TOLL', () => { if (game.toll && !game.toll.done) { game.toll.v = game.toll.max; game.toll.done = true; spawnWarden(); closeDev(); } }), B('KILL ALL NEAR', () => { for (const e of enemies) if (!e.dead && !e.boss && Math.hypot(e.x - player.x, e.y - player.y) < 260) killEnemy(e, 0, 0); }), B('IMP', () => devSpawn('imp'))),
+      R('VIGIL', B(`< VIGIL ${DEV.vigil} >`, (d) => { DEV.vigil = Math.max(1, Math.min(60, DEV.vigil + d)); }), B('LIGHT VIGIL', () => { tut.on = false; beginVigil(DEV.vigil); }), B('TRAINING YARD', () => openYard())),
+      { info: game.scene === 'wound' ? `FOES ${enemies.filter((e) => !e.dead).length}   TOLL ${game.toll ? Math.round(100 * game.toll.v / game.toll.max) : 0}%   ROOM ${game.curRoom ? game.curRoom.id : '-'}` : 'YOU ARE IN VAEL. DESCEND FIRST TO SPAWN OR SUMMON.' },
     ];
-    case 'UNLOCK': return [
-      [B('ALL STATIONS', () => { SAVE.cleared = DIFF.length - 1; persist(); toast('EVERY STATION OPEN', 1.2); }), B('ALL TOWN SITES', () => { SAVE.descents = Math.max(SAVE.descents || 0, 20); SAVE.cleared = Math.max(SAVE.cleared ?? -1, 4); persist(); toast('EVERY SITE OPEN', 1.2); }), B('VIGIL 1-30', () => { SAVE.vigilOpen = 30; persist(); }), B("+1 ODILE'S GIFT", () => { SAVE.gifts = (SAVE.gifts || 0) + 1; persist(); toast('TALK TO SISTER ODILE', 1.2); })],
-      [B('ALL PLUSH LOOKS', () => { const K = looks(); K.own = [...DYES.map((q) => `d:${q.id}`), ...HALOS.map((q) => `h:${q.id}`), ...TRAILS.map((q) => `b:${q.id}`), ...DASHES.map((q) => `s:${q.id}`)]; persist(); toast('EVERY DYE AND HALO', 1.2); }), B('OPEN PLUSH STALL', () => openPlush())],
-      [B(SAVE.censerDev ? 'CENSER: DEEDS' : 'CENSER: ALL LIT', () => { SAVE.censerDev = !SAVE.censerDev; persist(); }, { on: !!SAVE.censerDev }), B('OPEN CENSER', () => openCenser())],
-      [B('+3 BLOODROSE KEYS', () => { SAVE.vkeys = (SAVE.vkeys || 0) + 3; persist(); toast('THREE BLOODROSE KEYS', 1.2); }), B('+4 CHRISM', () => { const C = chrisms(); for (let i = 0; i < 4; i++) C[i]++; persist(); toast('ONE OF EACH CHRISM', 1.2); }), B('+3 HALLOWED', () => { for (let k = 0; k < 3; k++) { const it = makeItem(pick(Object.keys(SLOTS).filter((q) => LEGENDS.some((L) => L.slot === q))), 3, 'X', undefined, 3); const lg = pick(LEGENDS.filter((L) => L.slot === it.slot)); it.name = lg.name; it.power = lg.id; bagAdd(it); } persist(); toast('THREE HALLOWED PIECES', 1.2); })],
-      [B('+50 EMBERSTONES', () => { SAVE.embers = embers() + 50; persist(); toast('+50 EMBERSTONES', 1.2); }), B('+1 EACH INGREDIENT', () => { const a = ingrs(); for (let i = 0; i < a.length; i++) a[i]++; persist(); toast('ONE OF EACH INGREDIENT', 1.2); }), B('OPEN FORGE', () => openForge()), B('OPEN ENCHANTER', () => openEnchant())],
-      [B('LEARN ALL POWERS', () => { altar().known = LEGENDS.map((L) => L.id); persist(); toast('THE ALTAR KNOWS EVERY POWER', 1.2); }), B('OPEN ALTAR', () => openAltar()), B('OPEN BOUNTIES', () => openBoard()), B('FILL BOUNTIES', () => { for (const b of bounties().list) b.have = b.need; persist(); })],
-      [B('OPEN THE GIFT', () => { SAVE.gifts = Math.max(1, SAVE.gifts || 0); openGift(); }), B('SKIP TUTORIAL', () => { tut.on = false; SAVE.tutDone = true; persist(); }), B('RESET TUTORIAL', () => { SAVE.tutDone = false; persist(); toast('TUTORIAL RUNS NEXT TIME', 1.2); }), B('CLEAR ERRORS', () => { ERRS.length = 0; try { localStorage.removeItem('hollow-saint-errors'); } catch { /* private mode */ } })],
-      [B(DEV.confirm ? 'TAP AGAIN TO WIPE' : 'RESET SAVE', () => { if (!DEV.confirm) { DEV.confirm = 1; return; } try { localStorage.removeItem('hollow-saint'); } catch { /* private mode */ } location.href = location.pathname + '?dev'; }, { on: !!DEV.confirm, w: 2 }), B('HIDE DEV MENU', () => { SAVE.dev = false; persist(); closeDev(); toast('DEV MENU HIDDEN (?dev BRINGS IT BACK)', 2); }, { w: 2 })],
-      [L(`CLEARED ${SAVE.cleared ?? -1}  DESCENTS ${SAVE.descents || 0}  DEVOTION ${SAVE.devLvl || 0}  GIFTS ${SAVE.gifts || 0}`, 4, PAL.stone1)],
+    case 'TOWN': return [
+      R('UNLOCK', B('ALL STATIONS', () => { SAVE.cleared = DIFF.length - 1; persist(); toast('EVERY STATION OPEN', 1.2); }), B('ALL TOWN SITES', () => { SAVE.descents = Math.max(SAVE.descents || 0, 20); SAVE.cleared = Math.max(SAVE.cleared ?? -1, 5); persist(); toast('EVERY SITE OPEN', 1.2); }), B('VIGIL 1-30', () => { SAVE.vigilOpen = 30; persist(); })),
+      R('CURRENCY', B('+10000 GOLD', () => { if (inRun()) game.run.gold += 10000; else SAVE.gold = (SAVE.gold || 0) + 10000; persist(); toast('+10000 GOLD', 1); }), B('+3 BLOODROSE KEYS', () => { SAVE.vkeys = (SAVE.vkeys || 0) + 3; persist(); toast('THREE BLOODROSE KEYS', 1.2); }), B("+1 ODILE'S GIFT", () => { SAVE.gifts = (SAVE.gifts || 0) + 1; persist(); toast('TALK TO SISTER ODILE', 1.2); })),
+      R('LOOKS', B('ALL PLUSH LOOKS', () => { const K = looks(); K.own = [...DYES.map((q) => `d:${q.id}`), ...HALOS.map((q) => `h:${q.id}`), ...TRAILS.map((q) => `b:${q.id}`), ...DASHES.map((q) => `s:${q.id}`)]; persist(); toast('EVERY DYE AND HALO', 1.2); }), B('OPEN PLUSH STALL', () => openPlush()), B('OPEN THE GIFT', () => { SAVE.gifts = Math.max(1, SAVE.gifts || 0); openGift(); })),
+      R('CENSER', tog('ALL UPGRADES', SAVE.censerDev, () => { SAVE.censerDev = !SAVE.censerDev; persist(); }), B('OPEN CENSER', () => openCenser()), B('RESTOCK PELL', () => { SAVE.shop = null; toast("PELL'S STALL RESTOCKED", 1.2); })),
+      R('BOUNTIES', B('OPEN BOUNTIES', () => openBoard()), B('FILL BOUNTIES', () => { for (const b of bounties().list) b.have = b.need; persist(); }), B('RESET YARD BESTS', () => { SAVE.yardBest = {}; persist(); toast('YARD RECORDS CLEARED', 1.2); })),
+      R('CELL', B(`< ${MAIN_SETS[DEV.cell].toUpperCase()} >`, (d) => { DEV.cell = cyc(DEV.cell, MAIN_SETS.length, d); }), B('ENTER CELL', () => { tut.on = false; game.nextCell = MAIN_SETS[DEV.cell]; game.nextDiff = Math.max(0, SAVE.cleared ?? 0); game.nextStratum = 1; game.nextOmens = []; game.nextVigil = 0; game.state = 'loading'; game.loadT = 0; game.loadOdds = ODDS[0]; }), B('ABSOLVE ALL', () => { SAVE.cells = Object.fromEntries(MAIN_SETS.map((id) => [id, true])); persist(); toast('EVERY BANNER HANGS', 1.2); })),
+      { info: `CLEARED ${(SAVE.cleared ?? -1) + 1} STATIONS   DESCENTS ${SAVE.descents || 0}   GIFTS ${SAVE.gifts || 0}   KEYS ${SAVE.vkeys || 0}` },
     ];
     case 'DEBUG': return [
-      [B(DEV.fps ? 'FPS ON' : 'FPS OFF', () => { DEV.fps = !DEV.fps; }, { on: DEV.fps }), B(PROFON ? 'PROFILE ON' : 'PROFILE OFF', () => { PROFON = !PROFON; }, { on: PROFON }), B(DEV.boxes ? 'HITBOXES ON' : 'HITBOXES OFF', () => { DEV.boxes = !DEV.boxes; }, { on: DEV.boxes }), B(`< SPEED X${DEV.speed} >`, (d) => { const v = [0.25, 0.5, 1, 2, 3]; DEV.speed = v[cyc(v.indexOf(DEV.speed), v.length, d)]; })],
-      [L(`FOES ${enemies.filter((e) => !e.dead).length}  BOLTS ${bolts.length}  PARTS ${parts.length}  FX ${fxs.length}  NUMS ${nums.length}  TEXT ${TEXT_CACHE.size}`, 4, PAL.stone1)],
-      [L(PROFON ? Object.entries(PROF).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `${k} ${(v / 50).toFixed(1)}`).join('  ').toUpperCase() : 'TURN ON PROFILE FOR MS PER SYSTEM', 4, PAL.stone1)],
-      [L(ERRS.length ? `LAST ERROR: ${ERRS[ERRS.length - 1].msg}`.slice(0, 80).toUpperCase() : 'NO ERRORS LOGGED', 4, ERRS.length ? PAL.blood0 : PAL.flame1)],
+      R('SHOW', tog('FPS', DEV.fps, () => { DEV.fps = !DEV.fps; }), tog('PROFILE', PROFON, () => { PROFON = !PROFON; }), tog('HITBOXES', DEV.boxes, () => { DEV.boxes = !DEV.boxes; })),
+      R('GAME SPEED', B(`< SPEED X${DEV.speed} >`, (d) => { const v = [0.25, 0.5, 1, 2, 3]; DEV.speed = v[cyc(v.indexOf(DEV.speed), v.length, d)]; }), B('SKIP TUTORIAL', () => { tut.on = false; SAVE.tutDone = true; persist(); }), B('RESET TUTORIAL', () => { SAVE.tutDone = false; persist(); toast('TUTORIAL RUNS NEXT TIME', 1.2); })),
+      R('SAVE', B(DEV.confirm ? 'TAP AGAIN TO WIPE' : 'RESET SAVE', () => { if (!DEV.confirm) { DEV.confirm = 1; return; } try { localStorage.removeItem('hollow-saint'); } catch { /* private mode */ } location.href = location.pathname + '?dev'; }, { on: !!DEV.confirm, danger: true }), B('CLEAR ERRORS', () => { ERRS.length = 0; try { localStorage.removeItem('hollow-saint-errors'); } catch { /* private mode */ } }), B('HIDE DEV MENU', () => { SAVE.dev = false; persist(); closeDev(); toast('DEV MENU HIDDEN (?dev BRINGS IT BACK)', 2); })),
+      R('COUNTS', L(`FOES ${enemies.filter((e) => !e.dead).length}  BOLTS ${bolts.length}  PARTS ${parts.length}  FX ${fxs.length}  NUMS ${nums.length}  TEXT ${TEXT_CACHE.size}`, 3, PAL.cloth1)),
+      R('PROFILE', L(PROFON ? Object.entries(PROF).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} ${(v / 50).toFixed(1)}`).join('  ').toUpperCase() : 'TURN ON PROFILE FOR MS PER SYSTEM', 3, PAL.cloth1)),
+      R('LAST ERROR', L(ERRS.length ? ERRS[ERRS.length - 1].msg.slice(0, 90).toUpperCase() : 'NONE LOGGED', 3, ERRS.length ? PAL.blood0 : PAL.flame1)),
     ];
   }
   return [];
 }
 function devLayout() {
   const pw = Math.min(640, W - 12), ph = H - 12, x0 = Math.round(W / 2 - pw / 2), y0 = 6;
-  const tabW = Math.floor((pw - 44) / DEV_TABS.length);
-  return { pw, ph, x0, y0, tabW, tabY: y0 + 24, cy: y0 + 50, colW: Math.floor((pw - 24 - 15) / 4), close: { x: x0 + pw - 14, y: y0 + 13, r: 10 } };
+  const tabW = Math.floor((pw - 24) / DEV_TABS.length), labW = Math.min(92, Math.floor(pw * 0.19));
+  const cy = y0 + 62, rh = Math.max(22, Math.min(28, Math.floor((ph - 62 - 22) / 7)));
+  return { pw, ph, x0, y0, tabW, tabY: y0 + 25, cy, rh, labW, colW: Math.floor((pw - 24 - labW - 12) / 3), close: { x: x0 + pw - 14, y: y0 + 13, r: 10 } };
 }
+// Every cell of the tab with its rectangle; row labels and the info line too.
 function devCells(L) {
-  const out = [];
-  devRows().forEach((row, r) => { let c = 0; for (const it of row) { const w = it.w || 1; out.push({ it, x: L.x0 + 12 + c * (L.colW + 5), y: L.cy + r * 26, w: L.colW * w + 5 * (w - 1), h: 21 }); c += w; } });
+  const out = []; let r = 0;
+  for (const row of devRows()) {
+    if (row.info) { out.push({ it: { t: row.info, lab: true, info: true, col: PAL.stone1 }, x: L.x0 + 12, y: L.y0 + L.ph - 20, w: L.pw - 24, h: 12 }); continue; }
+    const y = L.cy + r * L.rh;
+    out.push({ it: { t: row.label, lab: true, head: true }, x: L.x0 + 12, y, w: L.labW, h: L.rh - 5, row: r });
+    let c = 0; for (const it of row.cells) { const w = it.w || 1; out.push({ it, x: L.x0 + 12 + L.labW + 6 + c * (L.colW + 5), y, w: L.colW * w + 5 * (w - 1), h: L.rh - 5 }); c += w; }
+    r++;
+  }
   return out;
 }
 function renderDev() {
-  const L = devLayout();
-  ctx.fillStyle = 'rgba(11,7,16,0.8)'; ctx.fillRect(0, 0, W, H);
+  const L = devLayout(), small = { small: true, outline: null };
+  ctx.fillStyle = 'rgba(11,7,16,0.82)'; ctx.fillRect(0, 0, W, H);
   panelFrame(L.x0, L.y0, L.pw, L.ph);
   headerBar(L.x0, L.y0, L.pw, 22);
-  text('DEV MENU', L.x0 + 10, L.y0 + 7, PAL.flame1); text(game.scene === 'wound' ? `IN A DESCENT: STATION ${ROMAN[(game.run && game.run.diff) || 0]}` : 'IN VAEL', L.x0 + 90, L.y0 + 8, PAL.stone2, { small: true, outline: null });
+  text('DEV MENU', L.x0 + 10, L.y0 + 7, PAL.flame1); text(game.scene === 'wound' ? `IN A DESCENT: STATION ${ROMAN[(game.run && game.run.diff) || 0]}` : 'IN VAEL', L.x0 + 84, L.y0 + 8, PAL.stone2, small);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
-  DEV_TABS.forEach((t, i) => { const r = { x: L.x0 + 12 + i * L.tabW, y: L.tabY, w: L.tabW - 4, h: 20 }; invButton(r, t, i === DEV.tab ? PAL.gold3 : PAL.ink3, true); });
+  // Tabs, then one line saying what the tab is for.
+  DEV_TABS.forEach((t, i) => {
+    const r = { x: L.x0 + 12 + i * L.tabW, y: L.tabY, w: L.tabW - 4, h: 18 }, on = i === DEV.tab;
+    ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); ctx.fillStyle = on ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+    if (on) { ctx.fillStyle = PAL.flame1; ctx.fillRect(r.x, r.y + r.h - 2, r.w, 2); }
+    text(t, r.x + r.w / 2, r.y + 5, on ? PAL.flame1 : PAL.stone1, { ...small, align: 'center' });
+  });
+  text(fitText(DEV_HELP[DEV.tab], L.pw - 24), L.x0 + 12, L.tabY + 23, PAL.stone2, small);
   for (const c of devCells(L)) {
-    if (c.it.lab) { for (const [i, l] of wrapW(c.it.t, c.w - 4, true).slice(0, 2).entries()) text(l, c.x + 2, c.y + 3 + i * 9, c.it.col || PAL.cloth1, { small: true, outline: null }); continue; }
-    invButton(c, c.it.t, c.it.on ? PAL.flame3 || PAL.gold3 : PAL.crimson3, true);
+    if (c.it.head) { if (c.row % 2 === 0) { ctx.fillStyle = 'rgba(42,34,54,0.55)'; ctx.fillRect(L.x0 + 8, c.y - 2, L.pw - 16, L.rh - 1); } text(fitText(c.it.t, c.w), c.x, c.y + Math.floor(c.h / 2) - 4, PAL.gold1, small); continue; }
+    if (c.it.lab) { const lines = wrapW(c.it.t, c.w - 4, true).slice(0, c.it.info ? 1 : 2); lines.forEach((l, i) => text(l, c.x + 2, c.y + (c.it.info ? 0 : Math.floor(c.h / 2) - 4 * lines.length) + i * 9, c.it.col || PAL.cloth1, small)); continue; }
+    const pickr = c.it.t.startsWith('<'), tog = c.it.on !== undefined;
+    invButton(c, c.it.t, c.it.danger ? (c.it.on ? PAL.gold3 : PAL.blood2 || PAL.crimson3) : tog ? (c.it.on ? PAL.flame3 : PAL.ink3) : pickr ? PAL.stone4 : PAL.crimson3, true);
   }
 }
 function devTap(x, y) {
   const L = devLayout();
   if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) return closeDev();
-  for (let i = 0; i < DEV_TABS.length; i++) if (inRect({ x: L.x0 + 12 + i * L.tabW, y: L.tabY, w: L.tabW - 4, h: 20 }, x, y)) { DEV.tab = i; DEV.confirm = 0; sfx('tap', { vol: 0.5 }); return; }
+  for (let i = 0; i < DEV_TABS.length; i++) if (inRect({ x: L.x0 + 12 + i * L.tabW, y: L.tabY, w: L.tabW - 4, h: 18 }, x, y)) { DEV.tab = i; DEV.confirm = 0; sfx('tap', { vol: 0.5 }); return; }
   for (const c of devCells(L)) if (!c.it.lab && inRect(c, x, y)) {
     const keep = c.it.t.startsWith('TAP AGAIN') || c.it.t === 'RESET SAVE';
     if (!keep) DEV.confirm = 0;

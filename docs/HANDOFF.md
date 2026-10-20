@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 33 (build 33.1, on `master`). Read
+Last updated 2026-10-20, after round 33 (build 33.2, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -170,6 +170,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 33.2 (dev menu):** reorganised into HERO, GEAR, FORGE, WORLD, TOWN
+  and DEBUG tabs, each with a help line, a gold label on every row, row
+  shading, a status line at the bottom, and colours by kind (grey pickers,
+  green toggles, red actions, bright red for destructive ones). New tools:
+  max level, max rite ranks, reset Second Breath, wear a set with its arms,
+  +50/+500 Emberstones, force the next reforge quality, worn stats to
+  mythic, an enchant on any worn slot or one of each, ingredients for one
+  enchant, Warden drops on the spot, clear enchants/ingredients/qualities,
+  reset yard records, the Training Yard.
 
 - **Round 33 (reforge qualities, Emberstones, the Enchanter):** reforging no
   longer costs gold: it spends an Emberstone (`loot` `emberstone`, drops `ember`,
