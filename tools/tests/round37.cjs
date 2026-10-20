@@ -1,7 +1,7 @@
 // Playwright check. Serve the repo on :8123 first (python3 -m http.server 8123).
 // Usage: node tools/tests/round37.cjs <outDir> [WxH]
 // Round 37: the forge's BUY tab (prices, asks before packs, gold spent) and
-// the Enchanter's preview of every enchant (photographed mid-loop).
+// every enchant's card at the Enchanter.
 const { chromium, devices } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const S = process.argv[2], WH = (process.argv[3] || '').split('x').map(Number);
 (async () => {
