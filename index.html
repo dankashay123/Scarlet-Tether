@@ -103,9 +103,11 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '40.1';
+const BUILD = '41.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '41.1': ['THE DROWNED FONT: POOLS DEAL X2 AT 4 PIECES AND X4 AT 6 (WAS X1.5 AND X2.5).',
+    'BLOODLETTING HEALS 2% OF YOUR DAMAGE (II: 4%). THE BLOODLETTING WOUND IS NOW CALLED BLOOD MEAL.'],
   '40.1': ['STATION VII AND DEEPER ARE TOUGHER: UP TO 3X MONSTER HEALTH AND 1.7X DAMAGE AT STATION XV.',
     'WARDENS OF STATION XVI+ ALWAYS DROP A BLOODROSE KEY AND A SET PIECE, AND MORE INGREDIENTS. XXI+: A HALLOWED CHRISM. XXVI+: A SECOND SET PIECE.',
     'VIGIL LEVELS NOW FOLLOW ALL THIRTY STATIONS (LEVEL 59 IS STATION XXX).',
@@ -1150,7 +1152,7 @@ function addToll(e) {
 // Wardens are meant to punish: hpK and dmgK on top of their MON stats, and
 // an enrage after `enrage` seconds (double damage, much faster).
 // Set bonus strengths, tuned with tools/tests/setbal.cjs.
-const SETK = { stride: 6, strideT: 5, font: 2.5, bound: 1.4, bound6: 2, crush: 12, choir: 1.25, choirDrain: 18, nail: 0.04, four: 25, nail4: 0.02, stride4: 2, strideT4: 3, font4: 1.5, bound4: 1.3, choir4: 1.1 };
+const SETK = { stride: 6, strideT: 5, font: 4, bound: 1.4, bound6: 2, crush: 12, choir: 1.25, choirDrain: 18, nail: 0.04, four: 25, nail4: 0.02, stride4: 2, strideT4: 3, font4: 2, bound4: 1.3, choir4: 1.1 };
 const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 2 };
 // Gear per kill, before the Station's multiplier. Kept low: progress should take farming.
 const DROP = { kill: 0.003, rare: 0.1, elite: 0.5 }; // hp: the average MON Warden
@@ -2240,7 +2242,7 @@ const ENCHANTS = [
   { id: 'breath', name: 'SECOND BREATH', text: 'ONCE A DESCENT, A KILLING BLOW LEAVES YOU AT 30% HEALTH, UNHARMED FOR 2 S.', t2: 'ONCE A DESCENT, A KILLING BLOW LEAVES YOU AT 50% HEALTH, UNHARMED FOR 3 S.', col: '#ff9ccf', rgb: '255,156,207', ing: ['LAST BREATH', 'VIGIL STUB', 'RED THREAD'] },
   { id: 'boneward', name: 'BONE WARD', text: 'EVERY 12 S, A WARD BLOCKS THE NEXT HIT.', t2: 'EVERY 8 S, A WARD BLOCKS THE NEXT HIT.', col: '#eadfc4', rgb: '234,223,196', ing: ["SAINT'S KNUCKLE", 'WARD STONE', 'CIRCLE CHALK'] },
   { id: 'thorns', name: 'THORNED HIDE', text: 'FOES THAT HIT YOU TAKE FIVE BOLTS OF DAMAGE BACK.', t2: 'FOES THAT HIT YOU TAKE TEN BOLTS OF DAMAGE BACK.', col: '#b6d36a', rgb: '182,211,106', ing: ['BRIAR THORN', 'BRAMBLE TWINE', 'NETTLE OIL'] },
-  { id: 'bloodlet', name: 'BLOODLETTING', text: 'HEAL 1% OF THE DAMAGE YOU DEAL, UP TO 3% HEALTH A SECOND.', t2: 'HEAL 2% OF THE DAMAGE YOU DEAL, UP TO 5% HEALTH A SECOND.', col: '#e8383f', rgb: '232,56,63', ing: ['LEECH OIL', 'BLOOD WAX', "MOURNER'S FANG"] },
+  { id: 'bloodlet', name: 'BLOODLETTING', text: 'HEAL 2% OF THE DAMAGE YOU DEAL, UP TO 3% HEALTH A SECOND.', t2: 'HEAL 4% OF THE DAMAGE YOU DEAL, UP TO 5% HEALTH A SECOND.', col: '#e8383f', rgb: '232,56,63', ing: ['LEECH OIL', 'BLOOD WAX', "MOURNER'S FANG"] },
   { id: 'splinter', name: 'SPLINTER', text: 'KILLED FOES BURST INTO 3 BOLTS.', t2: 'KILLED FOES BURST INTO 5 BOLTS.', col: '#d6955a', rgb: '214,149,90', ing: ['NAIL SPLINTER', 'IRON FILINGS', 'OLD BOWSTRING'] },
   { id: 'frostbite', name: 'FROSTBITE', text: 'BOLTS SLOW FOES BY 30% FOR 2 S. SLOWED FOES TAKE 10% MORE DAMAGE.', t2: 'BOLTS SLOW FOES BY 40% FOR 4 S. SLOWED FOES TAKE 20% MORE DAMAGE.', col: '#6fe0d0', rgb: '111,224,208', ing: ['FONT WATER', 'RIME PEARL', 'COLD ASH'] },
   { id: 'echo', name: "MARTYR'S ECHO", text: 'WHEN HIT, A BLAST STRIKES FOES AROUND YOU. ONCE EVERY 2 S.', t2: 'WHEN HIT, A BIGGER BLAST STRIKES FOES AROUND YOU. ONCE EVERY 1 S.', col: '#ffd155', rgb: '255,209,85', ing: ["MARTYR'S WICK", 'HALO SHARD', 'RELIC TOOTH'] },
@@ -4976,9 +4978,9 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   const before = e.hp / e.maxHp;
   e.hp -= dmg; e.flash = 0.05;
   if (!opts.status && !blocked) e.hitT = HIT_T;
-  if (ench('bloodlet') && player.hp > 0) { // Bloodletting: 1% of damage dealt, at most 3% of health a second
+  if (ench('bloodlet') && player.hp > 0) { // Bloodletting: 2% of damage dealt, at most 3% of health a second
     if (game.time - (player.blT || 0) > 1) { player.blT = game.time; player.blGot = 0; }
-    const h = Math.min(dmg * E2('bloodlet', 0.01, 0.02), player.maxHp * E2('bloodlet', 0.03, 0.05) - (player.blGot || 0)); if (h > 0) { player.hp = Math.min(player.maxHp, player.hp + h); player.blGot = (player.blGot || 0) + h; }
+    const h = Math.min(dmg * E2('bloodlet', 0.02, 0.04), player.maxHp * E2('bloodlet', 0.03, 0.05) - (player.blGot || 0)); if (h > 0) { player.hp = Math.min(player.maxHp, player.hp + h); player.blGot = (player.blGot || 0) + h; }
   }
   if (e.type === 'dummy' && game.yard) { game.yard.hits.push([game.time, dmg]); game.yard.total += dmg; }
   const heavy = e.tier === 'elite' ? 0.15 : e.tier === 'rare' ? 0.4 : 1;
@@ -5203,7 +5205,7 @@ const VSETS = {
   habit: { name: "ODILE'S HABIT", piece: "ODILE'S", slots: GEAR_SLOTS, bonus: [[2, '+10% DAMAGE.'], [4, '+1 DASH CHARGE, +15% DAMAGE.']] },
   nails: { name: 'THE HUNDRED NAILS', piece: 'NAILBEARER\'S', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BOLTS PIERCE ONE MORE FOE AND SPLIT AT THE LAST.'], [4, '+25% DAMAGE. HITS ADD NAIL STACKS (50 MAX): EACH GIVES 1% LESS DAMAGE TAKEN, +2% BOLT DAMAGE.'], [6, 'BOLTS DEAL +4% PER NAIL STACK (INSTEAD OF 2%).']] },
   stride: { name: "THE PENITENT'S STRIDE", piece: "PENITENT'S", slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+1 DASH CHARGE. DASHES LEAVE HOLY FIRE.'], [4, '+25% DAMAGE. X2 FOR 3 S AFTER A DASH. PERFECT DODGES REFILL DASHES AND HALVE DAMAGE 2 S.'], [6, 'FOR 5 S AFTER A DASH, BOLTS, NOVA AND FIRE DEAL X6. EVERY DASH RELEASES A NOVA.']] },
-  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, '+25% DAMAGE. POOLS DEAL X1.5. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.'], [6, 'POOLS DEAL X2.5 AND DRAW FOES IN. KILLS IN THEM SPEED THE VIAL.']] },
+  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, '+25% DAMAGE. POOLS DEAL X2. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.'], [6, 'POOLS DEAL X4 AND DRAW FOES IN. KILLS IN THEM SPEED THE VIAL.']] },
   confessor: { name: 'THE LAST CONFESSOR', piece: 'CONFESSOR\'S', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, 'THE CHAIN BINDS 3 MORE. BOUND FOES TAKE 40% MORE.'], [4, '+25% DAMAGE. BOUND FOES TAKE 30% MORE. EACH BOUND FOE: 8% LESS DAMAGE TAKEN (40% MAX).'], [6, 'BOUND FOES TAKE DOUBLE DAMAGE AND BURST WHEN THEY DIE. THE CHAIN ENDS IN A X12 CRUSH.']] },
   choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, '+25% DAMAGE. IN RECKONING: X1.1 DAMAGE, NO ROOTS OR SLOWS, KILLS HEAL 2%.'], [6, 'RECKONING LASTS WHILE ZEAL REMAINS. X1.25 DAMAGE WHILE IT BURNS.']] },
 };
@@ -7293,7 +7295,7 @@ const WOUNDS = [
   { id: 'luck', name: "MARTYR'S LUCK", r: 0, max: 5, icon: 'seal', text: () => '+8% CRIT CHANCE.' },
   { id: 'heavy', name: 'HEAVY NAILS', r: 1, max: 3, icon: 'seal', text: () => 'CRITICAL NAILS DEAL 50% MORE.' },
   { id: 'fervent', name: 'ZEALOUS', r: 0, max: 3, icon: 'rosary', text: () => '+30% ZEAL GAIN.' },
-  { id: 'letting', name: 'BLOODLETTING', r: 1, max: 3, icon: 'relic', text: () => '+2 HP FOR EVERY KILL.' },
+  { id: 'letting', name: 'BLOOD MEAL', r: 1, max: 3, icon: 'relic', text: () => '+2 HP FOR EVERY KILL.' },
   { id: 'crescent', name: 'CRESCENT OF GRACE', r: 2, max: 3, icon: 'crescent', text: (n) => `A CRESCENT SWEEPS AROUND YOU EVERY ${(3.2 - (n - 1) * 0.5).toFixed(1)} S.` },
   { id: 'pillar', name: 'PILLARS OF LIGHT', r: 2, max: 3, icon: 'pillar', text: (n) => `LIGHT STRIKES ${n + 1} FOES FROM ABOVE EVERY 4 S.` },
   { id: 'orbit', name: 'ORBITING NAILS', r: 1, max: 3, icon: 'orbit', text: (n) => `${2 + n * 2} HOLY NAILS CIRCLE YOU.` },

@@ -8,6 +8,7 @@
 // default 2), so sets can be checked with enchants on (round 40).
 const { chromium, devices } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const secs = +(process.argv[2] || 20), station = +(process.argv[3] || 6), seeds = (process.argv[4] || '1,2').split(',').map(Number);
+const ONLY = (process.env.ONLY || '').split(',').filter(Boolean); // ONLY=none,font runs just those builds
 const ENCH = (process.env.ENCH || '').split(',').filter(Boolean), ENCHT = +(process.env.ENCHT || 2);
 const RITES = { nails: ['storm', 'nailring', 'volley'], stride: ['step', 'ward', 'pilgrim'], font: ['water', 'asperse', 'font'], confessor: ['brand', 'chain', 'greatpen'], choir: ['hymn', 'censer', 'rain'] };
 const BUILDS = [
@@ -19,7 +20,7 @@ const BUILDS = [
   const errs = []; p.on('pageerror', (e) => errs.push(String(e.stack || e)));
   await p.goto('http://localhost:8123/?run'); await p.waitForTimeout(1500);
   const rows = [];
-  for (const [name, main, second] of BUILDS) for (const seed of seeds) {
+  for (const [name, main, second] of BUILDS.filter(([n]) => !ONLY.length || ONLY.includes(n))) for (const seed of seeds) {
     await p.evaluate(([st, main, second, R, seed, ENCH, ENCHT]) => {
       // The same dice for every build: items, map and crowd come from one seed.
       let x = seed * 2654435761 >>> 0; Math.random = () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; };
@@ -54,7 +55,7 @@ const BUILDS = [
     rows.push({ build: name, ...m });
   }
   // Average the seeds of each build.
-  const avg = BUILDS.map(([name]) => { const r = rows.filter((q) => q.build === name), n = r.length; return { build: name, kps: +(r.reduce((a, q) => a + q.kps, 0) / n).toFixed(2), takenPerS: Math.round(r.reduce((a, q) => a + q.takenPerS, 0) / n), maxHp: Math.round(r.reduce((a, q) => a + q.maxHp, 0) / n) }; });
+  const avg = BUILDS.filter(([n]) => !ONLY.length || ONLY.includes(n)).map(([name]) => { const r = rows.filter((q) => q.build === name), n = r.length; return { build: name, kps: +(r.reduce((a, q) => a + q.kps, 0) / n).toFixed(2), takenPerS: Math.round(r.reduce((a, q) => a + q.takenPerS, 0) / n), maxHp: Math.round(r.reduce((a, q) => a + q.maxHp, 0) / n) }; });
   console.table(avg);
   console.log(JSON.stringify(avg));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();

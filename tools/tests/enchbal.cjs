@@ -3,9 +3,10 @@
 // Gear: the Hundred Nails whole with its arms, every stat mythic (an endgame Saint).
 // Enchant balance: the same seeded fight for every build. One enchant at a
 // time at tier I and II, then two "every slot enchanted" combos at each tier.
-// The crowd is dense (50 foes) so chain effects show. Then a lone tough foe
-// for single-target damage a second. Reports kills a second, damage taken a
-// second and single-target dps, each against the no-enchant build.
+// The crowd is dense (50 foes) so chain effects show. Then the guard phase
+// (a fixed ring of foes that cannot die) measures net health lost a second.
+// Reports kills a second, crowd damage taken a second and guard loss, each
+// against the no-enchant build. Lower guard loss means better defence.
 const { chromium, devices } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const secs = +(process.argv[2] || 15), station = +(process.argv[3] || 10), only = (process.argv[4] || '').split(',').filter(Boolean), seeds = (process.argv[5] || '1,2').split(',').map(Number);
 const IDS = ['emberwake', 'stormlink', 'hunger', 'reaper', 'breath', 'boneward', 'thorns', 'bloodlet', 'splinter', 'frostbite', 'echo', 'lastlight', 'relentless', 'phantom', 'tithe', 'ghoststep'];
@@ -49,17 +50,27 @@ for (const t of [1, 2]) { BUILDS.push([`combo A ${t === 1 ? 'I' : 'II'}`, IDS.sl
     }, [station, ench, tier, SLOTS, seed]);
     await p.waitForTimeout(secs * 1000);
     const crowd = await p.evaluate(() => { clearInterval(window.__iv); const S = window.__S, dt = HS.game.time - S.t0; return { kps: +((HS.game.kills - S.kills0) / dt).toFixed(2), takenPerS: Math.round(S.taken / dt), maxHp: HS.player.maxHp }; });
-    // Single target: one tough foe, nothing else.
-    await p.evaluate(() => { for (const e of HS.enemies) e.dead = true; const P = HS.player; HS.input.mx = HS.input.my = 0; HS.input.dash = false; P.dashT = 0; const d = HS.spawnMonster('risen', P.x + 70, P.y, { room: HS.game.curRoom.id }); d.hp = d.maxHp = 1e12; d.state = 'move'; d.spawnDelay = 0; d.bound = 1e9; d.asleep = false; window.__d = d; HS.game.fervor = 0; P.nails = 0; P.hungerN = 0; P.hungerT = 0; HS.game.massacre = null; window.__t1 = HS.game.time + 2; HS.input.m1 = HS.input.m2 = HS.input.pen = false; P.hp = P.maxHp; HS.DEV.god = true; });
-    await p.waitForTimeout(2000); await p.evaluate(() => { const P = HS.player, d = window.__d; HS.input.mx = HS.input.my = 0; d.x = P.x + 70; d.y = P.y; d.hp = d.maxHp; window.__t1 = HS.game.time; window.__hold = setInterval(() => { HS.input.mx = HS.input.my = 0; d.x = P.x + 70; d.y = P.y; P.hp = P.maxHp; if (HS.game.state !== 'play') HS.game.state = 'play'; }, 100); }); await p.waitForTimeout(6000); // 2 s settle, then 6 s measured
-    const single = await p.evaluate(() => (clearInterval(window.__hold), 0) + Math.round((window.__d.maxHp - window.__d.hp) / (HS.game.time - window.__t1)));
-    if (process.env.DBG) console.log(await p.evaluate(() => JSON.stringify({ dist: Math.round(Math.hypot(window.__d.x - HS.player.x, window.__d.y - HS.player.y)), nails: HS.player.nails, dead: window.__d.dead, state: HS.game.state, t: HS.game.time - window.__t1 })));
-    rows.push({ build: name, ...crowd, dps: single });
+    // Guard: a steady test of defence. The Saint stands still and keeps shooting;
+    // twelve foes that cannot die ring it at fixed places. Health is held at 60%
+    // (so Last Light and Second Breath stay out of it); net health lost a second
+    // (damage taken less healing) is the measure. Round 41: replaced the
+    // single-target column, which swung too much to use.
+    await p.evaluate(() => {
+      for (const e of HS.enemies) e.dead = true; const P = HS.player; HS.input.mx = HS.input.my = 0; HS.input.dash = false; HS.input.m1 = HS.input.m2 = HS.input.pen = false; P.dashT = 0;
+      const mix = ['risen', 'crawler', 'flagellant'], home = { x: P.x, y: P.y };
+      window.__ring = []; for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2, m = HS.spawnMonster(mix[k % 3], home.x + Math.cos(a) * 60, home.y + Math.sin(a) * 42, { room: HS.game.curRoom.id }); m.hp = m.maxHp = 1e12; m.spawnDelay = 0; m.asleep = false; window.__ring.push(m); }
+      window.__G = { lost: 0, t0: HS.game.time, hp: Math.round(P.maxHp * 0.6) }; P.hp = window.__G.hp;
+      window.__hold = setInterval(() => { const G = window.__G; HS.input.mx = HS.input.my = 0; P.x = home.x; P.y = home.y; if (HS.game.state !== 'play') { HS.game.state = 'play'; HS.game.stig = null; } HS.game.run.breath = false;
+        G.lost += G.hp - P.hp; P.hp = G.hp = Math.round(P.maxHp * 0.6); for (const m of window.__ring) if (m.hp < m.maxHp * 0.5) m.hp = m.maxHp; }, 50);
+    });
+    await p.waitForTimeout(Math.round(secs * 1000 * 0.8));
+    const single = await p.evaluate(() => { clearInterval(window.__hold); const G = window.__G; for (const m of window.__ring) m.dead = true; return Math.round(G.lost / (HS.game.time - G.t0)); });
+    rows.push({ build: name, ...crowd, guard: single });
     console.log(name, JSON.stringify(crowd), single);
   }
   const names = [...new Set(rows.map((r) => r.build))], avg = (n, k) => { const r = rows.filter((q) => q.build === n); return r.reduce((a, q) => a + q[k], 0) / r.length; };
-  const per = names.map((n) => ({ build: n, kps: +avg(n, 'kps').toFixed(2), takenPerS: Math.round(avg(n, 'takenPerS')), dps: Math.round(avg(n, 'dps')) })); rows.length = 0; rows.push(...per); if (0) rows.push({ build: n, kps: +avg(n, 'kps').toFixed(2), takenPerS: Math.round(avg(n, 'takenPerS')), dps: Math.round(avg(n, 'dps')) });
+  const per = names.map((n) => ({ build: n, kps: +avg(n, 'kps').toFixed(2), takenPerS: Math.round(avg(n, 'takenPerS')), guard: Math.round(avg(n, 'guard')) })); rows.length = 0; rows.push(...per);
   const base = rows[0];
-  console.table(rows.map((r) => ({ build: r.build, kps: r.kps, 'kills x': +(r.kps / base.kps).toFixed(2), taken: r.takenPerS, 'taken x': +(r.takenPerS / Math.max(1, base.takenPerS)).toFixed(2), dps: r.dps, 'dps x': +(r.dps / base.dps).toFixed(2) })));
+  console.table(rows.map((r) => ({ build: r.build, kps: r.kps, 'kills x': +(r.kps / base.kps).toFixed(2), taken: r.takenPerS, 'taken x': +(r.takenPerS / Math.max(1, base.takenPerS)).toFixed(2), guard: r.guard, 'guard x': +(r.guard / Math.max(1, base.guard)).toFixed(2) })));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();
 })();
