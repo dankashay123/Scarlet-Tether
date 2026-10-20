@@ -17,7 +17,7 @@ const has = (f, x, y) => { x = Math.round(x); y = Math.round(y); return x >= 0 &
 
 const M = {
   ...MM,
-  pipe: { ramp: 'iron', spec: 0.6, bias: -0.12, min: 1 }, verd: { ramp: 'teal', spec: 0.2 }, water: { ramp: 'teal', bias: -0.1, min: 3, spec: 0.8 }, waterHi: { ramp: 'holy', min: 1, max: 3 },
+  pipe: { ramp: 'iron', spec: 0.6, bias: -0.12, min: 1 }, verd: { ramp: 'teal', spec: 0.2 }, water: { ramp: 'sea', bias: -0.1, min: 3, spec: 0.8 }, waterHi: { ramp: 'holy', min: 1, max: 3 },
   kelp: { ramp: 'moss', spec: 0.25, min: 1 }, kelpDark: { ramp: 'moss', bias: -0.3, min: 4 },
   wood: { ramp: 'wood', spec: 0.12, bias: 0.02, min: 1 },
   woodDark: { ramp: 'wood', spec: 0.08, bias: -0.16, min: 2 },
@@ -233,6 +233,26 @@ function bonepew() {
   const fr = R(S, 46, 34, M, view(G, d));
   for (const h of heads) sockets(fr, P, ...h);
   return fr;
+}
+// A short stone pedestal with a skull on top: the Ossuary's pillars.
+function skullpillar() {
+  const S = new Scene(), G = 46, cx = 12, d = 5, a = 0.38, P = proj(G, d + 3, a);
+  S.add(box([cx, G - 2.5, 0], [9.6, 2.5, d + 2.8], 0.6, 'ossStoneDark'), 0);
+  S.add(box([cx, G - 5.8, 0], [8, 1.2, d + 1.6], 0.5, 'ossStone'), 0.3);
+  S.add(box([cx, G - 17, 0], [6.4, 10, d], 0.4, 'marble'), 0.4);
+  S.add(box([cx, G - 28, 0], [8.4, 1.6, d + 1.8], 0.5, 'ossStone'), 0.3);
+  S.add(capsule([cx - 6, G - 30.5, 2], [cx + 6, G - 30.5, 4], 1.3, 1.3, 'bone'), 0.3);
+  skull(S, cx, G - 35.5, 2, 5.6);
+  const fr = R(S, 24, 48, M, view(G, d + 3, a));
+  sockets(fr, P, cx, G - 35.5, 2, 5.6);
+  return fr;
+}
+// Broken planks floating in the flood, baked into the floor.
+function plank(i) {
+  const S = new Scene(), s = i ? -1 : 1;
+  S.add(rotZ(box([14, 7, 0], [11, 2, 1], 0.4, 'plank'), [14, 7], 0.18 * s), 0);
+  S.add(rotZ(box([12, 12, 0], [7, 1.8, 1], 0.4, 'woodDark'), [12, 12], -0.3 * s), 0);
+  return R(S, 28, 17, M, {});
 }
 // Loose bones strewn flat on the floor, baked in like the weed mats.
 function bonestrew(i) {
@@ -621,7 +641,7 @@ function pilaster() {
 export default {
   hall: { crate: () => [crate()], pilaster: () => [pilaster()], pillar: () => [0, 1].map(pillar) },
   props: { sarcophagus: () => [sarcophagus()], statue: () => [weepingSaint()], organ: () => [organ()], sunkpew: () => [sunkpew()], kelp: () => [0, 1, 2, 3].map(kelp), weedmat: () => [weedmat()],
-    boneshelf: () => [boneshelf()], skullheap: () => [skullheap()], cairn: () => [cairn(0), cairn(1)], bonepew: () => [bonepew()], bonestrew: () => [0, 1].map(bonestrew) },
+    boneshelf: () => [boneshelf()], skullheap: () => [skullheap()], cairn: () => [cairn(0), cairn(1)], bonepew: () => [bonepew()], bonestrew: () => [0, 1].map(bonestrew), skullpillar: () => [skullpillar()], plank: () => [0, 1].map(plank) },
   loot: {
     chest: () => [chest(false), chest(true)], pew: () => [pew()], altar: () => [altar()],
     shrine: () => ['fervor', 'haste', 'warding', 'plenty'].map(shrine), coffin: () => [coffin(false), coffin(true)],

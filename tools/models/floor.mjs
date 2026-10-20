@@ -69,15 +69,15 @@ function slab(theme, tw, th, v) {
 const anims = {};
 for (const theme of Object.keys(FLOOR_THEMES)) for (const [tw, th] of SLAB_SIZES) anims[`${theme}${tw}${th}`] = () => [0, 1, 2].map((v) => slab(theme, tw, th, v));
 
-// Still, dark water: a flat body, short ripple glints and a rare sparkle.
+// Still, clear sea-green water: a flat body, short ripple glints and a rare sparkle.
 function water(v) {
-  const w = 16, h = 16, px = new Int16Array(w * h).fill(-1), R = FINE.teal;
+  const w = 16, h = 16, px = new Int16Array(w * h).fill(-1), R = FINE.sea;
   const set = (x, y, st) => { px[y * w + x] = IDX[R[st]]; };
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) set(x, y, (y + v * 3) % 8 < 4 ? 6 : 7);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) set(x, y, (y + v * 3) % 8 < 4 ? 5 : 6);
   for (let i = 0; i < 3; i++) {
     const y = (2 + i * 5 + v * 2) % 15, x0 = Math.floor(hash(v, i, 3) * 10), L = 2 + Math.floor(hash(v, i, 4) * 4);
-    for (let x = x0; x < Math.min(16, x0 + L); x++) set(x, y, 4);
-    if (x0 + L < 15) set(x0 + L, y, 5);
+    for (let x = x0; x < Math.min(16, x0 + L); x++) set(x, y, 3);
+    if (x0 + L < 15) set(x0 + L, y, 4);
   }
   if (v === 2) set(11, 6, 1);
   return { w, h, px };

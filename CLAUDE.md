@@ -17,7 +17,7 @@ owner's preferences and a prioritised list of ideas to tackle next.
 | `assets/audio/*.mp3` | Sound effects, music and ambience (committed). Effects: `python3 tools/build-sfx.py <src> [names]` (layered CC0 takes, hall reverb, levelled); music loops: `tools/build-audio.sh <src>`. Packs in `docs/CREDITS.md` |
 | `docs/CREDITS.md` | Every asset source and licence. Add to it when you add an asset |
 | `docs/ART_COMPARISON.md` | Otherworld Legends vs our art: the gap list, map layout recipe, camera and pixel-size measurements |
-| `tools/palette.mjs` | Master palette: 24 ramps × 9 steps. Every pixel must be on it |
+| `tools/palette.mjs` | Master palette: 26 ramps × 9 steps (`sea` is the water ramp). Every pixel must be on it |
 | `tools/preview.mjs` | Render one model set to a PNG for review |
 | `tools/tests/*.cjs` | Playwright checks (see below) |
 | `docs/GDD.md` | Design bible (source of truth) + the v5 art spec |
@@ -111,7 +111,7 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **The Censer:** `CENSER_UP` holds its 12 upgrades, unlocked by lifetime deeds (`SAVE.life`, bumped by `bumpBounty`). Read them with `censerUp(id)`.
 - **Run levels:** capped at `MAX_LEVEL` (15); `xpNeed` grows by `XP_G` from `run.xpBase`, set in `populate()` from the map's foes.
 - **Wounds:** level-up cards in `WOUNDS`. A Wound with `rite` is offered only while that rite is chosen; give each new rite one.
-- **Strata:** `STRATA` and `useStratum(k)` swap the dungeon sheets for that stratum's copies (`STRATUM_SHEET`: `_d` from the `DROWN` remap, `_o` from the `OSSUARY` remap in `tools/sprites.mjs`). Give a monster `stratum: 2` or `3` to put it in that stratum's Warden list; its spawn pools are `COMMON_POOL2/3` and `RARE_POOL2/3`. Room props per stratum: the `drowned` and `ossuary` flags in `populate()`. A stratum opens at `STRATA_NEED` (`strataOpen(k)`); music per stratum is picked in `update()`.
+- **Strata:** `STRATA` and `useStratum(k)` swap the dungeon sheets for that stratum's copies (`STRATUM_SHEET`: `_d` from the `DROWN` remap, `_o` from the `OSSUARY` remap in `tools/sprites.mjs`). Give a monster `stratum: 2` or `3` to put it in that stratum's Warden list; its spawn pools are `COMMON_POOL2/3` and `RARE_POOL2/3`. Room props per stratum: the `drowned` and `ossuary` flags in `populate()` (the Nave's flood, blue flames, skull pedestals, bone piles); `STRATA[k].light`/`torch` set the light colours. A stratum opens at `STRATA_NEED` (`strataOpen(k)`); music per stratum is picked in `update()`.
 - **Training Yard:** `openYard()` starts a run with `run.yard` (like a Penitent Cell): a `dummy` monster counts damage (`yardDps`), the statue opens the summon panel (`yardGeo`, `yardTap`, `yardSummon`). In the yard kills give nothing, XP, deeds and bounties are off, and death restores health. Anything new that pays out on a kill must respect `game.yard`. Best damage a second per build: `SAVE.yardBest`, `yardKey()`.
 - **Town:** two streets. Plan x below `TOWN_SPLIT` is the upper street, the rest the lower street `ROW_DY` further south (`townX`, `townRow`). Sites carry `S.row`; site `dy` already includes the row.
 - **Seeds:** descent maps and their monsters come from `rng`, which `newRun` seeds (`run.seed`) so a suspended run rebuilds the same map. Never use `Math.random` in map building or `populate()`.

@@ -101,9 +101,12 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '32.1';
+const BUILD = '32.2';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '32.2': ['NEW LOOK FOR EVERY STRATUM: MORE TORCHES, A WINDOW OR SKULL NICHE IN EACH BACK WALL, A COMPASS ROSE ON THE FLOOR AND LOOSE BONES.',
+    'THE UNDERCROFT IS WARM SANDSTONE. THE DROWNED NAVE LIES UNDER CLEAR SHALLOW WATER WITH BLUE FLAMES, WEED AND FLOATING PLANKS.',
+    'THE OSSUARY SPIRE HAS SKULL PILLARS, BONE PILES ALONG ITS WALLS AND GREEN CANDLES.'],
   '32.1': ['THE OSSUARY SPIRE HAS ITS OWN ROOMS: SKULL SHELVES, SKULL HEAPS, CANDLE CAIRNS, STONE PEWS AND LOOSE BONES.',
     'THE TRAINING YARD KEEPS YOUR BEST DAMAGE A SECOND FOR EACH SET AND RITES YOU USE.',
     'THE OSSUARCH AND THE ASH WIDOW EACH LEARNED A NEW ATTACK. THE WIDOW\'S FIRE POOLS BURN HOTTER.'],
@@ -708,12 +711,12 @@ function makeDungeon() {
     const W0 = r.x1 - r.x0 + 1, H0 = r.y1 - r.y0 + 1;
     const fx = (f) => r.x0 + Math.round(f * (W0 - 1)), fy = (f) => r.y0 + Math.round(f * (H0 - 1));
     const mirror = (f, g, fn) => { const xs = [...new Set([fx(f), fx(1 - f)])], ys = [...new Set([fy(g), fy(1 - g)])]; for (const x of xs) for (const y of ys) fn(x, y); };
-    const pillar = (x, y) => { if (roomFree(r, x - 1, y - 1, 3, 3, 0)) place(r, 'pillar', x, y, 1, 1, { sheet: 'hall', anim: 'pillar', frame: Math.floor(rng() * 2) }); };
+    const pillar = (x, y) => { if (roomFree(r, x - 1, y - 1, 3, 3, 0)) place(r, 'pillar', x, y, 1, 1, ossuary ? { sheet: 'props', anim: 'skullpillar' } : { sheet: 'hall', anim: 'pillar', frame: Math.floor(rng() * 2) }); };
     const stand = (x, y) => { if (roomFree(r, x, y, 1, 1, 0)) place(r, 'torch', x, y, 1, 1, { sheet: 'hall', anim: 'torch', ph: rng() * 9 }); };
     const urn = (x, y) => { if (roomFree(r, x, y, 1, 1, 0)) place(r, 'urn', x, y, 1, 1, { sheet: 'hall', anim: 'urn', frame: (x + y) % 2, breakable: 1 }); };
     const pool = (x0, y0, x1, y1) => { const mx = (x0 + x1) / 2, my = (y0 + y1) / 2, rx = (x1 - x0) / 2 + 0.5, ry = (y1 - y0) / 2 + 0.5; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (((x - mx) / rx) ** 2 + ((y - my) / ry) ** 2 < 1 && !isSolid(x, y) && !nearGate(r, x, y, 3)) water.push([x, y]); };
     const sarco = (x, y) => { if (roomFree(r, x - 1, y, 2, 1, 1)) place(r, 'sarcophagus', x - 1, y, 2, 1); };
-    const cage = (x, y) => { const k = rng() < 0.7 ? 'cage' : 'maiden'; if (roomFree(r, x, y, 1, 1, 1)) place(r, k, x, y, 1, 1, { sheet: 'loot', anim: k }); };
+    const cage = (x, y) => { const k = rng() < 0.7 ? 'cage' : 'maiden'; if (roomFree(r, x, y, 1, 1, 1)) { place(r, k, x, y, 1, 1, { sheet: 'loot', anim: k }); decals.push({ kind: 'bonepile', x: (x + 1.2) * TILE, y: (y + 1.3) * TILE }); } };
     const special = r.type === 'shrine' || r.type === 'treasury';
     if (r.type === 'start') {
       for (let y = r.y0 + 6; y < r.y1 - 2; y += 3) for (const x of [cx - 4, cx + 3]) if (roomFree(r, x, y, 2, 1, 0)) place(r, 'pew', x, y, 2, 1, PEW());
@@ -764,8 +767,8 @@ function makeDungeon() {
       const sx = x + (x < cx ? 2 : -2); if (!nearDoor(sx, 1)) stand(sx, r.y0 + 1);
     }
     if (northDoor) for (const x of [Math.min(...doorX) - 2, Math.max(...doorX) + 2]) if (!isSolid(x, r.y0 + 1) && !isSolid(x, r.y0 + 2)) place(r, 'statue_knight', x, r.y0 + 1, 1, 1, { sheet: 'hall' });
-    // Torch stands in the bottom corners.
-    for (const [x, y] of [[r.x0 + 1, r.y1 - 1], [r.x1 - 1, r.y1 - 1]]) if (!nearGate(r, x, y, 2)) stand(x, y);
+    // Torch stands in all four corners and halfway down each side wall.
+    for (const [x, y] of [[r.x0 + 1, r.y1 - 1], [r.x1 - 1, r.y1 - 1], [r.x0 + 1, r.y0 + 1], [r.x1 - 1, r.y0 + 1], [r.x0 + 1, cy], [r.x1 - 1, cy]]) if (!nearGate(r, x, y, 2)) stand(x, y);
     // Breakables: one to three in each corner, tucked against the walls.
     for (const [x, y, dx, dy] of [[r.x0 + 1, r.y0 + 3, 1, 0], [r.x1 - 1, r.y0 + 3, -1, 0], [r.x0 + 2, r.y1 - 1, 1, 0], [r.x1 - 2, r.y1 - 1, -1, 0]]) {
       if (rng() < (r.plan === 'corners' ? 0 : 0.3)) continue;
@@ -774,6 +777,21 @@ function makeDungeon() {
       for (let k = 0; k < n; k++) { const tx = x + dx * k, ty = y + (k === 2 ? (y < cy ? 1 : -1) : 0), ox = k === 2 ? x : tx; if (!roomFree(r, ox, ty, 1, 1, 0)) continue; place(r, kind, ox, ty, 1, 1, kind === 'urn' ? { sheet: 'hall', anim: 'urn', frame: k % 2, breakable: 1 } : kind === 'crate' ? { sheet: 'hall', anim: 'crate', breakable: 2 } : { sheet: 'loot', anim: 'coffin', breakable: 2 }); }
     }
     if (r.theme === 'ossuary') for (const [x, y] of [[r.x0 + 2, r.y1 - 2], [r.x1 - 2, r.y1 - 2]]) decals.push({ kind: 'bonepile', x: x * TILE, y: y * TILE });
+    // The Ossuary heaps bones along the foot of its walls.
+    if (ossuary) for (let k = 0; k < 4 + Math.floor(rng() * 3); k++) { const side = k % 3, x = side === 0 ? rand(r.x0 + 2, r.x1 - 2) : side === 1 ? r.x0 + 1.4 : r.x1 - 0.4, y = side === 0 ? r.y0 + 2.6 : rand(r.y0 + 3, r.y1 - 1); if (!isSolid(Math.floor(x), Math.floor(y)) && !nearGate(r, Math.floor(x), Math.floor(y), 2)) decals.push({ kind: 'bonepile', x: x * TILE, y: y * TILE }); }
+    // A few loose bones in the other strata too.
+    if (!ossuary && rng() < 0.6) decals.push({ kind: 'bonestrew', x: rand(r.x0 + 2, r.x1 - 2) * TILE, y: rand(r.y0 + 3, r.y1 - 1) * TILE, f: Math.floor(rng() * 2) });
+    // The Nave lies under a shallow flood: overlapping pools leave dry stone
+    // along the back wall, round the doors and in patches between.
+    if (drowned && r.type !== 'treasury') {
+      const n0 = water.length, n = r.type === 'start' || r.type === 'shrine' ? 2 : 3 + Math.floor(rng() * 3);
+      for (let k = 0; k < n; k++) { const bx = rand(r.x0 + 4, r.x1 - 4), by = rand(r.y0 + 5, r.y1 - 3), rx = rand(3, 7.5), ry = rand(2, 4.5); pool(Math.round(bx - rx), Math.max(r.y0 + 3, Math.round(by - ry)), Math.round(bx + rx), Math.min(r.y1, Math.round(by + ry))); }
+      const wet = new Set(water.slice(n0).map(([x, y]) => `${x},${y}`)), shore = water.slice(n0).filter(([x, y]) => !wet.has(`${x},${y - 1}`) || !wet.has(`${x - 1},${y}`) || !wet.has(`${x + 1},${y}`));
+      for (let k = 0; k < Math.min(4, shore.length); k++) { const [x, y] = shore[Math.floor(rng() * shore.length)]; decals.push({ kind: 'kelp', x: (x + 0.5) * TILE, y: (y + 1) * TILE, ph: rng() * 4 }); }
+      for (let k = 0; k < Math.min(5, shore.length); k++) { const [x, y] = shore[Math.floor(rng() * shore.length)]; decals.push({ kind: 'weedmat', x: (x + 0.5) * TILE, y: (y + 0.5) * TILE }); }
+      const deep = water.slice(n0).filter(([x, y]) => wet.has(`${x},${y - 1}`) && wet.has(`${x},${y + 1}`) && wet.has(`${x - 1},${y}`) && wet.has(`${x + 1},${y}`));
+      for (let k = 0; k < Math.min(rng() < 0.5 ? 1 : 2, deep.length); k++) { const [x, y] = deep[Math.floor(rng() * deep.length)]; decals.push({ kind: 'plank', x: (x + 0.5) * TILE, y: (y + 0.5) * TILE, f: Math.floor(rng() * 2) }); }
+    }
     if (drowned) {
       // Kelp in the corners and mats of weed on the floor.
       for (const [x, y] of [[r.x0 + 1, r.y0 + 2], [r.x1 - 1, r.y0 + 2], [r.x0 + 1, r.y1 - 2], [r.x1 - 1, r.y1 - 2]]) if (rng() < 0.7 && !isSolid(x, y)) decals.push({ kind: 'kelp', x: (x + 0.5) * TILE, y: (y + 1) * TILE, ph: rng() * 4 });
@@ -804,7 +822,8 @@ function makeDungeon() {
   const SIZES = [[3, 3, 2], [3, 2, 3], [2, 3, 3], [2, 2, 6], [2, 1, 4], [1, 2, 4], [1, 1, 2]];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (taken.has(`${x},${y}`) || !plain(x, y)) continue;
-    const r = roomAt(x, y), th = r ? r.theme : 'corridor';
+    // The Undercroft lays warm sandstone in every room.
+    const r = roomAt(x, y), th = r ? ((game.buildStratum || 1) === 1 ? 'chapel' : r.theme) : 'corridor';
     const fits = ([sw, sh]) => { for (let j = 0; j < sh; j++) for (let i = 0; i < sw; i++) { const k = `${x + i},${y + j}`; if (taken.has(k) || !plain(x + i, y + j) || roomAt(x + i, y + j) !== r) return false; } return true; };
     const opts = SIZES.filter((z) => (r || z[0] * z[1] <= 2) && fits(z));
     let roll = rng() * opts.reduce((a, z) => a + z[2], 0), pickz = opts[opts.length - 1];
@@ -817,7 +836,9 @@ function makeDungeon() {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (isFloor(x, y)) {
       const r = roomAt(x, y), key = `${x},${y}`;
-      if (waterSet.has(key)) { const wf = frameOf('floor', 'water', (x * 3 + y) % 4); rc.drawImage(IMG.floor, wf.x, wf.y, 16, 16, x * TILE, y * TILE, 16, 16); if (!waterSet.has(`${x},${y - 1}`)) { rc.fillStyle = PAL.ink2; rc.fillRect(x * TILE, y * TILE, 16, 2); rc.fillStyle = PAL.teal4h; rc.fillRect(x * TILE, y * TILE + 2, 16, 1); } }
+      if (waterSet.has(key)) { const wf = frameOf('floor', 'water', (x * 3 + y) % 4); rc.drawImage(IMG.floor, wf.x, wf.y, 16, 16, x * TILE, y * TILE, 16, 16); if (!waterSet.has(`${x},${y - 1}`)) { rc.fillStyle = PAL.ink2; rc.fillRect(x * TILE, y * TILE, 16, 2); rc.fillStyle = PAL.sea2; rc.fillRect(x * TILE, y * TILE + 2, 16, 2); }
+        // A pale lip of foam where the water meets dry stone on the other sides.
+        rc.fillStyle = PAL.sea1h; if (!waterSet.has(`${x},${y + 1}`)) rc.fillRect(x * TILE, y * TILE + 14, 16, 2); if (!waterSet.has(`${x - 1},${y}`)) rc.fillRect(x * TILE, y * TILE, 2, 16); if (!waterSet.has(`${x + 1},${y}`)) rc.fillRect(x * TILE + 14, y * TILE, 2, 16); }
       else if (!taken.has(key)) tile(t.carpet[x - r.cx === -1 ? 1 : x - r.cx === 1 ? 2 : (rng() < 0.1 ? 3 : 0)], x, y);
       continue;
     }
@@ -831,8 +852,10 @@ function makeDungeon() {
   // Back walls follow a 7-tile rhythm mirrored about the room centre:
   // pilaster (0), torch stand (2), statue (4), window or banner (6).
   const bay = (r, x) => Math.abs(x - r.cx) % 7;
+  const midWall = (r) => !r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - r.cx) <= 2)) && !isSolid(r.cx, r.y0) && isSolid(r.cx, r.y0 - 1);
   for (const r of rooms) for (let x = r.x0; x <= r.x1; x++) {
     if (x !== r.x0 && x !== r.x1 && bay(r, x) !== 0) continue;
+    if (x === r.cx && midWall(r)) continue;
     const px = x;
     if (r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - px) <= 1))) continue;
     if (isSolid(px, r.y0) || !isSolid(px, r.y0 - 1)) continue;
@@ -841,15 +864,23 @@ function makeDungeon() {
   for (const r of rooms) if (!pil.has(`${r.id},${r.x1}`) && !isSolid(r.x1, r.y0) && isSolid(r.x1, r.y0 - 1) && !r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - r.x1) <= 1))) { rc.drawImage(IMG.hall, PL.x, PL.y, PL.w, PL.h, r.x1 * TILE, (r.y0 - 4) * TILE, PL.w, PL.h); pil.add(`${r.id},${r.x1}`); }
   // An engraved seal in the middle of the floor of crypts, ossuaries and reliquaries.
   for (const r of rooms) {
-    if (r.type === 'start' || r.type === 'exit' || r.theme === 'chapel' || r.theme === 'flooded') continue;
+    if (r.type === 'start' || r.type === 'exit' || r.theme === 'chapel') continue;
     if (r.type !== 'elite' && rng() < 0.4) continue;
     const ox = (r.cx + 0.5) * TILE, oy = (r.cy + 0.5) * TILE, R0 = r.type === 'elite' ? 46 : 36;
-    const groove = (x, y) => { x = Math.round(x); y = Math.round(y); if (isSolid(Math.floor(x / TILE), Math.floor(y / TILE))) return; rc.fillStyle = PAL.stone4h; rc.fillRect(x, y, 1, 1); rc.fillStyle = PAL.stone2h; rc.fillRect(x + 1, y + 1, 1, 1); };
+    const groove = (x, y) => { x = Math.round(x); y = Math.round(y); if (isSolid(Math.floor(x / TILE), Math.floor(y / TILE)) || waterSet.has(`${Math.floor(x / TILE)},${Math.floor(y / TILE)}`)) return; rc.fillStyle = PAL.stone4h; rc.fillRect(x, y, 1, 1); rc.fillStyle = PAL.stone2h; rc.fillRect(x + 1, y + 1, 1, 1); };
     const circle = (rr) => { for (let a = 0; a < Math.PI * 2; a += 0.5 / rr) groove(ox + Math.cos(a) * rr, oy + Math.sin(a) * rr * 0.62); };
     circle(R0); circle(R0 - 5);
-    // A hexagram: two triangles joining every second point of six.
-    for (let k = 0; k < 6; k++) { const a0 = k * Math.PI / 3 - Math.PI / 2, a1 = a0 + Math.PI * 2 / 3, rr = R0 - 5, x0 = ox + Math.cos(a0) * rr, y0 = oy + Math.sin(a0) * rr * 0.62, x1 = ox + Math.cos(a1) * rr, y1 = oy + Math.sin(a1) * rr * 0.62; for (let t = 0; t <= 1; t += 0.012) groove(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t); }
+    // A compass rose: eight points, long on the four winds, each with a ridge.
+    const line = (x0, y0, x1, y1) => { for (let t = 0; t <= 1; t += 0.012) groove(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t); };
+    const pt = (a, rr) => [ox + Math.cos(a) * rr, oy + Math.sin(a) * rr * 0.62];
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 - Math.PI / 2, tip = pt(a, k % 2 ? (R0 - 5) * 0.62 : R0 - 7), inL = pt(a - Math.PI / 8, (R0 - 5) * 0.24), inR = pt(a + Math.PI / 8, (R0 - 5) * 0.24); line(...inL, ...tip); line(...tip, ...inR); if (k % 2 === 0) line(ox, oy, ...tip); }
     for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6, x = ox + Math.cos(a) * (R0 - 2.5), y = oy + Math.sin(a) * (R0 - 2.5) * 0.62; groove(x - 1, y); groove(x + 1, y); groove(x, y - 1); }
+  }
+  for (const r of rooms) if (midWall(r)) {
+    const x = r.cx;
+    if (ossuary || r.theme === 'ossuary') { const sf = frameOf('loot', 'skullwall', 0); rc.drawImage(IMG.loot, sf.x, sf.y, sf.w, sf.h, x * TILE, (r.y0 - 3) * TILE, sf.w, sf.h); continue; }
+    const df = HA.decor[0]; rc.drawImage(IMG.hall, df.x, df.y, df.w, df.h, x * TILE + 8 - df.w / 2, (r.y0 - 3) * TILE, df.w, df.h);
+    lights.push({ x: x * TILE + 8, y: (r.y0 - 3) * TILE + 26, r: 40, c: drowned ? 'holy' : r.type === 'elite' ? 'gold' : 'violet', a: 0.6 });
   }
   // Wall decor above each room's top edge.
   for (const r of rooms) for (let x = r.x0 + 1; x < r.x1; x++) {
@@ -865,6 +896,7 @@ function makeDungeon() {
     if (d.kind === 'bonepile') { if (isSolid(Math.floor(d.x / TILE), Math.floor(d.y / TILE))) continue; const f = frameOf('props', 'bonepile', 0); rc.drawImage(IMG.props, f.x, f.y, f.w, f.h, Math.round(d.x - f.w / 2), Math.round(d.y - f.h / 2), f.w, f.h); }
     if (d.kind === 'web') { const f = frameOf('loot', 'web', 0); rc.save(); rc.translate(d.x, d.y); if (d.flip) rc.scale(-1, 1); rc.drawImage(IMG.loot, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h); rc.restore(); }
     if (d.kind === 'bonestrew') { const tx = Math.floor(d.x / TILE), ty = Math.floor(d.y / TILE); if (isSolid(tx, ty) || [-1, 0, 1].some((k) => propTiles.has(`${tx + k},${ty}`) || propTiles.has(`${tx + k},${ty + 1}`))) continue; const f = frameOf('props', 'bonestrew', d.f); rc.drawImage(IMG.props, f.x, f.y, f.w, f.h, Math.round(d.x - f.w / 2), Math.round(d.y - f.h / 2), f.w, f.h); }
+    if (d.kind === 'plank') { const f = frameOf('props', 'plank', d.f); rc.drawImage(IMG.props, f.x, f.y, f.w, f.h, Math.round(d.x - f.w / 2), Math.round(d.y - f.h / 2), f.w, f.h); }
     if (d.kind === 'weedmat') { if (isSolid(Math.floor(d.x / TILE), Math.floor(d.y / TILE))) continue; const f = frameOf('props', 'weedmat', 0); rc.drawImage(IMG.props, f.x, f.y, f.w, f.h, Math.round(d.x - f.w / 2), Math.round(d.y - f.h / 2), f.w, f.h); }
     if (d.kind === 'hangchain') { const f = frameOf('loot', 'hangchain', 0); rc.drawImage(IMG.loot, f.x, f.y, f.w, f.h, Math.round(d.x), Math.round(d.y), f.w, f.h); }
   }
@@ -873,7 +905,7 @@ function makeDungeon() {
   stain = roomCanvas; sctxStain = rc;
   const ST = STRATA[game.buildStratum || 1];
   // A stratum can swap its warm torchlight for its own colour.
-  for (const l of lights) { l.r *= WS; if (ST.light && (l.c === 'ember' || l.c === 'gold')) l.c = ST.light; }
+  for (const l of lights) { l.r *= WS; if (ST.light && (l.c === 'ember' || l.c === 'gold' || l.c === 'flame')) l.c = ST.light; }
   room = { kind: 'wound', name: ST.name, w, h, solid, isSolid, props, lights, decals: decals.filter((d) => d.kind === 'candles' || d.kind === 'kelp'), npcs: [], interact: [], pw: w * TILE, ph: h * TILE, top: 4, ambient: ST.ambient || T.ambient, torch: ST.torch, rooms, start, critters, water: waterSet, walls: [], baseSolid, seen: new Uint8Array(w * h) };
   room.fog = document.createElement('canvas'); room.fog.width = w; room.fog.height = h; room.fogCtx = room.fog.getContext('2d');
   room.cx = start.cx; room.cy = start.cy;
@@ -1446,7 +1478,7 @@ function resetWorld() {
 }
 // Stratum II swaps the dungeon sheets for their drowned copies (see
 // tools/sprites.mjs, DROWN) and floods more rooms.
-const STRATA = { 1: { name: 'THE UNDERCROFT', ambient: null, themes: null }, 2: { name: 'THE DROWNED NAVE', ambient: 'rgba(4,14,20,0.55)', themes: ['flooded', 'flooded', 'flooded', 'crypt', 'chapel'] },
+const STRATA = { 1: { name: 'THE UNDERCROFT', ambient: null, themes: null }, 2: { name: 'THE DROWNED NAVE', ambient: 'rgba(4,14,20,0.55)', light: 'holy', torch: ['63,164,240', '138,224,255'], themes: ['flooded', 'flooded', 'flooded', 'crypt', 'chapel'] },
   3: { name: 'THE OSSUARY SPIRE', ambient: 'rgba(10,10,16,0.58)', light: 'ash', torch: ['96,180,110', '190,232,170'], themes: ['ossuary', 'ossuary', 'ossuary', 'crypt', 'chapel'] } };
 // Sheet suffix per stratum: its own ramp-swapped copies of the dungeon sheets.
 const STRATUM_SHEET = { 2: '_d', 3: '_o' };
@@ -5738,7 +5770,7 @@ function glow(x, y, r, c, g2 = GLOW_TO || ctx) {
   g2.drawImage(img, x - r, y - r, r * 2, r * 2);
   g2.globalAlpha = a0;
 }
-const LIGHT_RGB = { ash: '176,214,160', flame: '95,220,108', ember: '255,122,31', holy: '138,224,255', gold: '255,209,85', blood: '224,32,46', violet: '154,106,230' };
+const LIGHT_RGB = { ash: '176,214,160', flame: '255,190,90', ember: '255,122,31', holy: '138,224,255', gold: '255,209,85', blood: '224,32,46', violet: '154,106,230' };
 const onScreen = (x, y, cx, cy, m) => x > cx - m && x < cx + W + m && y > cy - m && y < cy + H + m;
 
 // ?prof: time each part of the frame draw (PROF['r:<part>']).

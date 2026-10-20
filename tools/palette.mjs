@@ -31,6 +31,7 @@ const R = {
   pot: ['#f0d9b5', '#d0ae86', '#a6806a', '#7a5a52', '#4f3a3c'],
   // Round 18: the pink of the Bloodrose Keys.
   rose: ['#ffe0f0', '#ff9ccf', '#e85aa6', '#a8336f', '#5c1a44'],
+  sea: ['#c4fff4', '#6fe0d0', '#2fa8ae', '#1c7183', '#124556'],
 };
 
 // v3: each 5-step ramp gains in-between tones, giving 9 shades per material.

@@ -2090,12 +2090,13 @@ const sheets = [saint2Sheet(), hallSheet(), risenSheet(), wardenSheet(), tilesSh
 for (const name of Object.keys(OVR)) if (!sheets.some((s) => s.name === name)) sheets.push(sheet(name, {}));
 // Stratum II, the Drowned Nave: the dungeon sheets again with their ramps
 // swapped step for step, so every pixel stays on the palette.
-const DROWN = { flag: 'teal', teal: 'slate', stone: 'slate', brick: 'moss', wood: 'shroud', sand: 'teal' };
-const drownIdx = new Map();
-for (const [from, to] of Object.entries(DROWN)) FINE[from].forEach((n, i) => drownIdx.set(IDX[n], IDX[FINE[to][i]]));
+// Flames burn blue (ember to holy) everywhere but the loot sheet, so drops
+// and their fire still read the same.
+const DROWN = { flag: 'teal', teal: 'slate', stone: 'slate', brick: 'moss', wood: 'shroud', sand: 'teal', ember: 'holy' };
+const drownMap = (loot) => { const m = new Map(); for (const [from, to] of Object.entries(DROWN)) if (!(loot && from === 'ember')) FINE[from].forEach((n, i) => m.set(IDX[n], IDX[FINE[to][i]])); return m; };
 for (const name of ['hall', 'floor', 'walldecor', 'props', 'loot']) {
   const src = sheets.find((q) => q.name === name); if (!src) continue;
-  const f = new Frame(src.frame.w, src.frame.h);
+  const f = new Frame(src.frame.w, src.frame.h), drownIdx = drownMap(name === 'loot');
   for (let i = 0; i < f.px.length; i++) { const v = src.frame.px[i]; f.px[i] = drownIdx.has(v) ? drownIdx.get(v) : v; }
   sheets.push({ name: `${name}_d`, frame: f, json: { ...src.json, image: `${name}_d.png` } });
 }

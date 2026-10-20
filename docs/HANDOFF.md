@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 32 (build 32.1, on `master`). Read
+Last updated 2026-10-20, after round 32 (build 32.2, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -39,7 +39,7 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 - **Look:** sculpted SDF pixel art on a chunky 2x2 grid (the Otherworld
   Legends look), whole-number scaling, a 305 px tall view, torch light on
-  dark stone. Every pixel is on the palette (`tools/palette.mjs`, 25 ramps).
+  dark stone. Every pixel is on the palette (`tools/palette.mjs`, 26 ramps; `sea` was added in 32.2 for water).
   `resize()` sizes from `visualViewport` and re-checks twice a second
   (iPhone Safari's toolbars once left a black band).
 - **Text and HUD (rounds 29-30):** all text is Barlow Semi Condensed
@@ -155,6 +155,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 32.2 (strata restyled after the owner's concept image):** every
+  room gets torch stands in all four corners and halfway down each side
+  wall; the centre of each back wall holds a stained-glass window (Undercroft,
+  Nave) or a skull niche (Ossuary) instead of a pilaster (`midWall`); the
+  floor seal is a compass rose, drawn on dry stone in the Nave too; loose
+  bones lie in every stratum; cages get a bone pile at their foot. The
+  Undercroft lays the warm chapel flagstones in every room. The Nave lies
+  under a shallow flood of overlapping pools in nearly every room (water
+  is only drawn, never solid), with weed and kelp on the shores and planks
+  floating (`plank`); its flames burn blue (`DROWN` maps ember to holy,
+  except on the loot sheet; `STRATA[2].light`/`torch`). Water uses the new
+  `sea` ramp with a pale foam lip on every shore. The Ossuary uses skull
+  pedestals for pillars (`skullpillar`) and heaps bones along its walls.
+  Candle light (`LIGHT_RGB.flame`) is warm gold now (it was green) and
+  takes the stratum's light colour.
 
 - **Round 32 (Ossuary rooms, yard records, Stratum III Wardens):** new
   props for the Ossuary Spire (skull shelf, skull heap, candle cairn, bone
