@@ -10,8 +10,9 @@
 <title>Hollow Saint</title>
 <style>
   html, body { margin: 0; height: 100%; background: #0b0710; overflow: hidden; }
+  body { position: fixed; inset: 0; }
   body { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-  canvas { position: absolute; image-rendering: pixelated; image-rendering: crisp-edges; }
+  canvas { position: fixed; image-rendering: pixelated; image-rendering: crisp-edges; }
   @font-face { font-family: 'Saint UI'; src: url('assets/fonts/ui.ttf') format('truetype'); font-weight: 600; font-display: block; }
 </style>
 </head>
@@ -62,10 +63,17 @@ let W = 480, H = 270, SCALE = 1, PRE = 1, darkBase = null;
 // The game is always landscape: held upright, the canvas is turned a
 // quarter turn so its long side runs down the screen (see toLocal).
 let PORTRAIT = false;
+let VIEW_SEEN = '';
 function resize() {
   const dpr = window.devicePixelRatio || 1;
-  PORTRAIT = innerHeight > innerWidth;
-  const vw = PORTRAIT ? innerHeight : innerWidth, vh = PORTRAIT ? innerWidth : innerHeight;
+  // Size from the visible area: on iPhone Safari innerHeight can lag behind
+  // the toolbars hiding or showing, which left a black band at the top.
+  const vv = window.visualViewport, iw = vv ? vv.width : innerWidth, ih = vv ? vv.height : innerHeight;
+  const ox = vv ? vv.offsetLeft : 0, oy = vv ? vv.offsetTop : 0;
+  VIEW_SEEN = `${iw}x${ih}x${ox}x${oy}x${dpr}`;
+  if (scrollX || scrollY) scrollTo(0, 0);
+  PORTRAIT = ih > iw;
+  const vw = PORTRAIT ? ih : iw, vh = PORTRAIT ? iw : ih;
   const dw = Math.floor(vw * dpr), dh = Math.floor(vh * dpr);
   // Always a whole-number scale with nearest-neighbour pixels, so every art
   // pixel is a crisp square block on screen (the Otherworld Legends look).
@@ -81,7 +89,7 @@ function resize() {
   dark.width = Math.ceil(W / 2); dark.height = Math.ceil(H / 2); darkBase = null;
   const cw = W * SCALE / dpr, ch = H * SCALE / dpr;
   screen.style.width = cw + 'px'; screen.style.height = ch + 'px';
-  screen.style.left = ((innerWidth - cw) / 2) + 'px'; screen.style.top = ((innerHeight - ch) / 2) + 'px';
+  screen.style.left = (ox + (iw - cw) / 2) + 'px'; screen.style.top = (oy + (ih - ch) / 2) + 'px';
   screen.style.transform = PORTRAIT ? 'rotate(90deg)' : '';
   screen.style.imageRendering = PRE === SCALE ? '' : 'auto';
   ctx.imageSmoothingEnabled = sctx.imageSmoothingEnabled = false;
@@ -93,9 +101,10 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '29.1';
+const BUILD = '29.2';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '29.2': ['FIXED A BLACK BAND AT THE TOP OF THE SCREEN ON SOME PHONES.', 'THE ZEAL LABEL LINES UP WITH ITS BAR.'],
   '29.1': ['A NEW, CLEANER FONT FOR ALL TEXT.', 'NEW HEALTH AND ZEAL BARS AT THE TOP LEFT. UNDER ZEAL: YOUR DAMAGE BONUS AND THE NEXT STEP.', 'A SMALLER LEVEL BAR AT THE BOTTOM.'],
   '28.1': ['EVERY PASSIVE HAS AN ICON. EIGHT NEW PASSIVES ARE EARNED BY DEEDS.', 'FOUR PIECES OF ANY SET NOW ALSO GIVE +25% DAMAGE.'],
   '27.1': ['PASSIVE SKILLS: THREE SLOTS, OPENED BY DEVOTION. FIND THEM IN THE RITES PANEL.', 'THE WEEPING RELIQUARY NOW SENDS HORDES: KILL 100.',
@@ -6344,9 +6353,10 @@ function renderHud() {
   text(`${Math.ceil(p.hp)} / ${p.maxHp}`, 8 + hw / 2, 10, PAL.white, { align: 'center', small: true });
   hudY = 24;
   if (game.scene === 'wound') {
-    const tier = fervorTier(), framp = ['ember', 'ember', 'crimson', 'gold'][tier], zw = Math.round(hw * 0.78);
+    const tier = fervorTier(), framp = ['ember', 'ember', 'crimson', 'gold'][tier], lw = Math.ceil(Math.max(...T.fervor.tiers.map((n) => textW(n, 1, true)))), zw = hw - lw - 6;
     hudBar(8, 25, zw, 6, game.fervor / 100, 0, framp, false, 4);
-    text(T.fervor.tiers[tier], 8 + zw + 5, 23, PAL[framp + '1'], { small: true });
+    // The label is centred on the bar's height; bar and label together span the HP bar.
+    text(T.fervor.tiers[tier], 8 + zw + 6, 28 - UI_FONT.capSmall / 2 + 0.3, PAL[framp + '1'], { small: true });
     const bonus = tier * 10 * (game.buff && game.buff.kind === 'fervor' ? 2 : 1);
     text(`${bonus ? `+${bonus}% DAMAGE` : 'NO BONUS YET'}${tier < 3 ? `   NEXT AT ${(tier + 1) * 25}%` : '   MAX'}`, 8, 34, bonus ? PAL.gold1 : PAL.stone2, { small: true });
     hudY = 46;
@@ -7109,6 +7119,10 @@ function frame(t) {
 addEventListener('error', (e) => logError('event', e.error || e.message));
 addEventListener('unhandledrejection', (e) => logError('promise', e.reason));
 addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 50));
+if (window.visualViewport) { visualViewport.addEventListener('resize', resize); visualViewport.addEventListener('scroll', resize); }
+addEventListener('pageshow', () => setTimeout(resize, 50));
+// Safari does not always send an event when its toolbars move: check twice a second.
+setInterval(() => { const vv = window.visualViewport, d = window.devicePixelRatio || 1; if ((vv ? `${vv.width}x${vv.height}x${vv.offsetLeft}x${vv.offsetTop}x${d}` : `${innerWidth}x${innerHeight}x0x0x${d}`) !== VIEW_SEEN) resize(); }, 500);
 resize();
 // Saves from before the Stations start the new ladder at Station I (gear
 // and gold are kept; old gear counts as Station I gear).

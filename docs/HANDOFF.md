@@ -111,6 +111,13 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## History by round
 
+- **Round 29.2:** a black band could show at the top on iPhone Safari when
+  its toolbars moved without a resize event. `resize` now sizes and places
+  the canvas from `visualViewport`, the body is fixed so the page cannot
+  scroll, and a half-second check re-runs `resize` when the view changes.
+  The Zeal tier label is centred on its bar, and bar plus label span the HP
+  bar's width.
+
 - **Round 29 (font and HUD):** all text now uses Barlow Semi Condensed
   SemiBold (`assets/fonts/ui.ttf`, font face 'Saint UI', `UI_FONT`).
   `text()` measures and queues; `flushText()` draws the queue on the screen
