@@ -2,7 +2,7 @@
 // Solid things (bolt, thurible, flask, chain, hook, dagger) are SDF models.
 // Soft things (impacts, blood bursts, smoke, orbs) are 2D metaball forms lit
 // from the top-left and banded onto palette ramps, with no dithering.
-import { Scene, sphere, ellipsoid, capsule, box, rotZ, render, bumpy, dot, pline, LIGHT } from '../sdf.mjs';
+import { Scene, sphere, ellipsoid, capsule, box, rotZ, render, bumpy, clip, dot, pline, LIGHT } from '../sdf.mjs';
 import { MATS, torus } from './base.mjs';
 import { IDX, FINE } from '../palette.mjs';
 
@@ -423,6 +423,124 @@ function soundIcon(on) {
   return f;
 }
 
+// ---------------------------------------------------------- forge stuff ---
+// The Ember Forge's reforge material: a rough dark stone split by glowing
+// cracks, with a hot core showing through.
+const FM = {
+  ...MATS,
+  rock: { ramp: 'stone', bias: -0.28, min: 3, spec: 0.05 },
+  crack: { ramp: 'ember', glow: 2 }, crackHot: { ramp: 'ember', glow: 0 },
+};
+function emberstone() {
+  const S = new Scene();
+  S.add(bumpy(ellipsoid([9, 10.5, 2], [7.4, 5.8, 5], 'rock'), 0.7, 0.55, 3), 0);
+  S.add(bumpy(sphere([6.5, 8.5, 3], 4.4, 'rock'), 0.5, 0.6, 7), 1.5);
+  // Cracks: thin glowing seams over the surface, widening into the core.
+  const seg = (ax, ay, bx, by, w) => (x, y) => { const dx = bx - ax, dy = by - ay, t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy), 0, 1); return Math.hypot(x - ax - dx * t, y - ay - dy * t) - w; };
+  const cracks = [seg(3, 7, 6, 8, 1), seg(6, 8, 9, 10.5, 1.1), seg(9, 10.5, 12, 7, 1), seg(12, 7, 15, 6.5, 0.9), seg(9, 10.5, 7, 15, 1), seg(9, 10.5, 14, 13, 0.9)];
+  S.paint({ f: (x, y) => Math.min(...cracks.map((c) => c(x, y))), mat: 'crack' });
+  S.paint({ f: (x, y) => Math.hypot(x - 9, y - 10.5) - 2.2, mat: 'crackHot' });
+  const f = render(S, 18, 18, FM, { contrast: 1.4 });
+  dot(f, 9, 10, 'white');
+  dot(f, 5, 4, 'stone1');
+  return f;
+}
+
+// --------------------------------------------------------- ingredients ---
+// 18x18 reagents for the Enchanter, one shape per icon, tinted by ramp.
+// Frame = enchant * 3 + k; see INGR below for the order.
+const INGR_RAMPS = ['ember', 'holy', 'blood', 'iron', 'rose', 'bone', 'moss', 'crimson', 'wood', 'sea', 'gold', 'flame', 'violet', 'teal', 'sand', 'slate'];
+const IM = {
+  ...MATS,
+  ...Object.fromEntries(INGR_RAMPS.flatMap((r) => [[`g_${r}`, { ramp: r, spec: 0.7, min: 0 }], [`m_${r}`, { ramp: r, spec: 0.15, min: 0 }]])),
+  sack: { ramp: 'shroud', spec: 0.05, min: 1 }, cord: { ramp: 'gold', bias: -0.1 }, corkW: { ramp: 'wood', spec: 0.1, bias: 0.05 },
+  glass: { ramp: 'holy', spec: 0.8, min: 1, max: 5, bias: 0.1 }, spool: { ramp: 'wood', spec: 0.1, bias: -0.05 }, spoolI: { ramp: 'iron', spec: 0.5, bias: -0.1 },
+};
+// A convex solid from planes [nx, ny, nz, d] (keep n.p <= d), for cut gems.
+function facets(list, bb, mat) {
+  const ps = list.map(([nx, ny, nz, d]) => { const l = Math.hypot(nx, ny, nz); return [nx / l, ny / l, nz / l, d / l]; });
+  return { mat, bb, f: (x, y, z) => { let m = -1e9; for (const [a, b, c, d] of ps) { const v = a * x + b * y + c * z - d; if (v > m) m = v; } return m; } };
+}
+const ingrRender = (S) => A(render(S, 18, 18, IM, { contrast: 1.45 }), 9, 9);
+const lit = (r, s) => FINE[r][s];
+const INGR_SHAPES = {
+  // A tied sack with a heap of coloured dust spilling out in front.
+  dust: (r) => {
+    const S = new Scene();
+    S.add(ellipsoid([6.5, 9.5, 0], [4, 4.4, 3.4], 'sack'), 0);
+    S.add(capsule([6.5, 5.6, 0], [6.5, 3, 0], 1.4, 2.2, 'sack'), 1.2);
+    S.paint({ f: (x, y) => Math.abs(y - 5.4) - 0.8, mat: 'cord' });
+    S.add(ellipsoid([11.5, 13.5, 3], [5, 2.4, 3], `m_${r}`), 1);
+    S.add(sphere([12, 12, 3], 2.4, `m_${r}`), 1.2);
+    const f = ingrRender(S);
+    dot(f, 11, 11, lit(r, 0)); dot(f, 15, 13, lit(r, 2));
+    return f;
+  },
+  // A squat candle stub with a drip and a small flame.
+  wax: (r) => {
+    const S = new Scene();
+    S.add(box([9, 12, 0], [3.6, 3.2, 3.6], 0.8, `m_${r}`), 0);
+    S.add(capsule([5.4, 9.5, 3.4], [5.4, 13, 3.6], 1.2, 1.3, `m_${r}`), 0.6);
+    S.add(ellipsoid([9, 16, 0], [6, 1.2, 4.6], 'iron'), 0.4);
+    const f = ingrRender(S);
+    dot(f, 9, 7, 'ink2');
+    dot(f, 9, 5, 'ember1'); dot(f, 9, 3, 'ember0'); dot(f, 9, 1, 'ember2');
+    dot(f, 7, 10, lit(r, 0));
+    return f;
+  },
+  // A faceted gem: a hexagonal bipyramid with a crown table.
+  stone: (r) => {
+    const S = new Scene(), c = [9, 7.5, 0], P = [];
+    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + 0.3, nx = Math.cos(a), nz = Math.sin(a) * 0.9;
+      P.push([nx, -0.9, nz, nx * c[0] - 0.9 * c[1] + nz * c[2] + 5.2]);   // crown facets
+      P.push([nx, 0.75, nz, nx * c[0] + 0.75 * c[1] + nz * c[2] + 5.4]); }    // pavilion facets
+    P.push([0, -1, 0, -(c[1] - 3.2)]);
+    S.add(facets(P, [2, 3, -7, 16, 17, 7], `g_${r}`), 0);
+    const f = ingrRender(S);
+    dot(f, 6, 6, 'white'); dot(f, 8, 4, lit(r, 0));
+    return f;
+  },
+  // A slim glass vial with a cork, liquid in the lower part.
+  vial: (r) => {
+    const S = new Scene();
+    S.add(capsule([9, 13.2, 0], [9, 9.5, 0], 4.2, 4, `g_${r}`), 0);
+    S.add(capsule([9, 8, 0], [9, 4.5, 0], 2.6, 1.7, 'glass'), 1.4);
+    S.add(capsule([9, 3.4, 0.4], [9, 1, 0.4], 2, 2, 'corkW'), 0);
+    const f = ingrRender(S);
+    dot(f, 7, 10, 'white'); dot(f, 7, 12, lit(r, 1));
+    return f;
+  },
+  // A wooden spool wound with thick cord, a loose end trailing.
+  thread: (r) => {
+    const S = new Scene(), sp = r === 'wood' || r === 'sand' ? 'spoolI' : 'spool';
+    S.add(box([8, 3.4, 0], [5.6, 1, 4], 0.6, sp), 0);
+    S.add(box([8, 14, 0], [5.6, 1, 4], 0.6, sp), 0);
+    S.add(capsule([8, 5.5, 0], [8, 12, 0], 4, 4, `m_${r}`), 0);
+    S.add(capsule([11.4, 9.5, 2.6], [15.6, 16, 1.4], 1.2, 1.2, `m_${r}`), 0.6);
+    const f = ingrRender(S);
+    for (const y of [8]) pline(f, 5, y, 10, y, lit(r, 6));
+    dot(f, 5, 6, lit(r, 0));
+    return f;
+  },
+  // A gnawed bone, lying across the icon: a bowed shaft with knobbed ends, tinted toward the ramp.
+  bone: (r) => {
+    const S = new Scene(), m = `m_${r}`;
+    S.add(capsule([5, 12.5, 0], [9.5, 9.6, 0.5], 1.7, 1.5, m), 0);
+    S.add(capsule([9.5, 9.6, 0.5], [13, 5.5, 0], 1.5, 1.7, m), 1);
+    for (const [x, y] of [[3, 12.2], [5.2, 14.6], [12.8, 3.4], [15, 5.8]]) S.add(sphere([x, y, 0], 2.1, m), 1.2);
+    const f = ingrRender(S);
+    dot(f, 12, 2, lit(r, 0)); dot(f, 8, 9, lit(r, 1)); dot(f, 6, 14, lit(r, 6));
+    return f;
+  },
+};
+// Each enchant's three reagents, in frame order.
+const INGR = [
+  ['ember', 'dust', 'wax', 'stone'], ['holy', 'vial', 'thread', 'stone'], ['blood', 'bone', 'vial', 'dust'], ['iron', 'stone', 'thread', 'bone'],
+  ['rose', 'vial', 'wax', 'thread'], ['bone', 'bone', 'stone', 'dust'], ['moss', 'bone', 'thread', 'vial'], ['crimson', 'vial', 'wax', 'bone'],
+  ['wood', 'bone', 'dust', 'thread'], ['sea', 'vial', 'stone', 'dust'], ['gold', 'wax', 'stone', 'bone'], ['flame', 'wax', 'vial', 'dust'],
+  ['violet', 'thread', 'dust', 'stone'], ['teal', 'thread', 'bone', 'vial'], ['sand', 'dust', 'wax', 'stone'], ['slate', 'thread', 'vial', 'bone'],
+];
+
 export default {
   ui: { sound: () => [soundIcon(true)], muted: () => [soundIcon(false)] },
   fx: {
@@ -447,6 +565,9 @@ export default {
     vkey: () => [roseKey()],
     // Chrism vials by kind: common, blessed, consecrated, Hallowed.
     chrism: () => ['cloth', 'holy', 'gold', 'ember'].map((m) => flask(m)),
+    emberstone: () => [emberstone()],
+    // 48 reagents: frame = enchant * 3 + k (INGR).
+    ingr: () => INGR.flatMap(([r, ...shapes]) => shapes.map((s) => INGR_SHAPES[s](r))),
     wax: () => [orb('pot', { tail: true })], bone: () => [orb('bone', { r: 3.6 })], tear: () => [orb('holy', { tail: true })],
     feather: () => [orb('cloth', { r: 3.4, tail: true })], spit: () => [orb('rot', { tail: true })], ember: () => [orb('ember', { tail: true })],
     violet: () => [orb('violet')], blood: () => [orb('blood', { tail: true })], frost: () => [orb('holy', { r: 4.6 })], bomb: () => [orb('ink', { r: 4.8 })],

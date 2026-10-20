@@ -549,7 +549,7 @@ const GLYPH = {
 // with a pale glyph and a heavy outline. Order matches MAP_BADGES in index.html.
 export const MAP_BADGES = [
   ['gate', 'stone'], ['market', 'gold'], ['plush', 'crimson'], ['tavern', 'wood'], ['forge', 'ember'], ['acre', 'moss'], ['descend', 'violet'],
-  ['rift', 'blood'], ['lock', 'iron'], ['npc', 'teal'], ['board', 'sand'], ['relic', 'slate'], ['pool', 'violet'], ['saint', 'crimson'],
+  ['rift', 'blood'], ['lock', 'iron'], ['npc', 'teal'], ['board', 'sand'], ['relic', 'slate'], ['pool', 'violet'], ['saint', 'crimson'], ['ench', 'violet'],
 ];
 const BADGE_GLYPH = {
   gate: (u, v) => Math.abs(u) < 0.55 && v > -0.45 && v < 0.55 && !(Math.abs(u) < 0.28 && (v > 0 || Math.hypot(u, v) < 0.28)),
@@ -565,6 +565,8 @@ const BADGE_GLYPH = {
   board: (u, v) => (Math.abs(u) < 0.42 && Math.abs(v) < 0.52) && !([-0.18, 0.18].some((y) => Math.abs(v - y) < 0.06 && Math.abs(u) < 0.24)),
   relic: (u, v) => (Math.abs(u) < 0.11 && Math.abs(v) < 0.56) || (Math.abs(v + 0.16) < 0.11 && Math.abs(u) < 0.42),
   pool: (u, v) => { const d = Math.hypot(u, v * 1.8); return (d < 0.55 && d > 0.36) || (Math.abs(v + 0.02) < 0.05 && Math.abs(u) < 0.2); },
+  // The Enchanter: a four-point star with a small ring round its heart.
+  ench: (u, v) => Math.sqrt(Math.abs(u)) + Math.sqrt(Math.abs(v)) < 0.86 && !(Math.hypot(u, v) < 0.2 && Math.hypot(u, v) > 0.1),
   saint: (u, v) => (Math.abs(Math.hypot(u / 1.6, v + 0.5) - 0.2) < 0.08) || Math.hypot(u, v + 0.12) < 0.2 || (v > 0.08 && v < 0.58 && Math.abs(u) < 0.1 + (v - 0.08) * 0.75),
 };
 // Vestment set badges (docs/SETS.md).

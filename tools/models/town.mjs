@@ -825,6 +825,59 @@ function lectern(i) {
   return outlineAll(fr);
 }
 
+// The Enchanter's table: a heavy dark-wood table in 3/4 view with a violet
+// rune circle cut into its top, an open book, a crystal on an iron stand,
+// candles and reagent pouches. Three frames: the runes pulse, flames flicker.
+function enchanter(i) {
+  const W = 48, H = 60, S = new View(), zf = 14, D = 38, G = groundY(H, zf), top = G - 17, cx = 24, cz = zf - D / 2;
+  // Legs, a low stretcher, a planked apron and the thick top.
+  for (const [x, z] of [[6, zf - 3], [42, zf - 3], [6, zf - D + 3], [42, zf - D + 3]]) S.add(slabBox(x - 2.6, top + 3, x + 2.6, G, z + 2.6, 5.2, 'timber', 0.6), 0);
+  S.add(slabBox(7, G - 5, 41, G - 3, zf - 1.5, 3, 'timber', 0.4), 0);
+  S.add(planked(slabBox(5, top + 2, 43, top + 6, zf - 1.5, D - 3, 'woodB', 0.4), 6), 0);
+  S.add(slabBox(2, top - 1, 46, top + 2.4, zf, D, 'timber', 0.7), 0);
+  // A violet runner down the front, gilt-hemmed.
+  S.add(wavy(slabBox(18, top + 1, 30, top + 10, zf + 0.6, 0.8, 'canvasV', 0.2), 0.4, 0.9), 0);
+  S.add(slabBox(18, top + 9, 30, top + 10.6, zf + 1, 0.8, 'gold', 0.2), 0);
+  // The open book, back left.
+  const by = top - 1, bz = zf - D + 13;
+  S.add(slabBox(3.5, by - 1.4, 18.5, by, bz, 10, 'bark', 0.3), 0);
+  S.add(slabBox(4.5, by - 2.6, 10.6, by - 1.2, bz - 0.6, 8.6, 'bone', 0.5), 0);
+  S.add(slabBox(10.3, by - 2.2, 11.7, by - 1, bz - 0.6, 8.6, 'bannerR', 0.2), 0);
+  S.add(slabBox(11.4, by - 2.6, 17.5, by - 1.2, bz - 0.6, 8.6, 'bone', 0.5), 0);
+  // The crystal on a small iron stand, back right.
+  const kx = 37, kz = zf - D + 7;
+  S.add(slabBox(kx - 3.5, by - 1.5, kx + 3.5, by, kz + 3.5, 7, 'iron', 0.4), 0);
+  S.add(rod([kx, by - 1, kz], [kx, by - 6, kz], 0.9, 'iron'), 0.4);
+  S.add(torusY([kx, by - 6.5, kz], 2.4, 0.8, 'iron'), 0.3);
+  S.add(capsule([kx, by - 8, kz], [kx, by - 18, kz], 3.2, 0.5, 'glass_violet'), 0);
+  S.add(capsule([kx, by - 8, kz], [kx, by - 5.5, kz], 3.2, 1, 'glass_violet'), 0);
+  // Candles at the corners.
+  const candles = [[4.5, zf - D + 4, 8], [44, zf - D + 5, 6], [4.5, zf - 4, 5]];
+  for (const [x, z, h] of candles) S.add(rod([x, by, z], [x, by - h, z], 1.4, 'bone'), 0.3);
+  // Reagent pouches, front right.
+  S.add(lump([40, by - 2.6, zf - 6], 3, 'bark', 4, 0.4), 0.6);
+  S.add(capsule([40, by - 5.2, zf - 6], [40, by - 6.8, zf - 6], 1, 1.5, 'bark'), 0.6);
+  S.add(lump([44, by - 2, zf - 2], 2.4, 'shroud', 9, 0.3), 0.6);
+  const fr = R(S, W, H, { ground: H - 1 });
+  // The rune circle, cut into the bare wood of the top.
+  const ty = (z) => sy(by, z), ex = cx, ey = ty(cz), rx = 12.5, ry = (ty(zf) - ty(zf - D)) * 0.36;
+  const onTop = (x, y) => /^wood/.test(NAME[under(fr, x, y)] || '');
+  const glow = (s) => C('violet', s + [1.2, 0, 0.6][i]);
+  const mark = (x, y, s) => { if (onTop(x, y)) dot(fr, x, y, glow(s)); };
+  for (let k = 0; k < 80; k++) { const a = k / 80 * Math.PI * 2; mark(ex + Math.cos(a) * rx, ey + Math.sin(a) * ry, 2); }
+  // Three spokes and a hot heart.
+  for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2 - Math.PI / 2; for (let t = 0.2; t < 0.8; t += 0.1) mark(ex + Math.cos(a) * rx * t, ey + Math.sin(a) * ry * t, 3); }
+  for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + i * 0.5; mark(ex + Math.cos(a) * rx * 0.9, ey + Math.sin(a) * ry * 0.9 - 1, 1); }
+  mark(ex, ey, 0); mark(ex + 1, ey, 0);
+  // Lines on the book's pages.
+  for (let r = 0; r < 2; r++) { const y = Math.round(sy(by - 2.6, bz - 2 - r * 3)); pline(fr, 6, y, 9, y, 'bone3'); pline(fr, 13, y, 16, y, 'bone3'); }
+  // The crystal's inner light and a glint.
+  const kyy = Math.round(sy(by - 11, kz));
+  dot(fr, kx, kyy, i === 1 ? 'white' : 'violet0'); dot(fr, kx - 2, kyy - 4, 'violet0');
+  if (i !== 2) dot(fr, kx + 4 + i * 2, kyy - 9 + i * 3, 'violet1');
+  for (const [x, z, h] of candles) flame(fr, x, Math.round(sy(by - h - 0.5, z)), 4 + ((i + Math.round(x)) % 2), 2, i * 1.8 + x);
+  return outlineAll(fr);
+}
 // Martyrdom's stake: a charred post with a crossbar and iron chains, on a
 // heap of kindling ringed with stones, embers still alive at its foot.
 function stake(i) {
@@ -1224,6 +1277,7 @@ export default {
     lectern: () => [0, 1, 2].map(lectern),
     waymark: () => [0, 1].map(waymark),
     stake: () => [0, 1, 2].map(stake),
+    enchanter: () => [0, 1, 2].map(enchanter),
     board: () => [noticeBoard()],
     vigilroll: () => [0, 1, 2].map(vigilRoll),
     halostand: () => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(haloStand),

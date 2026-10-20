@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 32 (build 32.2, on `master`). Read
+Last updated 2026-10-20, after round 33 (build 33.1, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -98,6 +98,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   with its own Saint skin, crossbow and bolts, plus 2-piece set Arms;
   Odile's Habit is the starter set. Bag icons show rarity colours and set
   pieces wear a star. Set strength lives in `SETK` (`setbal.cjs`).
+- **The Ember Forge and the Enchanter (round 33):** reforging spends an
+  Emberstone (`SAVE.embers`; every Warden drops 2 + 1 per two Stations, Vigils
+  2 + level / 3, `wardenMats`) and rolls a quality (`QUALITY`: common 50%,
+  rare 30%, epic 14%, legendary 5%, mythic 1%) that scales the stat's range
+  (`qualRange`); the stat keeps its quality as `st[2]` and shows in its
+  colour (`statCol`). The VALUES tab lists every range. The Enchanter (town
+  site `ench`, opens after Station V; `town2` `enchanter` table, badge
+  `ench`) puts one of 16 enchants (`ENCHANTS`, read with `ench(id)`) on a
+  piece (`it.ench`); each needs three ingredients (`SAVE.ingr`, loot `ingr`
+  frame = enchant * 3 + k) that Wardens of Station X and deeper drop 1% of
+  the time each (`ENCH_FROM`, `ENCH_DROP`; about 0.5 ingredients a Warden,
+  about 180 Warden kills for one chosen enchant).
 - **Account systems:** Devotion and Virtues (Canonry), the Ember Forge
   (reforge, temper), the Ashen Altar (burn a Hallowed piece to learn its
   power; three sockets; Chrism and pity raise the odds), the Censer's 12
@@ -137,7 +149,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-1. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
+1. **Tune enchants and reforge odds from play.** Enchant strengths are set
+   by eye (`enchKill`, `passK`, `damagePlayer`); try them at Stations X to
+   XV and in the Training Yard.
+2. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
    attack; ask the owner how the fights at Stations VII to XV feel.
 2. **Ossuary chapels.** Chapels in Stratum III still have the red carpet
    and warm floor; give them a bone-grey runner or a different floor.
@@ -155,6 +170,23 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 33 (reforge qualities, Emberstones, the Enchanter):** reforging no
+  longer costs gold: it spends an Emberstone (`loot` `emberstone`, drops `ember`,
+  three to start) and rolls one of five qualities with its own colour; the
+  forge has REFORGE and VALUES tabs in its title band (`forgeTabs`,
+  `renderForgeValues`). Stats show in their quality colour on every card.
+  The Enchanter: a new site south of the forge with 16 enchants (Emberwake,
+  Stormlink, the Hunger, Reaper's Mark, Second Breath, Bone Ward, Thorned
+  Hide, Bloodletting, Splinter, Frostbite, Martyr's Echo, Last Light,
+  Relentless, Phantom Volley, Gilded Tithe, Ghost Step), each from three
+  unique ingredients (48 icons in `vfx.mjs`, `INGR`). Hooks: `enchKill` (kill
+  effects, the yard too), `passK` (damage), `secondBreath`, Bone Ward and
+  Thorns/Echo in `damagePlayer`, Frostbite/Stormlink on bolt hits,
+  Bloodletting in `hurtEnemy`, Emberwake in `startDash`, Ghost Step in
+  `perfectDodge`, Phantom Volley in the player update. Dev menu: +50
+  EMBERSTONES, +1 EACH INGREDIENT, OPEN FORGE, OPEN ENCHANTER. Test:
+  `tools/tests/round33.cjs`.
 
 - **Round 32.2 (strata restyled after the owner's concept image):** every
   room gets torch stands in all four corners and halfway down each side
