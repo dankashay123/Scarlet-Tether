@@ -101,9 +101,11 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '33.2';
+const BUILD = '33.3';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '33.3': ['THE DESCENT PANEL SHOWS GEAR DROPS THE SAME WAY: THE CHANCE A FOE, RARE OR ELITE DROPS GEAR, AND HOW MANY PIECES THE WARDEN DROPS.',
+    'DEEPER STATIONS NOW RAISE THE CHANCE THAT FOES AND RARES DROP GEAR.'],
   '33.2': ['THE DEV MENU IS REORGANISED: HERO, GEAR, FORGE, WORLD, TOWN AND DEBUG TABS WITH A LABEL ON EVERY ROW. NEW FORGE AND ENCHANT TOOLS.'],
   '33.1': ['REFORGING NOW COSTS AN EMBERSTONE, NOT GOLD. EVERY WARDEN DROPS AT LEAST TWO, MORE AT DEEPER STATIONS.',
     'EACH REFORGE ROLLS A QUALITY: COMMON 50%, RARE 30%, EPIC 14%, LEGENDARY 5%, MYTHIC 1%. RARER ROLLS GO HIGHER. THE STAT SHOWS IN ITS COLOUR.',
@@ -326,6 +328,7 @@ function text(s, x, y, color, o = {}) {
 }
 function flushText() {
   const P = PRE, g = sctx; if (!TEXT_Q.length) return;
+  if (TEXT_LOG) TEXT_LOG.push(TEXT_Q.map((q) => { const sc = q.o.sc || 1, sm = !!q.o.small; return { s: q.s, x: q.x, y: q.y, w: textW(q.s, sc, sm) * q.k, h: (sm ? UI_FONT.capSmall : UI_FONT.cap) * sc * q.k * TEXT_K }; }));
   g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.textBaseline = 'alphabetic'; g.lineJoin = 'round';
   let font = '';
   for (const q of TEXT_Q) {
@@ -344,6 +347,26 @@ function flushText() {
   g.restore(); TEXT_Q.length = 0;
 }
 // Blit the pixel layer, draw its text on top, and start a clear layer above.
+// Text audit for tests: render one frame and list every string drawn, by
+// layer, then report strings that overlap in a layer or run off the screen.
+let TEXT_LOG = null;
+function textAudit() { TEXT_LOG = []; try { render(); } finally { var L0 = TEXT_LOG; TEXT_LOG = null; } return L0; }
+function textProblems() {
+  const out = [];
+  const layers = textAudit();
+  for (const [li, layer] of layers.entries()) {
+    const seen = new Set(), qs = layer.filter((q) => { const k = `${q.s}|${Math.round(q.x)}|${Math.round(q.y)}`; if (seen.has(k)) return false; seen.add(k); return true; });
+    for (const q of qs) if (q.x < -1 || q.x + q.w > W + 1 || q.y < -1 || q.y + q.h > H + 1) out.push(`OFF SCREEN: ${q.s}`);
+    for (let i = 0; i < qs.length; i++) for (let j = i + 1; j < qs.length; j++) {
+      const a = qs[i], b = qs[j], ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+      if (ox > 1 && oy > 1) out.push(`OVERLAP: "${a.s}" / "${b.s}"`);
+      // Side by side on one line but a pixel or three apart: a crooked row.
+      const gap = Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w), dy = Math.abs((a.y + a.h) - (b.y + b.h));
+      if (li === layers.length - 1 && gap < 14 && gap > -1 && dy >= 1 && dy <= 3 && a.h === b.h) out.push(`UNEVEN ${dy.toFixed(1)}: "${a.s}" / "${b.s}"`);
+    }
+  }
+  return out;
+}
 function layerBreak() { blit(); flushText(); ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); ctx.restore(); }
 // Remeasure once the font has loaded.
 if (document.fonts) document.fonts.load(fontOf(22, false)).then(() => TEXT_W.clear()).catch(() => {});
@@ -3822,7 +3845,6 @@ function renderDescent() {
   panelFrame(L.x0, L.y0, L.pw, L.ph);
   headerBar(L.x0, L.y0, L.pw, 26);
   text('THE DESCENT', L.x0 + 12, L.y0 + 9, PAL.gold1);
-  text('THE FIFTEEN STATIONS OF THE WOUND', L.x0 + L.pw / 2, L.y0 + 9, PAL.cloth1, { align: 'center' });
   const sk = D.stratum || 1, open2 = strataOpen(2);
   invButton(L.strat, open2 ? ['', 'UNDERCROFT', 'DROWNED NAVE', 'OSSUARY SPIRE'][sk] : 'STRATUM II', [0, PAL.stone4, PAL.teal3 || PAL.ink3, PAL.bone3 || PAL.stone3][sk], open2);
   vigilButton(L);
@@ -3851,10 +3873,13 @@ function renderDescent() {
     ['ELITE PACKS', '2-3'], ['FULL TOLL', 'WARDEN'], ['ROOMS', '11-12']]
     .slice(0, nRows).forEach(([a, b, c], i) => row(0, i, a, b, c));
   head(1, 'REWARDS');
-  const iK = df.drop, need = stationSanctity(D.i);
-  [['GEAR ITEM LEVEL', df.rn, PAL.flame1], ['GEAR SANCTITY', `${need}`, PAL.flame1], ['WARDEN', `${WARDEN.items} PIECES`], ['BLOODROSE KEY', D.i + 1 >= VKEY_FROM ? '1 IN 2' : `${ROMAN[VKEY_FROM - 1]}+`, D.i + 1 >= VKEY_FROM ? PAL.rose1 : PAL.stone2],
-    ['GEAR PER RARE', pct(Math.min(100, DROP.rare * 100 * iK))], ['GEAR PER ELITE', `${(DROP.elite * iK).toFixed(2)}`], ['GOLD PER COIN', `${Math.round(3 * goldK)}-${Math.round(9 * goldK)}`, PAL.gold1], ['GEAR PER KILL', pct(DROP.kill * 100 * iK)],
-    ['GOLD BONUS', `+${G.gold}%`, G.gold ? PAL.flame1 : PAL.cloth0], ['CHEST', 'ALWAYS'], ['HEALTH ORB', `${pct(6)}-${pct(10)}`]]
+  // Gear drops: a chance for foes, rares and elites (as dropLoot rolls them),
+  // a count for the Warden.
+  const iK = df.drop, need = stationSanctity(D.i), chance = (v) => pct(Math.min(100, v * 100));
+  const wn = WARDEN.items * iK, wardenGear = wn % 1 ? `${Math.floor(wn)}-${Math.ceil(wn)} PIECES` : `${wn} PIECES`;
+  [['GEAR ITEM LEVEL', df.rn, PAL.flame1], ['GEAR SANCTITY', `${need}`, PAL.flame1], ['FOE DROPS GEAR', chance(DROP.kill * iK)], ['RARE DROPS GEAR', chance(DROP.rare * iK)], ['ELITE DROPS GEAR', chance(DROP.elite * iK)],
+    ['WARDEN GEAR', wardenGear], ['BLOODROSE KEY', D.i + 1 >= VKEY_FROM ? '1 IN 2' : `${ROMAN[VKEY_FROM - 1]}+`, D.i + 1 >= VKEY_FROM ? PAL.rose1 : PAL.stone2],
+    ['GOLD PER COIN', `${Math.round(3 * goldK)}-${Math.round(9 * goldK)}`, PAL.gold1], ['GOLD BONUS', `+${G.gold}%`, G.gold ? PAL.flame1 : PAL.cloth0], ['CHEST', 'ALWAYS'], ['HEALTH ORB', `${pct(6)}-${pct(10)}`]]
     .slice(0, nRows).forEach(([a, b, c], i) => row(1, i, a, b, c));
   head(2, 'GEAR RARITY');
   const base = rarityOdds(df.boost), elite = rarityOdds(df.boost + 1.5);
@@ -4807,8 +4832,8 @@ function killEnemy(e, dirx, diry, executed = false) {
   if (e.type === 'imp') { dropLoot(e.x, e.y, { gold: 22, item: 3, itemBoost: 2, globe: 1 }); game.banner = { text: 'THE IMP IS KILLED', sub: 'GOLD DROPPED', t: 0, color: PAL.gold0 }; }
   else if (e.boss) { /* wardenSlain drops the loot */ }
   else if (e.tier === 'elite') { if (!e.minion) SAVE.eliteKills = (SAVE.eliteKills || 0) + 1; dropLoot(e.x, e.y, { gold: 10, item: DROP.elite, itemBoost: 1.5, globe: 2 }); game.banner = { text: `${e.name} FALLS`, sub: '', t: 0, color: PAL.gold0 }; }
-  else if (e.tier === 'rare') dropLoot(e.x, e.y, { gold: 3, item: rng() < DROP.rare ? 1 : 0, itemBoost: 1, globe: rng() < 0.4 ? 1 : 0 });
-  else dropLoot(e.x, e.y, { gold: rng() < 0.3 ? 1 : 0, item: rng() < DROP.kill ? 1 : 0, globe: rng() < (e.minion ? 0.1 : 0.06) ? 1 : 0 });
+  else if (e.tier === 'rare') dropLoot(e.x, e.y, { gold: 3, item: DROP.rare, itemBoost: 1, globe: rng() < 0.4 ? 1 : 0 });
+  else dropLoot(e.x, e.y, { gold: rng() < 0.3 ? 1 : 0, item: DROP.kill, globe: rng() < (e.minion ? 0.1 : 0.06) ? 1 : 0 });
 }
 
 // ---------------------------------------------------------------- gore ---
@@ -7557,7 +7582,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

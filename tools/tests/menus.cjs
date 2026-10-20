@@ -1,7 +1,8 @@
 // Playwright check. Serve the repo on :8123 first (python3 -m http.server 8123).
 // Usage: node tools/tests/menus.cjs <outDir> [WxH]
 // Photographs every menu window (framed by panelFrame) at one phone size;
-// run it at 932x430, 844x390 and 667x375 and look for clipped text.
+// run it at 932x430, 844x390 and 667x375 and look for clipped text. Each
+// window also reports text that overlaps other text or runs off the screen.
 // TEXT=large (or small) sets the text size first.
 const { chromium } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const S = process.argv[2], [w, h] = (process.argv[3] || '844x390').split('x').map(Number);
@@ -13,6 +14,12 @@ const S = process.argv[2], [w, h] = (process.argv[3] || '844x390').split('x').ma
     for (const id of ['stormHands', 'emberQuiver', 'saintTooth']) { const L = HS.LEGENDS.find((q) => q.id === id); const it = HS.makeItem(L.slot, 3, L.name, undefined, 4); it.power = id; HS.SAVE.bag.push(it); }
     for (let k = 0; k < 6; k++) HS.SAVE.bag.push(HS.rollItem(1, 5)); });
   const shots = [['inv', () => HS.openInventory()], ['altar', () => HS.openAltar()], ['altarpick', () => { HS.SAVE.altar = { known: ['stormHands', 'pallWard', 'chainHands', 'veilFont'], sockets: { vest: 'pallWard' } }; HS.applyGear(); HS.openAltar(); HS.openAltarPick('vest'); HS.game.altarPick.sel = 'stormHands'; }], ['altarpick2', () => { HS.openAltar(); HS.openAltarPick('relic'); }], ['descent', () => HS.startDescent()], ['vigil', () => HS.openVigil()], ['rites', () => HS.openRites('play')], ['censer', () => HS.openCenser('play')], ['shop', () => HS.openShop()], ['forge', () => HS.openForge()], ['canonry', () => HS.openCanonry()], ['board', () => HS.openBoard()], ['site', () => HS.openSite(HS.SITES.find((q) => q.id === 'martyr'))], ['settings', () => { HS.game.state = 'settings'; }], ['dev', () => HS.openDev()], ['plush', () => HS.openPlush()], ['pool', () => HS.openPool()], ['martyr', () => HS.openMartyr()], ['roll', () => HS.openRoll()]];
-  for (const [n, f] of shots) { await p.evaluate(() => { HS.game.state = 'play'; HS.game.inv = null; }); await p.evaluate(f); await p.waitForTimeout(250); await p.screenshot({ path: `${S}/shots/m-${n}-${w}.png` }); }
+  shots.push(['forgevalues', () => { HS.openForge(); HS.game.forge.tab = 1; }], ['enchant', () => HS.openEnchant()], ['enchantpick', () => { HS.openEnchant(); HS.game.ench.pick = true; }], ['pause', () => { HS.game.state = 'pause'; }]);
+  const problems = [];
+  for (const [n, f] of shots) {
+    await p.evaluate(() => { HS.game.state = 'play'; HS.game.inv = null; }); await p.evaluate(f); await p.waitForTimeout(250); await p.screenshot({ path: `${S}/shots/m-${n}-${w}.png` });
+    const pr = await p.evaluate(() => HS.textProblems()); if (pr.length) problems.push(`${n}: ${pr.slice(0, 6).join('; ')}`);
+  }
   await p.evaluate(() => { HS.game.state = 'play'; HS.game.stig = { cards: HS.WOUNDS.slice(0, 3), t: 1 }; HS.game.state = 'stig'; }); await p.waitForTimeout(300); await p.screenshot({ path: `${S}/shots/m-stig-${w}.png` });
+  console.log(problems.length ? `text problems ${problems.length}\n${problems.join('\n')}` : 'text problems 0');
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close(); })();

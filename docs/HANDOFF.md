@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 33 (build 33.2, on `master`). Read
+Last updated 2026-10-20, after round 33 (build 33.3, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -170,6 +170,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 33.3 (Descent panel, text audit):** the header lore line is gone;
+  gear rows read FOE / RARE / ELITE DROPS GEAR as chances and WARDEN GEAR as
+  pieces. Foes and rares now pass their drop chance to `dropLoot` as an
+  expected count (like elites), so the Station's `df.drop` raises the chance
+  instead of only adding a rare second piece (same average). `textAudit()` /
+  `textProblems()` find overlapping, off-screen and crooked text; `menus.cjs`
+  reports them per window (0 at 932x430 and 667x375, normal and large text).
 
 - **Round 33.2 (dev menu):** reorganised into HERO, GEAR, FORGE, WORLD, TOWN
   and DEBUG tabs, each with a help line, a gold label on every row, row
