@@ -93,13 +93,14 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 1. **A training yard in Vael.** A dummy and a monster summoner so players
    can learn the round 16 attacks (snipe, blight, Sentence) safely.
-2. **Damage numbers in the new font.** Give crits a size step and a
-   colour ramp now that numbers are drawn at screen resolution.
+2. **Tighter Descent panel at large text.** Its three stat columns run
+   9 px rows; at LARGE they touch on 667-wide phones. Drop a row or two
+   behind a tap, or give the panel a second page.
 3. **Stratum III.** A third look (the Ossuary Spire or a burnt chapter
    house) with its own two Wardens (each needs a roar, a fall, an earned
    halo, a stand on the Vigil Roll and battle music), reusing `STRATA`.
-4. **Drop the old bitmap font.** `GLYPHS`, `FONT` and `drawPortrait` are
-   unused since round 29 and can go once nothing else reads them.
+4. **Kill streak counter.** A small count under the Zeal line that
+   climbs with quick kills and feeds the Carnage bonus.
 5. **The pool's crowd.** Let the crowd at the Scrying Pool cheer or jeer
    when a wager settles in Vael, and show past wagers (won and lost).
 6. **A second playable saint.** A short-range melee saint with its own
@@ -110,6 +111,18 @@ Desktop works with keys. 55–60 fps in dense crowds.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 30 (HUD feel, crits, text size):** crit numbers size and colour
+  by how they compare with recent plain hits (`game.avgHit`; gold, orange
+  at 3x, crimson at 6x, `CRIT_COL`), with a short pop. Reaching a Zeal
+  step flashes the bar, pops the tier name and rings a rising knell
+  (`game.zTier`, `game.zFlashT`). A hit of 8% max HP or more shakes the HP
+  bar and reddens its number (`game.hpShakeT`, off with screen shake). A
+  TEXT SIZE setting (`opt('text')`, `TEXT_SIZES`, `TEXT_K`: 0.92 / 1 /
+  1.06) scales every string; `textW` now measures once at scale 1 and
+  multiplies, so growing numbers cost nothing. The old bitmap font tables
+  (`GLYPHS`, `FONT`) and `drawPortrait` are gone. `TEXT=large node
+  tools/tests/menus.cjs` checks every window at the large size.
 
 - **Round 29.2:** a black band could show at the top on iPhone Safari when
   its toolbars moved without a resize event. `resize` now sizes and places

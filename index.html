@@ -101,9 +101,10 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '29.4';
+const BUILD = '30.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '30.1': ['BIG CRITS STAND OUT: GOLD, THEN ORANGE, THEN RED AS THEY GROW.', 'THE ZEAL BAR FLASHES AT EACH NEW STEP. BIG HITS SHAKE YOUR HEALTH BAR.', 'NEW SETTING: TEXT SIZE (SMALL, NORMAL, LARGE).'],
   '29.4': ['TIDIER ZEAL BAR: YOUR DAMAGE BONUS AND ZEAL STEP SIT UNDER IT.'],
   '29.3': ['THE ZEAL BAR IS AS WIDE AS THE HEALTH BAR.'],
   '29.2': ['FIXED A BLACK BAND AT THE TOP OF THE SCREEN ON SOME PHONES.', 'THE ZEAL LABEL LINES UP WITH ITS BAR.'],
@@ -220,7 +221,6 @@ function tintKey(sheet, rgb) {
 }
 const CROWNED = ['saint_nails', 'saint_choir', 'portrait_nails', 'portrait_choir']; // crowns, not halos
 const looks = () => { const K = (SAVE.looks = SAVE.looks || { dye: 'crimson', halo: 'gold', own: ['d:crimson', 'h:gold'] }); if (!K.bolt) { K.bolt = 'set'; K.dash = 'white'; K.own.push('b:set', 's:white'); } return K; };
-const LOOK_CACHE = new Map();
 const rampOf = (name) => Object.keys(PAL).filter((k) => new RegExp(`^${name}\\d+h?$`).test(k)).sort((a, b) => parseFloat(a.replace(name, '').replace('h', '.5')) - parseFloat(b.replace(name, '').replace('h', '.5')));
 const rgbOf = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 // Recolour the given frames of an image into a new canvas.
@@ -259,13 +259,6 @@ function lookSheet(base, dye = looks().dye, halo = looks().halo) {
   }
   return SPR[name] ? name : base;
 }
-// The HUD portrait (one frame of the ui sheet), recoloured the same way.
-function drawPortrait(anim, x, y) {
-  const L = looks(); if (L.dye === 'crimson' && L.halo === 'gold') { spr('ui', anim, 0, x, y, { ax: 0, ay: 0 }); return; }
-  const k = `${anim}~${L.dye}~${L.halo}`, f = frameOf('ui', anim, 0);
-  if (!LOOK_CACHE.has(k)) { const c = document.createElement('canvas'); c.width = f.w; c.height = f.h; c.getContext('2d').drawImage(IMG.ui, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h); LOOK_CACHE.set(k, recolour(c, [{ x: 0, y: 0, w: f.w, h: f.h }], L.dye, L.halo, CROWNED.includes(anim))); }
-  ctx.drawImage(LOOK_CACHE.get(k), x, y);
-}
 function frameOf(sheet, anim, i) { const a = SPR[sheet].anims[anim]; return a[((i % a.length) + a.length) % a.length]; }
 // Draw a frame with its anchor at pixel (x, y). Default anchor: sheet anchor, else bottom-centre.
 function spr(sheet, anim, i, x, y, { flip = false, white = false, tint = null, alpha = 1, ax, ay, c = ctx } = {}) {
@@ -280,36 +273,6 @@ function spr(sheet, anim, i, x, y, { flip = false, white = false, tint = null, a
 }
 const sprC = (sheet, anim, i, x, y, o = {}) => { const f = frameOf(sheet, anim, i); spr(sheet, anim, i, x, y, { ax: Math.floor(f.w / 2), ay: Math.floor(f.h / 2), ...o }); };
 
-// --------------------------------------------------------- pixel font ---
-// 5x7 glyphs, rows of 5 bits.
-const GLYPHS = {
-  A: '01110100011000111111100011000110001', B: '11110100011000111110100011000111110', C: '01110100011000010000100001000101110',
-  D: '11110100011000110001100011000111110', E: '11111100001000011110100001000011111', F: '11111100001000011110100001000010000',
-  G: '01110100011000010111100011000101111', H: '10001100011000111111100011000110001', I: '01110001000010000100001000010001110',
-  J: '00111000100001000010000101001001100', K: '10001100101010011000101001001010001', L: '10000100001000010000100001000011111',
-  M: '10001110111010110101100011000110001', N: '10001100011100110101100111000110001', O: '01110100011000110001100011000101110',
-  P: '11110100011000111110100001000010000', Q: '01110100011000110001101011001001101', R: '11110100011000111110101001001010001',
-  S: '01111100001000001110000010000111110', T: '11111001000010000100001000010000100', U: '10001100011000110001100011000101110',
-  V: '10001100011000110001100010101000100', W: '10001100011000110101101011010101010', X: '10001100010101000100010101000110001',
-  Y: '10001100010101000100001000010000100', Z: '11111000010001000100010001000011111',
-  0: '01110100011001110101110011000101110', 1: '00100011000010000100001000010001110', 2: '01110100010000100010001000100011111',
-  3: '11111000100010000010000011000101110', 4: '00010001100101010010111110001000010', 5: '11111100001111000001000011000101110',
-  6: '00110010001000011110100011000101110', 7: '11111000010001000100010000100001000', 8: '01110100011000101110100011000101110',
-  9: '01110100011000101111000010001001100',
-  '.': '00000000000000000000000000110001100', ',': '00000000000000000000011000010001000', '!': '00100001000010000100001000000000100',
-  '?': '01110100010000100010001000000000100', ':': '00000011000110000000011000110000000', "'": '00100001000100000000000000000000000',
-  '-': '00000000000000011111000000000000000', '%': '11000110010001000100010001001100011', '/': '00001000010001000100010001000010000',
-  '+': '00000001000010011111001000010000000', '"': '01010010100000000000000000000000000', ' ': '00000000000000000000000000000000000',
-  '(': '00010001000100001000010000010000010', ')': '01000001000001000010000100010001000', '<': '00010001000100010000010000010000010', '>': '01000001000001000001000100010001000', '~': '00000000000100010101000100000000000', '=': '00000000001111100000111110000000000',
-};
-// UI font: Kenney High (CC0, kenney.nl), caps 5x9, drawn with doubled
-// vertical stems so it reads chunky and crisp at 360 px. Each glyph is
-// [advance, x offset, width, rows as hex bitmasks, top row first].
-const FONT = {" ":[2,0,0,'0.0.0.0.0.0.0.0.0'],"!":[2,0,1,'1.1.1.1.1.1.1.0.1'],"\"":[4,0,3,'5.5.0.0.0.0.0.0.0'],"#":[6,0,5,'a.a.a.1f.a.1f.a.a.a'],"$":[6,0,5,'e.15.14.e.5.5.5.15.e.4'],"%":[6,0,5,'19.1a.2.4.4.8.8.13.13'],"&":[7,0,6,'18.24.24.18.28.25.22.23.1d'],"'":[2,0,1,'1.1.0.0.0.0.0.0.0'],"(":[4,0,3,'1.2.2.4.4.4.2.2.1'],")":[4,0,3,'4.2.2.1.1.1.2.2.4'],"*":[4,0,3,'2.7.2.5.0.0.0.0.0'],"+":[6,0,5,'0.0.4.4.1f.4.4.0.0'],",":[2,0,1,'0.0.0.0.0.0.0.0.1.1'],"-":[6,0,5,'0.0.0.0.1f.0.0.0.0'],".":[2,0,1,'0.0.0.0.0.0.0.0.1'],"/":[5,0,4,'0.1.1.2.2.4.4.8.8'],"0":[6,0,5,'e.11.11.11.11.11.11.11.e'],"1":[4,0,3,'6.1.1.1.1.1.1.1.1'],"2":[6,0,5,'1e.1.1.e.10.10.10.10.1f'],"3":[6,0,5,'1e.1.1.1f.1.1.1.1.1e'],"4":[6,0,5,'11.11.11.f.1.1.1.1.1'],"5":[6,0,5,'1f.10.10.1e.1.1.1.1.1e'],"6":[6,0,5,'e.11.10.1e.11.11.11.11.e'],"7":[6,0,5,'1f.1.1.2.4.4.4.4.4'],"8":[6,0,5,'e.11.11.e.11.11.11.11.e'],"9":[6,0,5,'e.11.11.f.1.1.1.11.e'],":":[2,0,1,'0.0.1.0.0.0.1.0.0'],";":[2,0,1,'0.0.1.0.0.0.1.1.0'],"<":[5,0,4,'0.1.2.4.8.4.2.1.0'],"=":[6,0,5,'0.0.0.1f.0.1f.0.0.0'],">":[5,0,4,'0.8.4.2.1.2.4.8.0'],"?":[6,0,5,'e.11.1.2.4.4.4.0.4'],"@":[6,0,5,'e.11.15.15.15.12.10.11.e'],"A":[6,0,5,'e.11.11.1f.11.11.11.11.11'],"B":[6,0,5,'1e.11.11.1e.11.11.11.11.1f'],"C":[6,0,5,'e.11.10.10.10.10.10.11.e'],"D":[6,0,5,'1e.11.11.11.11.11.11.11.1e'],"E":[6,0,5,'f.10.10.1f.10.10.10.10.f'],"F":[6,0,5,'f.10.10.1f.10.10.10.10.10'],"G":[6,0,5,'f.10.10.17.11.11.11.11.e'],"H":[6,0,5,'11.11.11.1f.11.11.11.11.11'],"I":[2,0,1,'1.1.1.1.1.1.1.1.1'],"J":[5,0,4,'f.1.1.1.1.1.1.1.e'],"K":[6,0,5,'11.11.11.1e.11.11.11.11.11'],"L":[6,0,5,'10.10.10.10.10.10.10.10.f'],"M":[8,0,7,'7e.49.49.49.49.49.49.49.49'],"N":[6,0,5,'1e.11.11.11.11.11.11.11.11'],"O":[6,0,5,'e.11.11.11.11.11.11.11.e'],"P":[6,0,5,'1e.11.11.1e.10.10.10.10.10'],"Q":[6,0,5,'e.11.11.11.11.11.11.15.e.4'],"R":[6,0,5,'1e.11.11.1e.11.11.11.11.11'],"S":[6,0,5,'f.10.10.e.1.1.1.1.1e'],"T":[6,0,5,'1f.4.4.4.4.4.4.4.4'],"U":[6,0,5,'11.11.11.11.11.11.11.11.e'],"V":[6,0,5,'11.11.11.11.11.11.11.a.4'],"W":[8,0,7,'49.49.49.49.49.49.49.49.7e'],"X":[6,0,5,'11.11.11.e.11.11.11.11.11'],"Y":[6,0,5,'11.11.11.e.4.4.4.4.4'],"Z":[6,0,5,'1f.1.1.2.4.8.10.10.1f'],"[":[4,0,3,'7.4.4.4.4.4.4.4.7'],"\\":[5,0,4,'0.8.8.4.4.2.2.1.1'],"]":[4,0,3,'7.1.1.1.1.1.1.1.7'],"^":[6,0,5,'4.a.11.0.0.0.0.0.0'],"_":[6,0,5,'0.0.0.0.0.0.0.0.1f'],"`":[6,0,5,'1.1.0.0.0.0.0.0.0'],"{":[4,0,3,'1.2.2.2.4.2.2.2.1'],"|":[2,0,1,'1.1.1.1.1.1.1.1.1'],"}":[4,0,3,'4.2.2.2.1.2.2.2.4'],"~":[7,0,6,'0.0.0.19.26.0.0.0.0']};
-for (const k in FONT) FONT[k][3] = FONT[k][3].split('.').map((v) => parseInt(v, 16));
-FONT[' '][0] = 4;
-FONT['1'] = [4, 0, 3, [2, 6, 2, 2, 2, 2, 2, 2, 7]]; // a plain 1 (the original reads as a 7)
-const glyphOf = (ch) => FONT[ch] || FONT['?'];
 // ------------------------------------------------------------- UI text ---
 // Text is drawn with a real font straight onto the full-resolution screen,
 // so it stays smooth and sharp at any scale. text() only measures and
@@ -322,16 +285,20 @@ const MCTX = document.createElement('canvas').getContext('2d');
 const TEXT_W = new Map(), TEXT_Q = [];
 const TEXT_CACHE = TEXT_W; // the dev menu counts it
 // Width in game pixels.
+// Measured once at scale 1 and scaled, so growing numbers cost nothing.
+// TEXT_K is the player's text size setting.
+let TEXT_K = 1;
+const TEXT_SIZES = { small: 0.92, normal: 1, large: 1.06 };
 const textW = (s, sc = 1, small = false) => {
   s = String(s).toUpperCase();
-  const key = `${small ? 1 : 0}${sc}|${s}`; let w = TEXT_W.get(key);
+  const key = `${small ? 1 : 0}|${s}`; let w = TEXT_W.get(key);
   if (w === undefined) {
-    MCTX.font = fontOf((small ? UI_FONT.small : UI_FONT.main) * sc, small);
-    w = Math.ceil(MCTX.measureText(s).width + UI_FONT.track * sc * Math.max(0, s.length - 1));
+    MCTX.font = fontOf((small ? UI_FONT.small : UI_FONT.main) * TEXT_K, small);
+    w = MCTX.measureText(s).width + UI_FONT.track * TEXT_K * Math.max(0, s.length - 1);
     if (TEXT_W.size > 4000) TEXT_W.clear();
     TEXT_W.set(key, w);
   }
-  return w;
+  return Math.ceil(w * sc);
 };
 // Queue a line of text. (x, y) is its top-left in game pixels, as before.
 function text(s, x, y, color, o = {}) {
@@ -348,10 +315,10 @@ function flushText() {
   let font = '';
   for (const q of TEXT_Q) {
     const { sc = 1, small = false, shadow = true } = q.o, outline = q.o.outline === undefined ? PAL.outline : q.o.outline;
-    const size = (small ? UI_FONT.small : UI_FONT.main) * sc * q.k, f = fontOf(size * P, small);
+    const size = (small ? UI_FONT.small : UI_FONT.main) * sc * q.k * TEXT_K, f = fontOf(size * P, small);
     if (f !== font) { g.font = f; font = f; }
-    g.letterSpacing !== undefined && (g.letterSpacing = `${UI_FONT.track * sc * q.k * P}px`);
-    const x = Math.round(q.x * P), y = Math.round((q.y + (small ? UI_FONT.capSmall : UI_FONT.cap) * sc * q.k) * P);
+    g.letterSpacing !== undefined && (g.letterSpacing = `${UI_FONT.track * sc * q.k * TEXT_K * P}px`);
+    const x = Math.round(q.x * P), y = Math.round((q.y + (small ? UI_FONT.capSmall : UI_FONT.cap) * sc * q.k * TEXT_K) * P);
     g.globalAlpha = q.a;
     if (outline) {
       if (shadow) { g.fillStyle = outline; g.fillText(q.s, x, y + Math.round(P * sc * q.k)); }
@@ -2553,7 +2520,7 @@ function renderPool() {
     const r = Gm.mark(k), sel = P.mark === k, odds = wagerOdds(P.i, k);
     ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
     const my = r.y + Math.round(r.h / 2);
-    text(M.name, r.x + 8, M.text ? my - 8 : my - 4, sel ? PAL.gold0 : PAL.cloth0); if (M.text) text(M.text, r.x + 8, my + 2, PAL.stone2, small);
+    text(M.name, r.x + 8, M.text ? my - 9 : my - 4, sel ? PAL.gold0 : PAL.cloth0); if (M.text) text(M.text, r.x + 8, my + 3, PAL.stone2, small);
     text(`X${odds}`, r.x + r.w - 92, my - 4, PAL.flame1, { align: 'right' });
     text(`PAYS ${Math.round(stake * odds)}`, r.x + r.w - 8, my - 4, PAL.gold1, { align: 'right' });
     if (sel) { ctx.strokeStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.lineWidth = 1; ctx.strokeRect(r.x - 1.5, r.y - 1.5, r.w + 3, r.h + 3); }
@@ -2987,7 +2954,7 @@ function renderNews() {
 
 // ------------------------------------------------------------ settings ---
 // From the pause screen. Saved in SAVE.opts.
-const OPT_DEF = { fx: 'full', shake: true, nums: 'all', haptics: true, music: 2, sound: 3, voices: 3, cries: 'all', hand: 'right' };
+const OPT_DEF = { text: 'normal', fx: 'full', shake: true, nums: 'all', haptics: true, music: 2, sound: 3, voices: 3, cries: 'all', hand: 'right' };
 const opt = (k) => (SAVE.opts && SAVE.opts[k] !== undefined ? SAVE.opts[k] : OPT_DEF[k]);
 function setOpt(k, v) { SAVE.opts = SAVE.opts || {}; SAVE.opts[k] = v; persist(); if (k === 'music' || k === 'sound' || k === 'voices') AUDIO.setVol(); if (k === 'hand') layoutHud(); }
 // A short buzz where the browser allows it (Android; iPhone Safari has no vibration).
@@ -2998,6 +2965,7 @@ const OPT_ROWS = [
   { k: 'fx', name: 'EFFECTS', vals: ['full', 'low'], show: (v) => (v === 'full' ? 'FULL' : 'LOW (OLDER PHONES)') },
   { k: 'shake', name: 'SCREEN SHAKE', vals: [true, false], show: (v) => (v ? 'ON' : 'OFF') },
   { k: 'nums', name: 'DAMAGE NUMBERS', vals: ['all', 'crits', 'off'], show: (v) => v.toUpperCase() },
+  { k: 'text', name: 'TEXT SIZE', vals: ['small', 'normal', 'large'], show: (v) => v.toUpperCase() },
   { k: 'haptics', name: 'HAPTICS', vals: [true, false], show: (v) => (v ? 'ON' : 'OFF') },
   { k: 'music', name: 'MUSIC', vals: [0, 1, 2, 3], show: (v) => (v ? '#'.repeat(v) : 'OFF') },
   { k: 'sound', name: 'SOUNDS', vals: [0, 1, 2, 3], show: (v) => (v ? '#'.repeat(v) : 'OFF') },
@@ -4336,7 +4304,11 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   if (!opts.status && !blocked) e.hitT = HIT_T;
   const heavy = e.tier === 'elite' ? 0.15 : e.tier === 'rare' ? 0.4 : 1;
   if (!blocked) { e.kx += dirx * kb * heavy; e.ky += diry * kb * heavy; }
-  if (nums.length < 60 || crit) nums.push({ x: e.x + rand(-5, 5), y: e.y - e.hy * 2 - 4, v: dmg, t: 0, color: blocked ? PAL.iron1 : crit ? PAL.gold1 : opts.color || PAL.cloth0, crit, small: !!opts.status && !crit });
+  // Crits are sized and coloured by how they compare with recent plain hits:
+  // gold, then orange at 3x, then crimson at 6x.
+  if (!crit && !opts.status) game.avgHit = (game.avgHit || dmg) * 0.95 + dmg * 0.05;
+  const heat = crit ? (dmg >= (game.avgHit || dmg) * 6 ? 2 : dmg >= (game.avgHit || dmg) * 3 ? 1 : 0) : 0;
+  if (nums.length < 60 || crit) nums.push({ x: e.x + rand(-5, 5), y: e.y - e.hy * 2 - 4, v: dmg, t: 0, color: blocked ? PAL.iron1 : crit ? CRIT_COL(heat) : opts.color || PAL.cloth0, crit, heat, small: !!opts.status && !crit });
   const hy = e.y - e.hy;
   if (blocked) { sparks(e.x + e.face * 10, hy, PAL.gold0, 5); sfx('block'); playFx('fx', 'impact', e.x + e.face * 10, hy, 30); }
   else if (dirx || diry) { bleed(e.x, hy, crit ? 5 : 2, dirx); if (!opts.status) { sfx('hit' + Math.floor(rng() * 3), { vol: crit ? 1.3 : 1 }); } if (!opts.status) playFx('fx', 'impact', e.x - dirx * 4, hy, 30, { small: !crit }); }
@@ -5625,6 +5597,7 @@ let markT = 0;
 function mark(k) { if (!PROFON) return; const t = performance.now(); if (k) PROF['r:' + k] = (PROF['r:' + k] || 0) * 0.98 + (t - markT); markT = t; }
 function render() {
   mark(); LOWFX = opt('fx') === 'low';
+  { const k = TEXT_SIZES[opt('text')] || 1; if (k !== TEXT_K) { TEXT_K = k; TEXT_W.clear(); } }
   ctx.fillStyle = '#0b0710'; ctx.fillRect(0, 0, W, H);
   if (game.state === 'title' || !player) { renderTitle(); blit(); flushText(); return; }
   const shk = opt('shake') ? game.shake : 0;
@@ -5772,8 +5745,8 @@ function render() {
   for (const n of nums) {
     if (numMode === 'off' && n.color !== PAL.blood0 && typeof n.v === 'number') continue;
     if (numMode === 'crits' && !n.crit && n.color !== PAL.blood0 && typeof n.v === 'number') continue;
-    const rise = 16 * Math.min(1, n.t * 6) + n.t * 8, pop = n.t < 0.08;
-    const sc = n.crit ? (pop ? 3 : 2) : n.small ? 1 : pop ? 2 : 1;
+    const rise = 16 * Math.min(1, n.t * 6) + n.t * 8, pop = Math.max(0, 1 - n.t / 0.12);
+    const sc = n.crit ? (1.45 + 0.25 * (n.heat || 0)) * (1 + 0.6 * pop) : n.small ? 1 : 1 + 0.3 * pop;
     ctx.globalAlpha = n.t > 0.65 ? Math.max(0, 1 - (n.t - 0.65) / 0.2) : 1;
     text(String(n.v) + (n.crit && typeof n.v === 'number' ? '!' : ''), n.x - cx, n.y - cy - rise, n.color, { sc, align: 'center', small: n.small });
     ctx.globalAlpha = 1;
@@ -6146,6 +6119,7 @@ function gild(x, y, w, h) { // gilded pixel frame with bevel
 // A HUD bar: ink case with a thin gilt edge, a three-band fill, a pale strip
 // for what was just lost, a top sheen, and optional segment ticks.
 let hudY = 24;
+const CRIT_COL = (h) => [PAL.gold1, PAL.ember1, PAL.crimson0][h];
 function hudBar(x, y, w, h, k, ghost, ramp, hit = false, segs = 0) {
   k = Math.max(0, Math.min(1, k)); const fw = Math.round(w * k), gw = Math.round(w * Math.max(k, Math.min(1, ghost || 0)));
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
@@ -6351,16 +6325,29 @@ function renderHud() {
   // Top-left: health, then Zeal with what its fill is worth.
   const hw = Math.round(Math.min(150, W * 0.28)), hk = Math.max(0, p.hp / p.maxHp);
   p.hpGhost = Math.max(hk, (p.hpGhost ?? hk) - 0.6 * (game.realDt || 0.016)); // the lost part drains away
-  hudBar(8, 8, hw, 12, hk, p.hpGhost, 'blood', p.hurt > 0);
-  text(`${Math.ceil(p.hp)} / ${p.maxHp}`, 8 + hw / 2, 10, PAL.white, { align: 'center', small: true });
+  // A big hit (8% of max HP or more at once) shakes the HP bar and its number.
+  if ((p.hpSeen ?? p.hp) - p.hp >= p.maxHp * 0.08) game.hpShakeT = game.real;
+  p.hpSeen = p.hp;
+  const hs = Math.max(0, 1 - (game.real - (game.hpShakeT ?? -9)) / 0.35), sh = opt('shake') && hs > 0 ? Math.round(Math.sin(game.real * 70) * 2.5 * hs) : 0;
+  hudBar(8 + sh, 8, hw, 12, hk, p.hpGhost, 'blood', p.hurt > 0);
+  text(`${Math.ceil(p.hp)} / ${p.maxHp}`, 8 + sh + hw / 2, 10, hs > 0.5 ? PAL.blood0 : PAL.white, { align: 'center', small: true });
   hudY = 24;
   if (game.scene === 'wound') {
     const tier = fervorTier(), framp = ['ember', 'ember', 'crimson', 'gold'][tier], zw = hw;
     hudBar(8, 25, zw, 6, game.fervor / 100, 0, framp, false, 4);
+    // Reaching a new step flashes the bar and rings a rising bell.
+    if (tier > (game.zTier ?? 0)) { game.zFlashT = game.real; sfx('knell', { vol: 0.4, rate: 0.9 + tier * 0.15 }); }
+    game.zTier = tier;
+    const zf = Math.max(0, 1 - (game.real - (game.zFlashT ?? -9)) / 0.5);
+    if (zf > 0 && !LOWFX) {
+      ctx.globalAlpha = zf * 0.85; ctx.fillStyle = PAL.white; ctx.fillRect(8, 25, zw, 6);
+      const g = Math.round((1 - zf) * 6); ctx.globalAlpha = zf; ctx.strokeStyle = PAL[framp + '0'] || PAL.gold0; ctx.lineWidth = 1;
+      ctx.strokeRect(8 - 2.5 - g, 25 - 2.5 - g, zw + 5 + g * 2, 11 + g * 2); ctx.globalAlpha = 1;
+    }
     // Under the bar: the damage bonus on the left, the tier name on the right.
     const bonus = tier * 10 * (game.buff && game.buff.kind === 'fervor' ? 2 : 1);
     text(bonus ? `+${bonus}% DAMAGE` : 'NO BONUS YET', 8, 34, bonus ? PAL.gold1 : PAL.stone2, { small: true });
-    text(T.fervor.tiers[tier], 8 + zw, 34, PAL[framp + '1'], { small: true, align: 'right' });
+    text(T.fervor.tiers[tier], 8 + zw, 34 - zf * 1.5, zf > 0.4 ? PAL.white : PAL[framp + '1'], { small: true, align: 'right', sc: 1 + zf * 0.3 });
     hudY = 46;
   }
   // Top-right: minimap and pause.
@@ -7136,7 +7123,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>
