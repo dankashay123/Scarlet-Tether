@@ -101,9 +101,12 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '31.1';
+const BUILD = '32.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '32.1': ['THE OSSUARY SPIRE HAS ITS OWN ROOMS: SKULL SHELVES, SKULL HEAPS, CANDLE CAIRNS, STONE PEWS AND LOOSE BONES.',
+    'THE TRAINING YARD KEEPS YOUR BEST DAMAGE A SECOND FOR EACH SET AND RITES YOU USE.',
+    'THE OSSUARCH AND THE ASH WIDOW EACH LEARNED A NEW ATTACK. THE WIDOW\'S FIRE POOLS BURN HOTTER.'],
   '31.1': ['NEW: STRATUM III, THE OSSUARY SPIRE. OPENS AFTER STATION VI. NEW MONSTERS AND TWO NEW WARDENS WITH THEIR OWN MUSIC.',
     'NEW: THE TRAINING YARD AT THE END OF THE LOWER STREET. HIT THE DUMMY OR SUMMON ANY FOE. NOTHING IS GAINED OR LOST.',
     'A KILL STREAK SHOWS UNDER THE ZEAL BAR. A RED EDGE WARNS YOU BELOW 25% HEALTH.'],
@@ -690,7 +693,8 @@ function makeDungeon() {
   const candle = (x, y, a = 0.75) => { decals.push({ kind: 'candles', x, y }); lights.push({ x, y: y - 8, r: 42, c: 'flame', a, flick: rng() * 9 }); };
   const water = [];
   // The Drowned Nave dresses its rooms with its own pieces.
-  const drowned = (game.buildStratum || 1) === 2;
+  const drowned = (game.buildStratum || 1) === 2, ossuary = (game.buildStratum || 1) === 3;
+  const PEW = () => drowned && rng() < 0.6 ? { sheet: 'props', anim: 'sunkpew' } : ossuary ? { sheet: 'props', anim: 'bonepew' } : { sheet: 'loot', anim: 'pew' };
   for (const r of rooms) {
     const cx = Math.floor((r.x0 + r.x1) / 2), cy = Math.floor((r.y0 + r.y1) / 2);
     r.cx = cx; r.cy = cy;
@@ -712,7 +716,7 @@ function makeDungeon() {
     const cage = (x, y) => { const k = rng() < 0.7 ? 'cage' : 'maiden'; if (roomFree(r, x, y, 1, 1, 1)) place(r, k, x, y, 1, 1, { sheet: 'loot', anim: k }); };
     const special = r.type === 'shrine' || r.type === 'treasury';
     if (r.type === 'start') {
-      for (let y = r.y0 + 6; y < r.y1 - 2; y += 3) for (const x of [cx - 4, cx + 3]) if (roomFree(r, x, y, 2, 1, 0)) place(r, 'pew', x, y, 2, 1, drowned && rng() < 0.6 ? { sheet: 'props', anim: 'sunkpew' } : { sheet: 'loot', anim: 'pew' });
+      for (let y = r.y0 + 6; y < r.y1 - 2; y += 3) for (const x of [cx - 4, cx + 3]) if (roomFree(r, x, y, 2, 1, 0)) place(r, 'pew', x, y, 2, 1, PEW());
       mirror(0.25, 0.4, pillar);
     } else if (r.type === 'exit') {
       for (const f of [0.3, 0.55, 0.8]) { pillar(cx - 6, fy(f)); pillar(cx + 6, fy(f)); }
@@ -723,7 +727,7 @@ function makeDungeon() {
     } else {
       const plans = {
         crypt: ['empty', 'grid4', 'twin', 'center', 'edgerow'],
-        ossuary: ['empty', 'grid4', 'twin', 'corners'],
+        ossuary: ['empty', 'grid4', 'twin', 'corners', 'center'],
         flooded: ['sidepools', 'center', 'grid4'],
         chapel: ['pews', 'grid4', 'edgerow'],
       }[r.theme];
@@ -735,6 +739,7 @@ function makeDungeon() {
       // One central feature with urns on its corners.
       if (r.plan === 'center') {
         if (r.theme === 'flooded') { pool(cx - 4, cy - 3, cx + 4, cy + 1); pillar(cx - 6, cy + 3); pillar(cx + 6, cy + 3); }
+        else if (r.theme === 'ossuary') { if (roomFree(r, cx - 1, cy - 1, 2, 1, 1)) { place(r, 'cairn', cx - 1, cy - 1, 2, 1, { sheet: 'props', anim: 'cairn', ph: rng() * 9 }); lights.push({ x: (cx + 0.5) * TILE, y: (cy - 3) * TILE, r: 70, c: 'flame', a: 0.85, flick: rng() * 9 }); } for (const dx of [-5, 4]) if (roomFree(r, cx + dx, cy + 2, 1, 1, 0)) place(r, 'skullheap', cx + dx, cy + 2, 1, 1, { sheet: 'props', anim: 'skullheap' }); }
         else { sarco(cx, cy - 2); for (const [dx, dy] of [[-3, -3], [2, -3], [-3, -1], [2, -1]]) urn(cx + dx, cy + dy); }
       }
       // Pools hugging the side walls, lanterns below them.
@@ -743,7 +748,7 @@ function makeDungeon() {
       if (r.plan === 'edgerow') for (let x = r.x0 + 3; x <= r.x1 - 3; x += 3) { if (r.gates.some((g) => g.side === 's' && g.tiles.some(([gx]) => Math.abs(gx - x) <= 3))) continue; ((x - r.x0) / 3) % 4 === 0 ? stand(x, r.y1 - 1) : urn(x, r.y1 - 1); }
       // Clutter in all four corners and a sparse diagonal of skull candles.
       if (r.plan === 'corners') for (let k = -2; k <= 2; k++) decals.push({ kind: 'skullcandle', x: (cx + k * 4 + 0.5) * TILE, y: (cy + k * 2 + 0.5) * TILE });
-      if (r.plan === 'pews') for (let y = r.y0 + 6; y < r.y1 - 2; y += 3) for (const x of [cx - 8, cx - 5, cx + 4, cx + 7]) if (roomFree(r, x, y, 2, 1, 0)) place(r, 'pew', x, y, 2, 1, drowned && rng() < 0.6 ? { sheet: 'props', anim: 'sunkpew' } : { sheet: 'loot', anim: 'pew' });
+      if (r.plan === 'pews') for (let y = r.y0 + 6; y < r.y1 - 2; y += 3) for (const x of [cx - 8, cx - 5, cx + 4, cx + 7]) if (roomFree(r, x, y, 2, 1, 0)) place(r, 'pew', x, y, 2, 1, PEW());
     }
     // The back wall: statues on plinths in a steady rhythm mirrored about the
     // centre, a torch stand flanking each statue pair, and two guardian
@@ -754,6 +759,7 @@ function makeDungeon() {
     if (r.type !== 'treasury') for (let dx = 4; cx - dx > r.x0 + 2; dx += 7) for (const x of [cx - dx, cx + dx]) {
       if (nearDoor(x, 2) || isSolid(x, r.y0 + 1) || isSolid(x, r.y0 + 2)) continue;
       if (drowned && Math.floor(dx / 7) % 2 === 0) place(r, 'organ', x, r.y0 + 1, 1, 1, { sheet: 'props', anim: 'organ' });
+      else if (ossuary && Math.floor(dx / 7) % 3 !== 1 && !nearDoor(x, 4)) place(r, 'boneshelf', x, r.y0 + 1, 1, 1, { sheet: 'props', anim: 'boneshelf' });
       else place(r, ['statue_saint', 'statue_angel', 'statue_knight'][Math.floor(dx / 7) % 3], x, r.y0 + 1, 1, 1, { sheet: 'hall' });
       const sx = x + (x < cx ? 2 : -2); if (!nearDoor(sx, 1)) stand(sx, r.y0 + 1);
     }
@@ -763,7 +769,8 @@ function makeDungeon() {
     // Breakables: one to three in each corner, tucked against the walls.
     for (const [x, y, dx, dy] of [[r.x0 + 1, r.y0 + 3, 1, 0], [r.x1 - 1, r.y0 + 3, -1, 0], [r.x0 + 2, r.y1 - 1, 1, 0], [r.x1 - 2, r.y1 - 1, -1, 0]]) {
       if (rng() < (r.plan === 'corners' ? 0 : 0.3)) continue;
-      const n = 1 + Math.floor(rng() * 3), kind = r.theme === 'ossuary' && rng() < 0.5 ? 'coffin' : drowned || rng() < 0.6 ? 'urn' : 'crate';
+      if (ossuary && rng() < 0.35) { const hx = x + dx; if (roomFree(r, hx, y, 1, 1, 0)) place(r, 'skullheap', hx, y, 1, 1, { sheet: 'props', anim: 'skullheap' }); continue; }
+      const n = 1 + Math.floor(rng() * 3), kind = (r.theme === 'ossuary' || ossuary) && rng() < 0.5 ? 'coffin' : drowned || rng() < 0.6 ? 'urn' : 'crate';
       for (let k = 0; k < n; k++) { const tx = x + dx * k, ty = y + (k === 2 ? (y < cy ? 1 : -1) : 0), ox = k === 2 ? x : tx; if (!roomFree(r, ox, ty, 1, 1, 0)) continue; place(r, kind, ox, ty, 1, 1, kind === 'urn' ? { sheet: 'hall', anim: 'urn', frame: k % 2, breakable: 1 } : kind === 'crate' ? { sheet: 'hall', anim: 'crate', breakable: 2 } : { sheet: 'loot', anim: 'coffin', breakable: 2 }); }
     }
     if (r.theme === 'ossuary') for (const [x, y] of [[r.x0 + 2, r.y1 - 2], [r.x1 - 2, r.y1 - 2]]) decals.push({ kind: 'bonepile', x: x * TILE, y: y * TILE });
@@ -772,6 +779,8 @@ function makeDungeon() {
       for (const [x, y] of [[r.x0 + 1, r.y0 + 2], [r.x1 - 1, r.y0 + 2], [r.x0 + 1, r.y1 - 2], [r.x1 - 1, r.y1 - 2]]) if (rng() < 0.7 && !isSolid(x, y)) decals.push({ kind: 'kelp', x: (x + 0.5) * TILE, y: (y + 1) * TILE, ph: rng() * 4 });
       for (let k = 0; k < 2 + Math.floor(r.ak * 2); k++) decals.push({ kind: 'weedmat', x: rand(r.x0 + 2, r.x1 - 2) * TILE, y: rand(r.y0 + 2, r.y1 - 1) * TILE });
     }
+    // The Ossuary strews loose bones across its floors.
+    if (ossuary) for (let k = 0; k < 2 + Math.floor(r.ak * 2); k++) decals.push({ kind: 'bonestrew', x: rand(r.x0 + 2, r.x1 - 2) * TILE, y: rand(r.y0 + 2, r.y1 - 1) * TILE, f: Math.floor(rng() * 2) });
     decals.push({ kind: 'web', x: r.x0 * TILE, y: r.y0 * TILE }, { kind: 'web', x: (r.x1 + 1) * TILE, y: r.y0 * TILE, flip: true });
     for (let k = 0; k < (r.theme === 'ossuary' ? 3 : 1); k++) critters.push({ x: rand(r.x0 + 1, r.x1) * TILE, y: rand(r.y0 + 1, r.y1) * TILE, room: r.id, t: rng() * 5, vx: 0, vy: 0, hide: 0 });
   }
@@ -855,6 +864,7 @@ function makeDungeon() {
   for (const d of decals) {
     if (d.kind === 'bonepile') { if (isSolid(Math.floor(d.x / TILE), Math.floor(d.y / TILE))) continue; const f = frameOf('props', 'bonepile', 0); rc.drawImage(IMG.props, f.x, f.y, f.w, f.h, Math.round(d.x - f.w / 2), Math.round(d.y - f.h / 2), f.w, f.h); }
     if (d.kind === 'web') { const f = frameOf('loot', 'web', 0); rc.save(); rc.translate(d.x, d.y); if (d.flip) rc.scale(-1, 1); rc.drawImage(IMG.loot, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h); rc.restore(); }
+    if (d.kind === 'bonestrew') { const tx = Math.floor(d.x / TILE), ty = Math.floor(d.y / TILE); if (isSolid(tx, ty) || [-1, 0, 1].some((k) => propTiles.has(`${tx + k},${ty}`) || propTiles.has(`${tx + k},${ty + 1}`))) continue; const f = frameOf('props', 'bonestrew', d.f); rc.drawImage(IMG.props, f.x, f.y, f.w, f.h, Math.round(d.x - f.w / 2), Math.round(d.y - f.h / 2), f.w, f.h); }
     if (d.kind === 'weedmat') { if (isSolid(Math.floor(d.x / TILE), Math.floor(d.y / TILE))) continue; const f = frameOf('props', 'weedmat', 0); rc.drawImage(IMG.props, f.x, f.y, f.w, f.h, Math.round(d.x - f.w / 2), Math.round(d.y - f.h / 2), f.w, f.h); }
     if (d.kind === 'hangchain') { const f = frameOf('loot', 'hangchain', 0); rc.drawImage(IMG.loot, f.x, f.y, f.w, f.h, Math.round(d.x), Math.round(d.y), f.w, f.h); }
   }
@@ -2110,6 +2120,15 @@ function updateYard() {
   const Y = game.yard; if (!Y) return;
   const d = Y.dummy; if (d && !d.dead) { d.x = d.home.x; d.y = d.home.y; d.kx = d.ky = 0; d.hp = d.maxHp; }
   while (Y.hits.length && game.time - Y.hits[0][0] > 5) Y.hits.shift();
+  // Records count only once at least 3 seconds of hits are in the window.
+  const k = yardKey(), best = (SAVE.yardBest ||= {}), was = best[k] || 0;
+  if (Y.hits.length && game.time - Y.hits[0][0] >= 3) { const d = yardDps(); if (d > was) { if (Y.prev === undefined) Y.prev = was; best[k] = d; if (d > (best.all || 0)) best.all = d; } }
+  if (!Y.hits.length && Y.prev !== undefined) { if (Y.prev > 0) toast(`NEW BEST: ${was.toLocaleString('en-US')} A SECOND`, 2.5); Y.prev = undefined; persist(); }
+}
+// A build for the yard's records: the set worn (4+ pieces) and the three rites.
+function yardKey() {
+  const set = [...MAIN_SETS, 'habit'].find((id) => setCount(id) >= 4);
+  return `${set || 'mixed'}:${Object.keys(RITES).map((sl) => riteOf(sl).id).join(',')}`;
 }
 // Damage the dummy took over the last 5 seconds.
 function yardDps() { const Y = game.yard; if (!Y || !Y.hits.length) return 0; const span = Math.max(1, Math.min(5, game.time - Y.hits[0][0])); return Math.round(Y.hits.reduce((a, h) => a + h[1], 0) / span); }
@@ -2131,6 +2150,8 @@ function renderYardPanel() {
     text(fitText(m.name.replace(/^THE /, ''), c.w - 10), c.x + 6, c.y + 4, PAL.cloth0, small); });
   text(Y.tab === 0 ? 'TAP A FOE TO SUMMON THREE.' : 'TAP A FOE TO SUMMON IT.', G0.x0 + 12, G0.note, PAL.stone2, small);
   text(`DUMMY: ${yardDps().toLocaleString('en-US')} DAMAGE A SECOND. TOTAL ${Math.round(Y.total).toLocaleString('en-US')}.`, G0.x0 + 12, G0.note + 11, PAL.cloth1, small);
+  const B = SAVE.yardBest || {}, set = yardKey().split(':')[0];
+  text(`BEST, ${set === 'mixed' ? 'NO SET' : SET_SHORT[set]} AND THESE RITES: ${(B[yardKey()] || 0).toLocaleString('en-US')}. BEST EVER: ${(B.all || 0).toLocaleString('en-US')}.`, G0.x0 + 12, G0.note + 22, PAL.gold1, small);
   const diffName = DIFF[game.run.diff].name;
   invButton(G0.btn(0), `< ${diffName} >`, PAL.stone4); invButton(G0.btn(1), Y.attack ? 'FOES ATTACK' : 'FOES ARE CALM', Y.attack ? PAL.crimson3 : PAL.stone4);
   invButton(G0.btn(2), 'CLEAR FOES', PAL.stone4); invButton(G0.btn(3), 'LEAVE', PAL.gold3);
@@ -3767,7 +3788,7 @@ const MON = {
     phases: [[A('shockwave', { range: 180, windup: 0.9, cd: 6, dmg: 15, speed: 115, max: 230 })], [A('pattern', { shape: 'ring', at: 'player', n: 10, radius: 74, rad: 20, delay: 0.85, range: 260, windup: 0.6, cd: 6, dmg: 16 }), A('barrage', { n: 8, range: 240, windup: 0.6, cd: 5, dmg: 14, rad: 20 })]] },
   ashWidow: { name: 'THE ASH WIDOW', tier: 'elite', warden: true, stratum: 3, sheet: 'mon_warden', hp: 2500, speed: 15, r: 14, hy: 40, hr: 21, move: 'kite', keep: 110, fervor: 40, attacks: [
     A('spiral', { streams: 2, dur: 2.4, rate: 0.14, range: 210, windup: 0.8, cd: 7, dmg: 8, speed: 95, shot: 'ember' }),
-    A('lob', { n: 4, spreadR: 50, rad: 20, range: 220, windup: 0.7, cd: 4.5, dmg: 11, pool: 'ember', poolLife: 5, poolDps: 14 }),
+    A('lob', { n: 4, spreadR: 50, rad: 20, range: 220, windup: 0.7, cd: 4.5, dmg: 11, pool: 'ember', poolLife: 5, poolDps: 22 }),
     A('pull', { len: 190, range: 190, windup: 0.6, cd: 6, dmg: 10 }),
     A('summon', { monster: 'cinderMoth', n: 4, range: 300, windup: 0.6, cd: 12 })],
     phases: [[A('ring', { n: 24, range: 220, windup: 0.6, cd: 4.5, dmg: 9, speed: 100, shot: 'ember' })], [A('spiral', { streams: 4, dur: 3, rate: 0.12, range: 240, windup: 0.8, cd: 8, dmg: 9, speed: 100, shot: 'ember' }), A('pattern', { shape: 'ring', at: 'self', n: 14, radius: 105, rad: 18, delay: 0.9, range: 260, windup: 0.7, cd: 7, dmg: 14, pool: 'ember' })]] },
@@ -3846,6 +3867,8 @@ const MORE_ATTACKS = {
   cardinal: [A('sentence', { range: 260, windup: 0.5, cd: 9, dmg: 40, rad: 48, time: 2.2 })],
   charnelKing: [A('nova', { range: 70, windup: 0.6, cd: 6, rad: 80, delay: 1, dmg: 30, pool: 'poison', poolDps: 34 })],
   ladyOfNails: [A('snipe', { n: 3, fan: 0.2, range: 260, windup: 0.3, delay: 0.6, cd: 4, dmg: 16, speed: 400, shot: 'bone' })],
+  ossuarch: [A('barrage', { n: 12, spread: 80, gap: 0.08, range: 240, windup: 0.7, cd: 7, rad: 18, delay: 0.7, dmg: 18, style: 'thorn' })],
+  ashWidow: [A('snipe', { n: 3, fan: 0.22, range: 260, windup: 0.3, delay: 0.65, cd: 5, dmg: 15, speed: 380, shot: 'ember' })],
 };
 for (const [id, d] of Object.entries(MON)) {
   d.id = id;
@@ -7262,7 +7285,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { openYard, yardGeo, yardTap, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { yardKey, openYard, yardGeo, yardTap, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

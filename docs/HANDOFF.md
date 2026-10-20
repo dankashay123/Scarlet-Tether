@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 31 (build 31.1, on `master`). Read
+Last updated 2026-10-20, after round 32 (build 32.1, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -18,8 +18,8 @@ see "The owner's preferences".) When the owner answers with numbers
    strata I to III, Wardens, Bloodrose Keys, Chrism, Censer upgrades).
    The server dies between sessions: if a test prints nothing or
    `ERR_CONNECTION_REFUSED`, start it again.
-3. Work on the branch `round8-monster-anim`, then fast-forward `master` and
-   push both. GitHub Pages deploys from `master`.
+3. Work on a round branch (round 32 used `round32-ossuary`), then
+   fast-forward `master` and push both. GitHub Pages deploys from `master`.
 4. Before shipping: raise `BUILD` and add `CHANGES[BUILD]`; run the tests
    listed in `CLAUDE.md` (each prints `errors 0 []`), `menus.cjs` at
    932x430 and 667x375 (and `TEXT=large` once), a soak
@@ -69,6 +69,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 - **The Training Yard (round 31):** a practice run (`run.yard`): a dummy
   that shows damage a second, a summon panel at the statue (any foe or
   Warden, any open Station, foes calm or attacking), no gains, no death.
+  It keeps the best damage a second per build (`SAVE.yardBest`, keyed by
+  `yardKey()`: the set worn at 4+ pieces and the three rites; counted once
+  3 s of hits are in the window).
+- **Ossuary rooms (round 32):** Stratum III dresses its rooms with its own
+  props (`props` sheet, `tools/models/props.mjs`): skull shelves on most
+  back-wall bays (`boneshelf`), skull heaps in corners (`skullheap`), a
+  candle cairn in the centre plan of ossuary rooms (`cairn`, any stratum),
+  stone pews with skull knobs (`bonepew`) and loose bones baked into the
+  floor (`bonestrew`). Flag `ossuary` in `populate()`, like `drowned`.
 - **The Bleeding Vigil** (timed endless trial): each one costs a Bloodrose
   Key (`SAVE.vkeys`), dropped by Wardens of Station X and deeper half the
   time. Ten minutes to fill the Toll and kill the Warden.
@@ -128,16 +137,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-1. **Tune Stratum III from play.** Its Wardens' kits (`ossuarch`,
-   `ashWidow` in `MON`) were set by eye; run `balance.cjs` and a few real
-   fights at Stations VII to XV.
-2. **Rooms per stratum.** Let `populate()` pick room themes and props per
-   stratum (the Nave has its own; the Ossuary reuses the base set).
-3. **Stratum III dressing.** Give the Ossuary its own room props (bone
-   piles, skull niches, ossuary shelves) the way the Nave has kelp and
-   pools; today it reuses remapped Undercroft props.
-4. **Yard records.** Keep the best damage a second against the dummy per
-   build and show it on the yard panel.
+1. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
+   attack; ask the owner how the fights at Stations VII to XV feel.
+2. **Ossuary chapels.** Chapels in Stratum III still have the red carpet
+   and warm floor; give them a bone-grey runner or a different floor.
+3. **Yard extras.** A list of past records per build on the yard panel, a
+   reset button, and a 30 s timed test.
+4. **Stratum III ambience.** Dripping ash, a bone rattle when walking past
+   heaps, green candle flames on the cairn.
 5. **The pool's crowd.** Let the crowd at the Scrying Pool cheer or jeer
    when a wager settles in Vael, and show past wagers (won and lost).
 6. **A second playable saint.** A short-range melee saint with its own
@@ -148,6 +155,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 32 (Ossuary rooms, yard records, Stratum III Wardens):** new
+  props for the Ossuary Spire (skull shelf, skull heap, candle cairn, bone
+  pew, strewn bones) placed by `populate()` when `ossuary`; the Training
+  Yard keeps a best damage a second per build (`SAVE.yardBest`,
+  `yardKey`) and shows it on its panel, with a NEW BEST toast when you beat
+  an old record. The Ossuarch gained rising bone spikes (`barrage`,
+  thorn) and the Ash Widow an aimed ember volley (`snipe`) in
+  `MORE_ATTACKS`; her fire pools burn hotter (14 to 22). Tests:
+  `tools/tests/round32.cjs`, `tools/tests/ossrooms.cjs <dir> [stratum]
+  [floors]` (photographs every room of a stratum).
 
 - **Round 31 (Stratum III, Training Yard, HUD):** Stratum III, THE OSSUARY
   SPIRE (`STRATA[3]`, sheets `_o` from the `OSSUARY` remap, `OSSUARY_PAL`

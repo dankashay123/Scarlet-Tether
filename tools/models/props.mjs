@@ -31,6 +31,8 @@ const M = {
   velvetDark: { ramp: 'crimson', bias: -0.3, min: 3 },
   hole: { ramp: 'ink', bias: -0.5, min: 7 },
   dirt: { ramp: 'shroud', spec: 0.05 },
+  ossStone: { ramp: 'stone', spec: 0.05, bias: -0.22, min: 2 }, ossStoneDark: { ramp: 'stone', bias: -0.38, min: 3 },
+  boneDark: { ramp: 'bone', bias: -0.25, min: 2, spec: 0.1 },
 };
 // Tilt settings: the angle, and helpers to place hand pixels on the tilted image.
 const A = 0.6, C = Math.cos(A), Sn = Math.sin(A);
@@ -163,6 +165,85 @@ function weedmat() {
   const S = new Scene();
   for (const [x, y, r] of [[8, 6, 5], [15, 7, 4], [11, 9, 4], [19, 5, 3]]) S.add(ellipsoid([x, y, 0], [r, r * 0.45, 1], 'kelpDark'), 1.5);
   return R(S, 26, 14, M, {});
+}
+
+// ----------------------------------------------- the Ossuary Spire ---
+// Bone keeps its own ramp through the OSSUARY remap; stone turns to dark
+// cold cloth, so the skulls stand out pale against it.
+// A skull facing out of the model at (x, y, z), radius r.
+function skull(S, x, y, z, r, mat = 'bone') {
+  S.add(ellipsoid([x, y, z], [r, r * 0.92, r * 0.9], mat), 0);
+  S.add(ellipsoid([x, y + r * 0.75, z + r * 0.25], [r * 0.62, r * 0.4, r * 0.55], mat), 0.6);
+}
+// Dark eye sockets on a skull drawn by skull(), on the tilted image.
+function sockets(fr, P, x, y, z, r) {
+  for (const s of [-1, 1]) { const [px, py] = P(x + s * r * 0.42, y + r * 0.1, z + r * 0.85); dot(fr, px, py, 'ink0'); }
+}
+// A shelf of skulls set into the back wall: three rows in a stone frame,
+// long bones stacked between them, a skull and crossed bones on top.
+function boneshelf() {
+  const S = new Scene(), G = 60, cx = 20, d = 4, a = 0.25, P = proj(G, d, a), heads = [];
+  S.add(box([cx, G - 2.5, 0], [18, 2.5, d + 1], 0.7, 'ossStoneDark'), 0);
+  for (const x of [cx - 16, cx + 16]) S.add(box([x, G - 26, 0], [2.4, 22, d], 0.6, 'ossStone'), 0.3);
+  S.add(box([cx, G - 48.5, 0], [18.5, 2, d + 0.8], 0.6, 'ossStone'), 0.3);
+  S.add(box([cx, G - 26, -d + 0.6], [14, 22, 0.8], 0.3, 'carve'), 0);
+  for (const [k, sy] of [[0, G - 7], [1, G - 21], [2, G - 35]].map(([k, y]) => [k, y])) {
+    S.add(box([cx, sy + 1.2, 0], [14, 1, d], 0.4, 'ossStone'), 0);
+    if (k === 1) for (let j = 0; j < 3; j++) S.add(capsule([cx - 12.5, sy - 1.6 - j * 2.6, 1 - j * 0.4], [cx + 12.5, sy - 1.6 - j * 2.6, 1 - j * 0.4], 1.3, 1.3, 'bone'), 0.4);
+    else for (let i = 0; i < 3; i++) { const x = cx - 9 + i * 9, y = sy - 5; skull(S, x, y, 1, 4.4); heads.push([x, y, 1, 4.4]); }
+  }
+  S.add(capsule([cx - 7, G - 52, 2], [cx + 7, G - 57, 2], 1.1, 1.1, 'bone'), 0.4);
+  S.add(capsule([cx + 7, G - 52, 2], [cx - 7, G - 57, 2], 1.1, 1.1, 'bone'), 0.4);
+  skull(S, cx, G - 55, 3, 4.2); heads.push([cx, G - 55, 3, 4.2]);
+  const fr = R(S, 42, 64, M, view(G, d, a));
+  for (const h of heads) sockets(fr, P, ...h);
+  return fr;
+}
+// A heap of skulls and long bones on the floor.
+function skullheap() {
+  const S = new Scene(), G = 28, cx = 18, d = 7, P = proj(G, d), heads = [];
+  S.add(bumpy(ellipsoid([cx, G - 3, 0], [15, 6, d], 'boneDark'), 0.4, 0.4), 1.5);
+  S.add(capsule([cx - 16, G - 3, 4], [cx - 2, G - 7, 6], 1.3, 1.3, 'bone'), 0.5);
+  S.add(sphere([cx - 16, G - 3, 4], 1.9, 'bone'), 0.3);
+  S.add(capsule([cx + 4, G - 10, 2], [cx + 15, G - 4, 5], 1.2, 1.2, 'bone'), 0.5);
+  for (const [x, y, z, r] of [[cx - 8, G - 7, 3, 4.4], [cx + 1, G - 12, 0, 4.8], [cx + 8, G - 6, 4, 4.4]]) { skull(S, x, y, z, r); heads.push([x, y, z, r]); }
+  const fr = R(S, 36, 30, M, view(G, d));
+  for (const h of heads) sockets(fr, P, ...h);
+  return fr;
+}
+// A cairn of skulls with candles on top: the centre of an ossuary room.
+function cairn(f) {
+  const S = new Scene(), G = 56, cx = 22, d = 9, P = proj(G, d), heads = [];
+  S.add(box([cx, G - 2, 0], [20, 2, d + 1], 0.8, 'stoneDark'), 0);
+  S.add(bumpy(ellipsoid([cx, G - 8, 0], [18, 9, d], 'boneDark'), 0.4, 0.4), 1);
+  for (const [n, y, z, r] of [[4, G - 8, 6, 4.4], [3, G - 17, 4, 4.4], [2, G - 26, 2, 4.4], [1, G - 34, 1, 4.6]]) for (let i = 0; i < n; i++) { const x = cx + (i - (n - 1) / 2) * 9; skull(S, x, y, z, r); heads.push([x, y, z, r]); }
+  for (const [x, h, z, b] of [[cx - 9, 6, 1, G - 22], [cx + 9, 5, 1, G - 22], [cx, 6, -1, G - 39]]) { S.add(capsule([x, b, z], [x, b - h, z], 1.5, 1.4, 'wax'), 0.4); flameAt(S, P, x, b - 0.5 - h, z, 1.3, f ? 0.5 : -0.4, f); }
+  const fr = R(S, 44, 60, M, view(G, d));
+  for (const h of heads) sockets(fr, P, ...h);
+  return fr;
+}
+// A plain stone bench with skull knobs on its ends (the Ossuary's pews).
+function bonepew() {
+  const S = new Scene(), G = 30, cx = 23, d = 5, P = proj(G, d), heads = [];
+  S.add(box([cx, G - 9, 0.5], [20, 1.5, 4.2], 0.6, 'ossStone'), 0);
+  S.add(box([cx, G - 15, -4.2], [20, 5, 1], 0.5, 'ossStoneDark'), 0.3);
+  for (const x of [cx - 20.5, cx + 20.5]) { S.add(box([x, G - 10, -0.2], [1.6, 10, 4.8], 0.6, 'ossStone'), 0.3); skull(S, x, G - 22.5, -3, 2.8); heads.push([x, G - 22.5, -3, 2.8]); }
+  for (const x of [cx - 10, cx + 10]) S.add(box([x, G - 4, 2.6], [1, 4, 1], 0.3, 'ossStoneDark'), 0);
+  for (let i = 0; i < 6; i++) S.add(capsule([cx - 17 + i * 6.8, G - 16.5, -3], [cx - 13 + i * 6.8, G - 12.5, -3], 0.9, 0.9, 'bone'), 0.3);
+  const fr = R(S, 46, 34, M, view(G, d));
+  for (const h of heads) sockets(fr, P, ...h);
+  return fr;
+}
+// Loose bones strewn flat on the floor, baked in like the weed mats.
+function bonestrew(i) {
+  const S = new Scene(), s = i ? -1 : 1, c = 16;
+  S.add(capsule([c - 11 * s, 9, 0], [c + 1 * s, 6, 0], 1.8, 1.8, 'bone'), 0.3);
+  for (const [x, y] of [[c - 11 * s, 9], [c + 1 * s, 6]]) { S.add(sphere([x, y - 1.2, 0], 1.9, 'bone'), 0.4); S.add(sphere([x, y + 1.2, 0], 1.9, 'bone'), 0.4); }
+  S.add(ellipsoid([c + 9 * s, 8, 0], [4.4, 3.8, 3], 'bone'), 0.4);
+  S.add(ellipsoid([c + 9 * s + 1.5 * s, 11, 0], [2.6, 1.6, 2], 'bone'), 0.6);
+  const fr = R(S, 32, 16, M, {});
+  dot(fr, c + 8 * s, 8, 'ink0'); dot(fr, c + 11 * s, 8, 'ink0');
+  return fr;
 }
 
 // ----------------------------------------------------------------- altar ---
@@ -539,7 +620,8 @@ function pilaster() {
 
 export default {
   hall: { crate: () => [crate()], pilaster: () => [pilaster()], pillar: () => [0, 1].map(pillar) },
-  props: { sarcophagus: () => [sarcophagus()], statue: () => [weepingSaint()], organ: () => [organ()], sunkpew: () => [sunkpew()], kelp: () => [0, 1, 2, 3].map(kelp), weedmat: () => [weedmat()] },
+  props: { sarcophagus: () => [sarcophagus()], statue: () => [weepingSaint()], organ: () => [organ()], sunkpew: () => [sunkpew()], kelp: () => [0, 1, 2, 3].map(kelp), weedmat: () => [weedmat()],
+    boneshelf: () => [boneshelf()], skullheap: () => [skullheap()], cairn: () => [cairn(0), cairn(1)], bonepew: () => [bonepew()], bonestrew: () => [0, 1].map(bonestrew) },
   loot: {
     chest: () => [chest(false), chest(true)], pew: () => [pew()], altar: () => [altar()],
     shrine: () => ['fervor', 'haste', 'warding', 'plenty'].map(shrine), coffin: () => [coffin(false), coffin(true)],
