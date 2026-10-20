@@ -67,6 +67,7 @@ node tools/tests/aim.cjs <outDir> [WxH]   # drag to aim each rite, cancel, plain
 node tools/tests/menus.cjs <outDir> [WxH] # every menu window at one phone size (run at 932x430, 844x390, 667x375); TEXT=large checks the large text size; prints `text problems N` for text that overlaps, runs off the screen or sits a pixel off its neighbour (`HS.textProblems()`)
 node tools/tests/round31.cjs <outDir> [WxH] # low-health edge, kill streak, the Training Yard, Stratum III and its Wardens, ten halos on the Vigil Roll
 node tools/tests/round30.cjs <outDir> [WxH] # crit numbers by size, the Zeal step flash, the HP shake, text size in settings, HUD and bag
+node tools/tests/round34.cjs <outDir> [WxH] [safe] # top of the HUD: Toll, elite and Warden bars, Martyr's line, streak bar, crit numbers; no text problems; `safe` fakes a notch inset
 node tools/tests/round33.cjs <outDir> [WxH] # reforge odds and colours, the VALUES tab, Warden Emberstones and ingredients, the Enchanter, all 16 enchants in a fight (TEXT=large too)
 node tools/tests/round32.cjs <outDir> [WxH] # Ossuary props counted and photographed, the yard's best damage a second
 node tools/tests/ossrooms.cjs <outDir> [stratum] [floors] # photographs every room of a descent in one stratum
@@ -120,6 +121,7 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **Layouts:** dungeon rooms follow the Otherworld Legends recipe in `docs/ART_COMPARISON.md`: open floors, one mirrored plan per room, a mirrored back-wall rhythm, clutter in corners, nothing floating. Review with `tools/tests/rooms.cjs`.
 - **Menus:** draw every window with `panelFrame(x, y, w, h, style)` (style `''` gilt, `_iron`, `_silver`, `_blood`) and its title band with `headerBar`; buttons with `invButton`. Keep content 6 px inside the frame.
 - **Text checks:** `HS.textProblems()` renders one frame and lists overlapping, off-screen and crooked text in the top window; `menus.cjs` runs it on every window. Keep it at 0.
+- **HUD layout:** the left block starts at `HUD_X()` (8 + `SAFE.l`, the notch and corner inset read in `readSafe`; `?safe=N` fakes it); right-side buttons move in by `SAFE.r`. The Toll, elite nameplates and the Warden bar live in `topBand()`, between the HP block and the minimap; stack anything new there below what is above it. The kill streak bar sits under the gold and kills.
 - **UI sizes:** the view varies per device (whole-number scaling): game widths run about 445 to 620 px and heights 250 to 290. Place UI from `W`/`H`, fit text with `fitText`/`wrapW` (but prefer shorter wording or a `short` name over letting `fitText` chop letters; the owner reports chopped words), and check panels at those sizes (`tools/tests/round18.cjs` shows how).
 - **Orientation:** always landscape; held upright the canvas is turned a quarter (`PORTRAIT`). Map every touch through `toLocal`.
 - **The Vigil:** opened from the Descent panel; each run spends a Bloodrose Key (`SAVE.vkeys`, `dropVkey`). Its extra rewards live in `VIGIL_PAY` and `vigilPayout`.

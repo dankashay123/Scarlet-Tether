@@ -93,6 +93,7 @@ function resize() {
   screen.style.transform = PORTRAIT ? 'rotate(90deg)' : '';
   screen.style.imageRendering = PRE === SCALE ? '' : 'auto';
   ctx.imageSmoothingEnabled = sctx.imageSmoothingEnabled = false;
+  readSafe(PORTRAIT ? ih : iw, cw);
   layoutHud();
 }
 function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
@@ -101,9 +102,11 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '33.3';
+const BUILD = '33.4';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '33.4': ['THE TOLL, ELITE AND WARDEN BARS NO LONGER OVERLAP. THE HUD STAYS CLEAR OF THE NOTCH AND ROUNDED CORNERS.',
+    'THE KILL STREAK BAR NOW SITS UNDER YOUR GOLD AND KILLS. BIG HITS NO LONGER STACK ON TOP OF EACH OTHER.'],
   '33.3': ['THE DESCENT PANEL SHOWS GEAR DROPS THE SAME WAY: THE CHANCE A FOE, RARE OR ELITE DROPS GEAR, AND HOW MANY PIECES THE WARDEN DROPS.',
     'DEEPER STATIONS NOW RAISE THE CHANCE THAT FOES AND RARES DROP GEAR.'],
   '33.2': ['THE DEV MENU IS REORGANISED: HERO, GEAR, FORGE, WORLD, TOWN AND DEBUG TABS WITH A LABEL ON EVERY ROW. NEW FORGE AND ENCHANT TOOLS.'],
@@ -488,6 +491,20 @@ const keys = new Set();
 const input = { mx: 0, my: 0, dash: false, execute: false, m1: false, m2: false, pen: false };
 const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0, active: false };
 const HUD = {};
+// The phone's safe area (the notch and rounded corners) on the game's left
+// and right, in game pixels; the HUD stays inside it.
+const SAFE = { l: 0, r: 0 };
+let safeProbe = null;
+function readSafe(iw, cw) {
+  try {
+    if (!safeProbe) { safeProbe = document.createElement('div'); safeProbe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)'; document.body.appendChild(safeProbe); }
+    const cs = getComputedStyle(safeProbe), px = (v) => parseFloat(v) || 0;
+    // Held upright the canvas turns a quarter: the game's left is the screen's top.
+    const l = PORTRAIT ? px(cs.paddingTop) : px(cs.paddingLeft), r = PORTRAIT ? px(cs.paddingBottom) : px(cs.paddingRight), margin = (iw - cw) / 2;
+    SAFE.l = Math.min(40, Math.round(Math.max(0, l - margin) * W / cw)); SAFE.r = Math.min(40, Math.round(Math.max(0, r - margin) * W / cw));
+  } catch { SAFE.l = SAFE.r = 0; }
+  if (location.search.includes('safe=')) SAFE.l = SAFE.r = +location.search.split('safe=')[1].split('&')[0] || 0; // tests
+}
 function layoutHud() {
   const k = WS;
   HUD.dash = { x: W - 32 * k, y: H - 34 * k, r: 19 * k, icon: 'dash' };
@@ -500,6 +517,8 @@ function layoutHud() {
   HUD.mute = { x: W - 15 * k, y: 42 * k, r: 10 * k, icon: 'sound' };
   HUD.bag = { x: W - 15 * k, y: 68 * k, r: 11 * k, icon: 'bag' };
   HUD.joy = { x: 48 * k, y: H - 48 * k };
+  for (const b of ['dash', 'm1', 'm2', 'pen', 'exec', 'act', 'pause', 'mute', 'bag']) HUD[b].x -= SAFE.r;
+  HUD.joy.x += SAFE.l;
   // Left-handed: the stick goes right, the action buttons left.
   let left = false; try { left = opt('hand') === 'left'; } catch { /* layout runs once before the save loads */ }
   if (left) for (const b of ['dash', 'm1', 'm2', 'pen', 'exec', 'act', 'joy']) HUD[b].x = W - HUD[b].x;
@@ -1328,7 +1347,7 @@ function bankRun(died) {
 function renderRoomStatus() {
   // Location card that fades after arriving.
   const ct = game.real - (game.cardAt || 0);
-  if (ct < 3.5 && !(game.warden && !game.warden.dead)) { ctx.globalAlpha = Math.min(1, ct * 3, (3.5 - ct) * 1.5); text(game.scene === 'town' && game.district ? game.district : room.name, W / 2, Math.round(H * 0.22), PAL.gold1, { align: 'center', sc: 2 }); ctx.globalAlpha = 1; }
+  if (ct < 3.5 && !(game.warden && !game.warden.dead) && !(game.focus && !game.focus.dead)) { ctx.globalAlpha = Math.min(1, ct * 3, (3.5 - ct) * 1.5); text(game.scene === 'town' && game.district ? game.district : room.name, W / 2, Math.round(H * 0.22), PAL.gold1, { align: 'center', sc: 2 }); ctx.globalAlpha = 1; }
   if (game.scene !== 'wound') return;
   // The Warden's bar while it lives; otherwise the Toll.
   const wd = game.warden;
@@ -1336,25 +1355,27 @@ function renderRoomStatus() {
   // The Training Yard shows the dummy's damage instead of the Toll.
   if (game.yard) { const d = yardDps(); text(`DUMMY ${d.toLocaleString('en-US')} DAMAGE A SECOND`, W / 2, 9, d ? PAL.gold1 : PAL.stone2, { align: 'center' }); text(`TOTAL ${Math.round(game.yard.total).toLocaleString('en-US')}   USE THE STATUE TO SUMMON`, W / 2, 21, PAL.stone1, { align: 'center', small: true }); }
   // Centred between the HP bar and the minimap; the label sits under the bar.
-  const T0 = game.toll, hpEnd = 16 + Math.round(Math.min(150, W * 0.28)), w = Math.min(150, W - 2 * (hpEnd + 6)), x = Math.round(W / 2 - w / 2), y = 9;
+  const T0 = game.toll, B = topBand(), cx0 = B.cx, w = Math.min(150, B.w), x = Math.round(cx0 - w / 2), y = 9;
   const small = { small: true };
-  if (game.waystone) text('WARDEN KILLED. USE THE WAYSTONE TO RETURN.', W / 2, y, PAL.holy1, { align: 'center' });
+  if (game.waystone) text('WARDEN KILLED. USE THE WAYSTONE TO RETURN.', cx0, y, PAL.holy1, { align: 'center' });
   else if (game.cell) {
     const c = game.cell, goal = CELLS[c.id].goal;
     ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, 9); ctx.fillStyle = PAL.ink2; ctx.fillRect(x, y, w, 5);
     ctx.fillStyle = `rgb(${SET_RGB[c.id]})`; ctx.fillRect(x, y, Math.round(w * Math.min(1, c.kills / goal)), 5);
-    text(`ABSOLUTION ${c.kills}/${goal}   ${Math.max(0, Math.ceil(c.t))} S`, W / 2, y + 9, c.t < 15 ? PAL.blood0 : RARITY[4].color, { ...small, align: 'center' });
+    text(`ABSOLUTION ${c.kills}/${goal}   ${Math.max(0, Math.ceil(c.t))} S`, cx0, y + 9, c.t < 15 ? PAL.blood0 : RARITY[4].color, { ...small, align: 'center' });
   } else if (T0) {
     ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, 9);
     ctx.fillStyle = PAL.gold4; ctx.fillRect(x - 1, y - 1, w + 2, 7);
     ctx.fillStyle = PAL.ink2; ctx.fillRect(x, y, w, 5);
     const fw = Math.round(w * T0.v / T0.max);
     ctx.fillStyle = PAL.blood1; ctx.fillRect(x, y, fw, 5); ctx.fillStyle = PAL.blood0; ctx.fillRect(x, y, fw, 1);
-    text(`THE TOLL ${Math.floor(T0.v / T0.max * 100)}%`, W / 2, y + 9, PAL.gold1, { ...small, align: 'center' });
-    if (game.run && game.run.martyr) text("MARTYR'S VOW", W / 2, y + 19, PAL.blood0, { align: 'center', small: true });
+    text(`THE TOLL ${Math.floor(T0.v / T0.max * 100)}%`, cx0, y + 9, PAL.gold1, { ...small, align: 'center' });
+    if (game.run && game.run.martyr) text("MARTYR'S VOW", cx0, y + 19, PAL.blood0, { align: 'center', small: true });
   }
   renderTrialHud();
-  if (game.focus && !game.focus.boss) renderNameplate(game.focus, game.yard ? 32 : game.vigil || (game.event && !game.event.done) ? 30 : 20);
+  // An elite's or rare's bar sits under whatever is above it, never on it.
+  const above = game.yard ? 34 : game.vigil || (game.event && !game.event.done) ? 44 : game.cell || T0 ? (game.run && game.run.martyr ? 40 : 30) : 4;
+  if (game.focus && !game.focus.boss) renderNameplate(game.focus, above);
 }
 // The Vigil's candle and the Reliquary's count, under the Toll.
 function renderTrialHud() {
@@ -1370,21 +1391,21 @@ function renderTrialHud() {
 }
 // The Warden: name, title, a wide bar with phase marks, its curses.
 function renderBossBar(e) {
-  const w = Math.min(260, W - 200), x = Math.round(W / 2 - w / 2), y = 29;
-  text(e.name, W / 2, 3, PAL.blood0, { align: 'center' });
-  text(e.title, W / 2, 14, PAL.gold1, { align: 'center', small: true, outline: null });
+  const B = topBand(), w = Math.min(260, B.w), x = Math.round(B.cx - w / 2), y = 29;
+  text(fitText(e.name, B.w), B.cx, 3, PAL.blood0, { align: 'center' });
+  text(textW(e.title, 1, true) <= B.w ? e.title : `STATION ${curDiff().rn}`, B.cx, 15, PAL.gold1, { align: 'center', small: true });
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, 10);
   ctx.fillStyle = PAL.blood3; ctx.fillRect(x - 1, y - 1, w + 2, 8);
   ctx.fillStyle = PAL.ink2; ctx.fillRect(x, y, w, 6);
   const fw = Math.max(0, Math.round(w * e.hp / e.maxHp));
   ctx.fillStyle = PAL.blood1; ctx.fillRect(x, y, fw, 6); ctx.fillStyle = PAL.blood0; ctx.fillRect(x, y, fw, 2);
   ctx.fillStyle = PAL.gold1; for (const k of [1 / 3, 2 / 3]) ctx.fillRect(x + Math.round(w * k), y - 1, 1, 8);
-  const aff = e.affixes.map((a) => AFFIX[a].label).join('  ');
-  if (aff) text(aff, W / 2, y + 10, PAL.cloth1, { align: 'center' });
-  // The enrage countdown, then the word itself, pulsing.
+  // The enrage clock under the bar, then the curses.
   const left = Math.max(0, WARDEN.enrage - (game.time - e.bornT));
-  if (e.enraged) text('ENRAGED', x + w + 8, y - 1, Math.floor(game.real * 6) % 2 ? PAL.blood0 : PAL.gold0);
-  else text(`WRATH ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`, x + w + 8, y - 1, left < 20 ? PAL.blood0 : PAL.stone1, { small: true, outline: null });
+  if (e.enraged) text('ENRAGED', B.cx, y + 10, Math.floor(game.real * 6) % 2 ? PAL.blood0 : PAL.gold0, { align: 'center', small: true });
+  else text(`WRATH ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`, B.cx, y + 10, left < 20 ? PAL.blood0 : PAL.cloth1, { align: 'center', small: true });
+  const aff = e.affixes.map((a) => AFFIX[a].label).join('  ');
+  wrapW(aff, B.w, true).slice(0, 2).forEach((l, i) => text(l, B.cx, y + 20 + i * 9, PAL.cloth1, { align: 'center', small: true }));
 }
 function renderBanner() {
   const b = game.banner; if (!b) return;
@@ -3974,7 +3995,7 @@ function renderTutorial() {
   text('SKIP TUTORIAL', r.x + r.w - 6, r.y + r.h - 9, PAL.blood0, { outline: null, align: 'right' });
   ctx.fillStyle = PAL.blood0; ctx.fillRect(r.x + r.w - 6 - textW('SKIP TUTORIAL'), r.y + r.h - 1, textW('SKIP TUTORIAL'), 1);
   // Bouncing pointer at the control being taught.
-  const tgt = s.target === 'act' ? (game.interact ? HUD.act : null) : s.target === 'map' ? { x: HUD.pause.x - HUD.pause.r - 56, y: 40, r: 26 } : s.target === 'toll' ? { x: W / 2, y: 12, r: 24 } : HUD[s.target];
+  const tgt = s.target === 'act' ? (game.interact ? HUD.act : null) : s.target === 'map' ? { x: HUD.pause.x - HUD.pause.r - 56, y: 40, r: 26 } : s.target === 'toll' ? { x: topBand().cx, y: 12, r: 24 } : HUD[s.target];
   if (tgt) {
     const b = Math.round(Math.sin(game.real * 8) * 3), up = tgt.y < H / 2;
     const ax = tgt.x, ay = up ? tgt.y + tgt.r + 6 + b : tgt.y - tgt.r - 6 - b;
@@ -6185,14 +6206,21 @@ function render() {
   ctx.drawImage(glowLayer, 0, 0, glowLayer.width * 2, glowLayer.height * 2);
   ctx.imageSmoothingEnabled = false; ctx.globalCompositeOperation = 'source-over';
   mark('glow');
-  const numMode = opt('nums');
+  const numMode = opt('nums'), placed = [];
   for (const n of nums) {
     if (numMode === 'off' && n.color !== PAL.blood0 && typeof n.v === 'number') continue;
     if (numMode === 'crits' && !n.crit && n.color !== PAL.blood0 && typeof n.v === 'number') continue;
     const rise = 16 * Math.min(1, n.t * 6) + n.t * 8, pop = Math.max(0, 1 - n.t / 0.12);
     const sc = n.crit ? (1.45 + 0.25 * (n.heat || 0)) * (1 + 0.6 * pop) : n.small ? 1 : 1 + 0.3 * pop;
     ctx.globalAlpha = n.t > 0.65 ? Math.max(0, 1 - (n.t - 0.65) / 0.2) : 1;
-    text(String(n.v) + (n.crit && typeof n.v === 'number' ? '!' : ''), n.x - cx, n.y - cy - rise, n.color, { sc, align: 'center', small: n.small });
+    const str = String(n.v) + (n.crit && typeof n.v === 'number' ? '!' : '');
+    if (!n.small) {
+      const bw = textW(str, sc, false), bh = 8 * sc, bx = n.x - cx - bw / 2;
+      let by = n.y - cy - rise - (n.lift || 0);
+      for (let k = 0; k < 6 && placed.some((q) => bx < q.x + q.w && bx + bw > q.x && by < q.y + q.h && by + bh > q.y); k++) { n.lift = (n.lift || 0) + bh + 1; by -= bh + 1; }
+      placed.push({ x: bx, y: by, w: bw, h: bh });
+    }
+    text(str, n.x - cx, n.y - cy - rise - (n.lift || 0), n.color, { sc, align: 'center', small: n.small });
     ctx.globalAlpha = 1;
   }
   mark('nums');
@@ -6376,18 +6404,18 @@ function drawEnemy(e) {
 }
 
 // The name, health and curses of the Rare or Elite you are fighting.
-function renderNameplate(e, oy = 0) {
-  const col = e.tier === 'elite' ? PAL.gold0 : e.tier === 'imp' ? PAL.gold1 : '#7cc4ff', w = 170, x = Math.round(W / 2 - w / 2), y = 20 + oy;
-  text(e.name, W / 2, 7 + oy, col, { align: 'center' });
+function renderNameplate(e, top) {
+  const B = topBand(), col = e.tier === 'elite' ? PAL.gold0 : e.tier === 'imp' ? PAL.gold1 : '#7cc4ff', w = Math.min(170, B.w), x = Math.round(B.cx - w / 2);
+  text(fitText(e.name, B.w), B.cx, top, col, { align: 'center' });
+  const y = top + 13;
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, 8);
   ctx.fillStyle = e.tier === 'elite' ? PAL.gold4 : PAL.holy4; ctx.fillRect(x - 1, y - 1, w + 2, 6);
   ctx.fillStyle = PAL.blood4; ctx.fillRect(x, y, w, 4);
   const fw = Math.max(0, Math.round(w * e.hp / e.maxHp));
   ctx.fillStyle = PAL.blood1; ctx.fillRect(x, y, fw, 4); ctx.fillStyle = PAL.blood0; ctx.fillRect(x, y, fw, 1);
   const mates = e.pack ? e.pack.members.filter((m) => !m.dead && !m.minion && m !== e).length : 0;
-  const aff = e.affixes.map((a) => AFFIX[a].label).join('  ');
-  if (aff) text(aff, W / 2, y + 8, PAL.cloth1, { align: 'center' });
-  if (mates) text(`+${mates} MORE`, x + w + 6, y - 2, col);
+  const line = [...e.affixes.map((a) => AFFIX[a].label), mates ? `+${mates}\u00a0MORE` : ''].filter(Boolean).join('  ');
+  wrapW(line, B.w, true).slice(0, 2).forEach((l, i) => text(l, B.cx, y + 8 + i * 9, PAL.cloth1, { align: 'center', small: true }));
 }
 
 function drawMarker(e, locked) {
@@ -6769,44 +6797,39 @@ function renderTownMap() {
     badge(e.b, ex + 8, ey + 7); text(e.name, ex + 19, ey + (rowH >= 16 ? 0 : 3), PAL.cloth0, { small: true, outline: null }); if (rowH >= 16) text(e.sub, ex + 19, ey + 8, e.col, { small: true, outline: null }); });
 }
 
+// The left HUD block's x and width, and the free band across the top
+// between it and the minimap, where the Toll and the name bars go.
+const HUD_X = () => 8 + SAFE.l, hudW = () => Math.round(Math.min(150, W * 0.28));
+function topBand() { const L = HUD_X() + hudW() + 10, R = (HUD.minimap ? HUD.minimap.x : W - 150 - SAFE.r) - 10; return { L, R, w: Math.max(80, R - L), cx: Math.round((L + R) / 2) }; }
 function renderHud() {
   const p = player;
   // Top-left: health, then Zeal with what its fill is worth.
-  const hw = Math.round(Math.min(150, W * 0.28)), hk = Math.max(0, p.hp / p.maxHp);
+  const X = HUD_X(), hw = hudW(), hk = Math.max(0, p.hp / p.maxHp);
   p.hpGhost = Math.max(hk, (p.hpGhost ?? hk) - 0.6 * (game.realDt || 0.016)); // the lost part drains away
   // A big hit (8% of max HP or more at once) shakes the HP bar and its number.
   if ((p.hpSeen ?? p.hp) - p.hp >= p.maxHp * 0.08) game.hpShakeT = game.real;
   p.hpSeen = p.hp;
   const hs = Math.max(0, 1 - (game.real - (game.hpShakeT ?? -9)) / 0.35), sh = opt('shake') && hs > 0 ? Math.round(Math.sin(game.real * 70) * 2.5 * hs) : 0;
-  hudBar(8 + sh, 8, hw, 12, hk, p.hpGhost, 'blood', p.hurt > 0);
-  text(`${Math.ceil(p.hp)} / ${p.maxHp}`, 8 + sh + hw / 2, 10, hs > 0.5 ? PAL.blood0 : PAL.white, { align: 'center', small: true });
+  hudBar(X + sh, 8, hw, 12, hk, p.hpGhost, 'blood', p.hurt > 0);
+  text(`${Math.ceil(p.hp)} / ${p.maxHp}`, X + sh + hw / 2, 10, hs > 0.5 ? PAL.blood0 : PAL.white, { align: 'center', small: true });
   hudY = 24;
   if (game.scene === 'wound') {
     const tier = fervorTier(), framp = ['ember', 'ember', 'crimson', 'gold'][tier], zw = hw;
-    hudBar(8, 25, zw, 6, game.fervor / 100, 0, framp, false, 4);
+    hudBar(X, 25, zw, 6, game.fervor / 100, 0, framp, false, 4);
     // Reaching a new step flashes the bar and rings a rising bell.
     if (tier > (game.zTier ?? 0)) { game.zFlashT = game.real; sfx('knell', { vol: 0.4, rate: 0.9 + tier * 0.15 }); }
     game.zTier = tier;
     const zf = Math.max(0, 1 - (game.real - (game.zFlashT ?? -9)) / 0.5);
     if (zf > 0 && !LOWFX) {
-      ctx.globalAlpha = zf * 0.85; ctx.fillStyle = PAL.white; ctx.fillRect(8, 25, zw, 6);
+      ctx.globalAlpha = zf * 0.85; ctx.fillStyle = PAL.white; ctx.fillRect(X, 25, zw, 6);
       const g = Math.round((1 - zf) * 6); ctx.globalAlpha = zf; ctx.strokeStyle = PAL[framp + '0'] || PAL.gold0; ctx.lineWidth = 1;
-      ctx.strokeRect(8 - 2.5 - g, 25 - 2.5 - g, zw + 5 + g * 2, 11 + g * 2); ctx.globalAlpha = 1;
+      ctx.strokeRect(X - 2.5 - g, 25 - 2.5 - g, zw + 5 + g * 2, 11 + g * 2); ctx.globalAlpha = 1;
     }
     // Under the bar: the damage bonus on the left, the tier name on the right.
     const bonus = tier * 10 * (game.buff && game.buff.kind === 'fervor' ? 2 : 1);
-    text(bonus ? `+${bonus}% DAMAGE` : 'NO BONUS YET', 8, 34, bonus ? PAL.gold1 : PAL.stone2, { small: true });
-    text(T.fervor.tiers[tier], 8 + zw, 34 - zf * 1.5, zf > 0.4 ? PAL.white : PAL[framp + '1'], { small: true, align: 'right', sc: 1 + zf * 0.3 });
+    text(bonus ? `+${bonus}% DAMAGE` : 'NO BONUS YET', X, 34, bonus ? PAL.gold1 : PAL.stone2, { small: true });
+    text(T.fervor.tiers[tier], X + zw, 34 - zf * 1.5, zf > 0.4 ? PAL.white : PAL[framp + '1'], { small: true, align: 'right', sc: 1 + zf * 0.3 });
     hudY = 46;
-    // Kill streak: kills chained within 1.2 s. Ten or more pays the Carnage bonus when it ends.
-    const m = game.massacre, live = m && m.n >= 3 && game.time - m.last < 1.2;
-    if (live) {
-      const left = 1 - (game.time - m.last) / 1.2, hot = m.n >= 10;
-      text(hot ? `CARNAGE ${m.n}` : `STREAK ${m.n}`, 8, 45, hot ? PAL.blood0 : PAL.cloth0, { small: true });
-      if (!hot) text('CARNAGE AT 10', 8 + hw, 45, PAL.stone2, { small: true, align: 'right' });
-      ctx.fillStyle = PAL.outline; ctx.fillRect(8, 54, hw, 3); ctx.fillStyle = hot ? PAL.blood0 : PAL.cloth1; ctx.fillRect(8, 55, Math.round(hw * left), 1);
-      hudY = 60;
-    }
   }
   // Top-right: minimap and pause.
   const { mx, my, mw, mh } = renderMinimap();
@@ -6820,11 +6843,20 @@ function renderHud() {
   sprC('loot', 'coin', 0, mx + 5, my + mh + 11);
   text(String(gold), mx + 12, my + mh + 7, PAL.gold1);
   if (game.scene === 'wound') text(`${game.kills} KILLED`, mx + mw, my + mh + 7, PAL.stone1, { align: 'right' });
+  // Kill streak under the gold and kills, as wide as the minimap: kills
+  // chained within 1.2 s; ten or more pays the Carnage bonus when it ends.
+  const m = game.massacre;
+  if (game.scene === 'wound' && m && m.n >= 3 && game.time - m.last < 1.2) {
+    const left = 1 - (game.time - m.last) / 1.2, hot = m.n >= 10, by = my + mh + 20;
+    ctx.fillStyle = PAL.outline; ctx.fillRect(mx, by, mw, 4); ctx.fillStyle = PAL.ink2; ctx.fillRect(mx + 1, by + 1, mw - 2, 2);
+    ctx.fillStyle = hot ? PAL.blood0 : PAL.cloth1; ctx.fillRect(mx + 1, by + 1, Math.round((mw - 2) * left), 2);
+    text(hot ? `CARNAGE ${m.n}` : `STREAK ${m.n}/10`, mx + mw / 2, by + 6, hot ? PAL.blood0 : PAL.cloth0, { small: true, align: 'center' });
+  }
   // The shrine blessing sits on its own line under the portrait (below the FPS readout when shown).
-  if (game.buff) { const S = SHRINES[game.buff.kind]; text(`${S.name.replace('SHRINE OF ', '')} ${Math.ceil(game.buff.t)}`, 8, hudY + (showFps() ? 10 : 0), `rgb(${S.rgb})`, { small: true }); }
+  if (game.buff) { const S = SHRINES[game.buff.kind]; text(`${S.name.replace('SHRINE OF ', '')} ${Math.ceil(game.buff.t)}`, HUD_X(), hudY + (showFps() ? 10 : 0), `rgb(${S.rgb})`, { small: true }); }
   // Vestment set state: nail stacks, the Penitent's window, standing in a pool.
   { const st = sb('nails', 4) && player.nails ? `NAILS ${player.nails}` : (player.strideT || 0) > game.time ? `STRIDE ${Math.ceil(player.strideT - game.time)}` : player.inPool ? 'IN THE FONT' : '';
-    if (st) text(st, 8, hudY + (showFps() ? 10 : 0) + (game.buff ? 11 : 0), RARITY[4].color, { small: true }); }
+    if (st) text(st, HUD_X(), hudY + (showFps() ? 10 : 0) + (game.buff ? 11 : 0), RARITY[4].color, { small: true }); }
   // Bottom-right: dash, Miracles, Penance.
   const dashK = p.charges >= G.charges ? 0 : 1 - p.recharge / (T.dash.recharge * G.dashK);
   button(HUD.dash, { active: p.charges > 0, cd: p.charges === 0 ? dashK : 0 });
@@ -6853,7 +6885,7 @@ function renderHud() {
   if (game.toast) text(game.toast.msg, W / 2, Math.round(H * 0.3) + (game.banner ? 40 : 0), game.toastColor || PAL.cloth0, { align: 'center' });
   if (game.toast && game.toast.t < 0.05) game.toastColor = null;
   renderTutorial();
-  if (showFps()) text(`${Math.round(fpsAvg)} FPS ${(game.cpu || 0).toFixed(1)}MS ${enemies.length}`, 8, 44, PAL.flame1);
+  if (showFps()) text(`${Math.round(fpsAvg)} FPS ${(game.cpu || 0).toFixed(1)}MS ${enemies.length}`, HUD_X(), 44, PAL.flame1);
 }
 
 function overlay(title, sub) {

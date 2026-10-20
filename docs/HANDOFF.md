@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 33 (build 33.3, on `master`). Read
+Last updated 2026-10-20, after round 34 (build 33.4, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -170,6 +170,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 34 (HUD top and edges):** the phone's safe-area insets (`SAFE`,
+  `readSafe`, from CSS `env(safe-area-inset-*)`) keep the HP and Zeal block
+  and the right-side buttons clear of the notch and rounded corners. The
+  Toll, an elite's nameplate (name, bar, curses that wrap) and the Warden's
+  bar (name, title, bar, Wrath clock, curses) fit `topBand()` and stack
+  without overlapping; the arrival card hides while a name bar shows. The
+  kill streak bar moved under the gold and kills, as wide as the minimap,
+  its count centred under it. Damage numbers that would cover an older one
+  climb above it (`n.lift`). Test: `tools/tests/round34.cjs`.
 
 - **Round 33.3 (Descent panel, text audit):** the header lore line is gone;
   gear rows read FOE / RARE / ELITE DROPS GEAR as chances and WARDEN GEAR as
