@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 35 (build 35.1, on `master`). Read
+Last updated 2026-10-20, after round 36 (build 36.1, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -170,6 +170,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 36 (aimed auto-roll, refunds, bag shortcuts):** auto-roll has a
+  stat picker (ANY STAT or any stat the line can become, `reforgeKeys`); it
+  stops only on that stat at the quality, and the forge shows the odds
+  (`autoOdds`, e.g. mythic damage about 1 in 800). Aimed rolls may keep the
+  line's own stat; plain reforges still change it. The first line keeps its
+  stat. Removing an enchant returns one random ingredient. In Vael, ITEMS
+  rows open the Vigil, forge, altar, Pell's stall, Canonry or Odile's gift
+  (`openFromBag`; locked sites say what opens them). The forge card stops its
+  lines above the controls (`maxY`, "MORE IN THE BAG.").
 
 - **Round 35 (bag tabs, safer reforging, enchant warnings, Vigil 200):** the
   bag has GEAR, ITEMS (keys, Emberstones, Chrism, gold, Virtue points, gifts)

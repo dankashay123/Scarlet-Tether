@@ -103,9 +103,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '35.1';
+const BUILD = '36.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '36.1': ['AUTO-ROLL CAN AIM AT ONE STAT, LIKE MYTHIC DAMAGE, AND SHOWS THE ODDS.', 'REMOVING AN ENCHANT GIVES BACK ONE OF ITS INGREDIENTS.', 'IN VAEL, TAP A ROW IN THE BAG\'S ITEMS TAB TO GO WHERE IT IS USED.'],
   '35.1': ['THE BAG HAS ITEMS AND INGREDIENTS TABS. REFORGING A LEGENDARY OR MYTHIC STAT ASKS FIRST, AND AUTO-ROLL REFORGES 3 TIMES A SECOND UNTIL IT HITS EPIC, LEGENDARY OR MYTHIC.',
     'THE ENCHANTER WARNS BEFORE REPLACING AN ENCHANT OR DOUBLING ONE, AND CAN REMOVE AN ENCHANT FOR 5000 GOLD.',
     'VIGILS NOW GO UP TO 200.'],
@@ -1913,7 +1914,8 @@ function featFrame(L, title, col = PAL.gold1, style = '') {
 }
 const featOut = (L, x, y) => Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y);
 // An item's card: name, rarity, Sanctity, stats (rows returned for taps).
-function drawItemCard(it, C, worn = null, pick = -1) {
+// maxY: stop the lines there (the forge's controls sit below); the rest is in the bag.
+function drawItemCard(it, C, worn = null, pick = -1, maxY = Infinity) {
   const R0 = RARITY[it.ri]; let y = C.y + 6;
   for (const l of wrapW(it.name, C.w - 12)) { text(l, C.x + 6, y, R0.color); y += 12; }
   text(`${R0.name} ${SLOT_NAME[it.slot] || it.slot.toUpperCase()}`, C.x + 6, y, PAL.stone1, { small: true, outline: null }); y += 10;
@@ -1929,9 +1931,15 @@ function drawItemCard(it, C, worn = null, pick = -1) {
     if (worn && worn !== it) { const w0 = (worn.stats.find((q) => q[0] === st[0]) || [0, 0])[1], dv = st[1] - w0; if (dv) text(`${dv > 0 ? '+' : ''}${dv}`, C.x + C.w - 6, y, dv > 0 ? PAL.flame1 : PAL.blood0, { small: true, outline: null, align: 'right' }); }
     rows.push({ x: C.x + 3, y: y - 2, w: C.w - 6, h: 10, i }); y += 10;
   });
-  if (it.power) { y += 3; for (const l of wrapW(POWERS[it.power].text, C.w - 12, true)) { text(l, C.x + 6, y, PAL.ember1, { small: true, outline: null }); y += 9; } }
-  if (it.ench && ENCH_BY[it.ench]) { y += 3; const E = ENCH_BY[it.ench]; for (const l of wrapW(`${E.name}: ${E.text}`, C.w - 12, true)) { text(l, C.x + 6, y, E.col, { small: true, outline: null }); y += 9; } }
-  if (it.set || it.wset) { y += 3; for (const [t, col] of setLines(it)) for (const l of wrapW(t, C.w - 12, true)) { text(l, C.x + 6, y, col, { small: true, outline: null }); y += 9; } }
+  const extra = [];
+  if (it.power) extra.push(...wrapW(POWERS[it.power].text, C.w - 12, true).map((l, i) => [l, PAL.ember1, i === 0]));
+  if (it.ench && ENCH_BY[it.ench]) { const E = ENCH_BY[it.ench]; extra.push(...wrapW(`${E.name}: ${E.text}`, C.w - 12, true).map((l, i) => [l, E.col, i === 0])); }
+  if (it.set || it.wset) for (const [t, col] of setLines(it)) extra.push(...wrapW(t, C.w - 12, true).map((l, i) => [l, col, i === 0]));
+  for (const [i, [l, col, first]] of extra.entries()) {
+    if (first) y += 3;
+    if (y + 9 > maxY - (i < extra.length - 1 ? 9 : 0)) { text('MORE IN THE BAG.', C.x + 6, y, PAL.stone2, { small: true, outline: null }); y += 9; break; }
+    text(l, C.x + 6, y, col, { small: true, outline: null }); y += 9;
+  }
   return { y, rows };
 }
 const bestIl = () => Math.max(1, Math.min(15, (SAVE.cleared ?? -1) + 1)); // the highest Station whose Warden you slew
@@ -2037,12 +2045,13 @@ const embers = () => SAVE.embers ?? (SAVE.embers = 3);
 const TEMPER_K = [3, 5, 8, 14, 18];
 const forgeItems = () => [...SLOT_ORDER.map((sl) => SAVE.equip[sl]).filter(Boolean), ...SAVE.bag];
 const temperCost = (it) => Math.max(0, Math.round((stationSanctity(bestIl() - 1) - itemSanctity(it)) * TEMPER_K[it.ri] / 5) * 5);
-function openForge() { game.forge = { sel: 0, stat: 1, tab: 0, autoQ: 4, auto: null }; game.state = 'forge'; sfx('tap'); }
+function openForge() { game.forge = { sel: 0, stat: 1, tab: 0, autoQ: 4, autoKey: null, auto: null }; game.state = 'forge'; sfx('tap'); }
 // One reforge of one stat: spends an Emberstone, rolls a quality, returns it.
-function reforgeOnce(it, si, quiet = false) {
+// Auto-roll aiming at one stat (aim) may land on the line's own stat again.
+function reforgeOnce(it, si, quiet = false, aim = false) {
   SAVE.embers--; const q = devOn() && DEV.q >= 0 ? DEV.q : rollQuality();
   let key = it.stats[si][0];
-  if (si > 0) { const have = new Set(it.stats.map((st) => st[0])); key = pick(Object.keys(STAT).filter((k) => !have.has(k))); }
+  if (si > 0) key = pick(reforgeKeys(it, si, aim));
   it.stats[si] = [key, qualRoll(key, it.ri, q), q];
   it.reforged = (it.reforged || 0) + 1; applyGear(); persist();
   if (!quiet) { toast(`${QUALITY[q].name}: ${statLine(it.stats[si])}`, 2.2); game.toastColor = QUALITY[q].col; }
@@ -2053,6 +2062,13 @@ function reforgeOnce(it, si, quiet = false) {
 // A stat worth keeping: legendary or mythic. Reforging it asks first.
 const keepRoll = (st) => st && st[2] !== undefined && st[2] >= 3;
 const AUTO_Q = [2, 3, 4]; // auto-roll targets: epic, legendary, mythic
+// The stats a line can turn into: any not on the piece's other lines (and not
+// its own, unless auto-roll is aiming at a stat). The first line keeps its stat.
+const reforgeKeys = (it, si, aim) => si === 0 ? [it.stats[0][0]] : Object.keys(STAT).filter((k) => !it.stats.some((st, j) => st[0] === k && (j !== si || !aim)));
+// Chance one auto-roll hits the target: the quality, times the stat when one is picked.
+const autoOdds = (it, si, q, key) => QUALITY.slice(q).reduce((a, Q) => a + Q.p, 0) / 100 / (key ? reforgeKeys(it, si, true).length : 1);
+// The auto-roll stat picker steps through ANY STAT and every stat the line can become.
+const autoKeys = (it, si) => [null, ...reforgeKeys(it, si, true)];
 // Auto-roll: three reforges a second on the chosen stat until it rolls the
 // target quality or better, the stones run out, or STOP is tapped.
 function autoStep(F, items) {
@@ -2061,8 +2077,8 @@ function autoStep(F, items) {
   while (F.auto && game.real >= A.next) {
     A.next += 1 / 3;
     if (embers() < 1) { F.auto = null; toast(`OUT OF EMBERSTONES AFTER ${A.n} ROLLS`, 2.4); return; }
-    const q = reforgeOnce(it, A.si, true); A.n++;
-    if (q >= F.autoQ) { F.auto = null; toast(`${QUALITY[q].name} AFTER ${A.n} ROLLS: ${statLine(it.stats[A.si])}`, 3); game.toastColor = QUALITY[q].col; return; }
+    const q = reforgeOnce(it, A.si, true, !!A.key); A.n++;
+    if (q >= F.autoQ && (!A.key || it.stats[A.si][0] === A.key)) { F.auto = null; toast(`${QUALITY[q].name} AFTER ${A.n} ROLLS: ${statLine(it.stats[A.si])}`, 3); game.toastColor = QUALITY[q].col; return; }
   }
 }
 const forgeCell = (L, i) => { const n = Math.max(4, Math.min(8, Math.floor((L.list.w + 4) / 31))); return { x: L.list.x + (i % n) * 31, y: L.list.y + 14 + Math.floor(i / n) * 31, w: 27, h: 27 }; };
@@ -2086,10 +2102,13 @@ function renderForge() {
   items.forEach((q, i) => { if (forgeCell(L, i).y < L.y0 + L.ph - 30) itemSlot(forgeCell(L, i), q, { sel: i === F.sel }); });
   if (!it) { text('NOTHING TO WORK ON.', L.card.x + 6, L.card.y + 8, PAL.stone1, { small: true, outline: null }); return; }
   if (F.auto) autoStep(F, items);
-  drawItemCard(it, L.card, null, F.stat);
+  drawItemCard(it, L.card, null, F.stat, autoRow(L).stat.y - 14);
   const tc = temperCost(it), canT = (it.il || 1) < bestIl(), R = autoRow(L);
-  if (F.auto) text(`ROLLING FOR ${QUALITY[F.autoQ].name}: ${F.auto.n} ROLLS`, L.card.x + 6, R.pick.y - 11, QUALITY[F.autoQ].col, { small: true, outline: null });
-  else text(fitText('EACH REFORGE SPENDS ONE EMBERSTONE.', L.card.w - 10), L.card.x + 6, R.pick.y - 11, PAL.stone1, { small: true, outline: null });
+  if (F.autoKey && !autoKeys(it, F.stat).includes(F.autoKey)) F.autoKey = null;
+  const goal = `${QUALITY[F.autoQ].name}${F.autoKey ? ` ${STAT[F.autoKey].label}` : ''}`, odds = autoOdds(it, F.stat, F.autoQ, F.autoKey);
+  if (F.auto) text(fitText(`ROLLING FOR ${goal}: ${F.auto.n} ROLLS`, L.card.w - 10), L.card.x + 6, R.stat.y - 11, QUALITY[F.autoQ].col, { small: true, outline: null });
+  else text(fitText(`1 EMBERSTONE A ROLL. ${goal}: ABOUT 1 IN ${Math.round(1 / odds)}.`, L.card.w - 10, `ABOUT 1 IN ${Math.round(1 / odds)} ROLLS.`), L.card.x + 6, R.stat.y - 11, PAL.stone1, { small: true, outline: null });
+  invButton(R.stat, `< ${F.autoKey ? STAT[F.autoKey].label : 'ANY STAT'} >`, PAL.stone4, !F.auto && F.stat > 0);
   invButton(R.pick, `< ${QUALITY[F.autoQ].name} >`, PAL.stone4, !F.auto);
   invButton(R.go, F.auto ? 'STOP' : 'AUTO-ROLL', F.auto ? PAL.blood2 || PAL.crimson3 : PAL.violet2 || PAL.crimson3, embers() > 0 || !!F.auto);
   invButton(L.btnA, 'REFORGE', PAL.crimson3, embers() > 0 && !F.auto);
@@ -2111,7 +2130,7 @@ function renderForgeValues(L, it) {
   text(fitText(`RANGES FOR A ${RARITY[ri].name} PIECE. RARER PIECES ROLL HIGHER.`, w, `FOR A ${RARITY[ri].name} PIECE.`), x0, top + 26 + keys.length * rh, PAL.stone2, small);
 }
 // The auto-roll row above the forge's buttons: target quality, then go/stop.
-const autoRow = (L) => ({ pick: { x: L.btnA.x, y: L.btnA.y - 25, w: L.btnA.w, h: 18 }, go: { x: L.btnB.x, y: L.btnB.y - 25, w: L.btnB.w, h: 18 } });
+const autoRow = (L) => ({ stat: { x: L.btnA.x, y: L.btnA.y - 48, w: L.btnB.x + L.btnB.w - L.btnA.x, h: 18 }, pick: { x: L.btnA.x, y: L.btnA.y - 25, w: L.btnA.w, h: 18 }, go: { x: L.btnB.x, y: L.btnB.y - 25, w: L.btnB.w, h: 18 } });
 function forgeTap(x, y) {
   const L = featLayout(), items = forgeItems(), F = game.forge;
   if (featOut(L, x, y)) { game.state = 'play'; sfx('tap'); return; }
@@ -2126,8 +2145,12 @@ function forgeTap(x, y) {
   if (inRect(R.go, x, y)) {
     if (F.auto) { const n = F.auto.n; F.auto = null; toast(`STOPPED AFTER ${n} ROLLS`, 1.6); return; }
     if (embers() < 1) { toast('NO EMBERSTONES. WARDENS DROP THEM.', 2); return; }
-    guard(() => { F.auto = { it, si, n: 0, next: game.real }; });
+    guard(() => { F.auto = { it, si, key: F.autoKey, n: 0, next: game.real }; });
     return;
+  }
+  if (inRect(R.stat, x, y) && !F.auto) {
+    if (si === 0) { toast(`THE FIRST LINE ALWAYS STAYS ${STAT[st[0]].label}.`, 2); return; }
+    const K = autoKeys(it, si), i = K.indexOf(F.autoKey), d = x < R.stat.x + R.stat.w / 2 ? -1 : 1; F.autoKey = K[(i + d + K.length) % K.length]; sfx('tap', { vol: 0.5 }); return;
   }
   if (inRect(R.pick, x, y) && !F.auto) { const i = AUTO_Q.indexOf(F.autoQ), d = x < R.pick.x + R.pick.w / 2 ? -1 : 1; F.autoQ = AUTO_Q[(i + d + AUTO_Q.length) % AUTO_Q.length]; sfx('tap', { vol: 0.5 }); return; }
   if (inRect(L.btnA, x, y) && !F.auto) {
@@ -2222,7 +2245,11 @@ function enchantTap(x, y) {
   if (it && it.ench && inRect(enchRemoveBtn(L), x, y)) {
     if ((SAVE.gold || 0) < UNENCHANT_COST) { toast(`REMOVING AN ENCHANT COSTS ${UNENCHANT_COST} GOLD.`, 2); return; }
     const old = ENCH_BY[it.ench];
-    ask(`REMOVE ${old.name} FROM ${it.name} FOR ${UNENCHANT_COST} GOLD? ITS INGREDIENTS ARE NOT RETURNED.`, () => { if (!spend(UNENCHANT_COST)) return; delete it.ench; applyGear(); persist(); toast(`${old.name} REMOVED`, 2); }, 'REMOVE');
+    ask(`REMOVE ${old.name} FROM ${it.name} FOR ${UNENCHANT_COST} GOLD? ONE OF ITS THREE INGREDIENTS COMES BACK.`, () => {
+      if (!spend(UNENCHANT_COST)) return;
+      const k = Math.floor(Math.random() * 3), i = old.i * 3 + k; ingrs()[i]++;
+      delete it.ench; applyGear(); persist(); toast(`${old.name} REMOVED. ${ingName(i)} RETURNED.`, 2.6); game.toastColor = old.col;
+    }, 'REMOVE');
     return;
   }
   if (inRect(L.btnB, x, y)) {
@@ -7475,6 +7502,7 @@ function invTap(x, y) {
     if (c >= 0 && c < 4 && r >= 0 && r < 4) { const E = ENCHANTS[e]; toast(`${E.name}: ${E.ing.map((n, k) => `${n} ${ingrs()[e * 3 + k]}`).join(', ')}`, 3); game.toastColor = E.col; }
     return;
   }
+  if (game.inv.tab === 1) { const rows = bagItemRows(0); rows.forEach((r, i) => { if (inRect(bagItemRect(L, i, rows.length), x, y)) openFromBag(r[5]); }); return; }
   if (game.inv.tab) return;
   if (inRect({ ...L.rites, w: L.rites.w + 84 }, x, y)) { openRites('inv'); return; }
   if (Math.hypot(x - L.censer.x, y - L.censer.y) < L.censer.r + 5) { openCenser('inv'); return; }
@@ -7542,24 +7570,41 @@ function invButton(r, label, col, on = true) {
   text(fitText(label, w - 6, null, false), x + w / 2, y + Math.round(h / 2) - 4, on ? PAL.white : PAL.stone2, { align: 'center' });
 }
 // The ITEMS tab: everything you carry that is not gear, with what it is for.
+// Each row: icon, name, count, what it is for, colour, and the site it opens.
+function bagItemRows(gold) {
+  const C = chrisms();
+  return [
+    [(x, y) => sprC('loot', 'vkey', 0, x, y + 4), 'BLOODROSE KEYS', SAVE.vkeys || 0, `OPEN A VIGIL. WARDENS OF STATION ${ROMAN[VKEY_FROM - 1]}+ DROP THEM.`, PAL.rose1, 'vigil'],
+    [(x, y) => SPR.loot.anims.emberstone && sprC('loot', 'emberstone', 0, x, y), 'EMBERSTONES', embers(), 'REFORGE A STAT AT THE FORGE. WARDENS DROP THEM.', PAL.ember1, 'forge'],
+    ...CHRISM.map((K, i) => [(x, y) => sprC('loot', 'chrism', i, x, y), K.name, C[i], `+${Math.round(K.add * 100)}% TO A BURN AT THE ASHEN ALTAR.`, RARITY[i].color, 'altar']),
+    [(x, y) => sprC('loot', 'coin', 0, x, y), 'GOLD', gold, 'BUY, TEMPER, BET AND REMOVE ENCHANTS.', PAL.gold1, 'stall'],
+    [(x, y) => badge('relic', x, y), 'VIRTUE POINTS', SAVE.devPts || 0, 'SPEND THEM AT THE CANONRY.', PAL.cloth0, 'canonry'],
+    [(x, y) => badge('npc', x, y), "ODILE'S GIFTS", SAVE.gifts || 0, 'TALK TO SISTER ODILE IN VAEL.', PAL.cloth0, 'gift'],
+  ];
+}
+const bagItemRect = (L, i, n) => { const cw = Math.floor((L.pw - 30) / 2), rh = Math.max(26, Math.min(34, Math.floor((L.ph - 58) / Math.ceil(n / 2)))); return { x: L.x0 + 12 + (i % 2) * (cw + 6), y: L.y0 + 34 + Math.floor(i / 2) * rh, w: cw, h: rh - 3 }; };
+// Open a site from the bag: only in Vael, and only once the site is open.
+function openFromBag(id) {
+  if (game.scene !== 'town') { toast('GO BACK TO VAEL FIRST.', 1.8); return; }
+  if (id === 'gift') { if (!(SAVE.gifts > 0)) { toast('NO GIFT WAITING.', 1.6); return; } game.inv = null; return openGift(); }
+  if (id === 'vigil') { if (!strataOpen(1) || (SAVE.cleared ?? -1) < 0) { toast('FINISH A DESCENT FIRST.', 1.6); return; } game.inv = null; return openVigil(); }
+  const S = SITES.find((q) => q.id === id); if (!S) return;
+  if (!siteDone(S)) { toast(`${S.name}: ${S.need}.`, 2.4); return; }
+  game.inv = null; openSite(S);
+}
 function renderBagItems(L, gold) {
   const small = { small: true, outline: null }, C = chrisms();
   const rows = [
-    [(x, y) => sprC('loot', 'vkey', 0, x, y + 4), 'BLOODROSE KEYS', SAVE.vkeys || 0, `OPEN A VIGIL. WARDENS OF STATION ${ROMAN[VKEY_FROM - 1]}+ DROP THEM.`, PAL.rose1],
-    [(x, y) => SPR.loot.anims.emberstone && sprC('loot', 'emberstone', 0, x, y), 'EMBERSTONES', embers(), 'REFORGE A STAT AT THE FORGE. WARDENS DROP THEM.', PAL.ember1],
-    ...CHRISM.map((K, i) => [(x, y) => sprC('loot', 'chrism', i, x, y), K.name, C[i], `+${Math.round(K.add * 100)}% TO A BURN AT THE ASHEN ALTAR.`, RARITY[i].color]),
-    [(x, y) => sprC('loot', 'coin', 0, x, y), 'GOLD', gold, 'BUY, TEMPER, BET AND REMOVE ENCHANTS.', PAL.gold1],
-    [(x, y) => badge('relic', x, y), 'VIRTUE POINTS', SAVE.devPts || 0, 'SPEND THEM AT THE CANONRY.', PAL.cloth0],
-    [(x, y) => badge('npc', x, y), "ODILE'S GIFTS", SAVE.gifts || 0, 'TALK TO SISTER ODILE IN VAEL.', PAL.cloth0],
+    ...bagItemRows(gold).map((r) => r.slice(0, 5)),
   ];
-  const x0 = L.x0 + 12, top = L.y0 + 34, cw = Math.floor((L.pw - 30) / 2), rh = Math.max(26, Math.min(34, Math.floor((L.ph - 46) / Math.ceil(rows.length / 2))));
   rows.forEach(([icon, name, n, what, col], i) => {
-    const x = x0 + (i % 2) * (cw + 6), y = top + Math.floor(i / 2) * rh;
-    ctx.fillStyle = PAL.ink2; ctx.fillRect(x, y, cw, rh - 3);
+    const R0 = bagItemRect(L, i, rows.length), x = R0.x, y = R0.y, cw = R0.w, rh = R0.h + 3;
+    ctx.fillStyle = PAL.ink2; ctx.fillRect(x, y, cw, rh - 3); ctx.fillStyle = PAL.ink3; ctx.fillRect(x, y + rh - 5, cw, 2);
     icon(x + 13, y + Math.floor((rh - 3) / 2));
     text(name, x + 28, y + 4, n ? col : PAL.stone2); text(String(n), x + cw - 6, y + 4, n ? PAL.white : PAL.stone2, { align: 'right' });
     text(fitText(what, cw - 34, what.split('. ')[0] + '.'), x + 28, y + 16, PAL.stone1, small);
   });
+  text(game.scene === 'town' ? 'TAP A ROW TO GO WHERE IT IS USED.' : 'IN VAEL, TAP A ROW TO GO WHERE IT IS USED.', L.x0 + 12, L.y0 + L.ph - 18, PAL.stone2, small);
 }
 // The INGREDIENTS tab: the three ingredients of every enchant and how many you hold.
 function renderBagIngredients(L) {
@@ -7774,7 +7819,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>
