@@ -6,7 +6,8 @@
 // it, a common's health, and how many Warden blows the Saint can take.
 const { chromium, devices } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const stations = (process.argv[2] || '1,3,5,8,11,15').split(',').map(Number);
-// Profiles: bare gear; a mid-run build (Wounds of a level-12 Saint); that build in the Hundred Nails with its arms.
+// Profiles: bare gear; a mid-run build (Wounds of a level-12 Saint); that build in the Hundred Nails with its arms;
+// mythic (that set with every stat mythic); chase (mythic plus tier II damage enchants).
 const profiles = (process.argv[3] || 'bare,run,set').split(',');
 (async () => {
   const b = await chromium.launch(); const p = await (await b.newContext({ ...devices['iPhone 13 landscape'] })).newPage();
@@ -18,7 +19,10 @@ const profiles = (process.argv[3] || 'bare,run,set').split(',');
     const r = await p.evaluate(([st, il, prof]) => {
       window.HS_AUTOSTIG = true; HS.tut.on = false; HS.DEV.god = true; HS.SAVE.virtues = {}; HS.SAVE.altar = { known: [], sockets: {} };
       HS.SAVE.equip = {}; for (const sl of ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic', 'bow', 'quiver']) { const it = HS.makeItem(sl, 2, 'X', undefined, il); HS.SAVE.equip[sl] = it; }
-      if (prof === 'set') { for (const sl of HS.VSETS.nails.slots) { const it = HS.makeItem(sl, 4, 'X', undefined, il); it.set = 'nails'; HS.SAVE.equip[sl] = it; } for (const sl of ['bow', 'quiver']) HS.SAVE.equip[sl] = HS.armsItem('nails', sl, il); }
+      if (prof !== 'bare' && prof !== 'run') { for (const sl of HS.VSETS.nails.slots) { const it = HS.makeItem(sl, 4, 'X', undefined, il); it.set = 'nails'; HS.SAVE.equip[sl] = it; } for (const sl of ['bow', 'quiver']) HS.SAVE.equip[sl] = HS.armsItem('nails', sl, il); }
+      // mythic: every stat at mid mythic. chase: that plus tier II Phantom Volley, Reaper's Mark and Stormlink.
+      if (prof === 'mythic' || prof === 'chase') for (const it of Object.values(HS.SAVE.equip)) it.stats = it.stats.map(([k]) => { const [a, b] = HS.qualRange(k, it.ri, 4); return [k, Math.round((a + b) / 2), 4]; });
+      if (prof === 'chase') [['hood', 'phantom'], ['mantle', 'reaper'], ['gloves', 'stormlink']].forEach(([sl, id]) => { if (HS.SAVE.equip[sl]) { HS.SAVE.equip[sl].ench = id; HS.SAVE.equip[sl].enchT = 2; } });
       HS.game.nextDiff = st - 1; HS.game.nextStratum = 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.game.stigAt = 1e9; HS.game.run.wounds = prof === 'bare' ? {} : { wrath: 3, quick: 2, split: 1, pierce: 1, luck: 2, heavy: 1 }; HS.applyGear(true);
       for (const e of HS.enemies) e.dead = true;
       const P = HS.player, d = HS.spawnMonster('risen', P.x + 70, P.y, { room: HS.game.curRoom.id }); d.hp = d.maxHp = 1e12; d.state = 'move'; d.spawnDelay = 0; d.bound = 1e9; d.asleep = false;

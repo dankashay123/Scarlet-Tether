@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 37 (build 37.1, on `master`). Read
+Last updated 2026-10-20, after round 38 (build 38.1, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -172,6 +172,19 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 38 (enchant tiers, ingredient pity, bag previews, balance):** each
+  enchant has a tier II (`t2` text, `E2()` values), bought with a second set
+  of its ingredients at the Enchanter (UPGRADE TO II, asks first). Wardens of
+  Station X+ that drop no ingredient raise the next one's chance by 0.25% each
+  (up to 4%; `SAVE.ingrDry`), lifting the average from 0.48 to 0.63 a Warden
+  and capping dry runs near 8. The bag shows an enchant's card with its scene
+  from INGREDIENTS or from an enchanted piece (`enchPop`). Balance check
+  (`balance.cjs` profiles mythic, chase): all-mythic set gear roughly doubles
+  damage (Station X Warden 90-110 s to about 45 s) and gives 2-3x the blows
+  to die; tier II damage enchants add little on one target. Left as is: a
+  full mythic set needs thousands of Emberstones (hundreds of Wardens or
+  over a million gold). Single runs are noisy at XV (Warden health differs).
 
 - **Round 37 (Emberstones for gold, enchant previews):** the forge's BUY tab
   sells Emberstones at 500 gold each in packs of 1, 10 and 50 (packs ask

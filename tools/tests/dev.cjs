@@ -36,7 +36,7 @@ const S = process.argv[2], WH = (process.argv[3] || '').split('x').map(Number);
   await tab(2); await press('+50'); await press('< NEXT ROLL', -1);
   log.push('forge ' + await p.evaluate(() => { HS.openForge(); const L = HS.featLayout(); HS.forgeTap(L.btnA.x + 4, L.btnA.y + 4); const it = HS.SAVE.equip.hood || Object.values(HS.SAVE.equip)[0]; HS.openDev(); return `embers ${HS.SAVE.embers} q ${JSON.stringify(Object.values(HS.SAVE.equip).filter(Boolean)[0].stats.map((st) => st[2]))}`; }));
   await press('< ', 1); await press('PUT ON'); log.push('ench ' + await p.evaluate(() => [...HS.G.ench].join(',')));
-  await press('ONE OF EACH'); log.push('each ' + await p.evaluate(() => HS.G.ench.size));
+  await press('WORN TO TIER II'); log.push('tier ' + await p.evaluate(() => JSON.stringify([...HS.G.ench])));
   await press('+1 OF EACH'); log.push('ingr ' + await p.evaluate(() => HS.ingrs().reduce((a, n) => a + n, 0)));
   await p.screenshot({ path: `${S}/shots/d3b-forge-used.png` });
   // WORLD: descend to Station III, summon a Warden, spawn foes, reveal.
