@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 34 (build 33.5, on `master`). Read
+Last updated 2026-10-20, after round 35 (build 35.1, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -170,6 +170,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 35 (bag tabs, safer reforging, enchant warnings, Vigil 200):** the
+  bag has GEAR, ITEMS (keys, Emberstones, Chrism, gold, Virtue points, gifts)
+  and INGREDIENTS (all 48 by enchant; tap one to read its names) tabs. A
+  shared yes/no window (`ask`) guards reforging a legendary or mythic stat,
+  replacing an enchant, a second copy of an active enchant, and removing an
+  enchant for 5000 gold (`UNENCHANT_COST`, ingredients not returned).
+  AUTO-ROLL in the forge picks epic, legendary or mythic and reforges the
+  marked stat three times a second until it rolls that quality or better,
+  the stones run out, or STOP. Vigils go to 200 (`VIGIL_MAX`); past 30 only
+  health (+3%) and damage (+2%) climb per level; the Warden pays at most 10
+  pieces, Emberstones stop growing at Vigil 60; the panel has -10/+10.
 
 - **Round 34.1 (iPhone canvas memory, pause screen):** the owner hit "BLIT:
   THE OBJECT IS IN AN INVALID STATE": iPhone Safari stops drawing once total
