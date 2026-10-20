@@ -101,9 +101,12 @@ function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '30.1';
+const BUILD = '31.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '31.1': ['NEW: STRATUM III, THE OSSUARY SPIRE. OPENS AFTER STATION VI. NEW MONSTERS AND TWO NEW WARDENS WITH THEIR OWN MUSIC.',
+    'NEW: THE TRAINING YARD AT THE END OF THE LOWER STREET. HIT THE DUMMY OR SUMMON ANY FOE. NOTHING IS GAINED OR LOST.',
+    'A KILL STREAK SHOWS UNDER THE ZEAL BAR. A RED EDGE WARNS YOU BELOW 25% HEALTH.'],
   '30.1': ['BIG CRITS STAND OUT: GOLD, THEN ORANGE, THEN RED AS THEY GROW.', 'THE ZEAL BAR FLASHES AT EACH NEW STEP. BIG HITS SHAKE YOUR HEALTH BAR.', 'NEW SETTING: TEXT SIZE (SMALL, NORMAL, LARGE).'],
   '29.4': ['TIDIER ZEAL BAR: YOUR DAMAGE BONUS AND ZEAL STEP SIT UNDER IT.'],
   '29.3': ['THE ZEAL BAR IS AS WIDE AS THE HEALTH BAR.'],
@@ -198,6 +201,8 @@ const HALOS = [
   { id: 'moss', name: "THE ORGANIST'S HALO", short: 'ORGAN', earn: 'organist' },
   // Earned by falling under the Martyr's vow with the Toll at least half rung.
   { id: 'cracked', ramp: 'sand', crack: true, name: "THE MARTYR'S CRACKED HALO", short: 'CRACKED', earn: 'martyr' },
+  // Stratum III's Wardens (stand frames 9 and 10).
+  { id: 'rot', name: "THE OSSUARCH'S HALO", short: 'OSSUARCH', earn: 'ossuarch' }, { id: 'shroud', name: "THE ASH WIDOW'S HALO", short: 'WIDOW', earn: 'ashWidow' },
 ];
 const haloRamp = (id) => { const H0 = HALOS.find((q) => q.id === id); return (H0 && H0.ramp) || id; };
 const EARN_FROM = 10; // Station X
@@ -856,9 +861,10 @@ function makeDungeon() {
   // Blood soaks straight into the baked floor (one less full-screen layer).
   chunkCanvas(roomCanvas);
   stain = roomCanvas; sctxStain = rc;
-  for (const l of lights) l.r *= WS;
   const ST = STRATA[game.buildStratum || 1];
-  room = { kind: 'wound', name: ST.name, w, h, solid, isSolid, props, lights, decals: decals.filter((d) => d.kind === 'candles' || d.kind === 'kelp'), npcs: [], interact: [], pw: w * TILE, ph: h * TILE, top: 4, ambient: ST.ambient || T.ambient, rooms, start, critters, water: waterSet, walls: [], baseSolid, seen: new Uint8Array(w * h) };
+  // A stratum can swap its warm torchlight for its own colour.
+  for (const l of lights) { l.r *= WS; if (ST.light && (l.c === 'ember' || l.c === 'gold')) l.c = ST.light; }
+  room = { kind: 'wound', name: ST.name, w, h, solid, isSolid, props, lights, decals: decals.filter((d) => d.kind === 'candles' || d.kind === 'kelp'), npcs: [], interact: [], pw: w * TILE, ph: h * TILE, top: 4, ambient: ST.ambient || T.ambient, torch: ST.torch, rooms, start, critters, water: waterSet, walls: [], baseSolid, seen: new Uint8Array(w * h) };
   room.fog = document.createElement('canvas'); room.fog.width = w; room.fog.height = h; room.fogCtx = room.fog.getContext('2d');
   room.cx = start.cx; room.cy = start.cy;
 }
@@ -866,8 +872,17 @@ function makeDungeon() {
 // Walls on every side, Otherworld Legends style: side and bottom walls show a
 // lit stone top with a brick lip, and the top and left walls cast soft
 // shadows onto the floor (light comes from the top-left).
+// Stratum III paints its wall edges with the same ramp swaps as its sheets
+// (OSSUARY in tools/sprites.mjs: ramp -> [ramp, steps darker]).
+const OSSUARY_PAL = { stone: ['cloth', 3], teal: ['shroud', 0], slate: ['shroud', 1], brick: ['ink', 1] };
+function strataPal() {
+  if ((game.buildStratum || 1) !== 3) return PAL;
+  const P = Object.create(PAL);
+  for (const [from, [to, k]] of Object.entries(OSSUARY_PAL)) { const a = rampOf(from), b = rampOf(to); a.forEach((n, i) => { P[n] = PAL[b[Math.max(0, Math.min(b.length - 1, i + k))]]; }); }
+  return P;
+}
 function bakeWallEdges(rc, w, h, isFloor) {
-  const P = PAL, solid = (x, y) => !isFloor(x, y);
+  const P = strataPal(), solid = (x, y) => !isFloor(x, y);
   const face = (x, y) => solid(x, y) && [1, 2, 3, 4].some((k) => isFloor(x, y + k));
   const hh = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0) % 1000 / 1000;
   const px = (x, y, c, ww = 1, hgt = 1) => { rc.fillStyle = c; rc.fillRect(x, y, ww, hgt); };
@@ -1270,7 +1285,7 @@ function renderRoomStatus() {
     if (game.run && game.run.martyr) text("MARTYR'S VOW", W / 2, y + 19, PAL.blood0, { align: 'center', small: true });
   }
   renderTrialHud();
-  if (game.focus && !game.focus.boss) renderNameplate(game.focus, game.vigil || (game.event && !game.event.done) ? 30 : 20);
+  if (game.focus && !game.focus.boss) renderNameplate(game.focus, game.yard ? 32 : game.vigil || (game.event && !game.event.done) ? 30 : 20);
 }
 // The Vigil's candle and the Reliquary's count, under the Toll.
 function renderTrialHud() {
@@ -1422,7 +1437,7 @@ function resetWorld() {
 // Stratum II swaps the dungeon sheets for their drowned copies (see
 // tools/sprites.mjs, DROWN) and floods more rooms.
 const STRATA = { 1: { name: 'THE UNDERCROFT', ambient: null, themes: null }, 2: { name: 'THE DROWNED NAVE', ambient: 'rgba(4,14,20,0.55)', themes: ['flooded', 'flooded', 'flooded', 'crypt', 'chapel'] },
-  3: { name: 'THE OSSUARY SPIRE', ambient: 'rgba(18,12,10,0.5)', themes: ['ossuary', 'ossuary', 'ossuary', 'crypt', 'chapel'] } };
+  3: { name: 'THE OSSUARY SPIRE', ambient: 'rgba(10,10,16,0.58)', light: 'ash', torch: ['96,180,110', '190,232,170'], themes: ['ossuary', 'ossuary', 'ossuary', 'crypt', 'chapel'] } };
 // Sheet suffix per stratum: its own ramp-swapped copies of the dungeon sheets.
 const STRATUM_SHEET = { 2: '_d', 3: '_o' };
 // Each stratum opens when the Warden of a Station is killed: II after III, III after VI.
@@ -1691,6 +1706,8 @@ function makeTown() {
   // (Plan x past 2540 is squeezed to about a third, so the stands sit 90 apart.)
   place('vigilroll', 2730, base + 40, 2, { ph: 0 }); lights.push({ x: 2730, y: base + 6, r: 70, c: 'blood', a: 0.55 }, { x: 2730, y: base + 30, r: 46, c: 'ember', a: 0.7, flick: 6 });
   EARNED.forEach((H0, k) => { const own = looks().own.includes(`h:${H0.id}`), x = 2580 + (k % 5) * 74 + (k > 4 ? 37 : 0), y = base + 92 + (k > 4 ? 84 : 0); place('halostand', x, y, 1, { frame: own ? k + 1 : 0 }); if (own) lights.push({ x, y: y - 30, r: 30, c: 'holy', a: 0.45 }); });
+  // The Training Yard, at the far end of the lower street.
+  place('yard', 3030, base + 60, 1, { sheet: 'street' });
   // Townsfolk.
   const person = (sheet, id, x, y, o = {}) => { const n = { sheet, npc: id, x, y, face: o.face || 1, ph: rng() * 3, ...o }; npcs.push(n); if (o.talk) interact.push({ x: n.x, y: n.y, r: 34, label: 'TALK', icon: 'talk', who: n, use: () => { talk(o.talk); tut.flags.talked = true; } }); return n; };
   person('town', 'odile', 2288, base + 44, { talk: 'odile' });
@@ -3739,23 +3756,23 @@ const MON = {
     A('summon', { monster: 'cantor', n: 1, range: 300, windup: 0.7, cd: 14 })],
     phases: [[A('ring', { n: 30, range: 220, windup: 0.6, cd: 4, dmg: 9, speed: 100, shot: 'violet' })], [A('sweep', { beams: 4, dur: 3, rate: 0.18, spin: 1, len: 250, range: 280, windup: 0.8, cd: 8, dmg: 14 }), A('pattern', { shape: 'ring', at: 'self', n: 14, radius: 110, rad: 18, delay: 0.9, range: 260, windup: 0.7, cd: 7, dmg: 14, style: 'bell' })]] },
   // Stratum III, the Ossuary Spire.
-  gleaner: { name: 'BONE GLEANER', tier: 'common', stratum: 3, hp: 32, speed: 30, r: 6, hy: 12, hr: 9, move: 'chase', fervor: 3, attacks: [A('lunge', { range: 46, windup: 0.45, cd: 1.9, dmg: 9, speed: 175, time: 0.22 })] },
-  cinderMoth: { name: 'CINDER MOTH', tier: 'common', stratum: 3, hp: 18, speed: 44, r: 5, hy: 16, hr: 8, move: 'chase', fly: true, fervor: 3, attacks: [A('lunge', { range: 70, windup: 0.5, cd: 2.4, dmg: 8, speed: 230, time: 0.24 })] },
-  abbot: { name: 'MARROW ABBOT', tier: 'rare', stratum: 3, hp: 180, speed: 16, r: 9, hy: 26, hr: 13, move: 'kite', keep: 115, fervor: 12, attacks: [A('volley', { n: 3, arc: 0.5, shots: 3, rate: 0.3, range: 200, windup: 0.6, cd: 4, dmg: 7, speed: 125, shot: 'bone' }), A('spikes', { n: 4, range: 180, windup: 0.8, cd: 6, dmg: 12, rad: 18 })] },
-  ossuarch: { name: 'THE OSSUARCH', tier: 'elite', warden: true, stratum: 3, sheet: 'mon_warden', hp: 2800, speed: 14, r: 17, hy: 40, hr: 25, move: 'chase', fervor: 40, attacks: [
+  gleaner: { name: 'BONE GLEANER', tier: 'common', stratum: 3, hp: 32, speed: 30, r: 6, hy: 11, hr: 9, move: 'chase', fervor: 3, attacks: [A('lunge', { range: 46, windup: 0.45, cd: 1.9, dmg: 9, speed: 175, time: 0.22 })] },
+  cinderMoth: { name: 'CINDER MOTH', tier: 'common', stratum: 3, hp: 18, speed: 44, r: 4, hy: 16, hr: 7, move: 'chase', fly: true, fervor: 3, attacks: [A('lunge', { range: 70, windup: 0.5, cd: 2.4, dmg: 8, speed: 230, time: 0.24 })] },
+  abbot: { name: 'MARROW ABBOT', tier: 'rare', stratum: 3, hp: 180, speed: 16, r: 8, hy: 26, hr: 12, move: 'kite', keep: 115, fervor: 12, attacks: [A('volley', { n: 3, arc: 0.5, shots: 3, rate: 0.3, range: 200, windup: 0.6, cd: 4, dmg: 7, speed: 125, shot: 'bone' }), A('spikes', { n: 4, range: 180, windup: 0.8, cd: 6, dmg: 12, rad: 18 })] },
+  ossuarch: { name: 'THE OSSUARCH', tier: 'elite', warden: true, stratum: 3, sheet: 'mon_warden', hp: 2800, speed: 14, r: 18, hy: 36, hr: 26, move: 'chase', fervor: 40, attacks: [
     A('slam', { range: 52, rad: 38, windup: 0.85, cd: 2.8, dmg: 22 }),
     A('pattern', { shape: 'cross', at: 'self', n: 13, step: 26, rad: 18, delay: 0.8, range: 220, windup: 0.8, cd: 7, dmg: 16 }),
     A('spread', { n: 7, arc: 0.9, range: 190, windup: 0.6, cd: 3.5, dmg: 9, speed: 120, shot: 'bone' }),
     A('summon', { monster: 'gleaner', n: 3, range: 300, windup: 0.6, cd: 11 })],
     phases: [[A('shockwave', { range: 180, windup: 0.9, cd: 6, dmg: 15, speed: 115, max: 230 })], [A('pattern', { shape: 'ring', at: 'player', n: 10, radius: 74, rad: 20, delay: 0.85, range: 260, windup: 0.6, cd: 6, dmg: 16 }), A('barrage', { n: 8, range: 240, windup: 0.6, cd: 5, dmg: 14, rad: 20 })]] },
-  ashWidow: { name: 'THE ASH WIDOW', tier: 'elite', warden: true, stratum: 3, sheet: 'mon_warden', hp: 2500, speed: 15, r: 15, hy: 42, hr: 22, move: 'kite', keep: 110, fervor: 40, attacks: [
+  ashWidow: { name: 'THE ASH WIDOW', tier: 'elite', warden: true, stratum: 3, sheet: 'mon_warden', hp: 2500, speed: 15, r: 14, hy: 40, hr: 21, move: 'kite', keep: 110, fervor: 40, attacks: [
     A('spiral', { streams: 2, dur: 2.4, rate: 0.14, range: 210, windup: 0.8, cd: 7, dmg: 8, speed: 95, shot: 'ember' }),
     A('lob', { n: 4, spreadR: 50, rad: 20, range: 220, windup: 0.7, cd: 4.5, dmg: 11, pool: 'ember', poolLife: 5, poolDps: 14 }),
     A('pull', { len: 190, range: 190, windup: 0.6, cd: 6, dmg: 10 }),
     A('summon', { monster: 'cinderMoth', n: 4, range: 300, windup: 0.6, cd: 12 })],
     phases: [[A('ring', { n: 24, range: 220, windup: 0.6, cd: 4.5, dmg: 9, speed: 100, shot: 'ember' })], [A('spiral', { streams: 4, dur: 3, rate: 0.12, range: 240, windup: 0.8, cd: 8, dmg: 9, speed: 100, shot: 'ember' }), A('pattern', { shape: 'ring', at: 'self', n: 14, radius: 105, rad: 18, delay: 0.9, range: 260, windup: 0.7, cd: 7, dmg: 14, pool: 'ember' })]] },
   // The Training Yard's dummy: stands still, never attacks, never dies.
-  dummy: { name: 'TRAINING DUMMY', tier: 'common', hp: 1e9, speed: 0, r: 8, hy: 16, hr: 11, move: 'static', fervor: 0, attacks: [] },
+  dummy: { name: 'TRAINING DUMMY', tier: 'common', hp: 1e9, speed: 0, r: 6, hy: 16, hr: 9, move: 'static', fervor: 0, attacks: [] },
   // The five Wardens (one comes when the Toll is full). Own sheet, own kits.
   bellwright: { name: 'THE BELLWRIGHT', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2600, speed: 16, r: 16, hy: 36, hr: 24, move: 'chase', fervor: 40, phases: [[A('peal', { range: 200, windup: 0.9, cd: 7, dmg: 16, speed: 115, max: 240, n: 5, gap: 0.35, root: 0.6 })], [A('pattern', { shape: 'ring', at: 'player', n: 10, radius: 80, rad: 22, delay: 0.85, range: 260, windup: 0.6, cd: 6, dmg: 18, style: 'bell', root: 0.5 }), A('slam', { range: 56, rad: 48, windup: 0.7, cd: 3.5, dmg: 26 })]], attacks: [
     A('slam', { range: 48, rad: 34, windup: 0.8, cd: 2.6, dmg: 20 }),
@@ -5698,7 +5715,7 @@ function glow(x, y, r, c, g2 = GLOW_TO || ctx) {
   g2.drawImage(img, x - r, y - r, r * 2, r * 2);
   g2.globalAlpha = a0;
 }
-const LIGHT_RGB = { flame: '95,220,108', ember: '255,122,31', holy: '138,224,255', gold: '255,209,85', blood: '224,32,46', violet: '154,106,230' };
+const LIGHT_RGB = { ash: '176,214,160', flame: '95,220,108', ember: '255,122,31', holy: '138,224,255', gold: '255,209,85', blood: '224,32,46', violet: '154,106,230' };
 const onScreen = (x, y, cx, cy, m) => x > cx - m && x < cx + W + m && y > cy - m && y < cy + H + m;
 
 // ?prof: time each part of the frame draw (PROF['r:<part>']).
@@ -5813,8 +5830,9 @@ function render() {
     const fl = Math.sin(game.real * 9 + (l.flick || 0)) * 2;
     if (l.torch || l.sconce) {
       // A warm pool on the floor and a hot bloom around the flame.
-      if (game.scene === 'wound') glow(l.x, l.y + (l.torch ? 62 : 52), l.r * 0.85 + fl, 'rgba(255,122,31,0.2)');
-      glow(l.x, l.y, 22 + fl, 'rgba(255,192,74,0.38)');
+      const tc = room.torch || ['255,122,31', '255,192,74'];
+      if (game.scene === 'wound') glow(l.x, l.y + (l.torch ? 62 : 52), l.r * 0.85 + fl, `rgba(${tc[0]},0.2)`);
+      glow(l.x, l.y, 22 + fl, `rgba(${tc[1]},0.38)`);
     } else glow(l.x, l.y, l.r * 0.45 + fl, `rgba(${LIGHT_RGB[l.c]},0.22)`);
   }
   glow(player.x, player.y - 54, 20, 'rgba(255,209,85,0.25)');
@@ -6489,8 +6507,6 @@ function renderHud() {
   // Vestment set state: nail stacks, the Penitent's window, standing in a pool.
   { const st = sb('nails', 4) && player.nails ? `NAILS ${player.nails}` : (player.strideT || 0) > game.time ? `STRIDE ${Math.ceil(player.strideT - game.time)}` : player.inPool ? 'IN THE FONT' : '';
     if (st) text(st, 8, hudY + (showFps() ? 10 : 0) + (game.buff ? 11 : 0), RARITY[4].color, { small: true }); }
-  const ms = game.massacre;
-  if (ms && ms.n >= 5 && game.time - ms.last < 1.2) text(`x${ms.n}`, 14, Math.round(H * 0.42), Math.floor(game.real * 8) % 2 ? PAL.blood0 : PAL.gold0, { sc: 2 });
   // Bottom-right: dash, Miracles, Penance.
   const dashK = p.charges >= G.charges ? 0 : 1 - p.recharge / (T.dash.recharge * G.dashK);
   button(HUD.dash, { active: p.charges > 0, cd: p.charges === 0 ? dashK : 0 });

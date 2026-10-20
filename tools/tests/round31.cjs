@@ -18,7 +18,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   // The Training Yard.
   await p.goto('http://localhost:8123/?town'); await p.waitForTimeout(2200);
   await p.evaluate(() => { HS.tut.on = false; HS.game.dialog = null; HS.game.news = null; HS.game.state = 'play'; HS.SAVE.cleared = 6; const Y = HS.SITES.find((q) => q.id === 'yard'); HS.player.x = Y.x - 30; HS.player.y = HS.room.top * 16 + Y.dy + 30; });
-  await p.waitForTimeout(700); await shot('town-yard');
+  await p.mouse.click(300, 200); await p.waitForTimeout(700); await shot('town-yard');
   await p.evaluate(() => HS.openYard()); await p.waitForTimeout(3500);
   out.yard = await p.evaluate(() => ({ state: HS.game.state, yard: !!HS.yard, dummy: !!(HS.yard && HS.yard.dummy) }));
   await p.evaluate(() => { HS.game.state = 'play'; HS.input.m1 = true; }); await p.waitForTimeout(4000);
@@ -38,7 +38,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   // Stratum III: a descent at Station VII.
   await p.evaluate(() => { HS.SAVE.cleared = 6; HS.startDescent(); HS.game.descent.i = 6; HS.game.descent.stratum = 3; }); await p.waitForTimeout(250); await shot('descent-ossuary');
   out.open = await p.evaluate(() => [1, 2, 3].map((k) => HS.strataOpen(k)));
-  await p.evaluate(() => { HS.game.state = 'play'; HS.game.nextStratum = 3; HS.game.nextDiff = 6; HS.game.nextOmens = []; HS.game.nextVigil = 0; HS.newRun(); HS.tut.on = false; HS.game.state = 'play'; });
+  await p.evaluate(() => { HS.game.state = 'play'; HS.game.nextStratum = 3; HS.game.nextDiff = 6; HS.game.nextOmens = []; HS.game.nextVigil = 0; HS.newRun(); HS.tut.on = false; HS.game.state = 'play'; HS.DEV.god = true; });
   await p.waitForTimeout(2500); await shot('ossuary-start');
   out.run = await p.evaluate(() => ({ stratum: HS.game.run.stratum, name: HS.room.name, foes: [...new Set(HS.enemies.map((e) => e.type))], music: Object.entries(HS.AUDIO.tracks).filter(([, t]) => t.on).map(([k]) => k) }));
   await p.evaluate(() => { const P = HS.player; for (const id of ['gleaner', 'cinderMoth', 'abbot']) HS.spawnMonster(id, P.x + 60, P.y + (id === 'abbot' ? -30 : 20)); }); await p.waitForTimeout(2200); await shot('ossuary-foes');

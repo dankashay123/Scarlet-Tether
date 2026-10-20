@@ -26,6 +26,7 @@ const SM = {
   leaf: { ramp: 'moss', spec: 0.05, min: 1 }, leafB: { ramp: 'moss', bias: -0.12, min: 1 },
   clay: { ramp: 'pot', spec: 0.15 }, clayB: { ramp: 'pot', bias: -0.1 },
   water: { ramp: 'teal', spec: 0.9, bias: 0.06 }, gold: { ramp: 'gold', spec: 0.6 }, bone: { ramp: 'bone', spec: 0.2 },
+  dirt: { ramp: 'sand', bias: -0.28, min: 3, max: 7 }, targetRed: { ramp: 'crimson', spec: 0.1, bias: 0.05 }, targetWhite: { ramp: 'cloth', max: 4 },
   hole: { ramp: 'ink', bias: -0.5, min: 5 }, apple: { ramp: 'crimson', spec: 0.5, bias: 0.05 }, cabbage: { ramp: 'moss', spec: 0.2, bias: 0.08 },
 };
 
@@ -306,6 +307,57 @@ function crateStack() {
   return fr;
 }
 
+// ===================================================== training yard ===
+// A small fenced yard of packed earth: a straw dummy on a post, a weapon
+// rack of staves and a blade, an archery butt with an arrow in it.
+function trainingYard() {
+  const W = 84, H = 46, S = new View(), zr = 18, G = groundY(H, zr + 1);
+  const target = (cx, cy, zf, rings) => rings.forEach(([r, mat]) => S.paint({ mat, f: (x, y, z) => Math.max(Math.hypot(x - cx, y - cy) - r, zf - z) }));
+  // Packed earth.
+  S.add(slabBox(2, G - 0.8, 82, G + 0.2, zr + 1, 2 * zr + 2, 'dirt', 0.6), 0);
+  // The archery butt: a straw boss on a three-legged easel.
+  const bx = 66, by = G - 14, bz = -6;
+  for (const [dx, dz] of [[-4.5, 1], [4.5, 1], [0, -4]]) S.add(rod([bx + dx, G, bz + dz], [bx + dx * 0.3, by + 2, bz + dz * 0.2 - 0.8], 1, 'woodB'), 0);
+  S.add(rod([bx, by, bz - 2], [bx, by, bz + 1.6], 7.6, 'hay'), 0.6);
+  target(bx, by, bz + 1.4, [[6.4, 'targetRed'], [4.4, 'targetWhite'], [2.3, 'targetRed']]);
+  // The weapon rack: an A-frame with staves and a blade leaning on its bar.
+  const rx = 41, rz = -13;
+  for (const dx of [-7, 7]) { S.add(rod([rx + dx - 2, G, rz], [rx + dx, G - 11, rz], 0.9, 'wood'), 0); S.add(rod([rx + dx + 2, G, rz], [rx + dx, G - 11, rz], 0.9, 'wood'), 0); }
+  S.add(rod([rx - 8.5, G - 10, rz], [rx + 8.5, G - 10, rz], 0.9, 'woodB'), 0);
+  for (const [dx, top, mat] of [[-5, 19, 'woodL'], [-2, 17, 'woodL'], [1, 20, 'woodB']]) S.add(rod([rx + dx - 1.5, G, rz + 2.4], [rx + dx + 0.5, G - top, rz + 0.6], 0.8, mat), 0);
+  S.add(box([rx - 2.6, G - 19, rz + 0.6], [0.9, 1.6, 0.7], 0.3, 'iron'), 0.3);
+  S.add(box([rx + 5, G - 8.5, rz + 2], [0.9, 6.5, 0.5], 0.3, 'iron'), 0);
+  S.add(box([rx + 5, G - 15.4, rz + 2], [2.6, 0.6, 0.8], 0.3, 'gold'), 0);
+  S.add(rod([rx + 5, G - 16, rz + 2], [rx + 5, G - 19, rz + 2], 0.8, 'woodB'), 0);
+  // The dummy: a stuffed sack on a post, arms on a crossbar, a painted target.
+  const dx0 = 18, dz = -3;
+  S.add(rod([dx0, G, dz], [dx0, G - 26, dz], 1.2, 'wood'), 0);
+  S.add(rod([dx0 - 8, G - 18.5, dz - 0.5], [dx0 + 8, G - 18.5, dz - 0.5], 0.9, 'woodB'), 0);
+  for (const s2 of [-1, 1]) S.add(capsule([dx0 + s2 * 3, G - 18.5, dz], [dx0 + s2 * 6.6, G - 18.2, dz], 2, 1.6, 'sack'), 0.8);
+  S.add(bumpy(ellipsoid([dx0, G - 14.5, dz], [4.8, 6.4, 3.8], 'sack'), 0.25, 0.8, 3), 1);
+  target(dx0 + 0.5, G - 14.5, dz + 2.4, [[3.8, 'targetRed'], [2.5, 'targetWhite'], [1.2, 'targetRed']]);
+  S.add(bumpy(sphere([dx0 + 0.3, G - 24, dz], 3.3, 'sack'), 0.2, 0.9, 5), 1);
+  S.paint({ mat: 'woodB', f: (x, y) => Math.abs(y - (G - 20.8)) - 0.7 });
+  // The fence: posts and two rails along the back and sides, one low rail
+  // in front with a gap to walk through.
+  const post = (x, z, h = 10) => S.add(rod([x, G, z], [x, G - h, z], 1.1, 'wood'), 0);
+  for (const x of [4, 23, 42, 61, 80]) post(x, -zr);
+  for (const x of [4, 80]) post(x, 0);
+  for (const x of [4, 28, 56, 80]) post(x, zr, 7);
+  for (const y of [G - 8.5, G - 4.5]) {
+    S.add(rod([4, y, -zr], [80, y, -zr], 0.8, 'woodL'), 0);
+    for (const x of [4, 80]) S.add(rod([x, y, -zr], [x, y, zr], 0.8, 'woodL'), 0);
+  }
+  for (const [x0, x1] of [[4, 28], [56, 80]]) S.add(rod([x0, G - 5, zr], [x1, G - 5, zr], 0.8, 'woodL'), 0);
+  const fr = R(S, W, H);
+  // An arrow in the butt, fletched; stitched eyes on the dummy; a trodden path.
+  const ay0 = Math.round(sy(by - 1, bz + 1.4));
+  pline(fr, bx + 1, ay0, bx + 5, ay0 + 3, 'wood2'); dot(fr, bx + 6, ay0 + 4, 'cloth1'); dot(fr, bx + 6, ay0 + 2, 'cloth2');
+  const hy = Math.round(sy(G - 24.5, dz + 3));
+  dot(fr, dx0, hy, 'shroud4'); dot(fr, dx0 + 2, hy, 'shroud4');
+  return outlineAll(fr);
+}
+
 // ===================================================== ground details ===
 // Flat bits drawn on the ground under everything: no shading, no outline.
 function weeds(v) {
@@ -358,6 +410,7 @@ export default {
     shrine_small: () => [shrineSmall()],
     bunting_pole: () => [0, 1].map(buntingPole),
     crate_stack: () => [crateStack()],
+    yard: () => [trainingYard()],
     weeds: () => [0, 1, 2].map(weeds),
     leaves: () => [0, 1, 2].map(leaves),
     grate: () => [grate()],

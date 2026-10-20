@@ -91,16 +91,16 @@ Desktop works with keys. 55–60 fps in dense crowds.
 
 ## Next steps (ideas, building on what is there)
 
-1. **A training yard in Vael.** A dummy and a monster summoner so players
-   can learn the round 16 attacks (snipe, blight, Sentence) safely.
-2. **Tighter Descent panel at large text.** Its three stat columns run
-   9 px rows; at LARGE they touch on 667-wide phones. Drop a row or two
-   behind a tap, or give the panel a second page.
-3. **Stratum III.** A third look (the Ossuary Spire or a burnt chapter
-   house) with its own two Wardens (each needs a roar, a fall, an earned
-   halo, a stand on the Vigil Roll and battle music), reusing `STRATA`.
-4. **Kill streak counter.** A small count under the Zeal line that
-   climbs with quick kills and feeds the Carnage bonus.
+1. **Tune Stratum III from play.** Its Wardens' kits (`ossuarch`,
+   `ashWidow` in `MON`) were set by eye; run `balance.cjs` and a few real
+   fights at Stations VII to XV.
+2. **Rooms per stratum.** Let `populate()` pick room themes and props per
+   stratum (the Nave has its own; the Ossuary reuses the base set).
+3. **Stratum III dressing.** Give the Ossuary its own room props (bone
+   piles, skull niches, ossuary shelves) the way the Nave has kelp and
+   pools; today it reuses remapped Undercroft props.
+4. **Yard records.** Keep the best damage a second against the dummy per
+   build and show it on the yard panel.
 5. **The pool's crowd.** Let the crowd at the Scrying Pool cheer or jeer
    when a wager settles in Vael, and show past wagers (won and lost).
 6. **A second playable saint.** A short-range melee saint with its own
@@ -111,6 +111,21 @@ Desktop works with keys. 55–60 fps in dense crowds.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 31 (Stratum III, Training Yard, HUD):** Stratum III, THE OSSUARY
+  SPIRE (`STRATA[3]`, sheets `_o` from the `OSSUARY` remap, `OSSUARY_PAL`
+  for the baked wall edges, cold `ash` light and green torches via
+  `ST.light`/`ST.torch`), opens after Station VI (`STRATA_NEED`). Monsters in
+  `tools/models/ossuary.mjs`: Bone Gleaner, Cinder Moth, Marrow Abbot, and
+  the Wardens the Ossuarch and the Ash Widow (roars, falls, earned halos
+  `rot` and `shroud`, stand frames 9 and 10, `music_ossuary`,
+  `music_warden_ossuary`). The Vigil Roll shows five halos to a row. The
+  Training Yard (`openYard`, `run.yard`) sits at the end of the lower street
+  (`street.yard` prop): a dummy that counts damage a second, a summon panel
+  at the statue (every foe and Warden, any open Station, foes calm or
+  attacking), no gains, no death. The kill streak line under Zeal replaces
+  the old `xN` counter; a pulsing red edge shows below 25% health; Descent
+  rows space out with the text size.
 
 - **Round 30 (HUD feel, crits, text size):** crit numbers size and colour
   by how they compare with recent plain hits (`game.avgHit`; gold, orange

@@ -3,7 +3,7 @@
 // hand-placed eyes and glints. Everything faces right; frames carry ax/ay at
 // the ground contact point.
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, noise3, dot, pline, under } from '../sdf.mjs';
-import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt } from './base.mjs';
+import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt, posedFrame } from './base.mjs';
 
 const MM = {
   ...MATS,
@@ -518,6 +518,43 @@ function naveEel(t = 0, atk = -1) {
   return A(f, 22, gy);
 }
 
+// ======================================================= training dummy ===
+// (The Training Yard) A straw-stuffed sack on a wooden post, arms on a
+// crossbar, a target painted on its chest. It never moves.
+MM.burlap = { ramp: 'bone', spec: 0.04, bias: -0.12, min: 1 }; MM.burlapDark = { ramp: 'bone', bias: -0.24, min: 3 };
+MM.straw = { ramp: 'sand', spec: 0.1, bias: 0.1 }; MM.targetRed = { ramp: 'crimson', spec: 0.1, bias: 0.05 }; MM.targetWhite = { ramp: 'cloth', max: 4 };
+function dummy() {
+  const S = new Scene(), w = 40, h = 48, gy = 45, cx = 19;
+  // A cross-foot of two planks and the post.
+  S.add(box([cx, gy - 1.3, 0], [8.5, 1.1, 2], 0.4, 'wood'), 0);
+  S.add(box([cx, gy - 1.3, 0], [2, 1.1, 6.5], 0.4, 'wood'), 0);
+  S.add(capsule([cx, gy - 2, 0], [cx, 14, 0], 1.7, 1.5, 'wood'), 0.4);
+  // The crossbar arms, stuffed sleeves, straw spilling from the cuffs.
+  S.add(capsule([cx - 10.5, 21, -0.5], [cx + 10.5, 21, -0.5], 1.2, 1.2, 'wood'), 0);
+  for (const s of [-1, 1]) {
+    S.add(capsule([cx + s * 4, 21, 0], [cx + s * 9, 21.6, 0], 2.6, 2.1, 'burlap'), 1);
+    for (let k = 0; k < 3; k++) S.add(capsule([cx + s * 10.5, 21.6, 0], [cx + s * (13 + k * 0.4), 19.5 + k * 2, (k - 1) * 1.2], 0.9, 0.5, 'straw'), 0.3);
+  }
+  // The sack body, tied at the neck and the waist.
+  S.add(bumpy(ellipsoid([cx, 27, 0], [6.6, 8.6, 5.2], 'burlap'), 0.35, 0.7, 3), 1.2);
+  for (const y of [19.6, 33]) S.paint({ mat: 'rope', f: (x, yy) => Math.abs(yy - y - (x - cx) * 0.08) - 0.9 });
+  // The painted target: red, white, red.
+  const tc = [cx + 1, 26.5];
+  for (const [r, mat] of [[5.4, 'targetRed'], [3.6, 'targetWhite'], [1.8, 'targetRed']]) S.paint({ mat, f: (x, y, z) => Math.max(Math.hypot(x - tc[0], y - tc[1]) - r, 2.5 - z) });
+  // The head: a smaller sack tied off at the top with a straw tuft.
+  const hy = 12.5;
+  S.add(bumpy(sphere([cx + 0.5, hy, 0.5], 4.6, 'burlap'), 0.3, 0.8, 5), 1.2);
+  S.add(capsule([cx + 0.5, hy - 4, 0], [cx + 0.5, hy - 6, 0], 1.3, 1.1, 'burlapDark'), 0.4);
+  for (let k = 0; k < 3; k++) S.add(capsule([cx + 0.5, hy - 6, 0], [cx - 1.5 + k * 2, hy - 9 + Math.abs(k - 1), 0], 0.9, 0.5, 'straw'), 0.2);
+  const f = R(S, w, h, gy);
+  // Stitched eyes and mouth.
+  for (const ex of [cx + 1, cx + 4]) D(f, ex, hy - 0.5, 'shroud4');
+  D(f, cx + 2, hy + 2.5, 'shroud3'); D(f, cx + 4, hy + 2.5, 'shroud3');
+  // Straw poking from the seams.
+  for (const [x, y] of [[cx - 6, 33], [cx + 5, 35], [cx - 2, 36]]) D(f, x, y, 'sand1');
+  return A(f, cx, gy);
+}
+
 // ================================================================ export ===
 const walk = (fn) => () => HALF.map((t) => fn(t));
 const attack = (fn) => () => [fn(0, 0), fn(0, 1)];
@@ -526,6 +563,14 @@ const mon = {};
 for (const [id, fn] of Object.entries(MODELS)) {
   const r = reactions(() => fn(0), 0, id === 'rat' || id === 'crawler' || id === 'naveEel');
   mon[`${id}_walk`] = walk(fn); mon[`${id}_attack`] = attack(fn); mon[`${id}_hit`] = r.hit; mon[`${id}_die`] = r.die;
+}
+// The dummy stands still; a hit rocks it on its post, a kill tips it over.
+{
+  const ref = dummy(), still = () => dummy();
+  mon.dummy_walk = () => HALF.map(still);
+  mon.dummy_attack = () => [still(), still()];
+  mon.dummy_hit = () => [posedFrame(dummy, ref, { rot: -0.22 }), posedFrame(dummy, ref, { rot: 0.12 })];
+  mon.dummy_die = () => [posedFrame(dummy, ref, { rot: -0.5 }), posedFrame(dummy, ref, { rot: -1.1, dx: -2 }), posedFrame(dummy, ref, { rot: -PI / 2, dx: -2, dy: 2 })];
 }
 export default {
   mon_common: mon,

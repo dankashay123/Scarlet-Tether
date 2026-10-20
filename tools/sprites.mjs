@@ -19,7 +19,7 @@ const CHUNK = 2, FINE_SHEETS = new Set(['ui']);
 setRes(CHUNK);
 // v5: sculpted models (tools/sdf.mjs) replace hand-drawn animations by name.
 const OVR = {};
-for (const m of ['saint', 'common', 'rare', 'elite', 'town', 'townfolk', 'dungeon', 'floor', 'vfx', 'props', 'weapon', 'street']) {
+for (const m of ['saint', 'common', 'rare', 'elite', 'ossuary', 'town', 'townfolk', 'dungeon', 'floor', 'vfx', 'props', 'weapon', 'street']) {
   let set;
   try { set = (await import(`./models/${m}.mjs`)).default; } catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') console.warn(`models/${m}.mjs failed to load: ${e.message}`); continue; }
   for (const [sh, anims] of Object.entries(set)) OVR[sh] = { ...OVR[sh], ...anims };
@@ -2098,6 +2098,19 @@ for (const name of ['hall', 'floor', 'walldecor', 'props', 'loot']) {
   const f = new Frame(src.frame.w, src.frame.h);
   for (let i = 0; i < f.px.length; i++) { const v = src.frame.px[i]; f.px[i] = drownIdx.has(v) ? drownIdx.get(v) : v; }
   sheets.push({ name: `${name}_d`, frame: f, json: { ...src.json, image: `${name}_d.png` } });
+}
+// Stratum III, the Ossuary Spire: pale bone and ash stone, soot-dark brick
+// and timber, sickly green candle light. [to, shift] moves each step that
+// many fine steps darker (+) so the floors stay calm behind the actors.
+// Loot keeps its fire, gold, red and green so drops and shots read the same.
+const OSSUARY = { flag: ['bone', 1], sand: ['cloth', 2], pot: ['bone', 1], stone: ['cloth', 3], teal: ['shroud', 0], slate: ['shroud', 1], brick: ['ink', 1], wood: ['shroud', 2], ember: ['flame', 0], moss: ['rot', 0], crimson: ['roof', 1], gold: ['sand', 0] };
+const OSS_LOOT_KEEP = new Set(['ember', 'moss', 'crimson', 'gold']);
+const ossIdx = (keep) => { const m = new Map(); for (const [from, [to, k]] of Object.entries(OSSUARY)) if (!keep.has(from)) FINE[from].forEach((n, i) => m.set(IDX[n], IDX[FINE[to][Math.max(0, Math.min(8, i + k))]])); return m; };
+for (const name of ['hall', 'floor', 'walldecor', 'props', 'loot']) {
+  const src = sheets.find((q) => q.name === name); if (!src) continue;
+  const map = ossIdx(name === 'loot' ? OSS_LOOT_KEEP : new Set()), f = new Frame(src.frame.w, src.frame.h);
+  for (let i = 0; i < f.px.length; i++) { const v = src.frame.px[i]; f.px[i] = map.has(v) ? map.get(v) : v; }
+  sheets.push({ name: `${name}_o`, frame: f, json: { ...src.json, image: `${name}_o.png` } });
 }
 mkdirSync(OUT, { recursive: true });
 const manifest = { palette: PALETTE };
