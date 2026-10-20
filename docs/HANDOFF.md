@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 39 (build 39.1, on `master`). Read
+Last updated 2026-10-20, after round 40 (build 40.1, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -172,6 +172,24 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 40 (tougher Stations, deep rewards, Vigil to XXX):** the owner
+  was killing everything in one shot at Station XV. `balance.cjs` gained a
+  `max` profile (mythic Hundred Nails, tier II enchants on every slot, maxed
+  Virtues, three altar powers, three passives, more Wounds); at XV it
+  needed 0.3 shots per common and 18 s per Warden. Monster health and
+  damage now get a middle-Station bump (`toughHp`, `toughDmg`, through
+  `stationHp`/`stationDmg`): it starts at VI, peaks at XV (x3 health,
+  x1.7 damage) and eases to x1.4 / x1.25 at XXX, where gear has caught up.
+  The max build now needs about 1 shot per common and 65 s per Warden at XV,
+  and 2-3 shots at XX-XXX. Deep Stations pay more (`DEEP`, `deepPayout`):
+  from XVI the Warden always drops a Bloodrose Key and a set piece, and
+  ingredients are 10% likelier per Station past XV (x2.5 at XXX); from XXI
+  also a Hallowed Chrism; from XXVI a second set piece. The Descent panel
+  shows WARDEN EXTRAS and INGREDIENTS. The Vigil follows all thirty Stations
+  (`VIGIL_SOFT` 60, `vigilStation`), then grows 3% health and 2% damage a
+  level as before. `setbal.cjs` takes `ENCH=` to check sets with enchants.
+  ENCHANT_NOTE
 
 - **Round 39 (enchant balance, reflect, thirty Stations):** the owner found
   Splinter melting everything, a REMORSEFUL foe's reflect always one-shotting

@@ -103,9 +103,12 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '39.1';
+const BUILD = '40.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '40.1': ['STATIONS VI AND DEEPER ARE TOUGHER: UP TO 3X MONSTER HEALTH AND 1.7X DAMAGE AT STATION XV.',
+    'WARDENS OF STATION XVI+ ALWAYS DROP A BLOODROSE KEY AND A SET PIECE, AND MORE INGREDIENTS. XXI+: A HALLOWED CHRISM. XXVI+: A SECOND SET PIECE.',
+    'VIGIL LEVELS NOW FOLLOW ALL THIRTY STATIONS (LEVEL 59 IS STATION XXX).'],
   '39.1': ['NEW: STATIONS XVI TO XXX, IN THREE NEW BANDS: ASCETIC, ANCHORITE AND APOSTLE.',
     'REMORSEFUL FOES NO LONGER KILL YOU IN ONE HIT: THEY HURT YOU BACK BY A SHARE OF YOUR HEALTH, AT MOST 5% A SECOND.',
     'SPLINTER\'S BOLTS NO LONGER SET OFF MORE SPLINTERS. RELENTLESS TAKES AT MOST 0.6 S (II: 1 S) OFF COOLDOWNS A SECOND. ENCHANT SCENES ARE GONE.',
@@ -1208,9 +1211,22 @@ function vigilPayout(e, L) {
   if (L >= VIGIL_PAY.hallowed) pop({ kind: 'chrism', tier: 3 });
 }
 // Bloodrose Keys open the Bleeding Vigil. Wardens of Station X and deeper
-// drop one half of the time.
+// drop one half of the time, from Station XVI always.
 const VKEY_FROM = 10, VKEY_CHANCE = 0.5;
-function dropVkey(e) { if (curDiff().n >= VKEY_FROM && Math.random() < VKEY_CHANCE) drops.push({ kind: 'vkey', x: e.x + 14, y: e.y + 6, z: 10, vx: rand(-30, 30), vy: rand(10, 30), vz: 140, t: 0 }); }
+// Round 40: what the deep Stations (XVI+) pay on top. Wardens drop a set piece
+// from XVI, a Hallowed Chrism from XXI and a second set piece from XXVI;
+// ingredients are 10% likelier for each Station past XV.
+const DEEP = { from: 16, chrism: 21, set2: 26, ingrK: 0.1 };
+const deepIngrK = (n) => 1 + Math.max(0, n - (DEEP.from - 1)) * DEEP.ingrK;
+const deepExtras = (n) => n >= DEEP.set2 ? '2 SETS, CHRISM' : n >= DEEP.chrism ? 'SET, CHRISM' : n >= DEEP.from ? 'SET PIECE' : 'NONE';
+function deepPayout(e, df) {
+  if (df.vigil || df.n < DEEP.from) return;
+  const pop = (o) => drops.push({ x: e.x + rand(-20, 20), y: e.y + rand(4, 16), z: 10, vx: rand(-60, 60), vy: rand(-30, 40), vz: rand(100, 160), t: 0, ...o });
+  pop({ kind: 'item', item: makeSetPiece(df.n) });
+  if (df.n >= DEEP.set2) pop({ kind: 'item', item: makeSetPiece(df.n) });
+  if (df.n >= DEEP.chrism) pop({ kind: 'chrism', tier: 3 });
+}
+function dropVkey(e) { if (curDiff().n >= VKEY_FROM && (curDiff().n >= DEEP.from || Math.random() < VKEY_CHANCE)) drops.push({ kind: 'vkey', x: e.x + 14, y: e.y + 6, z: 10, vx: rand(-30, 30), vy: rand(10, 30), vz: 140, t: 0 }); }
 // Each monster's voice when it dies (a family of two takes). Common foes voice
 // about one death in four, spaced out, so a crowd never drones; others always do.
 const VOICE = {};
@@ -1244,7 +1260,7 @@ function wardenSlain(e) {
     if (first && [3, 6, 9].includes(df.n)) { SAVE.gifts = (SAVE.gifts || 0) + 1; toast("SISTER ODILE HAS A GIFT FOR YOU IN VAEL", 3); }
     persist();
     game.banner = { text: 'THE WARDEN FALLS', sub: first && df.n < MAX_STATION ? `STATION ${ROMAN[df.n]} UNLOCKED` : 'USE THE WAYSTONE TO RETURN', t: 0, color: PAL.gold0 };
-    dropLoot(e.x, e.y, { gold: 25, item: WARDEN.items, itemBoost: 2, globe: 2, warden: true }); maybeChrism(e.x, e.y, 0.4); dropVkey(e); wardenMats(e, df);
+    dropLoot(e.x, e.y, { gold: 25, item: WARDEN.items, itemBoost: 2, globe: 2, warden: true }); maybeChrism(e.x, e.y, 0.4); dropVkey(e); wardenMats(e, df); deepPayout(e, df);
   }
   for (const d of drops) if (d.kind !== 'globe') d.vac = true;
   addFervor(25);
@@ -2337,7 +2353,7 @@ function wardenMats(e, df) {
   const pop = (o) => drops.push({ x: e.x + rand(-24, 24), y: e.y + rand(4, 18), z: 10, vx: rand(-70, 70), vy: rand(-30, 40), vz: rand(110, 170), t: 0, ...o });
   for (let k = 0; k < n; k++) pop({ kind: 'ember' });
   if (df.n >= ENCH_FROM) {
-    let got = 0; const ch = ingrChance();
+    let got = 0; const ch = ingrChance() * (df.vigil ? 1 : deepIngrK(df.n));
     for (let i = 0; i < ENCHANTS.length * 3; i++) if (Math.random() < ch) { pop({ kind: 'ingr', i }); got++; }
     SAVE.ingrDry = got ? 0 : (SAVE.ingrDry || 0) + 1; persist();
   }
@@ -3747,7 +3763,7 @@ function vigilTap(x, y) {
 // Ten levels at a time: small buttons between the arrows and the number.
 const vigilJumps = (L) => ({ down: { x: L.x0 + L.pw / 2 - 52, y: L.prev.y, r: 10 }, up: { x: L.x0 + L.pw / 2 + 52, y: L.next.y, r: 10 } });
 function renderVigil() {
-  const L = descentLayout(), P = game.vigilPick, df = vigilDiff(P.L), need = stationSanctity(Math.min(14, Math.floor((P.L - 1) * 0.5)));
+  const L = descentLayout(), P = game.vigilPick, df = vigilDiff(P.L), need = stationSanctity(vigilStation(P.L));
   ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
   panelFrame(L.x0, L.y0, L.pw, L.ph, '_blood');
   headerBar(L.x0, L.y0, L.pw, 26);
@@ -3980,26 +3996,36 @@ const stationPower = (i) => Math.pow(POWER_STEP, i);
 // sets, Devotion, Hallowed powers and the Altar, so progress means farming.
 const MON_STEP = 1.5;
 const monPower = (i) => Math.pow(MON_STEP, i);
+// Round 40: a farmed Saint one-shot Station XV, so the middle Stations get
+// extra health and damage (x3 health and x1.7 damage at XV), easing off toward
+// XXX, where the deepest gear has caught up. i may be a half step (the Vigil).
+const ramp = (a, b, i) => Math.max(0, Math.min(1, (i - a) / (b - a)));
+const toughHp = (i) => 1 + 2 * ramp(5, 14, i) - 1.6 * ramp(14, 29, i);
+const toughDmg = (i) => 1 + 0.7 * ramp(5, 14, i) - 0.45 * ramp(14, 29, i);
+const stationHp = (i) => monPower(i) * (1 + i * 0.05) * toughHp(i);
+const stationDmg = (i) => Math.pow(monPower(i), 0.72) * (1 + i * 0.04) * (1 + Math.min(i, 4) * 0.1) * toughDmg(i);
 const DIFF = ROMAN.map((rn, i) => {
   const band = BANDS[bandOf(i)];
   return { n: i + 1, rn, name: `STATION ${rn}`, band: band.name, col: band.col, text: band.text,
-    hp: monPower(i) * (1 + i * 0.05), dmg: Math.pow(monPower(i), 0.72) * (1 + i * 0.04) * (1 + Math.min(i, 4) * 0.1),
+    hp: stationHp(i), dmg: stationDmg(i),
     gold: 1 + i * 0.35, drop: 1 + i * 0.02, boost: i * 0.14, xp: 1 + i * 0.2, aff: (i >= 8 ? 1 : 0) + (i >= 12 ? 1 : 0) + (i >= 16 ? 1 : 0) + (i >= 26 ? 1 : 0), lv: 1 + i * 3 };
 });
 const diffOpen = (i) => i === 0 || (SAVE.cleared ?? -1) >= i - 1;
 const diffNeed = (i) => `KILL THE WARDEN OF STATION ${ROMAN[i - 1]}`;
-// The Bleeding Vigil, our timed trial: endless levels, two per Station step,
-// still climbing past Station XV. Density rises with every level.
+// The Bleeding Vigil, our timed trial: endless levels, two per Station step
+// (level 59 is Station XXX), then still climbing. Density rises with every level.
 const VIGIL_TIME = 600;
-// Vigils run to VIGIL_MAX. Up to level 30 they climb with the Stations; past
-// it health grows 3% and damage 2% a level, and density, rarity and loot stop
-// growing, so the deep levels stay playable and still ask for better gear.
-const VIGIL_MAX = 200, VIGIL_SOFT = 30;
+// Vigils run to VIGIL_MAX. Up to VIGIL_SOFT they climb with the Stations
+// (round 40: all thirty); past it health grows 3% and damage 2% a level, and
+// density, rarity and loot stop growing, so the deep levels stay playable and
+// still ask for better gear.
+const VIGIL_MAX = 200, VIGIL_SOFT = 60;
+const vigilStation = (L) => Math.min(MAX_STATION - 1, Math.floor((Math.min(L, VIGIL_SOFT) - 1) * 0.5));
 function vigilDiff(L) {
-  const i = (Math.min(L, VIGIL_SOFT) - 1) * 0.5, past = Math.max(0, L - VIGIL_SOFT), base = DIFF[Math.min(14, Math.floor(i))];
-  return { ...base, n: Math.min(15, Math.floor(i) + 1), vigil: L, name: `VIGIL ${L}`, rn: `V${L}`,
-    hp: monPower(i) * (1 + i * 0.05) * Math.pow(1.03, past), dmg: Math.pow(monPower(i), 0.72) * (1 + i * 0.04) * (1 + Math.min(i, 4) * 0.1) * Math.pow(1.02, past),
-    gold: 1 + i * 0.35 + past * 0.02, boost: i * 0.14 + 0.3, xp: 1 + i * 0.2, aff: (i >= 8 ? 1 : 0) + (i >= 12 ? 1 : 0) + (L >= 37 ? 1 : 0), dens: 1.15 + Math.min(L, 40) * 0.05 };
+  const i = Math.min((Math.min(L, VIGIL_SOFT) - 1) * 0.5, MAX_STATION - 1), past = Math.max(0, L - VIGIL_SOFT), base = DIFF[vigilStation(L)];
+  return { ...base, n: vigilStation(L) + 1, vigil: L, name: `VIGIL ${L}`, rn: `V${L}`,
+    hp: stationHp(i) * Math.pow(1.03, past), dmg: stationDmg(i) * Math.pow(1.02, past),
+    gold: 1 + i * 0.35 + past * 0.02, boost: i * 0.14 + 0.3, xp: 1 + i * 0.2, aff: base.aff, dens: 1.15 + Math.min(L, 40) * 0.05 };
 }
 // Omens: optional curses taken at the cathedral doors. Each makes the map
 // harder and pays more gold and gear (a little like map modifiers elsewhere,
@@ -4104,7 +4130,8 @@ function renderDescent() {
   const iK = df.drop, need = stationSanctity(D.i), chance = (v) => pct(Math.min(100, v * 100));
   const wn = WARDEN.items * iK, wardenGear = wn % 1 ? `${Math.floor(wn)}-${Math.ceil(wn)} PIECES` : `${wn} PIECES`;
   [['GEAR ITEM LEVEL', df.rn, PAL.flame1], ['GEAR SANCTITY', `${need}`, PAL.flame1], ['FOE DROPS GEAR', chance(DROP.kill * iK)], ['RARE DROPS GEAR', chance(DROP.rare * iK)], ['ELITE DROPS GEAR', chance(DROP.elite * iK)],
-    ['WARDEN GEAR', wardenGear], ['BLOODROSE KEY', D.i + 1 >= VKEY_FROM ? '1 IN 2' : `${ROMAN[VKEY_FROM - 1]}+`, D.i + 1 >= VKEY_FROM ? PAL.rose1 : PAL.stone2],
+    ['WARDEN GEAR', wardenGear], ['BLOODROSE KEY', D.i + 1 >= DEEP.from ? 'ALWAYS' : D.i + 1 >= VKEY_FROM ? '1 IN 2' : `${ROMAN[VKEY_FROM - 1]}+`, D.i + 1 >= VKEY_FROM ? PAL.rose1 : PAL.stone2],
+    ['WARDEN EXTRAS', deepExtras(D.i + 1), D.i + 1 >= DEEP.from ? PAL.rose1 : PAL.stone2], ['INGREDIENTS', D.i + 1 >= ENCH_FROM ? `X${+deepIngrK(D.i + 1).toFixed(1)}` : `${ROMAN[ENCH_FROM - 1]}+`, D.i + 1 >= DEEP.from ? PAL.rose1 : PAL.stone2],
     ['GOLD PER COIN', `${Math.round(3 * goldK)}-${Math.round(9 * goldK)}`, PAL.gold1], ['GOLD BONUS', `+${G.gold}%`, G.gold ? PAL.flame1 : PAL.cloth0], ['CHEST', 'ALWAYS'], ['HEALTH ORB', `${pct(6)}-${pct(10)}`]]
     .slice(0, nRows).forEach(([a, b, c], i) => row(1, i, a, b, c));
   head(2, 'GEAR RARITY');
