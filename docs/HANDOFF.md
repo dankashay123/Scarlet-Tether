@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 34 (build 33.4, on `master`). Read
+Last updated 2026-10-20, after round 34 (build 33.5, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -170,6 +170,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 34.1 (iPhone canvas memory, pause screen):** the owner hit "BLIT:
+  THE OBJECT IS IN AN INVALID STATE": iPhone Safari stops drawing once total
+  canvas memory passes its limit, and each map's baked floor is about 30 MB
+  that waited for garbage collection. `freeRoomCanvases()` empties the old
+  map, fog and sky canvases the moment a new map is built; `blit` skips an
+  empty buffer and `resize` ignores a near-zero view (app switching). The
+  pause screen (`renderPause`) dims the HUD text too, fits the Stigmata in two
+  or three columns above the buttons, puts the logged bug line above them,
+  and hides banners, toasts and tutorial hints. Crit numbers try a spot
+  beside before above and never leave the top of the screen.
 
 - **Round 34 (HUD top and edges):** the phone's safe-area insets (`SAFE`,
   `readSafe`, from CSS `env(safe-area-inset-*)`) keep the HP and Zeal block
@@ -684,6 +695,7 @@ These hosts are allowed now. Notes: Steam's `api/appdetails` and the App Store p
 - Keys: M opens the map (town or dungeon), N mutes, I opens the bag, E interacts, Esc closes panels.
 - Never bob or slide a whole body by 1 px or a fraction: on the 2x2 grid that re-cuts every block and reads as jitter. Move bodies in steps of 2 px (`bobAt()`); elites are scaled by `s` in `shoot()`, so use `2 / s` model units.
 - To test the Vigil or high Stations quickly from the console: `HS.SAVE.cleared = 3` (opens Station V and the Vigil), `HS.SAVE.vigilOpen = 10`.
+- iPhone Safari has a total canvas memory limit; past it every draw throws "the object is in an invalid state". Empty big canvases you replace (`c.width = c.height = 0`, as `freeRoomCanvases` does) instead of waiting for garbage collection.
 - Errors never stop the loop; they are logged instead. If the owner reports a bug, ask what the pause screen says under BUG LOGGED, or read `localStorage['hollow-saint-errors']`.
 - `text()` measures (cached in `TEXT_W`, at scale 1) and queues; the real font is drawn after the pixel layer, so text always sits on top of its layer. A window over another window needs `layerBreak()` first, or the lower window's text shows through. `small: true` is the smaller size.
 - Audio starts on the first tap (iOS rule). Music streams through `<audio>` elements, effects are decoded buffers. `AUDIO.set([...])` picks the loops; `sfx(name)` plays an effect.

@@ -70,6 +70,7 @@ function resize() {
   // the toolbars hiding or showing, which left a black band at the top.
   const vv = window.visualViewport, iw = vv ? vv.width : innerWidth, ih = vv ? vv.height : innerHeight;
   const ox = vv ? vv.offsetLeft : 0, oy = vv ? vv.offsetTop : 0;
+  if (iw < 50 || ih < 50) return; // Safari reports an empty view while switching apps: keep the last size
   VIEW_SEEN = `${iw}x${ih}x${ox}x${oy}x${dpr}`;
   if (scrollX || scrollY) scrollTo(0, 0);
   PORTRAIT = ih > iw;
@@ -96,15 +97,16 @@ function resize() {
   readSafe(PORTRAIT ? ih : iw, cw);
   layoutHud();
 }
-function blit() { sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
+function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.drawImage(buf, 0, 0, W * PRE, H * PRE); }
 
 // ------------------------------------------------------------- assets ---
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '33.4';
+const BUILD = '33.5';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '33.5': ['FIXED A BUG THAT COULD STOP THE SCREEN DRAWING ON IPHONE AFTER SEVERAL DESCENTS.', 'THE PAUSE SCREEN FITS YOUR STIGMATA ABOVE ITS BUTTONS.'],
   '33.4': ['THE TOLL, ELITE AND WARDEN BARS NO LONGER OVERLAP. THE HUD STAYS CLEAR OF THE NOTCH AND ROUNDED CORNERS.',
     'THE KILL STREAK BAR NOW SITS UNDER YOUR GOLD AND KILLS. BIG HITS NO LONGER STACK ON TOP OF EACH OTHER.'],
   '33.3': ['THE DESCENT PANEL SHOWS GEAR DROPS THE SAME WAY: THE CHANCE A FOE, RARE OR ELITE DROPS GEAR, AND HOW MANY PIECES THE WARDEN DROPS.',
@@ -635,6 +637,11 @@ function readMove() {
 // --------------------------------------------------------------- world ---
 const TILE = 16;
 let room, cam = { x: 0, y: 0 }, stain, sctxStain, roomCanvas;
+// iPhone Safari counts canvas memory until garbage collection runs, and a
+// map's baked floor is about 30 MB: past its limit every draw fails ("the
+// object is in an invalid state"). So the old map's canvases are emptied
+// the moment a new one is built.
+function freeRoomCanvases() { for (const c of [roomCanvas, room && room.fog, room && room.sky]) if (c) { c.width = 0; c.height = 0; } roomCanvas = null; darkBase = null; }
 let rng = Math.random;
 const rand = (a, b) => a + rng() * (b - a);
 const pick = (a) => a[Math.floor(rng() * a.length)];
@@ -853,6 +860,7 @@ function makeDungeon() {
   for (const d of decals) if (d.kind === 'skullcandle') lights.push({ x: d.x, y: d.y - 14, r: 36, c: 'ember', a: 0.7, flick: rng() * 9 });
 
   // Bake floor, walls and flat decor.
+  freeRoomCanvases();
   roomCanvas = document.createElement('canvas'); roomCanvas.width = w * TILE; roomCanvas.height = h * TILE;
   const rc = roomCanvas.getContext('2d');
   const t = SPR.tiles.anims, I = IMG.tiles, HA = SPR.hall.anims;
@@ -1675,6 +1683,7 @@ function makeTown() {
   const props = [], lights = [], npcs = [], interact = [], smoke = [], crows = [], fg = [];
   // Nothing on the street blocks the Saint: props are scenery you walk past.
   const place = (anim, px, py, tw = 1, extra = {}) => { const ty = Math.floor(py / TILE); const p = { kind: anim, sheet: extra.sheet || 'town2', anim, x: px, y: (ty + 1) * TILE - 1, ...extra }; props.push(p); return p; };
+  freeRoomCanvases();
   roomCanvas = document.createElement('canvas'); roomCanvas.width = w * TILE; roomCanvas.height = h * TILE;
   const rc = roomCanvas.getContext('2d');
   const cob = SPR.town.anims.cobble;
@@ -6215,26 +6224,21 @@ function render() {
     ctx.globalAlpha = n.t > 0.65 ? Math.max(0, 1 - (n.t - 0.65) / 0.2) : 1;
     const str = String(n.v) + (n.crit && typeof n.v === 'number' ? '!' : '');
     if (!n.small) {
-      const bw = textW(str, sc, false), bh = 8 * sc, bx = n.x - cx - bw / 2;
-      let by = n.y - cy - rise - (n.lift || 0);
-      for (let k = 0; k < 6 && placed.some((q) => bx < q.x + q.w && bx + bw > q.x && by < q.y + q.h && by + bh > q.y); k++) { n.lift = (n.lift || 0) + bh + 1; by -= bh + 1; }
-      placed.push({ x: bx, y: by, w: bw, h: bh });
+      // First try beside, then above; the number keeps the spot it found.
+      const bw = textW(str, sc, false), bh = 8 * sc, hit = (x, y) => placed.some((q) => x < q.x + q.w && x + bw > q.x && y < q.y + q.h && y + bh > q.y);
+      const x0 = n.x - cx - bw / 2, y0 = n.y - cy - rise;
+      if (n.dx === undefined) { n.dx = 0; n.lift = 0; for (const [dx, dy] of [[0, 0], [bw * 0.6, 0], [-bw * 0.6, 0], [0, bh + 1], [bw * 0.6, bh + 1], [-bw * 0.6, bh + 1], [0, 2 * bh + 2]]) if (!hit(x0 + dx, y0 - dy)) { n.dx = dx; n.lift = dy; break; } }
+      n.lift = Math.min(n.lift, Math.max(0, y0 - 2));
+      placed.push({ x: x0 + n.dx, y: y0 - n.lift, w: bw, h: bh });
     }
-    text(str, n.x - cx, n.y - cy - rise - (n.lift || 0), n.color, { sc, align: 'center', small: n.small });
+    text(str, n.x - cx + (n.dx || 0), n.y - cy - rise - (n.lift || 0), n.color, { sc, align: 'center', small: n.small });
     ctx.globalAlpha = 1;
   }
   mark('nums');
   renderScreenFx();
   renderHud();
   mark('hud');
-  if (game.state === 'pause') {
-    overlay('PAUSED', 'TAP TO RESUME');
-    if (devOn()) invButton(devBtn(), 'DEV', PAL.flame3 || PAL.gold3);
-    invButton(setBtn(), 'SETTINGS', PAL.gold3);
-    invButton(ritesBtn(), 'RITES', PAL.crimson3);
-    // The latest caught error, so a player can send it to us.
-    if (ERRS.length) { const e = ERRS[ERRS.length - 1]; text(`BUG LOGGED: ${e.msg}`.slice(0, 70).toUpperCase(), W / 2, H - 14, PAL.iron1, { align: 'center', small: true }); }
-  }
+  if (game.state === 'pause') { layerBreak(); renderPause(); }
   layerBreak(); // menu windows cover the HUD and its text
   if (game.state === 'inv') renderInventory();
   if (game.state === 'stig') renderStigmata();
@@ -6881,13 +6885,38 @@ function renderHud() {
   sprC('ui', 'knob', 0, stick.active ? stick.x : jx, stick.active ? stick.y : jy, { alpha: stick.active ? 1 : 0.6 });
   renderRoomStatus();
   renderWaystoneArrow();
-  renderBanner();
-  if (game.toast) text(game.toast.msg, W / 2, Math.round(H * 0.3) + (game.banner ? 40 : 0), game.toastColor || PAL.cloth0, { align: 'center' });
-  if (game.toast && game.toast.t < 0.05) game.toastColor = null;
-  renderTutorial();
+  // Banners, messages and tutorial hints wait while the game is paused.
+  if (game.state !== 'pause') {
+    renderBanner();
+    if (game.toast) text(game.toast.msg, W / 2, Math.round(H * 0.3) + (game.banner ? 40 : 0), game.toastColor || PAL.cloth0, { align: 'center' });
+    if (game.toast && game.toast.t < 0.05) game.toastColor = null;
+    renderTutorial();
+  }
   if (showFps()) text(`${Math.round(fpsAvg)} FPS ${(game.cpu || 0).toFixed(1)}MS ${enemies.length}`, HUD_X(), 44, PAL.flame1);
 }
 
+// The pause screen: title, the run's Wounds in columns that fit above the
+// buttons, the buttons, and the latest caught error above them.
+function renderPause() {
+  ctx.fillStyle = 'rgba(11,7,16,0.78)'; ctx.fillRect(0, 0, W, H);
+  const ws = game.scene === 'wound' && game.run && game.run.wounds ? Object.entries(game.run.wounds).map(([id, n]) => [WOUNDS.find((q) => q.id === id), n]).filter(([w]) => w) : [];
+  const btnY = H - 30, errY = btnY - 13, bottom = (ERRS.length ? errY : btnY) - 6, small = { small: true };
+  const names = ws.map(([w, n]) => `${w.name} ${'I'.repeat(n)}`), nw = Math.max(0, ...names.map((t) => textW(t, 1, true))) + 14;
+  const cols = Math.max(1, Math.min(ws.length > 8 ? 3 : 2, Math.floor((W - 24) / Math.max(1, nw)))), rows = Math.ceil(ws.length / cols), rh = 10;
+  const listH = ws.length ? 14 + rows * rh : 0, blockH = 34 + (ws.length ? 10 + listH : 0), top = Math.max(8, Math.round((bottom - blockH) / 2));
+  text('PAUSED', W / 2, top, PAL.gold1, { sc: 3, align: 'center' });
+  text('TAP TO RESUME', W / 2, top + 26, PAL.cloth1, { align: 'center' });
+  if (ws.length) {
+    const ly = top + 44, x0 = Math.round(W / 2 - (cols * nw) / 2);
+    text(`LEVEL ${game.run.level}  STIGMATA`, W / 2, ly, PAL.gold0, { align: 'center' });
+    ws.forEach(([w], i) => { const c = Math.floor(i / rows), r = i % rows; text(names[i], x0 + c * nw + 7, ly + 14 + r * rh, WOUND_RARITY[w.r].col, small); });
+  }
+  if (devOn()) invButton(devBtn(), 'DEV', PAL.flame3 || PAL.gold3);
+  invButton(setBtn(), 'SETTINGS', PAL.gold3);
+  if (game.scene === 'wound' || game.scene === 'town') invButton(ritesBtn(), 'RITES', PAL.crimson3);
+  // The latest caught error, so a player can send it to us.
+  if (ERRS.length) { const e = ERRS[ERRS.length - 1]; text(fitText(`BUG LOGGED: ${e.msg}`.toUpperCase(), W - 24), W / 2, errY, PAL.iron1, { align: 'center', small: true }); }
+}
 function overlay(title, sub) {
   ctx.fillStyle = 'rgba(11,7,16,0.72)'; ctx.fillRect(0, 0, W, H);
   text(title, W / 2, H / 2 - 22, PAL.gold1, { sc: 3, align: 'center' });
