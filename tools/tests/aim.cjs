@@ -22,7 +22,7 @@ const S = process.argv[2], WH = (process.argv[3] || '').split('x').map(Number);
   const rel = () => p.evaluate(() => { HS.pointerUp(7); });
   const rites = [['m1', 'water', 30, -30], ['m1', 'wave', -40, 0], ['m1', 'storm', 0, -40], ['m1', 'step', 40, 10], ['m2', 'chain', -30, -20]];
   for (const [k, id, dx, dy] of rites) {
-    await p.evaluate(([k, id]) => { HS.SAVE.rites = { ...(HS.SAVE.rites || {}), [k]: id }; }, [k, id]);
+    await p.evaluate(([k, id]) => { HS.SAVE.lvl = 60; HS.SAVE.rites = { ...(HS.SAVE.rites || {}), [k]: id }; }, [k, id]);
     out[id] = { aiming: await hold(k, dx, dy) };
     await p.waitForTimeout(120); await p.screenshot({ path: `${S}/shots/aim-${id}${tag}.png` });
     const before = await p.evaluate(() => ({ x: HS.player.x, y: HS.player.y }));

@@ -32,8 +32,8 @@ const BUILDS = [
         for (const sl of ms) { const it = HS.makeItem(sl, 4, 'X', undefined, il); it.set = main; HS.SAVE.equip[sl] = it; }
         if (second) { let n = 0; for (const sl of HS.VSETS[second].slots) { if (n >= 2 || ms.includes(sl)) continue; const it = HS.makeItem(sl, 4, 'X', undefined, il); it.set = second; HS.SAVE.equip[sl] = it; n++; } }
         for (const sl of ['bow', 'quiver']) HS.SAVE.equip[sl] = HS.armsItem(main, sl, il);
-        HS.SAVE.rites = { m1: R[main][0], m2: R[main][1], pen: R[main][2] };
-      } else HS.SAVE.rites = { m1: 'water', m2: 'chain', pen: 'rain' };
+        HS.SAVE.lvl = 60; HS.SAVE.rites = { m1: R[main][0], m2: R[main][1], pen: R[main][2] };
+      } else HS.SAVE.lvl = 60; HS.SAVE.rites = { m1: 'water', m2: 'chain', pen: 'rain' };
       slots.forEach((sl, i) => { if (ENCH[i]) { HS.SAVE.equip[sl].ench = ENCH[i]; HS.SAVE.equip[sl].enchT = ENCHT; } });
       HS.game.nextDiff = st - 1; HS.game.nextStratum = 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.game.stigAt = 1e9; HS.game.run.wounds = {}; HS.applyGear(true);
       for (const e of HS.enemies) e.dead = true;

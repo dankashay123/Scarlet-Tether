@@ -46,7 +46,7 @@ const S = process.argv[2];
   console.log('censer lit', lit, 'stats', st0, '->', st1);
   // Rite Wounds follow the chosen rites.
   const offered = await p.evaluate(() => {
-    HS.SAVE.rites = { m1: 'storm', m2: 'ward', pen: 'volley' }; HS.game.state = 'play'; HS.game.run.wounds = {};
+    HS.SAVE.lvl = 60; HS.SAVE.rites = { m1: 'storm', m2: 'ward', pen: 'volley' }; HS.game.state = 'play'; HS.game.run.wounds = {};
     const seen = new Set(); for (let k = 0; k < 400; k++) for (const w of HS.rollStigmata()) if (w.rite) seen.add(w.id);
     return [...seen].sort().join(',');
   });

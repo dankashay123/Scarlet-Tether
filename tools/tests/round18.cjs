@@ -11,7 +11,7 @@ const S = process.argv[2];
   // Rites panel at three sizes, Reckoning tab open.
   for (const [w, h] of [[932, 430], [844, 390], [667, 375]]) {
     const p = await page(w, h, '?run');
-    await p.evaluate(() => { HS.tut.on = false; HS.openRites('play'); const t = HS.riteLayout().tab(2); HS.ritesTap(t.x + 5, t.y + 5); const c = HS.riteLayout().card(2, 1); HS.ritesTap(c.x + 5, c.y + 5); });
+    await p.evaluate(() => { HS.tut.on = false; HS.SAVE.lvl = 60; HS.openRites('play'); const t = HS.riteLayout().tab(2); HS.ritesTap(t.x + 5, t.y + 5); const c = HS.riteLayout().card(2, 1); HS.ritesTap(c.x + 5, c.y + 5); });
     await p.waitForTimeout(250); await p.screenshot({ path: `${S}/shots/r18-rites-${w}.png` });
     console.log('rites', w, await p.evaluate(() => JSON.stringify({ focus: HS.game.riteFocus, pen: HS.riteOf('pen').id })));
     await p.close();

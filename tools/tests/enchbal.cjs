@@ -33,7 +33,7 @@ for (const t of [1, 2]) { BUILDS.push([`combo A ${t === 1 ? 'I' : 'II'}`, IDS.sl
       }
       HS.SAVE.equip = JSON.parse(window.__eq);
       ench.forEach((id, i) => { HS.SAVE.equip[SLOTS[i]].ench = id; HS.SAVE.equip[SLOTS[i]].enchT = tier; });
-      HS.SAVE.rites = { m1: 'storm', m2: 'nailring', pen: 'volley' };
+      HS.SAVE.lvl = 60; HS.SAVE.rites = { m1: 'storm', m2: 'nailring', pen: 'volley' };
       HS.game.nextDiff = st - 1; HS.game.nextStratum = 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.game.stigAt = 1e9; HS.game.run.wounds = {}; HS.game.run.xpBase = 1e15; HS.applyGear(true); // no level-ups: Wounds would swamp the enchants
       for (const e of HS.enemies) e.dead = true;
       const P = HS.player, home = { x: P.x, y: P.y }, mix = ['risen', 'crawler', 'acolyte', 'flagellant', 'risen'];

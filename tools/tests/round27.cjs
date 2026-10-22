@@ -31,7 +31,7 @@ const S = process.argv[2], WH = (process.argv[3] || '').split('x').map(Number);
     return { slot3Open: HS.saintLv() >= 25, answer: HS.pas('answer'), hide: HS.pas('hide'), nail: !!nail };
   });
   // Brighter casts: the Ward's shield and a Reckoning's aura.
-  await p.evaluate(() => { const P = HS.player; HS.SAVE.rites = { m1: 'water', m2: 'ward', pen: 'rain' }; P.m2cd = 0; HS.input.m2 = true; P.penance = 999; P.rainT = 0; HS.input.pen = true; });
+  await p.evaluate(() => { const P = HS.player; HS.SAVE.lvl = 60; HS.SAVE.rites = { m1: 'water', m2: 'ward', pen: 'rain' }; P.m2cd = 0; HS.input.m2 = true; P.penance = 999; P.rainT = 0; HS.input.pen = true; });
   await p.waitForTimeout(250); await p.screenshot({ path: `${S}/shots/r27-cast${tag}.png` });
   // The bag: one of each rarity and a set piece.
   await p.evaluate(() => {

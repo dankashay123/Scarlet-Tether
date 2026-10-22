@@ -1558,7 +1558,7 @@ function makePlayer(x, y) {
   };
 }
 function resetWorld() {
-  enemies = []; bolts = []; parts = []; gibs = []; falls = []; nums = []; ghosts = []; rings = []; fxs = []; pools = []; flasks = []; chains = []; lashes = [];
+  enemies = []; bolts = []; parts = []; vparts = []; gibs = []; falls = []; nums = []; ghosts = []; rings = []; fxs = []; pools = []; flasks = []; chains = []; lashes = [];
   hazards = []; shots = []; drops = []; skillFx = [];
 }
 // Stratum II swaps the dungeon sheets for their drowned copies (see
@@ -2375,20 +2375,33 @@ function enchKill(e) {
   if (ench('relentless')) {
     if (game.time - (player.relT || 0) > 1) { player.relT = game.time; player.relGot = 0; }
     const r = Math.min(E2('relentless', 0.2, 0.3), E2('relentless', 0.6, 1) - (player.relGot || 0));
-    if (r > 0) { player.relGot = (player.relGot || 0) + r; player.m1cd = Math.max(0, player.m1cd - r); player.m2cd = Math.max(0, player.m2cd - r); }
+    if (r > 0) { vemit(player.x, player.y - 30, { n: 3, ramp: 'violet', sp: 20, up: 40, life: 0.5, glow: 5 }); player.relGot = (player.relGot || 0) + r; player.m1cd = Math.max(0, player.m1cd - r); player.m2cd = Math.max(0, player.m2cd - r); }
   }
   if (ench('splinter') && bolts.length < 120 && !(HIT_BOLT && HIT_BOLT.splinter) && (player.splT || 0) <= game.time) {
-    player.splT = game.time + 1 / 6;
+    player.splT = game.time + 1 / 6; vemit(e.x, e.y - (e.hy || 10), { n: 10, ramp: 'bone', sp: 90, life: 0.3, size: 2, glow: 3 });
     for (let k = 0; k < E2('splinter', 3, 5); k++) spawnBolt(e.x, e.y - (e.hy || 10), rng() * Math.PI * 2, false, { dmgK: 0.6, pierce: 0, splinter: true });
   }
-  if (ench('tithe') && !game.yard && !e.minion && (e.tier === 'rare' || e.tier === 'elite')) { for (let k = 0; k < E2('tithe', 1, 2); k++) drops.push({ kind: 'globe', x: e.x, y: e.y, z: 6, vx: rand(-40, 40), vy: rand(-30, 30), vz: rand(60, 100), t: 0 }); addFervor(E2('tithe', 15, 25)); }
+  if (ench('tithe') && !game.yard && !e.minion && (e.tier === 'rare' || e.tier === 'elite')) { vemit(e.x, e.y - 10, { n: 14, ramp: 'gold', sp: 50, up: 60, life: 0.7, grav: 40, glow: 6 }); for (let k = 0; k < E2('tithe', 1, 2); k++) drops.push({ kind: 'globe', x: e.x, y: e.y, z: 6, vx: rand(-40, 40), vy: rand(-30, 30), vz: rand(60, 100), t: 0 }); addFervor(E2('tithe', 15, 25)); }
 }
 // Second Breath: once a descent, a killing blow leaves 30% health.
+// Enchant auras (round 42): small particle cues that an enchant is ready or at work.
+function enchAuras(dt) {
+  const p = player; if (!p || p.hp <= 0 || game.scene !== 'wound') return;
+  const at = (rate) => rng() < dt * rate;
+  if (ench('boneward') && (p.bwT || 0) <= game.time && at(6)) { const a = game.real * 3 + rng() * 6; vemit(p.x + Math.cos(a) * 16, p.y - 18 + Math.sin(a) * 10, { n: 1, ramp: 'bone', sp: 4, life: 0.5, glow: 3 }); }
+  if (ench('lastlight') && p.hp < p.maxHp * 0.5 && at(25)) vemit(p.x + rand(-9, 9), p.y - 2, { n: 1, ramp: 'life', sp: 4, up: 60, life: 0.6, grav: -20, glow: 6 });
+  if (ench('hunger') && (p.hungerT || 0) > game.time && at(2 + (p.hungerN || 0))) vemit(p.x + rand(-10, 10), p.y - 8, { n: 1, ramp: 'blood', sp: 6, up: 45, life: 0.6, grav: -10, glow: 5 });
+  if (ench('frostbite') || ench('reaper')) for (const e of enemies) {
+    if (e.dead || e.state === 'spawn') continue;
+    if (ench('frostbite') && (e.boltSlowT || 0) > game.time && at(3)) vemit(e.x + rand(-e.r, e.r), e.y - rand(0, e.hy * 2), { n: 1, ramp: 'frost', sp: 6, life: 0.5, grav: 30, glow: 4 });
+    if (ench('reaper') && e.hp < e.maxHp * E2('reaper', 0.2, 0.3) && at(4)) vemit(e.x + rand(-e.r, e.r), e.y - e.hy * 2 - 4, { n: 1, ramp: 'violet', sp: 4, up: 20, life: 0.5, glow: 5 });
+  }
+}
 function secondBreath() {
   if (!ench('breath') || game.scene !== 'wound' || !game.run || game.run.breath) return false;
   game.run.breath = true; player.hp = Math.round(player.maxHp * E2('breath', 0.3, 0.5)); player.iframes = Math.max(player.iframes, E2('breath', 2, 3));
   toast('SECOND BREATH', 2); game.toastColor = ENCH_BY.breath.col; game.flash = 0.15; sfx('learn', { gap: 0.2 });
-  rings.push({ x: player.x, y: player.y - 20, t: 0, max: 0.7, r: 70, color: ENCH_BY.breath.rgb }); return true;
+  rings.push({ x: player.x, y: player.y - 20, t: 0, max: 0.7, r: 70, color: ENCH_BY.breath.rgb }); vemit(player.x, player.y - 18, { n: 30, ramp: 'blood', sp: 120, up: 40, life: 0.6, drag: 2.5, glow: 7 }); return true;
 }
 
 // ------------------------------------- the Saint's level, the Canonry ---
@@ -5009,8 +5022,8 @@ function damagePlayer(src, dmg, contacts, how) {
   if (player.iframes > 0) return;
   const [cx, cy] = contacts[0];
   if (Math.hypot(cx - player.x, cy - player.y) > 1) return; // only the dash origin was in reach: a plain miss
-  if (ench('boneward') && (player.wardT || 0) <= game.time) { // Bone Ward: the hit is blocked
-    player.wardT = game.time + E2('boneward', 12, 8); player.iframes = T.hurtIframes; sfx('block');
+  if (ench('boneward') && (player.bwT || 0) <= game.time) { // Bone Ward: the hit is blocked (its own timer: wardT is Martyr's Ward)
+    player.bwT = game.time + E2('boneward', 12, 8); vemit(player.x, player.y - 20, { n: 16, ramp: 'bone', sp: 90, up: 30, life: 0.5, grav: 120, size: 2, glow: 0 }); player.iframes = T.hurtIframes; sfx('block');
     nums.push({ x: player.x, y: player.y - 56, v: 'WARDED', t: 0, color: ENCH_BY.boneward.col, small: true }); rings.push({ x: player.x, y: player.y - 20, t: 0, max: 0.4, r: 34, color: ENCH_BY.boneward.rgb }); return;
   }
   if (game.buff && game.buff.kind === 'warding') dmg *= 0.5;
@@ -5024,7 +5037,7 @@ function damagePlayer(src, dmg, contacts, how) {
   playFx('fx', 'burst', player.x, player.y - 21, 20);
   nums.push({ x: player.x, y: player.y - 52, v: dmg, t: 0, color: PAL.blood0, crit: false });
   if (src.affixes && src.affixes.includes('smiting')) { const a = Math.atan2(player.y - src.y, player.x - src.x); player.pull = { x: player.x + Math.cos(a) * 46, y: player.y + Math.sin(a) * 32, t: 0.2 }; }
-  if (ench('thorns') && src.maxHp && !src.dead && enemies.includes(src)) hurtEnemy(src, E2('thorns', 38, 76), false, 0, 0, 30, { status: true, color: ENCH_BY.thorns.col });
+  if (ench('thorns') && src.maxHp && !src.dead && enemies.includes(src)) vemit(src.x, src.y - (src.hy || 10), { n: 10, ramp: 'life', sp: 80, life: 0.3, drag: 3, glow: 4 }), hurtEnemy(src, E2('thorns', 38, 76), false, 0, 0, 30, { status: true, color: ENCH_BY.thorns.col });
   if (ench('echo') && (player.echoT || 0) <= game.time) { player.echoT = game.time + E2('echo', 2, 1); skillFx.push({ kind: 'nova', x: player.x, y: player.y, t: 0, max: 0.3, r: E2('echo', 80, 100) * WS, dmg: E2('echo', 40, 60), hits: new Set() }); }
   if (player.hp <= 0 && !secondBreath()) { player.hp = 0; die(); }
 }
@@ -5036,6 +5049,7 @@ function cleanseSentence(p) {
 function perfectDodge() {
   player.perfectUsed = true; game.perfects++; buzz(15); lifeBump('perfects');
   if (tal('aegis')) { player.aegisT = game.time + 2; rings.push({ x: player.x, y: player.y - 18, t: 0, max: 0.4, r: 34, color: '63,164,240' }); }
+  if (ench('ghoststep')) vemit(player.x, player.y - 16, { n: 14, ramp: 'violet', sp: 70, up: 20, life: 0.45, glow: 6 });
   if (ench('ghoststep')) player.charges = E2('ghoststep', Math.min(G.charges, player.charges + 1), G.charges);
   if (censerUp('still')) fireRing(24);
   if (sb('stride', 4)) { player.charges = G.charges; player.guardT = game.time + 2; nums.push({ x: player.x, y: player.y - 66, v: 'PENANCE', t: 0, color: PAL.ember1, small: true }); }
@@ -5080,7 +5094,7 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   if (!opts.status && !blocked) e.hitT = HIT_T;
   if (ench('bloodlet') && player.hp > 0) { // Bloodletting: 2% of damage dealt, at most 3% of health a second
     if (game.time - (player.blT || 0) > 1) { player.blT = game.time; player.blGot = 0; }
-    const h = Math.min(dmg * E2('bloodlet', 0.02, 0.04), player.maxHp * E2('bloodlet', 0.03, 0.05) - (player.blGot || 0)); if (h > 0) { player.hp = Math.min(player.maxHp, player.hp + h); player.blGot = (player.blGot || 0) + h; }
+    const h = Math.min(dmg * E2('bloodlet', 0.02, 0.04), player.maxHp * E2('bloodlet', 0.03, 0.05) - (player.blGot || 0)); if (h > 0) { player.hp = Math.min(player.maxHp, player.hp + h); player.blGot = (player.blGot || 0) + h; if (rng() < 0.15) vemit(e.x, e.y - (e.hy || 10), { n: 2, ramp: 'blood', sp: 30, up: 30, life: 0.5, glow: 5 }); }
   }
   if (e.type === 'dummy' && game.yard) { game.yard.hits.push([game.time, dmg]); game.yard.total += dmg; }
   const heavy = e.tier === 'elite' ? 0.15 : e.tier === 'rare' ? 0.4 : 1;
@@ -5160,7 +5174,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   }
   addToll(e); enchKill(e);
   // The Last Confessor (6): a bound foe bursts as it dies.
-  if (pas('burst') && Math.random() < 0.1) skillFx.push({ kind: 'nova', x: e.x, y: e.y, t: 0, max: 0.25, r: 48 * WS, dmg: 18, hits: new Set([e]) });
+  if (pas('burst') && Math.random() < 0.1) skillFx.push({ kind: 'nova', ramp: 'holy', x: e.x, y: e.y, t: 0, max: 0.25, r: 48 * WS, dmg: 18, hits: new Set([e]) });
   if (e.bound > 0 && sb('confessor', 6)) { for (const o of nearestFoes(e.x, e.y, 6, 44)) if (o !== e && !o.dead) later(0.05, () => hurtEnemy(o, T.chain.dmg * 2, false, 0, 0, 40, { status: true, color: PAL.iron0 })); rings.push({ x: e.x, y: e.y, t: 0, max: 0.3, r: 40, color: '178,188,203', flat: true }); }
   if (e.cell && game.cell) game.cell.kills++;
   if (e.sid !== undefined && game.run && game.run.dead) game.run.dead.push(e.sid);
@@ -5227,6 +5241,54 @@ function splat(x, y, big = false) {
   sctxStain.globalAlpha = 1;
 }
 
+// ------------------------------------------------------------ effects ---
+// Round 42: a shared kit for rite and enchant effects. vparts are glowing
+// particles (2 px squares) that cool through a colour ramp (FXR) as they age;
+// flameTongue draws a flickering three-layer flame.
+const FXR = {
+  fire: ['255,255,240', '255,236,150', '255,192,74', '255,122,31', '214,64,26', '122,30,24'],
+  holy: ['255,255,255', '244,255,255', '216,247,255', '138,224,255', '63,164,240', '40,80,160'],
+  gold: ['255,255,255', '255,244,176', '255,209,85', '255,192,74', '214,149,90', '122,80,40'],
+  water: ['255,255,255', '216,247,255', '138,224,255', '63,164,240', '40,110,180', '20,60,110'],
+  blood: ['255,220,220', '255,120,110', '232,56,63', '180,30,40', '110,20,30', '60,10,20'],
+  frost: ['255,255,255', '230,250,255', '180,240,255', '111,224,208', '63,164,200', '30,90,120'],
+  violet: ['255,255,255', '230,210,255', '212,176,255', '154,106,230', '100,60,170', '50,30,90'],
+  bone: ['255,255,250', '242,232,214', '234,223,196', '194,182,170', '140,130,120', '80,74,70'],
+  life: ['255,255,255', '220,255,200', '184,255,143', '95,220,108', '50,150,70', '30,80,40'],
+  iron: ['255,255,255', '238,242,247', '178,188,203', '120,130,150', '80,88,104', '40,44,56'],
+};
+// The FXR ramp for a palette ramp name (riteFx() colours).
+const fxRamp = (name) => ({ ember: 'fire', flame: 'fire', gold: 'gold', holy: 'holy', sea: 'water', teal: 'frost', blood: 'blood', crimson: 'blood', violet: 'violet', bone: 'bone', moss: 'life', iron: 'iron' }[name] || 'holy');
+let vparts = [];
+// o: n, ramp, sp (speed), ang/arc (direction), up (rise speed), life, size, spread, grav, drag, z, glow.
+function vemit(x, y, o) {
+  const n = LOWFX ? Math.ceil((o.n || 1) / 3) : o.n || 1, cap = LOWFX ? 160 : 700;
+  for (let i = 0; i < n && vparts.length < cap; i++) {
+    const a = o.ang !== undefined ? o.ang + rand(-(o.arc || 0), o.arc || 0) : rand(0, Math.PI * 2), sp = (o.sp || 40) * rand(0.4, 1), sd = o.spread || 0;
+    vparts.push({ x: x + rand(-sd, sd), y: y + rand(-sd, sd) * 0.6, z: o.z || 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6, vz: (o.up || 0) * rand(0.6, 1.2), t: 0, life: (o.life || 0.6) * rand(0.6, 1.2), ramp: FXR[o.ramp || 'fire'], s: o.size || 2, grav: o.grav || 0, drag: o.drag ?? 2, gl: o.glow ?? 6 });
+  }
+}
+function updateVparts(dt) {
+  for (const p of vparts) { p.t += dt; const d = Math.max(0, 1 - p.drag * dt); p.vx *= d; p.vy *= d; p.vz = p.vz * d - p.grav * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z = Math.max(0, p.z + p.vz * dt); }
+  vparts = vparts.filter((p) => p.t < p.life);
+}
+const vcol = (p) => p.ramp[Math.min(p.ramp.length - 1, Math.floor((p.t / p.life) * p.ramp.length))];
+function drawVparts() {
+  for (const p of vparts) { const s = p.t / p.life > 0.7 ? Math.max(1, p.s - 1) : p.s; ctx.fillStyle = `rgb(${vcol(p)})`; ctx.fillRect(Math.round(p.x - s / 2), Math.round(p.y - p.z - s / 2), s, s); }
+}
+function glowVparts() { for (const p of vparts) if (p.gl) glow(p.x, p.y - p.z, p.gl, `rgba(${vcol(p)},${0.55 * (1 - p.t / p.life)})`); }
+// A flame standing on (x, y), h tall and 2w wide, swaying with its phase.
+function flameTongue(x, y, h, w, ph, a = 1, R = FXR.fire) {
+  if (h < 2 || a <= 0.02) return;
+  const sway = Math.sin(game.real * 9 + ph) * w * 0.6, fl = 0.8 + 0.2 * Math.sin(game.real * 23 + ph * 3);
+  ctx.globalAlpha = Math.min(1, a);
+  for (const [k, c] of [[1, R[4]], [0.72, R[2]], [0.42, R[0]]]) {
+    const hh = h * k * fl, ww = Math.max(1, w * k), bx = Math.round(x), by = Math.round(y);
+    ctx.fillStyle = `rgb(${c})`; ctx.beginPath(); ctx.moveTo(bx - ww, by);
+    ctx.quadraticCurveTo(bx - ww, by - hh * 0.55, bx + sway * k, by - hh); ctx.quadraticCurveTo(bx + ww, by - hh * 0.55, bx + ww, by); ctx.closePath(); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
 function updateParts(dt) {
   for (const p of parts) {
     if (p.kind === 'spark') { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.9; p.vy *= 0.9; p.life -= dt; continue; }
@@ -5949,8 +6011,10 @@ function castShackle() {
 function fireRing(dmg) {
   for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - player.x, (e.y - player.y) / 0.8) < 85) { const dx = e.x - player.x, dy = e.y - player.y, d = Math.hypot(dx, dy) || 1; e.burn = T.thurible.burn.time * 1.5; hurtEnemy(e, dmg, false, dx / d, dy / d, 90, { color: PAL.ember1 }); }
   for (const [r, c] of [[85, '255,122,31'], [60, '255,192,74']]) rings.push({ x: player.x, y: player.y - 6, t: 0, max: 0.45, r, color: c, flat: true });
+  skillFx.push({ kind: 'blaze', x: player.x, y: player.y, r: 85, t: 0, max: 0.6 });
 }
 function castCenser() {
+  skillFx.push({ kind: 'blaze', x: player.x, y: player.y, r: 85, t: 0, max: 0.7 });
   if (G.powers.has('censerPlus')) player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.05);
   for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - player.x, (e.y - player.y) / 0.8) < 85) { const dx = e.x - player.x, dy = e.y - player.y, d = Math.hypot(dx, dy) || 1; e.burn = T.thurible.burn.time * 1.5; hurtEnemy(e, 18 * (1 + wound('riteCenser') * 0.5), false, dx / d, dy / d, 90, { color: PAL.ember1 }); }
   for (const [r, c] of [[85, '255,122,31'], [60, '255,192,74']]) rings.push({ x: player.x, y: player.y - 6, t: 0, max: 0.45, r, color: c, flat: true });
@@ -6046,7 +6110,7 @@ function updateAbilities(dt) {
   const p = player;
   const hk = game.buff && game.buff.kind === 'haste' ? 1.5 : 1;
   p.m1cd = Math.max(0, p.m1cd - dt * hk); p.m2cd = Math.max(0, p.m2cd - dt * hk);
-  if (ench('phantom') && game.scene === 'wound') { p.phT = (p.phT ?? 4) - dt; if (p.phT <= 0) { p.phT = E2('phantom', 4, 3); const nb = E2('phantom', 8, 12); for (let k = 0; k < nb; k++) spawnBolt(p.x, p.y - 24, k / nb * Math.PI * 2, rng() < T.crossbow.crit + G.crit / 100, { dmgK: 0.8 }); sfx('shoot', { rate: 1.3, vol: 0.6 }); } }
+  if (ench('phantom') && game.scene === 'wound') { p.phT = (p.phT ?? 4) - dt; if (p.phT <= 0) { p.phT = E2('phantom', 4, 3); rings.push({ x: p.x, y: p.y - 24, t: 0, max: 0.3, r: 30, color: '142,174,171' }); vemit(p.x, p.y - 24, { n: 12, ramp: 'iron', sp: 80, life: 0.3, glow: 5 }); const nb = E2('phantom', 8, 12); for (let k = 0; k < nb; k++) spawnBolt(p.x, p.y - 24, k / nb * Math.PI * 2, rng() < T.crossbow.crit + G.crit / 100, { dmgK: 0.8 }); sfx('shoot', { rate: 1.3, vol: 0.6 }); } }
   if (DEV.nocd) { p.m1cd = 0; p.m2cd = 0; }
   const lucky = (k) => { if (p[k] > 0) { if (tal('chant')) addFervor(4 * tal('chant')); if (tal('grace')) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01 * tal('grace')); }
     if (p[k] > 0 && ((G.powers.has('luckyRite') && rng() < 0.25) || rng() < 0.05 * tal('again'))) { p[k] = 0; nums.push({ x: p.x, y: p.y - 60, v: 'AGAIN', t: 0, color: PAL.gold0, small: true }); } };
@@ -6058,10 +6122,12 @@ function updateAbilities(dt) {
   if (input.m1) { input.m1 = false; if (p.m1cd <= 0) { castM1(aim && aim.k === 'm1' ? aim : null); if (p.m1cd > 0) { bumpRite(riteOf('m1').id); riteFlare(riteOf('m1').id); } tut.flags.m1 = true; lucky('m1cd'); } }
   if (input.m2) { input.m2 = false; if (p.m2cd <= 0) { castM2(aim && aim.k === 'm2' ? aim : null); if (p.m2cd > 0) { bumpRite(riteOf('m2').id); riteFlare(riteOf('m2').id); } if (p.m2cd > 0) tut.flags.m2 = true; lucky('m2cd'); } }
   if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) { castPenance(aim && aim.k === 'pen' ? aim : null); tut.flags.pen = true; if (tal('choir')) { p.m1cd = 0; p.m2cd = 0; } } }
+  enchAuras(dt);
   updateThurible(dt);
 
   for (const f of flasks) {
     f.t += dt;
+    if (rng() < dt * 40) { const k = f.t / T.flask.flight; vemit(f.sx + (f.tx - f.sx) * k, f.sy + (f.ty - f.sy) * k - Math.sin(k * Math.PI) * 36, { n: 1, ramp: fxRamp(riteFx().pool), sp: 6, life: 0.35, grav: 60, glow: 4 }); }
     if (f.t >= T.flask.flight) {
       f.done = true;
       pools.push({ x: f.tx, y: f.ty, r: T.flask.radius * (1 + wound('flask') * 0.3) * (sb('font', 2) ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1), t: 0 }); sfx('flask');
@@ -6080,6 +6146,8 @@ function updateAbilities(dt) {
   flasks = flasks.filter((f) => !f.done);
   for (const pl of pools) {
     pl.t += dt;
+    if (pl.t < T.flask.time - 0.4 && rng() < dt * pl.r * 0.18) { const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * pl.r; vemit(pl.x + Math.cos(a) * d, pl.y + Math.sin(a) * d * 0.6, { n: 1, ramp: fxRamp(riteFx().pool), sp: 3, up: 30, life: 0.8, grav: -10, drag: 1, glow: 5 }); }
+    if (!pl.fx) { pl.fx = 1; vemit(pl.x, pl.y, { n: 16, ramp: fxRamp(riteFx().pool), sp: pl.r * 4, up: 70, life: 0.45, grav: 260, drag: 1, glow: 4 }); }
     if (!LOWFX && rng() < dt * pl.r * 0.12) { const a = rng() * Math.PI * 2, d = rng() * pl.r; parts.push({ kind: 'spark', x: pl.x + Math.cos(a) * d, y: pl.y + Math.sin(a) * d * 0.6, z: 0, vx: 0, vy: 0, vz: rand(30, 70), c: rng() < 0.5 ? PAL.holy1 : PAL.white, life: 0.6 }); }
   }
   if ((player.wardT || 0) > game.time && (player.wardRing = (player.wardRing || 0) - dt) <= 0) { player.wardRing = 0.35; rings.push({ x: player.x, y: player.y - 22, t: 0, max: 0.35, r: 26, color: '255,209,85' }); }
@@ -6173,6 +6241,7 @@ function updateAbilities(dt) {
       l.hit = true;
       for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - l.x, (e.y - l.y) / 0.7) < T.penance.radius) hurtEnemy(e, T.penance.dmg * (1 + wound('riteRain') * 0.4), rng() < 0.2, rand(-1, 1), 1, 30, { status: true });
       sparks(l.x, l.y, PAL.blood0, 4); splat(l.x, l.y); hitBreakables(l.x, l.y, 12);
+      vemit(l.x, l.y - 2, { n: 12, ramp: fxRamp(riteFx().pool) === 'holy' ? 'blood' : fxRamp(riteFx().pool), sp: 90, up: 50, life: 0.4, grav: 200, drag: 1.5, glow: 6 });
       playFx('fx', 'burst', l.x, l.y - 4, 26);
       game.shake = Math.max(game.shake, 1.5);
     }
@@ -6188,13 +6257,13 @@ function startDash(p, { len = 1, step = false, dir = null } = {}) {
   const d = Math.hypot(dx, dy); p.dashDx = dx / d; p.dashDy = dy / d;
   p.dashT = T.dash.time * len; p.dashLen = len; p.stepTrail = step; p.dashStart = game.time; p.dashX = p.x; p.dashY = p.y; onWoundDash(); sfx('dash');
   if (sb('stride', 4) && !sb('stride', 6)) p.strideT = game.time + SETK.strideT4;
-  if (sb('stride', 6)) { p.strideT = game.time + SETK.strideT; if (p === player) skillFx.push({ kind: 'nova', x: p.x, y: p.y, t: 0, max: 0.3, r: 70 * WS, dmg: 14, hits: new Set() }); }
+  if (sb('stride', 6)) { p.strideT = game.time + SETK.strideT; if (p === player) skillFx.push({ kind: 'nova', ramp: 'fire', x: p.x, y: p.y, t: 0, max: 0.3, r: 70 * WS, dmg: 14, hits: new Set() }); }
   if (sbw('stride')) p.emberShots = 6;
-  if (p === player && ench('emberwake')) { p.stepTrail = true; if (enchT('emberwake') > 1) skillFx.push({ kind: 'nova', x: p.x, y: p.y, t: 0, max: 0.25, r: 56 * WS, dmg: 18, hits: new Set() }); }
+  if (p === player && ench('emberwake')) { p.stepTrail = true; if (enchT('emberwake') > 1) skillFx.push({ kind: 'nova', ramp: 'fire', x: p.x, y: p.y, t: 0, max: 0.25, r: 56 * WS, dmg: 18, hits: new Set() }); }
   p.iframes = Math.max(p.iframes, T.dash.iframes * len); p.perfectUsed = false;
   if (p === player && pas('answer')) { const e = nearestFoes(p.x, p.y, 1, 300)[0]; if (e) spawnBolt(p.x, p.y - 24, Math.atan2(e.y - e.hy - (p.y - 24), e.x - p.x), rng() < T.crossbow.crit + G.crit / 100, { dmgK: 0.75 }); }
   if (p === player && pas('fontstep') && (p.fsT || 0) <= game.time) { p.fsT = game.time + 3; pools.push({ x: p.x, y: p.y, r: 24, t: 0 }); }
-  if (p === player && p.rainT > 0 && p.penKind === 'pilgrim') { p.stepTrail = true; skillFx.push({ kind: 'nova', x: p.x, y: p.y, t: 0, max: 0.3, r: 64 * WS, dmg: 16, hits: new Set() }); }
+  if (p === player && p.rainT > 0 && p.penKind === 'pilgrim') { p.stepTrail = true; skillFx.push({ kind: 'nova', ramp: 'fire', x: p.x, y: p.y, t: 0, max: 0.3, r: 64 * WS, dmg: 16, hits: new Set() }); }
   if (p.sentence) cleanseSentence(p);
   if (Math.abs(dx) > 0.1) p.face = Math.sign(dx);
   playFx('fx', 'smoke', p.x, p.y - 4, 18, { alpha: 0.6 });
@@ -6243,7 +6312,7 @@ function updatePlayer(dt) {
     p.dashT -= dt; vx = p.dashDx * T.dash.speed; vy = p.dashDy * T.dash.speed;
     if (sb('stride', 6)) for (const e of enemies) if (!e.dead && Math.hypot(e.x - p.x, e.y - p.y) < 16 + e.r) e.brandT = game.time + 6;
     // The Penitent's Stride: the dash leaves a line of holy fire.
-    if (p.dashT <= 0 && (sb('stride', 2) || p.stepTrail)) skillFx.push({ kind: 'trail', x0: p.dashX, y0: p.dashY, x1: p.x, y1: p.y, t: 0, max: p.stepTrail ? 3 + wound('riteStep') : 2, tick: 0, k: p.stepTrail ? 2 * (1 + wound('riteStep') * 0.5) : 1 });
+    if (p.dashT <= 0 && (sb('stride', 2) || p.stepTrail)) skillFx.push({ kind: 'trail', seed: rng() * 9, x0: p.dashX, y0: p.dashY, x1: p.x, y1: p.y, t: 0, max: p.stepTrail ? 3 + wound('riteStep') : 2, tick: 0, k: p.stepTrail ? 2 * (1 + wound('riteStep') * 0.5) : 1 });
     p.ghostT -= dt;
     if (p.ghostT <= 0) { p.ghostT = 0.025; ghosts.push({ x: p.x, y: p.y, face: p.face, i: Math.floor((T.dash.time - p.dashT) / T.dash.time * 3), t: 0 }); }
     p.anim = 'dash';
@@ -6358,7 +6427,7 @@ function update(realDt) {
     const f = player.target && player.target.elite && player.target.tier !== 'imp' ? player.target : enemies.filter((e) => e.elite && !e.dead && !e.illusion && e.state !== 'spawn' && Math.hypot(e.x - player.x, e.y - player.y) < 200).sort((a, b) => (b.tier === 'elite') - (a.tier === 'elite'))[0];
     game.focus = f || null;
   }
-  safe('bolts', () => updateBolts(dt)); safe('parts', () => updateParts(dt)); safe('falls', () => updateFalls(dt), () => { falls = []; });
+  safe('bolts', () => updateBolts(dt)); safe('parts', () => updateParts(dt)); safe('vparts', () => updateVparts(dt), () => { vparts = []; }); safe('falls', () => updateFalls(dt), () => { falls = []; });
   for (const g of ghosts) g.t += realDt;
   ghosts = ghosts.filter((g) => g.t < 0.2);
   for (const r of rings) r.t += realDt;
@@ -6480,6 +6549,8 @@ function render() {
     text(label, it.x, ty + Math.round(Math.sin(game.real * 5)), it.who ? PAL.gold1 : PAL.holy1, { align: 'center' });
   }
   drawAbilitiesAir();
+  if (game.scene === 'wound') drawSkillsAir();
+  drawVparts();
   if (game.scene === 'wound') { drawShots(); drawDropLabels(); }
   if (game.scene === 'town') drawTownWorld();
   for (const g of gibs) spr('fx', g.anim, g.i, g.x, g.y - g.z, { ax: 5, ay: 5 });
@@ -6536,6 +6607,7 @@ function render() {
   drawAbilitiesGlow();
   drawFloatBowGlow();
   if (game.scene === 'wound') drawSkillsGlow();
+  glowVparts();
   const BF = boltFx();
   for (const b of bolts) {
     const c = b.crit ? BF.crit : BF.trail;
@@ -7541,11 +7613,13 @@ function updateSkills(dt) {
   }
   for (const f of skillFx) {
     f.t += dt;
+    skillFxEmit(f, dt);
     if (f.kind === 'pillar' && !f.hit && f.t >= 0.22) {
       f.hit = true; game.shake = Math.max(game.shake, 3); sfx('penance', { vol: 0.35, rate: 1.4, gap: 0.08 });
       for (const e of nearestFoes(f.x, f.y, 99, 24 * WS)) hurtEnemy(e, f.dmg, rng() < 0.3, 0, 1, 40);
       playFx('fx', 'impact', f.x, f.y - 10, 22, { big: true });
     }
+    if (f.kind === 'nova' && !f.fx) { f.fx = 1; const R = f.ramp || 'gold'; vemit(f.x, f.y - 4, { n: 22, ramp: R, sp: f.r * 3.2, up: 30, life: 0.45, drag: 3, size: 2, glow: 7 }); if (R === 'fire') vemit(f.x, f.y, { n: 8, ramp: 'fire', sp: 30, up: 60, life: 0.8, grav: -10, glow: 5 }); }
     if (f.kind === 'nova' && !f.done) { const r = f.r * Math.min(1, f.t / f.max); for (const e of enemies) if (!e.dead && !f.hits.has(e) && Math.hypot(e.x - f.x, (e.y - f.y) / 0.7) < r) { f.hits.add(e); const dx = e.x - f.x, dy = e.y - f.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, f.dmg, false, dx / d, dy / d, 120, { kind: 'nova' }); } }
     // Baptism: a wave that rolls out, hurls foes back and drops pools.
     if (f.kind === 'brand' && !f.hit && f.t >= f.max - 0.05) {
@@ -7565,6 +7639,7 @@ function updateSkills(dt) {
       while (f.drops < 3 + wound('riteWave') && d >= 50 * (f.drops + 1) * 3 / (3 + wound('riteWave'))) { const k = 150 / (3 + wound('riteWave')) * ++f.drops; pools.push({ x: f.x + Math.cos(f.a) * k, y: f.y + Math.sin(f.a) * k * 0.8, r: 24 * (sb('font', 2) ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1), t: 0 }); }
     }
     // The holy fire a Penitent's dash leaves: foes on the line burn.
+    if (f.kind === 'trail' && f.t < f.max - 0.4 && rng() < dt * 40) { const u = rng(); vemit(f.x0 + (f.x1 - f.x0) * u, f.y0 + (f.y1 - f.y0) * u, { n: 1, ramp: 'fire', sp: 12, up: 45, life: 0.9, grav: -10, drag: 1, size: 2, glow: 5 }); }
     if (f.kind === 'trail' && (f.tick -= dt) <= 0) { f.tick = 0.3; const lx = f.x1 - f.x0, ly = f.y1 - f.y0, L2 = lx * lx + ly * ly || 1; for (const e of enemies) { if (e.dead || e.state === 'spawn') continue; const u = Math.max(0, Math.min(1, ((e.x - f.x0) * lx + (e.y - f.y0) * ly) / L2)); if (Math.hypot(e.x - f.x0 - lx * u, e.y - f.y0 - ly * u) < 10 + e.r) hurtEnemy(e, 5 * (f.k || 1) * (G.powers.has('hotTrail') ? 2 : 1), false, 0, 0, 0, { status: true, color: PAL.ember1, kind: 'trail' }); } }
     if (f.kind === 'choir' && !f.hit && f.t >= 0.55) { f.hit = true; game.shake = 6; game.flash = 0.08; sfx('elite', { vol: 0.5, rate: 1.5, gap: 0.2 }); for (const e of nearestFoes(f.x, f.y, 99, f.r)) { const dx = e.x - f.x, dy = e.y - f.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, f.dmg, true, dx / d, dy / d, 140); } }
   }
@@ -7581,19 +7656,74 @@ function onWoundCrit(e) {
     hurtEnemy(nx, 8 + ar * 4, false, 0, 0, 20, { status: true, color: PAL.holy0 }); from = nx;
   }
 }
-function onWoundDash() { const nv = wound('nova'); if (nv) skillFx.push({ kind: 'nova', x: player.x, y: player.y, t: 0, max: 0.3, r: 64 * WS, dmg: 10 + nv * 8, hits: new Set() }); }
+function onWoundDash() { const nv = wound('nova'); if (nv) skillFx.push({ kind: 'nova', ramp: 'holy', x: player.x, y: player.y, t: 0, max: 0.3, r: 64 * WS, dmg: 10 + nv * 8, hits: new Set() }); }
+// Particles each rite effect gives off as it plays (round 42).
+function skillFxEmit(f, dt) {
+  const R = fxRamp(riteFx().pool);
+  if (f.kind === 'blaze' && !f.fx) { f.fx = 1; vemit(f.x, f.y, { n: 30, ramp: 'fire', sp: 260, up: 50, life: 0.5, drag: 3, glow: 6 }); }
+  if (f.kind === 'blaze' && f.t < f.max * 0.7 && rng() < dt * 60) { const a = rng() * 6.3, rr = f.r * Math.min(1, 0.35 + f.t / f.max * 2.2); vemit(f.x + Math.cos(a) * rr, f.y + Math.sin(a) * rr * 0.6, { n: 1, ramp: 'fire', sp: 10, up: 60, life: 0.6, grav: -15, glow: 5 }); }
+  if (f.kind === 'pillar') {
+    if (f.t > 0 && f.t < 0.22 && rng() < dt * 60) vemit(f.x + rand(-10, 10), f.y, { n: 1, ramp: 'gold', sp: 6, up: 90, life: 0.5, grav: -40, glow: 5 });
+    if (f.hit && !f.fx) { f.fx = 1; vemit(f.x, f.y - 4, { n: 26, ramp: 'gold', sp: 110, up: 50, life: 0.5, drag: 3, glow: 7 }); vemit(f.x, f.y, { n: 10, ramp: 'gold', sp: 15, up: 140, life: 0.7, grav: -30, glow: 6 }); rings.push({ x: f.x, y: f.y, t: 0, max: 0.35, r: 30, color: '255,244,176', flat: true }); }
+  }
+  if (f.kind === 'hymn' && f.t < f.max) { const d = f.L * Math.min(1, f.t / f.max), hx = f.x + Math.cos(f.a) * d, hy = f.y + Math.sin(f.a) * d * 0.8; if (rng() < dt * 70) vemit(hx, hy, { n: 1, ramp: 'fire', sp: 30, up: 60, spread: 12, life: 0.7, grav: -15, glow: 6 }); }
+  if (f.kind === 'wave' && f.t < f.max) { const d = 160 * Math.min(1, f.t / f.max), wx = f.x + Math.cos(f.a) * d, wy = f.y + Math.sin(f.a) * d * 0.8; if (rng() < dt * 90) { const s = rand(-1, 1); vemit(wx - Math.sin(f.a) * s * 30, wy + Math.cos(f.a) * s * 18, { n: 1, ramp: R, sp: 50, ang: f.a, arc: 0.6, up: 70, life: 0.5, grav: 220, glow: 4 }); } }
+  if (f.kind === 'brand' && !f.hit) { const k = Math.min(1, f.t / f.max), x = f.sx + (f.x - f.sx) * k, y = f.sy + (f.y - f.sy) * k - Math.sin(k * Math.PI) * 40; if (rng() < dt * 50) vemit(x, y, { n: 1, ramp: 'fire', sp: 10, life: 0.35, glow: 4 }); }
+  if (f.kind === 'brand' && f.hit && !f.fx) { f.fx = 1; vemit(f.x, f.y - 2, { n: 24, ramp: 'fire', sp: 120, up: 60, life: 0.5, grav: 200, drag: 1.5, glow: 5 }); }
+  if (f.kind === 'choir' && !f.hit && rng() < dt * 50) { const a = rand(0, Math.PI * 2), k = Math.min(1, f.t / 0.5); vemit(f.x + Math.cos(a) * f.r * k, f.y + Math.sin(a) * f.r * 0.6 * k, { n: 1, ramp: 'gold', sp: 8, up: 50, life: 0.5, grav: -20, glow: 5 }); }
+  if (f.kind === 'choir' && f.hit && !f.fx) { f.fx = 1; vemit(f.x, f.y - 6, { n: 30, ramp: 'gold', sp: f.r * 3, up: 40, life: 0.55, drag: 3, glow: 7 }); }
+  if (f.kind === 'levelup' && f.t < 0.8 && rng() < dt * 40) vemit(player.x + rand(-14, 14), player.y, { n: 1, ramp: 'gold', sp: 4, up: 70, life: 0.9, grav: -20, glow: 6 });
+  if (f.kind === 'arc' && !f.fx) { f.fx = 1; vemit(f.x1, f.y1, { n: 6, ramp: 'holy', sp: 70, life: 0.25, glow: 6 }); }
+}
+// A jagged bolt of lightning (drawn in the additive glow pass): a wide soft
+// stroke, a bright body and a white core, with one fork.
+function lightning(x0, y0, x1, y1, seed, a, rgb) {
+  const nx = -(y1 - y0), ny = x1 - x0, nl = Math.hypot(nx, ny) || 1, pts = [[x0, y0]];
+  for (let j = 1; j < 7; j++) { const t = j / 7, o = Math.sin(seed + j * 2.7 + game.real * 40) * 7 * Math.sin(t * Math.PI); pts.push([x0 + (x1 - x0) * t + nx / nl * o, y0 + (y1 - y0) * t + ny / nl * o]); }
+  pts.push([x1, y1]);
+  const path = () => { ctx.beginPath(); pts.forEach(([x, y], i) => ctx[i ? 'lineTo' : 'moveTo'](x, y)); const [fx, fy] = pts[3]; ctx.moveTo(fx, fy); ctx.lineTo(fx + nx / nl * 10 + (x1 - x0) * 0.12, fy + ny / nl * 10 + (y1 - y0) * 0.12); };
+  for (const [lw, c, al] of [[6, rgb, 0.3], [3, rgb, 0.85], [1, '255,255,255', 1]]) { ctx.strokeStyle = `rgba(${c},${al * a})`; ctx.lineWidth = lw; path(); ctx.stroke(); }
+}
+// Flames drawn above the floor props and actors (round 42), so a bench or the
+// Saint never hides them.
+function drawSkillsAir() {
+  for (const f of skillFx) {
+    if (f.kind === 'trail') {
+      const fade = Math.min(1, (f.max - f.t) / 0.7), grow = Math.min(1, f.t / 0.12), n = Math.max(2, Math.round(Math.hypot(f.x1 - f.x0, f.y1 - f.y0) / 8));
+      for (let k = 0; k <= n; k++) { const u = k / n, h = (13 + 7 * Math.sin(k * 2.3 + (f.seed || 0))) * fade * Math.min(1, grow * 1.5 - u * 0.5 + 0.5); flameTongue(f.x0 + (f.x1 - f.x0) * u + (k % 2 ? 3 : -3), f.y0 + (f.y1 - f.y0) * u + 1, h, 4.5, k * 1.7 + (f.seed || 0), 0.95); }
+    }
+    if (f.kind === 'blaze') { // Censer Blaze: a ring of flame that bursts outward and burns down
+      const k = f.t / f.max, rr = f.r * Math.min(1, 0.35 + k * 2.2), n = 22;
+      for (let q = 0; q < n; q++) { const a = q / n * Math.PI * 2; flameTongue(f.x + Math.cos(a) * rr, f.y + Math.sin(a) * rr * 0.6, (24 + 8 * Math.sin(q * 2.1)) * (1 - k * k), 6, q * 1.1, 1 - k * 0.5); }
+    }
+    if (f.kind === 'hymn' && f.t < f.max) { const d = f.L * Math.min(1, f.t / f.max), hx = f.x + Math.cos(f.a) * d, hy = f.y + Math.sin(f.a) * d * 0.8;
+      for (let q = 0; q < 11; q++) { const a = q / 11 * Math.PI * 2 + f.t * 6, rr = q % 3 === 0 ? 5 : 18; flameTongue(hx + Math.cos(a) * rr, hy + Math.sin(a) * rr * 0.5, (q % 3 === 0 ? 32 : 20) + 4 * Math.sin(q * 1.9 + f.t * 20), q % 3 === 0 ? 8 : 6, q * 1.3, 1); }
+    }
+  }
+}
 function drawSkillsGround() {
   for (const f of skillFx) {
-    if (f.kind === 'brand' && !f.hit) { const k = Math.min(1, f.t / f.max), x = f.sx + (f.x - f.sx) * k, y = f.sy + (f.y - f.sy) * k - Math.sin(k * Math.PI) * 40; ctx.fillStyle = PAL.outline; ctx.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6); ctx.fillStyle = PAL.ember1; ctx.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4); ctx.fillStyle = PAL.ember0; ctx.fillRect(Math.round(x) - 1, Math.round(y) - 2, 2, 2); }
-    if (f.kind === 'hymn' && f.t < f.max) { const d = f.L * Math.min(1, f.t / f.max), hx = f.x + Math.cos(f.a) * d, hy = f.y + Math.sin(f.a) * d * 0.8; ctx.fillStyle = 'rgba(214,64,26,0.35)'; ctx.beginPath(); ctx.ellipse(hx, hy, 24, 14, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,192,74,0.5)'; ctx.beginPath(); ctx.ellipse(hx, hy, 12, 7, 0, 0, Math.PI * 2); ctx.fill(); }
+    if (f.kind === 'brand' && !f.hit) { const k = Math.min(1, f.t / f.max), x = f.sx + (f.x - f.sx) * k, y = f.sy + (f.y - f.sy) * k - Math.sin(k * Math.PI) * 40; // a spinning red-hot brand (a ring with a cross) and the mark where it will land
+      ctx.strokeStyle = `rgba(255,122,31,${0.4 + 0.4 * k})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(f.x, f.y, BRAND_R * (1.2 - k * 0.2), BRAND_R * 0.6 * (1.2 - k * 0.2), 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(f.t * 14);
+      ctx.strokeStyle = PAL.outline; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.moveTo(-5, 0); ctx.lineTo(5, 0); ctx.moveTo(0, -5); ctx.lineTo(0, 5); ctx.stroke();
+      ctx.strokeStyle = PAL.ember1; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.moveTo(-5, 0); ctx.lineTo(5, 0); ctx.moveTo(0, -5); ctx.lineTo(0, 5); ctx.stroke();
+      ctx.fillStyle = PAL.gold0; ctx.fillRect(-1, -1, 2, 2); ctx.restore(); }
+    if (f.kind === 'hymn' && f.t < f.max) { // a rolling wall of flame: a burning ring of tongues around a hot heart
+      const d = f.L * Math.min(1, f.t / f.max), hx = f.x + Math.cos(f.a) * d, hy = f.y + Math.sin(f.a) * d * 0.8;
+      ctx.fillStyle = 'rgba(40,14,10,0.35)'; ctx.beginPath(); ctx.ellipse(hx, hy, 24, 12, 0, 0, Math.PI * 2); ctx.fill();
+    }
     if (f.kind === 'wave') { // a curling crest in the rite's colour
       const k = Math.min(1, f.t / f.max), d = 160 * k, wx = f.x + Math.cos(f.a) * d, wy = f.y + Math.sin(f.a) * d * 0.8, R = riteFx().pool;
-      ctx.globalAlpha = 1 - k * 0.6; ctx.strokeStyle = PAL[R + '1']; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(wx, wy, 34, 22, f.a, -1.1, 1.1); ctx.stroke();
-      ctx.strokeStyle = PAL[R + '0']; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(wx + Math.cos(f.a) * 3, wy + Math.sin(f.a) * 3, 34, 22, f.a, -0.9, 0.9); ctx.stroke(); ctx.globalAlpha = 1;
+      ctx.globalAlpha = 1 - k * 0.6;
+      for (const [off, lw, c, sp] of [[-8, 9, PAL[R + '4'], 1.15], [-4, 7, PAL[R + '3'], 1.1], [0, 5, PAL[R + '1'], 1.05], [3, 2, PAL[R + '0'], 0.9]]) { ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.beginPath(); ctx.ellipse(wx + Math.cos(f.a) * off, wy + Math.sin(f.a) * off, 34, 22, f.a, -sp, sp); ctx.stroke(); }
+      ctx.fillStyle = PAL.white || '#fff'; for (let q = -4; q <= 4; q++) { const b = f.a + q * 0.25, fx = wx + Math.cos(b) * 37 + Math.cos(f.a) * 2, fy = wy + Math.sin(b) * 24; ctx.fillRect(Math.round(fx), Math.round(fy - (q + 9 + Math.floor(game.real * 20)) % 3), 2, 2); }
+      ctx.globalAlpha = 1;
     }
-    if (f.kind === 'trail') { // the Penitent's holy fire: a smouldering line
-      const fade = Math.min(1, (f.max - f.t) / 0.5), n = Math.max(2, Math.round(Math.hypot(f.x1 - f.x0, f.y1 - f.y0) / 6));
-      for (let k = 0; k <= n; k++) { const u = k / n, x = f.x0 + (f.x1 - f.x0) * u, y = f.y0 + (f.y1 - f.y0) * u, fl = Math.sin(game.real * 14 + k * 1.7) * 0.5 + 0.5; glow(x, y - 2, 7 + fl * 3, `rgba(255,122,31,${0.35 * fade})`); ctx.fillStyle = `rgba(255,192,74,${(0.5 + fl * 0.4) * fade})`; ctx.fillRect(Math.round(x) - 1, Math.round(y - 2 - fl * 4), 2, 2); }
+    if (f.kind === 'trail') { // a line of fire: a scorched strip and a row of flames that grow in, flicker and burn down
+      const fade = Math.min(1, (f.max - f.t) / 0.7), grow = Math.min(1, f.t / 0.12), n = Math.max(2, Math.round(Math.hypot(f.x1 - f.x0, f.y1 - f.y0) / 7));
+      ctx.fillStyle = `rgba(40,14,10,${0.4 * fade})`;
+      for (let k = 0; k <= n; k++) { const u = k / n; ctx.beginPath(); ctx.ellipse(Math.round(f.x0 + (f.x1 - f.x0) * u), Math.round(f.y0 + (f.y1 - f.y0) * u), 6, 3, 0, 0, Math.PI * 2); ctx.fill(); }
     }
     if (f.kind === 'pillar' && f.t < 0.3 && f.t > 0) { const k = f.t / 0.22; ctx.strokeStyle = `rgba(255,209,85,${0.8})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(f.x, f.y, 22 * Math.min(1, k), 9 * Math.min(1, k), 0, 0, Math.PI * 2); ctx.stroke(); }
     if (f.kind === 'choir') { const k = Math.min(1, f.t / 0.5), a = f.t * 4; ctx.strokeStyle = `rgba(255,209,85,${f.hit ? 1 - (f.t - 0.55) / 0.45 : 0.9})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r * k, f.r * 0.6 * k, 0, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); for (let q = 0; q <= 5; q++) { const b = a + q * Math.PI * 4 / 5; ctx[q ? 'lineTo' : 'moveTo'](f.x + Math.cos(b) * f.r * 0.92 * k, f.y + Math.sin(b) * f.r * 0.55 * k); } ctx.stroke(); }
@@ -7620,8 +7750,15 @@ function drawSkillsGlow() {
       ctx.fillStyle = g; ctx.fillRect(Math.round(f.x - w / 2), top, Math.round(w), f.y - top);
       if (strike) { ctx.fillStyle = `rgba(255,255,255,${0.9 * (1 - k)})`; ctx.fillRect(Math.round(f.x - w / 6), top, Math.max(1, Math.round(w / 3)), f.y - top); glow(f.x, f.y - 6, 50 * (1 - k) + 14, 'rgba(255,224,138,0.85)'); }
     }
-    if (f.kind === 'arc') { ctx.strokeStyle = `rgba(170,235,255,${1 - k})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(f.x0, f.y0); for (let j = 1; j < 6; j++) { const t = j / 6, nx = -(f.y1 - f.y0), ny = f.x1 - f.x0, nl = Math.hypot(nx, ny) || 1, o = Math.sin(f.seed + j * 2.7 + game.real * 40) * 6; ctx.lineTo(f.x0 + (f.x1 - f.x0) * t + nx / nl * o, f.y0 + (f.y1 - f.y0) * t + ny / nl * o); } ctx.lineTo(f.x1, f.y1); ctx.stroke(); glow(f.x1, f.y1, 10, `rgba(170,235,255,${0.8 * (1 - k)})`); }
-    if (f.kind === 'nova') { const r = f.r * Math.min(1, k * 1.2); ctx.strokeStyle = `rgba(255,244,176,${0.9 * (1 - k)})`; ctx.lineWidth = 5 * (1 - k) + 1; ctx.beginPath(); ctx.ellipse(f.x, f.y - 6, r, r * 0.65, 0, 0, Math.PI * 2); ctx.stroke(); }
+    if (f.kind === 'blaze') glow(f.x, f.y - 6, f.r * (0.6 + f.t / f.max * 0.6), `rgba(255,122,31,${0.5 * (1 - f.t / f.max)})`);
+    if (f.kind === 'brand' && !f.hit) { const q = Math.min(1, f.t / f.max); glow(f.sx + (f.x - f.sx) * q, f.sy + (f.y - f.sy) * q - Math.sin(q * Math.PI) * 40, 16, 'rgba(255,122,31,0.7)'); }
+    if (f.kind === 'trail') { const fade = Math.min(1, (f.max - f.t) / 0.7), n = Math.max(1, Math.round(Math.hypot(f.x1 - f.x0, f.y1 - f.y0) / 14)); for (let q = 0; q <= n; q++) glow(f.x0 + (f.x1 - f.x0) * q / n, f.y0 + (f.y1 - f.y0) * q / n - 5, 16, `rgba(255,122,31,${0.45 * fade})`); }
+    if (f.kind === 'arc') { lightning(f.x0, f.y0, f.x1, f.y1, f.seed, 1 - k, '170,235,255'); glow(f.x1, f.y1, 14, `rgba(216,247,255,${0.9 * (1 - k)})`); glow(f.x0, f.y0, 8, `rgba(170,235,255,${0.6 * (1 - k)})`); }
+    if (f.kind === 'nova') { // a hot flash, a thick bright shock ring with a white edge, and a fainter inner ring
+      const R0 = FXR[f.ramp || 'gold'], r = f.r * Math.min(1, k * 1.2), a = 1 - k;
+      glow(f.x, f.y - 6, f.r * 0.55 * a + 8, `rgba(${R0[1]},${0.8 * a})`);
+      for (const [rr, lw, c, al] of [[r, 8 * a + 2, R0[3], 0.7], [r, 2, R0[0], 1], [r * 0.72, 3 * a + 1, R0[2], 0.6]]) { ctx.strokeStyle = `rgba(${c},${al * a})`; ctx.lineWidth = lw; ctx.beginPath(); ctx.ellipse(f.x, f.y - 6, rr, rr * 0.65, 0, 0, Math.PI * 2); ctx.stroke(); }
+    }
     if (f.kind === 'choir') { if (f.hit) glow(f.x, f.y - 10, f.r * (0.6 + (f.t - 0.55)), `rgba(255,209,85,${0.6 * (1 - (f.t - 0.55) / 0.45)})`); else glow(f.x, f.y - 10, 20 + f.t * 30, 'rgba(255,209,85,0.25)'); }
     if (f.kind === 'levelup') {
       const w = 26 * (1 - k) + 4, top = f.y - 220, g = ctx.createLinearGradient(0, top, 0, f.y);

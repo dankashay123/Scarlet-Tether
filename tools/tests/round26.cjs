@@ -16,7 +16,7 @@ const S = process.argv[2], WH = (process.argv[3] || '').split('x').map(Number);
   out.perSet = await p.evaluate(() => Object.fromEntries(Object.entries({ m1: 0, m2: 0, pen: 0 }).map(([k]) => [k, [...new Set(Object.values(HS.RITE_BY).filter((r) => Object.keys(HS.RITE_BY).length && r && HS.RITE_BY[r.id] === r).filter((r) => ({ m1: ['water', 'wave', 'storm', 'step', 'brand', 'hymn'], m2: ['chain', 'shackle', 'censer', 'ward', 'nailring', 'asperse'], pen: ['rain', 'pillars', 'font', 'volley', 'pilgrim', 'greatpen'] })[k].includes(r.id)).map((r) => r.set))].sort().join(',')])));
   // The Rites panel, each tab.
   for (const [i, slot] of ['m1', 'm2', 'pen'].entries()) {
-    await p.evaluate(([slot, id]) => { HS.SAVE.rites = { ...(HS.SAVE.rites || {}), [slot]: id }; HS.openRites('play'); HS.game.riteFocus = slot; }, [slot, ['brand', 'nailring', 'greatpen'][i]]);
+    await p.evaluate(([slot, id]) => { HS.SAVE.lvl = 60; HS.SAVE.rites = { ...(HS.SAVE.rites || {}), [slot]: id }; HS.openRites('play'); HS.game.riteFocus = slot; }, [slot, ['brand', 'nailring', 'greatpen'][i]]);
     await p.waitForTimeout(200); await p.screenshot({ path: `${S}/shots/r26-rites-${slot}${tag}.png` });
   }
   await p.evaluate(() => { HS.game.state = 'play'; });
@@ -24,7 +24,7 @@ const S = process.argv[2], WH = (process.argv[3] || '').split('x').map(Number);
   out.casts = {};
   for (const [slot, id] of [['m1', 'brand'], ['m1', 'hymn'], ['m2', 'nailring'], ['m2', 'asperse'], ['pen', 'pilgrim'], ['pen', 'greatpen']]) {
     out.casts[id] = await p.evaluate(async ([slot, id]) => {
-      const P = HS.player; HS.SAVE.rites = { ...(HS.SAVE.rites || {}), [slot]: id };
+      const P = HS.player; HS.SAVE.lvl = 60; HS.SAVE.rites = { ...(HS.SAVE.rites || {}), [slot]: id };
       for (let k = 0; k < 8; k++) HS.spawnMonster('risen', P.x + 50 + k * 10, P.y + (k % 3 - 1) * 20);
       const bolts0 = HS.bolts.length, hp0 = (P.hp = Math.round(P.maxHp * 0.5));
       if (slot === 'pen') { P.penance = 999; P.rainT = 0; } else P[`${slot}cd`] = 0;
