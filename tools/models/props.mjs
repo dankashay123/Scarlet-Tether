@@ -234,6 +234,27 @@ function bonepew() {
   for (const h of heads) sockets(fr, P, ...h);
   return fr;
 }
+// The STONEBOUND elite's wall (round 42): a block of rough masonry that bursts
+// from the floor, a skull set in its face and a long bone along its top, with
+// bone spurs. One per tile; two looks so a row does not repeat. Frame 22 x 34,
+// ground at y = 31: it stands a little over a tile tall.
+function stonewall(f) {
+  const S = new Scene(), G = 31, cx = 11, d = 6, P = proj(G, d), heads = [];
+  S.add(box([cx, G - 1.5, 0], [10.6, 1.5, d + 1.6], 0.7, 'stoneDark'), 0);
+  S.add(bumpy(box([cx, G - 10.5, 0], [9.6, 8.5, d], 1.4, 'stone'), 0.35, 0.7, 3 + f), 0.8);
+  S.sub(box([cx + (f ? 2 : -2), G - 10, d + 0.4], [8, 0.55, 1.2], 0.2), 0.3);
+  S.sub(box([f ? cx - 4 : cx + 5, G - 5, d + 0.4], [0.5, 4, 1.2], 0.2), 0.3);
+  // A skull set into the face.
+  for (const [x, y, z, r] of [[cx + (f ? 2 : -1), G - 10.5, d - 0.5, 4.4]]) { S.sub(ellipsoid([x, y, z + 1], [r + 0.9, r + 0.9, r], 0), 0.5); skull(S, x, y, z, r); heads.push([x, y, z, r]); }
+  // A long bone along the top, its knuckled ends hanging over the edges.
+  S.add(capsule([cx - 9.5, G - 19.4, 1], [cx + 9.5, G - 19.4, 1], 1.4, 1.4, 'bone'), 0.4);
+  for (const x of [cx - 10, cx + 10]) for (const dz of [-1.1, 1.1]) S.add(sphere([x, G - 19.4, 1 + dz], 1.35, 'bone'), 0.3);
+  // Bone spurs breaking out of the top.
+  for (const [x, lean, h] of f ? [[cx - 5, -1.5, 5], [cx + 4, 2, 4]] : [[cx - 3, -2, 4], [cx + 5, 1.5, 6]]) S.add(capsule([x, G - 18, -2], [x + lean, G - 18 - h, -2.5], 2, 1.1, 'boneDark'), 0.5);
+  const fr = R(S, 22, 34, M, view(G, d));
+  for (const h of heads) sockets(fr, P, ...h);
+  return fr;
+}
 // A short stone pedestal with a skull on top: the Ossuary's pillars.
 function skullpillar() {
   const S = new Scene(), G = 46, cx = 12, d = 5, a = 0.38, P = proj(G, d + 3, a);
@@ -523,6 +544,8 @@ const GLYPH = {
   dagger: (u, v) => (Math.abs(u) < 0.12 && v > -0.62 && v < 0.2 && Math.abs(u) < 0.12 + (v + 0.62) * 0.02) || (Math.abs(v - 0.22) < 0.08 && Math.abs(u) < 0.4) || (Math.abs(u) < 0.08 && v > 0.2 && v < 0.55) || Math.hypot(u, v - 0.6) < 0.1,
   pause: (u, v) => (Math.abs(Math.abs(u) - 0.22) < 0.1) && Math.abs(v) < 0.4,
   talk: (u, v) => (Math.hypot(u / 1.25, v + 0.06) < 0.5 && !([-0.26, 0, 0.26].some((x) => Math.hypot(u - x, v + 0.06) < 0.09))) || seg(u, v, -0.3, 0.3, -0.48, 0.6, 0.09),
+  // Use: an open archway with a lit doorway (the town's LOOK button).
+  use: (u, v) => { const outer = (Math.abs(u) < 0.44 && v > -0.18 && v < 0.5) || (v <= -0.18 && Math.hypot(u, v + 0.18) < 0.44), inner = (Math.abs(u) < 0.24 && v > -0.18 && v < 0.5) || (v <= -0.18 && Math.hypot(u, v + 0.18) < 0.24); return (outer && !inner) || (Math.abs(v - 0.56) < 0.07 && Math.abs(u) < 0.58) || Math.hypot(u - 0.13, v - 0.16) < 0.05; },
   descend: (u, v) => (Math.abs(u) < 0.1 && v > -0.55 && v < 0.15) || (v > -0.05 && v < 0.35 && Math.abs(u) < (0.35 - v) * 1.1) || (Math.abs(v - 0.52) < 0.07 && Math.abs(u) < 0.48),
   bag: (u, v) => (Math.hypot(u / 1.05, v - 0.16) < 0.46 && v > -0.18) || (Math.abs(u) < 0.2 && v > -0.42 && v < -0.1) || (Math.abs(v + 0.34) < 0.07 && Math.abs(u) < 0.34),
   close: (u, v) => seg(u, v, -0.38, -0.38, 0.38, 0.38, 0.13) || seg(u, v, -0.38, 0.38, 0.38, -0.38, 0.13),
@@ -643,7 +666,7 @@ function pilaster() {
 export default {
   hall: { crate: () => [crate()], pilaster: () => [pilaster()], pillar: () => [0, 1].map(pillar) },
   props: { sarcophagus: () => [sarcophagus()], statue: () => [weepingSaint()], organ: () => [organ()], sunkpew: () => [sunkpew()], kelp: () => [0, 1, 2, 3].map(kelp), weedmat: () => [weedmat()],
-    boneshelf: () => [boneshelf()], skullheap: () => [skullheap()], cairn: () => [cairn(0), cairn(1)], bonepew: () => [bonepew()], bonestrew: () => [0, 1].map(bonestrew), skullpillar: () => [skullpillar()], plank: () => [0, 1].map(plank) },
+    boneshelf: () => [boneshelf()], skullheap: () => [skullheap()], cairn: () => [cairn(0), cairn(1)], bonepew: () => [bonepew()], bonestrew: () => [0, 1].map(bonestrew), skullpillar: () => [skullpillar()], stonewall: () => [0, 1].map(stonewall), plank: () => [0, 1].map(plank) },
   loot: {
     chest: () => [chest(false), chest(true)], pew: () => [pew()], altar: () => [altar()],
     shrine: () => ['fervor', 'haste', 'warding', 'plenty'].map(shrine), coffin: () => [coffin(false), coffin(true)],
@@ -659,7 +682,7 @@ export default {
     ...Object.fromEntries(['wave', 'storm', 'step', 'shackle', 'censer', 'ward', 'brand', 'hymn', 'nailring', 'asperse'].map((k) => [k, () => [button(40, GLYPH[k])]])),
     ...Object.fromEntries(['pillars', 'font', 'volley', 'pilgrim', 'greatpen'].map((k) => [k, () => [button(44, GLYPH[k])]])),
     dagger: () => [button(40, GLYPH.dagger)], pause: () => [button(28, GLYPH.pause)], talk: () => [button(50, GLYPH.talk)], descend: () => [button(50, GLYPH.descend)],
-    lock: () => [button(50, BADGE_GLYPH.lock)], map: () => [button(26, BADGE_GLYPH.board)],
+    lock: () => [button(50, BADGE_GLYPH.lock)], use: () => [button(50, GLYPH.use)], map: () => [button(26, BADGE_GLYPH.board)],
     badge: () => MAP_BADGES.map(([g, ramp]) => badge(15, ramp, g)), badgeBig: () => MAP_BADGES.map(([g, ramp]) => badge(21, ramp, g)),
     ...Object.fromEntries(SET_BADGES.map(([g, ramp]) => [`set_${g}`, () => [badge(21, ramp, g)]])),
     passive: () => PASS_ICONS.map(([, ramp, g]) => { BADGE_GLYPH.__p = g; return badge(19, ramp, '__p', ramp === 'holy' ? 5 : ramp === 'gold' ? 3 : 2); }),

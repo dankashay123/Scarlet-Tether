@@ -21,14 +21,14 @@ const S = process.argv[2], WH = (process.argv[3] || '').split('x').map(Number);
   await p.waitForTimeout(1200); await p.screenshot({ path: `${S}/shots/r27-relic${tag}.png` });
   await p.evaluate(() => { for (const e of HS.enemies) if (e.relic) e.dead = true; HS.game.event = null; });
   // Passives: the tab, then Answering Nail on.
-  await p.evaluate(() => { HS.SAVE.devLvl = 6; HS.SAVE.passives = ['answer', 'hide', null]; HS.openRites('play'); HS.game.riteFocus = 'passive'; HS.game.passSel = 'answer'; });
+  await p.evaluate(() => { HS.SAVE.lvl = 12; HS.SAVE.passives = ['answer', 'hide', null]; HS.openRites('play'); HS.game.riteFocus = 'passive'; HS.game.passSel = 'answer'; });
   await p.waitForTimeout(200); await p.screenshot({ path: `${S}/shots/r27-passives${tag}.png` });
   out.pass = await p.evaluate(async () => {
     HS.game.state = 'play'; HS.applyGear(); const P = HS.player;
     const m = HS.spawnMonster('risen', P.x + 120, P.y, {}); m.hp = m.maxHp = 1e6; await new Promise((r) => setTimeout(r, 1200));
     HS.bolts.length = 0; HS.input.mx = 0; HS.input.my = 1; HS.input.dash = true; await new Promise((r) => setTimeout(r, 60));
     const nail = HS.bolts.find((q) => q.dmgK === 0.75);
-    return { slot3Open: HS.SAVE.devLvl >= 15, answer: HS.pas('answer'), hide: HS.pas('hide'), nail: !!nail };
+    return { slot3Open: HS.saintLv() >= 25, answer: HS.pas('answer'), hide: HS.pas('hide'), nail: !!nail };
   });
   // Brighter casts: the Ward's shield and a Reckoning's aura.
   await p.evaluate(() => { const P = HS.player; HS.SAVE.rites = { m1: 'water', m2: 'ward', pen: 'rain' }; P.m2cd = 0; HS.input.m2 = true; P.penance = 999; P.rainT = 0; HS.input.pen = true; });

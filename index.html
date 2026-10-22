@@ -1619,7 +1619,7 @@ function newRun() {
 
 function toast(msg, t = 2) { game.toast = { msg, t }; game.toastColor = null; }
 const fervorTier = () => Math.min(3, Math.floor(game.fervor / 25));
-function addFervor(n) { if (player.inPool) n *= 2; if (player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + n * (G.powers.has('penance') ? 1.4 : 1)); game.fervor = Math.min(100, game.fervor + n * (1 + G.fervor / 100)); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
+function addFervor(n) { if (player.inPool) n *= 2; if (player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + n * (G.powers.has('penance') ? 1.4 : 1) * (1 + 0.06 * tal('reckon'))); game.fervor = Math.min(100, game.fervor + n * (1 + G.fervor / 100)); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
 // One-shot sprite effects.
 function playFx(sheet, anim, x, y, fps = 24, o = {}) { if (fxs.length > (LOWFX ? 25 : 70) && !o.big) return; fxs.push({ sheet, anim, x, y, t: 0, fps, n: SPR[sheet].anims[anim].length, ...o }); }
 
@@ -1690,7 +1690,7 @@ const BARKS = {
   beggar: ['ALMS FOR AN OLD SAINT?', 'I WAS CHOSEN ONCE, YOU KNOW.'],
 };
 Object.assign(NPC_INFO, {
-  vane: { name: 'ARCHDEACON VANE', lines: () => ['THE CANONRY OPENS AFTER YOUR FIRST DESCENT.', 'SPEND DEVOTION HERE ON PERMANENT BONUSES.'] },
+  vane: { name: 'ARCHDEACON VANE', lines: () => ['THE CANONRY OPENS AFTER YOUR FIRST DESCENT.', 'SPEND TALENT POINTS HERE. ONE EACH SAINT LEVEL.'] },
   plushseller: { name: 'THE PLUSH SELLER', lines: () => ['GENUINE PLUSH SAINTS! HAND STITCHED!', `THIS YEAR'S ONE HAS YOUR SCARS. ALL ${(SAVE.deaths || 0) + 3} OF THEM.`] },
   beggar: { name: 'OLD BARNABY', lines: () => ['I WAS A SAINT ONCE. THEY LET ME KEEP THE HALO.', 'IT BURNS, AT NIGHT. LIKE A CANDLE THAT WON\'T GO OUT.', 'DON\'T LET THEM PUT YOU IN THE POOL.'] },
   guard: { name: 'GATE GUARD', lines: () => [pick(BARKS.guard)] },
@@ -1872,7 +1872,7 @@ function makeTown() {
     if (n.circle) { px(n.circle, 'cx', 'cy'); n.circle.r *= 0.75; }
   }
   for (const it of interact) if (it.who) { it.x = it.who.x; it.y = it.who.y; }
-  for (const S of SITES) interact.push({ x: S.x, y: base + S.dy, r: 26, label: siteDone(S) ? 'LOOK' : 'LOCKED', icon: 'lock', site: S, use: () => openSite(S) });
+  for (const S of SITES) interact.push({ x: S.x, y: base + S.dy, r: 26, label: siteDone(S) ? 'LOOK' : 'LOCKED', icon: siteDone(S) ? 'use' : 'lock', site: S, use: () => openSite(S) });
   // Foreground silhouettes (parallax, drawn over everything).
   for (let x = 0; x < w * TILE * 1.25 + 520; x += 78 + rng() * 156) fg.push({ x, kind: pick(['tree', 'fence', 'fence', 'tomb', 'gallows', 'cart']), frame: Math.floor(rng() * 3) });
   chunkCanvas(roomCanvas);
@@ -1890,7 +1890,7 @@ const SITES = [
   { id: 'road', name: 'THE PILGRIM ROAD', badge: 'gate', x: 140, dy: 46, lift: 36, what: 'STRATUM II, THE DROWNED NAVE, OPENS AT STATION III. STRATUM III, THE OSSUARY SPIRE, AT STATION VI. EACH HAS NEW MONSTERS AND TWO WARDENS.', need: 'KILL THE WARDEN OF STATION III', prog: () => [(SAVE.cleared ?? -1) >= 2 ? 1 : 0, 1], doneText: 'CHOOSE IT AT THE CATHEDRAL DOORS.' },
   { id: 'stall', name: "PELL'S CURIO STALL", badge: 'market', x: 588, dy: 34, what: 'BUY GEAR. NEW STOCK AFTER EACH DESCENT.', need: 'FINISH 1 DESCENT', prog: () => [SAVE.descents || 0, 1] },
   { id: 'plush', name: 'THE PLUSH STALL', badge: 'plush', x: 692, dy: 34, what: 'ROBE COLOURS, HALOS AND TRAILS. COSMETIC.', need: 'FALL 5 TIMES', prog: () => [SAVE.deaths || 0, 5] },
-  { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 880, dy: 64, what: 'THREE BOUNTIES FOR GOLD, DEVOTION AND GEAR. CLAIM ALL THREE FOR A HALLOWED PIECE.', need: 'KILL 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
+  { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 880, dy: 64, what: 'THREE BOUNTIES FOR GOLD, XP AND GEAR. CLAIM ALL THREE FOR A HALLOWED PIECE.', need: 'KILL 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
   { id: 'pool', name: 'THE SCRYING POOL', badge: 'pool', x: 1060, dy: 110, what: 'BET GOLD ON HOW FAR YOUR NEXT DESCENT GOES.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
   { id: 'forge', name: 'THE EMBER FORGE', badge: 'forge', x: 1250, dy: 50, what: 'REFORGE: SPEND AN EMBERSTONE TO REROLL ONE STAT. TEMPER: RAISE A PIECE TO YOUR BEST STATION.', need: 'KILL THE WARDEN OF STATION II', prog: () => [(SAVE.cleared ?? -1) >= 1 ? 1 : 0, 1] },
   { id: 'altar', name: 'THE ASHEN ALTAR', badge: 'relic', x: 1378, dy: 140, lift: 34, what: 'BURN A HALLOWED PIECE TO LEARN ITS POWER. SET ONE POWER EACH FOR VESTMENTS, ARMS AND RELICS.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
@@ -1899,7 +1899,7 @@ const SITES = [
   { id: 'roll', name: 'THE VIGIL ROLL', badge: 'board', x: 2730, dy: 44, lift: 46, what: 'YOUR BEST VIGILS AND EARNED HALOS.', need: 'FINISH 1 DESCENT', prog: () => [Math.min(1, SAVE.descents || 0), 1] },
   { id: 'yard', name: 'THE TRAINING YARD', badge: 'npc', x: 3030, dy: 64, lift: 24, what: 'PRACTISE ON A DUMMY AND ANY FOE. NOTHING IS GAINED OR LOST.', need: 'ALWAYS OPEN', prog: () => [1, 1] },
   { id: 'ench', name: 'THE ENCHANTER', badge: 'ench', x: 1160, dy: 178, lift: 30, what: 'ENCHANT GEAR WITH POWERS FOUND NOWHERE ELSE. EACH NEEDS THREE RARE INGREDIENTS.', need: 'KILL THE WARDEN OF STATION V', prog: () => [(SAVE.cleared ?? -1) >= 4 ? 1 : 0, 1] },
-  { id: 'canonry', name: 'THE CANONRY', badge: 'relic', x: 2444, dy: 50, lift: 30, what: 'SPEND DEVOTION POINTS ON PERMANENT BONUSES.', need: 'FINISH ONE DESCENT', prog: () => [Math.min(1, SAVE.descents || 0), 1] },
+  { id: 'canonry', name: 'THE CANONRY', badge: 'relic', x: 2444, dy: 50, lift: 30, what: 'SPEND TALENT POINTS IN THREE TREES: OFFENCE, DEFENCE AND RITES.', need: 'FINISH ONE DESCENT', prog: () => [Math.min(1, SAVE.descents || 0), 1] },
 ];
 for (const S of SITES) { S.row = townRow(S.x); S.x = townX(S.x); S.dy = townY(S.dy) + S.row * ROW_DY; }
 const siteDone = (s) => { const [a, b] = s.prog(); return a >= b; };
@@ -2391,46 +2391,77 @@ function secondBreath() {
   rings.push({ x: player.x, y: player.y - 20, t: 0, max: 0.7, r: 70, color: ENCH_BY.breath.rgb }); return true;
 }
 
-// ------------------------------------------------- Devotion, the Canonry ---
-// Every bit of experience also feeds Devotion, an account level that never
-// resets. Each Devotion level grants a point to spend on a Virtue.
-const VIRTUES = [
-  { id: 'might', name: 'MIGHT', per: 1, unit: '% DAMAGE', max: 100 },
-  { id: 'vigour', name: 'VIGOUR', per: 1, unit: '% MAX HP', max: 100 },
-  { id: 'fortune', name: 'FORTUNE', per: 2, unit: '% GOLD', max: 50 },
-  { id: 'precision', name: 'PRECISION', per: 0.5, unit: '% CRIT', max: 30 },
-  { id: 'swiftness', name: 'SWIFTNESS', per: 0.5, unit: '% MOVE SPEED', max: 20 },
-  { id: 'piety', name: 'PIETY', per: 1, unit: '% ZEAL GAIN', max: 50 },
+// ------------------------------------- the Saint's level, the Canonry ---
+// The Saint's level (round 42, replacing Devotion): 1 to MAX_SAINT, kept for
+// good. Every bit of experience feeds it; each level past the first gives a
+// talent point for the three trees, and some levels open a new rite.
+const MAX_SAINT = 60;
+const lvNeed = (l) => Math.round(60 + 16 * Math.pow(l, 1.8)); // XP from level l to l + 1
+const saintLv = () => SAVE.lvl || 1;
+// Talent trees: each talent has ranks; a row opens once enough points are in
+// that tree (`need`). Read a talent's rank with tal(id).
+const TALENT_TREES = [
+  { id: 'off', name: 'OFFENCE', col: '#e8383f', rgb: '232,56,63', rows: [
+    [{ id: 'might', name: 'MIGHT', max: 5, text: (n) => `+${3 * n}% DAMAGE.` }, { id: 'precise', name: 'PRECISION', max: 5, text: (n) => `+${n}% CRIT CHANCE.` }],
+    [{ id: 'quick', name: 'QUICK DRAW', max: 5, text: (n) => `THE CROSSBOW FIRES ${3 * n}% FASTER.` }, { id: 'execute', name: 'EXECUTIONER', max: 3, text: (n) => `+${5 * n}% DAMAGE TO FOES BELOW 35% HEALTH.` }],
+    [{ id: 'heavy', name: 'HEAVY BOLTS', max: 3, text: (n) => `CRITS DEAL ${10 * n}% MORE.` }, { id: 'pierce', name: 'PIERCING', max: 1, text: () => 'BOLTS PIERCE ONE MORE FOE.' }],
+    [{ id: 'zeal', name: "ZEAL'S EDGE", max: 3, text: (n) => `EACH ZEAL STEP GIVES ${2 * n}% MORE DAMAGE.` }, { id: 'bane', name: 'ELITE BANE', max: 3, text: (n) => `+${5 * n}% DAMAGE TO RARES, ELITES AND WARDENS.` }],
+    [{ id: 'greatbolt', name: 'GREAT BOLT', max: 1, cap: true, text: () => 'EVERY 10TH BOLT DEALS X3 AND PIERCES EVERY FOE.' }],
+  ] },
+  { id: 'def', name: 'DEFENCE', col: '#3fa4f0', rgb: '63,164,240', rows: [
+    [{ id: 'vigour', name: 'VIGOUR', max: 5, text: (n) => `+${4 * n}% MAX HEALTH.` }, { id: 'warding', name: 'WARDING', max: 5, text: (n) => `TAKE ${2 * n}% LESS DAMAGE.` }],
+    [{ id: 'mend', name: 'MENDING', max: 3, text: (n) => `HEAL ${(0.3 * n).toFixed(1)}% OF YOUR HEALTH A SECOND.` }, { id: 'feet', name: 'SURE FEET', max: 3, text: (n) => `+${4 * n}% MOVE SPEED.` }],
+    [{ id: 'quickdash', name: 'QUICK DASH', max: 3, text: (n) => `DASHES RECHARGE ${5 * n}% FASTER.` }, { id: 'deft', name: 'DEFT', max: 2, text: (n) => `THE PERFECT DODGE WINDOW IS ${15 * n}% LONGER.` }],
+    [{ id: 'orbs', name: 'BLESSED ORBS', max: 3, text: (n) => `HEALTH ORBS HEAL ${15 * n}% MORE.` }, { id: 'steadfast', name: 'STEADFAST', max: 3, text: (n) => `BELOW 35% HEALTH, TAKE ${6 * n}% LESS DAMAGE.` }],
+    [{ id: 'aegis', name: 'AEGIS', max: 1, cap: true, text: () => 'A PERFECT DODGE HALVES THE DAMAGE YOU TAKE FOR 2 S.' }],
+  ] },
+  { id: 'rite', name: 'RITES', col: '#ffc04a', rgb: '255,192,74', rows: [
+    [{ id: 'devout', name: 'DEVOUT', max: 5, text: (n) => `RITES RECHARGE ${2 * n}% FASTER.` }, { id: 'piety', name: 'PIETY', max: 5, text: (n) => `+${4 * n}% ZEAL GAIN.` }],
+    [{ id: 'ritepower', name: 'RITE POWER', max: 5, text: (n) => `+${5 * n}% DAMAGE FROM RITES, POOLS, FIRE AND BLASTS.` }, { id: 'fortune', name: 'FORTUNE', max: 3, text: (n) => `+${5 * n}% GOLD.` }],
+    [{ id: 'reckon', name: 'RECKONER', max: 3, text: (n) => `RECKONING CHARGES ${6 * n}% FASTER.` }, { id: 'chant', name: 'CHANT', max: 3, text: (n) => `CASTING A RITE GIVES ${4 * n} ZEAL.` }],
+    [{ id: 'grace', name: 'GRACE', max: 3, text: (n) => `CASTING A RITE HEALS ${n}% OF YOUR HEALTH.` }, { id: 'again', name: 'ANSWERED', max: 3, text: (n) => `${5 * n}% CHANCE A RITE COMES BACK AT ONCE.` }],
+    [{ id: 'choir', name: 'THE CHOIR', max: 1, cap: true, text: () => 'YOUR RECKONING RESETS BOTH RITES.' }],
+  ] },
 ];
-const devNeed = (l) => Math.round(120 * Math.pow(1.12, l));
-const virtue = (id) => (SAVE.virtues && SAVE.virtues[id]) || 0;
-function gainDevotion(n) {
-  SAVE.devXp = (SAVE.devXp || 0) + n; SAVE.devLvl = SAVE.devLvl || 0;
-  while (SAVE.devXp >= devNeed(SAVE.devLvl)) { SAVE.devXp -= devNeed(SAVE.devLvl); SAVE.devLvl++; SAVE.devPts = (SAVE.devPts || 0) + 1; if (player && game.scene === 'wound') nums.push({ x: player.x, y: player.y - 84, v: `DEVOTION ${SAVE.devLvl}`, t: 0, color: PAL.holy0, crit: true }); }
+const TAL_NEED = [0, 5, 10, 15, 20]; // points in a tree to open each row
+const TAL_BY = Object.fromEntries(TALENT_TREES.flatMap((T0, ti) => T0.rows.flatMap((row, ri) => row.map((t) => [t.id, { ...t, tree: ti, row: ri }]))));
+const tal = (id) => (SAVE.talents && SAVE.talents[id]) || 0;
+const treeSpent = (ti) => TALENT_TREES[ti].rows.flat().reduce((a, t) => a + tal(t.id), 0);
+const talSpent = () => TALENT_TREES.reduce((a, T0, ti) => a + treeSpent(ti), 0);
+const talPts = () => Math.max(0, saintLv() - 1 - talSpent());
+const talOpen = (t) => treeSpent(t.tree) >= TAL_NEED[t.row];
+const talReset = () => 100 * saintLv(); // gold to take back every point
+// Rites open by Saint level (one of each slot from the start).
+const RITE_LV = { water: 1, chain: 1, rain: 1, storm: 3, censer: 5, step: 7, volley: 9, nailring: 11, hymn: 13, ward: 15, pillars: 18, wave: 20, shackle: 22, pilgrim: 25, asperse: 28, font: 31, brand: 35, greatpen: 45 };
+const riteOpen = (id) => saintLv() >= (RITE_LV[id] || 1);
+function gainSaintXp(n) {
+  SAVE.lvl = SAVE.lvl || 1; SAVE.lxp = (SAVE.lxp || 0) + n;
+  while (SAVE.lvl < MAX_SAINT && SAVE.lxp >= lvNeed(SAVE.lvl)) {
+    SAVE.lxp -= lvNeed(SAVE.lvl); SAVE.lvl++;
+    if (player && game.scene === 'wound') nums.push({ x: player.x, y: player.y - 84, v: `SAINT LEVEL ${SAVE.lvl}`, t: 0, color: PAL.holy0, crit: true });
+    const r = Object.keys(RITE_LV).find((id) => RITE_LV[id] === SAVE.lvl);
+    if (player) { toast(r ? `SAINT LEVEL ${SAVE.lvl}: NEW RITE, ${RITE_BY[r].name}` : `SAINT LEVEL ${SAVE.lvl}: A TALENT POINT`, 2.6); game.toastColor = PAL.holy0; }
+  }
+  if (SAVE.lvl >= MAX_SAINT) SAVE.lxp = 0;
 }
-function openCanonry() { game.state = 'canonry'; sfx('tap'); }
-// One column when there is room, two on short phones.
-const virtueRow = (L, i) => { const two = L.y0 + 70 + 6 * 30 > L.y0 + L.ph - 8, w = two ? Math.floor((L.pw - 34) / 2) : L.pw - 28; return two ? { x: L.x0 + 14 + (i % 2) * (w + 6), y: L.y0 + 70 + Math.floor(i / 2) * 30, w, h: 26, two } : { x: L.x0 + 14, y: L.y0 + 70 + i * 30, w, h: 26 }; };
-function renderCanonry() {
-  const L = featLayout();
-  ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
-  panelFrame(L.x0, L.y0, L.pw, L.ph, '_silver');
-  headerBar(L.x0, L.y0, L.pw, 26);
-  text('THE CANONRY', L.x0 + 12, L.y0 + 9, PAL.holy1); sprC('ui', 'close', 0, L.close.x, L.close.y);
-  const lv = SAVE.devLvl || 0, pts = SAVE.devPts || 0, need = devNeed(lv);
-  text(`DEVOTION ${lv}`, L.x0 + 14, L.y0 + 34, PAL.gold1, { sc: 2 });
-  const bw = L.pw - 200, bx = L.x0 + 160; gild(bx, L.y0 + 38, bw, 7); ctx.fillStyle = PAL.ink2; ctx.fillRect(bx, L.y0 + 38, bw, 7); ctx.fillStyle = PAL.holy1; ctx.fillRect(bx, L.y0 + 38, Math.round(bw * (SAVE.devXp || 0) / need), 7);
-  text(`${Math.floor(SAVE.devXp || 0)} / ${need}`, bx + bw, L.y0 + 48, PAL.stone1, { align: 'right', small: true, outline: null });
-  text(pts ? `${pts} POINT${pts > 1 ? 'S' : ''} TO SPEND` : 'KILLS RAISE DEVOTION.', L.x0 + 14, L.y0 + 56, pts ? PAL.flame1 : PAL.stone1, { small: true, outline: null });
-  VIRTUES.forEach((v, i) => {
-    const r = virtueRow(L, i), n = virtue(v.id), full = n >= v.max;
-    ctx.fillStyle = PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
-    text(v.name, r.x + 8, r.y + 4, PAL.gold1);
-    text(`${n}/${v.max}`, r.x + r.w - 62, r.y + 4, PAL.stone1, { align: 'right' });
-    if (r.two) text(fitText(`+${+(n * v.per).toFixed(1)}${v.unit} (+${v.per} A POINT)`, r.w - 74, `+${+(n * v.per).toFixed(1)}${v.unit} (+${v.per})`), r.x + 8, r.y + 15, PAL.cloth1, { small: true, outline: null });
-    else { text(`+${+(n * v.per).toFixed(1)}${v.unit}`, r.x + 120, r.y + 4, PAL.cloth0); text(`+${v.per}${v.unit} A POINT`, r.x + 8, r.y + 15, PAL.stone2, { small: true, outline: null }); }
-    invButton({ x: r.x + r.w - 56, y: r.y + 3, w: 50, h: 20 }, full ? 'MAX' : '+1', PAL.holy3 || PAL.ink3, pts > 0 && !full);
-  });
+// Old saves: Devotion turns into Saint levels (the XP it held, on the new
+// curve); Virtues are gone and their points come back as talent points.
+function migrateDevotion() {
+  if (SAVE.lvl) return;
+  let xp = SAVE.devXp || 0; for (let l = 0; l < (SAVE.devLvl || 0); l++) xp += Math.round(120 * Math.pow(1.12, l));
+  SAVE.lvl = 1; SAVE.lxp = 0; SAVE.talents = {}; SAVE.virtues = {}; SAVE.devPts = 0;
+  const keep = player; player = null; gainSaintXp(xp); player = keep; persist();
+}
+function openCanonry() { game.state = 'canonry'; game.talTab = game.talTab || 0; sfx('tap'); }
+// The talents panel: three tree tabs; five rows of talents, a detail line and
+// the LEARN and RESET buttons.
+const talTabs = (L) => TALENT_TREES.map((T0, i) => ({ t: T0.name, x: L.close.x - 236 + i * 70, y: L.y0 + 5, w: 64, h: 17 }));
+function talLayout() {
+  const L = featLayout(), top = L.y0 + 54, foot = 44, rh = Math.max(20, Math.min(30, Math.floor((L.ph - 54 - foot - 6) / 5)));
+  const lab = 34, cw = Math.floor((L.pw - 24 - lab - 6) / 2);
+  const cell = (r, c, n) => ({ x: L.x0 + 12 + lab + (n === 1 ? Math.round(cw / 2) + 3 : c * (cw + 6)), y: top + r * rh, w: cw, h: rh - 4 });
+  const fy = L.y0 + L.ph - foot;
+  return { ...L, top, rh, lab, cell, fy, learn: { x: L.x0 + L.pw - 12 - 74, y: fy + 12, w: 74, h: 20 }, reset: { x: L.x0 + L.pw - 12 - 74 - 80, y: fy + 12, w: 74, h: 20 } };
 }
 // The Plush stall: robe dyes and halos, bought once with gold, worn at will.
 function openPlush() { game.state = 'plush'; game.plush = { tab: 0, sel: null }; sfx('tap'); }
@@ -2504,15 +2535,66 @@ function earnLook(how) {
   const H0 = HALOS.find((q) => q.earn === how), K = looks(); if (!H0 || K.own.includes(`h:${H0.id}`)) return;
   K.own.push(`h:${H0.id}`); persist(); setTimeout(() => { toast(`EARNED ${H0.name}`, 3.2); game.toastColor = PAL.rose1; }, 1800);
 }
-function canonryTap(x, y) {
-  const L = featLayout();
-  if (featOut(L, x, y)) { game.state = 'play'; sfx('tap'); return; }
-  VIRTUES.forEach((v, i) => {
-    const r = virtueRow(L, i);
-    if (inRect({ x: r.x + r.w - 56, y: r.y + 3, w: 50, h: 20 }, x, y) && (SAVE.devPts || 0) > 0 && virtue(v.id) < v.max) {
-      SAVE.virtues = SAVE.virtues || {}; SAVE.virtues[v.id] = virtue(v.id) + 1; SAVE.devPts--; applyGear(); persist(); sfx('shrine', { gap: 0.15, vol: 0.6 });
-    }
+function renderCanonry() {
+  const L = talLayout(), ti = game.talTab || 0, T0 = TALENT_TREES[ti], pts = talPts(), lv = saintLv(), spent = treeSpent(ti);
+  ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
+  panelFrame(L.x0, L.y0, L.pw, L.ph, '_silver');
+  headerBar(L.x0, L.y0, L.pw, 26);
+  text('TALENTS', L.x0 + 12, L.y0 + 9, PAL.holy1); sprC('ui', 'close', 0, L.close.x, L.close.y);
+  tabButtons(talTabs(L), ti);
+  // The level and its bar.
+  const need = lvNeed(lv), full = lv >= MAX_SAINT;
+  text(`SAINT LEVEL ${lv}`, L.x0 + 12, L.y0 + 32, PAL.gold1);
+  const bx = L.x0 + 110, bw = Math.max(60, L.pw - 110 - 130); gild(bx, L.y0 + 34, bw, 5); ctx.fillStyle = PAL.ink2; ctx.fillRect(bx, L.y0 + 34, bw, 5); ctx.fillStyle = PAL.holy1; ctx.fillRect(bx, L.y0 + 34, full ? bw : Math.round(bw * (SAVE.lxp || 0) / need), 5);
+  text(full ? 'MAX' : `${Math.floor(SAVE.lxp || 0).toLocaleString('en-US')} / ${need.toLocaleString('en-US')}`, bx, L.y0 + 41, PAL.stone2, { small: true, outline: null });
+  text(pts ? `${pts} POINT${pts > 1 ? 'S' : ''}` : 'NO POINTS', L.x0 + L.pw - 12, L.y0 + 32, pts ? PAL.flame1 : PAL.stone2, { align: 'right' });
+  text(`${spent} IN ${T0.name}`, L.x0 + L.pw - 12, L.y0 + 43, PAL.stone2, { align: 'right', small: true, outline: null });
+  T0.rows.forEach((row, ri) => {
+    const open = spent >= TAL_NEED[ri], y = L.top + ri * L.rh;
+    text(String(TAL_NEED[ri]), L.x0 + 12 + L.lab / 2, y + (L.rh - 4) / 2 - 3, open ? PAL.stone1 : PAL.stone3, { align: 'center', small: true, outline: null });
+    row.forEach((t, ci) => {
+      const r = L.cell(ri, ci, row.length), n = tal(t.id), sel = game.talSel === t.id;
+      ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
+      ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+      if (n) { ctx.fillStyle = `rgba(${T0.rgb},0.22)`; ctx.fillRect(r.x, r.y, Math.round(r.w * n / t.max), r.h); }
+      if (sel) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1); }
+      const col = !open ? PAL.stone3 : n >= t.max ? PAL.gold1 : t.cap ? T0.col : PAL.cloth0;
+      text(fitText(t.name, r.w - 40), r.x + 6, r.y + Math.round((r.h - 9) / 2), col, { outline: null });
+      text(`${n}/${t.max}`, r.x + r.w - 6, r.y + Math.round((r.h - 9) / 2), open ? PAL.stone1 : PAL.stone3, { align: 'right', outline: null });
+    });
   });
+  // The detail line for the chosen talent.
+  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0 + 12, L.fy, L.pw - 24, 1);
+  const t = game.talSel && TAL_BY[game.talSel];
+  if (t) {
+    const n = tal(t.id), open = talOpen(t), wmax = L.reset.x - L.x0 - 22;
+    text(t.name, L.x0 + 12, L.fy + 6, TALENT_TREES[t.tree].col);
+    const now = n ? t.text(n) : '', next = n < t.max ? t.text(n + 1) : '';
+    const line = !open ? `OPENS WITH ${TAL_NEED[t.row]} POINTS IN ${TALENT_TREES[t.tree].name}.` : n >= t.max ? now : n ? `${now} NEXT: ${next}` : next;
+    wrapW(line, wmax, true).slice(0, 2).forEach((l, i) => text(l, L.x0 + 12, L.fy + 18 + i * 10, PAL.stone1, { small: true, outline: null }));
+    invButton(L.learn, n >= t.max ? 'MAX' : 'LEARN', PAL.holy3 || PAL.ink3, open && pts > 0 && n < t.max);
+  } else text('TAP A TALENT. ONE POINT EACH SAINT LEVEL.', L.x0 + 12, L.fy + 10, PAL.stone2, { small: true, outline: null });
+  invButton(L.reset, 'RESET', PAL.crimson3, talSpent() > 0);
+}
+function canonryTap(x, y) {
+  const L = talLayout();
+  if (featOut(L, x, y)) { game.state = 'play'; sfx('tap'); return; }
+  const tb = talTabs(L).findIndex((b) => inRect(b, x, y)); if (tb >= 0) { game.talTab = tb; game.talSel = null; sfx('tap', { vol: 0.5 }); return; }
+  const T0 = TALENT_TREES[game.talTab || 0];
+  for (let ri = 0; ri < T0.rows.length; ri++) for (let ci = 0; ci < T0.rows[ri].length; ci++) if (inRect(L.cell(ri, ci, T0.rows[ri].length), x, y)) { game.talSel = T0.rows[ri][ci].id; sfx('tap', { vol: 0.5 }); return; }
+  const t = game.talSel && TAL_BY[game.talSel];
+  if (t && inRect(L.learn, x, y)) {
+    if (!talOpen(t)) { toast(`PUT ${TAL_NEED[t.row]} POINTS IN ${TALENT_TREES[t.tree].name} FIRST.`, 2); return; }
+    if (talPts() <= 0 || tal(t.id) >= t.max) return;
+    SAVE.talents = SAVE.talents || {}; SAVE.talents[t.id] = tal(t.id) + 1; applyGear(); persist(); sfx('shrine', { gap: 0.15, vol: 0.6 }); return;
+  }
+  if (inRect(L.reset, x, y) && talSpent() > 0) {
+    const cost = talReset();
+    ask(`TAKE BACK ALL ${talSpent()} TALENT POINTS FOR ${cost.toLocaleString('en-US')} GOLD?`, () => {
+      if ((SAVE.gold || 0) < cost) { toast('NOT ENOUGH GOLD.', 1.6); return; }
+      SAVE.gold -= cost; SAVE.talents = {}; applyGear(); persist(); sfx('buy');
+    }, 'RESET');
+  }
 }
 
 // ------------------------------------------------------- Odile's Gift ---
@@ -2785,6 +2867,7 @@ function renderRites() {
     text(`${r.cd ? `${r.cd} S` : 'ZEAL'}  R${riteRank(r.id)}`, b.x + b.w - 6, cy - 10, riteRank(r.id) > 1 ? PAL.gold1 : PAL.stone1, { ...small, align: 'right' });
     text(fitText(VSETS[r.set].name.replace(/^THE /, ''), tw - 26, SET_SHORT[r.set]), tx, cy + 2, syn ? `rgb(${rgb})` : PAL.stone2, small);
     if (syn) text('SET', b.x + b.w - 6, cy + 2, RARITY[4].color, { ...small, align: 'right' });
+    if (!riteOpen(r.id)) { ctx.fillStyle = 'rgba(11,7,16,0.66)'; ctx.fillRect(b.x, b.y, b.w, b.h); text(`SAINT LEVEL ${RITE_LV[r.id]}`, b.x + b.w - 6, cy + 2, PAL.flame1, { ...small, align: 'right' }); }
   });
   renderRiteDetail(L, focus);
 }
@@ -2836,7 +2919,7 @@ function renderPassives(L) {
     if (q && open) { ctx.fillStyle = `rgb(${PASS_CAT[q.cat][1]})`; ctx.fillRect(b.x, b.y, 3, b.h); }
     // A worn passive shows its icon, and its name only when the whole name fits.
     if (q && open) { const fits = textW(q.name, 1, true) <= b.w - 30; sprC('ui', 'passive', PASSIVES.indexOf(q), fits ? b.x + 13 : b.x + b.w / 2, b.y + 11); if (fits) text(q.name, b.x + 26, b.y + 7, PAL.gold1, small); }
-    else text(!open ? `DEVOTION ${PASSIVE_AT[i]}` : 'EMPTY', b.x + b.w / 2, b.y + 7, !open ? PAL.stone2 : PAL.stone1, { ...small, align: 'center' });
+    else text(!open ? `LEVEL ${PASSIVE_AT[i]}` : 'EMPTY', b.x + b.w / 2, b.y + 7, !open ? PAL.stone2 : PAL.stone1, { ...small, align: 'center' });
     if (on) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 2; ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2); }
   }
   // Every passive as an icon; deed passives stay dark and locked until earned.
@@ -2852,7 +2935,7 @@ function renderPassives(L) {
   const D = L.detail; ctx.fillStyle = PAL.outline; ctx.fillRect(D.x - 1, D.y - 1, D.w + 2, D.h + 2); ctx.fillStyle = PAL.ink2; ctx.fillRect(D.x, D.y, D.w, D.h);
   let y = D.y + 10;
   if (!sel) { for (const l of wrapW('TAP A PASSIVE TO READ IT. PASSIVES ARE ALWAYS ON.', D.w - 16, true)) { text(l, D.x + 8, y, PAL.stone1, small); y += 11; } y += 6;
-    for (const l of wrapW(`SLOTS OPEN AT DEVOTION ${PASSIVE_AT.join(', ')}. YOU ARE AT ${SAVE.devLvl || 0}.`, D.w - 16, true)) { text(l, D.x + 8, y, PAL.stone2, small); y += 11; } return; }
+    for (const l of wrapW(`SLOTS OPEN AT SAINT LEVEL ${PASSIVE_AT.join(', ')}. YOU ARE LEVEL ${saintLv()}.`, D.w - 16, true)) { text(l, D.x + 8, y, PAL.stone2, small); y += 11; } return; }
   ctx.fillStyle = `rgba(${PASS_CAT[sel.cat][1]},0.2)`; ctx.fillRect(D.x, D.y, D.w, 34);
   text(fitText(sel.name, D.w - 16), D.x + 8, D.y + 8, PAL.gold1); text(PASS_CAT[sel.cat][0], D.x + 8, D.y + 22, `rgb(${PASS_CAT[sel.cat][1]})`, small); y = D.y + 44;
   for (const l of wrapW(sel.text, D.w - 16, true)) { text(l, D.x + 8, y, PAL.cloth0, small); y += 11; }
@@ -2864,7 +2947,7 @@ function renderPassives(L) {
 }
 function passTap(L, x, y) {
   const G0 = passGeo(L), P = (SAVE.passives = SAVE.passives || [null, null, null]);
-  for (let i = 0; i < 3; i++) if (inRect(G0.slot(i), x, y)) { if (!passOpen(i)) { toast(`OPENS AT DEVOTION ${PASSIVE_AT[i]}`, 1.6); return; } game.passSlot = game.passSlot === i ? null : i; if (P[i]) game.passSel = P[i]; sfx('tap', { vol: 0.5 }); return; }
+  for (let i = 0; i < 3; i++) if (inRect(G0.slot(i), x, y)) { if (!passOpen(i)) { toast(`OPENS AT SAINT LEVEL ${PASSIVE_AT[i]}`, 1.6); return; } game.passSlot = game.passSlot === i ? null : i; if (P[i]) game.passSel = P[i]; sfx('tap', { vol: 0.5 }); return; }
   PASSIVES.forEach((q, i) => { if (inRect(G0.card(i), x, y)) { game.passSel = q.id; sfx('tap', { vol: 0.5 }); } });
   if (game.passSel && inRect(G0.btn, x, y)) {
     const at = P.indexOf(game.passSel);
@@ -2882,6 +2965,7 @@ function ritesTap(x, y) {
   if (focus === 'passive') return passTap(L, x, y);
   RITES[focus].forEach((r, i) => {
     if (!inRect(L.card(0, i), x, y)) return;
+    if (!riteOpen(r.id)) { toast(`${r.name} OPENS AT SAINT LEVEL ${RITE_LV[r.id]}.`, 2); return; }
     SAVE.rites = SAVE.rites || {}; SAVE.rites[focus] = r.id; persist(); sfx('tap', { vol: 0.6 });
     if (player) { if (focus === 'm1') player.m1cd = Math.max(player.m1cd, 1); if (focus === 'm2') player.m2cd = Math.max(player.m2cd, 1); }
   });
@@ -3002,7 +3086,7 @@ function renderBoard() {
   panelFrame(L.x0, L.y0, L.pw, L.ph);
   headerBar(L.x0, L.y0, L.pw, 26);
   text('THE BOUNTY BOARD', L.x0 + 12, L.y0 + 9, PAL.gold1); sprC('ui', 'close', 0, L.close.x, L.close.y);
-  text(`EACH PAYS ${150 * il} GOLD, ${250 * il} DEVOTION AND A PIECE OF GEAR`, L.x0 + 14, L.y0 + 30, PAL.stone1, { small: true, outline: null });
+  text(`EACH PAYS ${150 * il} GOLD, ${250 * il} XP AND A PIECE OF GEAR`, L.x0 + 14, L.y0 + 30, PAL.stone1, { small: true, outline: null });
   B.list.forEach((b, i) => {
     const r = bountyRow(L, i), D = BOUNTIES[b.id], done = b.have >= b.need;
     ctx.fillStyle = PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
@@ -3022,7 +3106,7 @@ function boardTap(x, y) {
     const r = bountyRow(L, i);
     if (!inRect({ x: r.x + r.w - 62, y: r.y + 9, w: 56, h: 20 }, x, y) || b.claimed || b.have < b.need) return;
     const il = bestIl(); b.claimed = true;
-    SAVE.gold = (SAVE.gold || 0) + 150 * il; gainDevotion(250 * il);
+    SAVE.gold = (SAVE.gold || 0) + 150 * il; gainSaintXp(250 * il);
     let it; do { it = rollItem(4, il); } while (it.ri < 2);
     bagAdd(it); toast(`BOUNTY PAID: ${it.name}`, 2.5); game.toastColor = RARITY[it.ri].color; sfx('gold');
     if (B.list.every((q) => q.claimed)) { let h; do { h = rollItem(6, il); } while (h.ri !== 3); bagAdd(h); B.next = (SAVE.descents || 0) + 1; game.banner = { text: 'ALL BOUNTIES CLAIMED', sub: h.name, t: 0, color: RARITY[3].color }; }
@@ -3535,7 +3619,7 @@ const ritesBtn = () => ({ x: Math.round(W / 2 - 45), y: H - 30, w: 90, h: 20 });
 const OPT_ROWS = [
   { k: 'fx', name: 'EFFECTS', vals: ['full', 'low'], show: (v) => (v === 'full' ? 'FULL' : 'LOW (OLDER PHONES)') },
   { k: 'shake', name: 'SCREEN SHAKE', vals: [true, false], show: (v) => (v ? 'ON' : 'OFF') },
-  { k: 'nums', name: 'DAMAGE NUMBERS', vals: ['all', 'crits', 'off'], show: (v) => v.toUpperCase() },
+  { k: 'nums', name: 'DAMAGE NUMBERS', vals: ['all', 'crits', 'taken', 'off'], show: (v) => (v === 'taken' ? 'DAMAGE TAKEN' : v === 'off' ? 'OFF (NONE)' : v.toUpperCase()) },
   { k: 'text', name: 'TEXT SIZE', vals: ['small', 'normal', 'large'], show: (v) => v.toUpperCase() },
   { k: 'haptics', name: 'HAPTICS', vals: [true, false], show: (v) => (v ? 'ON' : 'OFF') },
   { k: 'music', name: 'MUSIC', vals: [0, 1, 2, 3], show: (v) => (v ? '#'.repeat(v) : 'OFF') },
@@ -3571,7 +3655,7 @@ function settingsTap(x, y) {
 // forward), green or dark buttons are toggles, red buttons do something.
 const DEV = { cell: 0, tab: 0, il: 6, ri: 4, slot: 0, warden: 0, mon: 0, wound: 0, stn: 0, strat: 1, vigil: 1, set: 0, q: -1, ench: 0, god: false, nocd: false, boxes: false, fps: false, speed: 1, confirm: 0, taps: 0, tapT: 0 };
 const DEV_TABS = ['HERO', 'GEAR', 'FORGE', 'WORLD', 'TOWN', 'DEBUG'];
-const DEV_HELP = ['GOD MODE, LEVELS, WOUNDS, DEVOTION AND RITE RANKS.', 'MAKE GEAR AT ANY STATION AND RARITY, WHOLE SETS, THE BAG.', 'EMBERSTONES, REFORGE QUALITY, ENCHANTS AND INGREDIENTS, THE ALTAR.', 'DESCEND ANYWHERE, SUMMON WARDENS AND FOES, THE VIGIL.', 'UNLOCKS, CURRENCIES, LOOKS, CELLS, BOUNTIES AND THE YARD.', 'FPS, PROFILE, HITBOXES, GAME SPEED, ERRORS AND THE SAVE.'];
+const DEV_HELP = ['GOD MODE, LEVELS, WOUNDS, SAINT LEVEL AND RITE RANKS.', 'MAKE GEAR AT ANY STATION AND RARITY, WHOLE SETS, THE BAG.', 'EMBERSTONES, REFORGE QUALITY, ENCHANTS AND INGREDIENTS, THE ALTAR.', 'DESCEND ANYWHERE, SUMMON WARDENS AND FOES, THE VIGIL.', 'UNLOCKS, CURRENCIES, LOOKS, CELLS, BOUNTIES AND THE YARD.', 'FPS, PROFILE, HITBOXES, GAME SPEED, ERRORS AND THE SAVE.'];
 const devOn = () => !!SAVE.dev;
 const showFps = () => DEV.fps || location.search.includes('fps');
 const devBtn = () => ({ x: 10, y: H - 30, w: 60, h: 20 });
@@ -3636,9 +3720,9 @@ function devRows() {
       R('LEVELS', B('+1 LEVEL', run(() => gainXp(xpNeed(game.run.level)))), B('+5 LEVELS', run(() => { for (let i = 0; i < 5; i++) gainXp(xpNeed(game.run.level + i)); })), B('MAX LEVEL', run(() => { for (let i = game.run.level; i < MAX_LEVEL; i++) gainXp(xpNeed(i)); }))),
       R('WOUND', B(`< ${WOUNDS[DEV.wound].name} >`, (d) => { DEV.wound = cyc(DEV.wound, WOUNDS.length, d); }, { w: 2 }), B('TAKE IT', run(() => { const w = WOUNDS[DEV.wound]; game.run.wounds[w.id] = Math.min(w.max, (game.run.wounds[w.id] || 0) + 1); applyGear(); toast(`${w.name} ${game.run.wounds[w.id]}/${w.max}`, 1.2); }))),
       R('WOUNDS', B('ALL SKILL WOUNDS', run(() => { for (const w of WOUNDS) if (w.r === 2 || w.id === 'orbit' || w.id === 'nova') game.run.wounds[w.id] = w.max; applyGear(); })), B('CLEAR WOUNDS', () => { if (game.run) game.run.wounds = {}; applyGear(); }), B('SHRINE BUFF', () => { const ks = Object.keys(SHRINES); game.buff = { kind: ks[Math.floor(rng() * ks.length)], t: 30 }; })),
-      R('DEVOTION', B('+2000 DEVOTION', () => gainDevotion(2000)), B('+10 VIRTUE PTS', () => { SAVE.devPts = (SAVE.devPts || 0) + 10; persist(); }), B('MAX RITE RANKS', () => { SAVE.riteXp = Object.fromEntries(Object.keys(RITE_BY).map((id) => [id, RANK_AT[RANK_AT.length - 1]])); persist(); toast('EVERY RITE AT RANK 5', 1.2); })),
+      R('SAINT LEVEL', B('+1 SAINT LV', () => { gainSaintXp(lvNeed(saintLv()) - (SAVE.lxp || 0)); persist(); }), B('SAINT LV 60', () => { while (saintLv() < MAX_SAINT) gainSaintXp(lvNeed(saintLv())); persist(); }), B('MAX RITE RANKS', () => { SAVE.riteXp = Object.fromEntries(Object.keys(RITE_BY).map((id) => [id, RANK_AT[RANK_AT.length - 1]])); persist(); toast('EVERY RITE AT RANK 5', 1.2); })),
       R('TEST', B('KILL ME', () => { DEV.god = false; player.hp = 1; hurtPlayerRaw(99999, PAL.blood0); closeDev(); }, { danger: true }), B('RESET BREATH', run(() => { game.run.breath = false; toast('SECOND BREATH READY', 1.2); })), B('OPEN RITES', () => openRites('dev'))),
-      { info: `HP ${Math.round(player ? player.hp : 0)}/${player ? player.maxHp : 0}   LEVEL ${game.run ? game.run.level : '-'}   DEVOTION ${SAVE.devLvl || 0}   ZEAL ${Math.round(game.fervor || 0)}` },
+      { info: `HP ${Math.round(player ? player.hp : 0)}/${player ? player.maxHp : 0}   LEVEL ${game.run ? game.run.level : '-'}   SAINT ${saintLv()}   ZEAL ${Math.round(game.fervor || 0)}` },
     ];
     case 'GEAR': return [
       R('MAKE AT', stnPick(), B(`< ${RARITY[DEV.ri].name} >`, (d) => { DEV.ri = cyc(DEV.ri, RARITY.length, d); }), B(`< ${DEV.slot ? slotKey().toUpperCase() : 'ANY SLOT'} >`, (d) => { DEV.slot = cyc(DEV.slot, Object.keys(SLOTS).length + 1, d); })),
@@ -3996,7 +4080,7 @@ const bandOf = (i) => (i < 16 ? Math.floor(i / 4) : 4 + Math.min(2, Math.floor((
 const stationPower = (i) => Math.pow(POWER_STEP, i);
 // Monsters climb faster than gear (round 15): each Station is MON_STEP / POWER_STEP
 // (about 10%) beyond what its own gear gives, compounding. Late Stations need
-// sets, Devotion, Hallowed powers and the Altar, so progress means farming.
+// sets, talents, Hallowed powers and the Altar, so progress means farming.
 const MON_STEP = 1.5;
 const monPower = (i) => Math.pow(MON_STEP, i);
 // Round 40: a farmed Saint one-shot Station XV, so the middle Stations get
@@ -4496,10 +4580,14 @@ function raiseWall(e) {
     if (room.rooms && room.rooms.some((r) => r.gates.some((g) => g.tiles.some(([gx, gy]) => gx === tx && gy === ty)))) continue;
     room.solid[ty][tx] = true; tiles.push([tx, ty]);
   }
-  if (tiles.length) room.walls.push({ tiles, life: 4, t: 0 });
+  if (tiles.length) {
+    room.walls.push({ tiles, life: 4, t: 0 }); game.shake = Math.max(game.shake, 3); sfx('break', { gap: 0.3, vol: 0.7, rate: 0.6 });
+    for (const [x, y] of tiles) { sparks(x * TILE + 8, y * TILE + 14, PAL.stone1, LOWFX ? 2 : 5); rings.push({ x: x * TILE + 8, y: y * TILE + 14, t: 0, max: 0.35, r: 14, color: '178,188,203' }); }
+  }
 }
 function updateWalls(dt) {
-  for (const w of room.walls) { w.t += dt; if (w.t > w.life) { for (const [x, y] of w.tiles) { room.solid[y][x] = false; sparks(x * TILE + 8, y * TILE + 8, PAL.bone1, 3); } w.done = true; } }
+  // A wall stands for its life, then sinks back into the floor in 0.3 s.
+  for (const w of room.walls) { w.t += dt; if (w.t > w.life && !w.sink) { w.sink = w.t; for (const [x, y] of w.tiles) { room.solid[y][x] = false; sparks(x * TILE + 8, y * TILE + 12, PAL.stone1, 4); } } if (w.sink && w.t - w.sink > 0.3) w.done = true; }
   room.walls = room.walls.filter((w) => !w.done);
 }
 
@@ -4767,6 +4855,7 @@ function setGuard() {
   if (sb('font', 4) && player.inPool) k *= 0.6;
   if (sb('confessor', 4)) k *= 1 - Math.min(40, (game.boundN || 0) * 8) / 100;
   if ((player.wardT || 0) > game.time) k *= 0.4;
+  k *= 1 - 0.02 * tal('warding'); if (tal('steadfast') && player.hp < player.maxHp * 0.35) k *= 1 - 0.06 * tal('steadfast'); if ((player.aegisT || 0) > game.time) k *= 0.5;
   if (pas('hide')) k *= 0.85; if (pas('laststand') && player.hp < player.maxHp * 0.3) k *= 0.7; if (pas('ironvigil') && (player.ivT || 0) > game.time) k *= 0.7;
   return k;
 }
@@ -4894,8 +4983,15 @@ function drawTelegraphs() {
       ctx.strokeStyle = `rgba(255,122,31,${0.6 + 0.3 * pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(e.x, e.y - 10); ctx.lineTo(m.x, m.y - 10); ctx.stroke();
     }
   }
-  // Bone walls.
-  for (const w of room.walls || []) for (const [x, y] of w.tiles) { const f = frameOf('loot', 'skullwall', 0); const rise = Math.min(1, w.t * 6); ctx.drawImage(IMG.loot, f.x, f.y, 16, 20, x * TILE, y * TILE + 12 - 20 * rise, 16, 20 * rise); }
+}
+// A STONEBOUND wall piece: it bursts up out of the floor (shaking as it
+// rises), stands, then sinks back. Only the part above the floor is drawn.
+function drawWallSeg(a) {
+  const w = a.wall, f = frameOf('props', 'stonewall', (a.tx + a.ty) % 2), up = w.sink ? Math.max(0, 1 - (w.t - w.sink) / 0.3) : Math.min(1, w.t / 0.16);
+  const h = Math.round(f.h * (1 - (1 - up) * (1 - up))), x = a.tx * TILE + 8 - Math.floor(f.w / 2) + (up < 1 ? Math.round(rand(-1, 1)) : 0), y = a.ty * TILE + 15;
+  if (h <= 0) return;
+  ctx.fillStyle = 'rgba(11,7,16,0.45)'; ctx.beginPath(); ctx.ellipse(a.tx * TILE + 8, y - 1, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.drawImage(IMG.props, f.x, f.y, f.w, h, x, y - h + (f.h - 31), f.w, h);
 }
 function drawShots() {
   for (const s of shots) {
@@ -4905,7 +5001,7 @@ function drawShots() {
 }
 
 // --------------------------------------------------------- taking damage ---
-const perfWin = () => T.dash.perfectWindow * (pas('deft') ? 1.5 : 1);
+const perfWin = () => T.dash.perfectWindow * (pas('deft') ? 1.5 : 1) * (1 + 0.15 * tal('deft'));
 function damagePlayer(src, dmg, contacts, how) {
   if (!contacts.length || DEV.god) return;
   const dashing = game.time - player.dashStart <= T.dash.iframes;
@@ -4939,6 +5035,7 @@ function cleanseSentence(p) {
 }
 function perfectDodge() {
   player.perfectUsed = true; game.perfects++; buzz(15); lifeBump('perfects');
+  if (tal('aegis')) { player.aegisT = game.time + 2; rings.push({ x: player.x, y: player.y - 18, t: 0, max: 0.4, r: 34, color: '63,164,240' }); }
   if (ench('ghoststep')) player.charges = E2('ghoststep', Math.min(G.charges, player.charges + 1), G.charges);
   if (censerUp('still')) fireRing(24);
   if (sb('stride', 4)) { player.charges = G.charges; player.guardT = game.time + 2; nums.push({ x: player.x, y: player.y - 66, v: 'PENANCE', t: 0, color: PAL.ember1, small: true }); }
@@ -4965,6 +5062,9 @@ function passK(e, crit) {
   if (ench('reaper') && e.hp < e.maxHp * E2('reaper', 0.2, 0.3)) k *= 2;
   if (ench('lastlight') && player && player.hp < player.maxHp * 0.5) k *= E2('lastlight', 1.4, 1.6);
   if (ench('frostbite') && e.boltSlowT > game.time) k *= E2('frostbite', 1.1, 1.2);
+  if (tal('execute') && e.hp < e.maxHp * 0.35) k *= 1 + 0.05 * tal('execute');
+  if (tal('bane') && (e.tier === 'rare' || e.tier === 'elite' || e.boss)) k *= 1 + 0.05 * tal('bane');
+  if (tal('ritepower') && !HIT_BOLT) k *= 1 + 0.05 * tal('ritepower');
   return k;
 }
 function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
@@ -4974,7 +5074,7 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   if (e.ward > 0) { nums.push({ x: e.x, y: e.y - e.hy * 2 - 4, v: 'WARDED', t: 0, color: PAL.holy1, small: true }); return; }
   let blocked = false;
   if (!opts.status && !(e.bound > 0) && e.def.shield && e.state !== 'stagger' && Math.sign(dirx) === -e.face && Math.abs(dirx) > Math.abs(diry) * 0.6) { dmg = Math.max(1, Math.round(dmg * 0.35)); blocked = true; crit = false; }
-  dmg = Math.round(dmg * (1 + fervorTier() * 0.1) * (game.buff && game.buff.kind === 'fervor' ? 2 : 1));
+  dmg = Math.round(dmg * (1 + fervorTier() * (0.1 + 0.02 * tal('zeal'))) * (game.buff && game.buff.kind === 'fervor' ? 2 : 1));
   const before = e.hp / e.maxHp;
   e.hp -= dmg; e.flash = 0.05;
   if (!opts.status && !blocked) e.hitT = HIT_T;
@@ -5243,7 +5343,7 @@ const LEGENDS = [
   { id: 'mantleAsh', slot: 'mantle', name: 'MANTLE OF FALLING ASH', key: 'ashRing', text: 'TAKING A HIT RELEASES A RING OF FIRE (ONCE EVERY 2 S).' },
   { id: 'pallWard', slot: 'mantle', name: 'THE PALL OF SEVEN WARDS', key: 'wardLong', text: "MARTYR'S WARD LASTS 6 S AND REFILLS YOUR DASHES." },
   { id: 'chainHands', slot: 'gloves', name: 'HANDS OF THE JAILER', key: 'longBind', text: 'CHAINS AND SHACKLES HOLD 2 S LONGER.' },
-  { id: 'stormHands', slot: 'gloves', name: "THE STORMWRIGHT'S GLOVES", key: 'bigStorm', text: 'NAIL STORM LOOSES 21 NAILS.' },
+  { id: 'stormHands', slot: 'gloves', name: "THE STORMWRIGHT'S GLOVES", key: 'bigStorm', text: 'NAIL STORM SHOOTS 21 NAILS.' },
   { id: 'girdleEmber', slot: 'girdle', name: 'CINCTURE OF EMBERS', key: 'burnVuln', text: 'BURNING FOES TAKE 30% MORE DAMAGE.' },
   { id: 'girdleTithe', slot: 'girdle', name: 'THE TITHE-BELT', key: 'tithe', text: '+60% GOLD. HEALTH ORBS ALSO GIVE 10 ZEAL.' },
   { id: 'stepFire', slot: 'greaves', name: 'SABATONS OF THE EMBER STEP', key: 'hotTrail', text: 'YOUR FIRE TRAILS BURN TWICE AS HOT.' },
@@ -5329,11 +5429,12 @@ function gearStats() {
   // The quiver on the Saint's back (none with the Hundred Nails' own quiver).
   const qv = SAVE.equip && SAVE.equip.quiver; g.quiver = qv && g.skin !== 'nails' ? `quiver${qv.wset ? '_' + qv.wset : ''}` : null;
   // Stigmata taken this run.
-  g.dmg += wound('wrath') * 15; g.crit += wound('luck') * 8; g.hp += wound('vigil') * 25; g.speed += wound('swift') * 10; g.fervor += wound('fervent') * 30; g.lok += wound('letting') * 2;
+  g.dmg += wound('wrath') * 15; g.crit += wound('luck') * 8; g.speed += wound('swift') * 10; g.fervor += wound('fervent') * 30; g.lok += wound('letting') * 2;
   // Sanctity multiplies damage, and health a little less (as monster damage climbs).
   g.power = playerSanctity() / 10;
-  // Virtues bought with Devotion.
-  g.dmg += virtue('might'); g.gold += virtue('fortune') * 2; g.crit += virtue('precision') * 0.5; g.speed += virtue('swiftness') * 0.5; g.fervor += virtue('piety'); g.hpPct = virtue('vigour');
+  // Talents (the Saint's level).
+  g.dmg += 3 * tal('might'); g.crit += tal('precise'); g.speed += 4 * tal('feet'); g.fervor += 4 * tal('piety'); g.gold += 5 * tal('fortune'); g.cdr += 2 * tal('devout'); g.dash += 5 * tal('quickdash');
+  g.hpPct = 4 * tal('vigour') + wound('vigil') * 10;
   // Four pieces of any vestment set also add damage, so 4+2 mixes stay worth wearing.
   for (const id of MAIN_SETS) if ((g.sets[id] || 0) >= 4) g.dmg += SETK.four;
   if (pas('pace')) g.speed += 12; if (pas('devout')) g.cdr += 15; if (pas('coin')) g.gold += 25;
@@ -5402,7 +5503,7 @@ function updateDrops(dt) {
       if (d.kind === 'ingr') { ingrs()[d.i]++; persist(); const E = ENCHANTS[Math.floor(d.i / 3)]; toast(`${ingName(d.i)} FOUND`, 3); game.toastColor = E.col; game.flash = 0.1; sfx('legend', { gap: 0.2 }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.6, r: 50, color: E.rgb }); }
       if (d.kind === 'chrism') { chrisms()[d.tier]++; persist(); toast(`${CHRISM[d.tier].name} FOUND`, 2.6); game.toastColor = RARITY[d.tier].color; game.flash = 0.08; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: RARITY[d.tier].rgb }); }
       if (d.kind === 'gold') { d.amount = Math.round(d.amount * (1 + G.gold / 100) * (game.run.martyr ? 2 : 1)); game.run.gold += d.amount; nums.push({ x: player.x + rand(-6, 6), y: player.y - 39, v: `+${d.amount}`, t: 0, color: PAL.gold0, small: true }); }
-      if (d.kind === 'globe') { if (G.powers.has('tithe')) addFervor(10); const h = Math.round(player.maxHp * 0.15 * (G.powers.has('globe') ? 2 : 1)); player.hp = Math.min(player.maxHp, player.hp + h); nums.push({ x: player.x, y: player.y - 55, v: `+${h}`, t: 0, color: PAL.flame1, small: false }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.3, r: 20, color: '224,32,46' }); }
+      if (d.kind === 'globe') { if (G.powers.has('tithe')) addFervor(10); const h = Math.round(player.maxHp * 0.15 * (G.powers.has('globe') ? 2 : 1) * (1 + 0.15 * tal('orbs'))); player.hp = Math.min(player.maxHp, player.hp + h); nums.push({ x: player.x, y: player.y - 55, v: `+${h}`, t: 0, color: PAL.flame1, small: false }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.3, r: 20, color: '224,32,46' }); }
       if (d.kind === 'item') { game.run.items.push(d.item); const R = RARITY[d.item.ri]; const auto = !SAVE.equip[d.item.slot]; bagAdd(d.item); if (!auto) { toast(`${d.item.name}`, 2); game.toastColor = R.color; } if (d.item.ri >= 3) { game.flash = 0.06; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: R.rgb }); } }
     }
   }
@@ -5599,7 +5700,7 @@ function updateCrossbow(dt) {
   updateFloatBow(dt);
   if (!player.target || player.fireCd > 0) return;
   const volley = player.rainT > 0 && player.penKind === 'volley';
-  player.fireCd = T.crossbow.cooldown * (G.powers.has('fire') ? 0.8 : 1) * Math.pow(0.85, wound('quick')) * (volley ? 0.33 * Math.pow(0.8, wound('riteVolley')) : 1) * (G.powers.has('heavyBolts') ? 1.25 : 1);
+  player.fireCd = T.crossbow.cooldown * (1 - 0.03 * tal('quick')) * (G.powers.has('fire') ? 0.8 : 1) * Math.pow(0.85, wound('quick')) * (volley ? 0.33 * Math.pow(0.8, wound('riteVolley')) : 1) * (G.powers.has('heavyBolts') ? 1.25 : 1);
   const t = player.target, xb = player.xb;
   player.face = t.x < player.x ? -1 : 1;
   const [sx, sy] = bowTip();
@@ -5609,11 +5710,11 @@ function updateCrossbow(dt) {
   const base = Math.atan2(ty - sy, tx - sx), n = 1 + wound('split') + (G.powers.has('twin') ? 1 : 0) + (volley ? 2 : 0);
   // Set arms: every 5th shot a great nail, every 8th binds, embers after a dash.
   const shot = player.shotN = (player.shotN || 0) + 1;
-  const great = sbw('nails') && shot % 5 === 0, bind = sbw('confessor') && shot % 8 === 0, fire = sbw('stride') && player.emberShots > 0;
+  const great = (sbw('nails') && shot % 5 === 0) || (tal('greatbolt') > 0 && shot % 10 === 0), bind = sbw('confessor') && shot % 8 === 0, fire = sbw('stride') && player.emberShots > 0;
   if (fire) player.emberShots--;
   // Height above the floor: starts at the bow, sinks to the target's chest (walls are tested at floor level).
   const z0 = player.y - sy, zv = (t.hy - z0) / (d / T.crossbow.speed);
-  for (let k = 0; k < n; k++) { const a = base + (k - (n - 1) / 2) * 0.16; bolts.push({ z: z0, zv, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce') + (sb('nails', 2) ? 1 : 0) + (great ? 99 : 0) + (G.powers.has('longShot') ? 2 : 0), hit: new Set(), crit, trail: [], great, bind, fire, life: G.powers.has('longShot') ? 1.15 : 0.8 }); }
+  for (let k = 0; k < n; k++) { const a = base + (k - (n - 1) / 2) * 0.16; bolts.push({ z: z0, zv, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce') + tal('pierce') + (sb('nails', 2) ? 1 : 0) + (great ? 99 : 0) + (G.powers.has('longShot') ? 2 : 0), hit: new Set(), crit, trail: [], great, bind, fire, life: G.powers.has('longShot') ? 1.15 : 0.8 }); }
   sfx('shoot');
   xb.recoil = 1; xb.flash = 1;
   playFx('fx', 'impact', sx, sy, 40, { small: true, skip: 2 });
@@ -5634,7 +5735,7 @@ function updateBolts(dt) {
         if (Math.abs(b.x - e.x) < hr && Math.abs(b.y - hy) < hr + 2) {
           b.hit.add(e);
           const sp = Math.hypot(b.vx, b.vy), [lo, hi] = T.crossbow.dmg;
-          const raw = Math.round(rand(lo, hi + 1) * (b.crit ? (G.powers.has('critX') ? 3 : 2) * (1 + wound('heavy') * 0.5) : 1) * (b.great ? 3 : 1) * (b.dmgK || 1));
+          const raw = Math.round(rand(lo, hi + 1) * (b.crit ? (G.powers.has('critX') ? 3 : 2) * (1 + wound('heavy') * 0.5) * (1 + 0.1 * tal('heavy')) : 1) * (b.great ? 3 : 1) * (b.dmgK || 1));
           HIT_BOLT = b; hurtEnemy(e, raw, b.crit, b.vx / sp, b.vy / sp, 60, { kind: 'bolt' }); HIT_BOLT = null;
           if (ench('frostbite')) e.boltSlowT = game.time + E2('frostbite', 2, 4);
           if (b.crit && ench('stormlink')) for (const o of nearestFoes(e.x, e.y, 4, 90).filter((q) => q !== e && !q.dead).slice(0, E2('stormlink', 1, 2))) { hurtEnemy(o, raw * E2('stormlink', 0.5, 0.75), false, 0, 0, 20, { status: true, color: PAL.holy0 }); (game.zaps = game.zaps || []).push({ x0: e.x, y0: e.y - e.hy, x1: o.x, y1: o.y - o.hy, t: 0 }); }
@@ -5752,7 +5853,7 @@ const RITES = {
     { id: 'greatpen', name: 'THE GREAT PENANCE', set: 'confessor', icon: 'greatpen', text: 'EVERY 1.5 S, FOES IN SIGHT ARE BOUND FOR 1 S AND TAKE 50% MORE DAMAGE.' },
   ],
 };
-// Passive skills: three slots, opened by Devotion. Each is always on.
+// Passive skills: three slots, opened by the Saint's level. Each is always on.
 const PASSIVES = [
   { id: 'answer', name: 'ANSWERING NAIL', cat: 0, text: 'DASHING FIRES A NAIL AT THE NEAREST FOE FOR 75% DAMAGE.' },
   { id: 'firstblood', name: 'FIRST BLOOD', cat: 0, text: '+40% DAMAGE TO FOES ABOVE 90% HEALTH.' },
@@ -5783,8 +5884,8 @@ const PASSIVES = [
 // A deed passive is open once its deed is done (the dev unlock opens all).
 const passEarned = (q) => !q.stat || lifeOf(q.stat) >= q.need || !!SAVE.censerDev;
 const PASS_CAT = [['OFFENCE', '224,32,46'], ['DEFENCE', '63,164,240'], ['UTILITY', '255,192,74']];
-const PASSIVE_AT = [0, 5, 15]; // Devotion needed for each slot
-const passOpen = (i) => (SAVE.devLvl || 0) >= PASSIVE_AT[i];
+const PASSIVE_AT = [1, 10, 25]; // Saint level for each slot
+const passOpen = (i) => saintLv() >= PASSIVE_AT[i];
 const pas = (id) => { const P = SAVE.passives || []; for (let i = 0; i < 3; i++) if (P[i] === id && passOpen(i)) return passEarned(PASSIVES.find((q) => q.id === id)); return false; };
 // Every rite by id.
 const RITE_BY = Object.fromEntries(Object.values(RITES).flat().map((r) => [r.id, r]));
@@ -5819,12 +5920,13 @@ const twist = (id) => sb(RITE_BY[id].set, 6);
 function later(sec, fn) { (game.later = game.later || []).push({ at: game.time + sec, fn }); }
 function runLater() { const L = game.later; if (!L || !L.length) return; const now = game.time; game.later = L.filter((q) => q.at > now); for (const q of L) if (q.at <= now) q.fn(); }
 
-const riteOf = (slot) => RITES[slot].find((r) => r.id === (SAVE.rites && SAVE.rites[slot])) || RITES[slot][0];
+// A rite not yet opened by the Saint's level falls back to the slot's first rite.
+const riteOf = (slot) => RITES[slot].find((r) => r.id === (SAVE.rites && SAVE.rites[slot]) && riteOpen(r.id)) || RITES[slot][0];
 const riteCd = (slot) => (riteOf(slot).cd || 6) * (1 - 0.05 * (riteRank(riteOf(slot).id) - 1)) * G.cdrK * (slot === 'm1' && riteOf('m1').id === 'water' ? Math.pow(0.85, wound('flask')) : 1) * (riteOf(slot).id === 'censer' && G.powers.has('censerPlus') ? 0.6 : 1);
 // One bolt, as the crossbow fires them (Nail Storm uses it too).
 let HIT_BOLT = null; // the bolt whose hit is being dealt (Splinter's bolts must not splinter again)
 function spawnBolt(sx, sy, a, crit, o = {}) {
-  bolts.push({ z: 18, zv: 0, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce') + (sb('nails', 2) ? 1 : 0) + (G.powers.has('longShot') ? 2 : 0), hit: new Set(), crit, trail: [], ...o });
+  bolts.push({ z: 18, zv: 0, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce') + tal('pierce') + (sb('nails', 2) ? 1 : 0) + (G.powers.has('longShot') ? 2 : 0), hit: new Set(), crit, trail: [], ...o });
 }
 function castWave(aim) {
   const t = aim ? null : bestCluster(T.flask.range), a = aim ? aim.a : t ? Math.atan2(t.y - player.y, t.x - player.x) : (player.face < 0 ? Math.PI : 0);
@@ -5946,14 +6048,16 @@ function updateAbilities(dt) {
   p.m1cd = Math.max(0, p.m1cd - dt * hk); p.m2cd = Math.max(0, p.m2cd - dt * hk);
   if (ench('phantom') && game.scene === 'wound') { p.phT = (p.phT ?? 4) - dt; if (p.phT <= 0) { p.phT = E2('phantom', 4, 3); const nb = E2('phantom', 8, 12); for (let k = 0; k < nb; k++) spawnBolt(p.x, p.y - 24, k / nb * Math.PI * 2, rng() < T.crossbow.crit + G.crit / 100, { dmgK: 0.8 }); sfx('shoot', { rate: 1.3, vol: 0.6 }); } }
   if (DEV.nocd) { p.m1cd = 0; p.m2cd = 0; }
-  const lucky = (k) => { if (G.powers.has('luckyRite') && p[k] > 0 && rng() < 0.25) { p[k] = 0; nums.push({ x: p.x, y: p.y - 60, v: 'AGAIN', t: 0, color: PAL.gold0, small: true }); } };
+  const lucky = (k) => { if (p[k] > 0) { if (tal('chant')) addFervor(4 * tal('chant')); if (tal('grace')) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01 * tal('grace')); }
+    if (p[k] > 0 && ((G.powers.has('luckyRite') && rng() < 0.25) || rng() < 0.05 * tal('again'))) { p[k] = 0; nums.push({ x: p.x, y: p.y - 60, v: 'AGAIN', t: 0, color: PAL.gold0, small: true }); } };
   const aim = input.aim; input.aim = null;
   runLater();
   if (pas('mending') && p.hp > 0) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01 * dt);
+  if (tal('mend') && p.hp > 0) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.003 * tal('mend') * dt);
   if (pas('secondwind') && p.hp > 0 && p.hp < p.maxHp * 0.3 && (p.swT || 0) <= game.time) { p.swT = game.time + 60; p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.3); rings.push({ x: p.x, y: p.y - 16, t: 0, max: 0.5, r: 50, color: '95,220,108' }); nums.push({ x: p.x, y: p.y - 60, v: 'SECOND WIND', t: 0, color: PAL.flame1, crit: true }); sfx('heal'); }
   if (input.m1) { input.m1 = false; if (p.m1cd <= 0) { castM1(aim && aim.k === 'm1' ? aim : null); if (p.m1cd > 0) { bumpRite(riteOf('m1').id); riteFlare(riteOf('m1').id); } tut.flags.m1 = true; lucky('m1cd'); } }
   if (input.m2) { input.m2 = false; if (p.m2cd <= 0) { castM2(aim && aim.k === 'm2' ? aim : null); if (p.m2cd > 0) { bumpRite(riteOf('m2').id); riteFlare(riteOf('m2').id); } if (p.m2cd > 0) tut.flags.m2 = true; lucky('m2cd'); } }
-  if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) { castPenance(aim && aim.k === 'pen' ? aim : null); tut.flags.pen = true; } }
+  if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) { castPenance(aim && aim.k === 'pen' ? aim : null); tut.flags.pen = true; if (tal('choir')) { p.m1cd = 0; p.m2cd = 0; } } }
   updateThurible(dt);
 
   for (const f of flasks) {
@@ -6347,6 +6451,7 @@ function render() {
   // Y-sorted actors and props.
   const th = thuriblePos();
   const actors = [player, ...(player.xb && player.hp > 0 ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 90)), ...falls.map((f) => ({ fall: f, y: f.y })), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, 90))];
+  for (const w of room.walls || []) for (const [tx, ty] of w.tiles) actors.push({ wall: w, tx, ty, y: ty * TILE + 15 });
   actors.sort((a, b) => a.y - b.y);
   for (const a of actors) {
     // One actor that fails to draw is skipped; the canvas state is put back.
@@ -6355,6 +6460,7 @@ function render() {
       if (a === player) drawPlayer();
       else if (a.bow) drawFloatBow();
       else if (a.th) drawThurible(thuriblePos(a.ci));
+      else if (a.wall) drawWallSeg(a);
       else if (a.kind) drawProp(a);
       else if (a.npc) drawNpc(a);
       else if (a.fall) drawFall(a.fall);
@@ -6453,8 +6559,8 @@ function render() {
   mark('glow');
   const numMode = opt('nums'), placed = [];
   for (const n of nums) {
-    if (numMode === 'off' && n.color !== PAL.blood0 && typeof n.v === 'number') continue;
-    if (numMode === 'crits' && !n.crit && n.color !== PAL.blood0 && typeof n.v === 'number') continue;
+    // OFF hides every number, damage taken too; DAMAGE TAKEN keeps only the Saint's.
+    if (typeof n.v === 'number' && (numMode === 'off' || (numMode === 'taken' && n.color !== PAL.blood0) || (numMode === 'crits' && !n.crit && n.color !== PAL.blood0))) continue;
     const rise = 16 * Math.min(1, n.t * 6) + n.t * 8, pop = Math.max(0, 1 - n.t / 0.12);
     const sc = n.crit ? (1.45 + 0.25 * (n.heat || 0)) * (1 + 0.6 * pop) : n.small ? 1 : 1 + 0.3 * pop;
     ctx.globalAlpha = n.t > 0.65 ? Math.max(0, 1 - (n.t - 0.65) / 0.2) : 1;
@@ -7286,7 +7392,7 @@ const WOUNDS = [
   { id: 'quick', name: 'QUICKENED FAITH', r: 0, max: 5, icon: 'xbow', text: () => 'THE CROSSBOW FIRES 15% FASTER.' },
   { id: 'split', name: 'SPLIT NAIL', r: 1, max: 3, icon: 'xbow', text: (n) => `FIRES ${n + 1} NAILS IN A SPREAD.` },
   { id: 'pierce', name: 'PIERCING FAITH', r: 0, max: 3, icon: 'xbow', text: () => 'NAILS PIERCE ONE MORE FOE.' },
-  { id: 'vigil', name: "VIGIL'S BLOOD", r: 0, max: 5, icon: 'globe', text: () => '+25 MAX HP, AND HEAL IT.' },
+  { id: 'vigil', name: "VIGIL'S BLOOD", r: 0, max: 5, icon: 'globe', text: () => '+10% MAX HP, AND HEAL IT.' },
   { id: 'swift', name: 'SWIFT SANDALS', r: 0, max: 3, icon: 'greaves', text: () => '+10% MOVE SPEED.' },
   { id: 'ember', name: 'EMBER CENSER', r: 0, max: 3, icon: 'thurible', text: () => 'THE THURIBLE HITS 50% HARDER.' },
   { id: 'censer2', name: 'SECOND CENSER', r: 1, max: 2, icon: 'thurible', text: () => 'ONE MORE THURIBLE SWINGS ROUND YOU.' },
@@ -7303,7 +7409,7 @@ const WOUNDS = [
   { id: 'nova', name: 'HOLY NOVA', r: 1, max: 3, icon: 'nova', text: () => 'DASHING RELEASES A RING OF LIGHT.' },
   // One for each rite; offered only while that rite is chosen.
   { id: 'riteWave', name: 'BAPTISMAL TIDE', rite: 'wave', r: 0, max: 3, icon: 'rite:wave', text: () => 'BAPTISM HITS 50% HARDER AND LEAVES ONE MORE POOL.' },
-  { id: 'riteStorm', name: 'STORMWRIGHT', rite: 'storm', r: 0, max: 3, icon: 'rite:storm', text: () => 'NAIL STORM LOOSES 4 MORE NAILS.' },
+  { id: 'riteStorm', name: 'STORMWRIGHT', rite: 'storm', r: 0, max: 3, icon: 'rite:storm', text: () => 'NAIL STORM SHOOTS 4 MORE NAILS.' },
   { id: 'riteStep', name: 'KINDLED STEP', rite: 'step', r: 0, max: 3, icon: 'rite:step', text: () => 'EMBER STEP FIRE BURNS 50% HOTTER AND 1 S LONGER.' },
   { id: 'riteShackle', name: 'IRON CIRCLE', rite: 'shackle', r: 0, max: 3, icon: 'rite:shackle', text: () => 'SHACKLE CIRCLE REACHES 20% FURTHER AND HOLDS 0.5 S LONGER.' },
   { id: 'riteCenser', name: 'SWINGING BLAZE', rite: 'censer', r: 0, max: 3, icon: 'rite:censer', text: () => 'CENSER BLAZE HITS 50% HARDER AND GIVES 5 MORE ZEAL.' },
@@ -7328,7 +7434,7 @@ const xpOf = (e) => e.tier === 'elite' ? 15 : e.tier === 'rare' ? 4 : e.type ===
 const xpNeed = (lv) => Math.max(1, Math.round(((game.run && game.run.xpBase) || 6) * Math.pow(XP_G, lv - 1)));
 function gainXp(n) {
   const R = game.run; if (!R || R.yard) return;
-  gainDevotion(n * curDiff().xp);
+  gainSaintXp(n * curDiff().xp);
   if (R.level >= MAX_LEVEL) { R.xp = 0; return; }
   R.xp += n;
   while (R.level < MAX_LEVEL && R.xp >= xpNeed(R.level)) { R.xp -= xpNeed(R.level); R.level++; R.pending++; levelBurst(); }
@@ -7713,7 +7819,7 @@ function bagItemRows(gold) {
     [(x, y) => SPR.loot.anims.emberstone && sprC('loot', 'emberstone', 0, x, y), 'EMBERSTONES', embers(), 'REFORGE A STAT AT THE FORGE. WARDENS DROP THEM.', PAL.ember1, 'forge'],
     ...CHRISM.map((K, i) => [(x, y) => sprC('loot', 'chrism', i, x, y), K.name, C[i], `+${Math.round(K.add * 100)}% TO A BURN AT THE ASHEN ALTAR.`, RARITY[i].color, 'altar']),
     [(x, y) => sprC('loot', 'coin', 0, x, y), 'GOLD', gold, 'BUY, TEMPER, BET AND REMOVE ENCHANTS.', PAL.gold1, 'stall'],
-    [(x, y) => badge('relic', x, y), 'VIRTUE POINTS', SAVE.devPts || 0, 'SPEND THEM AT THE CANONRY.', PAL.cloth0, 'canonry'],
+    [(x, y) => badge('relic', x, y), 'TALENT POINTS', talPts(), 'SPEND THEM AT THE CANONRY.', PAL.cloth0, 'canonry'],
     [(x, y) => badge('npc', x, y), "ODILE'S GIFTS", SAVE.gifts || 0, 'TALK TO SISTER ODILE IN VAEL.', PAL.cloth0, 'gift'],
   ];
 }
@@ -7955,13 +8061,14 @@ resize();
 // and gold are kept; old gear counts as Station I gear).
 if (!SAVE.stations) { SAVE.cleared = -1; SAVE.diff = 0; SAVE.stations = 1; persist(); }
 gearInit(); G = gearStats();
+migrateDevotion();
 loadAssets().then(() => {
   if (location.search.includes('run')) { tut.on = false; newRun(); }
   else if (location.search.includes('town')) enterTown();
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, virtueRow, gainDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, townX, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

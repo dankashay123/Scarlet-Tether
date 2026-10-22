@@ -8,7 +8,7 @@ const { chromium, devices } = (() => { try { return require('/opt/node-tools/nod
 const stations = (process.argv[2] || '1,3,5,8,11,15').split(',').map(Number);
 // Profiles: bare gear; a mid-run build (Wounds of a level-12 Saint); that build in the Hundred Nails with its arms;
 // mythic (that set with every stat mythic); chase (mythic plus tier II damage enchants);
-// max (chase plus an enchant on every slot, maxed Virtues, altar powers, passives, more Wounds).
+// max (chase plus an enchant on every slot, 59 talent points (Saint level 60), altar powers, passives, more Wounds).
 const profiles = (process.argv[3] || 'bare,run,set').split(',');
 (async () => {
   const b = await chromium.launch(); const p = await (await b.newContext({ ...devices['iPhone 13 landscape'] })).newPage();
@@ -24,15 +24,14 @@ const profiles = (process.argv[3] || 'bare,run,set').split(',');
       // mythic: every stat at mid mythic. chase: that plus tier II Phantom Volley, Reaper's Mark and Stormlink.
       if (prof === 'mythic' || prof === 'chase') for (const it of Object.values(HS.SAVE.equip)) it.stats = it.stats.map(([k]) => { const [a, b] = HS.qualRange(k, it.ri, 4); return [k, Math.round((a + b) / 2), 4]; });
       if (prof === 'chase' || prof === 'max') [['hood', 'phantom'], ['mantle', 'reaper'], ['gloves', 'stormlink']].forEach(([sl, id]) => { if (HS.SAVE.equip[sl]) { HS.SAVE.equip[sl].ench = id; HS.SAVE.equip[sl].enchT = 2; } });
-      // max: a fully farmed account: mythic set, tier II enchants on every slot, maxed Virtues, three altar powers, three passives.
+      // max: a fully farmed account: mythic set, tier II enchants on every slot, 59 talent points (Saint level 60), three altar powers, three passives.
       if (prof === 'max') {
         for (const it of Object.values(HS.SAVE.equip)) it.stats = it.stats.map(([k]) => { const [a, b] = HS.qualRange(k, it.ri, 4); return [k, Math.round((a + b) / 2), 4]; });
         const ids = ['phantom', 'reaper', 'stormlink', 'hunger', 'frostbite', 'bloodlet', 'boneward', 'thorns', 'lastlight', 'tithe'];
         Object.values(HS.SAVE.equip).forEach((it, i) => { it.ench = ids[i % ids.length]; it.enchT = 2; });
-        HS.SAVE.virtues = { might: 100, vigour: 100, precision: 30, piety: 50, swiftness: 20 };
         HS.SAVE.altar = { known: ['seal', 'gloves', 'bow'], sockets: { 0: 'seal', 1: 'gloves', 2: 'bow' } };
-        HS.SAVE.devLvl = 30; HS.SAVE.censerDev = true; HS.SAVE.passives = ['headsman', 'hide', 'devout'];
-      } else { HS.SAVE.passives = [null, null, null]; }
+        HS.SAVE.lvl = 60; HS.SAVE.talents = { might: 5, precise: 5, quick: 5, execute: 3, heavy: 3, pierce: 1, zeal: 3, bane: 3, greatbolt: 1, vigour: 5, warding: 5, mend: 3, feet: 3, quickdash: 3, devout: 5, ritepower: 5, piety: 1 }; HS.SAVE.censerDev = true; HS.SAVE.passives = ['headsman', 'hide', 'devout'];
+      } else { HS.SAVE.passives = [null, null, null]; HS.SAVE.talents = {}; }
       HS.game.nextDiff = st - 1; HS.game.nextStratum = 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.game.stigAt = 1e9; HS.game.run.wounds = prof === 'bare' ? {} : prof === 'max' ? { wrath: 5, quick: 3, split: 2, pierce: 2, luck: 3, heavy: 2 } : { wrath: 3, quick: 2, split: 1, pierce: 1, luck: 2, heavy: 1 }; HS.applyGear(true);
       for (const e of HS.enemies) e.dead = true;
       const P = HS.player, d = HS.spawnMonster('risen', P.x + 70, P.y, { room: HS.game.curRoom.id }); d.hp = d.maxHp = 1e12; d.state = 'move'; d.spawnDelay = 0; d.bound = 1e9; d.asleep = false;
