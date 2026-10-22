@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-22, after round 42 (build 42.1, on `master`). Read
+Last updated 2026-10-22, after round 43 (build 43.1, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -178,6 +178,21 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 43 (Vael as one square):** the owner wanted the town to look like
+  their sketch: no two streets, no stone "bridges", the cathedral at the
+  top. `makeTown` was rewritten in world pixels: the north row (the gate,
+  three houses, the cathedral in the middle, the Quiet Acre with its
+  mausoleum, tombs, trees and a fence on the right), the altar yard (the
+  Ashen Altar, braziers, Brother Cinder) and the stall row (Pell, Plush,
+  Bounty, Scrying Pool, Enchanter, Forge, the Gilded Lamb), two cobbled
+  roads crossing at the fountain (four benches, two small booths), the
+  Vigil Roll with its halo stands (south west) and the Training Yard (south
+  east), and a row of houses along the south with the road leaving between
+  them. Buildings are baked and block their whole image. Districts are
+  boxes (`DISTRICTS`, `districtAt`); the old plan squeeze (`streetX`,
+  `townX`, `TOWN_KNOTS`) is gone. Tests place the Saint with
+  `HS.CATHEDRAL_X` and site positions.
 
 - **Round 42 (Saint level and talents, rites by level, effects, town):**
   Devotion and Virtues are gone: the Saint level runs 1-60 (`lvNeed`, about

@@ -13,7 +13,7 @@ const S = process.argv[2];
     for (const sl of HS.VSETS.habit.slots.slice(0, 4)) { const it = HS.makeItem(sl, 4, 'X', undefined, 3); it.set = 'habit'; HS.SAVE.equip[sl] = it; }
     HS.SAVE.equip.quiver = HS.armsItem('font', 'quiver', 5); HS.applyGear(true); });
   log.push('look ' + await p.evaluate(() => JSON.stringify({ skin: HS.G.skin, quiver: HS.G.quiver, xskin: HS.G.xskin })));
-  await p.evaluate(() => { HS.player.x = HS.townX(2340) - 60; }); await p.waitForTimeout(500); await p.screenshot({ path: `${S}/shots/q1-habit-quiver.png` });
+  await p.evaluate(() => { HS.player.x = HS.CATHEDRAL_X - 60; }); await p.waitForTimeout(500); await p.screenshot({ path: `${S}/shots/q1-habit-quiver.png` });
   // Bounty board: fill one bounty and claim it.
   await p.evaluate(() => { const B = HS.bounties(); B.list[0].have = B.list[0].need; HS.openBoard(); }); await p.waitForTimeout(200);
   await p.screenshot({ path: `${S}/shots/q2-board.png` });

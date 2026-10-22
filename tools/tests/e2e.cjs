@@ -17,7 +17,7 @@ const S = process.argv[2];
   await p.waitForTimeout(200); await p.keyboard.press('KeyE'); await p.waitForTimeout(300);
   await p.screenshot({ path: `${S}/shots/e-vane.png` });
   await closeDialog(); console.log('after talk', JSON.stringify(await st()));
-  await p.evaluate(() => { HS.player.x = HS.townX(2340); HS.player.y = HS.room.top * 16 + 464 + 14; }); await p.waitForTimeout(200);
+  await p.evaluate(() => { HS.player.x = HS.CATHEDRAL_X; HS.player.y = HS.room.top * 16 + 14; }); await p.waitForTimeout(200);
   await p.keyboard.press('KeyE'); await p.waitForTimeout(2600);
   console.log('dungeon', JSON.stringify(await st()));
   await p.screenshot({ path: `${S}/shots/e-dungeon.png` });

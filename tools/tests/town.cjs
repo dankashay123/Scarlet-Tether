@@ -8,14 +8,15 @@ const S = process.argv[2];
   await p.goto('http://localhost:8123/?town&fps'); await p.waitForTimeout(1200);
   // Close the wake dialog.
   for (let i = 0; i < 12 && await p.evaluate(() => HS.game.state === 'dialog'); i++) { await p.mouse.click(400, 200); await p.waitForTimeout(120); } await p.evaluate(() => { HS.tut.on = false; });
-  const stops = [2340, 2030, 1690, 1365, 990, 620, 230];
-  for (const [i, x] of stops.entries()) {
-    await p.evaluate((x) => { HS.player.x = HS.townX(x); HS.player.y = HS.room.top * 16 + 90 + (x >= 1460 ? 464 : 0); }, x);
+  // One stop in each district (round 43: the town is one square).
+  const stops = await p.evaluate(() => HS.DISTRICTS.map(([, x0, y0, x1, y1]) => [Math.round((x0 + x1) / 2), Math.round(y1 - 24)]));
+  for (const [i, [x, y]] of stops.entries()) {
+    await p.evaluate(([x, y]) => { HS.player.x = x; HS.player.y = y; }, [x, y]);
     await p.waitForTimeout(1600);
     await p.screenshot({ path: `${S}/shots/v${i}.png` });
   }
-  // An alley between the streets, then the full town map.
-  await p.evaluate(() => { HS.player.x = 20 * 16; HS.player.y = HS.room.top * 16 + 300; }); await p.waitForTimeout(1200); await p.screenshot({ path: `${S}/shots/v-alley.png` });
+  // The south road, then the full town map.
+  await p.evaluate(() => { HS.player.x = HS.CATHEDRAL_X; HS.player.y = 990; }); await p.waitForTimeout(1200); await p.screenshot({ path: `${S}/shots/v-south.png` });
   await p.evaluate(() => { HS.game.state = 'map'; }); await p.waitForTimeout(300); await p.screenshot({ path: `${S}/shots/v-map.png` });
   console.log('town', await p.evaluate(() => JSON.stringify({ w: HS.room.pw, h: HS.room.ph })));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();
