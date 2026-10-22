@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-20, after round 41 (build 41.1, on `master`). Read
+Last updated 2026-10-22, after round 42 (build 42.1, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -84,9 +84,9 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   time. Ten minutes to fill the Toll and kill the Warden.
 - **Combat:** a floating auto-aiming crossbow, dash with a perfect dodge,
   the Censer, two rites and a Reckoning chosen from 18 (6 per slot, one per
-  set; `RITES`), with ranks from use (`RANK_AT`), 6-piece twists
+  set; `RITES`; 15 of them open by Saint level, `RITE_LV`), with ranks from use (`RANK_AT`), 6-piece twists
   (`TWIST`), and drag-to-aim (`AIMABLE`). Passives: three slots opened by
-  Devotion, 24 in all, 8 earned by deeds (`PASSIVES`). Zeal steps give
+  Saint level (1, 10, 25), 24 in all, 8 earned by deeds (`PASSIVES`). Zeal steps give
   +10% damage each. Executions, kill streaks and the Carnage bonus.
   Monsters are punishing: telegraphed snipes, blight pools, novas,
   barrages, homing shots, the Sentence. A death recap names what hurt most.
@@ -111,7 +111,7 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   frame = enchant * 3 + k) that Wardens of Station X and deeper drop 1% of
   the time each (`ENCH_FROM`, `ENCH_DROP`; about 0.5 ingredients a Warden,
   about 180 Warden kills for one chosen enchant).
-- **Account systems:** Devotion and Virtues (Canonry), the Ember Forge
+- **Account systems:** the Saint level (1-60) and its talent trees (Canonry), the Ember Forge
   (reforge, temper), the Ashen Altar (burn a Hallowed piece to learn its
   power; three sockets; Chrism and pity raise the odds), the Censer's 12
   deed upgrades, the Bounty Board, Penitent Cells, Odile's Gift, the
@@ -151,6 +151,12 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+0. **Round 42 follow-ups.** Ask the owner how the talent numbers and the
+   level curve feel (`lvNeed`, `TALENT_TREES`), whether rite levels
+   (`RITE_LV`) open too slowly for the Font and Confessor sets, and whether
+   the upper street wants a centrepiece other than the well. Talent icons
+   (the panel is text only) and effects for Shackle Circle, the Great
+   Penance and Martyr's Ward are still plain.
 1. **Tune enchants and reforge odds from play.** Enchant strengths are set
    by eye (`enchKill`, `passK`, `damagePlayer`); try them at Stations X to
    XV and in the Training Yard.
@@ -172,6 +178,32 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 42 (Saint level and talents, rites by level, effects, town):**
+  Devotion and Virtues are gone: the Saint level runs 1-60 (`lvNeed`, about
+  500k XP in all) and each level past 1 gives a talent point for three trees
+  at the Canonry (offence, defence, rites; 9 talents each, rows open at
+  0/5/10/15/20 points; capstones Great Bolt, Aegis, The Choir; RESET for
+  100 gold a level). Old Devotion XP converts on load (`migrateDevotion`;
+  Devotion 25 became level 17). Passive slots open at levels 1, 10 and 25.
+  Rites open by level (`RITE_LV`): Holy Water, Chain of Penance and Rain of
+  Reckoning from the start, then 3, 5, 7 ... up to the Great Penance at 45.
+  Effects: a particle kit (`vemit`, `FXR`, `flameTongue`, `lightning`) and
+  rebuilt fire trails (Ember Step, the Stride set, Emberwake), novas,
+  Judgement, Hymn of Cinders, Baptism, Iron Brand, Stormlink, Censer Blaze
+  (a new ring of fire), pools and vials, plus enchant cues (Bone Ward ready,
+  Last Light, The Hunger, Frostbite, Reaper's Mark, Bloodletting, Splinter,
+  Tithe, Ghost Step, Phantom Volley, Relentless, Thorns). About +1 ms a
+  frame in `perf.cjs`. The STONEBOUND wall is a new 3/4-view bone and stone
+  block (`stonewall` in `props.mjs`) drawn y-sorted, bursting up and sinking.
+  Bug fix: Bone Ward used Martyr's Ward's timer (`wardT`), so it also cut
+  damage 60% for its whole cooldown; it now has `bwT`. Town: every vendor
+  has a stall on the upper street (new `stall_board`, `stall_pool`,
+  `stall_ench` in `town.mjs`), the ground is plain with lamps, the well and
+  four benches; carts, booths, hay, crates and bunting are gone; the Ashen
+  Altar and Brother Cinder moved to the cathedral square. Smaller: a door
+  icon (`use`) on open sites' LOOK button, DAMAGE NUMBERS has TAKEN and a
+  full OFF, Vigil's Blood gives +10% max HP, Stormwright text says SHOOTS.
 
 - **Round 41 (steadier enchant test, the Font, a name clash):**
   `enchbal.cjs` replaced its single-target column (it swung too much) with a

@@ -103,9 +103,14 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '41.1';
+const BUILD = '42.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '42.1': ['NEW: SAINT LEVEL 1 TO 60 (IT REPLACES DEVOTION). EACH LEVEL GIVES A TALENT POINT FOR THREE TREES AT THE CANONRY: OFFENCE, DEFENCE AND RITES.',
+    'RITES OPEN AS YOU LEVEL: HOLY WATER, CHAIN OF PENANCE AND RAIN OF RECKONING FROM THE START, THE REST BY LEVEL 45.',
+    'VAEL IS TIDIER: EVERY VENDOR HAS ITS OWN STALL ON THE UPPER STREET. THE ASHEN ALTAR STANDS BY THE CATHEDRAL.',
+    'NEW LOOK FOR RITES AND ENCHANTS: REAL FIRE, BLASTS, LIGHTNING AND GLOWING SPARKS. NEW STONEBOUND WALLS.',
+    'BONE WARD NO LONGER ALSO CUTS DAMAGE FOR ITS WHOLE COOLDOWN. VIGIL\'S BLOOD GIVES 10% MAX HP. DAMAGE NUMBERS CAN BE TURNED FULLY OFF.'],
   '41.1': ['THE DROWNED FONT: POOLS DEAL X2 AT 4 PIECES AND X4 AT 6 (WAS X1.5 AND X2.5).',
     'BLOODLETTING HEALS 2% OF YOUR DAMAGE (II: 4%). THE BLOODLETTING WOUND IS NOW CALLED BLOOD MEAL.'],
   '40.1': ['STATION VII AND DEEPER ARE TOUGHER: UP TO 3X MONSTER HEALTH AND 1.7X DAMAGE AT STATION XV.',
@@ -1666,6 +1671,16 @@ function streetX(x) {
   for (let i = 1; i < K.length; i++) if (x <= K[i][0]) { const [a, b] = K[i - 1], [c, d] = K[i]; return Math.round(b + (x - a) / (c - a) * (d - b)); }
   return Math.round(x - K[K.length - 1][0] + K[K.length - 1][1]);
 }
+// The plan x that lands at real street x rx (the inverse of streetX).
+function planX(rx) {
+  const K = TOWN_KNOTS; if (rx <= 0) return rx;
+  for (let i = 1; i < K.length; i++) if (rx <= K[i][1]) { const [a, b] = K[i - 1], [c, d] = K[i]; return Math.round(a + (rx - b) / (d - b) * (c - a)); }
+  return Math.round(rx - K[K.length - 1][1] + K[K.length - 1][0]);
+}
+// Round 42: the upper street is a row of vendor stalls, placed in real
+// street pixels (centres): Pell, Plush, Bounty Board, the Gilded Lamb, the
+// Scrying Pool, the Enchanter and the Forge.
+const STALLS = { stall: 245, plush: 352, board: 458, tavern: 586, pool: 714, ench: 820, forge: 940 };
 // The street is folded into two rows (a near square, round 15): plan x past
 // TOWN_SPLIT goes on the lower street, ROW_DY further south, starting at the
 // left again. Two alleys join the streets.
@@ -1677,7 +1692,7 @@ const alleyAt = (tx) => TOWN_ALLEYS.some(([a, b]) => tx >= a && tx <= b);
 // Depth below the kerb line: the first 40 px stay, the rest is squeezed.
 const townY = (dy) => Math.round(dy <= 40 ? dy : 40 + (dy - 40) * 0.6);
 const CATHEDRAL_X = townX(2340), CATHEDRAL_DY = ROW_DY; // the Cathedral stands on the lower street
-const DISTRICTS = [[0, "THE PILGRIMS' GATE"], [429, 'THE CURIO MARKET'], [832, 'THE GILDED LAMB'], [1118, 'THE EMBER FORGE'], [1495, 'THE QUIET ACRE'], [2080, 'CATHEDRAL OF THE WOUND']].map(([x, n]) => [townX(x), n, townRow(x)]);
+const DISTRICTS = [[0, "THE PILGRIMS' GATE"], [planX(195), 'THE MARKET STALLS'], [planX(520), 'THE GILDED LAMB'], [planX(870), 'THE EMBER FORGE'], [1495, 'THE QUIET ACRE'], [2080, 'CATHEDRAL OF THE WOUND']].map(([x, n]) => [townX(x), n, townRow(x)]);
 const playerRow = () => (player && room && player.y > room.top * TILE + ROW_DY - 120 ? 1 : 0);
 const BARKS = {
   peasant: ['THEY SAY THE LAST SAINT FELL TO A STAIRCASE.', 'TWO COPPERS ON THE BELLWRIGHT.', 'MY BOY WANTS TO BE A SAINT. I HIT HIM.', 'THE DEAD GOT UP AGAIN IN THE BAKERY.', 'BLESSED BE THE DESCENT. PASS THE BREAD.'],
@@ -1728,8 +1743,8 @@ function makeTown() {
   for (const yb of [bandTop - 4, h - 4]) { rc.fillStyle = 'rgba(11,7,16,0.25)'; rc.fillRect(0, yb * TILE, w * TILE, 3 * TILE); }
   // Mud, filth and puddles that catch the lamplight (on both streets).
   const streetY = () => (rng() < 0.5 ? TOP + 1 + rng() * (rowsA - 2) : bandBot + 1 + rng() * (rowsA - 2)) * TILE;
-  for (let k = 0; k < 150; k++) { const px = rng() * w * TILE, py = streetY(); rc.fillStyle = `rgba(34,24,31,${0.25 + rng() * 0.3})`; rc.beginPath(); rc.ellipse(px, py, 4 + rng() * 10, 2 + rng() * 4, 0, 0, Math.PI * 2); rc.fill(); }
-  for (let k = 0; k < 40; k++) { const px = rng() * w * TILE, py = streetY(), rx = 6 + rng() * 14; rc.fillStyle = 'rgba(42,92,192,0.22)'; rc.beginPath(); rc.ellipse(px, py, rx, rx * 0.35, 0, 0, Math.PI * 2); rc.fill(); }
+  for (let k = 0; k < 40; k++) { const px = rng() * w * TILE, py = streetY(); rc.fillStyle = `rgba(34,24,31,${0.25 + rng() * 0.3})`; rc.beginPath(); rc.ellipse(px, py, 4 + rng() * 10, 2 + rng() * 4, 0, 0, Math.PI * 2); rc.fill(); }
+  for (let k = 0; k < 12; k++) { const px = rng() * w * TILE, py = streetY(), rx = 6 + rng() * 14; rc.fillStyle = 'rgba(42,92,192,0.22)'; rc.beginPath(); rc.ellipse(px, py, rx, rx * 0.35, 0, 0, Math.PI * 2); rc.fill(); }
   // A low wall along the foot of each street (gaps for the alleys).
   const lw = SPR.hall.anims.wall[3];
   for (let x = 0; x < w; x++) { if (!alleyAt(x)) rc.drawImage(IMG.hall, lw.x, lw.y, 16, 16, x * TILE, bandTop * TILE, 16, 16); rc.drawImage(IMG.hall, lw.x, lw.y, 16, 16, x * TILE, (h - 1) * TILE, 16, 16); }
@@ -1738,7 +1753,7 @@ function makeTown() {
   const front = (sheetName, anim, cx, i = 0, b = base) => { const f = frameOf(sheetName, anim, i); rc.drawImage(IMG[sheetName], f.x, f.y, f.w, f.h, Math.round(cx - f.w / 2), b - f.h + 2, f.w, f.h); return { l: cx - f.w / 2, r: cx + f.w / 2, f }; };
   const chimney = (x, y) => smoke.push({ x, y, t: rng() * 2 });
   const rows = [
-    { b: base, marks: [['town2', 'gate', 91], ['town', 'stall', 588], ['town2', 'plush', 692], ['town', 'tavern', 910], ['town', 'forge', 1186]], start: 182, alleys: false },
+    { b: base, marks: [['town2', 'gate', 91], ['town', 'stall', planX(STALLS.stall)], ['town2', 'plush', planX(STALLS.plush)], ['town2', 'stall_board', planX(STALLS.board)], ['town', 'tavern', planX(STALLS.tavern)], ['town2', 'stall_pool', planX(STALLS.pool)], ['town2', 'stall_ench', planX(STALLS.ench)], ['town', 'forge', planX(STALLS.forge)]], start: 182, alleys: false },
     { b: baseB, marks: [['town2', 'mausoleum', 1664], ['town2', 'cathedral', 2340]], start: ROW_B_X0 - 30, alleys: true },
   ];
   for (const R of rows) {
@@ -1757,74 +1772,30 @@ function makeTown() {
   const decal = (anim, x, y, i = 0) => { const f = frameOf('street', anim, i); rc.drawImage(IMG.street, f.x, f.y, f.w, f.h, Math.round(x - f.w / 2), Math.round(y - f.h / 2), f.w, f.h); };
   for (const [b, bottom] of [[base, bandTop * TILE], [baseB, (h - 1) * TILE]]) {
     for (let x = 20; x < w * TILE; x += 26 + rng() * 40) { decal('weeds', x, b + 10 + rng() * 6, Math.floor(rng() * 3)); decal('weeds', x + rng() * 20, bottom - 8 - rng() * 6, Math.floor(rng() * 3)); }
-    for (let k = 0; k < 35; k++) decal('leaves', rng() * w * TILE, b + 30 + rng() * (bottom - b - 40), Math.floor(rng() * 3));
+    for (let k = 0; k < 10; k++) decal('leaves', rng() * w * TILE, b + 30 + rng() * (bottom - b - 40), Math.floor(rng() * 3));
     for (let x = 140; x < w * TILE; x += 260 + rng() * 120) decal('grate', x, b + townY(150 + rng() * 40));
   }
   // Everything placed from here on is written in plan coordinates; see the
   // squeeze at the end of makeTown.
   const mark = { props: props.length, lights: lights.length, smoke: smoke.length };
-  chimney(1186 + 34, base - 104);
-  // District dressing.
+  // Round 42: the street dressing is kept plain. The upper street (placed in
+  // real pixels, after the squeeze) is a row of stalls over open paving, with
+  // lamps, a well and benches; the lower street keeps the Quiet Acre, the
+  // cathedral square (with the Ashen Altar) and the Vigil Roll.
   const lamp = (x, y) => { place('lamp', x, y, 1, { sheet: 'town', anim: 'lamp', ph: rng() * 9 }); lights.push({ x, y: Math.floor(y / TILE) * TILE - 50, r: 104, c: 'ember', a: 0.95, flick: rng() * 9 }); };
   const brazier = (x, y) => { place('brazier', x, y, 1, { ph: rng() * 9 }); lights.push({ x, y: Math.floor(y / TILE) * TILE - 24, r: 91, c: 'ember', a: 0.95, flick: rng() * 9 }); };
-  // The Penitents' Gate.
-  lights.push({ x: 91, y: base - 130, r: 65, c: 'ember', a: 0.7, flick: 2 });
-  place('gallows', 247, base + 52, 3, { ph: rng() * 3 });
-  brazier(169, base + 39); brazier(325, base + 39);
-  place('stocks', 390, base + 78, 2);
-  // The market.
-  for (const [x, y] of [[494, 325], [780, 341]]) place('cart', x, y, 3);
-  place('board', 880, base + 34, 1);
-  for (const [x, y] of [[533, 242], [554, 242], [754, 247], [645, 390]]) place(rng() < 0.5 ? 'barrel' : 'crate', x, y, 1, { sheet: 'town', anim: rng() < 0.5 ? 'barrel' : 'crate' });
-  lamp(455, base + 156); lamp(832, base + 156);
-  // The Gilded Lamb and the scrying pool.
-  place('pool', 988, base + 104, 5, { ph: 0 });
-  lights.push({ x: 988, y: base + 91, r: 117, c: 'violet', a: 0.9 });
-  place('campfire', 884, base + 182, 1, { solid: false, ph: 0 });
-  lights.push({ x: 884, y: base + 169, r: 104, c: 'ember', a: 1, flick: 3 });
-  // The forge.
-  lights.push({ x: 1186, y: base - 16, r: 130, c: 'ember', a: 1, flick: 1 });
-  place('anvil', 1222, base + 29, 1, { sheet: 'town', anim: 'anvil' });
-  // The Ashen Altar (it took the old well's place in the forge yard).
-  place('ashaltar', 1378, base + 104, 3, { ph: 0 }); lights.push({ x: 1378, y: base + 64, r: 90, c: 'ember', a: 0.9, flick: 2 });
-  brazier(1300, base + 31); lamp(1443, base + 169);
-  // The Enchanter's table, south of the forge.
-  if (SPR.town2.anims.enchanter) { place('enchanter', 1160, base + 150, 3, { ph: 0 }); lights.push({ x: 1160, y: base + 120, r: 80, c: 'violet', a: 0.9 }); }
+  const st = (anim, x, y, o = {}) => place(anim, x, y, 1, { sheet: 'street', ...o });
   // The Quiet Acre: tombs, dead trees, crows and fog.
   for (let k = 0; k < 18; k++) { const x = 1521 + rng() * 494, y = base + 39 + rng() * 195; if (Math.abs(x - 1664) < 65 && y < base + 78) continue; const t = place('tomb', x, y, 1, { frame: Math.floor(rng() * 3) }); if (rng() < 0.4) crows.push({ x: t.x, y: t.y - 14, hx: t.x, hy: t.y - 14, state: 'sit', t: rng() * 3, vx: 0, vy: 0 }); }
   for (const [x, y] of [[1560, base + 52], [1924, base + 143], [1807, base + 39]]) { place('tree', x, y, 1); crows.push({ x: x + 10, y: y - 78, hx: x + 10, hy: y - 78, state: 'sit', t: rng() * 3, vx: 0, vy: 0 }); }
   for (let x = 1508; x < 2028; x += 42) if (Math.abs(x - 1664) > 52) place('fence', x, base + 12, 2, { solid: false });
   lights.push({ x: 1664, y: base - 52, r: 65, c: 'holy', a: 0.5 });
-  // Street dressing across the whole depth of the street, so walking south
-  // never shows an empty plaza. Nothing blocks (see place()).
-  const st = (anim, x, y, o = {}) => place(anim, x, y, 1, { sheet: 'street', ...o });
-  const stall = (x, y, v) => st('stall_awning', x, y, { frame: v });
-  // Gate: a carter's yard.
-  st('hay', 120, base + 170); st('hay', 148, base + 176); st('woodpile', 210, base + 230); st('signpost', 300, base + 120); st('bucket', 170, base + 186); st('crate_stack', 60, base + 240); st('sacks', 360, base + 215);
-  // Market: booths in two rows down the street, goods and bunting between.
-  stall(520, base + 140, 0); stall(650, base + 140, 1); stall(780, base + 140, 0);
-  stall(470, base + 235, 1); stall(600, base + 235, 0); stall(730, base + 235, 1);
-  for (const x of [455, 585, 715, 845]) st('bunting_pole', x, base + 92, { frame: (x / 130 | 0) % 2 });
-  st('sacks', 548, base + 186); st('pot', 690, base + 188); st('pot', 702, base + 192); st('crate_stack', 810, base + 196); st('sacks', 420, base + 260);
-  // The Gilded Lamb: benches and planters round the scrying pool.
-  for (const [x, y] of [[900, base + 160], [1076, base + 160], [940, base + 225], [1036, base + 225]]) st('bench', x, y);
-  for (const x of [870, 1106]) st('planter', x, base + 70, { frame: 1 });
-  st('planter', 988, base + 255, { frame: 0 }); st('bunting_pole', 1110, base + 120, { frame: 1 });
-  // The forge: fuel, water and stock.
-  st('woodpile', 1250, base + 120); st('trough', 1300, base + 175); st('crate_stack', 1150, base + 200); st('sacks', 1210, base + 238); st('hay', 1420, base + 230); st('bucket', 1326, base + 196); st('woodpile', 1460, base + 150);
-  // The Quiet Acre: a wayside shrine and the odd planter of dead flowers.
-  st('shrine_small', 1590, base + 175); lights.push({ x: 1590, y: base + 140, r: 44, c: 'flame', a: 0.7, flick: 3 });
-  st('shrine_small', 1980, base + 230); lights.push({ x: 1980, y: base + 195, r: 44, c: 'flame', a: 0.7, flick: 5 });
-  st('signpost', 2050, base + 120);
-  // Cathedral square: planters, benches and pennants framing the doors.
-  for (const x of [2230, 2450]) { st('planter', x, base + 90, { frame: 1 }); st('bunting_pole', x, base + 150, { frame: 0 }); }
-  for (const [x, y] of [[2190, base + 200], [2490, base + 200]]) st('bench', x, y);
+  // Cathedral square: the fountain before the doors, a bench either side.
   place('fountain', 2340, base + 185, 1, { sheet: 'town', anim: 'fountain', ph: 0 }); lights.push({ x: 2340, y: base + 150, r: 80, c: 'holy', a: 0.5 });
-  for (const [x, y] of [[2270, base + 240], [2410, base + 240]]) st('bench', x, y);
-  for (const x of [2140, 2540]) st('shrine_small', x, base + 250);
-  for (let x = 3000; x < 3060; x += 120) { st('planter', x, base + 110 + (x % 3) * 30, { frame: (x / 120 | 0) % 2 }); st('pot', x + 50, base + 220); }
-  // The Pilgrim Road's waymark by the gate.
-  place('waymark', 140, base + 44, 1, { ph: 0 }); lights.push({ x: 150, y: base + 14, r: 46, c: 'ember', a: 0.7, flick: 5 });
+  for (const x of [2236, 2444]) st('bench', x, base + 210);
+  // The Ashen Altar, on the cathedral square's west side, between the Quiet
+  // Acre and the doors: relics are burned under the church.
+  place('ashaltar', 2130, base + 110, 3, { ph: 0 }); lights.push({ x: 2130, y: base + 70, r: 90, c: 'ember', a: 0.9, flick: 2 });
   // The cathedral steps, Martyrdom's stake and the Canonry's lectern.
   place('stake', 2244, base + 74, 2, { ph: 0 }); lights.push({ x: 2244, y: base + 64, r: 60, c: 'ember', a: 0.7, flick: 4 });
   place('lectern', 2444, base + 48, 2, { ph: 0 }); lights.push({ x: 2444, y: base + 20, r: 50, c: 'gold', a: 0.6 });
@@ -1842,21 +1813,10 @@ function makeTown() {
   const person = (sheet, id, x, y, o = {}) => { const n = { sheet, npc: id, x, y, face: o.face || 1, ph: rng() * 3, ...o }; npcs.push(n); if (o.talk) interact.push({ x: n.x, y: n.y, r: 34, label: 'TALK', icon: 'talk', who: n, use: () => { talk(o.talk); tut.flags.talked = true; } }); return n; };
   person('town', 'odile', 2288, base + 44, { talk: 'odile' });
   person('town2', 'vane', 2408, base + 39, { talk: 'vane', face: -1 });
-  person('town', 'pell', 588, base + 34, { talk: 'pell' });
-  person('town2', 'plushseller', 692, base + 34, { talk: 'plushseller' });
-  person('town', 'barkeep', 879, base + 36, { talk: 'barkeep' });
-  person('town', 'hollis', 1157, base + 31, { talk: 'hollis' });
-  person('town2', 'priest_walk', 1424, base + 108, { talk: 'cinder', face: -1, still: true });
-  person('town2', 'beggar', 156, base + 91, { talk: 'beggar', bark: 'beggar' });
-  person('town', 'crier', 650, base + 143, { talk: 'crier', walk: { x0: 468, x1: 832, speed: 18 } });
-  // Walkers along the street, each with their own lane.
+  person('town2', 'priest_walk', 2176, base + 112, { talk: 'cinder', face: -1, still: true }); // Brother Cinder keeps the altar
+  // Walkers along the lower street, each with their own lane.
   const kinds = [['peasant', 'peasant'], ['peasant2', 'peasant2'], ['guard', 'guard'], ['penitent', 'penitent'], ['priest', 'priest']];
-  for (let k = 0; k < 14; k++) { const [id, bark] = kinds[k % kinds.length]; const x0 = 78 + rng() * 2470, span = 195 + rng() * 390; person('town2', `${id}_walk`, x0 + rng() * span, base + 52 + rng() * 195, { walk: { x0, x1: Math.min(3055, x0 + span), speed: id === 'penitent' ? 10 : 14 + rng() * 10 }, bark, talk: id }); }
-  // The crowd at the scrying pool.
-  for (let k = 0; k < 6; k++) { const a = Math.PI * (0.15 + k * 0.14); person('town2', k % 2 ? 'peasant2_walk' : 'peasant_walk', 988 + Math.cos(a) * 73, base + 107 + Math.sin(a) * 34, { face: Math.cos(a) > 0 ? -1 : 1, bark: 'crowd', still: true }); }
-  // Children playing Saint and Bellwright round the altar.
-  person('town2', 'kid', 1378, base + 156, { circle: { cx: 1378, cy: base + 143, r: 44, a: 0, speed: 1.6 }, bark: 'kid' });
-  person('town2', 'kid2', 1378, base + 156, { circle: { cx: 1378, cy: base + 143, r: 44, a: 1.2, speed: 1.6 }, bark: 'kid' });
+  for (let k = 0; k < 5; k++) { const [id, bark] = kinds[k % kinds.length]; const x0 = 1520 + rng() * 1300, span = 160 + rng() * 260; person('town2', `${id}_walk`, x0 + rng() * span, base + 70 + rng() * 150, { walk: { x0, x1: Math.min(3055, x0 + span), speed: id === 'penitent' ? 10 : 14 + rng() * 10 }, bark, talk: id }); }
   interact.push({ x: CATHEDRAL_X, y: baseB + 8, r: 36, label: 'DESCEND', icon: 'descend', door: true, use: () => startDescent() });
   // Squeeze plan coordinates onto the real street.
   const px = (o, kx = 'x', ky = 'y') => { const row = townRow(o[kx]); o[kx] = townX(o[kx]); if (ky && o[ky] !== undefined) o[ky] = base + row * ROW_DY + townY(o[ky] - base); };
@@ -1871,6 +1831,29 @@ function makeTown() {
     px(n);
     if (n.circle) { px(n.circle, 'cx', 'cy'); n.circle.r *= 0.75; }
   }
+  // The upper street, in real pixels (round 42): the stalls stand along the
+  // north side; the paving in front stays open, with a lamp at every second
+  // stall on the kerb, the old well and four benches in the middle.
+  const S0 = STALLS;
+  lights.push({ x: 91, y: base - 130, r: 65, c: 'ember', a: 0.7, flick: 2 });
+  brazier(24, base + 34); brazier(166, base + 34);
+  place('waymark', 150, base + 44, 1, { ph: 0 }); lights.push({ x: 160, y: base + 14, r: 46, c: 'ember', a: 0.7, flick: 5 });
+  for (const [k, c] of [['stall', 'ember'], ['plush', 'ember'], ['board', 'ember'], ['tavern', 'ember'], ['pool', 'violet'], ['ench', 'holy']]) lights.push({ x: S0[k], y: base - 30, r: 64, c, a: 0.75, flick: rng() * 9 });
+  lights.push({ x: S0.forge, y: base - 16, r: 130, c: 'ember', a: 1, flick: 1 }); smoke.push({ x: S0.forge + 34, y: base - 104, t: 0 });
+  place('anvil', S0.forge + 38, base + 30, 1, { sheet: 'town', anim: 'anvil' });
+  for (const x of [300, 520, 655, 870, 1080]) lamp(x, base + 172);
+  place('well', S0.tavern, base + 120, 1, { ph: 0 }); lights.push({ x: S0.tavern, y: base + 96, r: 60, c: 'holy', a: 0.35 });
+  for (const [x, y] of [[S0.tavern - 62, base + 104], [S0.tavern + 62, base + 104], [S0.tavern - 62, base + 150], [S0.tavern + 62, base + 150]]) st('bench', x, y);
+  person('town', 'pell', S0.stall, base + 34, { talk: 'pell' });
+  person('town2', 'plushseller', S0.plush, base + 34, { talk: 'plushseller' });
+  person('town', 'barkeep', S0.tavern - 34, base + 36, { talk: 'barkeep' });
+  person('town', 'hollis', S0.forge - 29, base + 31, { talk: 'hollis' });
+  person('town2', 'beggar', 150, base + 96, { talk: 'beggar', bark: 'beggar' });
+  person('town', 'crier', 640, base + 140, { talk: 'crier', walk: { x0: 220, x1: 1040, speed: 18 } });
+  for (const [x, f] of [[S0.pool - 20, 1], [S0.pool + 22, -1]]) person('town2', f > 0 ? 'peasant_walk' : 'peasant2_walk', x, base + 70, { face: f, bark: 'crowd', still: true });
+  person('town2', 'kid', S0.tavern, base + 150, { circle: { cx: S0.tavern, cy: base + 130, r: 34, a: 0, speed: 1.6 }, bark: 'kid' });
+  person('town2', 'kid2', S0.tavern, base + 150, { circle: { cx: S0.tavern, cy: base + 130, r: 34, a: 2.6, speed: 1.6 }, bark: 'kid' });
+  for (let k = 0; k < 4; k++) { const [id, bark] = kinds[k % kinds.length]; const x0 = 200 + rng() * 700, span = 180 + rng() * 200; person('town2', `${id}_walk`, x0 + rng() * span, base + 70 + rng() * 90, { walk: { x0, x1: Math.min(1120, x0 + span), speed: id === 'penitent' ? 10 : 14 + rng() * 10 }, bark, talk: id }); }
   for (const it of interact) if (it.who) { it.x = it.who.x; it.y = it.who.y; }
   for (const S of SITES) interact.push({ x: S.x, y: base + S.dy, r: 26, label: siteDone(S) ? 'LOOK' : 'LOCKED', icon: siteDone(S) ? 'use' : 'lock', site: S, use: () => openSite(S) });
   // Foreground silhouettes (parallax, drawn over everything).
@@ -1888,20 +1871,20 @@ const MAP_BADGES = ['gate', 'market', 'plush', 'tavern', 'forge', 'acre', 'desce
 const badge = (name, x, y, big = false, o = {}) => sprC('ui', big ? 'badgeBig' : 'badge', MAP_BADGES.indexOf(name), x, y, o);
 const SITES = [
   { id: 'road', name: 'THE PILGRIM ROAD', badge: 'gate', x: 140, dy: 46, lift: 36, what: 'STRATUM II, THE DROWNED NAVE, OPENS AT STATION III. STRATUM III, THE OSSUARY SPIRE, AT STATION VI. EACH HAS NEW MONSTERS AND TWO WARDENS.', need: 'KILL THE WARDEN OF STATION III', prog: () => [(SAVE.cleared ?? -1) >= 2 ? 1 : 0, 1], doneText: 'CHOOSE IT AT THE CATHEDRAL DOORS.' },
-  { id: 'stall', name: "PELL'S CURIO STALL", badge: 'market', x: 588, dy: 34, what: 'BUY GEAR. NEW STOCK AFTER EACH DESCENT.', need: 'FINISH 1 DESCENT', prog: () => [SAVE.descents || 0, 1] },
-  { id: 'plush', name: 'THE PLUSH STALL', badge: 'plush', x: 692, dy: 34, what: 'ROBE COLOURS, HALOS AND TRAILS. COSMETIC.', need: 'FALL 5 TIMES', prog: () => [SAVE.deaths || 0, 5] },
-  { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', x: 880, dy: 64, what: 'THREE BOUNTIES FOR GOLD, XP AND GEAR. CLAIM ALL THREE FOR A HALLOWED PIECE.', need: 'KILL 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
-  { id: 'pool', name: 'THE SCRYING POOL', badge: 'pool', x: 1060, dy: 110, what: 'BET GOLD ON HOW FAR YOUR NEXT DESCENT GOES.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
-  { id: 'forge', name: 'THE EMBER FORGE', badge: 'forge', x: 1250, dy: 50, what: 'REFORGE: SPEND AN EMBERSTONE TO REROLL ONE STAT. TEMPER: RAISE A PIECE TO YOUR BEST STATION.', need: 'KILL THE WARDEN OF STATION II', prog: () => [(SAVE.cleared ?? -1) >= 1 ? 1 : 0, 1] },
-  { id: 'altar', name: 'THE ASHEN ALTAR', badge: 'relic', x: 1378, dy: 140, lift: 34, what: 'BURN A HALLOWED PIECE TO LEARN ITS POWER. SET ONE POWER EACH FOR VESTMENTS, ARMS AND RELICS.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
+  { id: 'stall', name: "PELL'S CURIO STALL", badge: 'market', rx: STALLS.stall, dy: 58, what: 'BUY GEAR. NEW STOCK AFTER EACH DESCENT.', need: 'FINISH 1 DESCENT', prog: () => [SAVE.descents || 0, 1] },
+  { id: 'plush', name: 'THE PLUSH STALL', badge: 'plush', rx: STALLS.plush, dy: 58, what: 'ROBE COLOURS, HALOS AND TRAILS. COSMETIC.', need: 'FALL 5 TIMES', prog: () => [SAVE.deaths || 0, 5] },
+  { id: 'board', name: 'THE BOUNTY BOARD', badge: 'board', rx: STALLS.board, dy: 46, what: 'THREE BOUNTIES FOR GOLD, XP AND GEAR. CLAIM ALL THREE FOR A HALLOWED PIECE.', need: 'KILL 10 ELITES', prog: () => [SAVE.eliteKills || 0, 10] },
+  { id: 'pool', name: 'THE SCRYING POOL', badge: 'pool', rx: STALLS.pool, dy: 46, what: 'BET GOLD ON HOW FAR YOUR NEXT DESCENT GOES.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
+  { id: 'forge', name: 'THE EMBER FORGE', badge: 'forge', rx: STALLS.forge, dy: 50, what: 'REFORGE: SPEND AN EMBERSTONE TO REROLL ONE STAT. TEMPER: RAISE A PIECE TO YOUR BEST STATION.', need: 'KILL THE WARDEN OF STATION II', prog: () => [(SAVE.cleared ?? -1) >= 1 ? 1 : 0, 1] },
+  { id: 'altar', name: 'THE ASHEN ALTAR', badge: 'relic', x: 2130, dy: 146, lift: 34, what: 'BURN A HALLOWED PIECE TO LEARN ITS POWER. SET ONE POWER EACH FOR VESTMENTS, ARMS AND RELICS.', need: 'FINISH 3 DESCENTS', prog: () => [SAVE.descents || 0, 3] },
   { id: 'cells', name: 'THE PENITENT CELLS', badge: 'lock', x: 1664, dy: 30, lift: 30, what: 'A 90 SECOND TRIAL FOR EACH VESTMENT SET. CLEAR ONE TO EARN ITS BANNER.', need: 'WEAR ALL SIX PIECES OF ANY SET', prog: () => [Math.max(0, ...MAIN_SETS.map((id) => Math.min(6, (G && G.sets[id]) || 0))), 6] },
   { id: 'martyr', name: 'MARTYRDOM', badge: 'saint', x: 2244, dy: 76, lift: 40, what: 'ONE LIFE, DOUBLE GOLD AND GEAR. DIE AND YOU LOSE EVERYTHING YOU FOUND.', need: 'FINISH 10 DESCENTS', prog: () => [SAVE.descents || 0, 10] },
   { id: 'roll', name: 'THE VIGIL ROLL', badge: 'board', x: 2730, dy: 44, lift: 46, what: 'YOUR BEST VIGILS AND EARNED HALOS.', need: 'FINISH 1 DESCENT', prog: () => [Math.min(1, SAVE.descents || 0), 1] },
   { id: 'yard', name: 'THE TRAINING YARD', badge: 'npc', x: 3030, dy: 64, lift: 24, what: 'PRACTISE ON A DUMMY AND ANY FOE. NOTHING IS GAINED OR LOST.', need: 'ALWAYS OPEN', prog: () => [1, 1] },
-  { id: 'ench', name: 'THE ENCHANTER', badge: 'ench', x: 1160, dy: 178, lift: 30, what: 'ENCHANT GEAR WITH POWERS FOUND NOWHERE ELSE. EACH NEEDS THREE RARE INGREDIENTS.', need: 'KILL THE WARDEN OF STATION V', prog: () => [(SAVE.cleared ?? -1) >= 4 ? 1 : 0, 1] },
+  { id: 'ench', name: 'THE ENCHANTER', badge: 'ench', rx: STALLS.ench, dy: 46, what: 'ENCHANT GEAR WITH POWERS FOUND NOWHERE ELSE. EACH NEEDS THREE RARE INGREDIENTS.', need: 'KILL THE WARDEN OF STATION V', prog: () => [(SAVE.cleared ?? -1) >= 4 ? 1 : 0, 1] },
   { id: 'canonry', name: 'THE CANONRY', badge: 'relic', x: 2444, dy: 50, lift: 30, what: 'SPEND TALENT POINTS IN THREE TREES: OFFENCE, DEFENCE AND RITES.', need: 'FINISH ONE DESCENT', prog: () => [Math.min(1, SAVE.descents || 0), 1] },
 ];
-for (const S of SITES) { S.row = townRow(S.x); S.x = townX(S.x); S.dy = townY(S.dy) + S.row * ROW_DY; }
+for (const S of SITES) { if (S.rx) { S.row = 0; S.x = S.rx; S.dy = townY(S.dy); continue; } S.row = townRow(S.x); S.x = townX(S.x); S.dy = townY(S.dy) + S.row * ROW_DY; }
 const siteDone = (s) => { const [a, b] = s.prog(); return a >= b; };
 function openSite(s) {
   if (s.id === 'cells' && (siteDone(s) || Object.keys(SAVE.cells || {}).length)) return openCells();

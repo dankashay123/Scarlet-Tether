@@ -29,7 +29,7 @@ const TM = {
   iron: { ramp: 'iron', spec: 0.7, bias: -0.12, min: 1 }, ironDark: { ramp: 'iron', spec: 0.5, bias: -0.3, min: 3 },
   gold: { ramp: 'gold', spec: 0.6 }, goldDim: { ramp: 'gold', spec: 0.5, bias: -0.14 }, brick: { ramp: 'brick', spec: 0.03 }, brickB: { ramp: 'brick', bias: -0.08 },
   hole: { ramp: 'ink', bias: -0.5, min: 5 }, moss: { ramp: 'moss', min: 2, bias: -0.2 }, bark: { ramp: 'shroud', spec: 0.05, min: 1 },
-  cloth: { ramp: 'cloth', max: 6 }, canvasR: { ramp: 'crimson', spec: 0.04 }, canvasV: { ramp: 'violet', spec: 0.04 }, canvasG: { ramp: 'gold', spec: 0.04 },
+  cloth: { ramp: 'cloth', max: 6 }, canvasR: { ramp: 'crimson', spec: 0.04 }, canvasV: { ramp: 'violet', spec: 0.04 }, canvasG: { ramp: 'gold', spec: 0.04 }, canvasT: { ramp: 'teal', spec: 0.04 }, canvasM: { ramp: 'moss', spec: 0.04 }, canvasI: { ramp: 'ink', spec: 0.04, min: 2 }, canvasS: { ramp: 'sand', spec: 0.04, min: 1 }, drape: { ramp: 'violet', bias: -0.15, min: 2 },
   bannerR: { ramp: 'crimson', spec: 0.05, bias: -0.05 }, bone: { ramp: 'bone', spec: 0.2 }, shroud: { ramp: 'shroud' },
   water: { ramp: 'violet', spec: 0.9, bias: 0.05 }, rose: { ramp: 'rose', spec: 0.3 }, roseDeep: { ramp: 'rose', bias: -0.2, min: 2 },
   ...Object.fromEntries(['bone', 'pot', 'cloth', 'blood', 'stone', 'teal', 'moss', 'sand', 'rot', 'shroud'].map((r) => [`halo_${r}`, { ramp: r, spec: 0.7, min: 0 }])),
@@ -1108,6 +1108,73 @@ function stall() {
   return fr;
 }
 
+// Round 42: every vendor in Vael has its own stall on the upper street, built
+// like Pell's: a planked back, two posts, a striped awning (stripes a and b),
+// a shelf and a counter. goods(S) adds the wares; after(fr) paints details.
+function vendorStall({ a, b, back = 'woodB', goods, after, shelf = true }) {
+  const W = 96, H = 84, S = new View(), G = groundY(H, 7);
+  S.add(planked(slabBox(5, 18, 91, G, -6, 4, back, 0.4), 6), 0);
+  for (const px of [6, 90]) S.add(rod([px, 10, 4], [px, G, 4], 2, 'wood'), 0);
+  const ay = 6, aw = planes([[0, -10, 12, -10 * ay + 12 * -4], [0, 1, 0, ay + 13], [0, -1, 0, -ay], [-1, 0, 0, -1], [1, 0, 0, 95], [0, 0, -1, 6]], [1, ay, -6, 95, ay + 13, 11], a);
+  S.add(wavy(aw, 0.4, 0.8), 0);
+  S.paint({ f: (x, y, z) => (y < ay + 14 && y > ay - 2 && Math.floor((x - 1) / 9) % 2 ? -1 : 1), mat: b });
+  if (shelf) S.add(slabBox(8, 38, 88, 40.5, -1, 5, 'wood', 0.4), 0);
+  S.add(planked(slabBox(7, 58, 89, G, 7, 9, 'wood', 0.5), 6), 0);
+  S.add(slabBox(5, 56, 91, 59.5, 8, 11, 'woodB', 0.5), 0);
+  goods(S);
+  const fr = R(S, W, H, { ground: H - 1 });
+  if (after) after(fr);
+  return fr;
+}
+// The Bounty Board's stall: green and sand awning, notices pinned to the back
+// (one a red WANTED with a skull), a coin pouch and a ledger on the counter.
+function bountyStall() {
+  const notes = [[16, 22, 12, 13, 'canvasS'], [32, 21, 11, 15, 'bone'], [48, 23, 14, 12, 'canvasS'], [66, 21, 12, 14, 'bone'], [22, 42, 12, 12, 'bone'], [40, 43, 15, 11, 'canvasS'], [60, 42, 13, 12, 'canvasS']];
+  return vendorStall({ a: 'canvasM', b: 'canvasS', shelf: false,
+    goods: (S) => {
+      for (const [x, y, w, h, m] of notes) S.add(slabBox(x, y, x + w, y + h, 4, 5, m, 0.2), 0);
+      S.add(slabBox(76, 36, 86, 50, 4, 5.2, 'bannerR', 0.2), 0);
+      S.add(sphere([28, 52.5, 4], 3.6, 'woodB'), 0.6); S.add(rod([28, 48.5, 4], [28, 50, 4], 1.2, 'gold'), 0.4);
+      S.add(slabBox(46, 51.5, 64, 55.5, 4, 6.5, 'bone', 0.4), 0); S.add(slabBox(54.6, 51, 55.4, 55.8, 4, 6.6, 'woodB', 0.1), 0);
+      for (const x of [72, 76]) S.add(sphere([x, 54, 5], 1.9, 'gold'), 0.4);
+    },
+    after: (fr) => {
+      for (const [x, y, w, h] of notes) for (let ly = y + 3; ly < y + h - 2; ly += 3) pline(fr, x + 2, Math.round(sy(ly, 5)), x + w - 3, Math.round(sy(ly, 5)), 'ink3');
+      for (const [x, y] of notes) { dot(fr, x + 5, Math.round(sy(y + 1, 5.2)), 'crimson1'); }
+      const wy = Math.round(sy(41, 5.4)); dot(fr, 80, wy, 'bone0'); dot(fr, 81, wy, 'bone0'); dot(fr, 82, wy, 'bone0'); dot(fr, 80, wy + 1, 'ink0'); dot(fr, 82, wy + 1, 'ink0'); dot(fr, 81, wy + 2, 'bone1');
+    } });
+}
+// The Scrying Pool's booth: violet and ink awning, a starry drape behind, a
+// stone basin of glowing water with candles either side.
+function seerStall() {
+  return vendorStall({ a: 'canvasV', b: 'canvasI', back: 'drape', shelf: false,
+    goods: (S) => {
+      S.add(ellipsoid([48, 50, 2], [15, 5, 7], 'stone'), 0.8); S.sub(ellipsoid([48, 47.5, 2], [12.5, 3.5, 5.5], 0), 0.4);
+      S.add(ellipsoid([48, 48.6, 2], [12, 1.4, 5.2], 'water'), 0);
+      for (const x of [26, 70]) { S.add(capsule([x, 55.5, 5], [x, 47, 5], 1.7, 1.6, 'bone'), 0.4); }
+    },
+    after: (fr) => {
+      for (let k = 0; k < 14; k++) { const x = 12 + Math.floor(hash(k, 3) * 72), y = Math.round(sy(22 + hash(k, 5) * 30, -6)); if (y > 0) dot(fr, x, y, k % 3 ? 'gold1' : 'holy0'); }
+      for (const x of [26, 70]) { const y = Math.round(sy(45, 5)); flame(fr, x, y, 4, 1.4, x); }
+      const wy = Math.round(sy(48.6, 5)); for (let x = 41; x < 56; x += 3) dot(fr, x, wy, 'holy0');
+    } });
+}
+// The Enchanter's stall: teal and gold awning, jars of ingredients on the
+// shelf, an open book of glowing runes and a crystal on the counter.
+function enchStall() {
+  const jars = [[16, 'glass_holy'], [27, 'glass_violet'], [38, 'glass_crimson'], [58, 'glass_holy'], [69, 'glass_flame'], [80, 'glass_violet']];
+  return vendorStall({ a: 'canvasT', b: 'canvasG',
+    goods: (S) => {
+      for (const [x, m] of jars) { S.add(capsule([x, 36.5, -1], [x, 31, -1], 3.2, 3, m), 0.6); S.add(rod([x, 27.5, -1], [x, 29.5, -1], 2.4, 'wood'), 0); }
+      S.add(slabBox(20, 53, 34, 55.5, 4, 7, 'bone', 0.3), 0); S.add(slabBox(34, 53, 48, 55.5, 4, 7, 'bone', 0.3), 0); S.add(slabBox(33.4, 52.5, 34.6, 56, 4, 7.2, 'bannerR', 0.1), 0);
+      S.add(capsule([64, 55.5, 5], [66, 46, 5], 2.6, 0.8, 'glass_violet'), 0.5); S.add(capsule([68, 55.5, 5], [70, 50, 5], 1.6, 0.6, 'glass_holy'), 0.4);
+    },
+    after: (fr) => {
+      const y = Math.round(sy(53.5, 6)); for (const x of [23, 26, 29, 37, 40, 44]) { dot(fr, x, y, 'holy0'); dot(fr, x, y - 1, 'holy1'); }
+      for (const [x] of jars) dot(fr, x - 1.5, Math.round(sy(32, -1)), 'white');
+    } });
+}
+
 // The Gilded Lamb: a broad timbered inn with a gilt sign.
 function tavern() {
   const W = 135, H = 109, S = new View(), G = H - 0.5, D = 22;
@@ -1279,6 +1346,7 @@ export default {
     stake: () => [0, 1, 2].map(stake),
     enchanter: () => [0, 1, 2].map(enchanter),
     board: () => [noticeBoard()],
+    stall_board: () => [bountyStall()], stall_pool: () => [seerStall()], stall_ench: () => [enchStall()],
     vigilroll: () => [0, 1, 2].map(vigilRoll),
     halostand: () => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(haloStand),
     stocks: () => [stocks()],
