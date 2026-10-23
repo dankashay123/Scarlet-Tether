@@ -18,6 +18,7 @@ const S = process.argv[2];
   // The south road, then the full town map.
   await p.evaluate(() => { HS.player.x = HS.CATHEDRAL_X; HS.player.y = 990; }); await p.waitForTimeout(1200); await p.screenshot({ path: `${S}/shots/v-south.png` });
   await p.evaluate(() => { HS.game.state = 'map'; }); await p.waitForTimeout(300); await p.screenshot({ path: `${S}/shots/v-map.png` });
+  console.log('overlaps', await p.evaluate(() => JSON.stringify(HS.townOverlaps())));
   console.log('town', await p.evaluate(() => JSON.stringify({ w: HS.room.pw, h: HS.room.ph })));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();
 })();

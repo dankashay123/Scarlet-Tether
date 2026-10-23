@@ -151,7 +151,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-0. **Round 42 follow-ups.** Ask the owner how the talent numbers and the
+0. **Town from the owner's own layout.** If the owner sends a `VAEL1:` code
+   from the designer, build `makeTown` from it (keep buildings as props with
+   base footprints and run `HS.townOverlaps()`).
+1. **Round 42 follow-ups.** Ask the owner how the talent numbers and the
    level curve feel (`lvNeed`, `TALENT_TREES`), whether rite levels
    (`RITE_LV`) open too slowly for the Font and Confessor sets, and whether
    the upper street wants a centrepiece other than the well. Talent icons
@@ -178,6 +181,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 46 (town tidy-up):** the owner liked round 44's town but people
+  clipped over roofs. Buildings below the north row are now props drawn in
+  depth order with only their base solid, so the Saint and townsfolk pass
+  behind them (the Saint shows as a faint ghost there). The north row (gate,
+  two houses, cathedral, dead trees, mausoleum) stays baked since nothing
+  walks behind it. Walkers follow `TOWN_WALKS` (the roads, plus a loop round
+  the square) instead of pacing left and right through houses. The square is
+  bigger and the Scrying Pool's booth sits on it beside the tavern; homes are
+  fewer and spaced along the lanes; leafy oaks, bushes, flower beds and two
+  hedges by the road into the square; tidier lamps; the candles at the
+  cathedral doors are gone (braziers, stake and lectern stay). The town map
+  and minimap read `room.mapCanvas` (the ground plus buildings and oaks).
+  `HS.townOverlaps()` lists props whose images overlap a building, sites
+  hidden behind one and walks that pass through one; `town.cjs` prints it
+  (`overlaps []`).
 
 - **Round 45 (layout designer, dev only):** with `?dev`, the pause screen
   has a LAYOUT button that opens a town editor on a blank 90 x 68 tile map:
