@@ -103,9 +103,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '46.1';
+const BUILD = '46.2';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '46.2': ['THE RITES PANEL LISTS EACH SLOT\'S RITES BY THE SAINT LEVEL THAT OPENS THEM, LOWEST FIRST.'],
   '46.1': ['VAEL TIDIED: PEOPLE WALK THE ROADS AND PASS BEHIND BUILDINGS, NO BUILDING COVERS A STALL, A BIGGER MARKET SQUARE WITH THE SCRYING POOL ON IT, FEWER HOUSES, TREES, BUSHES, FLOWERS AND HEDGES.'],
   '45.1': ['NEW IN DEV MODE: A TOWN LAYOUT DESIGNER (PAUSE, LAYOUT). NEW TREES, BUSHES, FLOWER BEDS, HEDGES AND TOWN WALL PIECES.'],
   '44.1': ['VAEL IS A WALLED TOWN: THE CATHEDRAL ABOVE A MARKET SQUARE, EVERY VENDOR FACING THE SQUARE, LANES TO THE GATE, THE HOMES, THE FORGE, THE QUIET ACRE AND THE TRAINING YARD.'],
@@ -5933,6 +5934,8 @@ const RITES = {
     { id: 'greatpen', name: 'THE GREAT PENANCE', set: 'confessor', icon: 'greatpen', text: 'EVERY 1.5 S, FOES IN SIGHT ARE BOUND FOR 1 S AND TAKE 50% MORE DAMAGE.' },
   ],
 };
+// Each slot lists its rites by the Saint level that opens them (round 46.2); the first stays the level 1 rite.
+for (const k of Object.keys(RITES)) RITES[k].sort((a, b) => (RITE_LV[a.id] || 1) - (RITE_LV[b.id] || 1));
 // Passive skills: three slots, opened by the Saint's level. Each is always on.
 const PASSIVES = [
   { id: 'answer', name: 'ANSWERING NAIL', cat: 0, text: 'DASHING FIRES A NAIL AT THE NEAREST FOE FOR 75% DAMAGE.' },

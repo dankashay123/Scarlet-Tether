@@ -182,6 +182,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 46.2:** each slot's rites in the Rites panel are listed by the
+  Saint level that opens them (`RITES[slot]` is sorted by `RITE_LV` once at
+  load; the first entry stays the level 1 rite, which `riteOf` falls back to).
+
 - **Round 46 (town tidy-up):** the owner liked round 44's town but people
   clipped over roofs. Buildings below the north row are now props drawn in
   depth order with only their base solid, so the Saint and townsfolk pass
