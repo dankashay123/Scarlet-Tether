@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-22, after round 43 (build 43.1, on `master`). Read
+Last updated 2026-10-23, after round 44 (build 44.1, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -178,6 +178,24 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 44 (a walled hub town):** the owner asked for Vael to look like
+  a real town, laid out like Diablo III's and Torchlight's hubs. Principles
+  used: a wall round the town with gates; one hub (the market square below
+  the cathedral, the descent) with every vendor facing it a few seconds'
+  walk away; winding dirt lanes to the districts rather than a grid; grass
+  and dirt ground with cobbles only on the square and flagstones before the
+  cathedral; props only where they belong. Layout: the north row (the
+  Pilgrims' Gate, two houses, the cathedral, the Quiet Acre with its
+  mausoleum and trees) in front of a crenellated wall; the Ashen Altar's
+  yard beside the cathedral; Pell's and the Enchanter at the square's north
+  corners, the Gilded Lamb and the Scrying Pool booth on the west, the
+  Forge with its yard on the east, Plush and the Bounty Board by the south
+  road; homes and a well along the west lanes; the Vigil Roll and its halo
+  stands by the Acre's gate; a fenced Training Yard south east; small
+  houses along the south wall with a gate where the road leaves. The ground
+  is painted per 2 px cell (value noise grass, dirt within each road
+  polyline's width, yards) and chunked like the rest.
 
 - **Round 43 (Vael as one square):** the owner wanted the town to look like
   their sketch: no two streets, no stone "bridges", the cathedral at the
