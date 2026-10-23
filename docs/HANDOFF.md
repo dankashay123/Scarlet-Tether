@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-23, after round 45 (build 45.1, on `master`). Read
+Last updated 2026-10-23, after round 46.2 (build 46.2, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -51,14 +51,23 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   the bottom. Crits are gold, orange or crimson by size; the Zeal bar
   flashes at each step; big hits shake the HP bar; a red edge pulses below
   25% health. TEXT SIZE setting (small, normal, large).
-- **Vael, the town:** two short streets (`TOWN_SPLIT`, `ROW_DY`) with
-  townsfolk and twelve sites: Pell's curio stall, the Plush stall, the
-  Bounty Board, the Scrying Pool (wagers), the Ember Forge, the Ashen
-  Altar, the Penitent Cells, Martyrdom (the vow), the Vigil Roll (ten
-  halo stands), the Canonry, the Training Yard (end of the lower street),
-  and the Pilgrim Road (explains the strata).
+- **Vael, the town:** a walled hub town (`makeTown`, 90 x 68 tiles). The
+  cathedral (the descent) stands at the top above a paved close, with
+  Martyrdom's stake and the Canonry's lectern by its doors and the Ashen
+  Altar's yard to its left. Below it is the cobbled market square
+  (`TOWN_SQ`, a fountain, benches, flower beds). Pell's stall, the
+  Enchanter, the tavern, the Scrying Pool, the Plush stall and the Bounty
+  Board all face the square (`STALLS`, `STALL_Y`). Dirt lanes
+  (`TOWN_ROADS`) lead to the Pilgrims' Gate and the homes (west), the
+  Ember Forge's yard (east), the Quiet Acre with the Penitent Cells and the
+  Vigil Roll (north east), the Training Yard (south east) and the south
+  gate. Buildings below the north row are depth-sorted props with solid
+  bases, so people pass behind them (the Saint shows as a faint ghost
+  there). Walkers keep to `TOWN_WALKS`. `HS.townOverlaps()` must stay
+  empty. With `?dev`, the pause screen's LAYOUT button opens the town
+  designer (round 45).
 - **The descent:** the Descent panel at the cathedral doors picks a Station
-  (I-XV, `DIFF`), a stratum, omens, and holds the Bleeding Vigil. Three
+  (I-XXX, `DIFF`), a stratum, omens, and holds the Bleeding Vigil. Three
   strata: the Undercroft, the Drowned Nave (opens after Station III), the
   Ossuary Spire (after Station VI; `STRATA`, `STRATA_NEED`). Maps are
   random 11-12 room layouts packed with 500+ monsters (`populate()`,
@@ -84,7 +93,7 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   time. Ten minutes to fill the Toll and kill the Warden.
 - **Combat:** a floating auto-aiming crossbow, dash with a perfect dodge,
   the Censer, two rites and a Reckoning chosen from 18 (6 per slot, one per
-  set; `RITES`; 15 of them open by Saint level, `RITE_LV`), with ranks from use (`RANK_AT`), 6-piece twists
+  set; `RITES`; 15 of them open by Saint level, `RITE_LV`, and each slot lists them lowest level first), with ranks from use (`RANK_AT`), 6-piece twists
   (`TWIST`), and drag-to-aim (`AIMABLE`). Passives: three slots opened by
   Saint level (1, 10, 25), 24 in all, 8 earned by deeds (`PASSIVES`). Zeal steps give
   +10% damage each. Executions, kill streaks and the Carnage bonus.
@@ -154,30 +163,35 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 0. **Town from the owner's own layout.** If the owner sends a `VAEL1:` code
    from the designer, build `makeTown` from it (keep buildings as props with
    base footprints and run `HS.townOverlaps()`).
-1. **Round 42 follow-ups.** Ask the owner how the talent numbers and the
-   level curve feel (`lvNeed`, `TALENT_TREES`), whether rite levels
-   (`RITE_LV`) open too slowly for the Font and Confessor sets, and whether
-   the upper street wants a centrepiece other than the well. Talent icons
-   (the panel is text only) and effects for Shackle Circle, the Great
+1. **Town polish (round 46 follow-ups).** The hedges and flower beds read
+   flat in play (a taller hedge, brighter petals); the lone Acre fence
+   piece by the Enchanter could go.
+2. **Rites panel.** Sort the PASSIVES tab by opening level too, and show
+   "NEXT: <rite> AT LEVEL N" under the list. The 31-45 level gap (Great
+   Font 31, Iron Brand 35, Great Penance 45) may feel empty.
+3. **Round 42 follow-ups.** Ask the owner how the talent numbers and the
+   level curve feel (`lvNeed`, `TALENT_TREES`) and whether rite levels
+   (`RITE_LV`) open too slowly for the Font and Confessor sets. Talent icons
+   (the Canonry is text only) and effects for Shackle Circle, the Great
    Penance and Martyr's Ward are still plain.
-1. **Tune enchants and reforge odds from play.** Enchant strengths are set
+4. **Tune enchants and reforge odds from play.** Enchant strengths are set
    by eye (`enchKill`, `passK`, `damagePlayer`); try them at Stations X to
    XV and in the Training Yard.
-2. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
+5. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
    attack; ask the owner how the fights at Stations VII to XV feel.
-2. **Ossuary chapels.** Chapels in Stratum III still have the red carpet
+6. **Ossuary chapels.** Chapels in Stratum III still have the red carpet
    and warm floor; give them a bone-grey runner or a different floor.
-3. **Yard extras.** A list of past records per build on the yard panel, a
+7. **Yard extras.** A list of past records per build on the yard panel, a
    reset button, and a 30 s timed test.
-4. **Stratum III ambience.** Dripping ash, a bone rattle when walking past
+8. **Stratum III ambience.** Dripping ash, a bone rattle when walking past
    heaps, green candle flames on the cairn.
-5. **The pool's crowd.** Let the crowd at the Scrying Pool cheer or jeer
+9. **The pool's crowd.** Let the crowd at the Scrying Pool cheer or jeer
    when a wager settles in Vael, and show past wagers (won and lost).
-6. **A second playable saint.** A short-range melee saint with its own
+10. **A second playable saint.** A short-range melee saint with its own
    rites, to reuse the sets and Stations.
-7. **Art pass on small icons.** Review every sheet with `CHUNKY=2`: the
+11. **Art pass on small icons.** Review every sheet with `CHUNKY=2`: the
    Chrism vial on the ground, weed mats.
-8. **Tune from play.** Wager odds (`WAGER_MARKS`, `wagerOdds`), the
+12. **Tune from play.** Wager odds (`WAGER_MARKS`, `wagerOdds`), the
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
