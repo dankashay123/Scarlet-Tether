@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-23, after round 44 (build 44.1, on `master`). Read
+Last updated 2026-10-23, after round 45 (build 45.1, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -178,6 +178,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 45 (layout designer, dev only):** with `?dev`, the pause screen
+  has a LAYOUT button that opens a town editor on a blank 90 x 68 tile map:
+  paint ground (grass, dark grass, dirt, earth, cobble, flagstone, sand,
+  water), place any town asset from six tabs (buildings, stalls, props, holy
+  things, nature, ground), move, change variant, flip, copy and delete,
+  undo, snap to 16/8/1 px, grid, zoom by buttons, pinch or wheel. Work
+  saves on its own. MENU: PICTURE downloads a PNG of the whole map,
+  EXPORT shows a code (`VAEL1:`, format in CLAUDE.md) to send to Claude,
+  IMPORT loads one, FILL MAP, CLEAR. New assets for it (and the town):
+  leafy trees, bushes, flower beds, a hedge, a town wall section and a wall
+  tower (`town.mjs`). Test: `tools/tests/designer.cjs`.
 
 - **Round 44 (a walled hub town):** the owner asked for Vael to look like
   a real town, laid out like Diablo III's and Torchlight's hubs. Principles

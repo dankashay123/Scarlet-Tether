@@ -29,7 +29,7 @@ const TM = {
   iron: { ramp: 'iron', spec: 0.7, bias: -0.12, min: 1 }, ironDark: { ramp: 'iron', spec: 0.5, bias: -0.3, min: 3 },
   gold: { ramp: 'gold', spec: 0.6 }, goldDim: { ramp: 'gold', spec: 0.5, bias: -0.14 }, brick: { ramp: 'brick', spec: 0.03 }, brickB: { ramp: 'brick', bias: -0.08 },
   hole: { ramp: 'ink', bias: -0.5, min: 5 }, moss: { ramp: 'moss', min: 2, bias: -0.2 }, bark: { ramp: 'shroud', spec: 0.05, min: 1 },
-  cloth: { ramp: 'cloth', max: 6 }, canvasR: { ramp: 'crimson', spec: 0.04 }, canvasV: { ramp: 'violet', spec: 0.04 }, canvasG: { ramp: 'gold', spec: 0.04 }, canvasT: { ramp: 'teal', spec: 0.04 }, canvasM: { ramp: 'moss', spec: 0.04 }, canvasI: { ramp: 'ink', spec: 0.04, min: 2 }, canvasS: { ramp: 'sand', spec: 0.04, min: 1 }, drape: { ramp: 'violet', bias: -0.15, min: 2 },
+  cloth: { ramp: 'cloth', max: 6 }, canvasR: { ramp: 'crimson', spec: 0.04 }, canvasV: { ramp: 'violet', spec: 0.04 }, canvasG: { ramp: 'gold', spec: 0.04 }, canvasT: { ramp: 'teal', spec: 0.04 }, canvasM: { ramp: 'moss', spec: 0.04 }, canvasI: { ramp: 'ink', spec: 0.04, min: 2 }, canvasS: { ramp: 'sand', spec: 0.04, min: 1 }, drape: { ramp: 'violet', bias: -0.15, min: 2 }, leaf: { ramp: 'moss', spec: 0.1, min: 1 }, leafDark: { ramp: 'moss', bias: -0.18, min: 2 }, petalR: { ramp: 'crimson', spec: 0.2 }, petalG: { ramp: 'gold', spec: 0.2 }, petalV: { ramp: 'violet', spec: 0.2 }, petalH: { ramp: 'holy', spec: 0.2 }, soil: { ramp: 'shroud', bias: -0.1, min: 2 },
   bannerR: { ramp: 'crimson', spec: 0.05, bias: -0.05 }, bone: { ramp: 'bone', spec: 0.2 }, shroud: { ramp: 'shroud' },
   water: { ramp: 'violet', spec: 0.9, bias: 0.05 }, rose: { ramp: 'rose', spec: 0.3 }, roseDeep: { ramp: 'rose', bias: -0.2, min: 2 },
   ...Object.fromEntries(['bone', 'pot', 'cloth', 'blood', 'stone', 'teal', 'moss', 'sand', 'rot', 'shroud'].map((r) => [`halo_${r}`, { ramp: r, spec: 0.7, min: 0 }])),
@@ -749,6 +749,55 @@ function deadTree() {
   return fr;
 }
 
+// Round 45 (the layout designer): green nature and the town wall.
+// A leafy tree: a trunk and roots under a crown of lumpy leaf clumps.
+function oakTree(v) {
+  const W = 72, H = 100, S = new View(), G = groundY(H, 5), cx = 36;
+  for (const [dx, dz] of [[-8, 2], [7, 3], [1, -4]]) S.add(capsule([cx, G - 6, 0], [cx + dx, G, dz], 3, 1.1, 'bark'), 1.4);
+  S.add(capsule([cx, G, 0], [cx - 1 + v * 2, G - 40, 0], 5, 3.6, 'bark'), 2);
+  const clumps = v ? [[0, -62, 0, 19], [-16, -52, 3, 13], [16, -54, 2, 14], [-6, -76, -2, 13], [10, -72, 1, 12]] : [[0, -60, 0, 21], [-17, -50, 2, 14], [17, -48, 3, 13], [2, -78, -1, 14]];
+  clumps.forEach(([dx, dy, dz, r], k) => S.add(bumpy2(ellipsoid([cx + dx, G + dy, dz], [r, r * 0.86, r * 0.8], k % 2 ? 'leafDark' : 'leaf'), k + v * 7), 4));
+  return R(S, W, H, { ground: H - 1 });
+}
+// A round bush.
+function bush(v) {
+  const W = 34, H = 26, S = new View(), G = groundY(H, 4), cx = 17;
+  for (const [dx, dy, r] of v ? [[0, -9, 10], [-8, -6, 7], [8, -7, 7]] : [[0, -8, 9], [-7, -5, 6], [7, -5, 7], [2, -13, 6]]) S.add(bumpy2(ellipsoid([cx + dx, G + dy, 0], [r, r * 0.8, r * 0.8], 'leaf'), dx + v), 3);
+  const fr = R(S, W, H, { ground: H - 1 });
+  return fr;
+}
+// A flower bed in a low stone border; v picks the colours.
+function flowerBed(v) {
+  const W = 46, H = 26, S = new View(), G = groundY(H, 6), cols = [['petalR', 'petalG'], ['petalV', 'petalH']][v];
+  S.add(slabBox(3, G - 6, 43, G, 6, 12, 'stoneB', 0.6), 0);
+  S.sub(slabBox(6, G - 7, 40, G - 3, 4, 8, 'soil', 0.4), 0.3);
+  S.add(slabBox(6, G - 5.4, 40, G - 3, 4, 8, 'soil', 0.4), 0);
+  for (let k = 0; k < 9; k++) { const x = 9 + (k % 5) * 7 + (k > 4 ? 3.5 : 0), z = k > 4 ? -1 : 2.5; S.add(capsule([x, G - 5, z], [x, G - 8, z], 0.8, 0.6, 'leafDark'), 0.3); S.add(sphere([x, G - 9.5, z], 2.2, cols[k % 2]), 0.6); }
+  return R(S, W, H, { ground: H - 1 });
+}
+// A clipped hedge, one tile deep, 48 px long.
+function hedge() {
+  const W = 50, H = 30, S = new View(), G = groundY(H, 6);
+  S.add(bumpy2(box([25, G - 9, 0], [22, 9, 6], 3, 'leaf'), 5), 0);
+  return R(S, W, H, { ground: H - 1 });
+}
+// A length of the town wall seen from inside: ashlar with a walk and merlons.
+function townWall() {
+  const W = 50, H = 62, S = new View(), G = groundY(H, 6);
+  S.add(ashlar(slabBox(1, 14, 49, G, 6, 12, 'stone'), { ch: 6, bw: 12, seed: 4 }), 0);
+  for (const x of [5, 25, 45]) S.add(slabBox(x - 5, 4, x + 5, 15, 2, 8, 'stoneC'), 0);
+  return R(S, W, H, { ground: H - 1 });
+}
+// A round wall tower with a conical slate roof.
+function wallTower() {
+  const W = 56, H = 110, S = new View(), G = groundY(H, 8), cx = 28;
+  S.add(ashlar({ ...capsule([cx, G, 0], [cx, G - 56, 0], 20, 20, 'stone'), bb: [cx - 21, G - 77, -21, cx + 21, G + 21, 21] }, { ch: 6, bw: 10, seed: 6 }), 0);
+  S.add(pyramid(cx, G - 96, 0, 24, G - 56, 'slate'), 0);
+  S.sub(box([cx, G - 30, 19], [2.4, 6, 3], 1, 'hole'), 0.4);
+  const fr = R(S, W, H, { ground: H - 1 });
+  return fr;
+}
+
 function fence() {
   const W = 42, H = 34, S = new View(), G = groundY(H, 1);
   for (const y of [10, 22]) S.add(rod([0, y, 0], [42, y, 0], 0.9, 'iron'), 0);
@@ -1338,6 +1387,7 @@ export default {
     campfire: () => [0, 1, 2].map(campfire),
     tomb: () => [0, 1, 2].map(tombstone),
     tree: () => [deadTree()],
+    oak: () => [0, 1].map(oakTree), bush: () => [0, 1].map(bush), flowers: () => [0, 1].map(flowerBed), hedge: () => [hedge()], townwall: () => [townWall()], tower: () => [wallTower()],
     fence: () => [fence()],
     well: () => [well()],
     ashaltar: () => [0, 1, 2].map(ashAltar),

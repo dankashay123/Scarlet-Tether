@@ -103,9 +103,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '44.1';
+const BUILD = '45.1';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '45.1': ['NEW IN DEV MODE: A TOWN LAYOUT DESIGNER (PAUSE, LAYOUT). NEW TREES, BUSHES, FLOWER BEDS, HEDGES AND TOWN WALL PIECES.'],
   '44.1': ['VAEL IS A WALLED TOWN: THE CATHEDRAL ABOVE A MARKET SQUARE, EVERY VENDOR FACING THE SQUARE, LANES TO THE GATE, THE HOMES, THE FORGE, THE QUIET ACRE AND THE TRAINING YARD.'],
   '43.1': ['VAEL IS ONE SQUARE: THE CATHEDRAL AT THE TOP, THE GATE AND HOUSES TO ITS LEFT, THE QUIET ACRE TO ITS RIGHT, THE STALLS BELOW, THE FOUNTAIN WHERE THE ROADS CROSS.'],
   '42.1': ['NEW: SAINT LEVEL 1 TO 60 (IT REPLACES DEVOTION). EACH LEVEL GIVES A TALENT POINT FOR THREE TREES AT THE CANONRY: OFFENCE, DEFENCE AND RITES.',
@@ -560,6 +561,7 @@ const hitBtn = (b, x, y, pad = 6) => b && Math.hypot(x - b.x, y - b.y) <= b.r + 
 
 function pointerDown(id, cx, cy) {
   const [x, y] = toLocal(cx, cy);
+  if (game.state === 'designer' && DES) { if (game.ask) onTap(x, y); else desDown(id, x, y); return; }
   if (['play', 'title', 'pause'].includes(game.state) && hitBtn(HUD.mute, x, y)) { AUDIO.unlock(); AUDIO.setMuted(!AUDIO.muted); sfx('tap'); return; }
   if (onTap(x, y)) return;
   if (game.state !== 'play') return;
@@ -586,6 +588,7 @@ function pointerDown(id, cx, cy) {
   player.lock = best && player.lock !== best ? best : null;
 }
 function pointerMove(id, cx, cy) {
+  if (game.state === 'designer' && DES) { const [x, y] = toLocal(cx, cy); desMove(id, x, y); return; }
   const A = game.aim;
   if (A && id === A.id) { const [x, y] = toLocal(cx, cy); A.dx = x - A.bx; A.dy = y - A.by; A.on = Math.hypot(A.dx, A.dy) > AIM_DEAD; if (A.on) A.was = true; return; }
   if (id !== stick.id) return;
@@ -595,6 +598,7 @@ function pointerMove(id, cx, cy) {
   if (d > max) { stick.ox = x - (x - stick.ox) / d * max; stick.oy = y - (y - stick.oy) / d * max; } // the base follows the thumb
 }
 function pointerUp(id) {
+  if (game.state === 'designer' && DES) { desUp(id); return; }
   const A = game.aim;
   if (A && id === A.id) { game.aim = null; if (A.on) { input[A.k] = true; input.aim = aimOf(A); } else if (!A.was) input[A.k] = true; return; } // dragged back to the button: cancel
   if (id === stick.id) { stick.id = null; stick.active = false; }
@@ -609,10 +613,12 @@ screen.addEventListener('touchmove', (e) => { e.preventDefault(); for (const t o
 screen.addEventListener('touchend', (e) => { e.preventDefault(); for (const t of e.changedTouches) pointerUp(t.identifier); }, { passive: false });
 screen.addEventListener('touchcancel', (e) => { for (const t of e.changedTouches) pointerUp(t.identifier); });
 screen.addEventListener('mousedown', (e) => pointerDown('m', e.clientX, e.clientY));
-addEventListener('mousemove', (e) => { if (stick.id === 'm' || (game.aim && game.aim.id === 'm')) pointerMove('m', e.clientX, e.clientY); });
+addEventListener('mousemove', (e) => { if (stick.id === 'm' || (game.aim && game.aim.id === 'm') || game.state === 'designer') pointerMove('m', e.clientX, e.clientY); });
+screen.addEventListener('wheel', (e) => { if (game.state !== 'designer' || !DES) return; e.preventDefault(); const [x, y] = toLocal(e.clientX, e.clientY); desZoom(e.deltaY < 0 ? 1.25 : 0.8, x, y); }, { passive: false });
 addEventListener('mouseup', () => pointerUp('m'));
 addEventListener('keydown', (e) => {
   keys.add(e.code);
+  if (game.state === 'designer' && DES) { if (e.code === 'Escape') desMenuDo(5); if ((e.code === 'Delete' || e.code === 'Backspace') && DES.sel) desSelDo(3); if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey)) desUndo(); return; }
   if (e.code === 'Backquote') { if (game.state === 'dev') closeDev(); else if (game.state === 'play' || game.state === 'pause') openDev(); return; }
   if (game.state === 'dev') { if (e.code === 'Escape') closeDev(); return; }
   if (game.state === 'yard') { if (e.code === 'Escape') game.state = 'play'; return; }
@@ -3650,6 +3656,7 @@ const DEV_HELP = ['GOD MODE, LEVELS, WOUNDS, SAINT LEVEL AND RITE RANKS.', 'MAKE
 const devOn = () => !!SAVE.dev;
 const showFps = () => DEV.fps || location.search.includes('fps');
 const devBtn = () => ({ x: 10, y: H - 30, w: 60, h: 20 });
+const layoutBtn = () => ({ x: 74, y: H - 30, w: 70, h: 20 }); // the layout designer (dev only)
 function openDev() { SAVE.dev = true; persist(); game.devBack = game.state === 'dev' ? 'play' : game.state; game.state = 'dev'; sfx('tap'); }
 function closeDev() { game.state = game.devBack && game.devBack !== 'dev' ? game.devBack : 'play'; sfx('tap'); }
 const cyc = (i, n, d) => (i + d + n) % n;
@@ -6458,6 +6465,7 @@ function render() {
   mark(); LOWFX = opt('fx') === 'low';
   { const k = TEXT_SIZES[opt('text')] || 1; if (k !== TEXT_K) { TEXT_K = k; TEXT_W.clear(); } }
   ctx.fillStyle = '#0b0710'; ctx.fillRect(0, 0, W, H);
+  if (game.state === 'designer' && DES) { renderDesigner(); if (game.ask) { layerBreak(); renderAsk(); } if (game.toast) text(game.toast.msg, W / 2, Math.round(H * 0.4), game.toastColor || PAL.gold1, { align: 'center' }); blit(); flushText(); return; }
   if (game.state === 'title' || !player) { renderTitle(); blit(); flushText(); return; }
   const shk = opt('shake') ? game.shake : 0;
   const sx = shk ? Math.round(rand(-shk, shk)) : 0, sy = shk ? Math.round(rand(-shk, shk)) : 0;
@@ -7304,7 +7312,7 @@ function renderPause() {
     text(`LEVEL ${game.run.level}  STIGMATA`, W / 2, ly, PAL.gold0, { align: 'center' });
     ws.forEach(([w], i) => { const c = Math.floor(i / rows), r = i % rows; text(names[i], x0 + c * nw + 7, ly + 14 + r * rh, WOUND_RARITY[w.r].col, small); });
   }
-  if (devOn()) invButton(devBtn(), 'DEV', PAL.flame3 || PAL.gold3);
+  if (devOn()) { invButton(devBtn(), 'DEV', PAL.flame3 || PAL.gold3); invButton(layoutBtn(), 'LAYOUT', PAL.teal3 || PAL.gold3); }
   invButton(setBtn(), 'SETTINGS', PAL.gold3);
   if (game.scene === 'wound' || game.scene === 'town') invButton(ritesBtn(), 'RITES', PAL.crimson3);
   // The latest caught error, so a player can send it to us.
@@ -8067,6 +8075,242 @@ function renderInventory() {
   else invButton(L.btnA, 'TAKE OFF', PAL.stone4, SAVE.bag.length < BAG_SIZE);
 }
 
+// ===================================================== layout designer ===
+// Round 45, dev only (?dev): a town layout editor opened from the pause
+// screen. Start from a blank map, paint ground, place any town asset, move,
+// vary, flip and delete them, take a picture of the whole map and export a
+// code that holds every placement (DES_CODE format below) for Claude to build.
+const DES_GROUND = [['g', 'GRASS'], ['G', 'DARK GRASS'], ['d', 'DIRT'], ['e', 'EARTH'], ['c', 'COBBLE'], ['f', 'FLAGSTONE'], ['s', 'SAND'], ['w', 'WATER'], ['.', 'CLEAR']];
+const DES_CATS = [
+  ['BUILD', [['town2', 'gate'], ['town2', 'cathedral'], ['town2', 'mausoleum'], ['town2', 'ruin'], ['town2', 'tall'], ['town', 'house'], ['town', 'tavern'], ['town', 'forge'], ['town', 'vestry'], ['town2', 'townwall'], ['town2', 'tower']]],
+  ['STALLS', [['town', 'stall'], ['town2', 'plush'], ['town2', 'stall_board'], ['town2', 'stall_pool'], ['town2', 'stall_ench'], ['street', 'stall_awning'], ['town2', 'board'], ['town2', 'enchanter'], ['town2', 'pool']]],
+  ['PROPS', [['town', 'lamp'], ['town2', 'brazier'], ['town2', 'well'], ['town', 'fountain'], ['street', 'bench'], ['town2', 'fence'], ['town2', 'cart'], ['town', 'barrel'], ['town', 'crate'], ['town', 'anvil'], ['street', 'hay'], ['street', 'woodpile'], ['street', 'trough'], ['street', 'crate_stack'], ['street', 'sacks'], ['street', 'pot'], ['street', 'planter'], ['street', 'bucket'], ['street', 'signpost'], ['street', 'bunting_pole'], ['town2', 'campfire'], ['town2', 'gallows'], ['town2', 'stocks']]],
+  ['HOLY', [['town2', 'ashaltar'], ['town2', 'stake'], ['town2', 'lectern'], ['town2', 'vigilroll'], ['town2', 'halostand'], ['town2', 'waymark'], ['street', 'shrine_small'], ['town2', 'tomb'], ['street', 'yard'], ['town', 'waystone']]],
+  ['NATURE', [['town2', 'oak'], ['town2', 'bush'], ['town2', 'flowers'], ['town2', 'hedge'], ['town2', 'tree']]],
+  ['GROUND', DES_GROUND.map(([ch, n]) => ['ground', ch, n])],
+];
+const DES_TOOLS = ['PAN', 'PLACE', 'MOVE', 'PAINT', 'ERASE'], DES_SNAPS = [16, 8, 1], DES_KEY = 'hollow-saint-layout';
+const desAssets = (cat) => DES_CATS[cat][1].filter(([sh, an]) => sh === 'ground' || (SPR[sh] && SPR[sh].anims[an]));
+const desName = (a) => a.replace(/^.*\//, '').replace(/_/g, ' ').toUpperCase();
+let DES = null;
+function openDesigner() {
+  const w = TOWN_W, h = TOWN_H;
+  DES = { w, h, cam: { x: w * TILE / 2 - W / 2, y: h * TILE / 2 - H / 2 }, z: 1, tool: 1, cat: 0, item: 0, ground: 'g', sel: null, snap: 0, grid: true, objs: [], g: new Array(w * h).fill('.'), undo: [], scroll: 0, ptr: new Map(), menu: false, dirty: false, saveT: 0 };
+  DES.gc = document.createElement('canvas'); DES.gc.width = w * TILE; DES.gc.height = h * TILE;
+  try { const c = localStorage.getItem(DES_KEY); if (c) desLoad(c, true); } catch { /* private mode */ }
+  desRedrawGround(); game.state = 'designer'; sfx('tap');
+}
+// Ground tiles: a few variants of each kind, painted once in palette colours.
+const DES_TILES = {};
+function desTile(ch, v) {
+  const key = ch + v; if (DES_TILES[key]) return DES_TILES[key];
+  const c = document.createElement('canvas'); c.width = c.height = TILE; const x = c.getContext('2d');
+  const noise = (cols) => { for (let py = 0; py < TILE; py += 2) for (let px = 0; px < TILE; px += 2) { const r = Math.abs(Math.sin((px + 3.1 * v) * 12.9898 + (py + 7.7 * v) * 78.233) * 43758.5453) % 1; x.fillStyle = PAL[cols[Math.min(cols.length - 1, Math.floor(r * r * cols.length * 1.4))]]; x.fillRect(px, py, 2, 2); } };
+  if (ch === 'g') noise(['moss4', 'moss3h', 'rot4', 'moss3', 'moss2']);
+  else if (ch === 'G') noise(['rot4', 'moss4', 'ink2', 'rot3']);
+  else if (ch === 'd') noise(['shroud3', 'shroud3h', 'shroud2h', 'shroud2']);
+  else if (ch === 'e') noise(['ink2', 'shroud4', 'ink3', 'shroud3']);
+  else if (ch === 's') noise(['sand3', 'sand2h', 'sand2', 'sand1h']);
+  else if (ch === 'w') { noise(['sea3', 'sea2', 'sea3', 'sea1']); x.fillStyle = PAL.sea1; x.fillRect(2 + v * 3, 6 + v, 6, 1); }
+  else if (ch === 'c') { const f = SPR.town.anims.cobble[v % 4]; x.drawImage(IMG.town, f.x, f.y, 16, 16, 0, 0, 16, 16); }
+  else if (ch === 'f') { const f = SPR.floor.anims.street11[v % 3]; x.drawImage(IMG.floor, f.x, f.y, 16, 16, 0, 0, 16, 16); }
+  return (DES_TILES[key] = c);
+}
+function desDrawTile(tx, ty) {
+  const D = DES, ch = D.g[ty * D.w + tx], g = D.gc.getContext('2d');
+  g.clearRect(tx * TILE, ty * TILE, TILE, TILE);
+  if (ch !== '.') g.drawImage(desTile(ch, (tx * 7 + ty * 13) % 4), tx * TILE, ty * TILE);
+}
+function desRedrawGround() { for (let ty = 0; ty < DES.h; ty++) for (let tx = 0; tx < DES.w; tx++) desDrawTile(tx, ty); }
+// Save points for UNDO, and the code that holds the whole layout.
+const desState = () => JSON.stringify({ o: DES.objs, g: DES.g.join('') });
+function desPush() { DES.undo.push(desState()); if (DES.undo.length > 60) DES.undo.shift(); DES.dirty = true; }
+function desUndo() { const s = DES.undo.pop(); if (!s) return; const o = JSON.parse(s); DES.objs = o.o; DES.g = o.g.split(''); DES.sel = null; desRedrawGround(); DES.dirty = true; sfx('tap', { vol: 0.5 }); }
+const desRle = (str) => { let out = '', i = 0; while (i < str.length) { let j = i; while (j < str.length && str[j] === str[i]) j++; out += (j - i > 1 ? j - i : '') + str[i]; i = j; } return out; };
+const desUnrle = (str) => str.replace(/(\d+)(\D)/g, (m, n, c) => c.repeat(+n));
+// DES_CODE: "VAEL1:" + base64 of JSON { v, w, h, tile: 16, g: ground row by row (run-length;
+// . none, g grass, G dark grass, d dirt, e earth, c cobble, f flagstone, s sand, w water),
+// o: [[sheet/anim, x, y, variant, flipped], ...] with x, y the asset's foot in world pixels }.
+function desCode() { return 'VAEL1:' + btoa(unescape(encodeURIComponent(JSON.stringify({ v: 1, w: DES.w, h: DES.h, tile: TILE, g: desRle(DES.g.join('')), o: DES.objs.map((o) => [o.a, Math.round(o.x), Math.round(o.y), o.f, o.fl ? 1 : 0]) })))); }
+function desLoad(code, quiet) {
+  try {
+    const d = JSON.parse(decodeURIComponent(escape(atob(code.trim().replace(/^VAEL1:/, '')))));
+    const g = desUnrle(d.g); if (g.length !== DES.w * DES.h) throw new Error('size');
+    if (!quiet) desPush();
+    DES.g = g.split(''); DES.objs = d.o.map(([a, x, y, f, fl]) => ({ a, x, y, f, fl: !!fl })); DES.sel = null; if (DES.gc) desRedrawGround(); return true;
+  } catch { if (!quiet) toast('THAT CODE DID NOT LOAD.', 2); return false; }
+}
+// Geometry: the map view between the top bar and the palette.
+const DES_TOP = 24, DES_PAL = 58;
+const desView = () => ({ x: 0, y: DES_TOP, w: W, h: H - DES_TOP - DES_PAL });
+const desToWorld = (x, y) => [(x - desView().x) / DES.z + DES.cam.x, (y - desView().y) / DES.z + DES.cam.y];
+function desTop() {
+  const b = []; let x = 4;
+  DES_TOOLS.forEach((t, i) => { b.push({ id: 'tool', i, label: t, x, y: 3, w: 40, h: 18 }); x += 42; });
+  b.push({ id: 'zout', label: '-', x, y: 3, w: 16, h: 18 }); x += 18; b.push({ id: 'zin', label: '+', x, y: 3, w: 16, h: 18 }); x += 20;
+  b.push({ id: 'undo', label: 'UNDO', x, y: 3, w: 36, h: 18 }); x += 38;
+  b.push({ id: 'snap', label: `SNAP ${DES_SNAPS[DES.snap]}`, x, y: 3, w: 44, h: 18 }); x += 46;
+  b.push({ id: 'grid', label: 'GRID', x, y: 3, w: 32, h: 18 });
+  b.push({ id: 'menu', label: 'MENU', x: W - 46, y: 3, w: 42, h: 18 });
+  return b;
+}
+const DES_MENU = ['PICTURE', 'EXPORT', 'IMPORT', 'FILL MAP', 'CLEAR', 'EXIT'];
+const desMenu = () => DES_MENU.map((label, i) => ({ id: 'm' + i, label, x: W - 92, y: DES_TOP + 2 + i * 20, w: 88, h: 18 }));
+const desSelBar = () => ['VARIANT', 'FLIP', 'COPY', 'DELETE'].map((label, i) => ({ id: 's' + i, label, x: W - 4 - (4 - i) * 52, y: DES_TOP + 3, w: 50, h: 16 }));
+function desPalette() {
+  const y0 = H - DES_PAL, tw = Math.floor((W - 8) / DES_CATS.length), cells = [], n = desAssets(DES.cat).length, cw = 42, vis = Math.floor((W - 36) / cw);
+  const tabs = DES_CATS.map(([name], i) => ({ i, label: name, x: 4 + i * tw, y: y0 + 1, w: tw - 2, h: 13 }));
+  DES.scroll = Math.max(0, Math.min(DES.scroll, Math.max(0, n - vis)));
+  for (let k = 0; k < vis && DES.scroll + k < n; k++) cells.push({ i: DES.scroll + k, x: 18 + k * cw, y: y0 + 16, w: cw - 2, h: DES_PAL - 18 });
+  return { tabs, cells, left: { x: 2, y: y0 + 16, w: 14, h: DES_PAL - 18 }, right: { x: W - 16, y: y0 + 16, w: 14, h: DES_PAL - 18 }, vis, n };
+}
+// Where an object's image sits (its foot at x, y).
+function desBox(o) {
+  const [sh, an] = o.a.split('/'), s = SPR[sh]; if (!s || !s.anims[an]) return null;
+  const f = frameOf(sh, an, o.f), ax = f.ax ?? s.anchorX ?? Math.floor(f.w / 2), ay = f.ay ?? s.anchorY ?? f.h - 1;
+  return { x: o.flip ? o.x - (f.w - ax) : o.x - ax, y: o.y - ay, w: f.w, h: f.h };
+}
+function desHit(wx, wy) { const list = [...DES.objs].sort((a, b) => b.y - a.y); return list.find((o) => { const b = desBox(o); return b && wx >= b.x && wx < b.x + b.w && wy >= b.y && wy < b.y + b.h; }) || null; }
+const desSnap = (v) => { const s = DES_SNAPS[DES.snap]; return Math.round(v / s) * s; };
+function desPaint(wx, wy, ch) {
+  const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
+  for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) { const x = tx + dx, y = ty + dy; if (x < 0 || y < 0 || x >= DES.w || y >= DES.h || DES.g[y * DES.w + x] === ch) continue; DES.g[y * DES.w + x] = ch; desDrawTile(x, y); }
+  DES.dirty = true;
+}
+function desPlace(wx, wy) {
+  const [sh, an] = desAssets(DES.cat)[DES.item] || []; if (!sh || sh === 'ground') return;
+  desPush(); const o = { a: `${sh}/${an}`, x: desSnap(wx), y: desSnap(wy), f: DES.variant || 0, fl: false };
+  if (o.f >= SPR[sh].anims[an].length) o.f = 0;
+  DES.objs.push(o); DES.sel = o; sfx('tap', { vol: 0.5 });
+}
+// Input: taps on the bars, then drags on the map (pan, move, paint), a pinch to zoom.
+function desDown(id, x, y) {
+  const D = DES; D.ptr.set(id, { x, y });
+  if (D.ptr.size === 2 && inRect(desView(), x, y)) { const [a, b] = [...D.ptr.values()]; D.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: D.z }; D.drag = null; return; }
+  if (D.menu) { const m = desMenu().find((b) => inRect(b, x, y)); D.menu = false; if (m) desMenuDo(+m.id.slice(1)); return; }
+  const tb = desTop().find((b) => inRect(b, x, y));
+  if (tb) {
+    if (tb.id === 'tool') { D.tool = tb.i; if (tb.i !== 2) D.sel = null; }
+    else if (tb.id === 'zin' || tb.id === 'zout') desZoom(tb.id === 'zin' ? 2 : 0.5, W / 2, desView().y + desView().h / 2);
+    else if (tb.id === 'undo') desUndo();
+    else if (tb.id === 'snap') D.snap = (D.snap + 1) % DES_SNAPS.length;
+    else if (tb.id === 'grid') D.grid = !D.grid;
+    else if (tb.id === 'menu') D.menu = true;
+    sfx('tap', { vol: 0.5 }); return;
+  }
+  if (D.sel) { const sb2 = desSelBar().find((b) => inRect(b, x, y)); if (sb2) { desSelDo(+sb2.id.slice(1)); return; } }
+  const P = desPalette();
+  if (y >= H - DES_PAL) {
+    const t = P.tabs.find((b) => inRect(b, x, y)); if (t) { D.cat = t.i; D.item = 0; D.scroll = 0; D.variant = 0; sfx('tap', { vol: 0.5 }); return; }
+    if (inRect(P.left, x, y)) { D.scroll = Math.max(0, D.scroll - P.vis); return; }
+    if (inRect(P.right, x, y)) { D.scroll += P.vis; return; }
+    D.drag = { mode: 'strip', id, x0: x, s0: D.scroll, moved: false }; return;
+  }
+  const [wx, wy] = desToWorld(x, y), tool = DES_TOOLS[D.tool];
+  const base = { id, x0: x, y0: y, cx: D.cam.x, cy: D.cam.y, moved: false };
+  if (tool === 'PAN') D.drag = { ...base, mode: 'pan' };
+  else if (tool === 'PLACE') D.drag = { ...base, mode: 'tap', wx, wy };
+  else if (tool === 'MOVE') { const o = desHit(wx, wy); if (o) { D.sel = o; D.drag = { ...base, mode: 'move', o, ox: o.x - wx, oy: o.y - wy, pushed: false }; } else { D.sel = null; D.drag = { ...base, mode: 'pan' }; } }
+  else if (tool === 'PAINT') { desPush(); D.drag = { ...base, mode: 'paint' }; desPaint(wx, wy, D.ground); }
+  else if (tool === 'ERASE') { const o = desHit(wx, wy); if (o) { desPush(); D.objs = D.objs.filter((q) => q !== o); if (D.sel === o) D.sel = null; sfx('tap', { vol: 0.4 }); } else { desPush(); D.drag = { ...base, mode: 'paint', erase: true }; desPaint(wx, wy, '.'); } }
+}
+function desMove(id, x, y) {
+  const D = DES; if (!D.ptr.has(id)) return; D.ptr.set(id, { x, y });
+  if (D.pinch && D.ptr.size === 2) { const [a, b] = [...D.ptr.values()], d = Math.hypot(a.x - b.x, a.y - b.y); desZoom(Math.max(0.25, Math.min(3, D.pinch.z * d / D.pinch.d)) / D.z, (a.x + b.x) / 2, (a.y + b.y) / 2); return; }
+  const g = D.drag; if (!g || g.id !== id) return;
+  if (Math.hypot(x - (g.x0 ?? x), y - (g.y0 ?? y)) > 6) g.moved = true;
+  if (g.mode === 'strip') { if (Math.abs(x - g.x0) > 6) g.moved = true; D.scroll = Math.max(0, g.s0 - Math.round((x - g.x0) / 42)); return; }
+  if (g.mode === 'pan' || (g.mode === 'tap' && g.moved)) { g.mode = 'pan'; D.cam.x = g.cx - (x - g.x0) / D.z; D.cam.y = g.cy - (y - g.y0) / D.z; return; }
+  const [wx, wy] = desToWorld(x, y);
+  if (g.mode === 'move') { if (!g.pushed) { desPush(); g.pushed = true; } g.o.x = desSnap(wx + g.ox); g.o.y = desSnap(wy + g.oy); D.dirty = true; }
+  if (g.mode === 'paint') desPaint(wx, wy, g.erase ? '.' : D.ground);
+}
+function desUp(id) {
+  const D = DES, g = D.drag; D.ptr.delete(id); if (D.ptr.size < 2) D.pinch = null;
+  if (!g || g.id !== id) return; D.drag = null;
+  if (g.mode === 'strip' && !g.moved) { const c = desPalette().cells.find((b) => inRect(b, g.x0, H - DES_PAL + 30) && g.x0 >= b.x && g.x0 < b.x + b.w); if (c) desPick(c.i); }
+  if (g.mode === 'tap' && !g.moved) desPlace(g.wx, g.wy);
+}
+function desPick(i) {
+  const D = DES, it = desAssets(D.cat)[i]; if (!it) return;
+  if (D.item === i && it[0] !== 'ground') { const n = SPR[it[0]].anims[it[1]].length; D.variant = ((D.variant || 0) + 1) % n; } else D.variant = 0;
+  D.item = i; if (it[0] === 'ground') { D.ground = it[1]; D.tool = 3; } else { D.tool = 1; } sfx('tap', { vol: 0.5 });
+}
+function desZoom(k, sx, sy) { const D = DES, [wx, wy] = desToWorld(sx, sy); D.z = Math.max(0.25, Math.min(3, D.z * k)); D.cam.x = wx - (sx - desView().x) / D.z; D.cam.y = wy - (sy - desView().y) / D.z; }
+function desSelDo(i) {
+  const D = DES, o = D.sel; if (!o) return; desPush();
+  if (i === 0) { const [sh, an] = o.a.split('/'); o.f = (o.f + 1) % SPR[sh].anims[an].length; }
+  if (i === 1) o.fl = !o.fl;
+  if (i === 2) { const c = { ...o, x: o.x + 16, y: o.y + 16 }; D.objs.push(c); D.sel = c; }
+  if (i === 3) { D.objs = D.objs.filter((q) => q !== o); D.sel = null; }
+  sfx('tap', { vol: 0.5 });
+}
+function desMenuDo(i) {
+  const D = DES;
+  if (i === 0) desPicture();
+  if (i === 1) desCodeBox(true);
+  if (i === 2) desCodeBox(false);
+  if (i === 3) ask(`FILL THE WHOLE MAP WITH ${(DES_GROUND.find((q) => q[0] === D.ground) || ['', 'GRASS'])[1]}?`, () => { desPush(); D.g.fill(D.ground); desRedrawGround(); }, 'FILL');
+  if (i === 4) ask('CLEAR THE WHOLE LAYOUT? UNDO CAN BRING IT BACK.', () => { desPush(); D.objs = []; D.g.fill('.'); D.sel = null; desRedrawGround(); }, 'CLEAR');
+  if (i === 5) { desSave(); game.state = 'pause'; }
+}
+function desSave() { try { localStorage.setItem(DES_KEY, desCode()); } catch { /* full or private */ } DES.dirty = false; }
+// The whole map as one picture, saved as a PNG.
+function desPicture() {
+  const D = DES, c = document.createElement('canvas'); c.width = D.w * TILE; c.height = D.h * TILE; const x = c.getContext('2d');
+  x.fillStyle = '#0b0710'; x.fillRect(0, 0, c.width, c.height); x.drawImage(D.gc, 0, 0);
+  for (const o of [...D.objs].sort((a, b) => a.y - b.y)) { const [sh, an] = o.a.split('/'); if (SPR[sh] && SPR[sh].anims[an]) spr(sh, an, o.f, o.x, o.y, { flip: o.fl, c: x }); }
+  c.toBlob((b) => { if (!b) return; const u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = 'vael-layout.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); c.width = 0; });
+  toast('PICTURE SAVED', 1.6);
+}
+// EXPORT shows the code to copy; IMPORT takes one pasted in.
+function desCodeBox(out) {
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;inset:0;z-index:99;background:rgba(11,7,16,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font:14px monospace;color:#ffd155;padding:16px';
+  const ta = document.createElement('textarea'); ta.style.cssText = 'width:90%;height:50%;font:11px monospace;background:#1f1828;color:#eadfc4;border:2px solid #ffd155';
+  const note = document.createElement('div'); note.textContent = out ? 'COPY THIS CODE AND SEND IT TO CLAUDE. IT HOLDS THE WHOLE LAYOUT.' : 'PASTE A LAYOUT CODE, THEN LOAD.';
+  const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:10px';
+  const btn = (t, fn) => { const b = document.createElement('button'); b.textContent = t; b.style.cssText = 'font:14px monospace;padding:8px 16px;background:#733f28;color:#ffd155;border:2px solid #ffd155'; b.onclick = fn; row.appendChild(b); };
+  if (out) { ta.value = desCode(); ta.readOnly = true; btn('COPY', () => { ta.select(); (navigator.clipboard ? navigator.clipboard.writeText(ta.value) : Promise.reject()).catch(() => document.execCommand('copy')); note.textContent = 'COPIED.'; }); }
+  else btn('LOAD', () => { if (desLoad(ta.value)) { desSave(); box.remove(); toast('LAYOUT LOADED', 1.6); } else note.textContent = 'THAT CODE DID NOT LOAD.'; });
+  btn('CLOSE', () => box.remove());
+  box.append(note, ta, row); document.body.appendChild(box);
+  for (const ev of ['touchstart', 'touchmove', 'touchend', 'mousedown']) box.addEventListener(ev, (e) => e.stopPropagation());
+}
+function renderDesigner() {
+  const D = DES, V = desView();
+  if (D.dirty && (D.saveT -= game.realDt || 0) <= 0) { D.saveT = 1; desSave(); }
+  ctx.fillStyle = '#0b0710'; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.beginPath(); ctx.rect(V.x, V.y, V.w, V.h); ctx.clip();
+  ctx.translate(V.x, V.y); ctx.scale(D.z, D.z); ctx.translate(-Math.round(D.cam.x), -Math.round(D.cam.y));
+  ctx.fillStyle = '#150f1c'; ctx.fillRect(0, 0, D.w * TILE, D.h * TILE);
+  ctx.drawImage(D.gc, 0, 0);
+  if (D.grid) { ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1 / D.z; ctx.beginPath(); for (let x = 0; x <= D.w; x += 2) { ctx.moveTo(x * TILE, 0); ctx.lineTo(x * TILE, D.h * TILE); } for (let y = 0; y <= D.h; y += 2) { ctx.moveTo(0, y * TILE); ctx.lineTo(D.w * TILE, y * TILE); } ctx.stroke(); }
+  ctx.strokeStyle = PAL.gold2; ctx.lineWidth = 2 / D.z; ctx.strokeRect(0, 0, D.w * TILE, D.h * TILE);
+  for (const o of [...D.objs].sort((a, b) => a.y - b.y)) { const [sh, an] = o.a.split('/'); if (SPR[sh] && SPR[sh].anims[an]) spr(sh, an, o.f, o.x, o.y, { flip: o.fl }); }
+  if (D.sel) { const b = desBox(D.sel); if (b) { ctx.strokeStyle = PAL.gold0; ctx.lineWidth = 1 / D.z; ctx.strokeRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2); ctx.fillStyle = PAL.gold0; ctx.fillRect(D.sel.x - 2, D.sel.y - 1, 4, 2); } }
+  ctx.restore();
+  // Top bar.
+  ctx.fillStyle = PAL.ink1; ctx.fillRect(0, 0, W, DES_TOP); ctx.fillStyle = PAL.gold3; ctx.fillRect(0, DES_TOP - 1, W, 1);
+  for (const b of desTop()) { const on = (b.id === 'tool' && b.i === D.tool) || (b.id === 'grid' && D.grid) || (b.id === 'menu' && D.menu); invButton(b, '', on ? PAL.gold3 : PAL.ink3, true); text(b.label, b.x + b.w / 2, b.y + 5, on ? PAL.gold0 : PAL.cloth0, { small: true, align: 'center', outline: null }); }
+  // The chosen object's buttons, and a help line.
+  if (D.sel) { text(desName(D.sel.a), W - 4 - 4 * 52 - 4, DES_TOP + 7, PAL.gold1, { small: true, align: 'right' }); for (const b of desSelBar()) { invButton(b, '', b.label === 'DELETE' ? PAL.crimson3 : PAL.ink3, true); text(b.label, b.x + b.w / 2, b.y + 4, PAL.cloth0, { small: true, align: 'center', outline: null }); } }
+  const help = { PAN: 'DRAG TO MOVE AROUND THE MAP. PINCH OR - + TO ZOOM.', PLACE: 'TAP THE MAP TO PLACE. TAP THE SAME ASSET AGAIN FOR ITS NEXT LOOK.', MOVE: 'DRAG AN OBJECT TO MOVE IT. TAP TO CHOOSE IT.', PAINT: 'DRAG TO PAINT THE CHOSEN GROUND.', ERASE: 'TAP AN OBJECT TO REMOVE IT, OR DRAG TO CLEAR GROUND.' }[DES_TOOLS[D.tool]];
+  text(help, 6, V.y + V.h - 11, PAL.cloth1, { small: true });
+  text(`${D.objs.length} OBJECTS  ZOOM ${Math.round(D.z * 100)}%`, W - 6, V.y + V.h - 11, PAL.stone1, { small: true, align: 'right' });
+  // The palette.
+  const P = desPalette(); ctx.fillStyle = PAL.ink1; ctx.fillRect(0, H - DES_PAL, W, DES_PAL); ctx.fillStyle = PAL.gold3; ctx.fillRect(0, H - DES_PAL, W, 1);
+  tabButtons(P.tabs.map((t) => ({ ...t, t: t.label })), D.cat);
+  const list = desAssets(D.cat);
+  for (const c of P.cells) {
+    const it = list[c.i], on = c.i === D.item; ctx.fillStyle = on ? PAL.ink3 : PAL.ink2; ctx.fillRect(c.x, c.y, c.w, c.h); if (on) { ctx.strokeStyle = PAL.gold0; ctx.lineWidth = 1; ctx.strokeRect(c.x + 0.5, c.y + 0.5, c.w - 1, c.h - 1); }
+    if (it[0] === 'ground') { const t0 = it[1] === '.' ? null : desTile(it[1], 0); if (t0) ctx.drawImage(t0, c.x + c.w / 2 - 12, c.y + 4, 24, 24); else { ctx.strokeStyle = PAL.blood0; ctx.beginPath(); ctx.moveTo(c.x + 8, c.y + 6); ctx.lineTo(c.x + c.w - 8, c.y + 26); ctx.stroke(); } text(it[2].split(' ').pop(), c.x + c.w / 2, c.y + c.h - 9, PAL.cloth1, { small: true, align: 'center', outline: null }); continue; }
+    const f = frameOf(it[0], it[1], on ? D.variant || 0 : 0), k = Math.min((c.w - 4) / f.w, (c.h - 4) / f.h, 1);
+    ctx.drawImage(IMG[it[0]], f.x, f.y, f.w, f.h, Math.round(c.x + c.w / 2 - f.w * k / 2), Math.round(c.y + c.h - 2 - f.h * k), Math.round(f.w * k), Math.round(f.h * k));
+  }
+  for (const [b, s] of [[P.left, '<'], [P.right, '>']]) { invButton(b, '', PAL.ink3, true); text(s, b.x + b.w / 2, b.y + b.h / 2 - 4, PAL.cloth0, { align: 'center', outline: null }); }
+  if (D.menu) { layerBreak(); for (const b of desMenu()) { invButton(b, '', b.label === 'CLEAR' ? PAL.crimson3 : PAL.ink3, true); text(b.label, b.x + b.w / 2, b.y + 5, PAL.cloth0, { small: true, align: 'center', outline: null }); } }
+}
 function onTap(x, y) {
   if (game.ask) { askTap(x, y); return true; }
   if (game.enchPop) { game.enchPop = null; sfx('tap', { vol: 0.5 }); return true; }
@@ -8081,6 +8325,7 @@ function onTap(x, y) {
     }
     case 'pause': {
       if (devOn() && inRect(devBtn(), x, y)) { openDev(); return true; }
+      if (devOn() && inRect(layoutBtn(), x, y)) { openDesigner(); return true; }
       if (inRect(setBtn(), x, y)) { game.state = 'settings'; sfx('tap'); return true; }
       if (inRect(ritesBtn(), x, y)) { openRites('pause'); return true; }
       // Five quick taps in the bottom-left corner turn the dev menu on.
@@ -8182,7 +8427,7 @@ loadAssets().then(() => {
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
-window.HS = { itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>
