@@ -103,9 +103,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '46.2';
+const BUILD = '47';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '47': ['TALLER HEDGES AND BRIGHTER FLOWER BEDS IN VAEL.', 'THE RITES PANEL SHOWS THE NEXT RITE TO OPEN. THE GREAT PENANCE NOW OPENS AT LEVEL 40.', 'PASSIVES YOU CAN WEAR ARE LISTED FIRST.', 'OSSUARY CHAPELS HAVE A GREY FLOOR AND A BONE RUNNER.'],
   '46.2': ['THE RITES PANEL LISTS EACH SLOT\'S RITES BY THE SAINT LEVEL THAT OPENS THEM, LOWEST FIRST.'],
   '46.1': ['VAEL TIDIED: PEOPLE WALK THE ROADS AND PASS BEHIND BUILDINGS, NO BUILDING COVERS A STALL, A BIGGER MARKET SQUARE WITH THE SCRYING POOL ON IT, FEWER HOUSES, TREES, BUSHES, FLOWERS AND HEDGES.'],
   '45.1': ['NEW IN DEV MODE: A TOWN LAYOUT DESIGNER (PAUSE, LAYOUT). NEW TREES, BUSHES, FLOWER BEDS, HEDGES AND TOWN WALL PIECES.'],
@@ -1588,7 +1589,7 @@ const strataOpen = (k) => (SAVE.cleared ?? -1) >= STRATA_NEED[k];
 let IMG0 = null;
 function useStratum(k) {
   IMG0 = IMG0 || { ...IMG };
-  const sx = STRATUM_SHEET[k]; for (const n of ['hall', 'floor', 'walldecor', 'props']) IMG[n] = sx && IMG0[n + sx] ? IMG0[n + sx] : IMG0[n];
+  const sx = STRATUM_SHEET[k]; for (const n of ['hall', 'floor', 'walldecor', 'props', 'tiles']) IMG[n] = sx && IMG0[n + sx] ? IMG0[n + sx] : IMG0[n];
 }
 // A tiny seeded generator: the same seed builds the same map and monsters,
 // so a descent left unfinished can be rebuilt and resumed.
@@ -1822,11 +1823,11 @@ function makeTown() {
   place('ashaltar', T0.ax, T0.ay, 3, { ph: 0 }); lights.push({ x: T0.ax, y: T0.ay - 40, r: 90, c: 'ember', a: 0.9, flick: 2 }); block(T0.ax - 28, T0.ay - 20, T0.ax + 28, T0.ay + 2);
   brazier(T0.x0 + 18, T0.ay - 4); brazier(T0.x1 - 18, T0.ay - 4);
   for (let x = T0.x0 + 21; x < T0.x1; x += 42) { if (Math.abs(x - T0.ax) < 30) continue; place('fence', x, T0.y1, 2, { solid: false }); block(x - 21, T0.y1 - 10, x + 21, T0.y1 + 2); }
-  // The Quiet Acre: tombs, crows on the dead trees, a fence along its front with a gate.
+  // The Quiet Acre: tombs, crows on the dead trees, a fence along its front east of the gate.
   lights.push({ x: TOWN_CELLS, y: base - 52, r: 65, c: 'holy', a: 0.5 });
   for (let k = 0; k < 18; k++) { const x = A.x0 + 24 + rng() * (A.x1 - A.x0 - 48), y = base + 28 + rng() * (A.y1 - base - 46); if (Math.abs(x - TOWN_CELLS) < 70 && y < base + 44) continue; const t = place('tomb', x, y, 1, { frame: Math.floor(rng() * 3) }); if (rng() < 0.3) crows.push({ x: t.x, y: t.y - 24, hx: t.x, hy: t.y - 24, state: 'sit', t: rng() * 3, vx: 0, vy: 0 }); }
   for (const x of [966, 1186]) crows.push({ x: x + 10, y: base - 74, hx: x + 10, hy: base - 74, state: 'sit', t: rng() * 3, vx: 0, vy: 0 });
-  for (let x = A.x0 + 21; x < A.x1; x += 42) { if (x > A.gap0 && x < A.gap1) continue; place('fence', x, A.y1, 2, { solid: false }); block(x - 21, A.y1 - 10, x + 21, A.y1 + 2); }
+  for (let x = A.x0 + 21; x < A.x1; x += 42) { if (x < A.gap1) continue; place('fence', x, A.y1, 2, { solid: false }); block(x - 21, A.y1 - 10, x + 21, A.y1 + 2); }
   // The Vigil Roll by the Acre's gate, its halo stands in two rows beside it.
   const RL = TOWN_ROLL;
   place('vigilroll', RL.x, RL.y, 2, { ph: 0 }); lights.push({ x: RL.x, y: RL.y - 34, r: 70, c: 'blood', a: 0.55 }, { x: RL.x, y: RL.y - 10, r: 46, c: 'ember', a: 0.7, flick: 6 }); block(RL.x - 20, RL.y - 14, RL.x + 20, RL.y + 2);
@@ -2447,8 +2448,10 @@ const talPts = () => Math.max(0, saintLv() - 1 - talSpent());
 const talOpen = (t) => treeSpent(t.tree) >= TAL_NEED[t.row];
 const talReset = () => 100 * saintLv(); // gold to take back every point
 // Rites open by Saint level (one of each slot from the start).
-const RITE_LV = { water: 1, chain: 1, rain: 1, storm: 3, censer: 5, step: 7, volley: 9, nailring: 11, hymn: 13, ward: 15, pillars: 18, wave: 20, shackle: 22, pilgrim: 25, asperse: 28, font: 31, brand: 35, greatpen: 45 };
+const RITE_LV = { water: 1, chain: 1, rain: 1, storm: 3, censer: 5, step: 7, volley: 9, nailring: 11, hymn: 13, ward: 15, pillars: 18, wave: 20, shackle: 22, pilgrim: 25, asperse: 28, font: 31, brand: 35, greatpen: 40 };
 const riteOpen = (id) => saintLv() >= (RITE_LV[id] || 1);
+// The next rite the Saint's level will open (null once every rite is open).
+const nextRite = () => { const id = Object.keys(RITE_LV).filter((k) => !riteOpen(k)).sort((a, b) => RITE_LV[a] - RITE_LV[b])[0]; return id ? { id, lv: RITE_LV[id] } : null; };
 function gainSaintXp(n) {
   SAVE.lvl = SAVE.lvl || 1; SAVE.lxp = (SAVE.lxp || 0) + n;
   while (SAVE.lvl < MAX_SAINT && SAVE.lxp >= lvNeed(SAVE.lvl)) {
@@ -2854,7 +2857,8 @@ function renderRites() {
   headerBar(L.x0, L.y0, L.pw, 26);
   ctx.fillStyle = PAL.gold3; ctx.fillRect(L.x0, L.y0 + 26, L.pw, 1);
   text('RITES', L.x0 + 12, L.y0 + 9, PAL.gold1);
-  text(fitText(focus === 'passive' ? 'PASSIVES ARE ALWAYS ON. SOME ARE EARNED BY DEEDS.' : 'CHOOSE ONE PER SLOT. EACH SUITS A VESTMENT SET.', L.pw - 100), L.x0 + 64, L.y0 + 10, PAL.stone1, small);
+  const nx = nextRite(), sub = focus === 'passive' ? 'PASSIVES ARE ALWAYS ON. SOME ARE EARNED BY DEEDS.' : nx ? `NEXT: ${RITE_BY[nx.id].name} AT LEVEL ${nx.lv}` : 'CHOOSE ONE PER SLOT. EACH SUITS A VESTMENT SET.';
+  text(fitText(sub, L.pw - 100), L.x0 + 64, L.y0 + 10, focus !== 'passive' && nx ? PAL.flame1 : PAL.stone1, small);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
   // Slot tabs, each with the rite chosen for it.
   RITE_SLOTS.forEach(([slot, label], c) => {
@@ -2938,10 +2942,10 @@ function renderPassives(L) {
     if (on) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 2; ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2); }
   }
   // Every passive as an icon; deed passives stay dark and locked until earned.
-  PASSIVES.forEach((q, i) => {
+  passOrder().forEach((q, i) => {
     const b = G0.card(i), worn = P.includes(q.id), isSel = game.passSel === q.id, got = passEarned(q);
     ctx.fillStyle = PAL.outline; ctx.fillRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2); ctx.fillStyle = worn ? `rgba(${PASS_CAT[q.cat][1]},0.35)` : isSel ? PAL.ink3 : PAL.ink2; ctx.fillRect(b.x, b.y, b.w, b.h);
-    const sc = Math.max(1, Math.floor(b.w / 20)); ctx.save(); ctx.translate(b.x + b.w / 2, b.y + b.h / 2); ctx.scale(sc, sc); sprC('ui', 'passive', i, 0, 0, { alpha: got ? 1 : 0.3 }); ctx.restore();
+    const sc = Math.max(1, Math.floor(b.w / 20)); ctx.save(); ctx.translate(b.x + b.w / 2, b.y + b.h / 2); ctx.scale(sc, sc); sprC('ui', 'passive', PASSIVES.indexOf(q), 0, 0, { alpha: got ? 1 : 0.3 }); ctx.restore();
     if (!got) mapIcon('lock', b.x + b.w - 6, b.y + b.h - 6, PAL.cloth0);
     if (worn) { ctx.fillStyle = PAL.gold1; ctx.fillRect(b.x, b.y + b.h - 2, b.w, 2); }
     if (isSel) { ctx.strokeStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.lineWidth = 1; ctx.strokeRect(b.x - 1.5, b.y - 1.5, b.w + 3, b.h + 3); }
@@ -2963,7 +2967,7 @@ function renderPassives(L) {
 function passTap(L, x, y) {
   const G0 = passGeo(L), P = (SAVE.passives = SAVE.passives || [null, null, null]);
   for (let i = 0; i < 3; i++) if (inRect(G0.slot(i), x, y)) { if (!passOpen(i)) { toast(`OPENS AT SAINT LEVEL ${PASSIVE_AT[i]}`, 1.6); return; } game.passSlot = game.passSlot === i ? null : i; if (P[i]) game.passSel = P[i]; sfx('tap', { vol: 0.5 }); return; }
-  PASSIVES.forEach((q, i) => { if (inRect(G0.card(i), x, y)) { game.passSel = q.id; sfx('tap', { vol: 0.5 }); } });
+  passOrder().forEach((q, i) => { if (inRect(G0.card(i), x, y)) { game.passSel = q.id; sfx('tap', { vol: 0.5 }); } });
   if (game.passSel && inRect(G0.btn, x, y)) {
     const at = P.indexOf(game.passSel);
     if (at < 0 && !passEarned(PASSIVES.find((q) => q.id === game.passSel))) { toast('NOT EARNED YET', 1.4); return; }
@@ -5966,6 +5970,8 @@ const PASSIVES = [
 ];
 // A deed passive is open once its deed is done (the dev unlock opens all).
 const passEarned = (q) => !q.stat || lifeOf(q.stat) >= q.need || !!SAVE.censerDev;
+// The panel lists passives the Saint can wear first, locked deed ones last.
+const passOrder = () => [...PASSIVES].sort((a, b) => (passEarned(a) ? 0 : 1) - (passEarned(b) ? 0 : 1) || PASSIVES.indexOf(a) - PASSIVES.indexOf(b));
 const PASS_CAT = [['OFFENCE', '224,32,46'], ['DEFENCE', '63,164,240'], ['UTILITY', '255,192,74']];
 const PASSIVE_AT = [1, 10, 25]; // Saint level for each slot
 const passOpen = (i) => saintLv() >= PASSIVE_AT[i];
@@ -8479,7 +8485,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

@@ -29,7 +29,7 @@ const TM = {
   iron: { ramp: 'iron', spec: 0.7, bias: -0.12, min: 1 }, ironDark: { ramp: 'iron', spec: 0.5, bias: -0.3, min: 3 },
   gold: { ramp: 'gold', spec: 0.6 }, goldDim: { ramp: 'gold', spec: 0.5, bias: -0.14 }, brick: { ramp: 'brick', spec: 0.03 }, brickB: { ramp: 'brick', bias: -0.08 },
   hole: { ramp: 'ink', bias: -0.5, min: 5 }, moss: { ramp: 'moss', min: 2, bias: -0.2 }, bark: { ramp: 'shroud', spec: 0.05, min: 1 },
-  cloth: { ramp: 'cloth', max: 6 }, canvasR: { ramp: 'crimson', spec: 0.04 }, canvasV: { ramp: 'violet', spec: 0.04 }, canvasG: { ramp: 'gold', spec: 0.04 }, canvasT: { ramp: 'teal', spec: 0.04 }, canvasM: { ramp: 'moss', spec: 0.04 }, canvasI: { ramp: 'ink', spec: 0.04, min: 2 }, canvasS: { ramp: 'sand', spec: 0.04, min: 1 }, drape: { ramp: 'violet', bias: -0.15, min: 2 }, leaf: { ramp: 'moss', spec: 0.1, min: 1 }, leafDark: { ramp: 'moss', bias: -0.18, min: 2 }, petalR: { ramp: 'crimson', spec: 0.2 }, petalG: { ramp: 'gold', spec: 0.2 }, petalV: { ramp: 'violet', spec: 0.2 }, petalH: { ramp: 'holy', spec: 0.2 }, soil: { ramp: 'shroud', bias: -0.1, min: 2 },
+  cloth: { ramp: 'cloth', max: 6 }, canvasR: { ramp: 'crimson', spec: 0.04 }, canvasV: { ramp: 'violet', spec: 0.04 }, canvasG: { ramp: 'gold', spec: 0.04 }, canvasT: { ramp: 'teal', spec: 0.04 }, canvasM: { ramp: 'moss', spec: 0.04 }, canvasI: { ramp: 'ink', spec: 0.04, min: 2 }, canvasS: { ramp: 'sand', spec: 0.04, min: 1 }, drape: { ramp: 'violet', bias: -0.15, min: 2 }, leaf: { ramp: 'moss', spec: 0.1, min: 1 }, leafDark: { ramp: 'moss', bias: -0.18, min: 2 }, leafB: { ramp: 'moss', bias: -0.08, min: 1 }, petalR: { ramp: 'crimson', spec: 0.2 }, petalG: { ramp: 'gold', spec: 0.2 }, petalV: { ramp: 'violet', spec: 0.2 }, petalH: { ramp: 'holy', spec: 0.2 }, soil: { ramp: 'shroud', bias: -0.1, min: 2 },
   bannerR: { ramp: 'crimson', spec: 0.05, bias: -0.05 }, bone: { ramp: 'bone', spec: 0.2 }, shroud: { ramp: 'shroud' },
   water: { ramp: 'violet', spec: 0.9, bias: 0.05 }, rose: { ramp: 'rose', spec: 0.3 }, roseDeep: { ramp: 'rose', bias: -0.2, min: 2 },
   ...Object.fromEntries(['bone', 'pot', 'cloth', 'blood', 'stone', 'teal', 'moss', 'sand', 'rot', 'shroud'].map((r) => [`halo_${r}`, { ramp: r, spec: 0.7, min: 0 }])),
@@ -766,20 +766,27 @@ function bush(v) {
   const fr = R(S, W, H, { ground: H - 1 });
   return fr;
 }
-// A flower bed in a low stone border; v picks the colours.
+// A flower bed in a low stone border, in 3/4 view so the soil and blooms
+// show from above; v picks the colours.
 function flowerBed(v) {
-  const W = 46, H = 26, S = new View(), G = groundY(H, 6), cols = [['petalR', 'petalG'], ['petalV', 'petalH']][v];
-  S.add(slabBox(3, G - 6, 43, G, 6, 12, 'stoneB', 0.6), 0);
-  S.sub(slabBox(6, G - 7, 40, G - 3, 4, 8, 'soil', 0.4), 0.3);
-  S.add(slabBox(6, G - 5.4, 40, G - 3, 4, 8, 'soil', 0.4), 0);
-  for (let k = 0; k < 9; k++) { const x = 9 + (k % 5) * 7 + (k > 4 ? 3.5 : 0), z = k > 4 ? -1 : 2.5; S.add(capsule([x, G - 5, z], [x, G - 8, z], 0.8, 0.6, 'leafDark'), 0.3); S.add(sphere([x, G - 9.5, z], 2.2, cols[k % 2]), 0.6); }
-  return R(S, W, H, { ground: H - 1 });
+  const W = 46, H = 32, S = new View(), G = groundY(H, 6), cols = [['petalR', 'petalG'], ['petalV', 'petalH']][v], a = 0.5;
+  S.add(slabBox(3, G - 6, 43, G, 7, 12, 'stoneB', 0.6), 0);
+  S.sub(slabBox(6, G - 8, 40, G - 3, 5, 9, 'soil', 0.4), 0.3);
+  S.add(slabBox(6, G - 5, 40, G - 3, 5, 9, 'soil', 0.4), 0);
+  // Two rows of blooms: big heads on short stems, back row a little higher.
+  for (let k = 0; k < 10; k++) { const back = k > 4, x = 9 + (k % 5) * 7 + (back ? 3.5 : 0), z = back ? -2.5 : 2.5, h = back ? 9 : 7.5;
+    S.add(capsule([x, G - 5, z], [x, G - h, z], 0.9, 0.7, 'leafDark'), 0.3);
+    S.add(ellipsoid([x - 2.2, G - h + 1, z + 0.5], [1.8, 1.2, 1.4], 'leaf'), 0.5);
+    S.add(sphere([x, G - h - 1.8, z], 2.9, cols[(k + (back ? 1 : 0)) % 2]), 0.6); }
+  return R(S, W, H, { tilt: a, tiltY: G, tiltLift: 7 * Math.sin(a), ground: H - 1 });
 }
-// A clipped hedge, one tile deep, 48 px long.
+// A clipped hedge, 48 px long, in 3/4 view: a lit, lumpy top over a darker face.
 function hedge() {
-  const W = 50, H = 30, S = new View(), G = groundY(H, 6);
-  S.add(bumpy2(box([25, G - 9, 0], [22, 9, 6], 3, 'leaf'), 5), 0);
-  return R(S, W, H, { ground: H - 1 });
+  const W = 50, H = 52, S = new View(), G = groundY(H, 8), a = 0.45;
+  S.add(bumpy2(box([25, G - 13, 0], [19, 10, 4], 3, 'leaf'), 5), 0);
+  for (let k = 0; k < 6; k++) { const x = 6.5 + k * 7.4; S.add(bumpy2(ellipsoid([x, G - 25 - (k % 2), (k % 2) * 2 - 1], [4.8, 4.4, 5], k % 3 === 1 ? 'leafB' : 'leaf'), k + 2), 2.5); }
+  S.add(box([25, G - 2, 0.5], [20, 1, 5.5], 1.2, 'leafDark'), 1.5);
+  return R(S, W, H, { tilt: a, tiltY: G, tiltLift: 8 * Math.sin(a), ground: H - 1 });
 }
 // A length of the town wall seen from inside: ashlar with a walk and merlons.
 function townWall() {

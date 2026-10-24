@@ -16,7 +16,7 @@ const set = (await import(pathToFileURL(resolve(file)).href)).default;
 const rows = [];
 const t0 = Date.now();
 for (const [sheetName, anims] of Object.entries(set)) for (const [anim, fn] of Object.entries(anims)) {
-  if (filter && !anim.includes(filter)) continue;
+  if (filter && !filter.split('|').some((s) => anim.includes(s))) continue;
   if (process.env.CHUNKY === '2') { setRes(1); rows.push({ name: `${sheetName}.${anim}`, frames: fn() }); }
   if (process.env.CHUNKY) setRes(2);
   const frames = fn();

@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-23, after round 46.2 (build 46.2, on `master`). Read
+Last updated 2026-10-24, after round 47 (build 47, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -163,12 +163,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 0. **Town from the owner's own layout.** If the owner sends a `VAEL1:` code
    from the designer, build `makeTown` from it (keep buildings as props with
    base footprints and run `HS.townOverlaps()`).
-1. **Town polish (round 46 follow-ups).** The hedges and flower beds read
-   flat in play (a taller hedge, brighter petals); the lone Acre fence
-   piece by the Enchanter could go.
-2. **Rites panel.** Sort the PASSIVES tab by opening level too, and show
-   "NEXT: <rite> AT LEVEL N" under the list. The 31-45 level gap (Great
-   Font 31, Iron Brand 35, Great Penance 45) may feel empty.
+1. **Town polish.** Round 47 redid the hedges and flower beds; the
+   bushes and oaks could get the same 3/4 tilt, and the square's empty
+   cobbles south of the fountain could take a market cart or two.
+2. **Rites panel.** The 35-40 gap is the last long one (Iron Brand 35, the
+   Great Penance 40). The level-up toast could name the next rite too.
 3. **Round 42 follow-ups.** Ask the owner how the talent numbers and the
    level curve feel (`lvNeed`, `TALENT_TREES`) and whether rite levels
    (`RITE_LV`) open too slowly for the Font and Confessor sets. Talent icons
@@ -179,8 +178,8 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    XV and in the Training Yard.
 5. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
    attack; ask the owner how the fights at Stations VII to XV feel.
-6. **Ossuary chapels.** Chapels in Stratum III still have the red carpet
-   and warm floor; give them a bone-grey runner or a different floor.
+6. **Drowned chapels.** Stratum II chapels still have the red carpet; a
+   `tiles_d` copy (sea-blue runner) would match the Nave.
 7. **Yard extras.** A list of past records per build on the yard panel, a
    reset button, and a 30 s timed test.
 8. **Stratum III ambience.** Dripping ash, a bone rattle when walking past
@@ -195,6 +194,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 47 (polish):** hedges are taller, in 3/4 view with a lumpy lit
+  top, and the flower beds show their soil and bigger blooms from above
+  (`hedge`, `flowerBed` in `town.mjs`). The lone Acre fence piece west of
+  its gate is gone. The Rites panel header names the next rite the Saint's
+  level opens (`nextRite`); the Great Penance opens at 40 (was 45). The
+  Passives tab lists wearable passives first and locked deed ones last
+  (`passOrder`; icons still index `PASSIVES`). Ossuary chapels get a cool
+  grey floor and an ash runner with bone trim: `tiles` now has an `_o`
+  copy, and `OSS_SHEET` in `sprites.mjs` holds per-sheet overrides of the
+  `OSSUARY` remap. `preview.mjs` filters take `a|b`. Test: `round47.cjs`.
 
 - **Round 46.2:** each slot's rites in the Rites panel are listed by the
   Saint level that opens them (`RITES[slot]` is sorted by `RITE_LV` once at

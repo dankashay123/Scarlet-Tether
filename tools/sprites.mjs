@@ -2106,10 +2106,13 @@ for (const name of ['hall', 'floor', 'walldecor', 'props', 'loot']) {
 // Loot keeps its fire, gold, red and green so drops and shots read the same.
 const OSSUARY = { flag: ['bone', 1], sand: ['cloth', 2], pot: ['bone', 1], stone: ['cloth', 3], teal: ['shroud', 0], slate: ['shroud', 1], brick: ['ink', 1], wood: ['shroud', 2], ember: ['flame', 0], moss: ['rot', 0], crimson: ['roof', 1], gold: ['sand', 0] };
 const OSS_LOOT_KEEP = new Set(['ember', 'moss', 'crimson', 'gold']);
-const ossIdx = (keep) => { const m = new Map(); for (const [from, [to, k]] of Object.entries(OSSUARY)) if (!keep.has(from)) FINE[from].forEach((n, i) => m.set(IDX[n], IDX[FINE[to][Math.max(0, Math.min(8, i + k))]])); return m; };
-for (const name of ['hall', 'floor', 'walldecor', 'props', 'loot']) {
+// Per sheet: chapels get a cool grey floor and a bone runner in place of
+// the warm flagstones and red carpet (ash grey with bone trim).
+const OSS_SHEET = { floor: { flag: ['cloth', 1] }, tiles: { crimson: ['shroud', 2], gold: ['bone', 2] } };
+const ossIdx = (keep, over = {}) => { const m = new Map(); for (const [from, [to, k]] of Object.entries({ ...OSSUARY, ...over })) if (!keep.has(from)) FINE[from].forEach((n, i) => m.set(IDX[n], IDX[FINE[to][Math.max(0, Math.min(8, i + k))]])); return m; };
+for (const name of ['hall', 'floor', 'walldecor', 'props', 'loot', 'tiles']) {
   const src = sheets.find((q) => q.name === name); if (!src) continue;
-  const map = ossIdx(name === 'loot' ? OSS_LOOT_KEEP : new Set()), f = new Frame(src.frame.w, src.frame.h);
+  const map = ossIdx(name === 'loot' ? OSS_LOOT_KEEP : new Set(), OSS_SHEET[name]), f = new Frame(src.frame.w, src.frame.h);
   for (let i = 0; i < f.px.length; i++) { const v = src.frame.px[i]; f.px[i] = map.has(v) ? map.get(v) : v; }
   sheets.push({ name: `${name}_o`, frame: f, json: { ...src.json, image: `${name}_o.png` } });
 }
