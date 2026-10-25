@@ -2093,10 +2093,13 @@ for (const name of Object.keys(OVR)) if (!sheets.some((s) => s.name === name)) s
 // Flames burn blue (ember to holy) everywhere but the loot sheet, so drops
 // and their fire still read the same.
 const DROWN = { flag: 'teal', teal: 'slate', stone: 'slate', brick: 'moss', wood: 'shroud', sand: 'teal', ember: 'holy' };
-const drownMap = (loot) => { const m = new Map(); for (const [from, to] of Object.entries(DROWN)) if (!(loot && from === 'ember')) FINE[from].forEach((n, i) => m.set(IDX[n], IDX[FINE[to][i]])); return m; };
-for (const name of ['hall', 'floor', 'walldecor', 'props', 'loot']) {
+// Per sheet: the chapel runner turns sea blue with pale trim.
+// A target may be [ramp, shift] to move each step that many fine steps darker.
+const DROWN_SHEET = { tiles: { crimson: ['sea', 3], gold: ['holy', 2] } };
+const drownMap = (loot, over = {}) => { const m = new Map(); for (const [from, to0] of Object.entries({ ...DROWN, ...over })) { const [to, k] = Array.isArray(to0) ? to0 : [to0, 0]; if (!(loot && from === 'ember')) FINE[from].forEach((n, i) => m.set(IDX[n], IDX[FINE[to][Math.max(0, Math.min(8, i + k))]])); } return m; };
+for (const name of ['hall', 'floor', 'walldecor', 'props', 'loot', 'tiles']) {
   const src = sheets.find((q) => q.name === name); if (!src) continue;
-  const f = new Frame(src.frame.w, src.frame.h), drownIdx = drownMap(name === 'loot');
+  const f = new Frame(src.frame.w, src.frame.h), drownIdx = drownMap(name === 'loot', DROWN_SHEET[name]);
   for (let i = 0; i < f.px.length; i++) { const v = src.frame.px[i]; f.px[i] = drownIdx.has(v) ? drownIdx.get(v) : v; }
   sheets.push({ name: `${name}_d`, frame: f, json: { ...src.json, image: `${name}_d.png` } });
 }

@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-24, after round 47 (build 47, on `master`). Read
+Last updated 2026-10-25, after round 48 (build 48, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -79,6 +79,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 - **The Training Yard (round 31):** a practice run (`run.yard`): a dummy
   that shows damage a second, a summon panel at the statue (any foe or
   Warden, any open Station, foes calm or attacking), no gains, no death.
+  Round 48 added a RECORDS tab (`YARD_REC`, `yardRecords`): every build's
+  best 5 s window and best 30 s test (`SAVE.yardTest`, `YARD_TEST`), a
+  START 30 S TEST button (3 s count, then the HUD shows time left and the
+  average) and RESET RECORDS (asks first).
   It keeps the best damage a second per build (`SAVE.yardBest`, keyed by
   `yardKey()`: the set worn at 4+ pieces and the three rites; counted once
   3 s of hits are in the window).
@@ -178,12 +182,20 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    XV and in the Training Yard.
 5. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
    attack; ask the owner how the fights at Stations VII to XV feel.
-6. **Drowned chapels.** Stratum II chapels still have the red carpet; a
-   `tiles_d` copy (sea-blue runner) would match the Nave.
-7. **Yard extras.** A list of past records per build on the yard panel, a
-   reset button, and a 30 s timed test.
-8. **Stratum III ambience.** Dripping ash, a bone rattle when walking past
-   heaps, green candle flames on the cairn.
+6. **Balance questions for the owner (round 48 data).** `balance.cjs`
+   7,9,11,13,15 with run, set and mythic builds: a Warden blow kills a
+   non-mythic Saint in one hit from Station XI (blows to die 0.5 to 1.1 for
+   a run build, 0.9 to 1.6 for the Hundred Nails at matched gear; mythic
+   gear takes 2 to 4). Warden kills at matched gear: set build 59 s at VII,
+   223 s at XI, 507 s at XV; mythic 41 to 191 s. Stratum III Wardens have
+   the same health as Stratum I's (2500 and 2800 base). Saint level XP:
+   level 31 (the Great Font) needs about 84k XP, 40 needs 171k, 60 needs
+   535k (`lvNeed`). Ask whether one-blow deaths at XI+ feel fair and
+   whether the Font and Confessor rites open too late.
+7. **Yard extras, part two.** Delete one record row; a 60 s test; show
+   the build's record on the Rites panel.
+8. **More ambience.** Stratum II could get dripping water and ripples
+   where the Saint wades; Stratum I dust falling from the vaults.
 9. **The pool's crowd.** Let the crowd at the Scrying Pool cheer or jeer
    when a wager settles in Vael, and show past wagers (won and lost).
 10. **A second playable saint.** A short-range melee saint with its own
@@ -194,6 +206,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 48:** Training Yard RECORDS tab (every build, best 5 s and best
+  30 s test, START 30 S TEST, RESET RECORDS with a question). Drowned Nave
+  chapels get a deep sea-blue runner with pale trim (`tiles_d`,
+  `DROWN_SHEET`; targets may be `[ramp, shift]`). Stratum III: pale ash
+  falls through the dark (`drawAmbientGlow`, a third under `LOWFX`), the
+  cairn's candles are bigger so their green flames survive the 2x2 grid and
+  its light is green (`ash`), and skull heaps rattle when the Saint brushes
+  past (`updateCritters`; the bone death sounds, high and quiet, on the
+  effects bus: `sfx(..., { bus: 'sfx' })`). Balance numbers gathered for
+  the owner (next steps 6). Test: `round48.cjs`.
 
 - **Round 47 (polish):** hedges are taller, in 3/4 view with a lumpy lit
   top, and the flower beds show their soil and bigger blooms from above

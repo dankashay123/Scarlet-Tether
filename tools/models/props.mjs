@@ -217,7 +217,7 @@ function cairn(f) {
   S.add(box([cx, G - 2, 0], [20, 2, d + 1], 0.8, 'stoneDark'), 0);
   S.add(bumpy(ellipsoid([cx, G - 8, 0], [18, 9, d], 'boneDark'), 0.4, 0.4), 1);
   for (const [n, y, z, r] of [[4, G - 8, 6, 4.4], [3, G - 17, 4, 4.4], [2, G - 26, 2, 4.4], [1, G - 34, 1, 4.6]]) for (let i = 0; i < n; i++) { const x = cx + (i - (n - 1) / 2) * 9; skull(S, x, y, z, r); heads.push([x, y, z, r]); }
-  for (const [x, h, z, b] of [[cx - 9, 6, 1, G - 22], [cx + 9, 5, 1, G - 22], [cx, 6, -1, G - 39]]) { S.add(capsule([x, b, z], [x, b - h, z], 1.5, 1.4, 'wax'), 0.4); flameAt(S, P, x, b - 0.5 - h, z, 1.3, f ? 0.5 : -0.4, f); }
+  for (const [x, h, z, b] of [[cx - 9, 6, 1, G - 22], [cx + 9, 5, 1, G - 22], [cx, 6, -1, G - 39]]) { S.add(capsule([x, b, z], [x, b - h, z], 1.5, 1.4, 'wax'), 0.4); flameAt(S, P, x, b - 0.5 - h, z, 2.2, f ? 0.8 : -0.6, 1 + f); }
   const fr = R(S, 44, 60, M, view(G, d));
   for (const h of heads) sockets(fr, P, ...h);
   return fr;
