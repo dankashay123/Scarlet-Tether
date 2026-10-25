@@ -632,6 +632,8 @@ screen.addEventListener('wheel', (e) => { if (game.state !== 'designer' || !DES)
 addEventListener('mouseup', () => pointerUp('m'));
 addEventListener('keydown', (e) => {
   keys.add(e.code);
+  // An open question takes the keys: Enter answers yes, Escape cancels, nothing else opens behind it.
+  if (game.ask) { const A = game.ask; if (e.code === 'Enter') { game.ask = null; A.yes(); } else if (e.code === 'Escape') { game.ask = null; sfx('tap', { vol: 0.5 }); } return; }
   if (game.state === 'designer' && DES) { if (e.code === 'Escape') desMenuDo(5); if ((e.code === 'Delete' || e.code === 'Backspace') && DES.sel) desSelDo(3); if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey)) desUndo(); return; }
   if (e.code === 'Backquote') { if (game.state === 'dev') closeDev(); else if (game.state === 'play' || game.state === 'pause') openDev(); return; }
   if (game.state === 'dev') { if (e.code === 'Escape') closeDev(); return; }

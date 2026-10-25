@@ -225,7 +225,9 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   the Rites panel's detail. The Drowned Nave: drops fall in view and ring
   where they land, brighter on the flood, with the drip sound on landing
   (`updateDrips`, `drawDrips`); the Saint leaves ripples while wading.
-  `preview.mjs` and the sheet list know `mendicant`. Test: `round49.cjs`.
+  `preview.mjs` and the sheet list know `mendicant`. An open question
+  (`ask`) now takes the keys (Enter yes, Escape cancel), so M or I cannot
+  open a window behind it (the soak found that). Test: `round49.cjs`.
 
 - **Round 48:** Training Yard RECORDS tab (every build, best 5 s and best
   30 s test, START 30 S TEST, RESET RECORDS with a question). Drowned Nave
