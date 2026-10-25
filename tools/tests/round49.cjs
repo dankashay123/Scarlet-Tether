@@ -46,7 +46,7 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
   // The Mendicant: the other saint waits by the cathedral; switching asks first.
   await p.evaluate(() => { HS.SAVE.hero = 'saint'; HS.enterTown(false); HS.tut.on = false; HS.game.dialog = null; HS.game.state = 'play'; });
   await p.waitForTimeout(900);
-  await p.evaluate(() => { const n = HS.room.npcs.find((q) => q.hero); HS.player.x = n.x - 34; HS.player.y = n.y + 6; }); await p.waitForTimeout(1200); await shot('town-mendicant');
+  await p.evaluate(() => { const n = HS.room.npcs.find((q) => q.hero); HS.player.x = n.x - 22; HS.player.y = n.y + 4; }); await p.waitForTimeout(1200); await shot('town-mendicant');
   out.switch = await p.evaluate(() => { HS.askHero(); const asked = !!HS.game.ask; const A = HS.askLayout(); HS.askTap(A.yes.x + 4, A.yes.y + 4); return { asked, hero: HS.heroId(), sheet: HS.saintSheet() }; });
   await p.waitForTimeout(1500); await shot('town-as-mendicant');
   out.overlaps = await p.evaluate(() => HS.townOverlaps());
