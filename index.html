@@ -1185,7 +1185,7 @@ function addToll(e) {
 // an enrage after `enrage` seconds (double damage, much faster).
 // Set bonus strengths, tuned with tools/tests/setbal.cjs.
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
-const SETK = { stride: 6, strideT: 6, font: 3.5, bound: 1.4, bound6: 2.4, crush: 12, choir: 1.12, choirDrain: 18, nail: 0.04, four: 60, four6: 25, nail4: 0.03, stride4: 3.5, strideT4: 4, font4: 3, bound4: 1.6, choir4: 1.2 };
+const SETK = { stride: 6, strideT: 7, font: 3.5, bound: 1.4, bound6: 2.4, crush: 12, choir: 1.12, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3.5, strideT4: 4, font4: 3, bound4: 1.8, choir4: 1.2 };
 const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 2 };
 // Gear per kill, before the Station's multiplier. Kept low: progress should take farming.
 const DROP = { kill: 0.003, rare: 0.1, elite: 0.5 }; // hp: the average MON Warden
@@ -5683,7 +5683,8 @@ function gearStats() {
   g.dmg += 3 * tal('might'); g.crit += tal('precise'); g.speed += 4 * tal('feet'); g.fervor += 4 * tal('piety'); g.gold += 5 * tal('fortune'); g.cdr += 2 * tal('devout'); g.dash += 5 * tal('quickdash');
   g.hpPct = 4 * tal('vigour') + wound('vigil') * 10;
   // Four pieces of any vestment set also add damage, so 4+2 mixes stay worth wearing.
-  for (const id of MAIN_SETS) if ((g.sets[id] || 0) >= 4) g.dmg += (g.sets[id] >= 6 ? SETK.four6 : SETK.four);
+  // Counted once, for the best set: two sets at 4 pieces do not stack it.
+  g.dmg += Math.max(0, ...MAIN_SETS.map((id) => (g.sets[id] || 0) >= 6 ? SETK.four6 : (g.sets[id] || 0) >= 4 ? SETK.four : 0));
   if (pas('pace')) g.speed += 12; if (pas('devout')) g.cdr += 15; if (pas('coin')) g.gold += 25;
   g.dmgMul = (1 + g.dmg / 100) * g.power; g.armorK = 1 - Math.min(60, g.armor) / 100; g.cdrK = 1 - Math.min(50, g.cdr) / 100; g.dashK = 1 - Math.min(50, g.dash) / 100;
   g.charges = T.dash.charges + (g.powers.has('dashCharge') ? 1 : 0) + (g.powers.has('pilgrim') ? 1 : 0) + (has('habit', 4) ? 1 : 0) + (has('stride', 2) ? 1 : 0);
