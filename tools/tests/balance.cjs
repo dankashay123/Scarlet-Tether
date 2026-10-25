@@ -43,7 +43,7 @@ const profiles = (process.argv[3] || 'bare,run,set').split(',');
       const d = window.__dummy, dt = HS.game.time - window.__t0, dps = (d.maxHp - d.hp) / dt;
       const P = HS.player, c = HS.spawnMonster('risen', P.x - 200, P.y, { room: HS.game.curRoom.id });
       HS.spawnWarden('bellwright'); const w = HS.game.warden, wa = HS.MON.bellwright.attacks[0];
-      const blow = wa.dmg * w.dmgK * HS.curDiff().dmg * HS.G.armorK;
+      const blow = Math.min(wa.dmg * w.dmgK * HS.curDiff().dmg * HS.G.armorK, Math.ceil(P.maxHp * (HS.WARDEN_BLOW || 1))); // capped per blow (round 49)
       const res = { dps: Math.round(dps), wardenHp: Math.round(w.maxHp), ttk: Math.round(w.maxHp / dps), commonHp: Math.round(c.maxHp), commonHits: +(c.maxHp / (dps * 0.38)).toFixed(1), blowsToDie: +(P.maxHp / blow).toFixed(1) };
       for (const e of HS.enemies) e.dead = true; HS.game.warden = null;
       return res;

@@ -29,7 +29,7 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
   out.after = await p.evaluate(() => ({ test: HS.SAVE.yardTest[HS.yardKey()] || 0, key: HS.yardKey() }));
   await p.evaluate(() => { HS.game.state = 'yard'; HS.yard.tab = 4; }); await p.waitForTimeout(250); await shot('records-after');
   // Reset asks first; YES clears both tables.
-  out.reset = await p.evaluate(() => { const G = HS.yardGeo(); HS.yardTap(G.btn(1).x + 4, G.btn(1).y + 4); const asked = !!HS.game.ask; const A = HS.askLayout(); HS.askTap(A.yes.x + 4, A.yes.y + 4); return { asked, rows: HS.yardRecords().length }; });
+  out.reset = await p.evaluate(() => { const G = HS.yardGeo(); HS.yardTap(G.btn(2).x + 4, G.btn(2).y + 4); const asked = !!HS.game.ask; const A = HS.askLayout(); HS.askTap(A.yes.x + 4, A.yes.y + 4); return { asked, rows: HS.yardRecords().length }; });
   await p.evaluate(() => { HS.game.state = 'play'; HS.yard.test = null; });
   // Stratum III: falling ash, a cairn's green flames, a skull heap that rattles.
   await p.evaluate(() => { HS.SAVE.cleared = 8; HS.game.nextYard = false; HS.game.nextStratum = 3; HS.game.nextDiff = 6; HS.game.nextOmens = []; HS.game.nextVigil = 0; HS.newRun(); HS.tut.on = false; HS.game.state = 'play'; HS.DEV.god = true; HS.enemies.length = 0; });
