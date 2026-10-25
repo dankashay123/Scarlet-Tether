@@ -103,7 +103,7 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '50';
+const BUILD = '51';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
   '50': ['THE MENDICANT HAS HIS OWN 18 RITES, ONE PER SET IN EVERY SLOT. SEE THE RITES PANEL WHILE PLAYING HIM.', 'EVERY VESTMENT SET NOW DRESSES THE MENDICANT TOO.', 'CROSSBOW WOUNDS READ RIGHT FOR THE MACE.'],
@@ -619,7 +619,9 @@ function pointerUp(id) {
   if (id === stick.id) { stick.id = null; stick.active = false; }
 }
 // Rites that can be aimed, and the shape their preview draws.
-const AIMABLE = { water: 'point', wave: 'wave', storm: 'fan', step: 'leap', chain: 'chain', brand: 'point', hymn: 'wave', pillars: 'zone', font: 'zone' };
+const AIMABLE = { water: 'point', wave: 'wave', storm: 'fan', step: 'leap', chain: 'chain', brand: 'point', hymn: 'wave', pillars: 'zone', font: 'zone',
+  // The Mendicant's (round 51): a blow ahead, a blow and its nails, the charge, the hook, the placed Reckonings.
+  smite: 'blow', shackleblow: 'blow', nailburst: 'nailfan', charge: 'leap', hook: 'chain', hammer: 'zone', deluge: 'zone' };
 const AIM_R = 46, AIM_DEAD = 10; // drag distance for full range; below this it cancels
 const aimOf = (A) => ({ k: A.k, a: Math.atan2(A.dy, A.dx), f: Math.min(1, Math.hypot(A.dx, A.dy) / AIM_R) });
 
@@ -1182,7 +1184,7 @@ function addToll(e) {
 // Wardens are meant to punish: hpK and dmgK on top of their MON stats, and
 // an enrage after `enrage` seconds (double damage, much faster).
 // Set bonus strengths, tuned with tools/tests/setbal.cjs.
-const SETK = { stride: 6, strideT: 5, font: 4, bound: 1.4, bound6: 2, crush: 12, choir: 1.25, choirDrain: 18, nail: 0.04, four: 25, nail4: 0.02, stride4: 2, strideT4: 3, font4: 2, bound4: 1.3, choir4: 1.1 };
+const SETK = { stride: 6, strideT: 6, font: 3.5, bound: 1.4, bound6: 2, crush: 12, choir: 1.25, choirDrain: 18, nail: 0.04, four: 35, nail4: 0.03, stride4: 3.5, strideT4: 4, font4: 3, bound4: 1.6, choir4: 1.2 };
 const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 2 };
 // Gear per kill, before the Station's multiplier. Kept low: progress should take farming.
 const DROP = { kill: 0.003, rare: 0.1, elite: 0.5 }; // hp: the average MON Warden
@@ -2049,7 +2051,7 @@ function shopStock() {
       const setId = ri === 4 ? (il >= SET_FROM ? pick(MAIN_SETS) : 'habit') : null;
       if (setId && setId !== 'habit' && rng() < 0.3) { const it = armsItem(setId, rng() < 0.5 ? 'bow' : 'quiver', il); it.price = Math.round(SHOP_PRICE[ri] * (1 + (il - 1) * 0.6) / 5) * 5; items.push(it); continue; }
       const slot = setId ? pick(VSETS[setId].slots) : pick(Object.keys(SLOTS)), base = pick(SLOTS[slot]);
-      const leg = ri === 3 ? pick(LEGENDS.filter((L) => L.slot === slot)) : null;
+      const leg = ri === 3 ? pick(LEGENDS.filter((L) => L.slot === slot && (!L.hero || L.hero === heroId()))) : null;
       const name = ri === 1 ? `${base} ${pick(SUFFIX)}` : ri === 2 ? `${pick(RARE_A)} ${base}` : ri === 3 ? leg.name : `${VSETS[setId].piece} ${base}`;
       const it = makeItem(slot, ri, name, undefined, il); if (setId) it.set = setId; if (leg) it.power = leg.id; it.price = Math.round(SHOP_PRICE[ri] * (1 + (il - 1) * 0.6) / 5) * 5; items.push(it);
     }
@@ -2965,13 +2967,13 @@ const RITE_MORE = {
   pilgrim: { syn: 'DASHES LEAVE HOLY FIRE.', pow: 'hotTrail' },
   greatpen: { syn: 'BOUND FOES TAKE 40% MORE.', pow: 'longBind' },
   // The Mendicant's (round 50).
-  smite: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigPools' }, undertow: { syn: 'ITS POOLS ARE 30% WIDER.' }, nailburst: { syn: '4 MORE NAILS.' },
-  charge: { syn: 'THE STRIKE SETS FOES ALIGHT.' }, shackleblow: { syn: 'HITS 30% HARDER.' }, cinderslam: { syn: 'REACHES 30% FARTHER.' },
-  hook: { syn: 'FOES STRUCK ARE BOUND FOR 1 S.' }, chainsweep: { syn: 'BINDS 0.5 S LONGER.' }, toll: { syn: '6 MORE ZEAL.' },
-  vow: { syn: 'LASTS 1 S LONGER.' }, shards: { syn: '2 MORE SWINGS.' }, wellspring: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigPools' },
-  tolling: { syn: 'SHOCKWAVES REACH 30% FARTHER.' }, hammer: { syn: 'KILLS IN RECKONING HEAL YOU.', pow: 'fastPillars' },
-  deluge: { syn: 'WIDER, SLOWS FOES AND PROTECTS YOU.', pow: 'bigPools' }, hundredblows: { syn: 'EVERY NAIL PIERCES, SPLITS AND ADDS NAIL STACKS.', pow: 'longReck' },
-  pyre: { syn: 'DASHES LEAVE HOLY FIRE.', pow: 'hotTrail' }, verdict: { syn: 'BOUND FOES TAKE 40% MORE.', pow: 'longBind' },
+  smite: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigBlow' }, undertow: { syn: 'ITS POOLS ARE 30% WIDER.', pow: 'deepTide' }, nailburst: { syn: '4 MORE NAILS.', pow: 'moreShards' },
+  charge: { syn: 'THE STRIKE SETS FOES ALIGHT.', pow: 'longCharge' }, shackleblow: { syn: 'HITS 30% HARDER.', pow: 'bigBlow' }, cinderslam: { syn: 'REACHES 30% FARTHER.', pow: 'loudToll' },
+  hook: { syn: 'FOES STRUCK ARE BOUND FOR 1 S.', pow: 'longCharge' }, chainsweep: { syn: 'BINDS 0.5 S LONGER.', pow: 'deepTide' }, toll: { syn: '6 MORE ZEAL.', pow: 'loudToll' },
+  vow: { syn: 'LASTS 1 S LONGER.', pow: 'longVow' }, shards: { syn: '2 MORE SWINGS.', pow: 'moreShards' }, wellspring: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigPools' },
+  tolling: { syn: 'SHOCKWAVES REACH 30% FARTHER.', pow: 'loudToll' }, hammer: { syn: 'KILLS IN RECKONING HEAL YOU.', pow: 'bigHammer' },
+  deluge: { syn: 'WIDER, SLOWS FOES AND PROTECTS YOU.', pow: 'bigPools' }, hundredblows: { syn: 'EVERY NAIL PIERCES, SPLITS AND ADDS NAIL STACKS.', pow: 'moreShards' },
+  pyre: { syn: 'DASHES LEAVE HOLY FIRE.', pow: 'hotTrail' }, verdict: { syn: 'BOUND FOES TAKE 40% MORE.', pow: 'deepTide' },
 };
 function openRites(back) { game.ritesBack = back || game.state; game.state = 'rites'; game.riteFocus = game.riteFocus || 'm1'; sfx('tap'); }
 // Small text that must fit a width: drop a leading THE, try a short form,
@@ -5199,7 +5201,7 @@ function damagePlayer(src, dmg, contacts, how) {
   if (game.buff && game.buff.kind === 'warding') dmg *= 0.5;
   if (game.scene === 'wound') dmg *= curDiff().dmg;
   // Penitent's Vow: half damage, and the foe that struck is struck back.
-  if ((player.vowT || 0) > game.time) { dmg *= 0.5; if (src && src.maxHp && !src.dead && enemies.includes(src)) { const d = Math.hypot(src.x - player.x, src.y - player.y) || 1; boltStrike({ x: src.x, y: src.y - (src.hy || 10), vx: (src.x - player.x) / d, vy: (src.y - player.y) / d, dmgK: 3, melee: true, hit: new Set() }, src); sparks(src.x, src.y - 12, PAL.ember0, 6); } }
+  if ((player.vowT || 0) > game.time) { dmg *= 0.5; if (src && src.maxHp && !src.dead && enemies.includes(src)) { const d = Math.hypot(src.x - player.x, src.y - player.y) || 1; boltStrike({ x: src.x, y: src.y - (src.hy || 10), vx: (src.x - player.x) / d, vy: (src.y - player.y) / d, dmgK: G.powers.has('longVow') ? 6 : 3, melee: true, hit: new Set() }, src); sparks(src.x, src.y - 12, PAL.ember0, 6); } }
   dmg = Math.max(1, Math.round(dmg * G.armorK * setGuard()));
   if (isWardenSrc(src)) dmg = Math.min(dmg, Math.ceil(player.maxHp * WARDEN_BLOW));
   noteHurt(src, how, dmg);
@@ -5575,24 +5577,32 @@ function setLines(it) {
 const LEGENDS = [
   ...Object.entries(POWERS).map(([id, P]) => ({ id, slot: id === 'vow' ? 'seal' : id, name: id === 'vow' ? 'THE LESSER VOW' : LEGENDARIES[id], key: P.key, text: P.text })),
   { id: 'crownThorns', slot: 'hood', name: 'THE CROWN OF THORNS', key: 'thornHeal', text: 'EVERY KILL HEALS 1% OF YOUR HEALTH.' },
-  { id: 'veilFont', slot: 'hood', name: 'VEIL OF THE STILL WATER', key: 'bigPools', text: 'YOUR HOLY WATER POOLS ARE TWICE AS WIDE.' },
+  { id: 'veilFont', slot: 'hood', name: 'VEIL OF THE STILL WATER', key: 'bigPools', text: 'POOLS FROM YOUR RITES ARE TWICE AS WIDE.' },
   { id: 'mantleAsh', slot: 'mantle', name: 'MANTLE OF FALLING ASH', key: 'ashRing', text: 'TAKING A HIT RELEASES A RING OF FIRE (ONCE EVERY 2 S).' },
-  { id: 'pallWard', slot: 'mantle', name: 'THE PALL OF SEVEN WARDS', key: 'wardLong', text: "MARTYR'S WARD LASTS 6 S AND REFILLS YOUR DASHES." },
+  { hero: 'saint', id: 'pallWard', slot: 'mantle', name: 'THE PALL OF SEVEN WARDS', key: 'wardLong', text: "MARTYR'S WARD LASTS 6 S AND REFILLS YOUR DASHES." },
   { id: 'chainHands', slot: 'gloves', name: 'HANDS OF THE JAILER', key: 'longBind', text: 'CHAINS AND SHACKLES HOLD 2 S LONGER.' },
-  { id: 'stormHands', slot: 'gloves', name: "THE STORMWRIGHT'S GLOVES", key: 'bigStorm', text: 'NAIL STORM SHOOTS 21 NAILS.' },
+  { hero: 'saint', id: 'stormHands', slot: 'gloves', name: "THE STORMWRIGHT'S GLOVES", key: 'bigStorm', text: 'NAIL STORM SHOOTS 21 NAILS.' },
   { id: 'girdleEmber', slot: 'girdle', name: 'CINCTURE OF EMBERS', key: 'burnVuln', text: 'BURNING FOES TAKE 30% MORE DAMAGE.' },
   { id: 'girdleTithe', slot: 'girdle', name: 'THE TITHE-BELT', key: 'tithe', text: '+60% GOLD. HEALTH ORBS ALSO GIVE 10 ZEAL.' },
   { id: 'stepFire', slot: 'greaves', name: 'SABATONS OF THE EMBER STEP', key: 'hotTrail', text: 'YOUR FIRE TRAILS BURN TWICE AS HOT.' },
   { id: 'pilgrimSand', slot: 'greaves', name: "THE PILGRIM'S SANDALS", key: 'pilgrim', text: '+1 DASH CHARGE. DASHES RECHARGE 25% FASTER.' },
   { id: 'zealLocket', slot: 'rosary', name: 'LOCKET OF THE LAST HYMN', key: 'longReck', text: 'RECKONING LASTS 2 S LONGER.' },
-  { id: 'censerLocket', slot: 'rosary', name: "THE CENSER-BEARER'S CHAIN", key: 'censerPlus', text: 'CENSER BLAZE RETURNS 40% SOONER AND HEALS 5%.' },
-  { id: 'judgeSeal', slot: 'seal', name: 'SEAL OF JUDGEMENT', key: 'fastPillars', text: "JUDGEMENT'S PILLARS FALL TWICE AS OFTEN." },
+  { hero: 'saint', id: 'censerLocket', slot: 'rosary', name: "THE CENSER-BEARER'S CHAIN", key: 'censerPlus', text: 'CENSER BLAZE RETURNS 40% SOONER AND HEALS 5%.' },
+  { hero: 'saint', id: 'judgeSeal', slot: 'seal', name: 'SEAL OF JUDGEMENT', key: 'fastPillars', text: "JUDGEMENT'S PILLARS FALL TWICE AS OFTEN." },
   { id: 'knucklebone', slot: 'relic', name: "THE GAMBLER'S KNUCKLEBONE", key: 'luckyRite', text: "A RITE HAS A 25% CHANCE TO COST NO COOLDOWN." },
   { id: 'saintTooth', slot: 'relic', name: "THE SAINT'S MOLAR", key: 'killNova', text: 'EVERY 10TH KILL RELEASES A RING OF HOLY LIGHT.' },
-  { id: 'pierceBow', slot: 'bow', name: 'THE LONGWAY ARBALEST', key: 'longShot', text: 'BOLTS PIERCE 2 MORE FOES AND FLY FARTHER.' },
-  { id: 'heavyBow', slot: 'bow', name: "THE PENITENT'S PROD", key: 'heavyBolts', text: 'THE CROSSBOW FIRES 25% SLOWER, BOLTS HIT TWICE AS HARD.' },
-  { id: 'emberQuiver', slot: 'quiver', name: 'THE BRAZIER QUIVER', key: 'critBurn', text: 'CRITICAL BOLTS SET FOES ALIGHT.' },
-  { id: 'cruelQuiver', slot: 'quiver', name: 'THE QUIVER OF NO MERCY', key: 'cruel', text: 'BOLTS DEAL 40% MORE TO BOUND OR SLOWED FOES.' },
+  { hero: 'saint', id: 'pierceBow', slot: 'bow', name: 'THE LONGWAY ARBALEST', key: 'longShot', text: 'BOLTS PIERCE 2 MORE FOES AND FLY FARTHER.' },
+  { id: 'heavyBow', slot: 'bow', name: "THE PENITENT'S PROD", key: 'heavyBolts', text: 'THE CROSSBOW OR MACE IS 25% SLOWER AND HITS TWICE AS HARD.' },
+  { id: 'emberQuiver', slot: 'quiver', name: 'THE BRAZIER QUIVER', key: 'critBurn', text: 'CRITICAL BOLTS AND BLOWS SET FOES ALIGHT.' },
+  { id: 'cruelQuiver', slot: 'quiver', name: 'THE QUIVER OF NO MERCY', key: 'cruel', text: 'BOLTS AND BLOWS DEAL 40% MORE TO BOUND OR SLOWED FOES.' },
+  // The Mendicant's (round 51): they drop only while he is played (hero), as the Saint-only pieces drop only for the Saint.
+  { hero: 'mendicant', id: 'blowGaunt', slot: 'gloves', name: "THE PENITENT'S GAUNTLETS", key: 'bigBlow', text: 'SMITE AND SHACKLE BLOW LAND 50% WIDER.' },
+  { hero: 'mendicant', id: 'bellStole', slot: 'mantle', name: "THE BELLRINGER'S STOLE", key: 'loudToll', text: 'BELL TOLL AND CINDER SLAM GIVE TWICE THE ZEAL. THE TOLLING REACHES 30% FARTHER.' },
+  { hero: 'mendicant', id: 'chargeGreaves', slot: 'greaves', name: 'SABATONS OF THE CHARGE', key: 'longCharge', text: 'THE STRIKES OF PENITENT CHARGE AND IRON HOOK HIT 50% HARDER AND STUN FOR 1 S.' },
+  { hero: 'mendicant', id: 'shardBeads', slot: 'rosary', name: 'BEADS OF IRON SHARDS', key: 'moreShards', text: 'NAIL BURST, IRON SHARDS AND THE HUNDRED BLOWS THROW TWICE THE NAILS.' },
+  { hero: 'mendicant', id: 'vowRing', slot: 'seal', name: 'SEAL OF THE IRON VOW', key: 'longVow', text: "PENITENT'S VOW LASTS TWICE AS LONG AND STRIKES BACK TWICE AS HARD." },
+  { hero: 'mendicant', id: 'tideCord', slot: 'girdle', name: 'THE UNDERTOW CORD', key: 'deepTide', text: 'UNDERTOW AND CHAIN SWEEP REACH 40% FARTHER. THE IRON VERDICT BINDS 1 S LONGER.' },
+  { hero: 'mendicant', id: 'bellHammer', slot: 'relic', name: 'THE SEVENTH BELL-HAMMER', key: 'bigHammer', text: "HAMMER OF HEAVEN'S PILLARS HIT 50% HARDER AND STUN FOR 1.5 S." },
 ];
 for (const L of LEGENDS) if (!POWERS[L.id]) POWERS[L.id] = { key: L.key, text: L.text };
 const SALVAGE = [5, 15, 40, 120, 200];
@@ -5607,7 +5617,7 @@ function rollItem(boost = 0, il = curDiff().n) {
   const setId = ri === 4 ? (il >= SET_FROM ? pick(MAIN_SETS) : 'habit') : null;
   if (setId && setId !== 'habit' && rng() < 0.3) return armsItem(setId, rng() < 0.5 ? 'bow' : 'quiver', il);
   const slot = setId ? pick(VSETS[setId].slots) : pick(Object.keys(SLOTS)), base = pick(SLOTS[slot]);
-  const leg = ri === 3 ? pick(LEGENDS.filter((L) => L.slot === slot)) : null;
+  const leg = ri === 3 ? pick(LEGENDS.filter((L) => L.slot === slot && (!L.hero || L.hero === heroId()))) : null;
   const name = ri === 0 ? `${pick(ADJ)} ${base}` : ri === 1 ? `${base} ${pick(SUFFIX)}` : ri === 2 ? `${pick(RARE_A)} ${base}` : ri === 3 ? leg.name : `${VSETS[setId].piece} ${base}`;
   const it = makeItem(slot, ri, name, undefined, il);
   if (setId) it.set = setId; if (leg) it.power = leg.id;
@@ -5954,7 +5964,7 @@ function updateMelee(dt) {
   const fire = ember || (player.rainT > 0 && player.penRite === 'pyre'); // Pyre March: every swing burns
   const crit = rng() < T.crossbow.crit + G.crit / 100, arc = MELEE.arc + extra * 0.2;
   // Nails thrown with the swing: Iron Shards, the Hundred Blows.
-  const nails = (player.shardN > 0 ? (twist('shards') ? 5 : 3) : 0) + (player.rainT > 0 && player.penKind === 'volley' ? 2 : 0);
+  const nails = ((player.shardN > 0 ? (twist('shards') ? 5 : 3) : 0) + (player.rainT > 0 && player.penKind === 'volley' ? 2 : 0)) * (G.powers.has('moreShards') ? 2 : 1);
   if (player.shardN > 0) player.shardN--;
   for (let k = 0; k < nails; k++) spawnBolt(player.x + player.face * 10, player.y - 26, a + (k - (nails - 1) / 2) * 0.16, rng() < T.crossbow.crit + G.crit / 100);
   player.swingT = MELEE.swing; player.swingA = a; player.swingArc = arc; player.swingCrit = crit;
@@ -6327,17 +6337,18 @@ function castMM1(aim) {
   const id = riteOf('m1').id, a = maceDir(aim), tw = twist(id);
   const ahead = (d) => ({ x: player.x + Math.cos(a) * d, y: player.y + Math.sin(a) * d });
   player.face = Math.cos(a) < 0 ? -1 : 1; player.swingT = MELEE.swing; player.swingA = a; player.swingArc = 1; player.swingCrit = false;
-  const smite = () => { const q = ahead(34); maceHit(q.x, q.y, 46, 5 * (1 + wound('riteSmite') * 0.4)); pools.push({ x: q.x, y: q.y, r: T.flask.radius * (mSyn('smite') ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1), t: 0 }); sfx('flask', { rate: 0.8 }); };
-  const burst = () => { const q = ahead(30), n = 9 + (mSyn('nailburst') ? 4 : 0) + wound('riteNailburst') * 3; maceHit(q.x, q.y, 40, 3); for (let k = 0; k < n; k++) spawnBolt(q.x, q.y - 14, a + (k - (n - 1) / 2) * 0.12, rng() < T.crossbow.crit + G.crit / 100); sfx('shoot', { rate: 0.8, vol: 1.2 }); };
-  const blow = () => { const q = ahead(30); maceHit(q.x, q.y, 56, 5.5 * (mSyn('shackleblow') ? 1.3 : 1), { rgb: riteFx().chain, each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 2 + wound('riteShackleblow') * 0.5); } }); sfx('chain'); };
-  const slam = () => { const r = 80 * (mSyn('cinderslam') ? 1.3 : 1); skillFx.push({ kind: 'blaze', x: player.x, y: player.y, r, t: 0, max: 0.6 }); maceRing(r, 2.5 * (1 + wound('riteCinderslam') * 0.4), { ramp: 'ember', rgb: '255,122,31', each: (e) => { e.burn = T.thurible.burn.time * 1.5; addFervor(2); } }); sfx('thurible', { rate: 0.6, vol: 1.3 }); };
+  const wide = G.powers.has('bigBlow') ? 1.5 : 1;
+  const smite = () => { const q = ahead(34); maceHit(q.x, q.y, 46 * wide, 6 * (1 + wound('riteSmite') * 0.4)); pools.push({ x: q.x, y: q.y, r: T.flask.radius * (mSyn('smite') ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1), t: 0 }); sfx('flask', { rate: 0.8 }); };
+  const burst = () => { const q = ahead(30), n = (9 + (mSyn('nailburst') ? 4 : 0) + wound('riteNailburst') * 3) * (G.powers.has('moreShards') ? 2 : 1); maceHit(q.x, q.y, 40, 3); for (let k = 0; k < n; k++) spawnBolt(q.x, q.y - 14, a + (k - (n - 1) / 2) * 0.12, rng() < T.crossbow.crit + G.crit / 100); sfx('shoot', { rate: 0.8, vol: 1.2 }); };
+  const blow = () => { const q = ahead(30); maceHit(q.x, q.y, 56 * wide, 5.5 * (mSyn('shackleblow') ? 1.3 : 1), { rgb: riteFx().chain, each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 2 + wound('riteShackleblow') * 0.5); } }); sfx('chain'); };
+  const slam = () => { const r = 80 * (mSyn('cinderslam') ? 1.3 : 1); skillFx.push({ kind: 'blaze', x: player.x, y: player.y, r, t: 0, max: 0.6 }); maceRing(r, 2.5 * (1 + wound('riteCinderslam') * 0.4), { ramp: 'ember', rgb: '255,122,31', each: (e) => { e.burn = T.thurible.burn.time * 1.5; addFervor(G.powers.has('loudToll') ? 4 : 2); } }); sfx('thurible', { rate: 0.6, vol: 1.3 }); };
   if (id === 'smite') { smite(); if (tw) later(0.3, smite); }
   else if (id === 'nailburst') { burst(); if (tw) later(0.3, burst); }
-  else if (id === 'charge') { const len = 1.7; startDash(player, { len, step: true, dir: a }); const end = () => maceRing(70, 4 * (1 + wound('riteCharge') * 0.4), { each: (e) => { if (mSyn('charge')) e.burn = T.thurible.burn.time; } }); later(T.dash.time * len, end); if (tw) later(T.dash.time * len + 0.4, end); }
+  else if (id === 'charge') { const len = 1.7; startDash(player, { len, step: true, dir: a }); const lc = G.powers.has('longCharge'), end = () => maceRing(70, 4 * (1 + wound('riteCharge') * 0.4) * (lc ? 1.5 : 1), { each: (e) => { if (mSyn('charge')) e.burn = T.thurible.burn.time; if (lc && !e.boss) e.bound = Math.max(e.bound || 0, 1); } }); later(T.dash.time * len, end); if (tw) later(T.dash.time * len + 0.4, end); }
   else if (id === 'cinderslam') { slam(); if (tw) later(0.5, slam); }
   else if (id === 'undertow') {
-    const r = 120 * (1 + wound('riteUndertow') * 0.3), hit = maceRing(r, 2, { pull: true, rgb: '111,224,208', ramp: 'frost' });
-    for (let k = 0; k < 3; k++) { const b = a + (k - 1) * 0.9; pools.push({ x: player.x + Math.cos(b) * 34, y: player.y + Math.sin(b) * 24, r: T.flask.radius * 0.7 * (mSyn('undertow') ? 1.3 : 1), t: 0 }); }
+    const r = 120 * (1 + wound('riteUndertow') * 0.3) * (G.powers.has('deepTide') ? 1.4 : 1), hit = maceRing(r, 2, { pull: true, rgb: '111,224,208', ramp: 'frost' });
+    for (let k = 0; k < 3; k++) { const b = a + (k - 1) * 0.9; pools.push({ x: player.x + Math.cos(b) * 34, y: player.y + Math.sin(b) * 24, r: T.flask.radius * 0.7 * (mSyn('undertow') ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1), t: 0 }); }
     if (tw) player.hp = Math.min(player.maxHp, player.hp + player.maxHp * Math.min(0.2, hit.length * 0.05)); sfx('flask', { rate: 0.6 });
   }
   else if (id === 'shackleblow') { blow(); if (tw) later(0.4, blow); }
@@ -6353,15 +6364,15 @@ function castMM2(aim) {
     for (let k = 1; k < 10; k++) { const f = k / 10; parts.push({ kind: 'spark', x: player.x + (t.x - player.x) * f, y: player.y - 20 + (t.y - t.hy - player.y + 20) * f, z: 0, vx: 0, vy: -10, vz: 0, c: pick([PAL.iron0, PAL.iron1]), life: 0.3 }); }
     rings.push({ x: t.x, y: t.y, t: 0, max: 0.35, r: 20, color: riteFx().chain, flat: true }); sfx('chain');
     startDash(player, { len, dir: a });
-    const strike = () => maceRing(52, 4.5 * (1 + wound('riteHook') * 0.4), { rgb: riteFx().chain, each: (e) => { if (mSyn('hook') && !e.boss) e.bound = Math.max(e.bound || 0, 1); } });
+    const lc = G.powers.has('longCharge'), strike = () => maceRing(52, 4.5 * (1 + wound('riteHook') * 0.4) * (lc ? 1.5 : 1), { rgb: riteFx().chain, each: (e) => { if ((mSyn('hook') || lc) && !e.boss) e.bound = Math.max(e.bound || 0, 1); } });
     later(T.dash.time * len, strike); if (tw) later(T.dash.time * len + 0.25, strike);
   }
-  else if (id === 'chainsweep') { const sweep = () => maceRing(85 * (1 + wound('riteChainsweep') * 0.2), 2, { rgb: riteFx().chain, each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 1.5 + (mSyn('chainsweep') ? 0.5 : 0)); if (tw) e.burn = T.thurible.burn.time * 1.5; } }); sweep(); sfx('chain', { rate: 0.8 }); }
+  else if (id === 'chainsweep') { const sweep = () => maceRing(85 * (1 + wound('riteChainsweep') * 0.2) * (G.powers.has('deepTide') ? 1.4 : 1), 2, { rgb: riteFx().chain, each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 1.5 + (mSyn('chainsweep') ? 0.5 : 0)); if (tw) e.burn = T.thurible.burn.time * 1.5; } }); sweep(); sfx('chain', { rate: 0.8 }); }
   else if (id === 'toll') {
-    const ring = () => { maceRing(95, 1, { rgb: '255,209,85', ramp: 'gold', each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 1); if (e.state === 'windup') { e.state = 'move'; e.t = 0; } } }); for (const r of [60, 95, 130]) rings.push({ x: player.x, y: player.y - 18, t: 0, max: 0.5, r, color: '255,209,85' }); addFervor(12 + (mSyn('toll') ? 6 : 0) + wound('riteToll') * 5); sfx('knell', { vol: 0.9 }); };
+    const ring = () => { maceRing(95, 1, { rgb: '255,209,85', ramp: 'gold', each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 1); if (e.state === 'windup') { e.state = 'move'; e.t = 0; } } }); for (const r of [60, 95, 130]) rings.push({ x: player.x, y: player.y - 18, t: 0, max: 0.5, r, color: '255,209,85' }); addFervor((12 + (mSyn('toll') ? 6 : 0) + wound('riteToll') * 5) * (G.powers.has('loudToll') ? 2 : 1)); sfx('knell', { vol: 0.9 }); };
     ring(); if (tw) later(0.6, ring);
   }
-  else if (id === 'vow') { player.vowT = game.time + 3 + (mSyn('vow') ? 1 : 0) + wound('riteVow'); if (tw) player.charges = G.charges; rings.push({ x: player.x, y: player.y, t: 0, max: 0.5, r: 50, color: '255,122,31', flat: true }); sfx('shrine', { vol: 0.6 }); }
+  else if (id === 'vow') { player.vowT = game.time + (3 + (mSyn('vow') ? 1 : 0) + wound('riteVow')) * (G.powers.has('longVow') ? 2 : 1); if (tw) player.charges = G.charges; rings.push({ x: player.x, y: player.y, t: 0, max: 0.5, r: 50, color: '255,122,31', flat: true }); sfx('shrine', { vol: 0.6 }); }
   else if (id === 'shards') { player.shardN = 6 + (mSyn('shards') ? 2 : 0) + wound('riteShards') * 2; sparks(player.x, player.y - 30, PAL.iron0, 10); sfx('shoot', { rate: 0.6 }); }
   else if (id === 'wellspring') {
     player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.1); player.wellT = game.time + 4 + wound('riteWellspring');
@@ -6559,7 +6570,7 @@ function updateAbilities(dt) {
       if (p.penAim) { const near = vis.filter((e) => Math.hypot(e.x - p.penAim.x, e.y - p.penAim.y) < AIM_ZONE); if (near.length) vis = near; }
       for (let q = 0; q < (twist('pillars') ? 2 : 1); q++) {
         const e = vis[Math.floor(rng() * Math.min(3, vis.length))];
-        if (e) skillFx.push({ kind: 'pillar', x: e.x, y: e.y, t: 0, max: 0.7, hit: false, dmg: T.penance.dmg * 3 * (1 + (wound('ritePillars') + wound('riteHammer')) * 0.3), stun: p.penRite === 'hammer' });
+        if (e) skillFx.push({ kind: 'pillar', x: e.x, y: e.y, t: 0, max: 0.7, hit: false, dmg: T.penance.dmg * 3 * (1 + (wound('ritePillars') + wound('riteHammer')) * 0.3) * (p.penRite === 'hammer' && G.powers.has('bigHammer') ? 1.5 : 1), stun: p.penRite === 'hammer' ? (G.powers.has('bigHammer') ? 1.5 : 0.5) : 0 });
       }
     }
     if (kind === 'font') { // The Great Font: a big pool that keeps to the Saint
@@ -6569,7 +6580,7 @@ function updateAbilities(dt) {
       if (p.penAim) { pl.x = p.penAim.x; pl.y = p.penAim.y; } else { pl.x = p.x; pl.y = p.y; } pl.t = Math.min(pl.t, 0.5);
     }
     if (kind === 'tolling' && (p.tollT -= dt) <= 0) { // the Tolling: shockwaves around the Mendicant
-      p.tollT = twist('tolling') ? 0.25 : 0.5; const r = 110 * (mSyn('tolling') ? 1.3 : 1);
+      p.tollT = twist('tolling') ? 0.25 : 0.5; const r = 110 * (mSyn('tolling') ? 1.3 : 1) * (G.powers.has('loudToll') ? 1.3 : 1);
       for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - p.x, (e.y - p.y) / 0.8) < r + e.hr) { const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, T.penance.dmg * 0.85 * (1 + wound('riteTolling') * 0.4), rng() < 0.2, dx / d, dy / d, 50, { status: true, color: PAL.gold0 }); }
       rings.push({ x: p.x, y: p.y, t: 0, max: 0.4, r, color: '255,209,85', flat: true }, { x: p.x, y: p.y - 18, t: 0, max: 0.3, r: r * 0.6, color: '255,244,176' });
       sfx('knell', { vol: 0.5, rate: 1.2, gap: 0.2 }); game.shake = Math.max(game.shake, 2);
@@ -6579,7 +6590,7 @@ function updateAbilities(dt) {
     if (kind === 'greatpen' && (p.gpT -= dt) <= 0) { // the Great Penance: everything in sight is bound and judged
       p.gpT = 1.5;
       for (const e of enemies) if (!e.dead && e.state !== 'spawn' && e.x > cam.x && e.x < cam.x + W && e.y > cam.y && e.y < cam.y + H) {
-        if (!e.boss) e.bound = Math.max(e.bound || 0, 1 + (wound('riteGreatpen') + wound('riteVerdict')) * 0.5);
+        if (!e.boss) e.bound = Math.max(e.bound || 0, 1 + (wound('riteGreatpen') + wound('riteVerdict')) * 0.5 + (p.penRite === 'verdict' && G.powers.has('deepTide') ? 1 : 0));
         e.judgedT = game.time + 1.5; if (twist('greatpen')) e.burn = T.thurible.burn.time * 1.5;
         rings.push({ x: e.x, y: e.y, t: 0, max: 0.35, r: 18, color: riteFx().chain, flat: true });
       }
@@ -7414,7 +7425,7 @@ function renderAim() {
   const head = (x, y, a) => { ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * 8, y + Math.sin(a) * 8); ctx.lineTo(x + Math.cos(a + 2.5) * 8, y + Math.sin(a + 2.5) * 8); ctx.lineTo(x + Math.cos(a - 2.5) * 8, y + Math.sin(a - 2.5) * 8); ctx.closePath(); ctx.fillStyle = col; ctx.fill(); ctx.fillStyle = fill; };
   const id = riteOf(A.k).id;
   if (kind === 'zone') { // a Reckoning placed on the floor: the Font's pool, or where Judgement's pillars fall
-    const t = aimPoint(A, 220), r = id === 'font' ? fontR() : AIM_ZONE;
+    const t = aimPoint(A, 220), r = id === 'font' || id === 'deluge' ? fontR() : AIM_ZONE;
     ctx.setLineDash([4, 4]); line(px, py - 20, t.x, t.y);
     ctx.beginPath(); ctx.ellipse(t.x, t.y, r, r * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
   } else if (kind === 'point') {
@@ -7429,9 +7440,13 @@ function renderAim() {
     const n = (G.powers.has('bigStorm') ? 21 : 11) + wound('riteStorm') * 4, sp = G.powers.has('bigStorm') ? 0.07 : 0.11, half = (n - 1) / 2 * sp, L = Math.min(170, T.crossbow.range * 0.8), oy = py - 30;
     ctx.beginPath(); ctx.moveTo(px, oy); ctx.arc(px, oy, L, A.a - half, A.a + half); ctx.closePath(); ctx.fill(); ctx.stroke();
   } else if (kind === 'leap') {
-    const L = T.dash.speed * T.dash.time * 1.9, ex = px + c * L, ey = py + s0 * L;
+    const L = T.dash.speed * T.dash.time * (id === 'charge' ? 1.7 : 1.9), ex = px + c * L, ey = py + s0 * L;
     ctx.setLineDash([6, 4]); line(px, py, ex, ey); ctx.setLineDash([]);
     ctx.beginPath(); ctx.ellipse(ex, ey, 12, 7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); head(ex, ey - 12, A.a);
+  } else if (kind === 'blow' || kind === 'nailfan') { // the Mendicant's blow lands just ahead (castMM1)
+    const d = kind === 'blow' ? 34 : 30, r = (id === 'shackleblow' ? 56 : id === 'smite' ? 46 : 40) * (id !== 'nailburst' && G.powers.has('bigBlow') ? 1.5 : 1), bx = px + c * d, by = py + s0 * d;
+    ctx.beginPath(); ctx.ellipse(bx, by, r, r * 0.8, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); head(px + c * (d + r), py + s0 * (d + r) * 0.8, A.a);
+    if (kind === 'nailfan') { const n = 9 + (mSyn('nailburst') ? 4 : 0) + wound('riteNailburst') * 3, half = (n - 1) / 2 * 0.12, L = 150; ctx.beginPath(); ctx.moveTo(bx, by - 14); ctx.arc(bx, by - 14, L, A.a - half, A.a + half); ctx.closePath(); ctx.stroke(); }
   } else if (kind === 'chain') {
     const t = chainPick(A.a), L = T.chain.range;
     ctx.setLineDash([4, 4]); line(px, py - 25, t ? t.x : px + c * L, t ? t.y - (t.hy || 16) : py - 25 + s0 * L); ctx.setLineDash([]);
@@ -7998,7 +8013,7 @@ function updateSkills(dt) {
     skillFxEmit(f, dt);
     if (f.kind === 'pillar' && !f.hit && f.t >= 0.22) {
       f.hit = true; game.shake = Math.max(game.shake, 3); sfx('penance', { vol: 0.35, rate: 1.4, gap: 0.08 });
-      for (const e of nearestFoes(f.x, f.y, 99, 24 * WS)) { hurtEnemy(e, f.dmg, rng() < 0.3, 0, 1, 40); if (f.stun && !e.boss) e.bound = Math.max(e.bound || 0, 0.5); }
+      for (const e of nearestFoes(f.x, f.y, 99, 24 * WS)) { hurtEnemy(e, f.dmg, rng() < 0.3, 0, 1, 40); if (f.stun && !e.boss) e.bound = Math.max(e.bound || 0, f.stun); }
       playFx('fx', 'impact', f.x, f.y - 10, 22, { big: true });
     }
     if (f.kind === 'nova' && !f.fx) { f.fx = 1; const R = f.ramp || 'gold'; vemit(f.x, f.y - 4, { n: 22, ramp: R, sp: f.r * 3.2, up: 30, life: 0.45, drag: 3, size: 2, glow: 7 }); if (R === 'fire') vemit(f.x, f.y, { n: 8, ramp: 'fire', sp: 30, up: 60, life: 0.8, grav: -10, glow: 5 }); }

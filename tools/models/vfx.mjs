@@ -345,6 +345,21 @@ const LEGEND_ICONS = [
   () => legendIcon('quiver', { leather: 'iron', iron: 'ember' }, (S) => flames(S, [[13, 3], [16, 4], [11, 5]], 1.4)),
   // 29 The Quiver of No Mercy: black leather bound in chain.
   () => legendIcon('quiver', { leather: 'ink', gold: 'iron', iron: 'blood' }, (S) => { for (let k = 0; k < 3; k++) S.add(torus([9 + k * 3, 14 + k * 1.2, 4], 1.3, 0.6, k % 2 ? 0 : Math.PI / 2, 'iron'), 0); }),
+  // The Mendicant's (round 51), in LEGENDS order after the thirty.
+  // The Penitent's Gauntlets: iron gloves gripping a mace head.
+  () => legendIcon('gloves', { leather: 'iron', iron: 'gold' }, (S) => { S.add(sphere([19, 8, 4], 3.2, 'iron'), 0.5); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; S.add(sphere([19 + Math.cos(a) * 3, 8 + Math.sin(a) * 3, 4], 1.4, 'iron'), 0.4); } }),
+  // The Bellringer's Stole: a gold-hemmed mantle with a small bell.
+  () => legendIcon('mantle', { violet: 'gold' }, (S) => { S.add(ellipsoid([12, 17, 5], [3, 3.4, 2], 'gold'), 0.5); S.add(sphere([12, 20.5, 5.5], 1.1, 'iron'), 0); }),
+  // Sabatons of the Charge: dark greaves trailing embers.
+  () => legendIcon('greaves', { iron: 'wood', gold: 'ember' }, (S) => flames(S, [[6, 20], [9, 22]], 1.2)),
+  // Beads of Iron Shards: a rosary of iron beads hung with nail shards.
+  () => legendIcon('rosary', { blood: 'iron', gold: 'slate' }, (S) => { for (const x of [9, 12, 15]) S.add(capsule([x, 18, 3.5], [x, 23, 3.5], 0.8, 0.3, 'iron'), 0.2); }),
+  // Seal of the Iron Vow: an iron ring with an ember stone.
+  () => legendIcon('seal', { gold: 'iron', blood: 'ember' }),
+  // The Undertow Cord: a sea-blue cord dripping water.
+  () => legendIcon('girdle', { leather: 'holy', gold: 'iron' }, (S) => { for (const [x, y] of [[8, 20], [13, 22], [18, 20]]) S.add(ellipsoid([x, y, 3], [1.1, 1.7, 1.1], 'holy'), 0); }),
+  // The Seventh Bell-Hammer: a relic crossed by a small gold hammer.
+  () => legendIcon('relic', { gold: 'iron' }, (S) => { S.add(capsule([7, 20, 4], [17, 8, 4], 0.9, 0.9, 'wood'), 0.2); S.add(box([17.5, 7.5, 4], [3.2, 1.6, 1.6], 0.6, 'gold'), 0.3); }),
 ];
 
 // Set pieces: every slot in a set's own colours (taken from its Saint skin)
