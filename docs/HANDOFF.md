@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-25, after round 49 (build 49, on `master`). Read
+Last updated 2026-10-25, after round 50 (build 50, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -105,7 +105,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   does not). The other saint stands by the cathedral doors; talking asks
   and switches (`askHero`, `switchHero`). The Mendicant's sheet is
   `mendicant` (`tools/models/mendicant.mjs`, `HEROES` in `base.mjs`:
-  `saintModel({ hero, swing })`); set skins are the Saint's only for now.
+  `saintModel({ hero, swing })`). Every set skin dresses him too
+  (`mendicant_<set>`; skins that hold something in the hand skip it).
+  His own rites (round 50): `MRITES` (18, one per set in each slot, same
+  opening levels as the Saint's), chosen in `SAVE.mrites`; `riteList(slot)`
+  and `riteSave()` pick the hero's list. Casts in `castMM1`/`castMM2` hit
+  through `maceHit`/`maceRing` (boltStrike blows). Four Reckonings run on
+  the Saint's kinds (`PEN_BASE`: hammer on pillars, deluge on font,
+  hundredblows on volley, pyre on pilgrim, verdict on greatpen;
+  `player.penKind` is the base kind, `player.penRite` the rite) with a mace
+  extra each; the Tolling is new. Each has a set line, a twist and a Wound.
   Yard records keep the heroes apart (`yardKey` ends in `:mendicant`).
 - **Combat:** a floating auto-aiming crossbow, dash with a perfect dodge,
   the Censer, two rites and a Reckoning chosen from 18 (6 per slot, one per
@@ -194,11 +203,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    XV and in the Training Yard.
 5. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
    attack; ask the owner how the fights at Stations VII to XV feel.
-6. **The Mendicant, part two.** Set skins (`mendicant_<set>` from
-   `SKINS`), his own rites (one per set and slot, or set-twisted versions of
-   the Saint's), rite and set text that says "mace" not "crossbow" for him,
-   a dev toggle, and tuning `MELEE` from play (`setbal.cjs` with the hero
-   set, the yard).
+6. **The Mendicant, part three.** Aimed drags for his rites (`AIMABLE`,
+   `renderAim`; `maceDir` already takes `aim`), Hallowed powers that name
+   his rites (Smite and Wellspring borrow the Holy Water pool power), and
+   tuning from play (`HERO=mendicant node tools/tests/setbal.cjs`).
 7. **Warden blows.** Round 49 caps one Warden blow at 40% of health
    (`WARDEN_BLOW`); `balance.cjs` now shows 2.5 blows to die from Station XI
    on. Ask whether the deep Stations still feel hard enough.

@@ -150,7 +150,7 @@ export function saintModel(pose = {}) {
   // The cracked halo, seen from just above.
   // Tipped up enough that its hole still shows on the chunky 2x2 grid.
   if (!SKINS[skin]?.crown) S.add(torus(haloAt ? [cx + haloAt[0], 62 - 1.2 + haloAt[1], 2] : [hx - 1, hy - 12 + halo, 0], 4.8, 1.05, haloAt ? 1.25 : 0.55, 'halo'), 0);
-  const J = { cx, B, X, hx, hy, hand, fc, swing };
+  const J = { cx, B, X, hx, hy, hand, fc, swing, hero };
   if (skin) SKINS[skin].add?.(S, J);
   if (HR) HR.add(S, J);
   const f = render(S, FW, 68, MATS, { ground: 62 });
@@ -219,23 +219,25 @@ export const SKINS = {
   stride: {
     mats: { cowl: 'cream', cape: 'cream', capeHem: 'smoulder', tabard: 'crimsonDark', cross: 'gold', hose: 'slateDark' },
     soles: 'smoulder',
-    dots: (f, { hand }) => { dot(f, hand[0] + 1.6, hand[1] - 1.2, 'ember1'); dot(f, hand[0] + 1.8, hand[1] - 3, 'ember0'); },
+    dots: (f, { hand, hero }) => { if (hero) return; dot(f, hand[0] + 1.6, hand[1] - 1.2, 'ember1'); dot(f, hand[0] + 1.8, hand[1] - 3, 'ember0'); },
     noLight: true,
   },
   // The Drowned Font: deep blue robes, silver trim, a glowing vial in hand.
   font: {
     mats: { robe: 'blueRobe', robeDark: 'blueDark', hood: 'blueRobe', cowl: 'blueRobe', cape: 'blueDark', trim: 'silver', capeHem: 'silver', cross: 'blueRobe', hose: 'slateDark' },
-    add: (S, { hand }) => {
+    add: (S, { hand, hero }) => {
+      if (hero) return; // the Mendicant's hand holds the mace
       S.add(sphere([hand[0] + 1.8, hand[1] - 3.2, hand[2] + 0.4], 2.1, 'vial'), 0);
       S.add(capsule([hand[0] + 1.8, hand[1] - 5, hand[2] + 0.4], [hand[0] + 1.8, hand[1] - 6.6, hand[2] + 0.4], 0.9, 0.9, 'silver'), 0.3);
     },
-    dots: (f, { hand }) => dot(f, hand[0] + 1.2, hand[1] - 3.8, 'white'),
+    dots: (f, { hand, hero }) => { if (!hero) dot(f, hand[0] + 1.2, hand[1] - 3.8, 'white'); },
     noLight: true,
   },
   // The Last Confessor: slate robes under a cream hood, a chain from the fist.
   confessor: {
     mats: { robe: 'slateRobe', robeDark: 'slateDark', hood: 'cream', cowl: 'cream', cape: 'creamDark', tabard: 'slateDark', cross: 'gold', hose: 'ink' },
-    add: (S, { hand }) => {
+    add: (S, { hand, hero }) => {
+      if (hero) return;
       const pts = [];
       for (let i = 0; i < 9; i++) { const t = i / 8; pts.push([hand[0] + 1 + Math.sin(t * Math.PI) * 4 + t * 2, hand[1] + 1.5 + t * 17 - Math.sin(t * Math.PI * 2) * 1.5, hand[2] + 0.5]); }
       chain(S, pts, 'iron');

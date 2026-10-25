@@ -10,7 +10,11 @@ const { chromium, devices } = (() => { try { return require('/opt/node-tools/nod
 const secs = +(process.argv[2] || 20), station = +(process.argv[3] || 6), seeds = (process.argv[4] || '1,2').split(',').map(Number);
 const ONLY = (process.env.ONLY || '').split(',').filter(Boolean); // ONLY=none,font runs just those builds
 const ENCH = (process.env.ENCH || '').split(',').filter(Boolean), ENCHT = +(process.env.ENCHT || 2);
-const RITES = { nails: ['storm', 'nailring', 'volley'], stride: ['step', 'ward', 'pilgrim'], font: ['water', 'asperse', 'font'], confessor: ['brand', 'chain', 'greatpen'], choir: ['hymn', 'censer', 'rain'] };
+// HERO=mendicant runs the same builds as the Mendicant with his own rites for each set (round 50).
+const HERO = process.env.HERO || 'saint';
+const RITES = HERO === 'mendicant'
+  ? { none: ['smite', 'hook', 'tolling'], nails: ['nailburst', 'shards', 'hundredblows'], stride: ['charge', 'vow', 'pyre'], font: ['smite', 'wellspring', 'deluge'], confessor: ['shackleblow', 'hook', 'verdict'], choir: ['cinderslam', 'toll', 'tolling'] }
+  : { none: ['water', 'chain', 'rain'], nails: ['storm', 'nailring', 'volley'], stride: ['step', 'ward', 'pilgrim'], font: ['water', 'asperse', 'font'], confessor: ['brand', 'chain', 'greatpen'], choir: ['hymn', 'censer', 'rain'] };
 const BUILDS = [
   ['none', null, null], ['nails', 'nails', null], ['stride', 'stride', null], ['font', 'font', null], ['confessor', 'confessor', null], ['choir', 'choir', null],
   ['nails4+font2', 'nails', 'font'], ['stride4+choir2', 'stride', 'choir'], ['font4+confessor2', 'font', 'confessor'], ['confessor4+nails2', 'confessor', 'nails'], ['choir4+stride2', 'choir', 'stride'],
@@ -21,7 +25,7 @@ const BUILDS = [
   await p.goto('http://localhost:8123/?run'); await p.waitForTimeout(1500);
   const rows = [];
   for (const [name, main, second] of BUILDS.filter(([n]) => !ONLY.length || ONLY.includes(n))) for (const seed of seeds) {
-    await p.evaluate(([st, main, second, R, seed, ENCH, ENCHT]) => {
+    await p.evaluate(([st, main, second, R, seed, ENCH, ENCHT, HERO]) => {
       // The same dice for every build: items, map and crowd come from one seed.
       let x = seed * 2654435761 >>> 0; Math.random = () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; };
       window.HS_AUTOSTIG = true; HS.tut.on = false; HS.DEV.god = false; HS.SAVE.virtues = {}; HS.SAVE.altar = { known: [], sockets: {} }; HS.SAVE.passives = []; HS.SAVE.riteXp = {};
@@ -32,8 +36,9 @@ const BUILDS = [
         for (const sl of ms) { const it = HS.makeItem(sl, 4, 'X', undefined, il); it.set = main; HS.SAVE.equip[sl] = it; }
         if (second) { let n = 0; for (const sl of HS.VSETS[second].slots) { if (n >= 2 || ms.includes(sl)) continue; const it = HS.makeItem(sl, 4, 'X', undefined, il); it.set = second; HS.SAVE.equip[sl] = it; n++; } }
         for (const sl of ['bow', 'quiver']) HS.SAVE.equip[sl] = HS.armsItem(main, sl, il);
-        HS.SAVE.lvl = 60; HS.SAVE.rites = { m1: R[main][0], m2: R[main][1], pen: R[main][2] };
-      } else HS.SAVE.lvl = 60; HS.SAVE.rites = { m1: 'water', m2: 'chain', pen: 'rain' };
+      }
+      // Each build casts its own set's rites (the braces were missing before round 50, so every build cast the none rites).
+      const r = R[main || 'none']; HS.SAVE.lvl = 60; HS.SAVE.hero = HERO; HS.SAVE[HERO === 'mendicant' ? 'mrites' : 'rites'] = { m1: r[0], m2: r[1], pen: r[2] };
       slots.forEach((sl, i) => { if (ENCH[i]) { HS.SAVE.equip[sl].ench = ENCH[i]; HS.SAVE.equip[sl].enchT = ENCHT; } });
       HS.game.nextDiff = st - 1; HS.game.nextStratum = 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.game.stigAt = 1e9; HS.game.run.wounds = {}; HS.applyGear(true);
       for (const e of HS.enemies) e.dead = true;
@@ -49,7 +54,7 @@ const BUILDS = [
         HS.input.m1 = true; HS.input.m2 = true; HS.input.pen = true;
         if ((S.dashT -= 0.05) <= 0) { S.dashT = 1.4; const a = Math.random() * Math.PI * 2; HS.input.mx = Math.cos(a); HS.input.my = Math.sin(a); HS.input.dash = true; setTimeout(() => { HS.input.mx = (home.x - P.x) / 80; HS.input.my = (home.y - P.y) / 80; }, 150); setTimeout(() => { HS.input.mx = 0; HS.input.my = 0; }, 450); }
       }, 50);
-    }, [station, main, second, RITES, seed, ENCH, ENCHT]);
+    }, [station, main, second, RITES, seed, ENCH, ENCHT, HERO]);
     await p.waitForTimeout(secs * 1000);
     const m = await p.evaluate(() => { clearInterval(window.__iv); const S = window.__S, dt = HS.game.time - S.t0; return { kps: +((HS.game.kills - S.kills0) / dt).toFixed(2), takenPerS: Math.round(S.taken / dt), maxHp: HS.player.maxHp, secs: Math.round(dt) }; });
     rows.push({ build: name, ...m });

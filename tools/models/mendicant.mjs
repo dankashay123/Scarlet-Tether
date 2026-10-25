@@ -1,12 +1,11 @@
 // The Mendicant's animation set (round 49): the second playable saint, built
 // on the Saint's body (saintModel with hero 'mendicant'). The mace rests on
 // the shoulder; swing winds it up behind the head, strikes and follows through.
-import { saintModel, posedFrame } from './base.mjs';
+import { saintModel, posedFrame, SKINS } from './base.mjs';
 
 const H = 'mendicant', REST = -1.3;
 const A = (f) => Object.assign(f, { ax: 30, ay: 62 });
-const M = (o) => saintModel({ hero: H, swing: REST, aim: 3, ...o });
-export default { mendicant: {
+const anims = (skin) => { const M = (o) => saintModel({ hero: H, skin, swing: REST, aim: 3, ...o }); return {
   idle: () => [0, 1, 2, 3].map((i) => A(M({ bob: i >= 2 ? 1 : 0, halo: [0, -1, -1, 0][i], cape: [0, -1, -1, 0][i], blink: i === 3 }))),
   // The same 8-frame walk as the Saint: planted feet, a 2 px bob.
   run: () => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
@@ -43,4 +42,6 @@ export default { mendicant: {
     A(M({ lean: 3, legs: -6, lift: [2, 1], cape: -9, halo: 2, swing: -1.6 })),
     A(M({ lean: 1.5, legs: -3, lift: [0, 1], cape: -5, halo: 1, swing: -1.5 })),
   ],
-} };
+}; };
+// One sheet per vestment set (round 50), like the Saint's: mendicant_nails and so on.
+export default { mendicant: anims(null), ...Object.fromEntries(Object.keys(SKINS).map((k) => [`mendicant_${k}`, anims(k)])) };
