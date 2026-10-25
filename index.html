@@ -232,7 +232,7 @@ const boltFx = () => { const T0 = TRAILS.find((q) => q.id === looks().bolt), B =
 // talents and sets are shared; each set dresses him too (mendicant_<set>).
 const HEROES = {
   saint: { name: 'THE SAINT', sheet: 'saint', text: 'FIGHTS FROM RANGE WITH A FLOATING CROSSBOW.' },
-  mendicant: { name: 'THE MENDICANT', sheet: 'mendicant', text: 'FIGHTS UP CLOSE WITH A MACE THAT HITS EVERY FOE IN ITS ARC. TAKES 20% LESS DAMAGE.' },
+  mendicant: { name: 'THE MENDICANT', sheet: 'mendicant', text: 'FIGHTS UP CLOSE WITH A MACE THAT HITS EVERY FOE IN ITS ARC. TAKES 10% LESS DAMAGE.' },
 };
 const heroId = () => (SAVE && SAVE.hero === 'mendicant' ? 'mendicant' : 'saint');
 const isMelee = () => heroId() === 'mendicant';
@@ -5937,7 +5937,7 @@ function fireCdOf(base) {
 }
 // The Mendicant's mace: a swing at the nearest foe in reach hits every foe in
 // its arc, a little after the wind-up (the strike frame).
-const MELEE = { reach: 50, arc: 1.15, cd: 0.52, k: 1.9, guard: 0.8, swing: 0.3, strike: 0.08 };
+const MELEE = { reach: 50, arc: 1.15, cd: 0.52, k: 1.6, guard: 0.9, swing: 0.3, strike: 0.08 };
 function updateMelee(dt) {
   player.xb = null;
   player.fireCd -= dt; if (player.swingT > 0) player.swingT -= dt;
@@ -6329,7 +6329,7 @@ function castMM1(aim) {
   player.face = Math.cos(a) < 0 ? -1 : 1; player.swingT = MELEE.swing; player.swingA = a; player.swingArc = 1; player.swingCrit = false;
   const smite = () => { const q = ahead(34); maceHit(q.x, q.y, 46, 5 * (1 + wound('riteSmite') * 0.4)); pools.push({ x: q.x, y: q.y, r: T.flask.radius * (mSyn('smite') ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1), t: 0 }); sfx('flask', { rate: 0.8 }); };
   const burst = () => { const q = ahead(30), n = 9 + (mSyn('nailburst') ? 4 : 0) + wound('riteNailburst') * 3; maceHit(q.x, q.y, 40, 3); for (let k = 0; k < n; k++) spawnBolt(q.x, q.y - 14, a + (k - (n - 1) / 2) * 0.12, rng() < T.crossbow.crit + G.crit / 100); sfx('shoot', { rate: 0.8, vol: 1.2 }); };
-  const blow = () => { const q = ahead(30); maceHit(q.x, q.y, 56, 4 * (mSyn('shackleblow') ? 1.3 : 1), { rgb: riteFx().chain, each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 2 + wound('riteShackleblow') * 0.5); } }); sfx('chain'); };
+  const blow = () => { const q = ahead(30); maceHit(q.x, q.y, 56, 5.5 * (mSyn('shackleblow') ? 1.3 : 1), { rgb: riteFx().chain, each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 2 + wound('riteShackleblow') * 0.5); } }); sfx('chain'); };
   const slam = () => { const r = 80 * (mSyn('cinderslam') ? 1.3 : 1); skillFx.push({ kind: 'blaze', x: player.x, y: player.y, r, t: 0, max: 0.6 }); maceRing(r, 2.5 * (1 + wound('riteCinderslam') * 0.4), { ramp: 'ember', rgb: '255,122,31', each: (e) => { e.burn = T.thurible.burn.time * 1.5; addFervor(2); } }); sfx('thurible', { rate: 0.6, vol: 1.3 }); };
   if (id === 'smite') { smite(); if (tw) later(0.3, smite); }
   else if (id === 'nailburst') { burst(); if (tw) later(0.3, burst); }
@@ -6353,7 +6353,7 @@ function castMM2(aim) {
     for (let k = 1; k < 10; k++) { const f = k / 10; parts.push({ kind: 'spark', x: player.x + (t.x - player.x) * f, y: player.y - 20 + (t.y - t.hy - player.y + 20) * f, z: 0, vx: 0, vy: -10, vz: 0, c: pick([PAL.iron0, PAL.iron1]), life: 0.3 }); }
     rings.push({ x: t.x, y: t.y, t: 0, max: 0.35, r: 20, color: riteFx().chain, flat: true }); sfx('chain');
     startDash(player, { len, dir: a });
-    const strike = () => maceRing(52, 3 * (1 + wound('riteHook') * 0.4), { rgb: riteFx().chain, each: (e) => { if (mSyn('hook') && !e.boss) e.bound = Math.max(e.bound || 0, 1); } });
+    const strike = () => maceRing(52, 4.5 * (1 + wound('riteHook') * 0.4), { rgb: riteFx().chain, each: (e) => { if (mSyn('hook') && !e.boss) e.bound = Math.max(e.bound || 0, 1); } });
     later(T.dash.time * len, strike); if (tw) later(T.dash.time * len + 0.25, strike);
   }
   else if (id === 'chainsweep') { const sweep = () => maceRing(85 * (1 + wound('riteChainsweep') * 0.2), 2, { rgb: riteFx().chain, each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 1.5 + (mSyn('chainsweep') ? 0.5 : 0)); if (tw) e.burn = T.thurible.burn.time * 1.5; } }); sweep(); sfx('chain', { rate: 0.8 }); }
@@ -6570,7 +6570,7 @@ function updateAbilities(dt) {
     }
     if (kind === 'tolling' && (p.tollT -= dt) <= 0) { // the Tolling: shockwaves around the Mendicant
       p.tollT = twist('tolling') ? 0.25 : 0.5; const r = 110 * (mSyn('tolling') ? 1.3 : 1);
-      for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - p.x, (e.y - p.y) / 0.8) < r + e.hr) { const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, T.penance.dmg * 1.2 * (1 + wound('riteTolling') * 0.4), rng() < 0.2, dx / d, dy / d, 50, { status: true, color: PAL.gold0 }); }
+      for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - p.x, (e.y - p.y) / 0.8) < r + e.hr) { const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, T.penance.dmg * 0.85 * (1 + wound('riteTolling') * 0.4), rng() < 0.2, dx / d, dy / d, 50, { status: true, color: PAL.gold0 }); }
       rings.push({ x: p.x, y: p.y, t: 0, max: 0.4, r, color: '255,209,85', flat: true }, { x: p.x, y: p.y - 18, t: 0, max: 0.3, r: r * 0.6, color: '255,244,176' });
       sfx('knell', { vol: 0.5, rate: 1.2, gap: 0.2 }); game.shake = Math.max(game.shake, 2);
     }

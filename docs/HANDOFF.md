@@ -98,8 +98,8 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 - **Two playable saints (round 49):** the Saint (the crossbow) and the
   Mendicant (`HEROES`, `SAVE.hero`, `heroId()`, `isMelee()`), who swings a
   mace at the nearest foe in reach and hits every foe in its arc
-  (`updateMelee`, `MELEE`: reach 50, arc 1.15 rad, 0.52 s, 1.9x bolt
-  damage, 20% less damage taken through `setGuard`). Each blow goes through
+  (`updateMelee`, `MELEE`: reach 50, arc 1.15 rad, 0.52 s, 1.6x bolt
+  damage, 10% less damage taken through `setGuard`; tuned in round 50). Each blow goes through
   `boltStrike(b, e)` with `b.melee`, so crits, enchants, passives, set arms
   and set bonuses work as they do for bolts (the Hundred Nails' bolt split
   does not). The other saint stands by the cathedral doors; talking asks
@@ -222,6 +222,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 50:** the Mendicant's set looks (`mendicant_<set>`) and his own
+  18 rites (`MRITES`, see "Two playable saints"). Crossbow Wounds read right
+  for the mace and Piercing Faith is not offered to him. `setbal.cjs` had
+  lost its braces, so every set build cast Holy Water, Chain and Rain; it
+  now casts each set's own rites, and `HERO=mendicant` runs his. Set
+  balance at Station VI (kills a second / damage taken a second): the
+  Saint's full sets 9.9-16.0 / 62-103, no set 3.2 / 216; the Mendicant's
+  first pass 7.7-18.5 / 23-68 and 7.7 / 97 bare, so the mace went from
+  1.9x to 1.6x, his guard from 20% to 10%, the Tolling down and Shackle
+  Blow and Iron Hook up: now 9.0-13.8 / 19-73, bare 4.7 / 166. Test:
+  `round50.cjs`.
 
 - **Round 49:** the Mendicant, a second playable saint (melee mace, see
   "Two playable saints"); `boltStrike` now holds every bolt on-hit effect.
