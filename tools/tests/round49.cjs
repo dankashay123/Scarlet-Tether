@@ -43,6 +43,27 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
   await p.waitForTimeout(400); await shot('nave-drips');
   out.drips = await p.evaluate(() => ({ drips: HS.drips.length, ripples: HS.ripples.length }));
 
+  // The Mendicant: the other saint waits by the cathedral; switching asks first.
+  await p.evaluate(() => { HS.SAVE.hero = 'saint'; HS.enterTown(false); HS.tut.on = false; HS.game.dialog = null; HS.game.state = 'play'; });
+  await p.waitForTimeout(900);
+  await p.evaluate(() => { const n = HS.room.npcs.find((q) => q.hero); HS.player.x = n.x - 34; HS.player.y = n.y + 6; }); await p.waitForTimeout(1200); await shot('town-mendicant');
+  out.switch = await p.evaluate(() => { HS.askHero(); const asked = !!HS.game.ask; const A = HS.askLayout(); HS.askTap(A.yes.x + 4, A.yes.y + 4); return { asked, hero: HS.heroId(), sheet: HS.saintSheet() }; });
+  await p.waitForTimeout(1500); await shot('town-as-mendicant');
+  out.overlaps = await p.evaluate(() => HS.townOverlaps());
+  // A fight in Stratum I: swings, the arc, damage on several foes at once.
+  await p.evaluate(() => { HS.game.nextYard = false; HS.game.nextStratum = 1; HS.game.nextDiff = 2; HS.game.nextOmens = []; HS.game.nextVigil = 0; HS.newRun(); HS.tut.on = false; HS.game.state = 'play'; HS.DEV.god = true; });
+  await p.waitForTimeout(600);
+  out.fight = await p.evaluate(async () => { HS.enemies.length = 0; const P = HS.player, list = [];
+    for (let k = 0; k < 5; k++) { const e = HS.spawnMonster('risen', P.x + 30 + (k % 2) * 8, P.y - 20 + k * 10, { room: HS.game.curRoom.id }); e.state = 'move'; e.spawnDelay = 0; e.asleep = false; e.hp = e.maxHp = 1e6; list.push(e); }
+    await new Promise((r) => setTimeout(r, 1800)); return { hit: list.filter((e) => e.hp < e.maxHp).length, xb: !!P.xb, bolts: HS.bolts.length }; });
+  for (let i = 0; i < 8; i++) { await p.waitForTimeout(60); if (await p.evaluate(() => HS.swingT > 0.12 && HS.swingT < 0.2)) break; }
+  await shot('mendicant-swing');
+  // The yard: the dummy counts the mace; records keep the hero apart.
+  await p.evaluate(() => { HS.enterTown(false); HS.openYard(); }); await p.waitForTimeout(3500);
+  await p.evaluate(() => { const d = HS.yard.dummy; HS.player.x = d.x - 30; HS.player.y = d.y; }); await p.waitForTimeout(4500);
+  out.yard = await p.evaluate(() => ({ dps: HS.yardDps(), key: HS.yardKey() }));
+  await shot('mendicant-yard');
+  await p.evaluate(() => { HS.SAVE.hero = 'saint'; HS.game.yard = null; HS.enterTown(false); });
   console.log(JSON.stringify(out));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();
 })();

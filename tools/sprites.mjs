@@ -19,7 +19,7 @@ const CHUNK = 2, FINE_SHEETS = new Set(['ui']);
 setRes(CHUNK);
 // v5: sculpted models (tools/sdf.mjs) replace hand-drawn animations by name.
 const OVR = {};
-for (const m of ['saint', 'common', 'rare', 'elite', 'ossuary', 'town', 'townfolk', 'dungeon', 'floor', 'vfx', 'props', 'weapon', 'street']) {
+for (const m of ['saint', 'mendicant', 'common', 'rare', 'elite', 'ossuary', 'town', 'townfolk', 'dungeon', 'floor', 'vfx', 'props', 'weapon', 'street']) {
   let set;
   try { set = (await import(`./models/${m}.mjs`)).default; } catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') console.warn(`models/${m}.mjs failed to load: ${e.message}`); continue; }
   for (const [sh, anims] of Object.entries(set)) OVR[sh] = { ...OVR[sh], ...anims };

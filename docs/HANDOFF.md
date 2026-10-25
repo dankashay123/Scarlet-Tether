@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-25, after round 48 (build 48, on `master`). Read
+Last updated 2026-10-25, after round 49 (build 49, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -95,6 +95,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 - **The Bleeding Vigil** (timed endless trial): each one costs a Bloodrose
   Key (`SAVE.vkeys`), dropped by Wardens of Station X and deeper half the
   time. Ten minutes to fill the Toll and kill the Warden.
+- **Two playable saints (round 49):** the Saint (the crossbow) and the
+  Mendicant (`HEROES`, `SAVE.hero`, `heroId()`, `isMelee()`), who swings a
+  mace at the nearest foe in reach and hits every foe in its arc
+  (`updateMelee`, `MELEE`: reach 50, arc 1.15 rad, 0.52 s, 1.9x bolt
+  damage, 20% less damage taken through `setGuard`). Each blow goes through
+  `boltStrike(b, e)` with `b.melee`, so crits, enchants, passives, set arms
+  and set bonuses work as they do for bolts (the Hundred Nails' bolt split
+  does not). The other saint stands by the cathedral doors; talking asks
+  and switches (`askHero`, `switchHero`). The Mendicant's sheet is
+  `mendicant` (`tools/models/mendicant.mjs`, `HEROES` in `base.mjs`:
+  `saintModel({ hero, swing })`); set skins are the Saint's only for now.
+  Yard records keep the heroes apart (`yardKey` ends in `:mendicant`).
 - **Combat:** a floating auto-aiming crossbow, dash with a perfect dodge,
   the Censer, two rites and a Reckoning chosen from 18 (6 per slot, one per
   set; `RITES`; 15 of them open by Saint level, `RITE_LV`, and each slot lists them lowest level first), with ranks from use (`RANK_AT`), 6-piece twists
@@ -182,20 +194,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    XV and in the Training Yard.
 5. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
    attack; ask the owner how the fights at Stations VII to XV feel.
-6. **Balance questions for the owner (round 48 data).** `balance.cjs`
-   7,9,11,13,15 with run, set and mythic builds: a Warden blow kills a
-   non-mythic Saint in one hit from Station XI (blows to die 0.5 to 1.1 for
-   a run build, 0.9 to 1.6 for the Hundred Nails at matched gear; mythic
-   gear takes 2 to 4). Warden kills at matched gear: set build 59 s at VII,
-   223 s at XI, 507 s at XV; mythic 41 to 191 s. Stratum III Wardens have
-   the same health as Stratum I's (2500 and 2800 base). Saint level XP:
-   level 31 (the Great Font) needs about 84k XP, 40 needs 171k, 60 needs
-   535k (`lvNeed`). Ask whether one-blow deaths at XI+ feel fair and
-   whether the Font and Confessor rites open too late.
-7. **Yard extras, part two.** Delete one record row; a 60 s test; show
-   the build's record on the Rites panel.
-8. **More ambience.** Stratum II could get dripping water and ripples
-   where the Saint wades; Stratum I dust falling from the vaults.
+6. **The Mendicant, part two.** Set skins (`mendicant_<set>` from
+   `SKINS`), his own rites (one per set and slot, or set-twisted versions of
+   the Saint's), rite and set text that says "mace" not "crossbow" for him,
+   a dev toggle, and tuning `MELEE` from play (`setbal.cjs` with the hero
+   set, the yard).
+7. **Warden blows.** Round 49 caps one Warden blow at 40% of health
+   (`WARDEN_BLOW`); `balance.cjs` now shows 2.5 blows to die from Station XI
+   on. Ask whether the deep Stations still feel hard enough.
+8. **More ambience.** Stratum I: dust sifting from the vaults, a draught
+   that bends the candle flames. Monsters wading in the Nave could ripple too.
 9. **The pool's crowd.** Let the crowd at the Scrying Pool cheer or jeer
    when a wager settles in Vael, and show past wagers (won and lost).
 10. **A second playable saint.** A short-range melee saint with its own
@@ -206,6 +214,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 49:** the Mendicant, a second playable saint (melee mace, see
+  "Two playable saints"); `boltStrike` now holds every bolt on-hit effect.
+  One Warden blow takes at most 40% of the Saint's health (`WARDEN_BLOW`,
+  `isWardenSrc` in `damagePlayer`; `balance.cjs` applies it). Yard
+  records: a 60 s test (`YARD_TESTS`, `yardTestKey`; 30 s bests stay in
+  `SAVE.yardTest`, 60 s in `SAVE.yardTest60`), tap a build then DELETE
+  BUILD (asks; `yardForget`), and the build's yard best along the bottom of
+  the Rites panel's detail. The Drowned Nave: drops fall in view and ring
+  where they land, brighter on the flood, with the drip sound on landing
+  (`updateDrips`, `drawDrips`); the Saint leaves ripples while wading.
+  `preview.mjs` and the sheet list know `mendicant`. Test: `round49.cjs`.
 
 - **Round 48:** Training Yard RECORDS tab (every build, best 5 s and best
   30 s test, START 30 S TEST, RESET RECORDS with a question). Drowned Nave
