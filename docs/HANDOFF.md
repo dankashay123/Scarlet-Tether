@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-25, after round 50 (build 50, on `master`). Read
+Last updated 2026-10-25, after round 51 (build 51, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -203,10 +203,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    XV and in the Training Yard.
 5. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
    attack; ask the owner how the fights at Stations VII to XV feel.
-6. **The Mendicant, part three.** Aimed drags for his rites (`AIMABLE`,
-   `renderAim`; `maceDir` already takes `aim`), Hallowed powers that name
-   his rites (Smite and Wellspring borrow the Holy Water pool power), and
-   tuning from play (`HERO=mendicant node tools/tests/setbal.cjs`).
+6. **Balance, what is left (round 51 data).** `bal.sh`-style runs (both
+   heroes in parallel, `setbal.cjs 30 6 1,2,3,4`) are still noisy by about
+   20%. After round 51: the Saint's full sets 10.7-16.5 kills a second,
+   mixes 7.3-15.2; the Mendicant's full sets 10.5-13.6, mixes 7.0-13.2.
+   Weakest: Last Confessor 4 + Nails 2 (about 7.4) and Font 4 + Confessor
+   2 for the Mendicant (7.0); the Saint's Penitent's Stride (10.7) lags
+   because its rites deal little, not its multiplier. Next: give the
+   Confessor's four pieces more binding uptime, and look at Ember Step.
 7. **Warden blows.** Round 49 caps one Warden blow at 40% of health
    (`WARDEN_BLOW`); `balance.cjs` now shows 2.5 blows to die from Station XI
    on. Ask whether the deep Stations still feel hard enough.
@@ -222,6 +226,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 51:** drag to aim the Mendicant's Smite, Shackle Blow (a blow
+  circle), Nail Burst (blow and fan), Penitent Charge (leap), Iron Hook
+  (chain line), Hammer of Heaven and the Deluge (zones) (`AIMABLE`,
+  `renderAim` kinds `blow`, `nailfan`). Seven Hallowed pieces for his rites
+  (`LEGENDS` entries with `hero: 'mendicant'`, keys bigBlow, loudToll,
+  longCharge, moreShards, longVow, deepTide, bigHammer; icons 31-37 in
+  `LEGEND_ICONS`); pieces tagged `hero` drop (and sell at Pell's) only for
+  that hero, and the Saint-only ones (Ward, Nail Storm, Censer, Judgement,
+  the Longway Arbalest) are tagged `saint`. Set balance: the flat damage of
+  four pieces is now +110% at 4-5 pieces and +25% at 6, counted for one set
+  only (`SETK.four`, `four6`); Confessor bonuses up (2: x1.6, 4: x2.8,
+  6: x3), Font 6 x3 and Font 4 x4, Choir 6 x1.12, Stride 6 x7 for 7 s and
+  Stride 4 x4.5; set card and rite lines are built from `SETK`. Before:
+  Saint mixes 5.1-9.6 kills a second against full sets 9.9-16.0. Test:
+  `round51.cjs`.
 
 - **Round 50:** the Mendicant's set looks (`mendicant_<set>`) and his own
   18 rites (`MRITES`, see "Two playable saints"). Crossbow Wounds read right

@@ -26,9 +26,11 @@ const S = process.argv[2], WH = (process.argv[3] || '').split('x').map(Number);
     await p.waitForTimeout(120); await shot(`aim-${id}`);
     const b0 = await p.evaluate(() => ({ x: HS.player.x, y: HS.player.y }));
     await p.evaluate(() => HS.pointerUp(7)); await p.waitForTimeout(350);
-    out.aim[id] = await p.evaluate(([k, dx, dy, b0]) => { const P = HS.player, a = Math.atan2(dy, dx), cast = k === 'pen' ? P.rainT > 0 : (k === 'm1' ? P.m1cd : P.m2cd) > 0;
-      const faced = k === 'm1' && id !== 'charge' ? +Math.abs(Math.atan2(Math.sin(P.swingA - a), Math.cos(P.swingA - a))).toFixed(2) : null;
-      return { aiming: true, cast, faced, moved: Math.round(Math.hypot(P.x - b0.x, P.y - b0.y)), penAim: !!P.penAim }; }, [k, dx, dy, b0]);
+    out.aim[id] = await p.evaluate(([k, id, dx, dy, b0]) => { const P = HS.player, a = Math.atan2(dy, dx), cast = k === 'pen' ? P.rainT > 0 : (k === 'm1' ? P.m1cd : P.m2cd) > 0;
+      // Smite leaves its pool where the blow landed: its direction from the Saint is the aim.
+      const pl = id === 'smite' ? HS.pools[HS.pools.length - 1] : null, pa = pl ? Math.atan2(pl.y - b0.y, pl.x - b0.x) : null;
+      const faced = pl ? +Math.abs(Math.atan2(Math.sin(pa - a), Math.cos(pa - a))).toFixed(2) : null;
+      return { aiming: true, cast, faced, moved: Math.round(Math.hypot(P.x - b0.x, P.y - b0.y)), penAim: !!P.penAim }; }, [k, id, dx, dy, b0]);
     out.aim[id].aiming = aiming;
     await p.evaluate(() => { HS.player.rainT = 0; }); await p.waitForTimeout(300);
   }
@@ -42,7 +44,8 @@ const S = process.argv[2], WH = (process.argv[3] || '').split('x').map(Number);
   await p.evaluate(() => { HS.G.powers.add('loudToll'); HS.game.fervor = 0; HS.player.m2cd = 0; HS.input.m2 = true; });
   await p.waitForTimeout(300);
   out.toll = { plain: Math.round(z0), stole: Math.round(await p.evaluate(() => HS.game.fervor)) };
-  // The bag with all seven of his pieces.
+  // The bag with all seven of his pieces (no foes, so no damage numbers in the air).
+  await p.evaluate(() => { HS.enemies.length = 0; }); await p.waitForTimeout(1200);
   await p.evaluate(() => { HS.SAVE.bag = HS.LEGENDS.filter((L) => L.hero === 'mendicant').map((L) => { const it = HS.makeItem(L.slot, 3, L.name, undefined, 6); it.legend = HS.LEGENDS.indexOf(L); it.power = L.id; return it; }); HS.openInventory(); });
   await p.waitForTimeout(300); await shot('bag-hallowed');
   out.problems = await p.evaluate(() => HS.textProblems());
