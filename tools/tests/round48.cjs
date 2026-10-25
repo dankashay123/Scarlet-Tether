@@ -14,7 +14,8 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
     // A few past builds so the list has rows.
     HS.SAVE.yardBest = { 'nails:storm,chain,volley': 18400, 'font:water,asperse,font': 9100, 'mixed:water,chain,rain': 2300, all: 18400 }; HS.SAVE.yardTest = { 'nails:storm,chain,volley': 15200, all: 15200 }; });
   await p.evaluate(() => HS.openYard()); await p.waitForTimeout(3500);
-  // The records tab.
+  // The records tab (the Saint stands out of range first so no damage numbers are in the air).
+  await p.evaluate(() => { const d = HS.yard.dummy; HS.player.x = d.x - 320; HS.player.y = d.y; HS.enemies.forEach((e) => { if (e.type !== 'dummy') e.dead = true; }); }); await p.waitForTimeout(3500);
   await p.evaluate(() => { HS.game.state = 'yard'; HS.yard.tab = 4; }); await p.waitForTimeout(250); await shot('records');
   out.problems = await p.evaluate(() => HS.textProblems().length);
   out.rows = await p.evaluate(() => HS.yardRecords().length);
