@@ -1185,7 +1185,7 @@ function addToll(e) {
 // an enrage after `enrage` seconds (double damage, much faster).
 // Set bonus strengths, tuned with tools/tests/setbal.cjs.
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
-const SETK = { stride: 6, strideT: 7, font: 3.5, bound: 1.4, bound6: 2.4, crush: 12, choir: 1.12, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3.5, strideT4: 4, font4: 3, bound4: 1.8, choir4: 1.2 };
+const SETK = { stride: 6, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 1.12, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3.5, strideT4: 4, font4: 4, bound4: 2.2, choir4: 1.2 };
 const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 2 };
 // Gear per kill, before the Station's multiplier. Kept low: progress should take farming.
 const DROP = { kill: 0.003, rare: 0.1, elite: 0.5 }; // hp: the average MON Warden
@@ -2953,20 +2953,20 @@ const RITE_MORE = {
   wave: { syn: 'ITS POOLS ARE WIDER, SLOW FOES AND PROTECT YOU.', pow: 'bigPools' },
   storm: { syn: 'NAILS PIERCE, SPLIT AND ADD NAIL STACKS.', pow: 'bigStorm' },
   step: { syn: 'COUNTS AS A DASH: LEAVES HOLY FIRE AND CAN PERFECT DODGE.', pow: 'hotTrail' },
-  chain: { syn: 'BINDS 3 MORE. BOUND FOES TAKE 40% MORE.', pow: 'longBind' },
-  shackle: { syn: 'BOUND FOES TAKE 40% MORE. EACH ONE: 8% LESS DAMAGE TAKEN (40% MAX).', pow: 'longBind' },
+  chain: { syn: `BINDS 3 MORE. BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`, pow: 'longBind' },
+  shackle: { syn: `BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE. EACH ONE: 8% LESS DAMAGE TAKEN (40% MAX).`, pow: 'longBind' },
   censer: { syn: 'ZEAL FADES HALF AS FAST.', pow: 'censerPlus' },
   ward: { syn: 'ITS PERFECT DODGE REFILLS DASHES AND HALVES DAMAGE FOR 2 S.', pow: 'wardLong' },
   rain: { syn: 'KILLS IN RECKONING HEAL YOU.', pow: 'longReck' },
   pillars: { syn: 'KILLS IN RECKONING HEAL YOU.', pow: 'fastPillars' },
   font: { syn: 'WIDER, SLOWS FOES AND PROTECTS YOU.', pow: 'bigPools' },
   volley: { syn: 'EVERY SHOT PIERCES, SPLITS AND ADDS NAIL STACKS.', pow: 'longReck' },
-  brand: { syn: 'BOUND FOES TAKE 40% MORE.', pow: 'longBind' },
+  brand: { syn: `BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`, pow: 'longBind' },
   hymn: { syn: 'ZEAL FADES HALF AS FAST.', pow: 'burnVuln' },
   nailring: { syn: 'NAILS PIERCE, SPLIT AND ADD NAIL STACKS.', pow: 'longShot' },
   asperse: { syn: 'ITS POOL IS 30% WIDER AND SLOWS MORE.', pow: 'bigPools' },
   pilgrim: { syn: 'DASHES LEAVE HOLY FIRE.', pow: 'hotTrail' },
-  greatpen: { syn: 'BOUND FOES TAKE 40% MORE.', pow: 'longBind' },
+  greatpen: { syn: `BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`, pow: 'longBind' },
   // The Mendicant's (round 50).
   smite: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigBlow' }, undertow: { syn: 'ITS POOLS ARE 30% WIDER.', pow: 'deepTide' }, nailburst: { syn: '4 MORE NAILS.', pow: 'moreShards' },
   charge: { syn: 'THE STRIKE SETS FOES ALIGHT.', pow: 'longCharge' }, shackleblow: { syn: 'HITS 30% HARDER.', pow: 'bigBlow' }, cinderslam: { syn: 'REACHES 30% FARTHER.', pow: 'loudToll' },
@@ -2974,7 +2974,7 @@ const RITE_MORE = {
   vow: { syn: 'LASTS 1 S LONGER.', pow: 'longVow' }, shards: { syn: '2 MORE SWINGS.', pow: 'moreShards' }, wellspring: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigPools' },
   tolling: { syn: 'SHOCKWAVES REACH 30% FARTHER.', pow: 'loudToll' }, hammer: { syn: 'KILLS IN RECKONING HEAL YOU.', pow: 'bigHammer' },
   deluge: { syn: 'WIDER, SLOWS FOES AND PROTECTS YOU.', pow: 'bigPools' }, hundredblows: { syn: 'EVERY NAIL PIERCES, SPLITS AND ADDS NAIL STACKS.', pow: 'moreShards' },
-  pyre: { syn: 'DASHES LEAVE HOLY FIRE.', pow: 'hotTrail' }, verdict: { syn: 'BOUND FOES TAKE 40% MORE.', pow: 'deepTide' },
+  pyre: { syn: 'DASHES LEAVE HOLY FIRE.', pow: 'hotTrail' }, verdict: { syn: `BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`, pow: 'deepTide' },
 };
 function openRites(back) { game.ritesBack = back || game.state; game.state = 'rites'; game.riteFocus = game.riteFocus || 'm1'; sfx('tap'); }
 // Small text that must fit a width: drop a leading THE, try a short form,
@@ -5545,7 +5545,7 @@ const VSETS = {
   nails: { name: 'THE HUNDRED NAILS', piece: 'NAILBEARER\'S', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BOLTS PIERCE ONE MORE FOE AND SPLIT AT THE LAST.'], [4, `+${SETK.four}% DAMAGE (${SETK.four6}% WITH ALL 6). HITS ADD NAIL STACKS (50 MAX): EACH GIVES 1% LESS DAMAGE TAKEN, +${Math.round(SETK.nail4 * 100)}% BOLT DAMAGE.`], [6, `BOLTS DEAL +${Math.round(SETK.nail * 100)}% PER NAIL STACK (INSTEAD OF ${Math.round(SETK.nail4 * 100)}%).`]] },
   stride: { name: "THE PENITENT'S STRIDE", piece: "PENITENT'S", slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+1 DASH CHARGE. DASHES LEAVE HOLY FIRE.'], [4, `+${SETK.four}% DAMAGE (${SETK.four6}% WITH ALL 6). X${SETK.stride4} FOR ${SETK.strideT4} S AFTER A DASH. PERFECT DODGES REFILL DASHES AND HALVE DAMAGE 2 S.`], [6, `FOR ${SETK.strideT} S AFTER A DASH, BOLTS, NOVA AND FIRE DEAL X${SETK.stride}. EVERY DASH RELEASES A NOVA.`]] },
   font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, `+${SETK.four}% DAMAGE (${SETK.four6}% WITH ALL 6). POOLS DEAL X${SETK.font4}. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.`], [6, `POOLS DEAL X${SETK.font} AND DRAW FOES IN. KILLS IN THEM SPEED THE VIAL.`]] },
-  confessor: { name: 'THE LAST CONFESSOR', piece: 'CONFESSOR\'S', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, 'THE CHAIN BINDS 3 MORE. BOUND FOES TAKE 40% MORE.'], [4, `+${SETK.four}% DAMAGE (${SETK.four6}% WITH ALL 6). BOUND FOES TAKE ${Math.round((SETK.bound4 - 1) * 100)}% MORE. EACH BOUND FOE: 8% LESS DAMAGE TAKEN (40% MAX).`], [6, `BOUND FOES TAKE X${SETK.bound6} DAMAGE AND BURST WHEN THEY DIE. THE CHAIN ENDS IN A X${SETK.crush} CRUSH.`]] },
+  confessor: { name: 'THE LAST CONFESSOR', piece: 'CONFESSOR\'S', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, `THE CHAIN BINDS 3 MORE. BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`], [4, `+${SETK.four}% DAMAGE (${SETK.four6}% WITH ALL 6). BOUND FOES TAKE ${Math.round((SETK.bound4 - 1) * 100)}% MORE. EACH BOUND FOE: 8% LESS DAMAGE TAKEN (40% MAX).`], [6, `BOUND FOES TAKE X${SETK.bound6} DAMAGE AND BURST WHEN THEY DIE. THE CHAIN ENDS IN A X${SETK.crush} CRUSH.`]] },
   choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, `+${SETK.four}% DAMAGE (${SETK.four6}% WITH ALL 6). IN RECKONING: X${SETK.choir4} DAMAGE, NO ROOTS OR SLOWS, KILLS HEAL 2%.`], [6, `RECKONING LASTS WHILE ZEAL REMAINS. X${SETK.choir} DAMAGE WHILE IT BURNS.`]] },
 };
 const MAIN_SETS = ['nails', 'stride', 'font', 'confessor', 'choir'];
@@ -5949,7 +5949,7 @@ function fireCdOf(base) {
 }
 // The Mendicant's mace: a swing at the nearest foe in reach hits every foe in
 // its arc, a little after the wind-up (the strike frame).
-const MELEE = { reach: 50, arc: 1.15, cd: 0.52, k: 1.6, guard: 0.9, swing: 0.3, strike: 0.08 };
+const MELEE = { reach: 50, arc: 1.15, cd: 0.52, k: 1.75, guard: 0.9, swing: 0.3, strike: 0.08 };
 function updateMelee(dt) {
   player.xb = null;
   player.fireCd -= dt; if (player.swingT > 0) player.swingT -= dt;
@@ -6340,7 +6340,7 @@ function castMM1(aim) {
   const ahead = (d) => ({ x: player.x + Math.cos(a) * d, y: player.y + Math.sin(a) * d });
   player.face = Math.cos(a) < 0 ? -1 : 1; player.swingT = MELEE.swing; player.swingA = a; player.swingArc = 1; player.swingCrit = false;
   const wide = G.powers.has('bigBlow') ? 1.5 : 1;
-  const smite = () => { const q = ahead(34); maceHit(q.x, q.y, 46 * wide, 8 * (1 + wound('riteSmite') * 0.4)); pools.push({ x: q.x, y: q.y, r: T.flask.radius * (mSyn('smite') ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1), t: 0 }); sfx('flask', { rate: 0.8 }); };
+  const smite = () => { const q = ahead(34); maceHit(q.x, q.y, 46 * wide, 8 * (1 + wound('riteSmite') * 0.4)); pools.push({ x: q.x, y: q.y, r: T.flask.radius * 1.4 * (mSyn('smite') ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1), t: 0 }); sfx('flask', { rate: 0.8 }); };
   const burst = () => { const q = ahead(30), n = (9 + (mSyn('nailburst') ? 4 : 0) + wound('riteNailburst') * 3) * (G.powers.has('moreShards') ? 2 : 1); maceHit(q.x, q.y, 40, 3); for (let k = 0; k < n; k++) spawnBolt(q.x, q.y - 14, a + (k - (n - 1) / 2) * 0.12, rng() < T.crossbow.crit + G.crit / 100); sfx('shoot', { rate: 0.8, vol: 1.2 }); };
   const blow = () => { const q = ahead(30); maceHit(q.x, q.y, 56 * wide, 7 * (mSyn('shackleblow') ? 1.3 : 1), { rgb: riteFx().chain, each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 2 + wound('riteShackleblow') * 0.5); } }); sfx('chain'); };
   const slam = () => { const r = 80 * (mSyn('cinderslam') ? 1.3 : 1); skillFx.push({ kind: 'blaze', x: player.x, y: player.y, r, t: 0, max: 0.6 }); maceRing(r, 2.5 * (1 + wound('riteCinderslam') * 0.4), { ramp: 'ember', rgb: '255,122,31', each: (e) => { e.burn = T.thurible.burn.time * 1.5; addFervor(G.powers.has('loudToll') ? 4 : 2); } }); sfx('thurible', { rate: 0.6, vol: 1.3 }); };
@@ -6378,7 +6378,7 @@ function castMM2(aim) {
   else if (id === 'shards') { player.shardN = 6 + (mSyn('shards') ? 2 : 0) + wound('riteShards') * 2; sparks(player.x, player.y - 30, PAL.iron0, 10); sfx('shoot', { rate: 0.6 }); }
   else if (id === 'wellspring') {
     player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.1); player.wellT = game.time + 4 + wound('riteWellspring');
-    pools.push({ x: player.x, y: player.y, r: T.flask.radius * 1.2 * (mSyn('wellspring') ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1), t: 0 });
+    pools.push({ x: player.x, y: player.y, r: T.flask.radius * 1.8 * (mSyn('wellspring') ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1), t: 0 });
     rings.push({ x: player.x, y: player.y, t: 0, max: 0.4, r: 50, color: riteFx().glow, flat: true }); sfx('flask'); sfx('heal', { vol: 0.8 });
   }
   player.m2cd = riteCd('m2'); player.castT = 0.2;
@@ -6583,7 +6583,7 @@ function updateAbilities(dt) {
     }
     if (kind === 'tolling' && (p.tollT -= dt) <= 0) { // the Tolling: shockwaves around the Mendicant
       p.tollT = twist('tolling') ? 0.25 : 0.5; const r = 110 * (mSyn('tolling') ? 1.3 : 1) * (G.powers.has('loudToll') ? 1.3 : 1);
-      for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - p.x, (e.y - p.y) / 0.8) < r + e.hr) { const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, T.penance.dmg * 0.85 * (1 + wound('riteTolling') * 0.4), rng() < 0.2, dx / d, dy / d, 50, { status: true, color: PAL.gold0 }); }
+      for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - p.x, (e.y - p.y) / 0.8) < r + e.hr) { const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, T.penance.dmg * 0.7 * (1 + wound('riteTolling') * 0.4), rng() < 0.2, dx / d, dy / d, 50, { status: true, color: PAL.gold0 }); }
       rings.push({ x: p.x, y: p.y, t: 0, max: 0.4, r, color: '255,209,85', flat: true }, { x: p.x, y: p.y - 18, t: 0, max: 0.3, r: r * 0.6, color: '255,244,176' });
       sfx('knell', { vol: 0.5, rate: 1.2, gap: 0.2 }); game.shake = Math.max(game.shake, 2);
     }
