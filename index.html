@@ -5355,7 +5355,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   addToll(e); enchKill(e);
   // The Last Confessor (6): a bound foe bursts as it dies.
   if (pas('burst') && Math.random() < 0.1) skillFx.push({ kind: 'nova', ramp: 'holy', x: e.x, y: e.y, t: 0, max: 0.25, r: 48 * WS, dmg: 18, hits: new Set([e]) });
-  if (e.bound > 0 && sb('confessor', 6)) { for (const o of nearestFoes(e.x, e.y, 6, 44)) if (o !== e && !o.dead) later(0.05, () => hurtEnemy(o, T.chain.dmg * 2, false, 0, 0, 40, { status: true, color: PAL.iron0 })); rings.push({ x: e.x, y: e.y, t: 0, max: 0.3, r: 40, color: '178,188,203', flat: true }); }
+  if (e.bound > 0 && sb('confessor', 4)) { for (const o of nearestFoes(e.x, e.y, 6, 44)) if (o !== e && !o.dead) later(0.05, () => hurtEnemy(o, T.chain.dmg * 2, false, 0, 0, 40, { status: true, color: PAL.iron0 })); rings.push({ x: e.x, y: e.y, t: 0, max: 0.3, r: 40, color: '178,188,203', flat: true }); }
   if (e.cell && game.cell) game.cell.kills++;
   if (e.sid !== undefined && game.run && game.run.dead) game.run.dead.push(e.sid);
   bumpBounty('kills'); if (e.tier === 'rare' && !e.minion) bumpBounty('rares'); if (e.tier === 'elite' && !e.minion && !e.boss) bumpBounty('elites');
@@ -5547,8 +5547,8 @@ const VSETS = {
   habit: { name: "ODILE'S HABIT", piece: "ODILE'S", slots: GEAR_SLOTS, bonus: [[2, '+10% DAMAGE.'], [4, '+1 DASH CHARGE, +15% DAMAGE.']] },
   nails: { name: 'THE HUNDRED NAILS', piece: 'NAILBEARER\'S', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BOLTS PIERCE ONE MORE FOE AND SPLIT AT THE LAST.'], [4, `+${fourOf('nails')}% DAMAGE (${SETK.four6}% WITH ALL 6). HITS ADD NAIL STACKS (50 MAX): EACH GIVES 1% LESS DAMAGE TAKEN, +${Math.round(SETK.nail4 * 100)}% BOLT DAMAGE.`], [6, `BOLTS DEAL +${Math.round(SETK.nail * 100)}% PER NAIL STACK (INSTEAD OF ${Math.round(SETK.nail4 * 100)}%).`]] },
   stride: { name: "THE PENITENT'S STRIDE", piece: "PENITENT'S", slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+1 DASH CHARGE. DASHES LEAVE HOLY FIRE.'], [4, `+${fourOf('stride')}% DAMAGE (${SETK.four6}% WITH ALL 6). X${SETK.stride4} FOR ${SETK.strideT4} S AFTER A DASH. PERFECT DODGES REFILL DASHES AND HALVE DAMAGE 2 S.`], [6, `FOR ${SETK.strideT} S AFTER A DASH, BOLTS, NOVA AND FIRE DEAL X${SETK.stride}. EVERY DASH RELEASES A NOVA.`]] },
-  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, `+${fourOf('font')}% DAMAGE (${SETK.four6}% WITH ALL 6). POOLS DEAL X${SETK.font4}. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.`], [6, `POOLS DEAL X${SETK.font} AND DRAW FOES IN. KILLS IN THEM SPEED THE VIAL.`]] },
-  confessor: { name: 'THE LAST CONFESSOR', piece: 'CONFESSOR\'S', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, `THE CHAIN BINDS 3 MORE. BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`], [4, `+${fourOf('confessor')}% DAMAGE (${SETK.four6}% WITH ALL 6). EVERY ${SETK.bindEvery}TH HIT BINDS FOR 1 S. BOUND FOES TAKE ${Math.round((SETK.bound4 - 1) * 100)}% MORE. EACH BOUND FOE: 8% LESS DAMAGE TAKEN (40% MAX).`], [6, `BOUND FOES TAKE X${SETK.bound6} DAMAGE AND BURST WHEN THEY DIE. THE CHAIN ENDS IN A X${SETK.crush} CRUSH.`]] },
+  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, `+${fourOf('font')}% DAMAGE (${SETK.four6}% WITH ALL 6). POOLS DEAL X${SETK.font4} AND DRAW FOES IN. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.`], [6, `POOLS DEAL X${SETK.font} AND DRAW FOES IN TWICE AS HARD. KILLS IN THEM SPEED THE VIAL.`]] },
+  confessor: { name: 'THE LAST CONFESSOR', piece: 'CONFESSOR\'S', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, `THE CHAIN BINDS 3 MORE. BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`], [4, `+${fourOf('confessor')}% DAMAGE (${SETK.four6}% WITH ALL 6). EVERY ${SETK.bindEvery}TH HIT BINDS FOR 1 S. BOUND FOES TAKE ${Math.round((SETK.bound4 - 1) * 100)}% MORE AND BURST WHEN THEY DIE. EACH BOUND FOE: 8% LESS DAMAGE TAKEN (40% MAX).`], [6, `BOUND FOES TAKE X${SETK.bound6} DAMAGE. THE CHAIN ENDS IN A X${SETK.crush} CRUSH.`]] },
   choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, `+${fourOf('choir')}% DAMAGE (${SETK.four6}% WITH ALL 6). IN RECKONING: X${SETK.choir4} DAMAGE, NO ROOTS OR SLOWS, KILLS HEAL 2%.`], [6, `RECKONING LASTS WHILE ZEAL REMAINS. X${SETK.choir} DAMAGE WHILE IT BURNS.`]] },
 };
 const MAIN_SETS = ['nails', 'stride', 'font', 'confessor', 'choir'];
@@ -6121,7 +6121,7 @@ function updateStatus(e, dt) {
     if (dx * dx + dy * dy <= 1) {
       e.slowK = 1 - T.flask.slow - (sb('font', 2) ? 0.25 : 0);
       if (!e.dead) statusTick(e, 'poolAcc', T.flask.dps, dt, PAL.holy2, 'pool');
-      if (sb('font', 6) && !e.boss) { e.kx += (p.x - e.x) * 4 * dt; e.ky += (p.y - e.y) * 4 * dt; }
+      if (sb('font', 4) && !e.boss) { const k = sb('font', 6) ? 4 : 2; e.kx += (p.x - e.x) * k * dt; e.ky += (p.y - e.y) * k * dt; } // pools draw foes in (half as hard at 4 pieces)
       break;
     }
   }
