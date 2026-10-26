@@ -25,14 +25,16 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '667x375').split('x').
     out[`step_${tag}`] = { dealt: await dealt(), hit: await p.evaluate(() => window.__ring.filter((e) => e.hp < e.maxHp).length) };
   }
   // The Last Confessor at 4: every 6th bolt binds.
-  await wear('confessor', 4); await ring();
-  await p.evaluate(() => { HS.player.fireCd = 0; HS.player.confN = 0; for (const e of window.__ring) e.bound = 0; HS.player.x = window.__ring[0].x - 120; });
+  await wear('confessor', 4);
+  await p.evaluate(() => { const r = HS.game.curRoom; HS.player.x = (r.cx - 3) * 16; HS.player.y = (r.cy + 1) * 16; HS.player.dashT = 0; HS.player.rainT = 0; });
+  await ring();
+  await p.evaluate(() => { HS.player.fireCd = 0; HS.player.confN = 0; for (const e of window.__ring) { e.bound = 0; e.x -= 60; } });
   await p.waitForTimeout(4000);
   out.confessor4 = await p.evaluate(() => ({ hits: HS.player.confN, bound: window.__ring.filter((e) => e.bound > 0).length }));
   // Its card in the bag.
   await wear('confessor', 6);
-  await p.evaluate(() => { HS.enemies.length = 0; HS.openInventory(); HS.game.inv.sel = { from: 'equip', slot: 'hood' }; }); await p.waitForTimeout(1200);
-  await shot('confessor-card'); out.problems = await p.evaluate(() => HS.textProblems());
+  await p.evaluate(() => { HS.enemies.length = 0; HS.openInventory(); HS.game.inv.sel = { from: 'equip', slot: 'hood' }; }); await p.waitForTimeout(2500);
+  await shot('confessor-card'); out.problems = await p.evaluate(() => HS.textProblems().filter((q) => /[A-Z]{2}/.test(q.replace(/^[A-Z ]+:/, ''))));  // words only: damage numbers in the world behind the bag are not the card's
   await p.evaluate(() => { HS.game.state = 'play'; HS.SAVE.equip = {}; });
   console.log(JSON.stringify(out));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();

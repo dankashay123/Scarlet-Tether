@@ -235,7 +235,9 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   reach. The Last Confessor binds on its own (`boltStrike`: every
   `SETK.bindEvery2` (10th) hit at 2 pieces, every `bindEvery` (6th) at 4),
   and bound foes burst on death from 4 pieces (was 6). The Drowned Font's
-  pools draw foes in from 4 pieces at half strength. The four-piece damage
+  pools draw foes in from 4 pieces at half strength. The bag's card stops
+  set lines above its buttons and drops the lowest tiers whole when they
+  do not fit (it ran into TAKE OFF on small phones). The four-piece damage
   can differ per set (`SETK.fourBy`, `fourOf`; the Confessor 170%). Set
   balance checked at Stations III, VI and XII (next steps 6). Test:
   `round52.cjs`.
