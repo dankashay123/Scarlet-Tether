@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-25, after round 51 (build 51, on `master`). Read
+Last updated 2026-10-26, after round 52 (build 52, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -203,14 +203,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    XV and in the Training Yard.
 5. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
    attack; ask the owner how the fights at Stations VII to XV feel.
-6. **Balance, what is left (round 51 data).** `bal.sh`-style runs (both
-   heroes in parallel, `setbal.cjs 30 6 1,2,3,4`) are still noisy by about
-   20%. After round 51: the Saint's full sets 10.7-16.5 kills a second,
-   mixes 7.3-15.2; the Mendicant's full sets 10.5-13.6, mixes 7.0-13.2.
-   Weakest: Last Confessor 4 + Nails 2 (about 7.4) and Font 4 + Confessor
-   2 for the Mendicant (7.0); the Saint's Penitent's Stride (10.7) lags
-   because its rites deal little, not its multiplier. Next: give the
-   Confessor's four pieces more binding uptime, and look at Ember Step.
+6. **Balance, what is left (round 52 data, both heroes, 4 seeds of 30 s).**
+   Station VI is close: full sets 10.9-14.9 kills a second, mixes 7.0-13.5
+   (Font 4 + Confessor 2 is still the weakest, about 7.5). Station III is
+   wider at the top (the Saint's Choir 19.7, Font 18.0). Station XII spreads
+   out: Stride 8.4-9.2 and Confessor 7.6-8.9 hold up, Font (3.3 Saint) and
+   Choir (4.6) collapse. Cause: Zeal, Zeal steps and Reckoning come from
+   kills (`addFervor` in `killEnemy`), and kills are slow deep down, so the
+   kill-fed sets (Choir, Font's Great Font) starve while time- and
+   dash-fed ones (Stride) do not. Fix idea: some Zeal from damage dealt or
+   slower Zeal fade at deep Stations, then re-run `setbal.cjs` at XII.
 7. **Warden blows.** Round 49 caps one Warden blow at 40% of health
    (`WARDEN_BLOW`); `balance.cjs` now shows 2.5 blows to die from Station XI
    on. Ask whether the deep Stations still feel hard enough.
@@ -226,6 +228,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 52:** Ember Step bursts where it lands (nova damage, so the
+  Stride set multiplies it), its fire is twice as hot, its twist is a
+  second burst, and with the stick idle it leaps at the best cluster in
+  reach. The Last Confessor binds on its own (`boltStrike`: every
+  `SETK.bindEvery2` (10th) hit at 2 pieces, every `bindEvery` (6th) at 4),
+  and bound foes burst on death from 4 pieces (was 6). The Drowned Font's
+  pools draw foes in from 4 pieces at half strength. The four-piece damage
+  can differ per set (`SETK.fourBy`, `fourOf`; the Confessor 170%). Set
+  balance checked at Stations III, VI and XII (next steps 6). Test:
+  `round52.cjs`.
 
 - **Round 51:** drag to aim the Mendicant's Smite, Shackle Blow (a blow
   circle), Nail Burst (blow and fan), Penitent Charge (leap), Iron Hook

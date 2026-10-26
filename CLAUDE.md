@@ -66,6 +66,7 @@ node tools/tests/setbal.cjs [secs] [station] [seeds] # set balance (HERO=mendica
 node tools/tests/round26.cjs <outDir> [WxH] # six new rites, ranks, twists, aimed Judgement and Font, the death recap
 node tools/tests/aim.cjs <outDir> [WxH]   # drag to aim each rite, cancel, plain tap
 node tools/tests/menus.cjs <outDir> [WxH] # every menu window at one phone size (run at 932x430, 844x390, 667x375); TEXT=large checks the large text size; prints `text problems N` for text that overlaps, runs off the screen or sits a pixel off its neighbour (`HS.textProblems()`)
+node tools/tests/round52.cjs <outDir> [WxH] # Ember Step's landing burst and twist, the Confessor's binding at 4 pieces, its card at a small phone
 node tools/tests/round51.cjs <outDir> [WxH] # aim the Mendicant's rites, his Hallowed pieces (hero drops, icons, a power at work)
 node tools/tests/round50.cjs <outDir> [WxH] # the Mendicant's set looks, his Rites panel and all 18 of his rites cast in a crowd
 node tools/tests/round49.cjs <outDir> [WxH] # Warden blow cap, yard 60 s test and delete, yard best on the Rites panel, Nave drops and ripples, the Mendicant (switch, swing, yard)
@@ -145,7 +146,7 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **Wagers and the vow:** `WAGER_MARKS`, `wagerOdds`, `settleWager` (the Scrying Pool; `run.reach`); `SAVE.vow` and `run.martyr` (Martyrdom).
 - **Rites:** every slot has one rite per set (6 each) for each hero. A new rite needs an icon (`GLYPH` in `props.mjs`), a `RITE_MORE` line, a `TWIST` line, a rite Wound, and a `bumpRite` call path. Ranks: `RANK_AT`. Delayed second strikes: `later(sec, fn)`.
 - **Passives:** `PASSIVES` (offence, defence, utility; deed ones carry `stat`/`need`/`deed`, `passEarned`), each with an icon in `PASS_ICONS` (`props.mjs`, same order), read with `pas(id)`; damage ones in `passK`, defences in `setGuard`. Slots open at `PASSIVE_AT` Saint levels.
-- **Set balance:** set bonus strengths are in `SETK` (the set cards and rite lines read their numbers from it, so keep text in templates); check `setbal.cjs` for both heroes after changing any set (run them in parallel; results move about 20% between runs, so use 4 seeds).
+- **Set balance:** set bonus strengths are in `SETK` (`fourOf(id)` gives a set's four-piece damage; `SETK.fourBy` overrides it per set) (the set cards and rite lines read their numbers from it, so keep text in templates); check `setbal.cjs` for both heroes after changing any set (run them in parallel; results move about 20% between runs, so use 4 seeds).
 - **Death recap:** pass `how` to `damagePlayer`/`hurtPlayerRaw` for any new attack, and give it a `HURT_HOW` name and `HURT_TIP`.
 - **Aiming rites:** `AIMABLE` lists rites that take a drag (and their preview shape in `renderAim`); a new aimable rite takes `aim` (`{a, f}`) in its cast function.
 - **Warden blows:** one Warden hit takes at most `WARDEN_BLOW` (40%) of max health (`damagePlayer`).
