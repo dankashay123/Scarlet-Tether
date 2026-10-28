@@ -1562,6 +1562,28 @@ function drawDrips() {
     for (const [f, a] of [[1, 1], [0.55, 0.6]]) { const rr = 2 + r.r * k * f; ctx.strokeStyle = `rgba(216,255,248,${Math.min(1, r.a * 1.3) * a * (1 - k)})`; ctx.beginPath(); ctx.ellipse(Math.round(r.x), Math.round(r.y), rr, rr * 0.45, 0, 0, Math.PI * 2); ctx.stroke(); } }
   for (const d of drips) { ctx.fillStyle = 'rgba(196,255,244,0.7)'; ctx.fillRect(Math.round(d.x), Math.round(d.y - d.z), 1, 3); }
 }
+// The Undercroft (round 53): dust sifts from the vaults in thin streams, and
+// now and then a draught bends the flames and carries the dust sideways.
+let dustCols = [];
+const draftK = () => { const D = game.draft; if (!D || D.t >= D.max) return 0; const u = D.t / D.max; return Math.sin(u * Math.PI) * D.dir; };
+function updateUndercroft(dt) {
+  const D = game.draft || (game.draft = { t: 9, max: 1, dir: 1, next: rand(6, 12) });
+  D.t += dt; if ((D.next -= dt) <= 0) { D.t = 0; D.max = rand(2, 3); D.dir = rng() < 0.5 ? -1 : 1; D.next = rand(12, 25); sfx('dash', { vol: 0.18, rate: 0.45, gap: 1 }); }
+  if (dustCols.length < (LOWFX ? 1 : 3) && rng() < dt * 0.6) { const x = player.x + rand(-W * 0.45, W * 0.45), fy = player.y + rand(-H * 0.2, H * 0.4); if (!solidAt(x, fy)) dustCols.push({ x, fy, t: 0, life: rand(3, 6), seed: rng() * 99 }); }
+  for (const c of dustCols) c.t += dt;
+  dustCols = dustCols.filter((c) => c.t < c.life);
+  const k = draftK();
+  if (k && !LOWFX) for (const l of room.lights) if ((l.torch || l.sconce) && rng() < dt * 4 * Math.abs(k) && Math.abs(l.x - player.x) < W) parts.push({ kind: 'spark', x: l.x, y: l.y - 6, z: 0, vx: k * rand(40, 70), vy: rand(-20, -5), vz: 0, c: pick([PAL.ember0, PAL.ember1]), life: rand(0.3, 0.6) });
+}
+function drawDust(cx) {
+  const k = draftK();
+  for (const c of dustCols) {
+    const fade = Math.min(1, c.t / 0.6, (c.life - c.t) / 0.8), top = cam.y - 4, L = c.fy - top;
+    for (let i = 0; i < 12; i++) { const u = ((c.t * 0.35 + i / 12 + c.seed) % 1), y = top + u * L, x = c.x + Math.sin(i * 2.7 + c.seed + c.t * 2) * 2 + k * 18 * u;
+      ctx.fillStyle = `rgba(232,220,196,${0.32 * fade})`; ctx.fillRect(Math.round(x), Math.round(y), 1, i % 3 ? 1 : 2); }
+    ctx.fillStyle = `rgba(232,220,196,${0.16 * fade})`; ctx.beginPath(); ctx.ellipse(c.x + k * 18, c.fy, 6, 2, 0, 0, Math.PI * 2); ctx.fill(); // where it lands
+  }
+}
 // Ambient life: rats that bolt from the Saint, moths about the candles, dust in the light.
 function updateCritters(dt) {
   // The Ossuary: skull heaps rattle as the Saint brushes past them.
@@ -1599,6 +1621,7 @@ function drawAmbientGlow(cx, cy) {
     }
   }
   if ((game.run && game.run.stratum) === 2) drawDrips();
+  if (game.scene === 'wound' && game.run && (game.run.stratum || 1) === 1) drawDust(cx);
   // The Ossuary: pale ash falling through the dark, swaying as it drifts.
   if ((game.run && game.run.stratum) === 3) for (let k = 0, n = LOWFX ? 12 : 36; k < n; k++) {
     const t = game.real, x = cx + ((k * 131 + Math.sin(t * 0.6 + k * 1.7) * 14 + t * 4) % W + W) % W, y = cy + ((k * 53 + t * (9 + (k % 5) * 2)) % H);
@@ -2139,6 +2162,16 @@ function renderEnchPop() {
   y += 8;
   for (let k = 0; k < 3; k++) { const n = ingrs()[E.i * 3 + k]; text(E.ing[k], x, y, n ? E.col : PAL.stone1, small); text(`${n}`, x + w, y, n ? PAL.flame1 : PAL.blood0, { ...small, align: 'right' }); y += 10; }
   text('TAP TO CLOSE', W / 2, L.y0 + L.ph - 22, PAL.stone2, { ...small, align: 'center' });
+}
+// Every tier of a set piece over the bag (round 53): the card drops lower
+// tiers on small phones, and a line on it opens this.
+function setPopLayout() { const pw = Math.min(320, W - 30), it = game.setPop, ls = setLines(it).flatMap(([t, col]) => wrapW(heroText(t), pw - 24, true).map((l) => [l, col])); const ph = Math.min(H - 20, 10 + ls.length * 10 + 28); return { pw, ph, x0: Math.round(W / 2 - pw / 2), y0: Math.round(H / 2 - ph / 2), ls }; }
+function renderSetPop() {
+  const L = setPopLayout(), small = { small: true, outline: null };
+  ctx.fillStyle = 'rgba(11,7,16,0.6)'; ctx.fillRect(0, 0, W, H);
+  panelFrame(L.x0, L.y0, L.pw, L.ph);
+  L.ls.forEach(([l, col], i) => text(l, L.x0 + 12, L.y0 + 10 + i * 10, col, i === 0 ? {} : small));
+  text('TAP TO CLOSE', W / 2, L.y0 + L.ph - 16, PAL.stone2, { ...small, align: 'center' });
 }
 function renderAsk() {
   const L = askLayout();
@@ -6791,6 +6824,7 @@ function update(realDt) {
   if (game.state === 'play' && game.scene === 'wound' && (game.snapT = (game.snapT || 0) - realDt) <= 0) { game.snapT = 5; snapRun(); }
   // The Drowned Nave drips: drops fall from the vaults and ring where they land.
   if (game.scene === 'wound' && game.state === 'play' && game.run && game.run.stratum === 2) updateDrips(realDt);
+  if (game.scene === 'wound' && game.state === 'play' && game.run && (game.run.stratum || 1) === 1) updateUndercroft(realDt);
   game.time += dt;
   game.fervorT += dt;
   if (game.fervorT > T.fervor.decayDelay + ZEAL_HOLD * zealStep()) game.fervor = Math.max(0, game.fervor - T.fervor.decay * (G.powers.has('decay') || sb('choir', 2) ? 0.5 : 1) * dt);
@@ -6996,7 +7030,7 @@ function render() {
   GLOW_TO = gctx;
   ctx.save(); ctx.translate(-cx, -cy); ctx.globalCompositeOperation = 'lighter';
   for (const l of room.lights) if (onScreen(l.x, l.y, cx, cy, 140)) {
-    const fl = Math.sin(game.real * 9 + (l.flick || 0)) * 2;
+    const fl = Math.sin(game.real * 9 + (l.flick || 0)) * 2 + (game.scene === 'wound' ? Math.abs(draftK()) * Math.sin(game.real * 31 + (l.flick || 0)) * 5 : 0); // a draught makes the flames gutter
     if (l.torch || l.sconce) {
       // A warm pool on the floor and a hot bloom around the flame.
       const tc = room.torch || ['255,122,31', '255,192,74'];
@@ -7093,13 +7127,14 @@ function render() {
   if (game.state === 'map') renderTownMap();
   if (game.state === 'loading') renderLoading();
   if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; }
+  if (game.setPop && game.state === 'inv') { layerBreak(); renderSetPop(); } else game.setPop = null;
   if (game.enchPop && game.state === 'inv') { layerBreak(); renderEnchPop(); if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; } } else game.enchPop = null;
   if (game.ask) { layerBreak(); renderAsk(); if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; } }
   blit(); flushText();
 }
 
 function bigFlame(x, y, ph = 0) {
-  const k = Math.floor(game.real * 10 + ph) % 4, s = [0, 1, 0, -1][k], t = [0, 2, 1, 3][k];
+  const k = Math.floor(game.real * 10 + ph) % 4, d = game.scene === 'wound' ? draftK() : 0, s = [0, 1, 0, -1][k] + Math.round(d * 6), t = [0, 2, 1, 3][k] - Math.round(Math.abs(d) * 2); // a draught leans and flattens the flame
   ctx.fillStyle = PAL.ember2; ctx.beginPath(); ctx.ellipse(x, y, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = PAL.ember1; ctx.beginPath(); ctx.moveTo(x - 3, y); ctx.lineTo(x + s, y - 8 - t); ctx.lineTo(x + 3, y); ctx.fill();
   ctx.fillStyle = PAL.ember0; ctx.fillRect(x - 1, y - 3, 2, 3); ctx.fillStyle = PAL.white; ctx.fillRect(x, y - 1, 1, 1);
@@ -8496,7 +8531,7 @@ function renderInventory() {
     return;
   }
   // The card.
-  const C = L.card;
+  const C = L.card; game.inv.setTap = null;
   if (L.narrow && !it) return;
   ctx.fillStyle = PAL.ink2; ctx.fillRect(C.x, C.y, C.w, C.h);
   if (L.narrow) text('TAP THE CARD TO GO BACK', C.x + 6, L.btnA.y - 12, PAL.stone2, { small: true, outline: null });
@@ -8520,9 +8555,13 @@ function renderInventory() {
   if (it.set || it.wset) {
     // Set lines down to the buttons. If they do not fit, the lowest tiers go first, whole: never cut mid-word.
     y += 3; const stop = (worn ? C.y + C.h - 42 : L.narrow ? L.btnA.y - 14 : L.btnA.y - 4), cols = Math.floor((C.w - 12) / 6);
-    let lines = setLines(it).map(([t, col]) => [wrap(heroText(t), cols), col]); const fits = (ls) => y + ls.reduce((a, [w]) => a + w.length * 9, 0) <= stop;
-    while (!fits(lines) && lines.length > 2) lines.splice(1, 1); // the lowest tier goes first
-    for (const [ws, col] of lines) for (const l of ws) { if (y + 9 > stop) break; text(l, C.x + 6, y, col, { small: true, outline: null }); y += 9; }
+    const all = setLines(it); let lines = all.map(([t, col]) => [wrap(heroText(t), cols), col, t]); const fits = (ls) => y + ls.reduce((a, [w]) => a + w.length * 9, 0) <= stop;
+    // Dropped tiers leave one gold line that opens them all (renderSetPop).
+    const gone = [], note = () => [wrap(`${gone.join(' AND ')} PIECES: TAP HERE`, cols), PAL.gold1, null, true];
+    while (!fits(gone.length ? [lines[0], note(), ...lines.slice(1)] : lines) && lines.length > 2) gone.push(lines.splice(1, 1)[0][2].split(':')[0]);
+    if (gone.length) lines.splice(1, 0, note());
+    game.inv.setTap = null;
+    for (const [ws, col, , tap] of lines) { const y0 = y; for (const l of ws) { if (y + 9 > stop) break; text(l, C.x + 6, y, col, { small: true, outline: null }); y += 9; } if (tap) game.inv.setTap = { x: C.x, y: y0 - 3, w: C.w, h: y - y0 + 6, it }; }
   }
   if (worn) { const d = itemScore(it) - itemScore(worn); text(d > 0.2 ? 'BETTER THAN WORN' : d < -0.2 ? 'WORSE THAN WORN' : 'SIDEGRADE', C.x + 6, C.y + C.h - 40, d > 0.2 ? PAL.flame1 : d < -0.2 ? PAL.blood0 : PAL.stone1, { small: true, outline: null }); }
   if (game.inv.sel.from === 'bag') { invButton(L.btnA, 'WEAR', PAL.gold3); invButton(L.btnB, `SELL ${SALVAGE[it.ri]}`, PAL.crimson3); }
@@ -8768,6 +8807,8 @@ function renderDesigner() {
 function onTap(x, y) {
   if (game.ask) { askTap(x, y); return true; }
   if (game.enchPop) { game.enchPop = null; sfx('tap', { vol: 0.5 }); return true; }
+  if (game.setPop) { game.setPop = null; sfx('tap', { vol: 0.5 }); return true; }
+  if (game.state === 'inv' && game.inv && game.inv.setTap && inRect(game.inv.setTap, x, y)) { game.setPop = game.inv.setTap.it; sfx('tap', { vol: 0.5 }); return true; }
   switch (game.state) {
     case 'title': {
       const hit = menuButtons().find((b) => x < 0 || (Math.abs(x - b.x) < b.w / 2 + 6 && Math.abs(y - b.y) < b.h / 2 + 6));
@@ -8894,7 +8935,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, askHero, switchHero, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, askHero, switchHero, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>
