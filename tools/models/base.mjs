@@ -111,9 +111,11 @@ export function saintModel(pose = {}) {
     if (SKINS[skin]?.soles) S.paint({ f: (x, y, z) => Math.max(ankle[1] + 1.4 - y, Math.hypot(x - ankle[0] - 1.5, z - hz) - 3.4), mat: SKINS[skin].soles });
   }
   // Doublet torso and the knee-length tabard with folds.
-  S.add(ellipsoid([cx + X, 35 + B, 0], [4.7, 6.6, 3.6], K.robe), 0);
-  S.add(ellipsoid([cx + X * 0.5, 43 + B, 0], [4.6, 3, 3.3], K.tabard), 2);
-  S.add(folds(skirt(cx + 0.5 + X * 0.3, 42 + B, 51.5 + B * 0.4, 4.7, 6.3, 0, 1.0, K.tabard), { cx: cx + 0.5, n: 7, amp: 0.5, y0: 43, y1: 51.5, phase: 0.6 }), 1.2);
+  // The Mendicant is built broader: a wider chest and belly, a fuller skirt.
+  const bw = HR ? 1.35 : 1;
+  S.add(ellipsoid([cx + X, 35 + B, 0], [4.7 * bw, 6.6, 3.6 * bw], K.robe), 0);
+  S.add(ellipsoid([cx + X * 0.5, 43 + B, 0], [4.6 * bw, 3, 3.3 * bw], K.tabard), 2);
+  S.add(folds(skirt(cx + 0.5 + X * 0.3, 42 + B, 51.5 + B * 0.4, 4.7 * bw, 6.3 * bw, 0, 1.0, K.tabard), { cx: cx + 0.5, n: 7, amp: 0.5, y0: 43, y1: 51.5, phase: 0.6 }), 1.2);
   // The cowl: hood, mantle and shoulders as one drape.
   S.add(ellipsoid([cx + X, 28.4 + B, 0], HR ? [7.8, 3.8, 4.8] : [6.6, 3.2, 4.2], K.cowl), 1.8);
   // Back arm, half hidden.
