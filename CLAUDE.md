@@ -76,7 +76,7 @@ node tools/tests/round47.cjs <outDir> [WxH] # the Rites panel's NEXT line, passi
 node tools/tests/round31.cjs <outDir> [WxH] # low-health edge, kill streak, the Training Yard, Stratum III and its Wardens, ten halos on the Vigil Roll
 node tools/tests/round30.cjs <outDir> [WxH] # crit numbers by size, the Zeal step flash, the HP shake, text size in settings, HUD and bag
 node tools/tests/round39.cjs <outDir> [WxH] # REMORSEFUL reflect as a share of health, Stations to XXX (panel, bands, item levels)
-node tools/tests/enchbal.cjs [secs] [station] [builds] [seeds] # enchant balance: each enchant at tier I and II and two every-slot combos; kills a second in a dense crowd, and `guard` (net health lost a second in a fixed ring of foes that cannot die; steadier than crowd damage taken)
+node tools/tests/enchbal.cjs [secs] [station] [builds] [seeds] # enchant balance (HERO=mendicant for him): each enchant at tier I and II and two every-slot combos; kills a second in a dense crowd, and `guard` (net health lost a second in a fixed ring of foes that cannot die; steadier than crowd damage taken)
 node tools/tests/round38.cjs <outDir> [WxH] # ingredient pity, enchant tier II, the enchant card over the bag
 node tools/tests/round37.cjs <outDir> [WxH] # the forge's BUY tab, a photo of every enchant's card
 node tools/tests/round36.cjs <outDir> [WxH] # auto-roll aimed at one stat, one ingredient back on removal, ITEMS rows open their sites
