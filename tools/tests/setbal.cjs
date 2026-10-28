@@ -22,7 +22,7 @@ const BUILDS = [
 (async () => {
   const b = await chromium.launch(); const p = await (await b.newContext({ ...devices['iPhone 13 landscape'] })).newPage();
   const errs = []; p.on('pageerror', (e) => errs.push(String(e.stack || e)));
-  await p.goto('http://localhost:8123/?run'); await p.waitForTimeout(1500);
+  await p.goto('http://localhost:8123/?run'); await p.waitForTimeout(1500); if (process.env.SETK) await p.evaluate((o) => Object.assign(HS.SETK, o), JSON.parse(process.env.SETK)); // SETK='{"choir":1.5}' tries other set numbers
   const rows = [];
   for (const [name, main, second] of BUILDS.filter(([n]) => !ONLY.length || ONLY.includes(n))) for (const seed of seeds) {
     await p.evaluate(([st, main, second, R, seed, ENCH, ENCHT, HERO]) => {

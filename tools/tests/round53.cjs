@@ -1,6 +1,6 @@
 // Playwright check. Serve the repo on :8123 first (python3 -m http.server 8123).
 // Usage: node tools/tests/round53.cjs <outDir> [WxH]
-// Round 53: the Mendicant's own card text and reach, the set card popup on a
+// Round 53: the Mendicant's own card text and reach, his five-frame swing, the set card popup on a
 // small phone, the Undercroft's dust and draughts, and Zeal by Station.
 const { chromium } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const S = process.argv[2], [VW, VH] = (process.argv[3] || '667x375').split('x').map(Number);
@@ -11,9 +11,6 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '667x375').split('x').
   const shot = (n) => p.screenshot({ path: `${S}/shots/r53-${n}.png` });
   await p.goto('http://localhost:8123/?run'); await p.waitForTimeout(1500); await p.mouse.click(300, 200); await p.waitForTimeout(500);
   const run = (hero, st) => p.evaluate(([hero, st]) => { window.HS_AUTOSTIG = true; HS.tut.on = false; HS.game.dialog = null; HS.SAVE.lvl = 60; HS.SAVE.hero = hero; HS.game.nextYard = false; HS.game.nextStratum = 1; HS.game.nextDiff = st; HS.game.nextOmens = []; HS.game.nextVigil = 0; HS.newRun(); HS.tut.on = false; HS.game.state = 'play'; HS.DEV.god = true; HS.enemies.length = 0; }, [hero, st]);
-  // Zeal per kill by Station.
-  out.zeal = {};
-  for (const st of [1, 3, 6, 12]) { await run('saint', st); out.zeal[st] = await p.evaluate(() => +HS.zealDeep().toFixed(2)); }
   // The Mendicant reads mace lines, not crossbow lines.
   await run('mendicant', 2);
   out.text = await p.evaluate(() => ['BOLTS PIERCE ONE MORE FOE.', 'THE CROSSBOW FIRES ONE MORE NAIL.', 'BOLTS SLOW FOES BY 20%.'].map(HS.heroText));

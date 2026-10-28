@@ -62,11 +62,11 @@ node tools/tests/round24.cjs <outDir> [WxH] # music per place, the choir by the 
 node tools/tests/round25.cjs <outDir> [WxH] # Warden music, voice settings, the Scrying Pool, Martyrdom's vow, the Vigil Roll
 node tools/tests/round27.cjs <outDir> [WxH] # the Reliquary horde, passives, cast effects, bag colours and set stars
 node tools/tests/grind.cjs [stations] [mins] # gear a full clear drops per Station, runs per Hallowed, runs for one full set
-node tools/tests/setbal.cjs [secs] [station] [seeds] # set balance (HERO=mendicant for him): kills and damage taken a second per set and 4+2 mix (seeded); ENCH=id,id,... adds enchants by slot (ENCHT tier); ONLY=none,font runs some builds
+node tools/tests/setbal.cjs [secs] [station] [seeds] # set balance (HERO=mendicant for him): kills and damage taken a second per set and 4+2 mix (seeded); SETK='{"choir":1.5}' tries other SETK numbers; ENCH=id,id,... adds enchants by slot (ENCHT tier); ONLY=none,font runs some builds
 node tools/tests/round26.cjs <outDir> [WxH] # six new rites, ranks, twists, aimed Judgement and Font, the death recap
 node tools/tests/aim.cjs <outDir> [WxH]   # drag to aim each rite, cancel, plain tap
 node tools/tests/menus.cjs <outDir> [WxH] # every menu window at one phone size (run at 932x430, 844x390, 667x375); TEXT=large checks the large text size; prints `text problems N` for text that overlaps, runs off the screen or sits a pixel off its neighbour (`HS.textProblems()`)
-node tools/tests/round53.cjs <outDir> [WxH] # Zeal by Station, the Mendicant's mace text, the set card popup on a small phone, Undercroft dust and draughts, a mace blow
+node tools/tests/round53.cjs <outDir> [WxH] # the Mendicant's mace text, the set card popup on a small phone, Undercroft dust and draughts, a mace blow
 node tools/tests/round52.cjs <outDir> [WxH] # Ember Step's landing burst and twist, the Confessor's binding at 4 pieces, its card at a small phone
 node tools/tests/round51.cjs <outDir> [WxH] # aim the Mendicant's rites, his Hallowed pieces (hero drops, icons, a power at work)
 node tools/tests/round50.cjs <outDir> [WxH] # the Mendicant's set looks, his Rites panel and all 18 of his rites cast in a crowd
@@ -145,7 +145,7 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
 - **Orientation:** always landscape; held upright the canvas is turned a quarter (`PORTRAIT`). Map every touch through `toLocal`.
 - **The Vigil:** levels run to `VIGIL_MAX` (200); two levels per Station up to `VIGIL_SOFT` (60, Station XXX; `vigilStation(L)`), then health +3% and damage +2% a level, the rest stays at level 60's. Opened from the Descent panel; each run spends a Bloodrose Key (`SAVE.vkeys`, `dropVkey`). Its extra rewards live in `VIGIL_PAY` and `vigilPayout`.
 - **Wagers and the vow:** `WAGER_MARKS`, `wagerOdds`, `settleWager` (the Scrying Pool; `run.reach`); `SAVE.vow` and `run.martyr` (Martyrdom).
-- **Rites:** every slot has one rite per set (6 each) for each hero. A new rite needs an icon (`GLYPH` in `props.mjs`), a `RITE_MORE` line, a `TWIST` line, a rite Wound, and a `bumpRite` call path. Ranks: `RANK_AT`. Delayed second strikes: `later(sec, fn)`. Zeal per kill grows with the Station (`zealDeep`, `ZEAL_BASE`/`ZEAL_DEEP`) and lingers longer before fading (`ZEAL_HOLD`).
+- **Rites:** every slot has one rite per set (6 each) for each hero. A new rite needs an icon (`GLYPH` in `props.mjs`), a `RITE_MORE` line, a `TWIST` line, a rite Wound, and a `bumpRite` call path. Ranks: `RANK_AT`. Delayed second strikes: `later(sec, fn)`.
 - **Passives:** `PASSIVES` (offence, defence, utility; deed ones carry `stat`/`need`/`deed`, `passEarned`), each with an icon in `PASS_ICONS` (`props.mjs`, same order), read with `pas(id)`; damage ones in `passK`, defences in `setGuard`. Slots open at `PASSIVE_AT` Saint levels.
 - **Set balance:** set bonus strengths are in `SETK` (`fourOf(id)` gives a set's four-piece damage; `SETK.fourBy` overrides it per set) (the set cards and rite lines read their numbers from it, so keep text in templates); check `setbal.cjs` for both heroes after changing any set (run them in parallel; results move about 20% between runs, so use 4 seeds).
 - **Death recap:** pass `how` to `damagePlayer`/`hurtPlayerRaw` for any new attack, and give it a `HURT_HOW` name and `HURT_TIP`.
