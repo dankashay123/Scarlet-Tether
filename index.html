@@ -1201,7 +1201,7 @@ function addToll(e) {
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
 // fourOf(id): a set's damage at 4 or 5 pieces (fourBy overrides SETK.four for one set).
 const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
-const SETK = { stride: 7, strideT: 7, font: 2.6, bound: 1.6, bound6: 3, crush: 12, choir: 1.05, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 4, bound4: 2.8, choir4: 1.2, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 170 } };
+const SETK = { stride: 7, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 1.05, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 3.5, bound4: 2.8, choir4: 1.2, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 170 } };
 const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 2 };
 // Gear per kill, before the Station's multiplier. Kept low: progress should take farming.
 const DROP = { kill: 0.003, rare: 0.1, elite: 0.5 }; // hp: the average MON Warden
@@ -1715,10 +1715,11 @@ function toast(msg, t = 2) { game.toast = { msg, t }; game.toastColor = null; }
 const fervorTier = () => Math.min(3, Math.floor(game.fervor / 25));
 // Zeal at depth (round 53): kills come slower at deep Stations, which starved the
 // Zeal- and Reckoning-fed sets. Each kill gives ZEAL_DEEP more a Station step and
-// Zeal waits ZEAL_HOLD s longer a step before it fades.
-const ZEAL_DEEP = 0.08, ZEAL_HOLD = 0.2;
+// Zeal waits ZEAL_HOLD s longer a step before it fades. Shallow Stations give a
+// little less, which trims the kill-fed sets where kills come fastest.
+const ZEAL_BASE = 0.8, ZEAL_DEEP = 0.07, ZEAL_HOLD = 0.2; // Station I x0.8, III x0.94, VI x1.15, XII x1.57
 const zealStep = () => (game.scene === 'wound' && game.run && !game.yard ? Math.max(0, (curDiff().n || 1) - 1) : 0);
-const zealDeep = () => 1 + ZEAL_DEEP * zealStep();
+const zealDeep = () => (game.scene === 'wound' && game.run && !game.yard ? ZEAL_BASE : 1) + ZEAL_DEEP * zealStep();
 function addFervor(n) { if (player.inPool) n *= 2; if (player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + n * (G.powers.has('penance') ? 1.4 : 1) * (1 + 0.06 * tal('reckon'))); game.fervor = Math.min(100, game.fervor + n * (1 + G.fervor / 100)); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
 // One-shot sprite effects.
 function playFx(sheet, anim, x, y, fps = 24, o = {}) { if (fxs.length > (LOWFX ? 25 : 70) && !o.big) return; fxs.push({ sheet, anim, x, y, t: 0, fps, n: SPR[sheet].anims[anim].length, ...o }); }
@@ -5566,7 +5567,7 @@ const VSETS = {
   habit: { name: "ODILE'S HABIT", piece: "ODILE'S", slots: GEAR_SLOTS, bonus: [[2, '+10% DAMAGE.'], [4, '+1 DASH CHARGE, +15% DAMAGE.']] },
   nails: { name: 'THE HUNDRED NAILS', piece: 'NAILBEARER\'S', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BOLTS PIERCE ONE MORE FOE AND SPLIT AT THE LAST.'], [4, `+${fourOf('nails')}% DAMAGE (+${SETK.four6}% AT 6). HITS ADD NAIL STACKS (50 MAX): EACH GIVES 1% LESS DAMAGE TAKEN, +${Math.round(SETK.nail4 * 100)}% BOLT DAMAGE.`], [6, `BOLTS DEAL +${Math.round(SETK.nail * 100)}% PER NAIL STACK (INSTEAD OF ${Math.round(SETK.nail4 * 100)}%).`]] },
   stride: { name: "THE PENITENT'S STRIDE", piece: "PENITENT'S", slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+1 DASH CHARGE. DASHES LEAVE HOLY FIRE.'], [4, `+${fourOf('stride')}% DAMAGE (+${SETK.four6}% AT 6). X${SETK.stride4} FOR ${SETK.strideT4} S AFTER A DASH. PERFECT DODGES REFILL DASHES AND HALVE DAMAGE 2 S.`], [6, `FOR ${SETK.strideT} S AFTER A DASH, BOLTS, NOVA AND FIRE DEAL X${SETK.stride}. EVERY DASH RELEASES A NOVA.`]] },
-  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, `+${fourOf('font')}% DAMAGE (+${SETK.four6}% AT 6). POOLS DEAL X${SETK.font4} AND DRAW FOES IN. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.`], [6, `POOLS DEAL X${SETK.font} AND DRAW FOES IN TWICE AS HARD. KILLS IN THEM SPEED THE VIAL.`]] },
+  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, `+${fourOf('font')}% DAMAGE (+${SETK.four6}% AT 6). POOLS DEAL X${SETK.font4} AND DRAW FOES IN. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.`], [6, `POOLS DRAW FOES IN TWICE AS HARD. KILLS IN THEM SPEED THE VIAL.`]] },
   confessor: { name: 'THE LAST CONFESSOR', piece: 'CONFESSOR\'S', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, `CHAINS BIND 3 MORE. EVERY ${SETK.bindEvery2}TH HIT BINDS FOR 1 S. BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`], [4, `+${fourOf('confessor')}% DAMAGE (+${SETK.four6}% AT 6). EVERY ${SETK.bindEvery}TH HIT BINDS FOR 1 S. BOUND FOES TAKE ${Math.round((SETK.bound4 - 1) * 100)}% MORE AND BURST ON DEATH. EACH ONE CUTS DAMAGE TAKEN 8% (MAX 40%).`], [6, `BOUND FOES TAKE X${SETK.bound6} DAMAGE. THE CHAIN ENDS IN A X${SETK.crush} CRUSH.`]] },
   choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, `+${fourOf('choir')}% DAMAGE (+${SETK.four6}% AT 6). IN RECKONING: X${SETK.choir4} DAMAGE, NO ROOTS OR SLOWS, KILLS HEAL 2%.`], [6, `RECKONING LASTS WHILE ZEAL REMAINS. X${SETK.choir} DAMAGE WHILE IT BURNS.`]] },
 };
