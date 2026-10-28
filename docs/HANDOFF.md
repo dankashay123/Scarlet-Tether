@@ -203,17 +203,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    XV and in the Training Yard.
 5. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
    attack; ask the owner how the fights at Stations VII to XV feel.
-6. **Balance, what is left (round 53 data, both heroes).** Station III
-   is set by the crowd's kill ceiling (about 19-20 kills a second): every
-   strong set touches it, so the top there cannot be trimmed without hurting
-   deep play. Station XII full sets now 4.0-10 (Saint: Stride 9.5, Confessor
-   7.5-9.5, Choir 6.6, Nails 6.2-6.9, Font 4-4.7). Why sets differ deep: big
-   flat multipliers (Stride x7 after a dash, the Confessor x4.8 on bound foes)
-   are wasted on overkill early and pay off where foes are tough; the Font's
-   pools only touch a few foes at a time, so even 10% health a second in
-   them barely helps. Extra Zeal per kill (tried, up to x5) changed nothing.
-   Fix idea for the Font: bigger or more pools at 4-6 pieces (coverage, not
-   damage). Font 4 + Confessor 2 is still the weakest mix everywhere.
+6. **Balance, what is left (round 54 data, both heroes, 4 seeds).**
+   Station XII full sets 5.3-9.0 kills a second (Saint: Stride 8.8, Confessor
+   8.1, Nails 7.3, Choir 5.4, Font 5.3; the Mendicant 6.1-9.0). Station VI
+   full sets 11.4-18 (the Saint's Font and Confessor about 18 are the top).
+   Weakest mixes: Choir 4 + Stride 2 deep (4.0-4.7 at XII) and the
+   Mendicant's Font 4 + Confessor 2 (7.5 at VI). Station III is set by the
+   crowd's kill ceiling (about 20 a second), so judge sets at VI and XII.
+   Why sets differ deep: big flat multipliers (Stride x7 after a dash, the
+   Confessor x4.8 on bound foes) are wasted on overkill early and pay off
+   where foes are tough. Extra Zeal per kill (tried, up to x5) changed
+   nothing. Runs move about 20-30% between tries: use 4 seeds.
 7. **Warden blows.** Round 49 caps one Warden blow at 40% of health
    (`WARDEN_BLOW`); `balance.cjs` now shows 2.5 blows to die from Station XI
    on. Ask whether the deep Stations still feel hard enough.
