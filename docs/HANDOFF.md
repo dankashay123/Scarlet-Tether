@@ -231,6 +231,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 54:** the Drowned Font's pools spread over their first 1.5 s
+  at 4 and 6 pieces (`SETK.fontGrow`/`fontGrow6` for the Saint, x1.3/x1.5;
+  `fontGrowM`/`fontGrow6M` for the Mendicant, x1.15/x1.25, since his pools
+  are big already). Font 4 + Confessor 2: pools bind foes that wade in
+  (once every 3 s each), and bound foes take the Font's share of health as
+  if in a pool (`fontShare`). The Mendicant's wind-up cocks the mace behind
+  his shoulders (it sat on the halo and merged at chunky size). Enchants
+  re-checked at Station X after round 53's changes (Relentless now with the
+  pack; the run was noisy). Test: `round54.cjs`.
+
 - **Round 53:** polish for the Mendicant before a third saint. His cards,
   talents, passives and altar powers say blows and the mace (`heroText`,
   `HERO_TEXT`); the Nails set and pierce powers lengthen his reach; his
