@@ -15,10 +15,13 @@ const anims = (skin) => { const M = (o) => saintModel({ hero: H, skin, swing: RE
     return A(M({ bob: i % 4 < 2 ? 2 : 0, legs: [b.x, f.x], lift: [b.up, f.up], bend: [b.bend, f.bend], cape: -4, lean: 1 }));
   }),
   // The blow: wind up over the head, strike forward and down, follow through.
+  // Five frames: gather, wind up, strike, follow through, settle back.
   swing: () => [
+    A(M({ bob: 2, bend: [1, 1], lean: -0.6, aim: -3, reach: -0.4, swing: -1.6, legs: [-1, 1], cape: -1 })),
     A(M({ lean: -1.2, aim: -7, reach: -0.2, swing: -1.95, legs: [-2, 2], cape: -1, halo: -1 })),
     A(M({ lean: 2, aim: 1, reach: 1.1, swing: 0.15, legs: [-4, 4], cape: -5, halo: 1 })),
     A(M({ lean: 1.5, aim: 4, reach: 0.7, swing: 0.95, legs: [-3, 3], cape: -3 })),
+    A(M({ bob: 2, bend: [1, 1], lean: 0.5, aim: 0, reach: -0.3, swing: -0.7, legs: [-2, 2], cape: -2, halo: 1 })),
   ],
   cast: () => [
     A(M({ lean: -1, reach: -0.6, aim: 2, cape: -1, halo: -1 })),

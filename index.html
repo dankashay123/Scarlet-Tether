@@ -6044,7 +6044,7 @@ function updateMelee(dt) {
     }
     hitBreakables(player.x + Math.cos(a) * 30, player.y + Math.sin(a) * 30, 20);
     // Weight: grit where the arc ends, and a short freeze when the blow lands in a crowd.
-    if (n) { sfx('hit2', { vol: 0.6, rate: 0.8, gap: 0.08 }); game.shake = Math.max(game.shake, crit ? 3 : 1.5); vemit(player.x + Math.cos(a) * reach * 0.8, player.y + Math.sin(a) * reach * 0.5, { n: LOWFX ? 2 : 6, ramp: 'bone', sp: 60, up: 30, life: 0.3, grav: 160, size: 2, glow: 0 }); if (n >= 3) hitStop(0.03); }
+    if (n) { sfx('hit2', { vol: 0.6, rate: 0.8, gap: 0.08 }); if (crit || n >= 3) sfx('break', { vol: 0.3, rate: 0.62, gap: 0.12 }); game.shake = Math.max(game.shake, Math.min(3.5, (crit ? 2.2 : 1.2) + n * 0.3)); vemit(player.x + Math.cos(a) * reach * 0.8, player.y + Math.sin(a) * reach * 0.5, { n: LOWFX ? 2 : 6, ramp: 'bone', sp: 60, up: 30, life: 0.3, grav: 160, size: 2, glow: 0 }); if (n >= 3) hitStop(0.03); }
   });
 }
 // The mace's arc of light as it strikes (glow pass).
@@ -6053,9 +6053,12 @@ function drawSwingGlow() {
   // Sweeps across the arc in 0.1 s from just before the strike, then fades.
   const t = MELEE.swing - p.swingT, k = (t - (MELEE.strike - 0.02)) / 0.1; if (k <= 0 || k >= 1.8) return;
   const a = p.swingA, arc = p.swingArc, r = MELEE.reach * 0.85, cx = p.x, cy = p.y - 16, a0 = a - arc, a1 = a - arc + 2 * arc * Math.min(1, k), fade = k < 1 ? 1 : Math.max(0, 1 - (k - 1) / 0.8);
-  const col = p.swingCrit ? '255,209,85' : '255,244,176';
+  // His set's colour (or the Plush stall's trail), like the Saint's bolts.
+  const F = boltFx(), col = p.swingCrit ? F.crit : F.trail;
   ctx.lineCap = 'round';
   for (const [w, al, rr] of [[6, 0.25, r], [3, 0.75, r], [2, 0.45, r * 0.7]]) { ctx.strokeStyle = `rgba(${col},${al * fade})`; ctx.lineWidth = w; ctx.beginPath(); ctx.ellipse(cx, cy, rr, rr * 0.62, 0, a0, a1); ctx.stroke(); }
+  // The mace head's afterimages along the leading edge.
+  if (k < 1.2) for (let j = 0; j < 4; j++) { const aa = a1 - j * 0.22 * arc; if (aa < a0) break; ctx.fillStyle = `rgba(${col},${(0.7 - j * 0.16) * fade})`; ctx.beginPath(); ctx.arc(Math.round(cx + Math.cos(aa) * r), Math.round(cy + Math.sin(aa) * r * 0.62), 4 - j * 0.6, 0, Math.PI * 2); ctx.fill(); }
   ctx.lineCap = 'butt';
 }
 function updateCrossbow(dt) {
@@ -7212,7 +7215,7 @@ function drawPlayer() {
   if (game.state === 'dead' || p.hp <= 0) { anim = 'die'; i = Math.min(3, Math.floor((game.deathT || 0) / 0.13)); }
   else if (p.anim !== 'dash' && (p.castT || 0) > 0) { anim = 'cast'; i = p.castT > 0.2 ? 0 : 1; }
   else if (p.anim !== 'dash' && p.hurt > 0.1) { anim = 'hit'; i = p.hurt > 0.22 ? 0 : 1; }
-  else if (p.anim !== 'dash' && p.swingT > 0 && isMelee()) { anim = 'swing'; const t = MELEE.swing - p.swingT; i = t < MELEE.strike ? 0 : t < MELEE.strike + 0.1 ? 1 : 2; }
+  else if (p.anim !== 'dash' && p.swingT > 0 && isMelee()) { anim = 'swing'; const t = MELEE.swing - p.swingT; i = t < MELEE.strike * 0.45 ? 0 : t < MELEE.strike ? 1 : t < MELEE.strike + 0.07 ? 2 : t < MELEE.strike + 0.15 ? 3 : 4; }
   if (G.quiver && anim !== 'die' && !isMelee()) spr('weapon', G.quiver, 0, p.x - p.face * 10, p.y - 23 + (anim === 'run' && i % 4 < 2 ? 2 : 0), { flip: p.face < 0 });
   spr(saintSheet(), anim, i, p.x, p.y, { flip: p.face < 0, white: anim !== 'die' && (p.hurt > 0.25 || blink) });
   const H0 = HALOS.find((q) => q.id === looks().halo); if (H0 && H0.earn && anim !== 'die' && !LOWFX && !CROWNED.includes(saintBase())) { const f = frameOf(saintSheet(), anim, i); twinkles(p.x - p.face, p.y - (f.ay ?? f.h) + 5, 6, 0.4, 4, 1); }
