@@ -231,6 +231,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 55:** switching saints is easy to find: SWITCH SAINT on the
+  pause screen in town (`heroBtn`, asks first), and the other saint in the
+  cathedral close has his name, "PLAY AS HIM" and a gold ring at his feet,
+  plus a badge on the town map. The Mendicant's own look everywhere: Wound
+  cards show a mace (`weapon/mace`, new sculpt) and his names (MACE OF
+  WRATH, WIDE ARC, LONG REACH, HEAVY BLOWS); talents (HEAVY BLOWS, GREAT
+  BLOW); his arms are maces and satchels (`marms` icons in every set's
+  colours, names through `nm(it)`: ARBALEST to MAUL, QUIVER to SATCHEL and so
+  on); the Penitent's Prod shows as a spiked crimson mace for him. LONG
+  REACH (the pierce Wound) now lengthens his reach. Test: `round55.cjs`.
+
 - **Round 54:** the Drowned Font's pools spread over their first 1.5 s
   at 4 and 6 pieces (`SETK.fontGrow`/`fontGrow6` for the Saint, x1.3/x1.5;
   `fontGrowM`/`fontGrow6M` for the Mendicant, x1.15/x1.25, since his pools

@@ -191,6 +191,23 @@ const BODY = {
     S.add(capsule([17.5, 6.5, 2.5], [21, 12.5, 2.5], 1.4, 0.9, 'gold'), 0.8);
     S.add(capsule([9, 15, 3.6], [20, 4, 3.6], 0.6, 0.6, 'iron'), 0);
   },
+  // The Mendicant's arms (round 55). The mace, head up-right: wood haft, gilt bands, an iron head.
+  mace: (S) => {
+    S.add(capsule([4, 21, 2], [15, 9, 2], 1.5, 1.4, 'wood'), 0);
+    S.add(sphere([3.5, 21.5, 2.2], 1.9, 'gold'), 0.4);
+    for (const t of [0.3, 0.55]) S.add(sphere([4 + 11 * t, 21 - 12 * t, 2.4], 1.8, 'gold'), 0.3);
+    S.add(sphere([16.5, 7.5, 2.5], 4.6, 'iron'), 0);
+    for (const [x, y] of [[16.5, 2.4], [21.6, 7.5], [16.5, 12.6], [11.6, 6], [20.2, 3.6]]) S.add(sphere([x, y, 2.8], 1.5, 'iron'), 0);
+  },
+  // His satchel of nails: a leather bag, a gilt clasp on the flap, nail heads at the top.
+  satchel: (S) => {
+    S.add(capsule([13, 8, 2], [17, 2.5, 2], 0.9, 0.9, 'iron'), 0); // one nail poking out
+    S.add(ellipsoid([12, 16.5, 3], [7.5, 6, 4], 'leather'), 0); // the pouch
+    S.add(capsule([9.5, 9.5, 3], [14.5, 9.5, 3], 1.6, 1.6, 'leather'), 1); // the gathered neck
+    S.add(box([12, 11, 4.5], [4.5, 0.8, 1], 0.4, 'gold'), 0); // drawstring
+    S.add(capsule([12, 11.5, 4.5], [9, 15, 4.5], 0.6, 0.5, 'gold'), 0);
+    S.paint({ f: (x, y) => Math.abs(y - 18) - 0.7, mat: 'crimson' }); // a stitched band
+  },
   // The quiver: a leather case, gilt bands, nail heads showing.
   quiver: (S) => {
     S.add(rotZ(capsule([12, 8, 2], [12, 20, 2], 3.6, 3.2, 'leather'), [12, 14], 0.35), 0);
@@ -574,6 +591,9 @@ export default {
     item: () => ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic', 'bow', 'quiver'].map((k) => ICONS[k]()),
     legend: () => LEGEND_ICONS.map((f) => f()),
     setitem: () => SET_ICONS.flatMap((k) => SLOT_ORDER.map((slot) => setIcon(k, slot))),
+    // The Mendicant's arms: [mace, satchel] plain, then per set (set * 2 + k), then the Penitent's Prod as a mace.
+    marms: () => [ICONS.mace(), ICONS.satchel(), ...SET_ICONS.flatMap((k) => [setIcon(k, 'mace'), setIcon(k, 'satchel')]),
+      legendIcon('mace', { wood: 'crimsonDark', gold: 'iron' }, (S) => { for (const [x, y] of [[9, 15], [12, 12]]) S.add(capsule([x, y, 2], [x - 2.5, y - 2.5, 2], 0.9, 0.3, 'iron'), 0); })],
     coin: () => [0, 1].map(coin),
     gold: () => [0, 1, 2].map(goldPile),
     globe: () => [0, 1].map(globe),
