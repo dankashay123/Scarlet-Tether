@@ -9,6 +9,8 @@
 // against the no-enchant build. Lower guard loss means better defence.
 const { chromium, devices } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const secs = +(process.argv[2] || 15), station = +(process.argv[3] || 10), only = (process.argv[4] || '').split(',').filter(Boolean), seeds = (process.argv[5] || '1,2').split(',').map(Number);
+// HERO=mendicant runs it as the Mendicant with his Nails rites.
+const HERO = process.env.HERO || 'saint';
 const IDS = ['emberwake', 'stormlink', 'hunger', 'reaper', 'breath', 'boneward', 'thorns', 'bloodlet', 'splinter', 'frostbite', 'echo', 'lastlight', 'relentless', 'phantom', 'tithe', 'ghoststep'];
 const SLOTS = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic', 'bow', 'quiver'];
 const BUILDS = [['none', [], 1]];
@@ -20,7 +22,7 @@ for (const t of [1, 2]) { BUILDS.push([`combo A ${t === 1 ? 'I' : 'II'}`, IDS.sl
   await p.goto('http://localhost:8123/?run'); await p.waitForTimeout(1500);
   const rows = [];
   for (const [name, ench, tier] of BUILDS.filter(([n]) => !only.length || only.some((o) => n.startsWith(o)) || n === 'none')) for (const seed of seeds) {
-    await p.evaluate(([st, ench, tier, SLOTS, seed]) => {
+    await p.evaluate(([st, ench, tier, SLOTS, seed, HERO]) => {
       let x = 12345 * seed; Math.random = () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; };
       window.HS_AUTOSTIG = false; HS.tut.on = false; HS.DEV.god = false; HS.SAVE.virtues = {}; HS.SAVE.altar = { known: [], sockets: {} }; HS.SAVE.passives = []; HS.SAVE.riteXp = {};
       // The same ten pieces for every build: made once, then copied.
@@ -33,7 +35,7 @@ for (const t of [1, 2]) { BUILDS.push([`combo A ${t === 1 ? 'I' : 'II'}`, IDS.sl
       }
       HS.SAVE.equip = JSON.parse(window.__eq);
       ench.forEach((id, i) => { HS.SAVE.equip[SLOTS[i]].ench = id; HS.SAVE.equip[SLOTS[i]].enchT = tier; });
-      HS.SAVE.lvl = 60; HS.SAVE.rites = { m1: 'storm', m2: 'nailring', pen: 'volley' };
+      HS.SAVE.lvl = 60; HS.SAVE.hero = HERO; HS.SAVE.rites = { m1: 'storm', m2: 'nailring', pen: 'volley' }; HS.SAVE.mrites = { m1: 'nailburst', m2: 'shards', pen: 'hundredblows' };
       HS.game.nextDiff = st - 1; HS.game.nextStratum = 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.game.stigAt = 1e9; HS.game.run.wounds = {}; HS.game.run.xpBase = 1e15; HS.applyGear(true); // no level-ups: Wounds would swamp the enchants
       for (const e of HS.enemies) e.dead = true;
       const P = HS.player, home = { x: P.x, y: P.y }, mix = ['risen', 'crawler', 'acolyte', 'flagellant', 'risen'];
@@ -47,7 +49,7 @@ for (const t of [1, 2]) { BUILDS.push([`combo A ${t === 1 ? 'I' : 'II'}`, IDS.sl
         HS.input.m1 = true; HS.input.m2 = true; HS.input.pen = true;
         if ((S.dashT -= 0.05) <= 0) { S.dashT = 1.4; const a = Math.random() * Math.PI * 2; HS.input.mx = Math.cos(a); HS.input.my = Math.sin(a); HS.input.dash = true; setTimeout(() => { HS.input.mx = (home.x - P.x) / 80; HS.input.my = (home.y - P.y) / 80; }, 150); setTimeout(() => { HS.input.mx = 0; HS.input.my = 0; }, 400); }
       }, 50);
-    }, [station, ench, tier, SLOTS, seed]);
+    }, [station, ench, tier, SLOTS, seed, HERO]);
     await p.waitForTimeout(secs * 1000);
     const crowd = await p.evaluate(() => { clearInterval(window.__iv); const S = window.__S, dt = HS.game.time - S.t0; return { kps: +((HS.game.kills - S.kills0) / dt).toFixed(2), takenPerS: Math.round(S.taken / dt), maxHp: HS.player.maxHp }; });
     // Guard: a steady test of defence. The Saint stands still and keeps shooting;
