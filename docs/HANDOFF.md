@@ -203,31 +203,55 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    XV and in the Training Yard.
 5. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
    attack; ask the owner how the fights at Stations VII to XV feel.
-6. **Balance, what is left (round 52 data, both heroes, 4 seeds of 30 s).**
-   Station VI is close: full sets 10.9-14.9 kills a second, mixes 7.0-13.5
-   (Font 4 + Confessor 2 is still the weakest, about 7.5). Station III is
-   wider at the top (the Saint's Choir 19.7, Font 18.0). Station XII spreads
-   out: Stride 8.4-9.2 and Confessor 7.6-8.9 hold up, Font (3.3 Saint) and
-   Choir (4.6) collapse. Cause: Zeal, Zeal steps and Reckoning come from
-   kills (`addFervor` in `killEnemy`), and kills are slow deep down, so the
-   kill-fed sets (Choir, Font's Great Font) starve while time- and
-   dash-fed ones (Stride) do not. Fix idea: some Zeal from damage dealt or
-   slower Zeal fade at deep Stations, then re-run `setbal.cjs` at XII.
+6. **Balance, what is left (round 53 data, both heroes).** Station III
+   is set by the crowd's kill ceiling (about 19-20 kills a second): every
+   strong set touches it, so the top there cannot be trimmed without hurting
+   deep play. Station XII full sets now 4.0-10 (Saint: Stride 9.5, Confessor
+   7.5-9.5, Choir 6.6, Nails 6.2-6.9, Font 4-4.7). Why sets differ deep: big
+   flat multipliers (Stride x7 after a dash, the Confessor x4.8 on bound foes)
+   are wasted on overkill early and pay off where foes are tough; the Font's
+   pools only touch a few foes at a time, so even 10% health a second in
+   them barely helps. Extra Zeal per kill (tried, up to x5) changed nothing.
+   Fix idea for the Font: bigger or more pools at 4-6 pieces (coverage, not
+   damage). Font 4 + Confessor 2 is still the weakest mix everywhere.
 7. **Warden blows.** Round 49 caps one Warden blow at 40% of health
    (`WARDEN_BLOW`); `balance.cjs` now shows 2.5 blows to die from Station XI
    on. Ask whether the deep Stations still feel hard enough.
-8. **More ambience.** Stratum I: dust sifting from the vaults, a draught
-   that bends the candle flames. Monsters wading in the Nave could ripple too.
+8. **More ambience.** Monsters wading in the Nave could ripple too; the
+   Undercroft's draught could carry a few leaves or ash flakes.
 9. **The pool's crowd.** Let the crowd at the Scrying Pool cheer or jeer
    when a wager settles in Vael, and show past wagers (won and lost).
-10. **A second playable saint.** A short-range melee saint with its own
-   rites, to reuse the sets and Stations.
+10. **A third playable saint.** The owner wants one after the Mendicant's
+   polish: pick a role (caster, summoner, thrown weapons) and reuse sets,
+   Stations and the rite framework (`MRITES` shows how).
 11. **Art pass on small icons.** Review every sheet with `CHUNKY=2`: the
    Chrism vial on the ground, weed mats.
 12. **Tune from play.** Wager odds (`WAGER_MARKS`, `wagerOdds`), the
    vow's doubling, `balance.cjs`, `perf.cjs`.
 
 ## History by round
+
+- **Round 53:** polish for the Mendicant before a third saint. His cards,
+  talents, passives and altar powers say blows and the mace (`heroText`,
+  `HERO_TEXT`); the Nails set and pierce powers lengthen his reach; his
+  swing has five frames (gather, wind up, strike, follow through, settle;
+  timed in the anim picker); the arc of light takes his set's colour or the
+  Plush trail (`boltFx`) with afterimages of the mace head; blows on three
+  or more foes or crits add a deeper crunch, and shake grows with foes hit.
+  Set cards on small phones fold the lowest tiers into a gold "TAP HERE"
+  line that opens every bonus (`setPopLayout`, `renderSetPop`,
+  `game.inv.setTap`). The Undercroft has dust shafts sifting from the
+  vaults and a draught every 12-25 s that leans the dust, bends torch
+  flames and blows sparks (`updateUndercroft`, `drawDust`, `draftK`).
+  Balance: more Zeal a kill at deep Stations was tried and did nothing at
+  XII (even x5), so it was dropped (next steps 6 has why). The Choir hits
+  harder in Reckoning (`SETK.choir` 1.5, `choir4` 1.6); Font pools also take
+  a share of a foe's health a second (`SETK.fontHp` 4%, `fontHp6` 8%, half on
+  elites, none on Wardens or the dummy; `hurtEnemy` `opts.share` skips
+  multipliers). Enchants from Stations X and XV for both heroes
+  (`enchbal.cjs` takes `HERO`): Relentless capped lower, Frostbite and
+  Reaper's Mark raised. `setbal.cjs` takes `SETK='{...}'` overrides. Test:
+  `round53.cjs`.
 
 - **Round 52:** Ember Step bursts where it lands (nova damage, so the
   Stride set multiplies it), its fire is twice as hot, its twist is a

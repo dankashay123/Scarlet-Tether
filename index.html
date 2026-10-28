@@ -106,7 +106,7 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 const BUILD = '53';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
-  '53': ['THE MENDICANT\'S CARDS, TALENTS AND POWERS NOW SPEAK OF HIS MACE, AND THE NAIL SET AND PIERCE POWERS WIDEN HIS REACH.', 'ON SMALL SCREENS, TAP A SET CARD\'S GOLD LINE TO SEE EVERY BONUS.', 'ENCHANTS: RELENTLESS GIVES BACK AT MOST 0.5 S A SECOND (0.8 S AT TIER II). FROSTBITE\'S SLOWED FOES TAKE 15% MORE (30% AT TIER II). REAPER\'S MARK STARTS AT 25% HEALTH (35% AT TIER II).', 'DUST SIFTS FROM THE UNDERCROFT\'S VAULTS AND DRAUGHTS BEND THE FLAMES.'],
+  '53': ['THE MENDICANT\'S CARDS, TALENTS AND POWERS NOW SPEAK OF HIS MACE, AND THE NAIL SET AND PIERCE POWERS WIDEN HIS REACH.', 'ON SMALL SCREENS, TAP A SET CARD\'S GOLD LINE TO SEE EVERY BONUS.', 'THE BURNING CHOIR HITS HARDER IN RECKONING (X1.6 AT 4 PIECES, X1.5 AT 6). THE DROWNED FONT\'S POOLS ALSO TAKE 4% OF A FOE\'S HEALTH A SECOND (8% AT 6), NOT FROM WARDENS.', 'ENCHANTS: RELENTLESS GIVES BACK AT MOST 0.5 S A SECOND (0.8 S AT TIER II). FROSTBITE\'S SLOWED FOES TAKE 15% MORE (30% AT TIER II). REAPER\'S MARK STARTS AT 25% HEALTH (35% AT TIER II).', 'DUST SIFTS FROM THE UNDERCROFT\'S VAULTS AND DRAUGHTS BEND THE FLAMES.'],
   '52': ['EMBER STEP BURSTS WHERE YOU LAND, ITS FIRE BURNS HOTTER, AND STANDING STILL IT LEAPS AT THE NEAREST CROWD.', 'THE LAST CONFESSOR BINDS ON ITS OWN: EVERY 10TH HIT AT 2 PIECES, EVERY 6TH AT 4. AT 4 PIECES BOUND FOES ALSO BURST WHEN THEY DIE.', 'THE DROWNED FONT\'S POOLS DRAW FOES IN FROM 4 PIECES.'],
   '51': ['DRAG TO AIM THE MENDICANT\'S BLOWS, CHARGE, HOOK AND TWO OF HIS RECKONINGS.', 'SEVEN NEW HALLOWED PIECES FOR THE MENDICANT\'S RITES. EACH HERO ONLY FINDS PIECES HE CAN USE.', 'SET BALANCE: 4 PIECES NOW GIVE +110% DAMAGE (+25% ONCE ALL 6 ARE WORN), SO 4+2 MIXES KEEP UP. THE LAST CONFESSOR IS STRONGER, THE FONT AND THE CHOIR A LITTLE WEAKER.'],
   '50': ['THE MENDICANT HAS HIS OWN 18 RITES, ONE PER SET IN EVERY SLOT. SEE THE RITES PANEL WHILE PLAYING HIM.', 'EVERY VESTMENT SET NOW DRESSES THE MENDICANT TOO.', 'CROSSBOW WOUNDS READ RIGHT FOR THE MACE.'],
@@ -1202,7 +1202,7 @@ function addToll(e) {
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
 // fourOf(id): a set's damage at 4 or 5 pieces (fourBy overrides SETK.four for one set).
 const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
-const SETK = { stride: 7, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 1.05, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 3.5, bound4: 2.8, choir4: 1.2, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 170 } };
+const SETK = { fontHp: 4, fontHp6: 8, stride: 7, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 1.5, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 3.5, bound4: 2.8, choir4: 1.6, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 170 } };
 const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 2 };
 // Gear per kill, before the Station's multiplier. Kept low: progress should take farming.
 const DROP = { kill: 0.003, rare: 0.1, elite: 0.5 }; // hp: the average MON Warden
@@ -5311,12 +5311,13 @@ function passK(e, crit) {
 }
 function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   if (e.dead || e.state === 'spawn' || e.spawnDelay > 0 || e.under) return;
-  dmg = Math.max(1, Math.round(dmg * G.dmgMul * setFoeK(e, opts.kind) * (e.burn > 0 && censerUp('vigil') ? 1.15 : 1) * passK(e, crit)));
+  // A share of health (opts.share) is already sized to the foe: no multipliers.
+  dmg = opts.share ? Math.max(1, Math.round(dmg)) : Math.max(1, Math.round(dmg * G.dmgMul * setFoeK(e, opts.kind) * (e.burn > 0 && censerUp('vigil') ? 1.15 : 1) * passK(e, crit)));
   if (e.room !== undefined && room.rooms && room.rooms[e.room]) room.rooms[e.room].lastHurt = game.time;
   if (e.ward > 0) { nums.push({ x: e.x, y: e.y - e.hy * 2 - 4, v: 'WARDED', t: 0, color: PAL.holy1, small: true }); return; }
   let blocked = false;
   if (!opts.status && !(e.bound > 0) && e.def.shield && e.state !== 'stagger' && Math.sign(dirx) === -e.face && Math.abs(dirx) > Math.abs(diry) * 0.6) { dmg = Math.max(1, Math.round(dmg * 0.35)); blocked = true; crit = false; }
-  dmg = Math.round(dmg * (1 + fervorTier() * (0.1 + 0.02 * tal('zeal'))) * (game.buff && game.buff.kind === 'fervor' ? 2 : 1));
+  if (!opts.share) dmg = Math.round(dmg * (1 + fervorTier() * (0.1 + 0.02 * tal('zeal'))) * (game.buff && game.buff.kind === 'fervor' ? 2 : 1));
   const before = e.hp / e.maxHp;
   e.hp -= dmg; e.flash = 0.05;
   if (!opts.status && !blocked) e.hitT = HIT_T;
@@ -5595,7 +5596,7 @@ const VSETS = {
   habit: { name: "ODILE'S HABIT", piece: "ODILE'S", slots: GEAR_SLOTS, bonus: [[2, '+10% DAMAGE.'], [4, '+1 DASH CHARGE, +15% DAMAGE.']] },
   nails: { name: 'THE HUNDRED NAILS', piece: 'NAILBEARER\'S', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BOLTS PIERCE ONE MORE FOE AND SPLIT AT THE LAST.'], [4, `+${fourOf('nails')}% DAMAGE (+${SETK.four6}% AT 6). HITS ADD NAIL STACKS (50 MAX): EACH GIVES 1% LESS DAMAGE TAKEN, +${Math.round(SETK.nail4 * 100)}% BOLT DAMAGE.`], [6, `BOLTS DEAL +${Math.round(SETK.nail * 100)}% PER NAIL STACK (INSTEAD OF ${Math.round(SETK.nail4 * 100)}%).`]] },
   stride: { name: "THE PENITENT'S STRIDE", piece: "PENITENT'S", slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+1 DASH CHARGE. DASHES LEAVE HOLY FIRE.'], [4, `+${fourOf('stride')}% DAMAGE (+${SETK.four6}% AT 6). X${SETK.stride4} FOR ${SETK.strideT4} S AFTER A DASH. PERFECT DODGES REFILL DASHES AND HALVE DAMAGE 2 S.`], [6, `FOR ${SETK.strideT} S AFTER A DASH, BOLTS, NOVA AND FIRE DEAL X${SETK.stride}. EVERY DASH RELEASES A NOVA.`]] },
-  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, `+${fourOf('font')}% DAMAGE (+${SETK.four6}% AT 6). POOLS DEAL X${SETK.font4} AND DRAW FOES IN. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.`], [6, `POOLS DRAW FOES IN TWICE AS HARD. KILLS IN THEM SPEED THE VIAL.`]] },
+  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, `+${fourOf('font')}% DAMAGE (+${SETK.four6}% AT 6). POOLS DEAL X${SETK.font4}, TAKE ${SETK.fontHp}% OF A FOE'S HEALTH A SECOND AND DRAW FOES IN. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.`], [6, `POOLS TAKE ${SETK.fontHp6}% OF A FOE'S HEALTH A SECOND AND DRAW FOES IN TWICE AS HARD. KILLS IN THEM SPEED THE VIAL.`]] },
   confessor: { name: 'THE LAST CONFESSOR', piece: 'CONFESSOR\'S', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, `CHAINS BIND 3 MORE. EVERY ${SETK.bindEvery2}TH HIT BINDS FOR 1 S. BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`], [4, `+${fourOf('confessor')}% DAMAGE (+${SETK.four6}% AT 6). EVERY ${SETK.bindEvery}TH HIT BINDS FOR 1 S. BOUND FOES TAKE ${Math.round((SETK.bound4 - 1) * 100)}% MORE AND BURST ON DEATH. EACH ONE CUTS DAMAGE TAKEN 8% (MAX 40%).`], [6, `BOUND FOES TAKE X${SETK.bound6} DAMAGE. THE CHAIN ENDS IN A X${SETK.crush} CRUSH.`]] },
   choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, `+${fourOf('choir')}% DAMAGE (+${SETK.four6}% AT 6). IN RECKONING: X${SETK.choir4} DAMAGE, NO ROOTS OR SLOWS, KILLS HEAL 2%.`], [6, `RECKONING LASTS WHILE ZEAL REMAINS. X${SETK.choir} DAMAGE WHILE IT BURNS.`]] },
 };
@@ -6175,6 +6176,8 @@ function updateStatus(e, dt) {
     if (dx * dx + dy * dy <= 1) {
       e.slowK = 1 - T.flask.slow - (sb('font', 2) ? 0.25 : 0);
       if (!e.dead) statusTick(e, 'poolAcc', T.flask.dps, dt, PAL.holy2, 'pool');
+      // The Drowned Font at 4: pools also take a share of a foe's health a second (half on elites, none on Wardens or the yard's dummy), so it keeps up where foes are tough.
+      if (sb('font', 4) && !e.boss && !e.dead && !(game.yard && e === game.yard.dummy)) { e.fontAcc = (e.fontAcc || 0) + e.maxHp * (sb('font', 6) ? SETK.fontHp6 : SETK.fontHp) / 100 * (e.tier === 'elite' ? 0.5 : 1) * dt; if (e.fontAcc >= Math.max(1, e.maxHp * 0.01)) { const n = Math.round(e.fontAcc); e.fontAcc = 0; hurtEnemy(e, n, false, 0, 0, 0, { status: true, color: PAL.holy2, kind: 'fontshare', share: true }); } }
       if (sb('font', 4) && !e.boss) { const k = sb('font', 6) ? 4 : 2; e.kx += (p.x - e.x) * k * dt; e.ky += (p.y - e.y) * k * dt; } // pools draw foes in (half as hard at 4 pieces)
       break;
     }
