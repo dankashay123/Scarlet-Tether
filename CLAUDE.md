@@ -66,6 +66,7 @@ node tools/tests/setbal.cjs [secs] [station] [seeds] # set balance (HERO=mendica
 node tools/tests/round26.cjs <outDir> [WxH] # six new rites, ranks, twists, aimed Judgement and Font, the death recap
 node tools/tests/aim.cjs <outDir> [WxH]   # drag to aim each rite, cancel, plain tap
 node tools/tests/menus.cjs <outDir> [WxH] # every menu window at one phone size (run at 932x430, 844x390, 667x375); TEXT=large checks the large text size; prints `text problems N` for text that overlaps, runs off the screen or sits a pixel off its neighbour (`HS.textProblems()`)
+node tools/tests/round54.cjs <outDir> [WxH] # the Font's pools spread per hero, Font 4 + Confessor 2 pools bind, the Font's card popup, the Mendicant's wind-up
 node tools/tests/round53.cjs <outDir> [WxH] # the Mendicant's mace text, the set card popup on a small phone, Undercroft dust and draughts, a mace blow
 node tools/tests/round52.cjs <outDir> [WxH] # Ember Step's landing burst and twist, the Confessor's binding at 4 pieces, its card at a small phone
 node tools/tests/round51.cjs <outDir> [WxH] # aim the Mendicant's rites, his Hallowed pieces (hero drops, icons, a power at work)
