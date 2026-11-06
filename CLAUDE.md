@@ -19,6 +19,7 @@ owner's preferences and a prioritised list of ideas to tackle next.
 | `docs/ART_COMPARISON.md` | Otherworld Legends vs our art: the gap list, map layout recipe, camera and pixel-size measurements |
 | `tools/palette.mjs` | Master palette: 26 ramps × 9 steps (`sea` is the water ramp). Every pixel must be on it |
 | `tools/preview.mjs` | Render one model set to a PNG for review |
+| `tools/icon.mjs`, `assets/icons/` | The app icon (the Saint's bust in a violet-lit arch, 64x64 chunky art): apple-touch-icon 180, favicon 32, 192 and 512 for `manifest.webmanifest`. Rebuild with `node tools/icon.mjs`; `node tools/icon.mjs out.png 6` previews |
 | `tools/tests/*.cjs` | Playwright checks (see below) |
 | `docs/GDD.md` | Design bible (source of truth) + the v5 art spec |
 | `docs/COMBAT.md` | Rooms, 30 monsters, affixes, loot, town layout |

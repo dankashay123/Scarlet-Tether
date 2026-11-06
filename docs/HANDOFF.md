@@ -231,6 +231,13 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 56:** the app icon (`tools/icon.mjs`, `assets/icons/`): the
+  Saint's hooded bust under a floating halo in a stone arch lit violet, drawn
+  on a 64x64 palette grid in chunky pixels so every size is a whole-number
+  scale (180 for the iPhone home screen, 32 favicon, 192 and 512 in
+  `manifest.webmanifest`). Linked in `index.html`'s head with
+  `apple-mobile-web-app-title`.
+
 - **Round 55:** switching saints is easy to find: SWITCH SAINT on the
   pause screen in town (`heroBtn`, asks first), and the other saint in the
   cathedral close has his name, "PLAY AS HIM" and a gold ring at his feet,
