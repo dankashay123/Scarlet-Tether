@@ -203,17 +203,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    XV and in the Training Yard.
 5. **Tune Stratum III from play.** Round 32 gave both Wardens a fifth
    attack; ask the owner how the fights at Stations VII to XV feel.
-6. **Balance, what is left (round 54 data, both heroes, 4 seeds).**
-   Station XII full sets 5.3-9.0 kills a second (Saint: Stride 8.8, Confessor
-   8.1, Nails 7.3, Choir 5.4, Font 5.3; the Mendicant 6.1-9.0). Station VI
-   full sets 11.4-18 (the Saint's Font and Confessor about 18 are the top).
-   Weakest mixes: Choir 4 + Stride 2 deep (4.0-4.7 at XII) and the
-   Mendicant's Font 4 + Confessor 2 (7.5 at VI). Station III is set by the
-   crowd's kill ceiling (about 20 a second), so judge sets at VI and XII.
-   Why sets differ deep: big flat multipliers (Stride x7 after a dash, the
-   Confessor x4.8 on bound foes) are wasted on overkill early and pay off
-   where foes are tough. Extra Zeal per kill (tried, up to x5) changed
-   nothing. Runs move about 20-30% between tries: use 4 seeds.
+6. **Balance, what is left (round 57 data, both heroes, 4 seeds).**
+   Station XII full sets now 6.6-9.1 kills a second (Saint: Stride 8.7,
+   Confessor 8.8, Nails 6.8, Choir 6.7, Font 6.6). Station VI full sets
+   11.6-22 (the Saint's Choir about 20-22 and Font 19 are the top; the
+   Mendicant's 11.6-19). Weakest mixes: Font 4 + Confessor 2 (4.7 at XII,
+   7.8 for the Mendicant at VI) and Choir 4 + Stride 2 deep (5.3-6.1).
+   Why sets differ deep: flat multipliers (Stride x7 after a dash, the
+   Confessor on bound foes, now the Choir in Reckoning) pay off where foes
+   are tough; shares of health barely help. Runs move about 20% between
+   tries: use 4 seeds.
 7. **Warden blows.** Round 49 caps one Warden blow at 40% of health
    (`WARDEN_BLOW`); `balance.cjs` now shows 2.5 blows to die from Station XI
    on. Ask whether the deep Stations still feel hard enough.
@@ -228,8 +227,31 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    Chrism vial on the ground, weed mats.
 12. **Tune from play.** Wager odds (`WAGER_MARKS`, `wagerOdds`), the
    vow's doubling, `balance.cjs`, `perf.cjs`.
+13. **Feature ideas (round 57).** (a) Relic Hunts: a weekly chase for one
+   named Hallowed piece, with clues on the Bounty Board and a marked room in
+   a random descent. (b) Pilgrim companions: hire a townsfolk acolyte who
+   follows you down and casts one weak rite; levels with use. (c) A Station
+   leaderboard and a daily seeded descent (same map and omens for everyone,
+   scored by time and Toll). (d) Cathedral rebuilding: spend gold and
+   Emberstones to restore parts of Vael (a bell tower, a scriptorium), each
+   unlocking a small perk or vendor. (e) Warden trophies: each Warden kill
+   at a new Station adds a trophy to a hall in town, with a one-line record.
+   (f) A codex: monsters, Wardens, sets and Hallowed pieces you have seen,
+   with kill counts. (g) Weekly mutators on the Vigil (fast foes, double
+   elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 57:** balance. `setbal.cjs` now reports `reck` (share of the fight
+  spent in Reckoning), which showed the Choir's deep weakness was damage, not
+  uptime (75-85% at both Stations). The Burning Choir: x2.2 in Reckoning at 4
+  and 6 pieces (`SETK.choir4`, `choir`), and in Reckoning foes within
+  `choirR` burn for `choirHp` 2% (`choirHp6` 3%) of their health a second
+  (`choirShare`). The Font's 6 pieces: smaller spread (`fontGrow6` 1.35),
+  bigger share (`fontHp6` 10%). The Confessor's four pieces +155% (was 170).
+  Shares of health now go through one helper, `shareTick`. Lesson: a share
+  of health a second barely moves kill rate (it scales with the foes in
+  reach); a flat multiplier pays deep and is capped early.
 
 - **Round 56:** the app icon (`tools/icon.mjs`, `assets/icons/`): the
   Saint's hooded bust under a floating halo in a stone arch lit violet, drawn
