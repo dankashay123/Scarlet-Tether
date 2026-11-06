@@ -108,9 +108,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '56';
+const BUILD = '57';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '57': ['THE BURNING CHOIR: X2.2 DAMAGE IN RECKONING AT 4 AND 6 PIECES, AND FOES NEAR YOU BURN FOR 2% OF THEIR HEALTH A SECOND (3% AT 6).', 'THE DROWNED FONT AT 6: POOLS SPREAD A LITTLE LESS BUT TAKE 10% OF A FOE\'S HEALTH A SECOND.', 'THE LAST CONFESSOR\'S 4 PIECES GIVE +155% DAMAGE (WAS +170%).'],
   '56': ['THE GAME HAS ITS OWN ICON. ADD IT TO YOUR HOME SCREEN FROM SAFARI\'S SHARE MENU.'],
   '55': ['SWITCH SAINTS FROM THE PAUSE SCREEN IN VAEL, OR TALK TO THE OTHER SAINT IN THE CATHEDRAL CLOSE. HE IS NOW MARKED THERE AND ON THE TOWN MAP.', 'THE MENDICANT\'S WOUND CARDS, TALENTS AND GEAR NOW SHOW HIS MACE AND SPEAK OF BLOWS. HIS ARMS ARE MACES AND SATCHELS WITH THEIR OWN ICONS.', 'LONG REACH (PIERCING FAITH) NOW LENGTHENS THE MENDICANT\'S REACH.'],
   '54': ['THE DROWNED FONT\'S POOLS SPREAD AS THEY SETTLE (WIDER AT 6 PIECES), SO THE FONT KEEPS UP AT DEEP STATIONS.', 'WEAR 4 FONT PIECES WITH 2 OF THE LAST CONFESSOR AND POOLS BIND THE FOES THAT WADE IN. BOUND FOES ALSO LOSE HEALTH AS IF IN A POOL.', 'THE MENDICANT COCKS HIS MACE BEHIND HIS SHOULDERS BEFORE A BLOW.'],
@@ -1219,7 +1220,7 @@ function addToll(e) {
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
 // fourOf(id): a set's damage at 4 or 5 pieces (fourBy overrides SETK.four for one set).
 const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
-const SETK = { fontHp: 4, fontHp6: 8, fontGrow: 1.3, fontGrow6: 1.5, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 7, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 1.5, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 3.5, bound4: 2.8, choir4: 1.6, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 170 } };
+const SETK = { choirHp: 2, choirHp6: 3, choirR: 110, fontHp: 4, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 7, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 2.2, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 3.5, bound4: 2.8, choir4: 2.2, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 155 } };
 const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 2 };
 // Gear per kill, before the Station's multiplier. Kept low: progress should take farming.
 const DROP = { kill: 0.003, rare: 0.1, elite: 0.5 }; // hp: the average MON Warden
@@ -5616,7 +5617,7 @@ const VSETS = {
   stride: { name: "THE PENITENT'S STRIDE", piece: "PENITENT'S", slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+1 DASH CHARGE. DASHES LEAVE HOLY FIRE.'], [4, `+${fourOf('stride')}% DAMAGE (+${SETK.four6}% AT 6). X${SETK.stride4} FOR ${SETK.strideT4} S AFTER A DASH. PERFECT DODGES REFILL DASHES AND HALVE DAMAGE 2 S.`], [6, `FOR ${SETK.strideT} S AFTER A DASH, BOLTS, NOVA AND FIRE DEAL X${SETK.stride}. EVERY DASH RELEASES A NOVA.`]] },
   font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, `+${fourOf('font')}% DAMAGE (+${SETK.four6}% AT 6). POOLS DEAL X${SETK.font4}, SPREAD, TAKE ${SETK.fontHp}% OF A FOE'S HEALTH A SECOND AND DRAW FOES IN. WITH 2 CONFESSOR PIECES THEY BIND. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.`], [6, `POOLS SPREAD WIDER, TAKE ${SETK.fontHp6}% OF A FOE'S HEALTH A SECOND AND DRAW FOES IN TWICE AS HARD. KILLS IN THEM SPEED THE VIAL.`]] },
   confessor: { name: 'THE LAST CONFESSOR', piece: 'CONFESSOR\'S', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, `CHAINS BIND 3 MORE. EVERY ${SETK.bindEvery2}TH HIT BINDS FOR 1 S. BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`], [4, `+${fourOf('confessor')}% DAMAGE (+${SETK.four6}% AT 6). EVERY ${SETK.bindEvery}TH HIT BINDS FOR 1 S. BOUND FOES TAKE ${Math.round((SETK.bound4 - 1) * 100)}% MORE AND BURST ON DEATH. EACH ONE CUTS DAMAGE TAKEN 8% (MAX 40%).`], [6, `BOUND FOES TAKE X${SETK.bound6} DAMAGE. THE CHAIN ENDS IN A X${SETK.crush} CRUSH.`]] },
-  choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, `+${fourOf('choir')}% DAMAGE (+${SETK.four6}% AT 6). IN RECKONING: X${SETK.choir4} DAMAGE, NO ROOTS OR SLOWS, KILLS HEAL 2%.`], [6, `RECKONING LASTS WHILE ZEAL REMAINS. X${SETK.choir} DAMAGE WHILE IT BURNS.`]] },
+  choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, `+${fourOf('choir')}% DAMAGE (+${SETK.four6}% AT 6). IN RECKONING: X${SETK.choir4} DAMAGE, FOES NEAR YOU BURN FOR ${SETK.choirHp}% OF THEIR HEALTH A SECOND, NO ROOTS OR SLOWS, KILLS HEAL 2%.`], [6, `RECKONING LASTS WHILE ZEAL REMAINS.${SETK.choir !== SETK.choir4 ? ` X${SETK.choir} DAMAGE WHILE IT BURNS.` : ''} FOES NEAR YOU BURN FOR ${SETK.choirHp6}% A SECOND.`]] },
 };
 const MAIN_SETS = ['nails', 'stride', 'font', 'confessor', 'choir'];
 const SET_FROM = 6; // the five main sets (and their arms) drop from Station VI
@@ -6203,14 +6204,25 @@ function updateStatus(e, dt) {
   }
   // Font 4 with the Confessor's 2 (round 54): pools bind, and bound foes count as standing in a pool for its share of health.
   if (!inPool && e.bound > 0 && sb('confessor', 2)) fontShare(e, dt);
+  choirShare(e, dt);
   if ((e.boltSlowT || 0) > game.time) e.slowK *= ench('frostbite') ? E2('frostbite', 0.7, 0.6) : 0.7;
   if (e.bound > 0) e.bound -= dt;
 }
-// The Drowned Font at 4: pools take a share of a foe's health a second (half on elites, none on Wardens or the yard's dummy), so it keeps up where foes are tough.
+// A share of a foe's health a second (half on elites, none on Wardens or the yard's dummy), so a set keeps up where foes are tough.
+function shareTick(e, key, pct, dt, color, kind) {
+  if (e.boss || e.dead || (game.yard && e === game.yard.dummy)) return;
+  e[key] = (e[key] || 0) + e.maxHp * pct / 100 * (e.tier === 'elite' ? 0.5 : 1) * dt;
+  if (e[key] >= Math.max(1, e.maxHp * 0.01)) { const n = Math.round(e[key]); e[key] = 0; hurtEnemy(e, n, false, 0, 0, 0, { status: true, color, kind, share: true }); }
+}
+// The Burning Choir at 4 (round 57): in Reckoning, foes near the Saint burn for a share of their health a second.
+function choirShare(e, dt) {
+  if (!(player.rainT > 0) || !sb('choir', 4) || Math.hypot(e.x - player.x, e.y - player.y) > SETK.choirR) return;
+  shareTick(e, 'choirAcc', sb('choir', 6) ? SETK.choirHp6 : SETK.choirHp, dt, PAL.ember1, 'choirshare');
+  if (!LOWFX && rng() < dt * 3) vemit(e.x + rand(-e.r, e.r), e.y - rand(4, e.hy * 2), { n: 1, ramp: 'fire', sp: 8, up: 30, life: 0.4, glow: 4 });
+}
+// The Drowned Font at 4: pools take a share of a foe's health a second, so it keeps up where foes are tough.
 function fontShare(e, dt) {
-  if (!sb('font', 4) || e.boss || e.dead || (game.yard && e === game.yard.dummy)) return;
-  e.fontAcc = (e.fontAcc || 0) + e.maxHp * (sb('font', 6) ? SETK.fontHp6 : SETK.fontHp) / 100 * (e.tier === 'elite' ? 0.5 : 1) * dt;
-  if (e.fontAcc >= Math.max(1, e.maxHp * 0.01)) { const n = Math.round(e.fontAcc); e.fontAcc = 0; hurtEnemy(e, n, false, 0, 0, 0, { status: true, color: PAL.holy2, kind: 'fontshare', share: true }); }
+  if (sb('font', 4)) shareTick(e, 'fontAcc', sb('font', 6) ? SETK.fontHp6 : SETK.fontHp, dt, PAL.holy2, 'fontshare');
 }
 
 function bestCluster(R) {

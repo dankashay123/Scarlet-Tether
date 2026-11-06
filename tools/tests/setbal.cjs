@@ -44,11 +44,11 @@ const BUILDS = [
       for (const e of HS.enemies) e.dead = true;
       // The crowd: kept at 30 around the Saint. Damage taken is counted and healed back.
       const P = HS.player, home = { x: P.x, y: P.y }, mix = ['risen', 'crawler', 'acolyte', 'flagellant', 'risen'];
-      window.__S = { taken: 0, kills0: HS.game.kills, t0: HS.game.time, hp: P.maxHp, dashT: 0 };
+      window.__S = { taken: 0, kills0: HS.game.kills, t0: HS.game.time, hp: P.maxHp, dashT: 0, rk: 0, n: 0 };
       clearInterval(window.__iv);
       window.__iv = setInterval(() => {
         const S = window.__S; if (HS.game.state !== 'play') { HS.game.state = 'play'; HS.game.stig = null; }
-        if (P.hp < S.hp) S.taken += S.hp - P.hp; P.hp = P.maxHp; S.hp = P.hp;
+        if (P.hp < S.hp) S.taken += S.hp - P.hp; P.hp = P.maxHp; S.hp = P.hp; S.n++; if (P.rainT > 0) S.rk++; // share of the time in Reckoning
         const alive = HS.enemies.filter((e) => !e.dead).length;
         for (let k = alive; k < 30; k++) { const a = Math.random() * Math.PI * 2, d = 90 + Math.random() * 60, m = HS.spawnMonster(mix[k % mix.length], home.x + Math.cos(a) * d, home.y + Math.sin(a) * d * 0.7, { room: HS.game.curRoom.id }); if (k % 10 === 0) m.tier = 'rare'; }
         HS.input.m1 = true; HS.input.m2 = true; HS.input.pen = true;
@@ -56,11 +56,11 @@ const BUILDS = [
       }, 50);
     }, [station, main, second, RITES, seed, ENCH, ENCHT, HERO]);
     await p.waitForTimeout(secs * 1000);
-    const m = await p.evaluate(() => { clearInterval(window.__iv); const S = window.__S, dt = HS.game.time - S.t0; return { kps: +((HS.game.kills - S.kills0) / dt).toFixed(2), takenPerS: Math.round(S.taken / dt), maxHp: HS.player.maxHp, secs: Math.round(dt) }; });
+    const m = await p.evaluate(() => { clearInterval(window.__iv); const S = window.__S, dt = HS.game.time - S.t0; return { kps: +((HS.game.kills - S.kills0) / dt).toFixed(2), takenPerS: Math.round(S.taken / dt), maxHp: HS.player.maxHp, secs: Math.round(dt), reck: +(S.rk / Math.max(1, S.n)).toFixed(2) }; });
     rows.push({ build: name, ...m });
   }
   // Average the seeds of each build.
-  const avg = BUILDS.filter(([n]) => !ONLY.length || ONLY.includes(n)).map(([name]) => { const r = rows.filter((q) => q.build === name), n = r.length; return { build: name, kps: +(r.reduce((a, q) => a + q.kps, 0) / n).toFixed(2), takenPerS: Math.round(r.reduce((a, q) => a + q.takenPerS, 0) / n), maxHp: Math.round(r.reduce((a, q) => a + q.maxHp, 0) / n) }; });
+  const avg = BUILDS.filter(([n]) => !ONLY.length || ONLY.includes(n)).map(([name]) => { const r = rows.filter((q) => q.build === name), n = r.length; return { build: name, kps: +(r.reduce((a, q) => a + q.kps, 0) / n).toFixed(2), reck: +(r.reduce((a, q) => a + q.reck, 0) / n).toFixed(2), takenPerS: Math.round(r.reduce((a, q) => a + q.takenPerS, 0) / n), maxHp: Math.round(r.reduce((a, q) => a + q.maxHp, 0) / n) }; });
   console.table(avg);
   console.log(JSON.stringify(avg));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();
