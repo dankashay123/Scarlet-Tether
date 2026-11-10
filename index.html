@@ -108,9 +108,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '60';
+const BUILD = '61';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '61': ['RITES LOOK FAR BETTER: A GLOWING RUNE CIRCLE ON EVERY CAST, PILLARS OF LIGHT, RINGS OF FLAME, SHOCKWAVES AND CRACKS WHERE BLOWS LAND, SPRAY ALONG WAVES, A SHIELD OF LIGHT FOR WARDS AND SHACKLES UNDER BOUND FOES.', 'FOES FLASH WHITE MORE SOFTLY WHEN HIT, SO BIG FIGHTS STAY READABLE.'],
   '60': ['NEW ATTACK EFFECTS: A FLASH WHEN THE CROSSBOW FIRES, GLOWING BOLT TRAILS AND BURSTS WHERE THEY HIT (BIGGER ON CRITS). THE MACE LEAVES A BLAZING CRESCENT, A SHOCKWAVE ALONG THE FLOOR AND CRACKS ON HEAVY BLOWS. THEY TAKE YOUR SET\'S COLOUR.'],
   '59': ['NEW OPEN MAPS: WINDING PATHS AND CLEARINGS WITH SIDE POCKETS, DIFFERENT EVERY DESCENT. ABOUT TWO DESCENTS IN THREE ROLL ONE; THE OTHERS KEEP THE ROOMS.'],
   '58': ['THE MENDICANT NO LONGER HAS A CROSSBOW FLOATING BESIDE HIM IN VAEL.'],
@@ -5709,6 +5710,13 @@ function pxRay(x, y, a, len, R, w = 1) { for (let d = 0; d < len; d += 2) { cons
 // A ring (squashed for the floor), broken into dashes when `gap` is set.
 function pxRing(x, y, r, R, ci, squash = 0.6, gap = 0, th = 1) { const n = Math.max(8, Math.floor(r * 0.9)); for (let i = 0; i < n; i++) { if (gap && i % gap === 0) continue; const a = i / n * Math.PI * 2; for (let k = 0; k < th; k++) px2(x + Math.cos(a) * (r - k * 2), y + Math.sin(a) * (r - k * 2) * squash, R[Math.min(R.length - 1, ci + k)]); } }
 function drawPfx(ground) {
+  const P = player;
+  if (P && game.scene === 'wound') {
+    // Bound foes: a turning ring of shackle links at their feet.
+    if (ground) for (const e of enemies) if (e.bound > 0 && !e.dead && Math.abs(e.x - P.x) < 340 && Math.abs(e.y - P.y) < 220) pxRing(e.x, e.y, e.r + 6, FXR.violet, 2 + Math.floor(game.real * 4) % 2, 0.55, 2, 1);
+    // Martyr's Ward and the Penitent's Vow: a shield of light round the hero.
+    if (!ground && ((P.wardT || 0) > game.time || (P.vowT || 0) > game.time)) { const R0 = (P.vowT || 0) > game.time ? FXR.iron : FXR.gold, rr = 22 + Math.sin(game.real * 6) * 1.5; for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2 + game.real * 1.5; if (i % 4 === 3) continue; px2(P.x + Math.cos(a) * rr, P.y - 18 + Math.sin(a) * rr * 1.1, R0[i % 7 === 0 ? 0 : 2], 0.85); } }
+  }
   for (const f of pfx) {
     if (!!f.ground !== ground) continue;
     const k = f.t / f.max, R = FXR[f.ramp] || FXR.gold;
@@ -5735,6 +5743,21 @@ function drawPfx(ground) {
       const r = 6 + k * f.r; pxRing(f.x, f.y, r, R, 1 + Math.floor(k * 3), 0.58, 4, 2);
       if (k > 0.25) pxRing(f.x, f.y, 6 + (k - 0.25) * f.r * 0.8, FXR.bone, 2 + Math.floor(k * 3), 0.58, 3);
     }
+    if (f.kind === 'rune') { // a rite's circle on the floor: two rings, turning marks, light rising from it
+      const fade = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3, r = f.r * (0.6 + 0.4 * Math.min(1, k * 4));
+      if (fade > 0.2) { pxRing(f.x, f.y, r, R, 1, 0.55, 0, 1); pxRing(f.x, f.y, r * 0.68, R, 2, 0.55, 3, 1); }
+      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + k * 2.4; if (fade > 0.3) pxRay(f.x + Math.cos(a) * r * 0.82, f.y + Math.sin(a) * r * 0.82 * 0.55, a, 6 * fade, R); }
+      const up = f.r * 1.6 * Math.sin(Math.min(1, k * 1.4) * Math.PI);
+      for (let i = -2; i <= 2; i++) pxRay(f.x + i * f.r * 0.22, f.y - 2 - Math.abs(i) * 2, -Math.PI / 2, up * (1 - Math.abs(i) * 0.22), R);
+    }
+    if (f.kind === 'beam') { // a pillar of light dropping from above, narrowing as it fades
+      const w = Math.round(8 * (1 - k)), top = f.y - 140;
+      for (let y = top; y < f.y; y += 2) for (let dx = -w; dx <= w; dx += 2) px2(f.x + dx, y, R[Math.abs(dx) < w * 0.35 ? 0 : Math.abs(dx) < w * 0.7 ? 1 : 2], 0.9);
+    }
+    if (f.kind === 'flames') { // a ring of pixel flame tongues
+      const fade = k < 0.8 ? 1 : 1 - (k - 0.8) / 0.2, n = LOWFX ? 10 : 22, r = f.r * Math.min(1, 0.4 + k * 3);
+      for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, x = f.x + Math.cos(a) * r, y = f.y + Math.sin(a) * r * 0.55, h = (7 + 6 * Math.abs(Math.sin(game.real * 9 + i * 1.7))) * fade; pxRay(x, y, -Math.PI / 2 + Math.sin(game.real * 6 + i) * 0.25, h, R, 2); }
+    }
     if (f.kind === 'crack') { // a crack in the floor that cools from glowing to dark, then fades
       const glowK = Math.max(0, 1 - f.t / 0.5), a = f.t > f.max - 0.8 ? (f.max - f.t) / 0.8 : 1;
       for (const seg of f.segs) for (const [x, y] of seg) px2(x, y, glowK > 0 ? R[Math.min(4, 2 + Math.floor((1 - glowK) * 3))] : '42,34,54', a * (glowK > 0 ? 1 : 0.75));
@@ -5748,6 +5771,9 @@ function drawPfxGlow() {
     if (f.kind === 'hit' && !f.small) glow(f.x, f.y, (f.crit ? 24 : 12) * (1 - k), `rgba(${R[2]},${f.crit ? 0.55 : 0.35})`);
     if (f.kind === 'smear' && k < 0.7) glow(f.x + Math.cos(f.a) * f.r * 0.8, f.y + Math.sin(f.a) * f.r * 0.5, 22 * (1 - k), `rgba(${R[2]},0.45)`);
     if (f.kind === 'quake' && k < 0.5) glow(f.x, f.y, 24 * (1 - k * 2), `rgba(${R[3]},0.35)`);
+    if (f.kind === 'rune') glow(f.x, f.y - f.r * 0.6, f.r * 1.2 * (1 - k), `rgba(${R[2]},0.45)`);
+    if (f.kind === 'beam') glow(f.x, f.y - 40, 40 * (1 - k), `rgba(${R[1]},0.6)`);
+    if (f.kind === 'flames' && game.real % 0.1 < 0.05) glow(f.x, f.y, f.r * 1.1, `rgba(${R[3]},0.18)`);
     if (f.kind === 'crack' && f.t < 0.5) for (const seg of f.segs) { const [x, y] = seg[seg.length >> 1]; glow(x, y, 8, `rgba(${R[2]},${0.5 * (1 - f.t / 0.5)})`); }
   }
 }
@@ -5758,6 +5784,22 @@ function pfxHit(x, y, crit, ramp = shotRamp(), small = false) {
   // A mace blow lands on many foes at once: smaller bursts with no glow, so they do not wash out.
   addPfx({ kind: 'hit', x, y, crit, small, rot: rng() * Math.PI, max: crit ? 0.3 : 0.2, ramp });
   if (!LOWFX && !small) vemit(x, y, { n: crit ? 8 : 3, ramp, sp: crit ? 110 : 70, up: 30, life: 0.35, grav: 160, size: 2, glow: crit ? 6 : 0 });
+}
+// Round 61: the ramp of each set's rites, and pixel effects on top of every rite's own effect.
+const SET_RAMP = { font: 'holy', nails: 'gold', stride: 'fire', confessor: 'violet', choir: 'blood', habit: 'gold' };
+const KIND_RAMP = { blaze: 'fire', wave: 'holy', hymn: 'fire', crescent: 'holy', choir: 'gold', brand: 'fire', pillar: 'holy', arc: 'holy' };
+function pfxSkill(f) {
+  if (f.t < 0) return;
+  const R = f.ramp && FXR[f.ramp] ? f.ramp : KIND_RAMP[f.kind] || 'gold';
+  if (f.kind === 'nova' && !f.pq) { f.pq = 1; addPfx({ kind: 'quake', x: f.x, y: f.y, r: f.r * 1.1, max: 0.45, ramp: R, ground: true }); pfxHit(f.x, f.y - 10, true, R); if (f.r > 60) pfxCrack(f.x, f.y, 5, R); }
+  if (f.kind === 'pillar' && f.hit && !f.pq) { f.pq = 1; addPfx({ kind: 'beam', x: f.x, y: f.y, max: 0.32, ramp: 'holy' }); pfxHit(f.x, f.y - 10, true, 'holy'); addPfx({ kind: 'quake', x: f.x, y: f.y, r: 44, max: 0.35, ramp: 'holy', ground: true }); pfxCrack(f.x, f.y, 4, 'holy'); }
+  if ((f.kind === 'brand' || f.kind === 'choir') && f.hit && !f.pq) { f.pq = 1; addPfx({ kind: 'quake', x: f.x, y: f.y, r: f.kind === 'choir' ? f.r : 70, max: 0.45, ramp: R, ground: true }); pfxHit(f.x, f.y - 8, true, R); pfxCrack(f.x, f.y, 6, R); }
+  if (f.kind === 'blaze' && !f.pq) { f.pq = 1; addPfx({ kind: 'flames', x: f.x, y: f.y, r: f.r, max: Math.max(0.5, f.max), ramp: 'fire' }); addPfx({ kind: 'quake', x: f.x, y: f.y, r: f.r, max: 0.4, ramp: 'fire', ground: true }); }
+  if (f.kind === 'crescent' && !f.pq) { f.pq = 1; addPfx({ kind: 'smear', x: f.x, y: f.y, a: f.dir > 0 ? 0 : Math.PI, arc: 1.7, r: f.r * 0.8, max: 0.3, ramp: 'holy' }); }
+  // Waves and rolling fire throw spray along their front.
+  if (f.kind === 'wave' || f.kind === 'hymn') {
+    if ((f.pw = (f.pw || 0) - 1) <= 0 && f.t < f.max) { f.pw = LOWFX ? 6 : 3; const d = (f.kind === 'wave' ? 160 : f.L) * Math.min(1, f.t / f.max), x = f.x + Math.cos(f.a) * d, y = f.y + Math.sin(f.a) * d * 0.8; pfxHit(x + rand(-10, 10), y + rand(-8, 4), false, R, true); }
+  }
 }
 function pfxCrack(x, y, n = 4, ramp = 'fire') {
   if (LOWFX && pfx.some((f) => f.kind === 'crack')) return;
@@ -6607,6 +6649,9 @@ const riteRank = (id) => 1 + RANK_AT.filter((n) => ((SAVE.riteXp && SAVE.riteXp[
 // A bright burst where a rite is cast: a flash, two rings and sparks in its set's colour.
 function riteFlare(id, x = player.x, y = player.y) {
   const rgb = SET_RGB[RITE_BY[id].set] || '255,244,176';
+  const big = RITES.pen.some((q) => q.id === id) || MRITES.pen.some((q) => q.id === id), ramp = SET_RAMP[RITE_BY[id].set] || 'gold';
+  addPfx({ kind: 'rune', x, y, r: big ? 52 : 32, max: big ? 0.8 : 0.5, ramp, ground: true });
+  if (big) { addPfx({ kind: 'quake', x, y, r: 140, max: 0.6, ramp, ground: true }); pfxHit(x, y - 24, true, ramp); }
   skillFx.push({ kind: 'flare', x, y: y - 18, t: 0, max: 0.4, r: 60, rgb });
   rings.push({ x, y, t: 0, max: 0.45, r: 70, color: rgb, flat: true }, { x, y: y - 18, t: 0, max: 0.3, r: 36, color: '255,244,176' });
   if (LOWFX) return;
@@ -6685,6 +6730,8 @@ function maceDir(aim, range = 140) { if (aim) return aim.a; const t = bestCluste
 // it counts as a blow), knocked away from the Saint (or toward him, o.pull).
 function maceHit(x, y, r, dmgK, o = {}) {
   const out = [], crit = rng() < T.crossbow.crit + G.crit / 100;
+  // Every rite blow lands with a shockwave, a burst and, when big, a crack in the floor.
+  addPfx({ kind: 'quake', x, y, r: r * 1.3, max: 0.4, ramp: shotRamp(), ground: true }); pfxHit(x, y - 10, crit, shotRamp()); if (r >= 40) pfxCrack(x, y, 5, shotRamp());
   for (const e of enemies) {
     if (e.dead || e.state === 'spawn' || e.under || (e.spawnDelay > 0)) continue;
     const dx = e.x - x, dy = e.y - y; if (Math.hypot(dx, dy / 0.8) > r + e.hr) continue;
@@ -6985,6 +7032,7 @@ function updateAbilities(dt) {
       sparks(l.x, l.y, PAL.blood0, 4); splat(l.x, l.y); hitBreakables(l.x, l.y, 12);
       vemit(l.x, l.y - 2, { n: 12, ramp: fxRamp(riteFx().pool) === 'holy' ? 'blood' : fxRamp(riteFx().pool), sp: 90, up: 50, life: 0.4, grav: 200, drag: 1.5, glow: 6 });
       playFx('fx', 'burst', l.x, l.y - 4, 26);
+      { const lr = fxRamp(riteFx().pool) === 'holy' ? 'blood' : fxRamp(riteFx().pool); pfxHit(l.x, l.y - 6, true, lr); addPfx({ kind: 'quake', x: l.x, y: l.y, r: 34, max: 0.3, ramp: lr, ground: true }); }
       game.shake = Math.max(game.shake, 1.5);
     }
   }
@@ -7569,7 +7617,8 @@ function drawEnemy(e) {
   // Rare monsters glow blue, elites gold (illusions a ghostly violet).
   const aura = e.illusion ? 'violet' : e.tier === 'rare' ? 'blue' : e.tier === 'elite' ? 'gold' : null;
   if (aura) { const a = e.illusion ? 0.5 : 0.6 + 0.4 * Math.sin(game.real * 5 + e.x); for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) draw({ tint: aura, alpha: a }, ox, oy); }
-  draw({ white: e.flash > 0, alpha: e.illusion ? 0.6 : 1 });
+  // A hit shows as a white wash over the sprite, not a solid white shape (round 61), so crowds stay readable.
+  draw({ alpha: e.illusion ? 0.6 : 1 }); if (e.flash > 0) draw({ white: true, alpha: 0.5 });
   if (tele) draw({ white: true, alpha: 0.45 });
   if (e.ward > 0) { ctx.strokeStyle = `rgba(216,247,255,${0.6 + 0.3 * Math.sin(game.real * 12)})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y - e.hy, e.hr + 6, e.hy + 6, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (d.orbit) for (let n = 0; n < d.orbit.n; n++) { const a = e.orbA + n * Math.PI * 2 / d.orbit.n; sprC('fx', 'thurible', Math.floor(game.real * 6), e.x + Math.cos(a) * d.orbit.r, e.y - 10 + Math.sin(a) * d.orbit.r * 0.6); }
@@ -8399,7 +8448,7 @@ function updateSkills(dt) {
   }
   for (const f of skillFx) {
     f.t += dt;
-    skillFxEmit(f, dt);
+    skillFxEmit(f, dt); pfxSkill(f);
     if (f.kind === 'pillar' && !f.hit && f.t >= 0.22) {
       f.hit = true; game.shake = Math.max(game.shake, 3); sfx('penance', { vol: 0.35, rate: 1.4, gap: 0.08 });
       for (const e of nearestFoes(f.x, f.y, 99, 24 * WS)) { hurtEnemy(e, f.dmg, rng() < 0.3, 0, 1, 40); if (f.stun && !e.boss) e.bound = Math.max(e.bound || 0, f.stun); }

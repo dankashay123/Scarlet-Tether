@@ -242,6 +242,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 61:** animation overhaul, part 2 (rites). Every cast draws a
+  rune circle with light rising from it (`riteFlare`; a Reckoning adds a big
+  shockwave); `pfxSkill` layers pixel effects on every rite effect (novas,
+  Judgement's pillars get a falling `beam`, Censer and Cinder Slam a ring of
+  pixel `flames`, brands and choirs crack the floor, waves and hymns throw
+  spray); `maceHit` gives every Mendicant rite blow a shockwave, burst and
+  crack; the Rain's lashes burst; wards and vows show a shield of light;
+  bound foes a turning ring of shackles. Foes hit now wash white over their
+  sprite instead of turning solid white. Test: `round61.cjs`.
+
 - **Round 60:** animation overhaul, part 1 (basic attacks). A pixel effects
   kit (`pfx`, `px2`, `pxRay`, `pxRing`) draws chunky 2x2 effects at run time
   in `FXR` ramps with glow under them, in the set's colour (`shotRamp`). The
