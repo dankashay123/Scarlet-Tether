@@ -108,9 +108,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '59';
+const BUILD = '60';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '60': ['NEW ATTACK EFFECTS: A FLASH WHEN THE CROSSBOW FIRES, GLOWING BOLT TRAILS AND BURSTS WHERE THEY HIT (BIGGER ON CRITS). THE MACE LEAVES A BLAZING CRESCENT, A SHOCKWAVE ALONG THE FLOOR AND CRACKS ON HEAVY BLOWS. THEY TAKE YOUR SET\'S COLOUR.'],
   '59': ['NEW OPEN MAPS: WINDING PATHS AND CLEARINGS WITH SIDE POCKETS, DIFFERENT EVERY DESCENT. ABOUT TWO DESCENTS IN THREE ROLL ONE; THE OTHERS KEEP THE ROOMS.'],
   '58': ['THE MENDICANT NO LONGER HAS A CROSSBOW FLOATING BESIDE HIM IN VAEL.'],
   '57': ['THE BURNING CHOIR: X2.2 DAMAGE IN RECKONING AT 4 AND 6 PIECES, AND FOES NEAR YOU BURN FOR 2% OF THEIR HEALTH A SECOND (3% AT 6).', 'THE DROWNED FONT AT 6: POOLS SPREAD A LITTLE LESS BUT TAKE 10% OF A FOE\'S HEALTH A SECOND.', 'THE LAST CONFESSOR\'S 4 PIECES GIVE +155% DAMAGE (WAS +170%).'],
@@ -1875,7 +1876,7 @@ function makePlayer(x, y) {
 }
 function resetWorld() {
   enemies = []; bolts = []; parts = []; vparts = []; gibs = []; falls = []; nums = []; ghosts = []; rings = []; fxs = []; pools = []; flasks = []; chains = []; lashes = [];
-  hazards = []; shots = []; drops = []; skillFx = [];
+  hazards = []; shots = []; drops = []; skillFx = []; pfx = [];
 }
 // Stratum II swaps the dungeon sheets for their drowned copies (see
 // tools/sprites.mjs, DROWN) and floods more rooms.
@@ -5690,6 +5691,80 @@ const FXR = {
 const fxRamp = (name) => ({ ember: 'fire', flame: 'fire', gold: 'gold', holy: 'holy', sea: 'water', teal: 'frost', blood: 'blood', crimson: 'blood', violet: 'violet', bone: 'bone', moss: 'life', iron: 'iron' }[name] || 'holy');
 let vparts = [];
 // o: n, ramp, sp (speed), ang/arc (direction), up (rise speed), life, size, spread, grav, drag, z, glow.
+// ------------------------------------------------------ pixel effects ---
+// Round 60: effects drawn at run time as chunky 2x2 pixels (crisp at any
+// angle, on the art's grid) in an FXR ramp, with soft glow underneath:
+// muzzle flashes, hit bursts, mace smears, ground shockwaves, floor cracks.
+let pfx = [];
+const PFX_CAP = () => (LOWFX ? 40 : 160);
+function addPfx(o) { if (pfx.length < PFX_CAP()) pfx.push({ t: 0, ...o }); }
+// The shot colour of this hero's set (or the Plush stall's trail).
+const SHOT_RAMP = { nails: 'gold', stride: 'fire', font: 'holy', confessor: 'violet', choir: 'blood' };
+const TRAIL_RAMP = { ember: 'fire', holy: 'holy', blood: 'blood', violet: 'violet', verdant: 'life', rose: 'blood', silver: 'iron' };
+const shotRamp = () => TRAIL_RAMP[looks().bolt] || (G && SHOT_RAMP[G.xskin]) || 'gold';
+// One art pixel (2x2 world pixels) snapped to the grid.
+function px2(x, y, rgb, a = 1) { ctx.fillStyle = a >= 1 ? `rgb(${rgb})` : `rgba(${rgb},${a})`; ctx.fillRect(Math.floor(x / 2) * 2, Math.floor(y / 2) * 2, 2, 2); }
+// A ray of pixels from (x, y): hot at the root, cooling to the tip.
+function pxRay(x, y, a, len, R, w = 1) { for (let d = 0; d < len; d += 2) { const k = d / Math.max(1, len), c = R[Math.min(R.length - 1, 1 + Math.floor(k * 3))]; const px = x + Math.cos(a) * d, py = y + Math.sin(a) * d * 0.8; px2(px, py, c); if (w > 1 && k < 0.5) { px2(px - Math.sin(a) * 2, py + Math.cos(a) * 2, c); } } }
+// A ring (squashed for the floor), broken into dashes when `gap` is set.
+function pxRing(x, y, r, R, ci, squash = 0.6, gap = 0, th = 1) { const n = Math.max(8, Math.floor(r * 0.9)); for (let i = 0; i < n; i++) { if (gap && i % gap === 0) continue; const a = i / n * Math.PI * 2; for (let k = 0; k < th; k++) px2(x + Math.cos(a) * (r - k * 2), y + Math.sin(a) * (r - k * 2) * squash, R[Math.min(R.length - 1, ci + k)]); } }
+function drawPfx(ground) {
+  for (const f of pfx) {
+    if (!!f.ground !== ground) continue;
+    const k = f.t / f.max, R = FXR[f.ramp] || FXR.gold;
+    if (f.kind === 'muzzle') { // a star flash at the bow's tip, longest along the shot
+      const L = 16 * Math.sin(Math.min(1, k * 1.6) * Math.PI);
+      pxRay(f.x, f.y, f.a, L * 1.4, R, 2); pxRay(f.x, f.y, f.a + 0.7, L * 0.6, R); pxRay(f.x, f.y, f.a - 0.7, L * 0.6, R); pxRay(f.x, f.y, f.a + Math.PI, L * 0.35, R);
+      if (k < 0.5) { px2(f.x, f.y, R[0]); px2(f.x + 2, f.y, R[1]); px2(f.x, f.y + 2, R[1]); }
+    }
+    if (f.kind === 'hit') { // rays that shoot out and fade, a ring that widens, a hot core
+      const n = f.crit ? 8 : 6, L = (f.crit ? 20 : 12) * (f.small ? 0.6 : 1) * (k < 0.35 ? k / 0.35 : 1 - (k - 0.35) / 0.65);
+      for (let i = 0; i < n; i++) { const a = f.rot + i / n * Math.PI * 2, l = L * (i % 2 ? 0.55 : 1); pxRay(f.x, f.y, a, l, R, f.crit && i % 2 === 0 ? 2 : 1); }
+      if (k > 0.15 && !f.small) pxRing(f.x, f.y, 4 + k * (f.crit ? 22 : 13), R, Math.min(3, 1 + Math.floor(k * 4)), 0.75, f.crit ? 0 : 3);
+      if (k < 0.3) { px2(f.x - 1, f.y - 1, R[0]); px2(f.x + 1, f.y - 1, R[0]); px2(f.x - 1, f.y + 1, R[1]); px2(f.x + 1, f.y + 1, R[1]); }
+      if (f.crit && k < 0.5) { const c = 26 * (1 - k * 2); for (let d = -c; d <= c; d += 2) { px2(f.x + d, f.y, R[Math.abs(d) < c * 0.4 ? 0 : 2]); if (Math.abs(d) < c * 0.6) px2(f.x, f.y + d * 0.6, R[Math.abs(d) < c * 0.3 ? 0 : 2]); } }
+    }
+    if (f.kind === 'smear') { // the mace's crescent: a hot leading edge, cooling behind it
+      const lead = f.a - f.arc + 2 * f.arc * Math.min(1, k * 1.8), fade = k < 0.55 ? 1 : 1 - (k - 0.55) / 0.45;
+      for (let a = f.a - f.arc; a <= lead; a += 0.07) {
+        const u = (lead - a) / (2 * f.arc), th = Math.max(0, Math.round((1 - u * 1.3) * 7 * fade));
+        for (let j = 0; j < th; j++) { const r = f.r - j * 2.2, c = R[Math.min(R.length - 1, (u < 0.12 ? 0 : 1) + j)]; px2(f.x + Math.cos(a) * r, f.y + Math.sin(a) * r * 0.62, c); }
+      }
+    }
+    if (f.kind === 'quake') { // a ring of dust and stone racing out along the floor, a second one behind it
+      const r = 6 + k * f.r; pxRing(f.x, f.y, r, R, 1 + Math.floor(k * 3), 0.58, 4, 2);
+      if (k > 0.25) pxRing(f.x, f.y, 6 + (k - 0.25) * f.r * 0.8, FXR.bone, 2 + Math.floor(k * 3), 0.58, 3);
+    }
+    if (f.kind === 'crack') { // a crack in the floor that cools from glowing to dark, then fades
+      const glowK = Math.max(0, 1 - f.t / 0.5), a = f.t > f.max - 0.8 ? (f.max - f.t) / 0.8 : 1;
+      for (const seg of f.segs) for (const [x, y] of seg) px2(x, y, glowK > 0 ? R[Math.min(4, 2 + Math.floor((1 - glowK) * 3))] : '42,34,54', a * (glowK > 0 ? 1 : 0.75));
+    }
+  }
+}
+function drawPfxGlow() {
+  for (const f of pfx) {
+    const k = f.t / f.max, R = FXR[f.ramp] || FXR.gold;
+    if (f.kind === 'muzzle') glow(f.x, f.y, 16 * (1 - k), `rgba(${R[2]},0.7)`);
+    if (f.kind === 'hit' && !f.small) glow(f.x, f.y, (f.crit ? 24 : 12) * (1 - k), `rgba(${R[2]},${f.crit ? 0.55 : 0.35})`);
+    if (f.kind === 'smear' && k < 0.7) glow(f.x + Math.cos(f.a) * f.r * 0.8, f.y + Math.sin(f.a) * f.r * 0.5, 22 * (1 - k), `rgba(${R[2]},0.45)`);
+    if (f.kind === 'quake' && k < 0.5) glow(f.x, f.y, 24 * (1 - k * 2), `rgba(${R[3]},0.35)`);
+    if (f.kind === 'crack' && f.t < 0.5) for (const seg of f.segs) { const [x, y] = seg[seg.length >> 1]; glow(x, y, 8, `rgba(${R[2]},${0.5 * (1 - f.t / 0.5)})`); }
+  }
+}
+function updatePfx(dt) { for (const f of pfx) f.t += dt; pfx = pfx.filter((f) => f.t < f.max); }
+// The effects themselves.
+const pfxMuzzle = (x, y, a) => addPfx({ kind: 'muzzle', x, y, a, max: 0.12, ramp: shotRamp() });
+function pfxHit(x, y, crit, ramp = shotRamp(), small = false) {
+  // A mace blow lands on many foes at once: smaller bursts with no glow, so they do not wash out.
+  addPfx({ kind: 'hit', x, y, crit, small, rot: rng() * Math.PI, max: crit ? 0.3 : 0.2, ramp });
+  if (!LOWFX && !small) vemit(x, y, { n: crit ? 8 : 3, ramp, sp: crit ? 110 : 70, up: 30, life: 0.35, grav: 160, size: 2, glow: crit ? 6 : 0 });
+}
+function pfxCrack(x, y, n = 4, ramp = 'fire') {
+  if (LOWFX && pfx.some((f) => f.kind === 'crack')) return;
+  const segs = [];
+  for (let i = 0; i < n; i++) { let a = rng() * Math.PI * 2, px = x, py = y; const seg = []; for (let s = 0; s < 6 + rng() * 6; s++) { a += rand(-0.5, 0.5); px += Math.cos(a) * 2; py += Math.sin(a) * 1.3; if (solidAt(px, py)) break; seg.push([px, py]); } if (seg.length) segs.push(seg); }
+  addPfx({ kind: 'crack', x, y, segs, max: 2.6, ramp, ground: true });
+}
 function vemit(x, y, o) {
   const n = LOWFX ? Math.ceil((o.n || 1) / 3) : o.n || 1, cap = LOWFX ? 160 : 700;
   for (let i = 0; i < n && vparts.length < cap; i++) {
@@ -5698,6 +5773,7 @@ function vemit(x, y, o) {
   }
 }
 function updateVparts(dt) {
+  updatePfx(dt);
   for (const p of vparts) { p.t += dt; const d = Math.max(0, 1 - p.drag * dt); p.vx *= d; p.vy *= d; p.vz = p.vz * d - p.grav * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z = Math.max(0, p.z + p.vz * dt); }
   vparts = vparts.filter((p) => p.t < p.life);
 }
@@ -6224,6 +6300,8 @@ function updateMelee(dt) {
   for (let k = 0; k < nails; k++) spawnBolt(player.x + player.face * 10, player.y - 26, a + (k - (nails - 1) / 2) * 0.16, rng() < T.crossbow.crit + G.crit / 100);
   player.swingT = MELEE.swing; player.swingA = a; player.swingArc = arc; player.swingCrit = crit;
   sfx('dash', { vol: 0.35, rate: 1.5, gap: 0.1 });
+  // The smear starts just before the strike frame so it leads the blow.
+  later(Math.max(0, MELEE.strike - 0.03), () => { if (player && player.hp > 0) addPfx({ kind: 'smear', x: player.x, y: player.y - 16, a, arc, r: reach * 0.9, max: 0.2, ramp: shotRamp() }); });
   later(MELEE.strike, () => {
     if (!player || player.hp <= 0) return;
     let n = 0;
@@ -6238,7 +6316,8 @@ function updateMelee(dt) {
     }
     hitBreakables(player.x + Math.cos(a) * 30, player.y + Math.sin(a) * 30, 20);
     // Weight: grit where the arc ends, and a short freeze when the blow lands in a crowd.
-    if (n) { sfx('hit2', { vol: 0.6, rate: 0.8, gap: 0.08 }); if (crit || n >= 3) sfx('break', { vol: 0.3, rate: 0.62, gap: 0.12 }); game.shake = Math.max(game.shake, Math.min(3.5, (crit ? 2.2 : 1.2) + n * 0.3)); vemit(player.x + Math.cos(a) * reach * 0.8, player.y + Math.sin(a) * reach * 0.5, { n: LOWFX ? 2 : 6, ramp: 'bone', sp: 60, up: 30, life: 0.3, grav: 160, size: 2, glow: 0 }); if (n >= 3) hitStop(0.03); }
+    if (n) { const qx = player.x + Math.cos(a) * reach * 0.7, qy = player.y + Math.sin(a) * reach * 0.45; addPfx({ kind: 'quake', x: qx, y: qy, r: crit ? 64 : n >= 3 ? 52 : 38, max: 0.38, ramp: shotRamp(), ground: true }); if (crit || n >= 3) pfxCrack(qx, qy, crit ? 6 : 4, shotRamp());
+      sfx('hit2', { vol: 0.6, rate: 0.8, gap: 0.08 }); if (crit || n >= 3) sfx('break', { vol: 0.3, rate: 0.62, gap: 0.12 }); game.shake = Math.max(game.shake, Math.min(3.5, (crit ? 2.2 : 1.2) + n * 0.3)); vemit(player.x + Math.cos(a) * reach * 0.8, player.y + Math.sin(a) * reach * 0.5, { n: LOWFX ? 2 : 6, ramp: 'bone', sp: 60, up: 30, life: 0.3, grav: 160, size: 2, glow: 0 }); if (n >= 3) hitStop(0.03); }
   });
 }
 // The mace's arc of light as it strikes (glow pass).
@@ -6279,7 +6358,7 @@ function updateCrossbow(dt) {
   for (let k = 0; k < n; k++) { const a = base + (k - (n - 1) / 2) * 0.16; bolts.push({ z: z0, zv, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce') + tal('pierce') + (sb('nails', 2) ? 1 : 0) + (great ? 99 : 0) + (G.powers.has('longShot') ? 2 : 0), hit: new Set(), crit, trail: [], great, bind, fire, life: G.powers.has('longShot') ? 1.15 : 0.8 }); }
   sfx('shoot');
   xb.recoil = 1; xb.flash = 1;
-  playFx('fx', 'impact', sx, sy, 40, { small: true, skip: 2 });
+  pfxMuzzle(sx, sy, base);
 }
 
 // One bolt (or one mace blow, b.melee) landing on a foe: the damage and every
@@ -6290,6 +6369,7 @@ function boltStrike(b, e) {
   const sp = Math.hypot(b.vx, b.vy) || 1, [lo, hi] = T.crossbow.dmg;
   const raw = Math.round(rand(lo, hi + 1) * (b.crit ? (G.powers.has('critX') ? 3 : 2) * (1 + wound('heavy') * 0.5) * (1 + 0.1 * tal('heavy')) : 1) * (b.great ? 3 : 1) * (b.dmgK || 1));
   HIT_BOLT = b; hurtEnemy(e, raw, b.crit, b.vx / sp, b.vy / sp, b.melee ? 110 : 60, { kind: 'bolt' }); HIT_BOLT = null;
+  pfxHit(e.x - b.vx / sp * 4, e.y - (e.hy || 10), b.crit || b.great, shotRamp(), !!b.melee);
   if (ench('frostbite')) e.boltSlowT = game.time + E2('frostbite', 2, 4);
   if (b.crit && ench('stormlink')) for (const o of nearestFoes(e.x, e.y, 4, 90).filter((q) => q !== e && !q.dead).slice(0, E2('stormlink', 1, 2))) { hurtEnemy(o, raw * E2('stormlink', 0.5, 0.75), false, 0, 0, 20, { status: true, color: PAL.holy0 }); (game.zaps = game.zaps || []).push({ x0: e.x, y0: e.y - e.hy, x1: o.x, y1: o.y - o.hy, t: 0 }); }
   if (pas('kindling') && rng() < 0.1) e.burn = Math.max(e.burn || 0, T.thurible.burn.time);
@@ -7163,6 +7243,7 @@ function render() {
   mark('floor');
   drawAbilitiesGround();
   if (game.scene === 'wound') drawSkillsGround();
+  drawPfx(true);
   mark('ground');
   for (const e of enemies) {
     if (e.spawnDelay > 0) continue;
@@ -7225,6 +7306,7 @@ function render() {
   }
   drawAbilitiesAir();
   if (game.scene === 'wound') drawSkillsAir();
+  drawPfx(false);
   drawVparts();
   if (game.scene === 'wound') { drawShots(); drawDropLabels(); }
   if (game.scene === 'town') drawTownWorld();
@@ -7236,6 +7318,8 @@ function render() {
     ctx.save(); ctx.translate(Math.round(b.x), Math.round(b.y)); ctx.rotate(Math.atan2(b.vy, b.vx)); if (b.great) ctx.scale(2, 2);
     ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -f.w + 3, -Math.floor(f.h / 2), f.w, f.h); ctx.restore();
   }
+  // Chunky pixel trails behind the bolts, cooling down the shot's ramp (round 60).
+  { const R = FXR[shotRamp()], st = LOWFX ? 4 : 2; for (const b of bolts) if (b.trail && b.trail.length) { const pts = [[b.x, b.y], ...b.trail], tot = pts.length - 1; for (let i = 0; i < tot; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], L = Math.hypot(x1 - x0, y1 - y0); for (let d = 0; d < L; d += st) { const u = (i + d / Math.max(1, L)) / tot; px2(x0 + (x1 - x0) * d / L, y0 + (y1 - y0) * d / L, R[Math.min(5, 1 + Math.floor(u * 4))], 1 - u * 0.75); } } } }
   for (const f of fxs) {
     if (f.skip && f.t * f.fps < 1) continue;
     const i = Math.min(f.n - 1, Math.floor(f.t * f.fps) + (f.skip || 0));
@@ -7280,7 +7364,7 @@ function render() {
     for (const r of room.rooms) if (r.shrine && !r.shrine.used) glow(r.shrine.x, r.shrine.y - 26, 26, `rgba(${SHRINES[r.shrine.shrineKind].rgb},0.4)`);
   }
   drawAbilitiesGlow();
-  drawFloatBowGlow(); drawSwingGlow();
+  drawFloatBowGlow(); drawSwingGlow(); drawPfxGlow();
   if (game.scene === 'wound') drawSkillsGlow();
   glowVparts();
   const BF = boltFx();
@@ -9172,7 +9256,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, askHero, switchHero, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get pfx() { return pfx; }, shotRamp, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, askHero, switchHero, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

@@ -242,6 +242,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 60:** animation overhaul, part 1 (basic attacks). A pixel effects
+  kit (`pfx`, `px2`, `pxRay`, `pxRing`) draws chunky 2x2 effects at run time
+  in `FXR` ramps with glow under them, in the set's colour (`shotRamp`). The
+  Saint: a star flash at the bow (`pfxMuzzle`), chunky cooling bolt trails,
+  hit bursts (rays, a widening ring, a hot core; crits add a cross flare and
+  shards). The Mendicant: a blazing crescent smear leading each blow, a
+  shockwave along the floor, cracks on crits and blows on three or more foes;
+  his many-foe hits use small glow-free bursts so they do not wash out. Next
+  parts: rites, hero body animation, monsters. Test: `round60.cjs`.
+
 - **Round 59:** open maps (`layoutOpen`, `OPEN_SHARE`): about two descents
   in three now roll winding paths of open ground that widen into clearings
   (round, long galleries, or a ring round a block of wall), with dead-end
