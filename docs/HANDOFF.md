@@ -242,6 +242,9 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 58:** fix: the Mendicant had the Saint's floating crossbow in
+  Vael (`update` called `updateFloatBow` in town for both heroes).
+
 - **Round 57:** balance. `setbal.cjs` now reports `reck` (share of the fight
   spent in Reckoning), which showed the Choir's deep weakness was damage, not
   uptime (75-85% at both Stations). The Burning Choir: x2.2 in Reckoning at 4

@@ -108,9 +108,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '57';
+const BUILD = '58';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '58': ['THE MENDICANT NO LONGER HAS A CROSSBOW FLOATING BESIDE HIM IN VAEL.'],
   '57': ['THE BURNING CHOIR: X2.2 DAMAGE IN RECKONING AT 4 AND 6 PIECES, AND FOES NEAR YOU BURN FOR 2% OF THEIR HEALTH A SECOND (3% AT 6).', 'THE DROWNED FONT AT 6: POOLS SPREAD A LITTLE LESS BUT TAKE 10% OF A FOE\'S HEALTH A SECOND.', 'THE LAST CONFESSOR\'S 4 PIECES GIVE +155% DAMAGE (WAS +170%).'],
   '56': ['THE GAME HAS ITS OWN ICON. ADD IT TO YOUR HOME SCREEN FROM SAFARI\'S SHARE MENU.'],
   '55': ['SWITCH SAINTS FROM THE PAUSE SCREEN IN VAEL, OR TALK TO THE OTHER SAINT IN THE CATHEDRAL CLOSE. HE IS NOW MARKED THERE AND ON THE TOWN MAP.', 'THE MENDICANT\'S WOUND CARDS, TALENTS AND GEAR NOW SHOW HIS MACE AND SPEAK OF BLOWS. HIS ARMS ARE MACES AND SATCHELS WITH THEIR OWN ICONS.', 'LONG REACH (PIERCING FAITH) NOW LENGTHENS THE MENDICANT\'S REACH.'],
@@ -6877,7 +6878,7 @@ function update(realDt) {
   let bestD = Infinity;
   for (const it of room.interact) { if (it.done) continue; const d = Math.hypot(it.x - player.x, it.y - player.y); if (d < it.r && d < bestD) { bestD = d; game.interact = it; } }
   for (const n of room.npcs) { const d = player.x - n.x; if (!n.walk && !n.circle && !n.still && Math.hypot(d, player.y - n.y) < 40) n.face = d < 0 ? -1 : 1; }
-  if (game.scene === 'town') { updateTown(dt); player.target = null; updateFloatBow(dt); }
+  if (game.scene === 'town') { updateTown(dt); player.target = null; if (isMelee()) player.xb = null; else updateFloatBow(dt); } // the Mendicant has no crossbow, in town either
   if (game.scene === 'wound') {
     safe('crossbow', () => updateCrossbow(dt));
     safe('skills', () => updateSkills(dt));
