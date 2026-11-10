@@ -108,9 +108,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '58';
+const BUILD = '59';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '59': ['NEW OPEN MAPS: WINDING PATHS AND CLEARINGS WITH SIDE POCKETS, DIFFERENT EVERY DESCENT. ABOUT TWO DESCENTS IN THREE ROLL ONE; THE OTHERS KEEP THE ROOMS.'],
   '58': ['THE MENDICANT NO LONGER HAS A CROSSBOW FLOATING BESIDE HIM IN VAEL.'],
   '57': ['THE BURNING CHOIR: X2.2 DAMAGE IN RECKONING AT 4 AND 6 PIECES, AND FOES NEAR YOU BURN FOR 2% OF THEIR HEALTH A SECOND (3% AT 6).', 'THE DROWNED FONT AT 6: POOLS SPREAD A LITTLE LESS BUT TAKE 10% OF A FOE\'S HEALTH A SECOND.', 'THE LAST CONFESSOR\'S 4 PIECES GIVE +155% DAMAGE (WAS +170%).'],
   '56': ['THE GAME HAS ITS OWN ICON. ADD IT TO YOUR HOME SCREEN FROM SAFARI\'S SHARE MENU.'],
@@ -739,6 +740,91 @@ const ROOM_AREA0 = 476; // average room area before v6; content scales from it
 const ROOM_NAMES = { start: 'THE VESTIBULE', combat: 'CRYPT', elite: "CHAMPION'S HALL", shrine: 'SHRINE', treasury: 'TREASURY' };
 const THEMES = ['crypt', 'ossuary', 'flooded', 'chapel'];
 
+// Open maps (round 59): no rooms, corridors or gates. A winding main path of
+// open ground widens into clearings, with dead-end pockets off it; edges are
+// smoothed so they read as natural. Each clearing and the ground nearest it
+// form a zone that plays the part of a room (spawns, the Toll, the map), and
+// a per-tile lookup (room.zone) replaces the room boxes. Some descents still
+// roll the room maps (OPEN_SHARE).
+const OPEN_SHARE = 0.67;
+function layoutOpen(w, h, solid) {
+  const nodes = [], edges = [], M = 16;
+  const inside = (x, y) => x > M && y > 4 + M && x < w - 1 - M && y < h - 1 - M;
+  const far = (x, y, d) => nodes.every((n) => Math.hypot(n.x - x, n.y - y) > d);
+  // The main path: a walk that turns a little at each step and bends back from the edges.
+  const edge = Math.floor(rng() * 4), s0 = [[M + 6, rand(M + 10, h - M - 10)], [w - M - 6, rand(M + 10, h - M - 10)], [rand(M + 10, w - M - 10), M + 10], [rand(M + 10, w - M - 10), h - M - 6]][edge];
+  nodes.push({ x: s0[0], y: s0[1], main: true, from: -1 });
+  let dir = Math.atan2(h / 2 - s0[1], w / 2 - s0[0]) + rand(-0.6, 0.6);
+  const mainN = 9 + Math.floor(rng() * 2);
+  for (let i = 1, tries = 0; i < mainN && tries < 400; tries++) {
+    const p = nodes[nodes.length - 1], a = dir + rand(-1.1, 1.1) + (tries % 40 > 20 ? rand(-2, 2) : 0), d = rand(30, 40), x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d * 0.85;
+    if (!inside(x, y) || !far(x, y, 27)) continue;
+    nodes.push({ x, y, main: true, from: nodes.length - 1 }); edges.push([nodes.length - 2, nodes.length - 1]); dir = a; i++;
+  }
+  // Side pockets: dead ends off the main path (loot, a shrine, an elite pack).
+  const pockets = 3 + Math.floor(rng() * 2);
+  for (let k = 0, tries = 0; k < pockets && tries < 200; tries++) {
+    const pi = 1 + Math.floor(rng() * (nodes.filter((n) => n.main).length - 1)), p = nodes[pi], a = rng() * Math.PI * 2, d = rand(24, 32), x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d * 0.85;
+    if (!inside(x, y) || !far(x, y, 22)) continue;
+    nodes.push({ x, y, main: false, from: pi }); edges.push([pi, nodes.length - 1]); k++;
+  }
+  // One loop now and then, between two near main clearings that are not neighbours.
+  for (let tries = 0; tries < 30; tries++) { const a = Math.floor(rng() * nodes.length), b = Math.floor(rng() * nodes.length); if (a === b || Math.abs(a - b) < 3 || !nodes[a].main || !nodes[b].main || edges.some(([p, q]) => (p === a && q === b) || (p === b && q === a))) continue; if (Math.hypot(nodes[a].x - nodes[b].x, nodes[a].y - nodes[b].y) < 44) { edges.push([a, b]); break; } }
+  const dig = (x, y) => { x = Math.round(x); y = Math.round(y); if (x > 1 && y > 5 && x < w - 2 && y < h - 2) solid[y][x] = false; };
+  const blob = (cx, cy, rx, ry) => { for (let y = Math.floor(cy - ry); y <= cy + ry; y++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1) dig(x, y); };
+  // Clearings: a few overlapping ellipses each, larger for the main path.
+  nodes.forEach((n, i) => {
+    const R = n.main ? rand(13, 17.5) : rand(9, 12); n.R = R;
+    // Some clearings are long galleries; some keep a block of wall in the middle to circle round.
+    n.shape = i && n.main ? pick(['round', 'round', 'long', 'ring']) : 'round';
+    if (n.shape === 'long') { const a = rng() < 0.5 ? 0 : 1; blob(n.x, n.y, a ? R * 0.6 : R * 1.45, a ? R * 1.05 : R * 0.5); }
+    blob(n.x, n.y, R, R * 0.72);
+    for (let k = 0; k < 5; k++) { const a = rng() * Math.PI * 2, d = rand(0.3, 0.75) * R; blob(n.x + Math.cos(a) * d, n.y + Math.sin(a) * d * 0.7, R * rand(0.45, 0.75), R * rand(0.35, 0.55)); }
+    void i;
+  });
+  // Paths: wandering bands of ground, wider and narrower along the way.
+  for (const [a, b] of edges) {
+    const A = nodes[a], B = nodes[b], L = Math.hypot(B.x - A.x, B.y - A.y), nx = -(B.y - A.y) / L, ny = (B.x - A.x) / L, ph = rng() * 6, amp = rand(2, 6), wv = rand(1, 2);
+    for (let t = 0; t <= 1; t += 0.5 / L) {
+      const off = Math.sin(t * Math.PI * wv + ph) * amp * Math.sin(t * Math.PI), hw = 3.4 + 2 * (0.5 + 0.5 * Math.sin(t * 7 + ph));
+      blob(A.x + (B.x - A.x) * t + nx * off, A.y + (B.y - A.y) * t + ny * off, hw, hw * 0.8);
+    }
+  }
+  for (const n of nodes) if (n.shape === 'ring') { const rx = n.R * 0.32, ry = n.R * 0.24; for (let y = Math.floor(n.y - ry); y <= n.y + ry; y++) for (let x = Math.floor(n.x - rx); x <= n.x + rx; x++) if (((x - n.x) / rx) ** 2 + ((y - n.y) / ry) ** 2 <= 1) solid[y][x] = true; }
+  // Smooth the edges twice (wall where most neighbours are wall).
+  for (let pass = 0; pass < 2; pass++) {
+    const next = solid.map((row) => row.slice());
+    for (let y = 6; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
+      let n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && solid[y + dy][x + dx]) n++;
+      if (n >= 5) next[y][x] = true; else if (n <= 2) next[y][x] = false;
+    }
+    for (let y = 0; y < h; y++) solid[y] = next[y];
+  }
+  // Keep only ground reachable from the start, and fill tiny islands of wall.
+  const start = nodes[0], sx = Math.round(start.x), sy = Math.round(start.y);
+  for (let y = sy - 2; y <= sy + 4; y++) for (let x = sx - 3; x <= sx + 3; x++) dig(x, y);
+  const reach = new Uint8Array(w * h), q = [sy * w + sx]; reach[sy * w + sx] = 1;
+  while (q.length) { const i = q.pop(), x = i % w, y = (i / w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const j = (y + dy) * w + x + dx; if (!reach[j] && !solid[y + dy][x + dx]) { reach[j] = 1; q.push(j); } } }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (!solid[y][x] && !reach[y * w + x]) solid[y][x] = true;
+  const seenW = new Uint8Array(w * h);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    if (!solid[y][x] || seenW[y * w + x]) continue;
+    const comp = [], st = [y * w + x]; seenW[y * w + x] = 1; let border = false;
+    while (st.length) { const i = st.pop(), cx = i % w, cy = (i / w) | 0; comp.push(i); if (cx <= 1 || cy <= 5 || cx >= w - 2 || cy >= h - 2) border = true; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue; const j = ny * w + nx; if (!seenW[j] && solid[ny][nx]) { seenW[j] = 1; st.push(j); } } }
+    if (!border && comp.length < 14) for (const i of comp) solid[(i / w) | 0][i % w] = false;
+  }
+  // Zones: every floor tile joins the clearing nearest along the ground.
+  const zone = new Int16Array(w * h).fill(-1), zq = [];
+  nodes.forEach((n, i) => { let bx = Math.round(n.x), by = Math.round(n.y); if (solid[by][bx]) { let best = 1e9; for (let y = by - 8; y <= by + 8; y++) for (let x = bx - 8; x <= bx + 8; x++) if (y > 0 && x > 0 && y < h && x < w && !solid[y][x] && Math.hypot(x - n.x, y - n.y) < best) { best = Math.hypot(x - n.x, y - n.y); n.tx = x; n.ty = y; } } else { n.tx = bx; n.ty = by; }
+    if (n.tx !== undefined && zone[n.ty * w + n.tx] < 0) { zone[n.ty * w + n.tx] = i; zq.push(n.ty * w + n.tx); } });
+  for (let h0 = 0; h0 < zq.length; h0++) { const i = zq[h0], x = i % w, y = (i / w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const j = (y + dy) * w + x + dx; if (zone[j] < 0 && !solid[y + dy][x + dx]) { zone[j] = zone[i]; zq.push(j); } } }
+  const rooms = nodes.map((n, i) => ({ id: i, x0: w, y0: h, x1: 0, y1: 0, n: 0, cx: n.tx, cy: n.ty, links: [], gates: [], state: 'idle', visited: false, known: false, main: n.main, R: n.R }));
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const z = zone[y * w + x]; if (z < 0) continue; const r = rooms[z]; r.n++; r.x0 = Math.min(r.x0, x); r.y0 = Math.min(r.y0, y); r.x1 = Math.max(r.x1, x); r.y1 = Math.max(r.y1, y); }
+  for (const r of rooms) r.ak = r.n / ROOM_AREA0;
+  for (const [a, b] of edges) { rooms[a].links.push(b); rooms[b].links.push(a); }
+  return { rooms, start: rooms[0], zone };
+}
+
 function makeDungeon() {
   const { cols, rows, cw, ch } = GRID;
   const w = cols * cw + 2, h = rows * ch + 4;
@@ -746,6 +832,13 @@ function makeDungeon() {
   for (let y = 0; y < h; y++) { solid.push([]); for (let x = 0; x < w; x++) solid[y].push(true); }
   const isSolid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || solid[y][x];
   const carve = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (x > 0 && y > 3 && x < w - 1 && y < h - 1) solid[y][x] = false; };
+  // Open ground or rooms (seeded, so a resumed run rebuilds the same map).
+  const open = game.nextMap ? game.nextMap === 'open' : !game.nextCell && !game.nextYard && !(tut.on && tut.step <= 8) && rng() < OPEN_SHARE;
+  game.nextMap = null;
+  let rooms, zone = null, start;
+  // A path that boxes itself in makes a small map: lay it out again (up to four tries).
+  if (open) for (let k = 0; k < 4; k++) { for (const row of solid) row.fill(true); ({ rooms, zone } = layoutOpen(w, h, solid)); if (solid.reduce((a, row) => a + row.filter((v) => !v).length, 0) >= 6000) break; }
+  else {
   // Pick the cells: grow a connected blob from a random cell.
   const cells = new Set(), key = (gx, gy) => gy * cols + gx, grow = [];
   const first = [Math.floor(rng() * cols), Math.floor(rng() * rows)]; cells.add(key(...first));
@@ -757,7 +850,7 @@ function makeDungeon() {
     cells.add(key(nx, ny)); grow.push([key(gx, gy), key(nx, ny)]);
   }
   // Rooms, one per chosen cell, with small jitter so neighbours always overlap.
-  const rooms = [], byCell = new Map();
+  rooms = []; const byCell = new Map();
   for (let gy = 0; gy < rows; gy++) for (let gx = 0; gx < cols; gx++) {
     if (!cells.has(key(gx, gy))) continue;
     const rw = Math.floor(rand(32, 41)), rh = Math.floor(rand(22, 29));
@@ -787,9 +880,10 @@ function makeDungeon() {
       D.gates.push({ tiles: n.map((k) => [x + k, D.y0 - 1]), side: 'n', to: U.id });
     }
   }
+  }
   // Room roles: start in a dead end where there is one, then two elite
   // halls deep in, a shrine and one or two treasuries.
-  const start = pick(rooms.filter((r) => r.links.length === 1).length ? rooms.filter((r) => r.links.length === 1) : rooms);
+  start = open ? rooms[0] : pick(rooms.filter((r) => r.links.length === 1).length ? rooms.filter((r) => r.links.length === 1) : rooms);
   const dist = new Map([[start.id, 0]]), q = [start];
   while (q.length) { const r = q.shift(); for (const id of r.links) if (!dist.has(id)) { dist.set(id, dist.get(r.id) + 1); q.push(rooms[id]); } }
   const themes = STRATA[game.buildStratum || 1].themes || THEMES;
@@ -833,7 +927,7 @@ function makeDungeon() {
   // The Drowned Nave dresses its rooms with its own pieces.
   const drowned = (game.buildStratum || 1) === 2, ossuary = (game.buildStratum || 1) === 3;
   const PEW = () => drowned && rng() < 0.6 ? { sheet: 'props', anim: 'sunkpew' } : ossuary ? { sheet: 'props', anim: 'bonepew' } : { sheet: 'loot', anim: 'pew' };
-  for (const r of rooms) {
+  if (!open) for (const r of rooms) {
     const cx = Math.floor((r.x0 + r.x1) / 2), cy = Math.floor((r.y0 + r.y1) / 2);
     r.cx = cx; r.cy = cy;
     if (r.type === 'shrine') { r.shrine = place(r, 'shrine', cx, cy, 1, 1, { sheet: 'loot', anim: 'shrine', frame: Math.floor(rng() * 4), shrineKind: pick(['fervor', 'haste', 'warding', 'plenty', 'judgement']) }); for (let a = 0; a < 6; a++) candle((cx + 0.5) * TILE + Math.cos(a) * 40, (cy + 1) * TILE + Math.sin(a) * 26); lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 80, c: 'holy', a: 0.9 }); }
@@ -937,6 +1031,70 @@ function makeDungeon() {
     decals.push({ kind: 'web', x: r.x0 * TILE, y: r.y0 * TILE }, { kind: 'web', x: (r.x1 + 1) * TILE, y: r.y0 * TILE, flip: true });
     for (let k = 0; k < (r.theme === 'ossuary' ? 3 : 1); k++) critters.push({ x: rand(r.x0 + 1, r.x1) * TILE, y: rand(r.y0 + 1, r.y1) * TILE, room: r.id, t: rng() * 5, vx: 0, vy: 0, hide: 0 });
   }
+  else {
+    // Open maps: the dressing follows the ground, not room boxes.
+    const zoneAt = (x, y) => (x >= 0 && y >= 0 && x < w && y < h ? zone[y * w + x] : -1);
+    const free = (x, y, tw = 1, th = 1, m = 1) => { for (let yy = y - m; yy < y + th + m; yy++) for (let xx = x - m; xx < x + tw + m; xx++) if (isSolid(xx, yy)) return false; return true; };
+    // Share of open ground in a window: keeps edge pieces out of the narrow paths.
+    const roomy = (x, y, k = 3) => { let n = 0, t = 0; for (let yy = y - k; yy <= y + k; yy++) for (let xx = x - k; xx <= x + k; xx++) { t++; if (!isSolid(xx, yy)) n++; } return n / t; };
+    const nearStart = (x, y) => Math.abs(x - start.cx) <= 4 && Math.abs(y - (start.cy + 2)) <= 4;
+    const ok = (x, y, tw = 1, th = 1, m = 1) => !nearStart(x, y) && free(x, y, tw, th, m);
+    const pillarP = () => (ossuary ? { sheet: 'props', anim: 'skullpillar' } : { sheet: 'hall', anim: 'pillar', frame: Math.floor(rng() * 2) });
+    const breakP = (k) => { const kind = ossuary && rng() < 0.5 ? 'coffin' : drowned || rng() < 0.6 ? 'urn' : 'crate'; return [kind, kind === 'urn' ? { sheet: 'hall', anim: 'urn', frame: k % 2, breakable: 1 } : kind === 'crate' ? { sheet: 'hall', anim: 'crate', breakable: 2 } : { sheet: 'loot', anim: 'coffin', breakable: 2 }]; };
+    const waterBlob = (r, bx, by, rx, ry) => { for (let y = Math.floor(by - ry); y <= by + ry; y++) for (let x = Math.floor(bx - rx); x <= bx + rx; x++) if (((x - bx) / rx) ** 2 + ((y - by) / ry) ** 2 < 1 && !isSolid(x, y) && zoneAt(x, y) === r.id && !nearStart(x, y) && !isSolid(x, y - 1)) water.push([x, y]); };
+    // Floor tiles that touch a wall, shuffled once (seeded).
+    const edgeT = [];
+    for (let y = 6; y < h - 1; y++) for (let x = 1; x < w - 1; x++) if (!isSolid(x, y) && (isSolid(x, y - 1) || isSolid(x - 1, y) || isSolid(x + 1, y) || isSolid(x, y + 1))) edgeT.push([x, y]);
+    for (let i = edgeT.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [edgeT[i], edgeT[j]] = [edgeT[j], edgeT[i]]; }
+    const spaced = (list, x, y, d) => list.every(([a, b]) => Math.abs(a - x) + Math.abs(b - y) >= d);
+    const torches = [], statues = [];
+    for (const [x, y] of edgeT) {
+      const r = rooms[zoneAt(x, y)]; if (!r || nearStart(x, y) || roomy(x, y) < 0.55) continue;
+      const north = isSolid(x, y - 1) && !isSolid(x, y + 1);
+      // Statues (organs in the Nave, bone shelves in the Ossuary) against the back walls.
+      if (north && spaced(statues, x, y, 11) && spaced(torches, x, y, 3) && free(x, y, 1, 1, 0) && !isSolid(x - 1, y) && !isSolid(x + 1, y)) {
+        statues.push([x, y]); const k = statues.length;
+        if (drowned && k % 2) place(r, 'organ', x, y, 1, 1, { sheet: 'props', anim: 'organ' });
+        else if (ossuary && k % 3 !== 1) place(r, 'boneshelf', x, y, 1, 1, { sheet: 'props', anim: 'boneshelf' });
+        else place(r, ['statue_saint', 'statue_angel', 'statue_knight'][k % 3], x, y, 1, 1, { sheet: 'hall' });
+        continue;
+      }
+      if (spaced(torches, x, y, 14) && spaced(statues, x, y, 3) && free(x, y, 1, 1, 0) && rng() < 0.6) { torches.push([x, y]); place(r, 'torch', x, y, 1, 1, { sheet: 'hall', anim: 'torch', ph: rng() * 9 }); }
+    }
+    // Breakables tucked into corners (two or more walls round them).
+    const crates = [];
+    for (const [x, y] of edgeT) {
+      const n = (isSolid(x, y - 1) ? 1 : 0) + (isSolid(x - 1, y) ? 1 : 0) + (isSolid(x + 1, y) ? 1 : 0) + (isSolid(x, y + 1) ? 1 : 0), r = rooms[zoneAt(x, y)];
+      if (!r || n < 2 || nearStart(x, y) || roomy(x, y) < 0.5 || !spaced(crates, x, y, 7) || rng() < 0.35) continue;
+      crates.push([x, y]);
+      if (ossuary && rng() < 0.35) { if (free(x, y, 1, 1, 0)) place(r, 'skullheap', x, y, 1, 1, { sheet: 'props', anim: 'skullheap' }); continue; }
+      for (let k = 0, m = 1 + Math.floor(rng() * 3); k < m; k++) { const [dx, dy] = [[0, 0], [isSolid(x - 1, y) ? 1 : -1, 0], [0, isSolid(x, y - 1) ? 1 : -1]][k], tx = x + dx, ty = y + dy; if (!isSolid(tx, ty) && roomy(tx, ty) >= 0.5) { const [kind, ex] = breakP(k); place(r, kind, tx, ty, 1, 1, ex); } }
+    }
+    for (const r of rooms) {
+      const { cx, cy } = r;
+      if (r.type === 'start') { if (ok(cx, cy - 3, 1, 1, 0)) place(r, 'statue', cx, cy - 3); candle((cx + 0.5) * TILE, (cy - 1) * TILE - 2, 0.9); }
+      if (r.type === 'shrine') { r.shrine = place(r, 'shrine', cx, cy, 1, 1, { sheet: 'loot', anim: 'shrine', frame: Math.floor(rng() * 4), shrineKind: pick(['fervor', 'haste', 'warding', 'plenty', 'judgement']) }); for (let a = 0; a < 6; a++) candle((cx + 0.5) * TILE + Math.cos(a) * 40, (cy + 1) * TILE + Math.sin(a) * 26); lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 80, c: 'holy', a: 0.9 }); }
+      if (r.type === 'treasury') { r.chest = place(r, 'chest', cx, cy, 1, 1, { sheet: 'loot', anim: 'chest', frame: 0 }); lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 70, c: 'gold', a: 0.8 }); for (const [dx, dy] of [[-4, -2], [4, -2], [-4, 2], [4, 2]]) if (ok(cx + dx, cy + dy, 1, 1, 0)) place(r, 'coffin', cx + dx, cy + dy, 1, 1, { sheet: 'loot', anim: 'coffin', breakable: 2 }); }
+      if (r.type === 'elite') for (const [dx, dy] of [[-5, -3], [5, -3], [-5, 3], [5, 3]]) if (ok(cx + dx - 1, cy + dy - 1, 3, 3, 0)) place(r, 'pillar', cx + dx, cy + dy, 1, 1, pillarP());
+      if (r.type === 'combat') {
+        r.plan = pick(drowned ? ['pool', 'pool', 'pillars', 'ruins'] : ossuary ? ['cairn', 'pillars', 'ruins', 'empty'] : ['pillars', 'sarco', 'ruins', 'empty']);
+        if (r.plan === 'pillars') for (let k = 0, n = 2 + Math.floor(rng() * 3), tries = 0; k < n && tries < 40; tries++) { const a = rng() * Math.PI * 2, d = rand(2, r.R * 0.6), x = Math.round(cx + Math.cos(a) * d), y = Math.round(cy + Math.sin(a) * d * 0.7); if (ok(x - 1, y - 1, 3, 3, 0)) { place(r, 'pillar', x, y, 1, 1, pillarP()); k++; } }
+        if (r.plan === 'sarco') for (const dx of [-3, 3]) if (ok(cx + dx - 1, cy, 2, 1, 1)) place(r, 'sarcophagus', cx + dx - 1, cy, 2, 1);
+        if (r.plan === 'ruins') for (let k = 0, tries = 0; k < 5 && tries < 40; tries++) { const x = Math.round(cx + rand(-r.R, r.R) * 0.7), y = Math.round(cy + rand(-r.R, r.R) * 0.5); if (!ok(x, y, 1, 1, 1)) continue; if (k % 2) { const [kind, ex] = breakP(k); place(r, kind, x, y, 1, 1, ex); } else decals.push({ kind: ossuary ? 'bonepile' : 'bonestrew', x: (x + 0.5) * TILE, y: (y + 0.5) * TILE, f: k % 2 }); k++; }
+        if (r.plan === 'cairn' && ok(cx - 1, cy - 1, 2, 1, 1)) { place(r, 'cairn', cx - 1, cy - 1, 2, 1, { sheet: 'props', anim: 'cairn', ph: rng() * 9 }); lights.push({ x: (cx + 0.5) * TILE, y: (cy - 3) * TILE, r: 70, c: 'ash', a: 0.85, flick: rng() * 9 }); }
+        if (r.plan === 'pool') waterBlob(r, cx + rand(-2, 2), cy + rand(-1, 1), rand(3, 6), rand(2, 3.5));
+      }
+      // The Nave's shallow flood, in patches through every clearing.
+      if (drowned && r.type !== 'treasury' && r.type !== 'start') for (let k = 0; k < 2 + Math.floor(rng() * 2); k++) waterBlob(r, cx + rand(-r.R, r.R) * 0.8, cy + rand(-r.R, r.R) * 0.6, rand(2.5, 6), rand(1.6, 3.4));
+      // Loose bones, weed and the odd skull candle on the floor.
+      for (let k = 0; k < Math.round(1 + r.ak * (ossuary ? 3 : 1)); k++) { const x = rand(r.x0, r.x1 + 1), y = rand(r.y0, r.y1 + 1); if (zoneAt(Math.floor(x), Math.floor(y)) === r.id && !isSolid(Math.floor(x), Math.floor(y))) decals.push({ kind: drowned ? 'weedmat' : 'bonestrew', x: x * TILE, y: y * TILE, f: Math.floor(rng() * 2) }); }
+      if (!drowned && rng() < 0.5) { const x = cx + Math.round(rand(-r.R, r.R) * 0.6), y = cy + Math.round(rand(-2, 2)); if (ok(x, y, 1, 1, 0)) decals.push({ kind: 'skullcandle', x: (x + 0.5) * TILE, y: (y + 0.5) * TILE }); }
+      for (let k = 0; k < (ossuary ? 3 : 1); k++) critters.push({ x: (cx + rand(-r.R, r.R) * 0.5) * TILE, y: (cy + rand(-2, 2)) * TILE, room: r.id, t: rng() * 5, vx: 0, vy: 0, hide: 0 });
+    }
+    // Webs in the top corners of the back walls; kelp on the Nave's shores.
+    for (const [x, y] of edgeT) if (isSolid(x, y - 1) && (isSolid(x - 1, y) || isSolid(x + 1, y)) && rng() < 0.25) decals.push({ kind: 'web', x: (isSolid(x - 1, y) ? x : x + 1) * TILE, y: y * TILE, flip: !isSolid(x - 1, y) });
+    if (drowned) { const wet = new Set(water.map(([x, y]) => `${x},${y}`)); for (const [x, y] of water) if (!wet.has(`${x},${y - 1}`) && rng() < 0.12) decals.push({ kind: 'kelp', x: (x + 0.5) * TILE, y: (y + 1) * TILE, ph: rng() * 4 }); }
+  }
   for (const p of props) if (p.kind === 'candelabra') lights.push({ x: p.x, y: p.y - 38, r: 72, c: 'flame', a: 0.95, flick: rng() * 9 });
   for (const p of props) if (p.kind === 'torch') lights.push({ x: p.x, y: p.y - 58, r: 110, c: 'ember', a: 1, flick: rng() * 9, torch: true });
   for (const d of decals) if (d.kind === 'skullcandle') lights.push({ x: d.x, y: d.y - 14, r: 36, c: 'ember', a: 0.7, flick: rng() * 9 });
@@ -948,18 +1106,18 @@ function makeDungeon() {
   const t = SPR.tiles.anims, I = IMG.tiles, HA = SPR.hall.anims;
   const h2 = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0) % 1000 / 1000;
   const tile = (f, x, y, img = I) => rc.drawImage(img, f.x, f.y, 16, 16, x * TILE, y * TILE, 16, 16);
-  const roomAt = (x, y) => rooms.find((r) => x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1);
+  const roomAt = open ? (x, y) => rooms[zone[y * w + x]] : (x, y) => rooms.find((r) => x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1);
   const waterSet = new Set(water.map(([x, y]) => `${x},${y}`));
   const propTiles = new Set(props.flatMap((p) => p.tiles.map(([a, b]) => `${a},${b}`)));
   const isFloor = (x, y) => x >= 0 && y >= 0 && x < w && y < h && (!solid[y][x] || propTiles.has(`${x},${y}`) || gateSet.has(`${x},${y}`));
   // Large flagstones in mixed sizes, packed per room (corridors get their own stone).
-  const plain = (x, y) => { if (!isFloor(x, y) || waterSet.has(`${x},${y}`)) return false; const r = roomAt(x, y); return !(r && (r.type === 'start' || r.type === 'exit' || r.theme === 'chapel') && Math.abs(x - r.cx) <= 1); };
-  const taken = new Set(), FS = SPR.floor.anims;
+  const plain = (x, y) => { if (!isFloor(x, y) || waterSet.has(`${x},${y}`)) return false; const r = roomAt(x, y); return open || !(r && (r.type === 'start' || r.type === 'exit' || r.theme === 'chapel') && Math.abs(x - r.cx) <= 1); };
+  const taken = new Set(), FS = SPR.floor.anims, openTheme = open ? pick(STRATA[game.buildStratum || 1].themes || THEMES) : null; // open maps lay one stone throughout
   const SIZES = [[3, 3, 2], [3, 2, 3], [2, 3, 3], [2, 2, 6], [2, 1, 4], [1, 2, 4], [1, 1, 2]];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (taken.has(`${x},${y}`) || !plain(x, y)) continue;
     // The Undercroft lays warm sandstone in every room.
-    const r = roomAt(x, y), th = r ? ((game.buildStratum || 1) === 1 ? 'chapel' : r.theme) : 'corridor';
+    const r = roomAt(x, y), th = r ? ((game.buildStratum || 1) === 1 ? 'chapel' : open ? openTheme : r.theme) : 'corridor';
     const fits = ([sw, sh]) => { for (let j = 0; j < sh; j++) for (let i = 0; i < sw; i++) { const k = `${x + i},${y + j}`; if (taken.has(k) || !plain(x + i, y + j) || roomAt(x + i, y + j) !== r) return false; } return true; };
     const opts = SIZES.filter((z) => (r || z[0] * z[1] <= 2) && fits(z));
     let roll = rng() * opts.reduce((a, z) => a + z[2], 0), pickz = opts[opts.length - 1];
@@ -975,7 +1133,7 @@ function makeDungeon() {
       if (waterSet.has(key)) { const wf = frameOf('floor', 'water', (x * 3 + y) % 4); rc.drawImage(IMG.floor, wf.x, wf.y, 16, 16, x * TILE, y * TILE, 16, 16); if (!waterSet.has(`${x},${y - 1}`)) { rc.fillStyle = PAL.ink2; rc.fillRect(x * TILE, y * TILE, 16, 2); rc.fillStyle = PAL.sea2; rc.fillRect(x * TILE, y * TILE + 2, 16, 2); }
         // A pale lip of foam where the water meets dry stone on the other sides.
         rc.fillStyle = PAL.sea1h; if (!waterSet.has(`${x},${y + 1}`)) rc.fillRect(x * TILE, y * TILE + 14, 16, 2); if (!waterSet.has(`${x - 1},${y}`)) rc.fillRect(x * TILE, y * TILE, 2, 16); if (!waterSet.has(`${x + 1},${y}`)) rc.fillRect(x * TILE + 14, y * TILE, 2, 16); }
-      else if (!taken.has(key)) tile(t.carpet[x - r.cx === -1 ? 1 : x - r.cx === 1 ? 2 : (rng() < 0.1 ? 3 : 0)], x, y);
+      else if (!taken.has(key)) tile(t.carpet[open || !r ? 0 : x - r.cx === -1 ? 1 : x - r.cx === 1 ? 2 : (rng() < 0.1 ? 3 : 0)], x, y);
       continue;
     }
     let f = HA.wall[0];
@@ -989,7 +1147,7 @@ function makeDungeon() {
   // pilaster (0), torch stand (2), statue (4), window or banner (6).
   const bay = (r, x) => Math.abs(x - r.cx) % 7;
   const midWall = (r) => !r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - r.cx) <= 2)) && !isSolid(r.cx, r.y0) && isSolid(r.cx, r.y0 - 1);
-  for (const r of rooms) for (let x = r.x0; x <= r.x1; x++) {
+  if (!open) for (const r of rooms) for (let x = r.x0; x <= r.x1; x++) {
     if (x !== r.x0 && x !== r.x1 && bay(r, x) !== 0) continue;
     if (x === r.cx && midWall(r)) continue;
     const px = x;
@@ -997,7 +1155,7 @@ function makeDungeon() {
     if (isSolid(px, r.y0) || !isSolid(px, r.y0 - 1)) continue;
     rc.drawImage(IMG.hall, PL.x, PL.y, PL.w, PL.h, px * TILE, (r.y0 - 4) * TILE, PL.w, PL.h); pil.add(`${r.id},${px}`);
   }
-  for (const r of rooms) if (!pil.has(`${r.id},${r.x1}`) && !isSolid(r.x1, r.y0) && isSolid(r.x1, r.y0 - 1) && !r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - r.x1) <= 1))) { rc.drawImage(IMG.hall, PL.x, PL.y, PL.w, PL.h, r.x1 * TILE, (r.y0 - 4) * TILE, PL.w, PL.h); pil.add(`${r.id},${r.x1}`); }
+  if (!open) for (const r of rooms) if (!pil.has(`${r.id},${r.x1}`) && !isSolid(r.x1, r.y0) && isSolid(r.x1, r.y0 - 1) && !r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - r.x1) <= 1))) { rc.drawImage(IMG.hall, PL.x, PL.y, PL.w, PL.h, r.x1 * TILE, (r.y0 - 4) * TILE, PL.w, PL.h); pil.add(`${r.id},${r.x1}`); }
   // An engraved seal in the middle of the floor of crypts, ossuaries and reliquaries.
   for (const r of rooms) {
     if (r.type === 'start' || r.type === 'exit' || r.theme === 'chapel') continue;
@@ -1012,14 +1170,33 @@ function makeDungeon() {
     for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 - Math.PI / 2, tip = pt(a, k % 2 ? (R0 - 5) * 0.62 : R0 - 7), inL = pt(a - Math.PI / 8, (R0 - 5) * 0.24), inR = pt(a + Math.PI / 8, (R0 - 5) * 0.24); line(...inL, ...tip); line(...tip, ...inR); if (k % 2 === 0) line(ox, oy, ...tip); }
     for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6, x = ox + Math.cos(a) * (R0 - 2.5), y = oy + Math.sin(a) * (R0 - 2.5) * 0.62; groove(x - 1, y); groove(x + 1, y); groove(x, y - 1); }
   }
-  for (const r of rooms) if (midWall(r)) {
+  if (!open) for (const r of rooms) if (midWall(r)) {
     const x = r.cx;
     if (ossuary || r.theme === 'ossuary') { const sf = frameOf('loot', 'skullwall', 0); rc.drawImage(IMG.loot, sf.x, sf.y, sf.w, sf.h, x * TILE, (r.y0 - 3) * TILE, sf.w, sf.h); continue; }
     const df = HA.decor[0]; rc.drawImage(IMG.hall, df.x, df.y, df.w, df.h, x * TILE + 8 - df.w / 2, (r.y0 - 3) * TILE, df.w, df.h);
     lights.push({ x: x * TILE + 8, y: (r.y0 - 3) * TILE + 26, r: 40, c: drowned ? 'holy' : r.type === 'elite' ? 'gold' : 'violet', a: 0.6 });
   }
+  // Open maps: pilasters, windows and banners along each straight run of back wall.
+  if (open) {
+    const bs = (x, y) => x < 0 || y < 0 || x >= w || y >= h || baseSolid[y * w + x];
+    const face = (x, y) => !bs(x, y) && bs(x, y - 1) && bs(x, y - 2) && bs(x, y - 3) && bs(x, y - 4);
+    for (let y = 6; y < h; y++) for (let x = 1; x < w; x++) {
+      if (!face(x, y) || face(x - 1, y)) continue;
+      let x1 = x; while (face(x1 + 1, y)) x1++;
+      const n = x1 - x + 1; if (n < 5) continue;
+      for (let px = x; px <= x1; px += 7) rc.drawImage(IMG.hall, PL.x, PL.y, PL.w, PL.h, px * TILE, (y - 4) * TILE, PL.w, PL.h);
+      if ((n - 1) % 7) rc.drawImage(IMG.hall, PL.x, PL.y, PL.w, PL.h, x1 * TILE, (y - 4) * TILE, PL.w, PL.h);
+      for (let dx = x + 3; dx <= x1 - 3; dx += 7) {
+        const r = rooms[zone[y * w + dx]]; if (!r) continue;
+        if (ossuary) { const sf = frameOf('loot', 'skullwall', 0); rc.drawImage(IMG.loot, sf.x, sf.y, sf.w, sf.h, dx * TILE, (y - 3) * TILE, sf.w, sf.h); continue; }
+        const glass = rng() < 0.55, df = HA.decor[glass ? 0 : 1];
+        rc.drawImage(IMG.hall, df.x, df.y, df.w, df.h, dx * TILE + 8 - df.w / 2, (y - 3) * TILE, df.w, df.h);
+        if (glass) lights.push({ x: dx * TILE + 8, y: (y - 3) * TILE + 26, r: 34, c: drowned ? 'holy' : r.type === 'elite' ? 'gold' : 'violet', a: 0.5 });
+      }
+    }
+  }
   // Wall decor above each room's top edge.
-  for (const r of rooms) for (let x = r.x0 + 1; x < r.x1; x++) {
+  if (!open) for (const r of rooms) for (let x = r.x0 + 1; x < r.x1; x++) {
     if (bay(r, x) !== 6) continue;
     if (r.gates.some((g) => g.side === 'n' && g.tiles.some(([gx]) => Math.abs(gx - x) <= 1))) continue;
     if (isSolid(x, r.y0) || !isSolid(x, r.y0 - 1)) continue;
@@ -1042,7 +1219,7 @@ function makeDungeon() {
   const ST = STRATA[game.buildStratum || 1];
   // A stratum can swap its warm torchlight for its own colour.
   for (const l of lights) { l.r *= WS; if (ST.light && (l.c === 'ember' || l.c === 'gold' || l.c === 'flame')) l.c = ST.light; }
-  room = { kind: 'wound', name: ST.name, w, h, solid, isSolid, props, lights, decals: decals.filter((d) => d.kind === 'candles' || d.kind === 'kelp'), npcs: [], interact: [], pw: w * TILE, ph: h * TILE, top: 4, ambient: ST.ambient || T.ambient, torch: ST.torch, rooms, start, critters, water: waterSet, walls: [], baseSolid, seen: new Uint8Array(w * h) };
+  room = { kind: 'wound', name: ST.name, open, zone, w, h, solid, isSolid, props, lights, decals: decals.filter((d) => d.kind === 'candles' || d.kind === 'kelp'), npcs: [], interact: [], pw: w * TILE, ph: h * TILE, top: 4, ambient: ST.ambient || T.ambient, torch: ST.torch, rooms, start, critters, water: waterSet, walls: [], baseSolid, seen: new Uint8Array(w * h) };
   room.fog = document.createElement('canvas'); room.fog.width = w; room.fog.height = h; room.fogCtx = room.fog.getContext('2d');
   room.cx = start.cx; room.cy = start.cy;
 }
@@ -1129,7 +1306,7 @@ function chunkCanvas(c) {
   }
   g.putImageData(im, 0, 0);
 }
-const roomOf = (px, py, inset = 0) => room.rooms && room.rooms.find((r) => px >= (r.x0 + inset) * TILE && px < (r.x1 + 1 - inset) * TILE && py >= (r.y0 + inset) * TILE && py < (r.y1 + 1 - inset) * TILE);
+const roomOf = (px, py, inset = 0) => room.zone ? room.rooms[room.zone[Math.floor(py / TILE) * room.w + Math.floor(px / TILE)]] : room.rooms && room.rooms.find((r) => px >= (r.x0 + inset) * TILE && px < (r.x1 + 1 - inset) * TILE && py >= (r.y0 + inset) * TILE && py < (r.y1 + 1 - inset) * TILE);
 function setGates(r, locked) {
   r.locked = locked; r.gateT = 0;
   if (r.gates.length) sfx(locked ? 'gate_lock' : 'gate_open');
@@ -1151,12 +1328,12 @@ function spawnPoint(r, minD = 70) {
   const clear = (tx, ty) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (room.isSolid(tx + dx, ty + dy)) return false; return true; };
   for (let i = 0; i < 120; i++) {
     const tx = Math.floor(rand(r.x0 + 1, r.x1)), ty = Math.floor(rand(r.y0 + 1, r.y1));
-    if (!clear(tx, ty)) continue;
+    if (!clear(tx, ty) || (room.zone && room.zone[ty * room.w + tx] !== r.id)) continue;
     const x = tx * TILE + 8, y = ty * TILE + 8;
     if (Math.hypot(x - player.x, y - player.y) < minD && i < 90) continue;
     return [x, y];
   }
-  for (let ty = r.y0 + 1; ty < r.y1; ty++) for (let tx = r.x0 + 1; tx < r.x1; tx++) if (clear(tx, ty)) return [tx * TILE + 8, ty * TILE + 8];
+  for (let ty = r.y0 + 1; ty < r.y1; ty++) for (let tx = r.x0 + 1; tx < r.x1; tx++) if (clear(tx, ty) && (!room.zone || room.zone[ty * room.w + tx] === r.id)) return [tx * TILE + 8, ty * TILE + 8];
   return [r.cx * TILE + 8, r.cy * TILE + 8];
 }
 // ------------------------------------------------- populating the map ---
@@ -3891,7 +4068,7 @@ function settingsTap(x, y) {
 // forward), green or dark buttons are toggles, red buttons do something.
 const DEV = { cell: 0, tab: 0, il: 6, ri: 4, slot: 0, warden: 0, mon: 0, wound: 0, stn: 0, strat: 1, vigil: 1, set: 0, q: -1, ench: 0, god: false, nocd: false, boxes: false, fps: false, speed: 1, confirm: 0, taps: 0, tapT: 0 };
 const DEV_TABS = ['HERO', 'GEAR', 'FORGE', 'WORLD', 'TOWN', 'DEBUG'];
-const DEV_HELP = ['GOD MODE, LEVELS, WOUNDS, SAINT LEVEL AND RITE RANKS.', 'MAKE GEAR AT ANY STATION AND RARITY, WHOLE SETS, THE BAG.', 'EMBERSTONES, REFORGE QUALITY, ENCHANTS AND INGREDIENTS, THE ALTAR.', 'DESCEND ANYWHERE, SUMMON WARDENS AND FOES, THE VIGIL.', 'UNLOCKS, CURRENCIES, LOOKS, CELLS, BOUNTIES AND THE YARD.', 'FPS, PROFILE, HITBOXES, GAME SPEED, ERRORS AND THE SAVE.'];
+const DEV_HELP = ['GOD MODE, LEVELS, WOUNDS, SAINT LEVEL AND RITE RANKS.', 'MAKE GEAR AT ANY STATION AND RARITY, WHOLE SETS, THE BAG.', 'EMBERSTONES, REFORGE QUALITY, ENCHANTS AND INGREDIENTS, THE ALTAR.', 'DESCEND ANYWHERE ON EITHER MAP KIND, SUMMON WARDENS AND FOES.', 'UNLOCKS, CURRENCIES, LOOKS, CELLS, BOUNTIES AND THE YARD.', 'FPS, PROFILE, HITBOXES, GAME SPEED, ERRORS AND THE SAVE.'];
 const devOn = () => !!SAVE.dev;
 const showFps = () => DEV.fps || location.search.includes('fps');
 const devBtn = () => ({ x: 10, y: H - 30, w: 60, h: 20 });
@@ -3981,8 +4158,8 @@ function devRows() {
       { info: `EMBERSTONES ${embers()}   INGREDIENTS ${ingrs().filter((n) => n > 0).length}/48   ENCHANTS WORN ${G && G.ench ? G.ench.size : 0}` },
     ];
     case 'WORLD': return [
-      R('DESCEND', B(`< STATION ${ROMAN[DEV.stn]} >`, (d) => { DEV.stn = cyc(DEV.stn, DIFF.length, d); }), B(`< ${['', 'UNDERCROFT', 'DROWNED NAVE', 'OSSUARY'][DEV.strat]} >`, (d) => { DEV.strat = cyc(DEV.strat - 1, 3, d) + 1; }), B('DESCEND', () => { tut.on = false; game.nextStratum = DEV.strat; game.nextDiff = DEV.stn; game.nextOmens = []; game.nextVigil = 0; game.state = 'loading'; game.loadT = 0; game.loadOdds = ODDS[0]; })),
-      R('THIS RUN', B('GO TO TOWN', () => { enterTown(false); }), B('END DESCENT', run(() => finishDescent())), B('REVEAL MAP', run(() => devReveal()))),
+      R('DESCEND', B(`< STATION ${ROMAN[DEV.stn]} >`, (d) => { DEV.stn = cyc(DEV.stn, DIFF.length, d); }), B(`< ${['', 'UNDERCROFT', 'DROWNED NAVE', 'OSSUARY'][DEV.strat]} >`, (d) => { DEV.strat = cyc(DEV.strat - 1, 3, d) + 1; }), B('DESCEND', () => { tut.on = false; game.nextMap = [null, 'open', 'rooms'][DEV.map || 0]; game.nextStratum = DEV.strat; game.nextDiff = DEV.stn; game.nextOmens = []; game.nextVigil = 0; game.state = 'loading'; game.loadT = 0; game.loadOdds = ODDS[0]; })),
+      R('MAP', B(`< ${['RANDOM', 'OPEN', 'ROOMS'][DEV.map || 0]} >`, (d) => { DEV.map = cyc(DEV.map || 0, 3, d); }), B('END DESCENT', run(() => finishDescent())), B('REVEAL MAP', run(() => devReveal()))),
       R('WARDEN', B(`< ${MON[devWardens()[DEV.warden]].name} >`, (d) => { DEV.warden = cyc(DEV.warden, devWardens().length, d); }, { w: 2 }), B('SUMMON', run(() => { if (game.warden) killEnemy(game.warden, 1, 0); spawnWarden(devWardens()[DEV.warden]); closeDev(); }))),
       R('MONSTER', B(`< ${MON[devMons()[DEV.mon]].name} >`, (d) => { DEV.mon = cyc(DEV.mon, devMons().length, d); }, { w: 2 }), B('SPAWN 1', () => devSpawn(devMons()[DEV.mon]))),
       R('SPAWN', B('SPAWN 10', () => { for (let i = 0; i < 10; i++) devSpawn(devMons()[DEV.mon]); }), B('AS RARE', () => devSpawn(devMons()[DEV.mon], { tier: 'rare' })), B('AS ELITE', () => devSpawn(devMons()[DEV.mon], { tier: 'elite', affixes: AFFIX_POOL.slice().sort(() => rng() - 0.5).slice(0, 2) }))),
@@ -8989,7 +9166,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, askHero, switchHero, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, askHero, switchHero, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

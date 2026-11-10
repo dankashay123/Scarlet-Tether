@@ -2,7 +2,8 @@
 // Usage: node tools/tests/maps.cjs [count]
 // Builds many floors and checks that every room can be walked to from the
 // spawn with all gates open, that the spawn is clear, and that every
-// corridor joins two rooms.
+// corridor joins two rooms. Open maps (round 59): every zone reached, every
+// zone has open ground of its own, and both kinds of map turn up.
 const { chromium, devices } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const N = +(process.argv[2] || 200);
 (async () => {
@@ -10,10 +11,10 @@ const N = +(process.argv[2] || 200);
   const errs = []; p.on('pageerror', (e) => errs.push(String(e.stack || e)));
   await p.goto('http://localhost:8123/?run'); await p.waitForTimeout(800);
   const res = await p.evaluate((N) => {
-    const bad = [];
+    const bad = [], kinds = { open: 0, rooms: 0 };
     for (let i = 0; i < N; i++) {
       HS.newRun();
-      const R = HS.room, P = HS.player, T = 16;
+      const R = HS.room, P = HS.player, T = 16; kinds[R.open ? 'open' : 'rooms']++;
       // Free = not solid, or a gate tile (gates open).
       const gates = new Set(R.rooms.flatMap((r) => r.gates.flatMap((g) => g.tiles.map(([x, y]) => `${x},${y}`))));
       const free = (x, y) => !R.isSolid(x, y) || gates.has(`${x},${y}`);
@@ -25,11 +26,12 @@ const N = +(process.argv[2] || 200);
       const seen = new Set([`${sx},${sy}`]), q = [[sx, sy]];
       while (q.length) { const [x, y] = q.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = `${x + dx},${y + dy}`; if (!seen.has(k) && free(x + dx, y + dy)) { seen.add(k); q.push([x + dx, y + dy]); } } }
       const unreached = R.rooms.filter((r) => { let n = 0, hit = 0; for (let y = r.y0; y <= r.y1; y++) for (let x = r.x0; x <= r.x1; x++) if (free(x, y)) { n++; if (seen.has(`${x},${y}`)) hit++; } return hit < n * 0.97; }).map((r) => r.id);
-      const diag = R.rooms.flatMap((r) => r.links.filter((id) => { const o = R.rooms[id]; return Math.abs(o.gx - r.gx) + Math.abs(o.gy - r.gy) !== 1; }).map((id) => `${r.id}-${id}`));
-      if (!spawnOk || unreached.length || diag.length) bad.push({ i, spawnOk, unreached, diag });
+      const empty = R.open ? R.rooms.filter((r) => r.n < 40).map((r) => r.id) : [];
+      const diag = R.open ? [] : R.rooms.flatMap((r) => r.links.filter((id) => { const o = R.rooms[id]; return Math.abs(o.gx - r.gx) + Math.abs(o.gy - r.gy) !== 1; }).map((id) => `${r.id}-${id}`));
+      if (!spawnOk || unreached.length || diag.length || empty.length) bad.push({ i, open: R.open, spawnOk, unreached, diag, empty });
     }
-    return bad;
+    return { bad, kinds };
   }, N);
-  console.log(`maps ${N}, bad ${res.length}`, JSON.stringify(res.slice(0, 8)));
+  console.log(`maps ${N}, open ${res.kinds.open}, rooms ${res.kinds.rooms}, bad ${res.bad.length}`, JSON.stringify(res.bad.slice(0, 8)));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();
 })();

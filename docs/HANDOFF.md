@@ -242,6 +242,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 59:** open maps (`layoutOpen`, `OPEN_SHARE`): about two descents
+  in three now roll winding paths of open ground that widen into clearings
+  (round, long galleries, or a ring round a block of wall), with dead-end
+  pockets for treasuries and shrines and sometimes a loop; edges smoothed,
+  no rooms or gates. Zones (the nearest clearing per tile, `room.zone`)
+  stand in for rooms for spawns, the Toll, the leash, the map and the room
+  types. A small layout is laid out again. The dev WORLD tab has a MAP
+  picker. `maps.cjs` checks both kinds. Test: `round59.cjs`.
+
 - **Round 58:** fix: the Mendicant had the Saint's floating crossbow in
   Vael (`update` called `updateFloatBow` in town for both heroes).
 
