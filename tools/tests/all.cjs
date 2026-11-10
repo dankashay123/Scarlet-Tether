@@ -8,7 +8,7 @@ const S = process.argv[2];
   const errs = []; p.on('pageerror', (e) => errs.push(String(e.stack || e).slice(0, 400)));
   await p.goto('http://localhost:8123/?run&fps'); await p.waitForTimeout(800);
   const ids = await p.evaluate(() => Object.keys(HS.MON).filter((k) => k !== 'imp'));
-  await p.evaluate(() => { const R = HS.room, t = R.rooms[R.start.gates[0].to]; HS.player.x = (t.cx + 0.5) * 16; HS.player.y = (t.cy + 0.5) * 16; HS.player.hp = HS.player.maxHp = 1e6; });
+  await p.evaluate(() => { const R = HS.room, t = R.rooms[R.start.links[0]]; HS.player.x = (t.cx + 0.5) * 16; HS.player.y = (t.cy + 0.5) * 16; HS.player.hp = HS.player.maxHp = 1e6; });
   await p.waitForTimeout(1500);
   let shot = 0;
   for (let i = 0; i < ids.length; i += 3) {

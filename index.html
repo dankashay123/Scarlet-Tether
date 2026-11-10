@@ -833,7 +833,8 @@ function makeDungeon() {
   const isSolid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || solid[y][x];
   const carve = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (x > 0 && y > 3 && x < w - 1 && y < h - 1) solid[y][x] = false; };
   // Open ground or rooms (seeded, so a resumed run rebuilds the same map).
-  const open = game.nextMap ? game.nextMap === 'open' : !game.nextCell && !game.nextYard && !(tut.on && tut.step <= 8) && rng() < OPEN_SHARE;
+  const roll = rng(); // always drawn, so the rest of the map comes out the same whatever is decided here
+  const open = game.nextMap ? game.nextMap === 'open' : !game.nextCell && !game.nextYard && !(tut.on && tut.step <= 8) && roll < OPEN_SHARE;
   game.nextMap = null;
   let rooms, zone = null, start;
   // A path that boxes itself in makes a small map: lay it out again (up to four tries).
@@ -1899,6 +1900,7 @@ function newRun() {
   rng = seeded(seed);
   const strat = game.nextVigil ? 1 : (game.nextStratum || 1);
   useStratum(strat); game.buildStratum = strat;
+  if (resume && resume.map) game.nextMap = resume.map; // a resumed run rebuilds the same kind of map
   makeDungeon();
   player = makePlayer((room.start.cx + 0.5) * TILE, (room.start.cy + 2) * TILE);
   resetWorld();
@@ -3698,7 +3700,7 @@ const unrle = (str, len) => { const a = new Uint8Array(len); let i = 0, v = 0; f
 function snapRun() {
   const R = game.run;
   if (game.scene !== 'wound' || !R || R.vigil || R.cell || R.yard || tut.on || game.state === 'dead' || game.state === 'tally' || !player || player.hp <= 0) return;
-  SAVE.suspend = { seed: R.seed, diff: R.diff, stratum: R.stratum, omens: R.omens, gold: R.gold, level: R.level, xp: R.xp, pending: R.pending, wounds: R.wounds, kills: game.kills,
+  SAVE.suspend = { seed: R.seed, map: room.open ? 'open' : 'rooms', diff: R.diff, stratum: R.stratum, omens: R.omens, gold: R.gold, level: R.level, xp: R.xp, pending: R.pending, wounds: R.wounds, kills: game.kills,
     martyr: !!R.martyr, toll: game.toll ? { v: game.toll.v, done: game.toll.done } : null, warden: !!(game.warden && !game.warden.dead), stone: !!game.waystone,
     px: Math.round(player.x), py: Math.round(player.y), hpK: player.hp / player.maxHp, dead: R.dead, seen: room.seen ? rle(room.seen) : '', items: SAVE.bag.filter((it) => it.run).map((it) => it.id), at: Date.now() };
   persist();
@@ -3709,6 +3711,7 @@ function resumeRun(S) {
   Object.assign(R, { gold: S.gold, level: S.level, xp: S.xp, pending: 0, wounds: S.wounds || {} });
   game.kills = S.kills || 0; applyGear(true);
   player.x = S.px; player.y = S.py; player.hp = Math.max(1, Math.round(player.maxHp * (S.hpK || 1)));
+  if (boxSolid(player.x, player.y, player.r) && !unstick(player, player.r)) { player.x = (room.start.cx + 0.5) * TILE; player.y = (room.start.cy + 2) * TILE; } // an older save on a changed map
   if (S.seen && room.seen) { const a = unrle(S.seen, room.seen.length), g = room.fogCtx, RM = room; for (let i = 0; i < a.length; i++) if (a[i]) { RM.seen[i] = 1; const x = i % RM.w, y = (i / RM.w) | 0; if (!RM.baseSolid[i]) { g.fillStyle = PAL.stone2; g.fillRect(x, y, 1, 1); } else if (!RM.baseSolid[i - 1] || !RM.baseSolid[i + 1] || !RM.baseSolid[i - RM.w] || !RM.baseSolid[i + RM.w]) { g.fillStyle = PAL.cloth1; g.fillRect(x, y, 1, 1); } } }
   const ids = new Set(S.items || []); for (const it of SAVE.bag) if (ids.has(it.id)) it.run = true;
   if (S.toll && game.toll) { game.toll.v = S.toll.v; game.toll.done = S.toll.done; }
@@ -6932,7 +6935,8 @@ function startDash(p, { len = 1, step = false, dir = null } = {}) {
 }
 function updatePlayer(dt) {
   const p = player;
-  unstick(p, p.r);
+  // Remember the last clear spot; if a push out of a wall fails, go back to it.
+  if (!boxSolid(p.x, p.y, p.r)) { p.safeX = p.x; p.safeY = p.y; } else if (!unstick(p, p.r) && p.safeX !== undefined) { p.x = p.safeX; p.y = p.safeY; }
   p.iframes = Math.max(0, p.iframes - dt); p.hurt = Math.max(0, p.hurt - dt); p.castT = Math.max(0, (p.castT || 0) - dt);
   p.slowT = Math.max(0, (p.slowT || 0) - dt); p.rootT = Math.max(0, (p.rootT || 0) - dt);
   // The Sentence: a mark that bursts unless the Saint dashes or is warded.
@@ -6990,8 +6994,10 @@ function updatePlayer(dt) {
 
 function execute(e) { sfx('execute');
   const p = player, side = p.x < e.x ? -1 : 1;
-  p.x = e.x + side * 16; p.y = e.y; moveCircle(p, 0, 0, p.r);
-  p.face = -side; p.iframes = Math.max(p.iframes, 0.5);
+  // Land beside the foe on whichever side is clear (open maps have thick walls).
+  const sd = !boxSolid(e.x + side * 16, e.y, p.r) ? side : !boxSolid(e.x - side * 16, e.y, p.r) ? -side : 0;
+  if (sd) { p.x = e.x + sd * 16; p.y = e.y; }
+  p.face = e.x < p.x ? -1 : 1; p.iframes = Math.max(p.iframes, 0.5);
   game.hitstop = 0.18; game.shake = 8; game.flash = 0.08;
   p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.05));
   addFervor(20);

@@ -22,7 +22,7 @@ const S = process.argv[2];
   console.log('dungeon', JSON.stringify(await st()));
   await p.screenshot({ path: `${S}/shots/e-dungeon.png` });
   // Walk into the first combat room for the next lesson.
-  await p.evaluate(() => { const R = HS.room, t = R.rooms[R.start.gates[0].to]; HS.player.x = (t.cx + 0.5) * 16; HS.player.y = (t.cy + 0.5) * 16; });
+  await p.evaluate(() => { const R = HS.room, t = R.rooms[R.start.links[0]]; HS.player.x = (t.cx + 0.5) * 16; HS.player.y = (t.cy + 0.5) * 16; });
   await p.waitForTimeout(3000); console.log('room', JSON.stringify(await st()), await p.evaluate(() => HS.enemies.length));
   await p.screenshot({ path: `${S}/shots/e-room.png` });
   // Die on purpose to check the death loop back to town.

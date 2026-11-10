@@ -10,8 +10,8 @@ const S = process.argv[2];
   await p.screenshot({ path: `${S}/shots/d1-start.png` });
   const info = await p.evaluate(() => { const R = HS.room; return { rooms: R.rooms.map((r) => [r.type, r.theme, r.depth, r.links.length]), start: R.start.id }; });
   console.log(JSON.stringify(info));
-  // Walk to an adjacent room through its gate.
-  await p.evaluate(() => { const R = HS.room, s = R.start, g = s.gates[0], [x, y] = g.tiles[1]; const t = R.rooms[g.to]; HS.player.x = (t.cx + 0.5) * 16; HS.player.y = (t.cy + 0.5) * 16; });
+  // Walk to an adjacent room (or zone).
+  await p.evaluate(() => { const R = HS.room, t = R.rooms[R.start.links[0]]; HS.player.x = (t.cx + 0.5) * 16; HS.player.y = (t.cy + 0.5) * 16; });
   await p.waitForTimeout(2500);
   console.log('room', JSON.stringify(await p.evaluate(() => ({ state: HS.game.curRoom.state, type: HS.game.curRoom.type, n: HS.enemies.length, locked: HS.game.curRoom.locked }))));
   await p.screenshot({ path: `${S}/shots/d2-fight.png` });

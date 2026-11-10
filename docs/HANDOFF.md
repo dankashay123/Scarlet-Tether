@@ -249,7 +249,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   no rooms or gates. Zones (the nearest clearing per tile, `room.zone`)
   stand in for rooms for spawns, the Toll, the leash, the map and the room
   types. A small layout is laid out again. The dev WORLD tab has a MAP
-  picker. `maps.cjs` checks both kinds. Test: `round59.cjs`.
+  picker. `maps.cjs` checks both kinds. A suspended run saves its map kind
+  (`SAVE.suspend.map`) and the map-kind dice are always drawn, so a resume
+  rebuilds the same map; a resumed spot in a wall moves to the start. The
+  finisher (`execute`) lands on a clear side, and the Saint falls back to his
+  last clear spot (`safeX`) if a push out of a wall fails. Test: `round59.cjs`.
 
 - **Round 58:** fix: the Mendicant had the Saint's floating crossbow in
   Vael (`update` called `updateFloatBow` in town for both heroes).
