@@ -187,6 +187,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **Anchoress balance.** Run `setbal.cjs` with `HERO=anchoress` (it may need
+  her set added) and compare kills a second with the other two at VI and
+  XII; tune `SHARD.rate`, `shardDmgK` and `SETK.shardPer`. Round 71 at VI
+  (kills a second, 2 seeds): bare 4.8 (Saint 4.5, Mendicant 4.3), her set
+  16.7, choir 15.1, nails 19.2 (the Saint's nails 14.3): nails may need a trim.
+- **Affix tuning.** Watch how fast Tears come (`TEAR`) and whether the
+  Graven drop rate (`GRAVEN_DROP`) feels right; a VALUES-style list of the
+  Graven and Beatified pools would help players plan.
 0. **Town from the owner's own layout.** If the owner sends a `VAEL1:` code
    from the designer, build `makeTown` from it (keep buildings as props with
    base footprints and run `HS.townOverlaps()`).
@@ -248,6 +256,36 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 71:** the Anchoress, a third class (`HEROES.anchoress`, `isAnch()`,
+  `noBow()`; class card on the create screen, which now lays out every
+  `HEROES` key). Reliquary shards circle her and fire on their own
+  (`SHARD`, `shardCount`, `shardDmgK`, `updateShards`, `fireShard`,
+  `shardCut`; drawn as y-sorted actors, `drawShard`). Fewer shards hit
+  harder each (`(4/n)^0.35`), so every extra shard is about +10-15%. Her 18
+  rites are `ARITES` (`castAM1`/`castAM2`; her own Reckonings `shattered`
+  and `cathedral` run inside `updateShards`, the other four go through
+  `PEN_BASE`), each with a glyph, `RITE_MORE`, `TWIST`, `RITE_LV` and a
+  Wound. Her set, the Shattered Reliquary (`VSETS.reliquary`, `hero`):
+  2 pieces +2 shards, 4 pieces +`SETK.shardPer`% damage per shard above 4 (`SHARD.base`),
+  6 pieces votive shards on every rite. Her arms (`ARMS.reliquary`, loot
+  `aarms`) and six Hallowed pieces (`hero: 'anchoress'`) add shards; her
+  bow and quiver pieces can roll `it.shards` (`rollShards`). Sprites:
+  `tools/models/anchoress.mjs` (wraps `saintModel` with `HEROES.anchoress`
+  in `base.mjs`), the `reliquary` skin, `shard`/`shardbolt` in the fx sheet.
+  Then affix tiers after the owner's reference: Graven (advanced) and
+  Beatified (ultimate), two lines each per piece (`GRAVEN`, `BEATIFIED`,
+  `AFF_TIER`, `it.adv`, `it.ult`, `affixAdd` into `gearStats`; hooks for
+  crit damage, damage to elites, attack speed in `fireCdOf`, Reckoning
+  charge, more damage in `dmgMul`, less damage in `setGuard`, dash charges,
+  shards). Graven lines drop on rare+ pieces (`GRAVEN_DROP`, `rollGraven`);
+  Beatified never drop. The forge's AFFIXES tab (`renderAffixes`,
+  `affixTap`, `affixGeo`, `affixCost`) cuts and recuts them: Graven 8
+  Emberstones and gold, Beatified 40 Emberstones, much more gold and a
+  Reliquary Tear (`SAVE.tears`, `maybeTear`, `TEAR`, pity `SAVE.tearDry`;
+  from the Weeping Reliquary and Wardens of Station X+ or Vigil 30+; loot
+  `rtear`). Cards show the lines with a coloured diamond (`affixLines`).
+  Tests: `round71.cjs`. The soak now waits out the reload that CREATE causes.
 
 - **Round 70:** characters. Up to four (`MAX_CHARS`), each a whole save with a
   class fixed when it is made (no switching: the other saint in the close,

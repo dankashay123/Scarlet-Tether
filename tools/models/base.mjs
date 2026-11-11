@@ -80,6 +80,8 @@ export const MATS = {
   blood: { ramp: 'blood', spec: 0.4 }, holy: { ramp: 'holy', spec: 0.5 }, flame: { ramp: 'flame', glow: 1 }, ember: { ramp: 'ember', glow: 1 }, emberLit: { ramp: 'ember', spec: 0.3, bias: 0.2 },
   brick: { ramp: 'brick' }, flag: { ramp: 'flag' }, sand: { ramp: 'sand' }, roof: { ramp: 'roof' },
   rose: { ramp: 'rose', spec: 0.5 },
+  // The Anchoress (round 71): violet robes and her reliquary's glowing shards.
+  violetRobe: { ramp: 'violet', bias: -0.25, spec: 0.06 }, violetDark: { ramp: 'violet', bias: -0.45, min: 4 }, shardGlow: { ramp: 'violet', glow: 1 },
 };
 
 // ---------------------------------------------------------- the Saint ---
@@ -112,12 +114,12 @@ export function saintModel(pose = {}) {
   }
   // Doublet torso and the knee-length tabard with folds.
   // The Mendicant is built broader: a wider chest and belly, a fuller skirt.
-  const bw = HR ? 1.35 : 1;
+  const bw = HR && HR.broad ? 1.35 : 1;
   S.add(ellipsoid([cx + X, 35 + B, 0], [4.7 * bw, 6.6, 3.6 * bw], K.robe), 0);
   S.add(ellipsoid([cx + X * 0.5, 43 + B, 0], [4.6 * bw, 3, 3.3 * bw], K.tabard), 2);
   S.add(folds(skirt(cx + 0.5 + X * 0.3, 42 + B, 51.5 + B * 0.4, 4.7 * bw, 6.3 * bw, 0, 1.0, K.tabard), { cx: cx + 0.5, n: 7, amp: 0.5, y0: 43, y1: 51.5, phase: 0.6 }), 1.2);
   // The cowl: hood, mantle and shoulders as one drape.
-  S.add(ellipsoid([cx + X, 28.4 + B, 0], HR ? [7.8, 3.8, 4.8] : [6.6, 3.2, 4.2], K.cowl), 1.8);
+  S.add(ellipsoid([cx + X, 28.4 + B, 0], HR && HR.broad ? [7.8, 3.8, 4.8] : [6.6, 3.2, 4.2], K.cowl), 1.8);
   // Back arm, half hidden.
   S.add(capsule([cx - 4 + X, 29.5 + B, -2.6], [cx - 5.6 + X, 35 + B, -2.8], 2.1, 1.8, K.robeDark), 1);
   S.add(capsule([cx - 5.6 + X, 35 + B, -2.8], [cx - 4.6 + X, 39.4 + B, -2], 1.8, 1.6, K.robeDark), 0.6);
@@ -136,7 +138,7 @@ export function saintModel(pose = {}) {
   const hood = ellipsoid([hx, hy, 0.5], [6.1, 5.5, 5.4], K.hood);
   S.add(hood, 1.8);
   if (!HR) S.add(capsule([hx - 2.6, hy - 3.2, -1.3], [hx - 7, hy - 6, -3.2], 3.3, 0.9, K.hood), 2);
-  else S.paint({ f: (x, y, z) => Math.max(Math.abs(y - (hy - 2.2)) - 0.9, -z - 1), mat: K.trim }); // an iron brow band round the round hood
+  else if (HR.broad) S.paint({ f: (x, y, z) => Math.max(Math.abs(y - (hy - 2.2)) - 0.9, -z - 1), mat: K.trim }); // an iron brow band round the round hood
   // The hollow where a face should be, rimmed in gilt.
   const fc = [hx + 2.4, hy + 1.2, 4.6], hoodD = hood.f;
   const cut = ellipsoid(fc, [2.8, 3.4, 3], 'void');
@@ -165,6 +167,7 @@ export function saintModel(pose = {}) {
   // A cast flares the light in the palm.
   if (!HR && reach > 0.5) { dot(f, hand[0] + 3.4, hand[1] - 1.4, 'holy0'); dot(f, hand[0] + 3.6, hand[1] - 3.4, 'white'); dot(f, hand[0] + 4.8, hand[1] - 2.4, 'holy1'); }
   if (skin) SKINS[skin].dots?.(f, J);
+  if (HR && HR.dots) HR.dots(f, J);
   return f;
 }
 
@@ -188,7 +191,7 @@ function chain(S, pts, mat) {
 // angle from the fist (0 points forward, negative raises it).
 export const HEROES = {
   mendicant: {
-    w: 64, ox: 8, eyes: ['ember0', 'ember1', 'ember3'],
+    w: 64, ox: 8, broad: true, eyes: ['ember0', 'ember1', 'ember3'],
     mats: { robe: 'shroud', robeDark: 'shroud', hood: 'shroud', cowl: 'steel', cape: 'shroud', capeHem: 'leather', tabard: 'creamDark', trim: 'iron', cross: 'crimson', hose: 'slateDark', boot: 'leather' },
     add: (S, { hand, swing }) => {
       const g = [hand[0] + 0.4, hand[1] - 0.6, hand[2] + 0.6], d = [Math.cos(swing), Math.sin(swing)];
@@ -200,6 +203,25 @@ export const HEROES = {
       S.paint({ f: (x, y, z) => { const c = at(10.6); return Math.hypot(x - c[0], y - c[1], z - c[2]) - 1.6; }, mat: 'gold' }); // a gilt collar under the head
     },
   },
+};
+// The third (round 71): the Anchoress, walled up in her cell and let out to
+// fight. Slender, in violet robes under a long cream veil that falls down her
+// back; she holds a small gilt reliquary, and its shards fight for her (they
+// are drawn in the game, not on the sheet).
+HEROES.anchoress = {
+  w: 48, ox: 0, eyes: ['violet0', 'violet1', 'violet3'],
+  mats: { robe: 'violetRobe', robeDark: 'violetDark', hood: 'violetDark', cowl: 'cream', cape: 'violetDark', capeHem: 'silver', tabard: 'slateDark', trim: 'silver', cross: 'violet', hose: 'ink', boot: 'slateDark' },
+  add: (S, { hx, hy, cx, B, X, hand }) => {
+    // The veil: from the crown of the hood down the back to the waist.
+    S.add(capsule([hx - 3.4, hy - 3.4, -2.2], [cx - 6.8 + X, 34 + B, -4], 2.2, 1.6, 'cream'), 1.2);
+    S.add(capsule([cx - 6.8 + X, 34 + B, -4], [cx - 7.6 + X, 42 + B, -4.2], 1.6, 1.1, 'creamDark'), 0.8);
+    // The reliquary in her raised palm: a gilt box with a violet window.
+    const r = [hand[0] + 1.6, hand[1] - 3.4, hand[2] + 0.4];
+    S.add(box(r, [2.4, 2.2, 2], 0.4, 'gold'), 0.3);
+    S.add(capsule([r[0], r[1] - 2.4, r[2]], [r[0], r[1] - 3.8, r[2]], 0.8, 0.5, 'gold'), 0.2);
+    S.paint({ f: (x, y, z) => Math.max(Math.hypot(x - r[0], y - r[1]) - 1.1, -(z - r[2] - 1.2)), mat: 'shardGlow' });
+  },
+  dots: (f, { hand }) => { dot(f, hand[0] + 1.6, hand[1] - 3.4, 'violet0'); dot(f, hand[0] + 2.6, hand[1] - 7.4, 'violet1'); dot(f, hand[0] + 0.4, hand[1] - 8.6, 'violet0'); },
 };
 export const SKINS = {
   // Odile's Habit, the starter set: brown homespun under a cream collar, a rope belt.
@@ -245,6 +267,13 @@ export const SKINS = {
       chain(S, pts, 'iron');
     },
     noLight: true,
+  },
+  // The Shattered Reliquary (round 71, the Anchoress's set): deep violet under a
+  // silver mantle, three violet shards hanging in the air round the head.
+  reliquary: {
+    mats: { robe: 'violetRobe', robeDark: 'violetDark', cowl: 'silver', cape: 'violetDark', trim: 'gold', capeHem: 'gold', cross: 'violet', hose: 'ink', tabard: 'slateDark' },
+    add: (S, { hx, hy }) => { for (const [dx, dy] of [[-6, -6], [0, -10], [6, -6]]) S.add(rotZ(ellipsoid([hx + dx, hy + dy, 2], [1.3, 2.6, 1.3], 'shardGlow'), [hx + dx, hy + dy], dx * 0.08), 0); },
+    dots: (f, { hx, hy }) => { for (const [dx, dy] of [[-6, -7], [0, -11], [6, -7]]) dot(f, hx + dx, hy + dy, 'violet0'); },
   },
   // The Burning Choir: a white mantle and a crown of lit candles.
   choir: {

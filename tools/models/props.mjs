@@ -593,6 +593,28 @@ export const MAP_BADGES = [
   ['gate', 'stone'], ['market', 'gold'], ['plush', 'crimson'], ['tavern', 'wood'], ['forge', 'ember'], ['acre', 'moss'], ['descend', 'violet'],
   ['rift', 'blood'], ['lock', 'iron'], ['npc', 'teal'], ['board', 'sand'], ['relic', 'slate'], ['pool', 'violet'], ['saint', 'crimson'], ['ench', 'violet'],
 ];
+// The Anchoress's rites (round 71): every glyph is built from shards (diamonds).
+const dia = (u, v, x, y, w, h) => Math.abs(u - x) / w + Math.abs(v - y) / h < 1;
+Object.assign(GLYPH, {
+  svolley: (u, v) => [[-0.4, 0.12, -0.5], [0, -0.12, 0], [0.4, 0.12, 0.5]].some(([x, y]) => dia(u, v, x, y, 0.16, 0.42)),
+  consecrate: (u, v) => dia(u, v, 0, -0.18, 0.2, 0.42) || (Math.abs(u) < 0.5 && Math.abs(v - 0.42) < 0.07),
+  shrapnel: (u, v) => dia(u, v, 0, 0, 0.18, 0.3) || [0, 1, 2, 3, 4, 5].some((k) => { const a = k * Math.PI / 3; return seg(u, v, Math.cos(a) * 0.36, Math.sin(a) * 0.36, Math.cos(a) * 0.58, Math.sin(a) * 0.58, 0.07); }),
+  flight: (u, v) => dia(u, v, 0.26, 0, 0.18, 0.36) || [-0.5, -0.24].some((o) => seg(u, v, o - 0.12, -0.3, o + 0.1, 0, 0.08) || seg(u, v, o + 0.1, 0, o - 0.12, 0.3, 0.08)),
+  snova: (u, v) => [0, 1, 2, 3, 4, 5].some((k) => { const a = k * Math.PI / 3; return dia(u, v, Math.cos(a) * 0.42, Math.sin(a) * 0.42, 0.11, 0.18); }) || Math.hypot(u, v) < 0.12,
+  emberrelic: (u, v) => dia(u, v, 0, 0.18, 0.2, 0.36) || (v < -0.2 && v > -0.62 && Math.abs(u) < (v + 0.62) * 0.4),
+  sward: (u, v) => (Math.abs(Math.hypot(u, v * 0.9) - 0.48) < 0.08 && v < 0.3) || (v >= 0.3 && Math.abs(u) < (0.65 - v) * 1.2 && Math.abs(u) > (0.65 - v) * 1.2 - 0.12) || dia(u, v, 0, 0, 0.14, 0.26),
+  votive: (u, v) => dia(u, v, -0.18, 0.06, 0.15, 0.36) || dia(u, v, 0.22, 0.12, 0.13, 0.3) || (Math.abs(u - 0.42) < 0.06 && Math.abs(v + 0.36) < 0.18) || (Math.abs(v + 0.36) < 0.06 && Math.abs(u - 0.42) < 0.18),
+  shardchain: (u, v) => dia(u, v, -0.38, 0.28, 0.14, 0.24) || dia(u, v, 0.38, -0.28, 0.14, 0.24) || [[-0.12, 0.08], [0.12, -0.08]].some(([x, y]) => { const d = Math.hypot(u - x, v - y); return d < 0.16 && d > 0.07; }),
+  splinter: (u, v) => [-0.34, 0, 0.34].some((x) => dia(u, v, x, -0.08, 0.13, x ? 0.34 : 0.46)) || (Math.abs(v - 0.42) < 0.07 && Math.abs(u) < 0.5),
+  mending: (u, v) => (Math.abs(u) < 0.09 && Math.abs(v + 0.06) < 0.5) || (Math.abs(v + 0.18) < 0.09 && Math.abs(u) < 0.34) || dia(u, v, 0.36, 0.34, 0.12, 0.2),
+  shardknell: (u, v) => ((v > -0.38 && v < 0.24 && Math.abs(u) < 0.12 + (v + 0.38) * 0.4) && !(v > 0.1 && Math.abs(u) < 0.07)) || dia(u, v, 0, 0.44, 0.1, 0.14),
+  shattered: (u, v) => (dia(u, v, 0, 0, 0.36, 0.6) && !seg(u, v, -0.2, -0.3, 0.2, 0.3, 0.07)) || [[-0.5, -0.4], [0.5, 0.4], [0.48, -0.44]].some(([x, y]) => dia(u, v, x, y, 0.08, 0.13)),
+  cathedral: (u, v) => ((Math.abs(Math.abs(u) - 0.42) < 0.08 && v > -0.12 && v < 0.52) || (v <= -0.12 && Math.abs(Math.hypot(u, v + 0.12) - 0.42) < 0.08)) || dia(u, v, 0, 0.18, 0.13, 0.26),
+  hundredshards: (u, v) => [[-0.36, -0.3], [0.36, -0.3], [0, 0], [-0.36, 0.3], [0.36, 0.3]].some(([x, y]) => dia(u, v, x, y, 0.12, 0.2)),
+  relicpyre: (u, v) => (v > -0.62 && v < 0.2 && Math.abs(u) < (v + 0.62) * 0.42 && !(Math.hypot(u, v) < 0.14)) || dia(u, v, 0, 0.42, 0.18, 0.14),
+  reliquaryfont: (u, v) => (Math.abs(Math.hypot(u, (v - 0.32) * 2.6) - 0.5) < 0.08) || dia(u, v, 0, -0.18, 0.17, 0.36),
+  relicjudge: (u, v) => (Math.abs(u) < 0.12 && v > -0.62 && v < 0.4) || (Math.abs(v - 0.46) < 0.07 && Math.abs(u) < 0.42) || dia(u, v, 0, -0.18, 0.24, 0.3),
+});
 const BADGE_GLYPH = {
   gate: (u, v) => Math.abs(u) < 0.55 && v > -0.45 && v < 0.55 && !(Math.abs(u) < 0.28 && (v > 0 || Math.hypot(u, v) < 0.28)),
   market: (u, v) => Math.hypot(u, v) < 0.54 && !(Math.abs(u) < 0.13 && Math.abs(v) < 0.13),
@@ -618,6 +640,7 @@ Object.assign(BADGE_GLYPH, {
   font: (u, v) => (v < 0.02 && v > -0.5 && Math.hypot(u / 1.3, v + 0.5) < 0.6 && Math.hypot(u / 1.3, v + 0.5) > 0.0 && v > -0.5 + 0.0 && Math.hypot(u / 1.3, v + 0.62) > 0.32 ? true : false) || (Math.abs(u) < 0.09 && v >= 0 && v < 0.4) || (Math.abs(v - 0.46) < 0.09 && Math.abs(u) < 0.34),
   confessor: (u, v) => [[-0.34, 0.3], [0, 0], [0.34, -0.3]].some(([x, y]) => { const d = Math.hypot(u - x, (v - y) * 1.2); return d < 0.26 && d > 0.11; }),
   choir: (u, v) => [-0.36, 0, 0.36].some((x) => (Math.abs(u - x) < 0.11 && v > 0 && v < 0.55) || Math.hypot((u - x) / 0.14, (v + 0.3) / 0.22) < 1),
+  reliquary: (u, v) => dia(u, v, 0, 0.04, 0.26, 0.5) && !dia(u, v, 0, 0.04, 0.1, 0.24) || Math.hypot(u, v + 0.04) < 0.07,
 });
 // Passive icons (index.html PASSIVES, same order): a disc in the passive's
 // colour (offence crimson, defence holy, utility gold) with a pale glyph.
@@ -649,7 +672,7 @@ export const PASS_ICONS = [
   ['shrine', 'gold', (u, v) => (Math.abs(u) < 0.13 && v > -0.1 && v < 0.5) || (Math.abs(v - 0.52) < 0.07 && Math.abs(u) < 0.32) || drop(u, v, 0, -0.25, 0.14)],
   ['sense', 'gold', (u, v) => { const a = Math.atan2(v, u), r = Math.hypot(u, v), k = 0.28 + 0.27 * Math.pow(Math.abs(Math.cos(a * 2.5 + Math.PI / 2)), 3); return r < k; }],
 ];
-const SET_BADGES = [['nails', 'crimson'], ['stride', 'ember'], ['font', 'holy'], ['confessor', 'slate'], ['choir', 'gold']];
+const SET_BADGES = [['nails', 'crimson'], ['stride', 'ember'], ['font', 'holy'], ['confessor', 'slate'], ['choir', 'gold'], ['reliquary', 'violet']];
 function badge(size, ramp, glyph, min = 2) {
   const S = new Scene(), r = size / 2 - 1.2, c = size / 2;
   S.add(ellipsoid([c, c, 0], [r, r, r * 0.5], 'disc'), 0);
@@ -702,6 +725,8 @@ export default {
     ...Object.fromEntries(['pillars', 'font', 'volley', 'pilgrim', 'greatpen'].map((k) => [k, () => [button(44, GLYPH[k])]])),
     ...Object.fromEntries(['smite', 'undertow', 'nailburst', 'charge', 'shackleblow', 'cinderslam', 'hook', 'chainsweep', 'toll', 'vow', 'shards', 'wellspring'].map((k) => [k, () => [button(40, GLYPH[k])]])),
     ...Object.fromEntries(['tolling', 'hammer', 'deluge', 'hundredblows', 'pyre', 'verdict'].map((k) => [k, () => [button(44, GLYPH[k])]])),
+    ...Object.fromEntries(['svolley', 'consecrate', 'shrapnel', 'flight', 'snova', 'emberrelic', 'sward', 'votive', 'shardchain', 'splinter', 'mending', 'shardknell'].map((k) => [k, () => [button(40, GLYPH[k])]])),
+    ...Object.fromEntries(['shattered', 'cathedral', 'hundredshards', 'relicpyre', 'reliquaryfont', 'relicjudge'].map((k) => [k, () => [button(44, GLYPH[k])]])),
     dagger: () => [button(40, GLYPH.dagger)], pause: () => [button(28, GLYPH.pause)], talk: () => [button(50, GLYPH.talk)], descend: () => [button(50, GLYPH.descend)],
     lock: () => [button(50, BADGE_GLYPH.lock)], use: () => [button(50, GLYPH.use)], map: () => [button(26, BADGE_GLYPH.board)],
     badge: () => MAP_BADGES.map(([g, ramp]) => badge(15, ramp, g)), badgeBig: () => MAP_BADGES.map(([g, ramp]) => badge(21, ramp, g)),

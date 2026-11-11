@@ -14,7 +14,7 @@ const S = process.argv[2], WH = (process.argv[3] || '').split('x').map(Number);
   await p.evaluate(() => { HS.tut.on = false; HS.game.dialog = null; HS.game.news = null; HS.game.state = 'play'; HS.SAVE.cleared = 12; HS.SAVE.gold = 30000; HS.SAVE.embers = 5; HS.SAVE.equip = { hood: HS.makeItem('hood', 2, 'GRAVE HOOD', undefined, 10) }; HS.applyGear(); });
   // BUY tab.
   out.buy = await p.evaluate(() => {
-    HS.openForge(); HS.game.forge.tab = 2; const L = HS.featLayout(); const r = (i) => HS.emberBuyRow(L, i);
+    HS.openForge(); HS.game.forge.tab = 3; const L = HS.featLayout(); const r = (i) => HS.emberBuyRow(L, i);
     HS.forgeBuyTap(L, r(0).x + 5, r(0).y + 5); const one = { embers: HS.SAVE.embers, gold: HS.SAVE.gold };
     HS.forgeBuyTap(L, r(1).x + 5, r(1).y + 5); const asked = !!HS.game.ask; const A = HS.askLayout(); HS.askTap(A.yes.x + 4, A.yes.y + 4);
     HS.forgeBuyTap(L, r(2).x + 5, r(2).y + 5); const poor = !HS.game.ask;

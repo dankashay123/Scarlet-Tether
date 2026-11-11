@@ -10,15 +10,17 @@ const { chromium, devices } = (() => { try { return require('/opt/node-tools/nod
 const secs = +(process.argv[2] || 20), station = +(process.argv[3] || 6), seeds = (process.argv[4] || '1,2').split(',').map(Number);
 const ONLY = (process.env.ONLY || '').split(',').filter(Boolean); // ONLY=none,font runs just those builds
 const ENCH = (process.env.ENCH || '').split(',').filter(Boolean), ENCHT = +(process.env.ENCHT || 2);
-// HERO=mendicant runs the same builds as the Mendicant with his own rites for each set (round 50).
+// HERO=anchoress adds her own set (round 71). HERO=mendicant runs the same builds as the Mendicant with his own rites for each set (round 50).
 const HERO = process.env.HERO || 'saint';
-const RITES = HERO === 'mendicant'
+const RITES = HERO === 'anchoress'
+  ? { none: ['svolley', 'sward', 'shattered'], reliquary: ['svolley', 'sward', 'shattered'], nails: ['shrapnel', 'splinter', 'hundredshards'], stride: ['flight', 'votive', 'relicpyre'], font: ['consecrate', 'mending', 'reliquaryfont'], confessor: ['svolley', 'shardchain', 'cathedral'], choir: ['emberrelic', 'shardknell', 'relicjudge'] }
+  : HERO === 'mendicant'
   ? { none: ['smite', 'hook', 'tolling'], nails: ['nailburst', 'shards', 'hundredblows'], stride: ['charge', 'vow', 'pyre'], font: ['smite', 'wellspring', 'deluge'], confessor: ['shackleblow', 'hook', 'verdict'], choir: ['cinderslam', 'toll', 'tolling'] }
   : { none: ['water', 'chain', 'rain'], nails: ['storm', 'nailring', 'volley'], stride: ['step', 'ward', 'pilgrim'], font: ['water', 'asperse', 'font'], confessor: ['brand', 'chain', 'greatpen'], choir: ['hymn', 'censer', 'rain'] };
 const BUILDS = [
   ['none', null, null], ['nails', 'nails', null], ['stride', 'stride', null], ['font', 'font', null], ['confessor', 'confessor', null], ['choir', 'choir', null],
   ['nails4+font2', 'nails', 'font'], ['stride4+choir2', 'stride', 'choir'], ['font4+confessor2', 'font', 'confessor'], ['confessor4+nails2', 'confessor', 'nails'], ['choir4+stride2', 'choir', 'stride'],
-];
+].concat(HERO === 'anchoress' ? [['reliquary', 'reliquary', null], ['reliquary4+nails2', 'reliquary', 'nails']] : []);
 (async () => {
   const b = await chromium.launch(); const p = await (await b.newContext({ ...devices['iPhone 13 landscape'] })).newPage();
   const errs = []; p.on('pageerror', (e) => errs.push(String(e.stack || e)));
@@ -38,7 +40,7 @@ const BUILDS = [
         for (const sl of ['bow', 'quiver']) HS.SAVE.equip[sl] = HS.armsItem(main, sl, il);
       }
       // Each build casts its own set's rites (the braces were missing before round 50, so every build cast the none rites).
-      const r = R[main || 'none']; HS.SAVE.lvl = 60; HS.SAVE.hero = HERO; HS.SAVE[HERO === 'mendicant' ? 'mrites' : 'rites'] = { m1: r[0], m2: r[1], pen: r[2] };
+      const r = R[main || 'none']; HS.SAVE.lvl = 60; HS.SAVE.hero = HERO; HS.SAVE[HERO === 'mendicant' ? 'mrites' : HERO === 'anchoress' ? 'arites' : 'rites'] = { m1: r[0], m2: r[1], pen: r[2] };
       slots.forEach((sl, i) => { if (ENCH[i]) { HS.SAVE.equip[sl].ench = ENCH[i]; HS.SAVE.equip[sl].enchT = ENCHT; } });
       HS.game.nextDiff = st - 1; HS.game.nextStratum = 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.game.stigAt = 1e9; HS.game.run.wounds = {}; HS.applyGear(true);
       for (const e of HS.enemies) e.dead = true;

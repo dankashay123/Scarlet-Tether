@@ -25,7 +25,7 @@ const S = process.argv[2], WH = (process.argv[3] || '').split('x').map(Number);
     void items; return { pct: Object.fromEntries(Object.entries(c).map(([q, n]) => [HS.QUALITY[q].name, +(n / 15).toFixed(1)])), bad, left: HS.SAVE.embers };
   });
   await p.waitForTimeout(300); await shot('forge');
-  await p.evaluate(() => { HS.game.forge.tab = 1; }); await p.waitForTimeout(200); await shot('forge-values');
+  await p.evaluate(() => { HS.game.forge.tab = 2; }); await p.waitForTimeout(200); await shot('forge-values');
   await p.evaluate(() => { HS.game.state = 'play'; HS.SAVE.embers = 0; HS.openForge(); }); await p.waitForTimeout(150); await shot('forge-none');
   // Warden drops: Emberstones per Station, ingredients only from Station X.
   out.mats = await p.evaluate(() => {

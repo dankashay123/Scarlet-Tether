@@ -3,7 +3,7 @@
 // Plays at random for a while: menu, town, dungeon, fights, dashes,
 // miracles, the bag, level-up cards, pausing, dying and coming home. Every
 // second it checks for page errors, NaN positions, stuck states and lists
-// that keep growing.
+// that keep growing. SOAK_HERO=mendicant or anchoress makes that class.
 const { chromium, devices } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const S = process.argv[2], SECS = +(process.argv[3] || 180);
 (async () => {
@@ -14,6 +14,7 @@ const S = process.argv[2], SECS = +(process.argv[3] || 180);
   const box = await p.evaluate(() => { const r = document.getElementById('screen').getBoundingClientRect(); return { l: r.left, t: r.top, k: r.width / HS.W }; });
   const tap = (x, y) => p.mouse.click(box.l + x * box.k, box.t + y * box.k);
   await p.evaluate(() => { HS.SAVE.tutorialDone = true; HS.tut.on = false; });
+  if (process.env.SOAK_HERO) await p.evaluate((h) => { HS.game.create = { hero: h, name: 'TESTER' }; }, process.env.SOAK_HERO); // SOAK_HERO=anchoress plays that class
   await tap(W / 2, Math.round(H * 0.8)); await p.waitForTimeout(600);
   const problems = [], peak = {}, keys = ['KeyW', 'KeyA', 'KeyS', 'KeyD'];
   let lastState = '', stateSince = Date.now(), lastPos = null, stillSince = Date.now(), shot = 0;
@@ -37,7 +38,7 @@ const S = process.argv[2], SECS = +(process.argv[3] || 180);
     if (Date.now() - stillSince > 6000) { stillSince = Date.now(); problems.push(`${sec}s player not moving at ${st.x},${st.y} in ${st.scene} room ${st.room}`); await p.screenshot({ path: `${S}/shots/stuck-${shot++}.png` }); }
     if (sec % 15 === 0) console.log(sec, JSON.stringify(st));
     // Act on the current state.
-    if (['title', 'chars', 'create'].includes(st.state)) await tap(W / 2, Math.round(H * 0.8)); // round 70: START and CREATE sit there too
+    if (['title', 'chars', 'create'].includes(st.state)) { await tap(W / 2, Math.round(H * 0.8)); await p.waitForTimeout(1800); await p.waitForLoadState('load').catch(() => {}); await p.evaluate(() => { HS.SAVE.tutorialDone = true; HS.tut.on = false; }).catch(() => {}); continue; } // round 70: START and CREATE sit there too; CREATE reloads the page
     else if (st.state === 'descent') { if (Math.random() < 0.3) await p.keyboard.press('ArrowRight'); await p.keyboard.press(Math.random() < 0.85 ? 'Enter' : 'Escape'); }
     else if (st.state === 'site' || st.state === 'map') { await tap(W / 2, H / 2); }
     else if (st.state === 'dialog' || st.state === 'pause' || st.state === 'dead' || st.state === 'tally') { await tap(W / 2, H / 2); await p.waitForTimeout(300); }

@@ -110,6 +110,24 @@ function bolt(skin = null) {
   put(f, 20, 4, 'white'); put(f, 19, 4, tip);
   return f;
 }
+// The Anchoress's reliquary shards (round 71): a violet crystal splinter in a
+// gilt cap, turning as it orbits (4 frames), and the splinter it fires.
+function shard(i) {
+  const S = new Scene(), a = [0, 0.5, 0, -0.5][i], w = [1, 0.62, 0.3, 0.62][i];
+  S.add(rotZ(ellipsoid([7, 9, 2], [2.6 * w + 0.6, 5.2, 2], 'shardGlow'), [7, 9], a * 0.3), 0);
+  S.add(rotZ(capsule([7, 3.6, 2], [7, 2, 2], 1.6 * w + 0.5, 0.6, 'gold'), [7, 9], a * 0.3), 0.3);
+  const f = render(S, 14, 16, MATS, { contrast: 1.5 });
+  if (i !== 2) dot(f, 6, 7, 'white');
+  return f;
+}
+function shardBolt() {
+  const S = new Scene();
+  S.add(ellipsoid([12, 4.5, 2], [8, 2.2, 1.8], 'shardGlow'), 0);
+  S.add(ellipsoid([5, 4.5, 2], [2.5, 1.2, 1.2], 'violet'), 0.5);
+  const f = render(S, 23, 9, MATS, { contrast: 1.5 });
+  put(f, 19, 4, 'white'); put(f, 18, 4, 'violet0');
+  return f;
+}
 // The thurible: a pierced brass censer on its chain, embers glowing inside.
 function thurible(i) {
   const S = new Scene(), cx = 10;
@@ -184,7 +202,7 @@ function scourge(i) {
 // A Reckoning's sigil on the floor: rings open out, spokes and four runes
 // turn, a star flares at the centre, then it all thins and fades. 12 frames,
 // seen in perspective (squashed to 0.55).
-const SIGIL_RAMP = { gold: 'gold', font: 'holy', nails: 'gold', stride: 'ember', confessor: 'violet', choir: 'crimson' };
+const SIGIL_RAMP = { gold: 'gold', font: 'holy', nails: 'gold', stride: 'ember', confessor: 'violet', choir: 'crimson', reliquary: 'violet' };
 function sigil(i, set) {
   const W = 112, H = 64, f = frame(W, H), cx = W / 2, cy = H / 2, n = 12, t = i / (n - 1), R = SIGIL_RAMP[set] || 'gold';
   const sq = 0.55, ease = 1 - (1 - Math.min(1, t * 1.8)) ** 3, fade = t < 0.6 ? 0 : (t - 0.6) / 0.4;
@@ -300,6 +318,21 @@ const BODY = {
     S.add(torus([12, 13, 2], 5.8, 1.6, 1.05, 'gold'), 0);
     S.add(ellipsoid([12, 8, 3], [3.8, 2.6, 3], 'gold'), 0.8);
     S.add(ellipsoid([12, 7.4, 5], [2.4, 1.6, 1.4], 'blood'), 0);
+  },
+  // The Anchoress's arms (round 71). The reliquary: a gilt house-shaped box with a violet window and a cross.
+  reliquary: (S) => {
+    S.add(box([12, 14, 2], [6.5, 5.5, 4], 0.8, 'gold'), 0);
+    S.add(rotZ(box([12, 7, 2], [5.4, 2.6, 3.6], 0.6, 'gold'), [12, 7], 0), 0.8);
+    S.add(box([12, 14.5, 4.6], [3.6, 3.2, 1], 0.6, 'shardGlow'), 0);
+    S.add(box([12, 2.6, 2], [0.8, 2.4, 0.8], 0.2, 'gold'), 0); S.add(box([12, 2.4, 2], [2, 0.8, 0.8], 0.2, 'gold'), 0);
+    for (const x of [6.5, 17.5]) S.add(sphere([x, 20.5, 2], 1.4, 'gold'), 0.3);
+  },
+  // The phylactery: a small glass vial in a silver cage, shards inside.
+  phylactery: (S) => {
+    S.add(capsule([12, 6, 2], [12, 19, 2], 4.4, 4.4, 'shardGlow'), 0);
+    for (const y of [6, 12.5, 19]) S.add(torus([12, y, 2], 4.6, 0.8, 1.35, 'silver'), 0);
+    S.add(capsule([12, 1.5, 2], [12, 4, 2], 2.4, 2.4, 'silver'), 0.4);
+    for (const [x, y] of [[10.5, 10], [13.5, 15]]) S.add(ellipsoid([x, y, 5], [0.9, 2, 0.9], 'cloth'), 0);
   },
   relic: (S) => {
     S.add(bumpy(capsule([8, 16, 2], [16, 8, 2], 2.4, 2, 'bone'), 0.4, 0.6), 0);
@@ -417,6 +450,19 @@ const LEGEND_ICONS = [
   () => legendIcon('girdle', { leather: 'holy', gold: 'iron' }, (S) => { for (const [x, y] of [[8, 20], [13, 22], [18, 20]]) S.add(ellipsoid([x, y, 3], [1.1, 1.7, 1.1], 'holy'), 0); }),
   // The Seventh Bell-Hammer: a relic crossed by a small gold hammer.
   () => legendIcon('relic', { gold: 'iron' }, (S) => { S.add(capsule([7, 20, 4], [17, 8, 4], 0.9, 0.9, 'wood'), 0.2); S.add(box([17.5, 7.5, 4], [3.2, 1.6, 1.6], 0.6, 'gold'), 0.3); }),
+  // The Anchoress's (round 71), after the Mendicant's.
+  // The Crown of Splinters: a violet hood ringed by floating shards.
+  () => legendIcon('hood', { crimson: 'violetDark', gold: 'silver' }, (S) => { for (const [x, y] of [[5, 6], [12, 2.5], [19, 6]]) S.add(ellipsoid([x, y, 4], [1.2, 2.4, 1], 'shardGlow'), 0); }),
+  // Mantle of the Walled Cell: a grey stone-coloured mantle with a barred window.
+  () => legendIcon('mantle', { violet: 'stone', gold: 'iron' }, (S) => { S.add(box([12, 13, 5], [3.4, 3.4, 0.6], 0.3, 'shardGlow'), 0); for (const x of [10.6, 13.4]) S.add(box([x, 13, 5.8], [0.5, 3.4, 0.4], 0.1, 'iron'), 0); }),
+  // Seal of the Anchorhold: a silver ring set with a violet shard.
+  () => legendIcon('seal', { gold: 'silver', blood: 'shardGlow' }, (S) => S.add(ellipsoid([12, 5, 5], [1.6, 3.4, 1.4], 'shardGlow'), 0)),
+  // The Splintered Finger: a finger-bone relic sprouting shards.
+  () => legendIcon('relic', { gold: 'violet' }, (S) => { for (const [x, y] of [[9, 9], [17, 15]]) S.add(rotZ(ellipsoid([x, y, 4], [1, 2.6, 1], 'shardGlow'), [x, y], 0.6), 0); }),
+  // The Anchorhold Reliquary: a great dark reliquary, its window blazing.
+  () => legendIcon('reliquary', { gold: 'iron', shardGlow: 'eyeHoly' }, (S) => S.add(sphere([12, 14.5, 5.5], 1.4, 'cloth'), 0)),
+  // The Votive Phylactery: a gilt-caged vial of candles' light.
+  () => legendIcon('phylactery', { silver: 'gold', shardGlow: 'ember' }),
 ];
 
 // Set pieces: every slot in a set's own colours (taken from its Saint skin)
@@ -444,6 +490,10 @@ const SET_LOOK = {
     mark: (S) => { S.add(capsule([18.5, 22.5, 7], [18.5, 16, 7], 2, 2, 'wax'), 0); },
     post: (f) => { dot(f, 18, 14, 'ember1'); dot(f, 18, 12, 'ember0'); dot(f, 20, 14, 'ember2'); } },
 };
+  // The Shattered Reliquary (round 71, the Anchoress's set): violet and gold, a violet shard.
+SET_LOOK.reliquary = { map: { crimson: 'violetRobe', violet: 'violetRobe', leather: 'violetDark', iron: 'silver', blood: 'shardGlow', wood: 'violetDark', bone: 'silver' },
+  mark: (S) => { S.add(rotZ(ellipsoid([18.5, 18.5, 7], [1.8, 4.2, 1.5], 'shardGlow'), [18.5, 18.5], 0.5), 0); S.add(sphere([16.4, 15.2, 7.5], 1.1, 'gold'), 0); },
+  post: (f) => dot(f, 18, 16, 'white') };
 const SET_ICONS = Object.keys(SET_LOOK);
 const setIcon = (set, slot) => { const L = SET_LOOK[set]; return legendIcon(slot, L.map, L.mark, L.post); };
 
@@ -515,6 +565,20 @@ function emberstone() {
   const f = render(S, 18, 18, FM, { contrast: 1.4 });
   dot(f, 9, 10, 'white');
   dot(f, 5, 4, 'stone1');
+  return f;
+}
+
+// The Reliquary Tear (round 71): a crimson drop of glass with a hot core, the
+// rare stuff Beatified affixes need.
+const TM = { ...MATS, tearGlass: { ramp: 'crimson', bias: -0.05, spec: 0.5 }, tearCore: { ramp: 'rose', glow: 1 } };
+function relTear() {
+  const S = new Scene();
+  S.add(sphere([9, 11.5, 3], 4.8, 'tearGlass'), 0);
+  S.add(sphere([9, 6.5, 3], 2.6, 'tearGlass'), 3.5);
+  S.add(sphere([9, 3, 3], 1.3, 'tearGlass'), 2.5);
+  S.paint({ f: (x, y) => Math.hypot(x - 9.5, y - 12) - 2.2, mat: 'tearCore' });
+  const f = render(S, 18, 18, TM, { contrast: 1.35 });
+  dot(f, 7, 9, 'white'); dot(f, 8, 5, 'rose1');
   return f;
 }
 
@@ -618,11 +682,12 @@ export default {
   fx: {
     bolt: () => [bolt()], ...Object.fromEntries(Object.keys(BOLTS).map((k) => [`bolt_${k}`, () => [bolt(k)]])),
     impact: () => [0, 1, 2, 3].map(impact),
-    ...Object.fromEntries(['gold', 'font', 'nails', 'stride', 'confessor', 'choir'].map((k) => [`sigil_${k}`, () => Array.from({ length: 12 }, (_, i) => sigil(i, k))])),
+    ...Object.fromEntries(['gold', 'font', 'nails', 'stride', 'confessor', 'choir', 'reliquary'].map((k) => [`sigil_${k}`, () => Array.from({ length: 12 }, (_, i) => sigil(i, k))])),
     wardenfall: () => Array.from({ length: 12 }, (_, i) => wardenFall(i)),
     burst: () => [0, 1, 2, 3].map(burst),
     smoke: () => [0, 1, 2, 3].map(smoke),
     thurible: () => [0, 1].map(thurible),
+    shard: () => [0, 1, 2, 3].map(shard), shardbolt: () => [shardBolt()],
     flask: () => [flask()],
     link: () => [0, 1].map(link),
     hook: () => [hook()],
@@ -636,6 +701,8 @@ export default {
     // The Mendicant's arms: [mace, satchel] plain, then per set (set * 2 + k), then the Penitent's Prod as a mace.
     marms: () => [ICONS.mace(), ICONS.satchel(), ...SET_ICONS.flatMap((k) => [setIcon(k, 'mace'), setIcon(k, 'satchel')]),
       legendIcon('mace', { wood: 'crimsonDark', gold: 'iron' }, (S) => { for (const [x, y] of [[9, 15], [12, 12]]) S.add(capsule([x, y, 2], [x - 2.5, y - 2.5, 2], 0.9, 0.3, 'iron'), 0); })],
+    // The Anchoress's arms (round 71): [reliquary, phylactery] plain, then per set (set * 2 + k).
+    aarms: () => [ICONS.reliquary(), ICONS.phylactery(), ...SET_ICONS.flatMap((k) => [setIcon(k, 'reliquary'), setIcon(k, 'phylactery')])],
     coin: () => [0, 1].map(coin),
     gold: () => [0, 1, 2].map(goldPile),
     globe: () => [0, 1].map(globe),
@@ -643,6 +710,7 @@ export default {
     // Chrism vials by kind: common, blessed, consecrated, Hallowed.
     chrism: () => ['cloth', 'holy', 'gold', 'ember'].map((m) => flask(m)),
     emberstone: () => [emberstone()],
+    rtear: () => [relTear()],
     // 48 reagents: frame = enchant * 3 + k (INGR).
     ingr: () => INGR.flatMap(([r, ...shapes]) => shapes.map((s) => INGR_SHAPES[s](r))),
     wax: () => [orb('pot', { tail: true })], bone: () => [orb('bone', { r: 3.6 })], tear: () => [orb('holy', { tail: true })],
