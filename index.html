@@ -108,9 +108,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '61';
+const BUILD = '62';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '62': ['BOTH SAINTS MOVE MORE: AN 8-FRAME IDLE THAT BREATHES, A FOUR-STEP CAST, A FULLER FLINCH, AND DUST AT EVERY FOOTFALL.'],
   '61': ['RITES LOOK FAR BETTER: A GLOWING RUNE CIRCLE ON EVERY CAST, PILLARS OF LIGHT, RINGS OF FLAME, SHOCKWAVES AND CRACKS WHERE BLOWS LAND, SPRAY ALONG WAVES, A SHIELD OF LIGHT FOR WARDS AND SHACKLES UNDER BOUND FOES.', 'FOES FLASH WHITE MORE SOFTLY WHEN HIT, SO BIG FIGHTS STAY READABLE.'],
   '60': ['NEW ATTACK EFFECTS: A FLASH WHEN THE CROSSBOW FIRES, GLOWING BOLT TRAILS AND BURSTS WHERE THEY HIT (BIGGER ON CRITS). THE MACE LEAVES A BLAZING CRESCENT, A SHOCKWAVE ALONG THE FLOOR AND CRACKS ON HEAVY BLOWS. THEY TAKE YOUR SET\'S COLOUR.'],
   '59': ['NEW OPEN MAPS: WINDING PATHS AND CLEARINGS WITH SIDE POCKETS, DIFFERENT EVERY DESCENT. ABOUT TWO DESCENTS IN THREE ROLL ONE; THE OTHERS KEEP THE ROOMS.'],
@@ -7117,6 +7118,8 @@ function updatePlayer(dt) {
   moveCircle(p, vx * dt, vy * dt, p.r);
   tut.flags.moved += Math.hypot(p.x - ox, p.y - oy);
   p.animT += dt;
+  // A puff of dust at each footfall while running (round 62).
+  if (p.anim === 'run') { const si = Math.floor(p.animT * 16) % 8; if (si !== p.stepI && (si === 0 || si === 4) && !LOWFX && game.scene === 'wound') vemit(p.x - p.face * 3, p.y - 1, { n: 3, ramp: 'bone', sp: 18, up: 14, life: 0.3, grav: 50, size: 2, glow: 0 }); p.stepI = si; }
   if (p.dashT <= 0 && game.time - p.dashStart > 0.3) { p.dashX = undefined; p.dashY = undefined; }
 }
 
@@ -7565,15 +7568,16 @@ function renderLight(cx, cy) {
 
 function drawPlayer() {
   const p = player;
-  const fps = p.anim === 'dash' ? 18 : p.anim === 'run' ? 16 : 5;
+  const fps = p.anim === 'dash' ? 18 : p.anim === 'run' ? 16 : 6;
   let i = Math.floor(p.animT * fps);
   if (p.anim === 'dash') i = Math.min(2, Math.floor((T.dash.time - p.dashT) / T.dash.time * 3));
   const blink = p.iframes > 0 && p.hurt > 0 && Math.floor(game.real * 30) % 2 === 0;
+  if ((p.castT || 0) > (p.castPrev || 0)) p.castMax = p.castT; p.castPrev = p.castT || 0; // a cast just began: its length paces the four cast frames
   // Hand-posed reactions over the move cycle: death, a rite cast, a flinch.
   let anim = p.anim;
   if (game.state === 'dead' || p.hp <= 0) { anim = 'die'; i = Math.min(3, Math.floor((game.deathT || 0) / 0.13)); }
-  else if (p.anim !== 'dash' && (p.castT || 0) > 0) { anim = 'cast'; i = p.castT > 0.2 ? 0 : 1; }
-  else if (p.anim !== 'dash' && p.hurt > 0.1) { anim = 'hit'; i = p.hurt > 0.22 ? 0 : 1; }
+  else if (p.anim !== 'dash' && (p.castT || 0) > 0) { anim = 'cast'; i = Math.min(3, Math.floor((1 - p.castT / (p.castMax || 0.3)) * 4)); }
+  else if (p.anim !== 'dash' && p.hurt > 0.1) { anim = 'hit'; i = p.hurt > 0.24 ? 0 : p.hurt > 0.17 ? 1 : 2; }
   else if (p.anim !== 'dash' && p.swingT > 0 && isMelee()) { anim = 'swing'; const t = MELEE.swing - p.swingT; i = t < MELEE.strike * 0.45 ? 0 : t < MELEE.strike ? 1 : t < MELEE.strike + 0.07 ? 2 : t < MELEE.strike + 0.15 ? 3 : 4; }
   if (G.quiver && anim !== 'die' && !isMelee()) spr('weapon', G.quiver, 0, p.x - p.face * 10, p.y - 23 + (anim === 'run' && i % 4 < 2 ? 2 : 0), { flip: p.face < 0 });
   spr(saintSheet(), anim, i, p.x, p.y, { flip: p.face < 0, white: anim !== 'die' && (p.hurt > 0.25 || blink) });

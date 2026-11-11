@@ -6,7 +6,8 @@ import { saintModel, posedFrame, SKINS } from './base.mjs';
 const H = 'mendicant', REST = -1.3;
 const A = (f) => Object.assign(f, { ax: 30, ay: 62 });
 const anims = (skin) => { const M = (o) => saintModel({ hero: H, skin, swing: REST, aim: 3, ...o }); return {
-  idle: () => [0, 1, 2, 3].map((i) => A(M({ bob: i >= 2 ? 1 : 0, halo: [0, -1, -1, 0][i], cape: [0, -1, -1, 0][i], blink: i === 3 }))),
+  // An 8-frame idle (round 62): breath, the cape stirring, the mace shifting on the shoulder.
+  idle: () => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => A(M({ bob: [0, 0, 1, 1, 1, 1, 0, 0][i], halo: [0, -1, -1, -2, -2, -1, -1, 0][i], cape: Math.sin(i / 8 * Math.PI * 2) * 1.2 - 0.4, swing: REST + [0, 0, 0.05, 0.1, 0.1, 0.05, 0, 0][i], blink: i === 6 }))),
   // The same 8-frame walk as the Saint: planted feet, a 2 px bob.
   run: () => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
     const t = i / 8, AMP = 6.5, HT = 3.6;
@@ -23,12 +24,17 @@ const anims = (skin) => { const M = (o) => saintModel({ hero: H, skin, swing: RE
     A(M({ lean: 1.5, aim: 4, reach: 0.7, swing: 0.95, legs: [-3, 3], cape: -3 })),
     A(M({ bob: 2, bend: [1, 1], lean: 0.5, aim: 0, reach: -0.3, swing: -0.7, legs: [-2, 2], cape: -2, halo: 1 })),
   ],
+  // A 4-frame cast: gather, raise the mace high, thrust the free hand, settle.
   cast: () => [
     A(M({ lean: -1, reach: -0.6, aim: 2, cape: -1, halo: -1 })),
+    A(M({ lean: -1.6, reach: -0.3, aim: -5, legs: [-1, 1], cape: 0, halo: -2, swing: -2 })),
     A(M({ lean: 1.5, reach: 1, legs: [-3, 2], cape: -4, halo: 1, swing: -1.6 })),
+    A(M({ lean: 0.6, reach: 0.4, aim: 1, legs: [-2, 1], cape: -2, halo: 0 })),
   ],
+  // A 3-frame flinch.
   hit: () => [
     A(M({ lean: -2.5, aim: -1, legs: [-2, 1], cape: 2, halo: -2, blink: true, swing: -1.5 })),
+    A(M({ lean: -1.6, aim: 0, legs: [-1, 1], cape: 2, halo: -2, swing: -1.4 })),
     A(M({ lean: -1, aim: 1, cape: 1, halo: -1 })),
   ],
   die: () => {

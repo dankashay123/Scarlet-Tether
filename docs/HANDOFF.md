@@ -242,6 +242,12 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 62:** animation overhaul, part 3 (hero bodies). Both saints:
+  an 8-frame idle (breath in whole chunky pixels, the cape stirring, the
+  halo rising and settling, a blink; the Mendicant's mace shifts), a 4-frame
+  cast (gather, raise, thrust, settle; paced by each cast's own length,
+  `castMax`), a 3-frame flinch, and dust at each footfall while running.
+
 - **Round 61:** animation overhaul, part 2 (rites). Every cast draws a
   rune circle with light rising from it (`riteFlare`; a Reckoning adds a big
   shockwave); `pfxSkill` layers pixel effects on every rite effect (novas,

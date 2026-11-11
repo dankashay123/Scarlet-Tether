@@ -3,7 +3,9 @@ import { saintModel, SKINS, posedFrame } from './base.mjs';
 
 const A = (f) => Object.assign(f, { ax: 22, ay: 62 });
 const anims = (skin) => ({
-    idle: () => [0, 1, 2, 3].map((i) => A(saintModel({ skin, bob: i >= 2 ? 1 : 0, halo: [0, -1, -1, 0][i], cape: [0, -1, -1, 0][i], blink: i === 3 }))),
+    // An 8-frame idle (round 62): a slow breath (whole chunky pixels), the cape
+    // stirring, the halo rising and settling, a blink near the end.
+    idle: () => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => A(saintModel({ skin, bob: [0, 0, 1, 1, 1, 1, 0, 0][i], halo: [0, -1, -1, -2, -2, -1, -1, 0][i], cape: Math.sin(i / 8 * Math.PI * 2) * 1.2 - 0.4, aim: [0, 0, 0.5, 1, 1, 0.5, 0, 0][i], blink: i === 6 }))),
     // An 8-frame walk: the planted foot slides back along the ground while
     // the other swings forward in an arc, knee bent; the body is lowest just
     // after each contact and highest as the legs pass.
@@ -18,12 +20,17 @@ const anims = (skin) => ({
     // Hand-posed reactions. cast: wind up, then thrust the palm (rites);
     // hit: recoil with the arm up; die: stagger, kneel, fall forward, the
     // halo knocked loose and rolling to the floor.
+    // A 4-frame cast (round 62): gather the hand in, draw it up, thrust, settle.
     cast: () => [
       A(saintModel({ skin, lean: -1, reach: -0.6, aim: 2, cape: -1, halo: -1 })),
+      A(saintModel({ skin, lean: -1.6, reach: -0.3, aim: -5, legs: [-1, 1], cape: 0, halo: -2 })),
       A(saintModel({ skin, lean: 1.5, reach: 1, legs: [-3, 2], cape: -4, halo: 1 })),
+      A(saintModel({ skin, lean: 0.6, reach: 0.4, aim: 1, legs: [-2, 1], cape: -2, halo: 0 })),
     ],
+    // A 3-frame flinch: knocked back, arm up; caught; recovering.
     hit: () => [
       A(saintModel({ skin, lean: -2.5, aim: -3, legs: [-2, 1], cape: 2, halo: -2, blink: true })),
+      A(saintModel({ skin, lean: -1.6, aim: -2, legs: [-1, 1], cape: 2, halo: -2 })),
       A(saintModel({ skin, lean: -1, aim: -1, cape: 1, halo: -1 })),
     ],
     die: () => {
