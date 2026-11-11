@@ -247,6 +247,19 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 64:** brightness. Pixel effects skip each ramp's near-white
+  shades (`dimR`); Judgement and Hammer of Heaven pillars are warmer and
+  see-through, cast flares, arcs, crescent rings, pool glows and impact glows
+  are dimmer, and a dying monster's first instant washes white instead of
+  turning solid white. Sprite effects for the biggest moments (vfx.mjs): a
+  Reckoning's turning sigil on the floor in its set's colour (`sigil_<set>`,
+  12 frames, drawn at scale 2 under the actors) and a Warden's fall, a gold
+  column that bursts along the floor and sends sparks up (`wardenfall`).
+  `drawFxs(ground)` draws one-shot sprites in the ground or air pass, `anchor`
+  at the frame's foot. The Burning Choir's 6-piece Reckoning x1.9 (was 2.2):
+  Station VI back in the pack (Saint 19.2, Mendicant 15.0), XII nearly
+  unchanged (6.3, 7.7). `setbal.cjs` reports `reck` (Reckoning uptime).
+
 - **Round 63:** animation overhaul, part 4 (monsters). Kills burst in the
   monster's family colour (`FAM_RAMP`) with a rising soul; elites add a
   shockwave, crack and beam of light, Wardens a big one as they fall.

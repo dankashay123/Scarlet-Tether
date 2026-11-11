@@ -108,9 +108,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '63';
+const BUILD = '64';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '64': ['BRIGHT RITES ARE SOFTER: HOLY AND GOLD LIGHT NO LONGER WASHES OUT TO WHITE, AND JUDGEMENT\'S PILLARS ARE WARMER.', 'A RECKONING NOW OPENS A TURNING SIGIL ON THE FLOOR IN ITS SET\'S COLOUR, AND A WARDEN FALLS IN A COLUMN OF GOLD.', 'THE BURNING CHOIR AT 6 PIECES: RECKONING DEALS X1.9 (WAS X2.2) WHILE IT LASTS.'],
   '63': ['MONSTERS: SWIPES AND BREATHS LEAVE A STREAK, SLAMS AND LOBBED BLASTS SHAKE THE FLOOR AND CRACK IT, SHOTS BURST WHERE THEY HIT, A RING TIGHTENS AT A MONSTER\'S FEET BEFORE A BIG BLOW, AND EVERY KILL BURSTS IN THE MONSTER\'S COLOUR AS ITS SOUL RISES. ELITES AND WARDENS GO OUT IN A BEAM OF LIGHT.'],
   '62': ['BOTH SAINTS MOVE MORE: AN 8-FRAME IDLE THAT BREATHES, A FOUR-STEP CAST, A FULLER FLINCH, AND DUST AT EVERY FOOTFALL.'],
   '61': ['RITES LOOK FAR BETTER: A GLOWING RUNE CIRCLE ON EVERY CAST, PILLARS OF LIGHT, RINGS OF FLAME, SHOCKWAVES AND CRACKS WHERE BLOWS LAND, SPRAY ALONG WAVES, A SHIELD OF LIGHT FOR WARDS AND SHACKLES UNDER BOUND FOES.', 'FOES FLASH WHITE MORE SOFTLY WHEN HIT, SO BIG FIGHTS STAY READABLE.'],
@@ -1403,7 +1404,7 @@ function addToll(e) {
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
 // fourOf(id): a set's damage at 4 or 5 pieces (fourBy overrides SETK.four for one set).
 const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
-const SETK = { choirHp: 2, choirHp6: 3, choirR: 110, fontHp: 4, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 7, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 2.2, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 3.5, bound4: 2.8, choir4: 2.2, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 155 } };
+const SETK = { choirHp: 2, choirHp6: 3, choirR: 110, fontHp: 4, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 7, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 3.5, bound4: 2.8, choir4: 2.2, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 155 } };
 const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 2 };
 // Gear per kill, before the Station's multiplier. Kept low: progress should take farming.
 const DROP = { kill: 0.003, rare: 0.1, elite: 0.5 }; // hp: the average MON Warden
@@ -5946,7 +5947,7 @@ const VSETS = {
   stride: { name: "THE PENITENT'S STRIDE", piece: "PENITENT'S", slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+1 DASH CHARGE. DASHES LEAVE HOLY FIRE.'], [4, `+${fourOf('stride')}% DAMAGE (+${SETK.four6}% AT 6). X${SETK.stride4} FOR ${SETK.strideT4} S AFTER A DASH. PERFECT DODGES REFILL DASHES AND HALVE DAMAGE 2 S.`], [6, `FOR ${SETK.strideT} S AFTER A DASH, BOLTS, NOVA AND FIRE DEAL X${SETK.stride}. EVERY DASH RELEASES A NOVA.`]] },
   font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, `+${fourOf('font')}% DAMAGE (+${SETK.four6}% AT 6). POOLS DEAL X${SETK.font4}, SPREAD, TAKE ${SETK.fontHp}% OF A FOE'S HEALTH A SECOND AND DRAW FOES IN. WITH 2 CONFESSOR PIECES THEY BIND. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.`], [6, `POOLS SPREAD WIDER, TAKE ${SETK.fontHp6}% OF A FOE'S HEALTH A SECOND AND DRAW FOES IN TWICE AS HARD. KILLS IN THEM SPEED THE VIAL.`]] },
   confessor: { name: 'THE LAST CONFESSOR', piece: 'CONFESSOR\'S', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, `CHAINS BIND 3 MORE. EVERY ${SETK.bindEvery2}TH HIT BINDS FOR 1 S. BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`], [4, `+${fourOf('confessor')}% DAMAGE (+${SETK.four6}% AT 6). EVERY ${SETK.bindEvery}TH HIT BINDS FOR 1 S. BOUND FOES TAKE ${Math.round((SETK.bound4 - 1) * 100)}% MORE AND BURST ON DEATH. EACH ONE CUTS DAMAGE TAKEN 8% (MAX 40%).`], [6, `BOUND FOES TAKE X${SETK.bound6} DAMAGE. THE CHAIN ENDS IN A X${SETK.crush} CRUSH.`]] },
-  choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, `+${fourOf('choir')}% DAMAGE (+${SETK.four6}% AT 6). IN RECKONING: X${SETK.choir4} DAMAGE, FOES NEAR YOU BURN FOR ${SETK.choirHp}% OF THEIR HEALTH A SECOND, NO ROOTS OR SLOWS, KILLS HEAL 2%.`], [6, `RECKONING LASTS WHILE ZEAL REMAINS.${SETK.choir !== SETK.choir4 ? ` X${SETK.choir} DAMAGE WHILE IT BURNS.` : ''} FOES NEAR YOU BURN FOR ${SETK.choirHp6}% A SECOND.`]] },
+  choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, `+${fourOf('choir')}% DAMAGE (+${SETK.four6}% AT 6). IN RECKONING: X${SETK.choir4} DAMAGE, FOES NEAR YOU BURN FOR ${SETK.choirHp}% OF THEIR HEALTH A SECOND, NO ROOTS OR SLOWS, KILLS HEAL 2%.`], [6, `RECKONING LASTS WHILE ZEAL REMAINS${SETK.choir !== SETK.choir4 ? ` (ITS DAMAGE BECOMES X${SETK.choir})` : ''}. FOES NEAR YOU BURN FOR ${SETK.choirHp6}% A SECOND.`]] },
 };
 const MAIN_SETS = ['nails', 'stride', 'font', 'confessor', 'choir'];
 const SET_FROM = 6; // the five main sets (and their arms) drop from Station VI
