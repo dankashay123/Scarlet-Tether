@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '67';
+const BUILD = '68';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '68': ['PELL\'S STALL, THE FORGE, THE ENCHANTER AND THE ALTAR: THEIR LISTS SIT IN PANELS WITH A HEADER, BESIDE THE CARD.', 'EVERY TALENT HAS ITS OWN ICON.', 'PAGES SLIDE IN WHEN YOU SWITCH BAG TABS, AND CARDS FADE IN.', 'THE BAG\'S GEAR TAB SHOWS EVERY STAT. LEVEL-UP CARDS FIT THEIR TEXT AND SHOW THE RANK.'],
   '67': ['THE BAG HAS TABS FOR RITES, TALENTS AND THE CENSER. LEARN TALENTS ANYWHERE.', 'RITES: A RAIL OF SLOTS, EACH SLOT\'S RITES AS ICONS, AND THE CHOSEN ONE IN FULL.', 'TALENTS ARE A TREE OF NODES. SETTINGS HAS SECTIONS AND ONE-TAP CHOICES.', 'THE HUD, LEVEL-UP CARDS AND DEATH SUMMARY MATCH THE NEW MENUS.'],
   '66': ['A NEW FONT, AND TEXT IN UPPER AND LOWER CASE.', 'MENUS FILL THE SCREEN: A DEEP BACKDROP, A TITLE BAR WITH A BACK ARROW, GOLD TABS, BRIGHT BUTTONS AND ITEM TILES IN THEIR RARITY\'S COLOUR.', 'THE PAUSE SCREEN IS A PANEL OF TILES: BAG, RITES, MAP, SETTINGS, SOUND AND SWITCH SAINT.'],
   '65': ['NEW MENUS: DARK GLASS AND GOLD EVERYWHERE. GLOWING RARITY SOCKETS, ITEM CARDS WITH THE PIECE\'S ICON AND ARROWS ON EVERY STAT AGAINST WHAT YOU WEAR, A SPOTLIT HERO IN THE BAG, CLEAN PICKERS IN SETTINGS, AND WINDOWS THAT FADE IN.'],
@@ -2316,12 +2317,25 @@ function featFrame(L, title, col = PAL.gold1, style = '') {
   sprC('ui', 'close', 0, L.close.x, L.close.y);
   inset(L.card.x, L.card.y, L.card.w, L.card.h);
 }
+// Round 68: the list side of a town service sits in its own panel with a lit header strip (the card side already does).
+function listPanel(L, acc, label, note, bottom = L.y0 + L.ph - 7) {
+  inset(L.list.x - 4, L.list.y - 3, L.list.w + 8, bottom - (L.list.y - 3), acc);
+  if (label) text(label, L.list.x + 2, L.list.y - 1, PAL.gold1, { small: true, outline: null, bold: true });
+  if (note) text(fitText(note, L.list.w - textW(label || '', 1, true) - 16), L.list.x + L.list.w, L.list.y - 1, PAL.stone2, { small: true, outline: null, align: 'right' });
+}
 const featOut = (L, x, y) => Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y);
 // An item's card: name, rarity, Sanctity, stats (rows returned for taps).
 // maxY: stop the lines there (the forge's controls sit below); the rest is in the bag.
 // Round 65: an item card's plate: rarity-lit glass and the piece in a socket at the top right.
 const rarRGB = (it) => hexRgb(it.set || it.wset ? RARITY[4].cell : RARITY[it.ri].cell);
+// Round 68: a card fades in when a new piece is picked (UI_FADES, drawn over everything at the end of render).
+let CARD_KEY = null, CARD_T = 0; const UI_FADES = [];
+function cardAnim(key, r) {
+  if (key !== CARD_KEY) { CARD_KEY = key; CARD_T = game.real; }
+  const k = Math.min(1, (game.real - CARD_T) / 0.18); if (k < 1 && key) UI_FADES.push({ x: r.x, y: r.y, w: r.w, h: r.h, a: 0.85 * (1 - k) * (1 - k) });
+}
 function cardPlate(it, C) {
+  cardAnim(it ? `${it.id || it.name}|${it.ri}|${C.x}` : null, C);
   inset(C.x, C.y, C.w, C.h, it ? rarRGB(it) : null);
   if (!it) return;
   const r = { x: C.x + C.w - 34, y: C.y + 5, w: 29, h: 29 }; itemSlot(r, it);
@@ -2387,10 +2401,10 @@ const shopRow = (L, i) => { const step = Math.min(34, Math.floor((L.y0 + L.ph - 
 function renderShop() {
   const L = featLayout(), items = SAVE.shop.items, it = items[game.shop.sel];
   featFrame(L, "PELL'S CURIO STALL");
-  text('NEW STOCK AFTER EVERY DESCENT', L.list.x, L.list.y, PAL.stone2, { small: true, outline: null });
+  listPanel(L, '255,209,85', 'STOCK', 'NEW AFTER EVERY DESCENT');
   items.forEach((q, i) => {
     const r = shopRow(L, i), sel = i === game.shop.sel;
-    ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+    rowPlate(r, sel, q.sold ? '90,96,110' : hexRgb(RARITY[q.ri].cell), !q.sold);
     if (q.sold) { text('SOLD', r.x + r.w / 2, r.y + 11, PAL.stone2, { align: 'center' }); return; }
     const sz = Math.min(26, r.h - 2), my = r.y + Math.round(r.h / 2);
     itemSlot({ x: r.x + 3, y: r.y + Math.round((r.h - sz) / 2), w: sz, h: sz }, q);
@@ -2590,7 +2604,7 @@ function renderForge() {
   tabButtons(forgeTabs(L), F.tab); emberCount(L);
   if (F.tab === 1) return renderForgeValues(L, it);
   if (F.tab === 2) return renderForgeBuy(L);
-  text(fitText('TAP A PIECE, THEN A STAT.', L.list.w, 'TAP A PIECE, THEN A STAT.'), L.list.x, L.list.y, PAL.stone2, { small: true, outline: null });
+  listPanel(L, '255,128,48', 'YOUR GEAR', 'TAP A PIECE, THEN A STAT');
   items.forEach((q, i) => { if (forgeCell(L, i).y < L.y0 + L.ph - 30) itemSlot(forgeCell(L, i), q, { sel: i === F.sel }); });
   if (!it) { text('NOTHING TO WORK ON.', L.card.x + 6, L.card.y + 8, PAL.stone1, { small: true, outline: null }); return; }
   if (F.auto) autoStep(F, items);
@@ -2697,21 +2711,20 @@ function renderEnchant() {
   const L = featLayout(), N = game.ench, E = ENCHANTS[N.sel], items = forgeItems(), it = items[N.item], small = { small: true, outline: null };
   featFrame(L, 'THE ENCHANTER', PAL.violet0);
   if (N.pick) {
-    text('TAP A PIECE TO ENCHANT.', L.list.x, L.list.y, PAL.stone2, small);
+    listPanel(L, '190,120,255', 'YOUR GEAR', 'TAP A PIECE TO ENCHANT');
     items.forEach((q, i) => { const c = forgeCell(L, i); if (c.y < L.y0 + L.ph - 30) { itemSlot(c, q, { sel: i === N.item }); if (q.ench) { ctx.fillStyle = ENCH_BY[q.ench].col; ctx.fillRect(c.x + c.w - 6, c.y + 2, 4, 4); } } });
   } else {
-    text('ENCHANTS', L.list.x, L.list.y, PAL.stone2, small);
+    listPanel(L, '190,120,255', 'ENCHANTS', null);
     ENCHANTS.forEach((Q, i) => {
       const r = enchRow(L, i), own = [0, 1, 2].map((k) => ingrs()[i * 3 + k] > 0), ready = own.every(Boolean);
-      ctx.fillStyle = i === N.sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
-      ctx.fillStyle = Q.col; ctx.fillRect(r.x, r.y, 2, r.h);
+      rowPlate(r, i === N.sel, hexRgb(Q.col), ready);
       text(fitText(Q.name, r.w - 26), r.x + 5, r.y + Math.floor((r.h - 8) / 2), ready ? Q.col : PAL.stone1, small);
       own.forEach((o, k) => { ctx.fillStyle = o ? Q.col : PAL.ink1; ctx.fillRect(r.x + r.w - 18 + k * 6, r.y + Math.floor(r.h / 2) - 2, 4, 4); });
     });
     for (const [i, l] of wrapW(ingrChanceLine(), L.list.w, true).entries()) text(l, L.list.x, enchRow(L, 7).y + enchRow(L, 7).h + 6 + i * 9, PAL.stone2, small);
   }
   // The card: what the enchant does, its three ingredients, the piece.
-  const C = L.card; let y = C.y + 6;
+  const C = L.card; let y = C.y + 6; inset(C.x, C.y, C.w, C.h, hexRgb(E.col));
   // With the piece already holding this enchant, the card shows tier II.
   const up = !!it && it.ench === E.id, t2 = up && (it.enchT || 1) >= 1;
   text(fitText(`${E.name}${up ? ((it.enchT || 1) > 1 ? ' II (MAX)' : ' > II') : ''}`, C.w - 12), C.x + 6, y, E.col); y += 13;
@@ -2991,6 +3004,15 @@ function earnLook(how) {
   const H0 = HALOS.find((q) => q.earn === how), K = looks(); if (!H0 || K.own.includes(`h:${H0.id}`)) return;
   K.own.push(`h:${H0.id}`); persist(); setTimeout(() => { toast(`EARNED ${H0.name}`, 3.2); game.toastColor = PAL.rose1; }, 1800);
 }
+// Round 68: each talent's icon: a passive icon in its tree's colour (red,
+// blue, gold), or a rite or loot icon where a tree runs out of them.
+const TAL_ICON = { might: ['ui', 'passive', 4], precise: ['ui', 'passive', 2], quick: ['ui', 'passive', 3], execute: ['ui', 'passive', 16], heavy: ['ui', 'passive', 18], pierce: ['ui', 'passive', 0], bane: ['ui', 'passive', 17], zeal: ['ui', 'passive', 1], greatbolt: ['ui', 'passive', 19],
+  vigour: ['ui', 'passive', 7], warding: ['ui', 'passive', 6], mend: ['ui', 'passive', 10], feet: ['ui', 'passive', 20], quickdash: ['ui', 'passive', 11], deft: ['ui', 'passive', 21], orbs: ['loot', 'globe', 0], steadfast: ['ui', 'passive', 9], aegis: ['ui', 'passive', 8],
+  devout: ['ui', 'passive', 13], piety: ['ui', 'passive', 22], ritepower: ['ui', 'passive', 23], fortune: ['ui', 'passive', 14], reckon: ['ui', 'passive', 12], chant: ['ui', 'toll', 0], grace: ['ui', 'passive', 15], again: ['ui', 'brand', 0], choir: ['ui', 'hymn', 0] };
+function talIcon(id, x, y, r, alpha = 1) {
+  const ic = TAL_ICON[id]; const f = ic && frameOf(ic[0], ic[1], ic[2]); if (!f) return false;
+  const k = (r * 2 - 2) / Math.max(f.w, f.h); ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(k, k); sprC(ic[0], ic[1], ic[2], 0, 0, { alpha }); ctx.restore(); return true;
+}
 // A tree's emblem: a blade (offence), a shield (defence) or a star (rites).
 function treeEmblem(ti, x, y, col, k = 1) {
   ctx.fillStyle = col; x = Math.round(x); y = Math.round(y);
@@ -3035,7 +3057,7 @@ function renderCanonry() {
     ctx.fillStyle = sel ? '#ffd155' : n ? PAL.white : open ? '#8a93a6' : '#3a4152'; ctx.beginPath(); ctx.arc(p.x, p.y, r + 1, 0, Math.PI * 2); ctx.fill();
     const g = ctx.createLinearGradient(0, p.y - r, 0, p.y + r); g.addColorStop(0, n ? `rgb(${shade(T0.rgb, 0.9)})` : open ? '#2c3548' : '#151a26'); g.addColorStop(1, n ? `rgb(${shade(T0.rgb, 0.4)})` : open ? '#161c2a' : '#0b0f18');
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r - 1, 0, Math.PI * 2); ctx.fill();
-    treeEmblem(ti, p.x, p.y, n ? PAL.white : open ? '#c9ced8' : '#4a5264', r / 12);
+    if (!talIcon(t.id, p.x, p.y, r - 1, n ? 1 : open ? 0.7 : 0.3)) treeEmblem(ti, p.x, p.y, n ? PAL.white : open ? '#c9ced8' : '#4a5264', r / 12);
     // The rank badge at the lower right, and the name under the node.
     const bx = p.x + r - 2, by = p.y + r - 3; ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = n >= t.max ? '#ffd155' : '#0d1220'; ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2); ctx.fill();
     text(String(n), bx, by - 4, n >= t.max ? TAB_INK : n ? '#ffd155' : PAL.stone2, { ...small, align: 'center' });
@@ -3406,11 +3428,12 @@ function hubClose() {
   persist(); game.state = game.hubBack && !HUB_STATES.includes(game.hubBack) ? game.hubBack : 'play'; game.hubBack = null; game.inv = null; sfx('tap');
 }
 function hubGo(id) {
-  const i = ['gear', 'items', 'ingr'].indexOf(id);
+  const i = ['gear', 'items', 'ingr'].indexOf(id), from = HUB.findIndex((h) => h[0] === hubOn());
   if (i >= 0) { if (game.state !== 'inv' || !game.inv) { game.state = 'inv'; game.inv = { sel: null, tab: i }; } else { game.inv.tab = i; game.inv.sel = null; game.inv.selling = false; } }
   else if (id === 'rites') { game.state = 'rites'; game.riteFocus = game.riteFocus || 'm1'; }
   else if (id === 'talents') { game.state = 'canonry'; game.talTab = game.talTab || 0; }
   else if (id === 'censer') { game.state = 'censer'; SAVE.censerNew = false; censerCheck(); }
+  game.hubT = game.real; game.hubDir = HUB.findIndex((h) => h[0] === id) >= from ? 1 : -1;
   if (id !== 'gear' && id !== 'items' && id !== 'ingr' && game.inv) for (const it of SAVE.bag) it.isNew = false;
   sfx('tap', { vol: 0.5 });
 }
@@ -3457,9 +3480,9 @@ function renderRites() {
     const rk = riteRank(r.id);
     if (!open) pill(`LEVEL ${RITE_LV[r.id]}`, cx, hy + hr - 3, PAL.flame1);
     else if (rk > 1) pill(`R${rk}`, cx, hy + hr - 3, PAL.gold1);
-    let ty = hy + hr + 9;
-    for (const l of wrapW(r.name, b.w - 4, true).slice(0, 2)) { text(l, cx, ty, sel ? PAL.gold1 : open ? PAL.cloth0 : PAL.stone2, { ...small, align: 'center', bold: sel }); ty += 9; }
-    if (ty + 8 <= b.y + b.h) text(fitText(VSETS[r.set].name.replace(/^THE /, ''), b.w - 4, SET_SHORT[r.set]), cx, ty, syn ? `rgb(${rgb})` : PAL.stone3, { ...small, align: 'center' });
+    let ty = hy + hr + 9; const nl = wrapW(r.name, b.w - 4, true).slice(0, 2);
+    for (const l of nl) { text(l, cx, ty, sel ? PAL.gold1 : open ? PAL.cloth0 : PAL.stone2, { ...small, align: 'center', bold: sel }); ty += 9; }
+    if (nl.length < 2 && ty + 10 <= b.y + b.h) text(fitText(VSETS[r.set].name.replace(/^THE /, ''), b.w - 4, SET_SHORT[r.set]), cx, ty, syn ? `rgb(${rgb})` : PAL.stone3, { ...small, align: 'center' }); // a two-line name on a short cell drops the set line
   });
   renderRiteDetail(L, focus);
 }
@@ -3958,7 +3981,8 @@ function renderAltar() {
   headerBar(L.x0, L.y0, L.pw, 26);
   text('THE ASHEN ALTAR', L.x0 + 12, L.y0 + 9, RARITY[3].color); sprC('ui', 'close', 0, L.close.x, L.close.y);
   const gold = SAVE.gold || 0; sprC('loot', 'coin', 0, L.close.x - 64, L.y0 + 13); text(String(gold), L.close.x - 57, L.y0 + 9, PAL.gold1);
-  text(`POWERS LEARNED ${A.known.length}/${LEGENDS.length}`, L.list.x, L.y0 + 31, PAL.stone1, small);
+  const pg = Math.max(1, Math.ceil(list.length / Gm.n));
+  listPanel({ ...L, list: { ...L.list, y: L.y0 + 31, w: Gm.row(0).w } }, hexRgb(RARITY[3].cell), 'HALLOWED PIECES', pg > 1 ? null : `${A.known.length}/${LEGENDS.length} LEARNED`, Gm.det.y - 4);
   const pages = Math.max(1, Math.ceil(list.length / Gm.n)); game.altarPage = Math.min(game.altarPage || 0, pages - 1);
   if (pages > 1) text(`< ${game.altarPage + 1}/${pages} >`, Gm.page.x + Gm.page.w, L.y0 + 31, PAL.gold1, { ...small, align: 'right' });
   if (!list.length) {
@@ -3966,9 +3990,7 @@ function renderAltar() {
   }
   list.slice(game.altarPage * Gm.n, (game.altarPage + 1) * Gm.n).forEach((it, i) => {
     const r = Gm.row(i), known = A.known.includes(it.power), sel = game.altarSel === it.id;
-    rowPlate(r, !!(sel));
-    ctx.fillStyle = known ? PAL.ink3 : RARITY[3].color; ctx.fillRect(r.x, r.y, 3, r.h);
-    if (sel) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 2; ctx.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2); }
+    rowPlate(r, sel, known ? '90,96,110' : hexRgb(RARITY[3].cell), !known);
     itemIcon(it, r.x + 14, r.y + r.h / 2, { alpha: known ? 0.45 : 1 });
     text(fitText(nm(it), r.w - 74), r.x + 28, r.y + 4, known ? PAL.stone1 : RARITY[3].color, small);
     text(`${heroText(SLOT_NAME[it.slot] || it.slot.toUpperCase())}, STATION ${ROMAN[(it.il || 1) - 1] || it.il}`, r.x + 28, r.y + 14, PAL.stone2, small);
@@ -7656,6 +7678,9 @@ function render() {
   UI_SOFT = game.state !== 'play';
   if (game.state === 'pause') { layerBreak(); renderPause(); }
   layerBreak(); // menu windows cover the HUD and its text
+  // Round 68: switching hub tabs slides the new page in from the side it lies on, and fades it up.
+  const hubK = HUB_STATES.includes(game.state) && game.hubT ? Math.min(1, (game.real - game.hubT) / 0.18) : 1, hubDx = hubK < 1 ? Math.round((1 - hubK) * (1 - hubK) * 14 * (game.hubDir || 1)) : 0;
+  if (hubDx) { ctx.fillStyle = '#0a101c'; ctx.fillRect(0, 0, W, H); ctx.save(); ctx.translate(hubDx, 0); UI_FADES.push({ x: 0, y: 32, w: W, h: H - 32, a: 0.6 * (1 - hubK) }); }
   if (game.state === 'inv') renderInventory();
   if (game.state === 'stig') renderStigmata();
   if (game.state === 'dead') renderReceipt();
@@ -7685,6 +7710,7 @@ function render() {
   if (game.state === 'resume') renderResume();
   if (game.state === 'map') renderTownMap();
   if (game.state === 'loading') renderLoading();
+  if (hubDx) ctx.restore();
   if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; }
   if (game.setPop && game.state === 'inv') { layerBreak(); renderSetPop(); } else game.setPop = null;
   if (game.enchPop && game.state === 'inv') { layerBreak(); renderEnchPop(); if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; } } else game.enchPop = null;
@@ -7692,6 +7718,7 @@ function render() {
   blit(); flushText();
   // Round 65: a window fades in over 0.14 s when it opens.
   if (game.state !== UI_LAST) { UI_LAST = game.state; UI_OPEN = game.real; }
+  if (UI_FADES.length) { sctx.save(); sctx.setTransform(1, 0, 0, 1, 0, 0); for (const f of UI_FADES) { sctx.fillStyle = `rgba(10,15,27,${f.a})`; sctx.fillRect(Math.round(f.x * PRE), Math.round(f.y * PRE), Math.round(f.w * PRE), Math.round(f.h * PRE)); } sctx.restore(); UI_FADES.length = 0; }
   const ua = game.state !== 'play' && game.state !== 'title' ? 1 - (game.real - UI_OPEN) / 0.14 : 0;
   if (ua > 0) { sctx.save(); sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.fillStyle = `rgba(11,7,16,${0.55 * ua})`; sctx.fillRect(0, 0, sctx.canvas.width, sctx.canvas.height); sctx.restore(); }
 }
@@ -8713,7 +8740,10 @@ function pickStigma(i) {
   sfx('perfect'); game.stig = null; game.state = 'play';
 }
 function stigLayout() {
-  const n = game.stig.cards.length, cw = Math.min(150, Math.floor((W - 60) / 3)), ch = 158, gap = 14, x0 = Math.round(W / 2 - (n * cw + (n - 1) * gap) / 2), y0 = Math.round(H / 2 - ch / 2 + 10);
+  // Round 68: as tall as the longest card needs (it used to leave the lower half empty).
+  const n = game.stig.cards.length, cw = Math.min(150, Math.floor((W - 60) / 3)), gap = 14;
+  const need = (c) => 66 + wrapW(heroText(c.name), cw - 10).length * 12 + 15 + wrapW(heroText(c.text(wound(c.id) + 1)), cw - 12, true).length * 10 + 30;
+  const ch = Math.max(118, Math.min(H - 70, Math.max(...game.stig.cards.map(need)))), x0 = Math.round(W / 2 - (n * cw + (n - 1) * gap) / 2), y0 = Math.round(H / 2 - ch / 2 + 10);
   return game.stig.cards.map((c, i) => ({ x: x0 + i * (cw + gap), y: y0, w: cw, h: ch }));
 }
 function stigTap(x, y) { if (game.stig.t < 0.35) return; stigLayout().forEach((r, i) => { if (inRect(r, x, y)) pickStigma(i); }); }
@@ -8754,6 +8784,7 @@ function renderStigmata() {
     for (const l of wrapW(heroText(c.name), r.w - 10)) { text(l, r.x + r.w / 2, ty, R0.col, { align: 'center', bold: true }); ty += 12; }
     pill(R0.name, r.x + r.w / 2, ty, PAL.stone1); ty += 15;
     for (const l of wrapW(heroText(c.text(rank + 1)), r.w - 12, true)) { text(l, r.x + r.w / 2, ty, PAL.cloth0, { align: 'center', small: true, outline: null }); ty += 10; }
+    text(rank ? `RANK ${rank} > ${rank + 1} OF ${c.max}` : `RANK 1 OF ${c.max}`, r.x + r.w / 2, y + r.h - 24, PAL.stone2, { align: 'center', small: true, outline: null });
     // Rank pips as small diamonds.
     for (let q = 0; q < c.max; q++) { const px = Math.round(r.x + r.w / 2 - c.max * 4 + q * 8 + 3), py = y + r.h - 10; ctx.fillStyle = q < rank ? R0.col : q === rank ? PAL.white : '#2a3346'; ctx.beginPath(); ctx.moveTo(px, py - 3); ctx.lineTo(px + 3, py); ctx.lineTo(px, py + 3); ctx.lineTo(px - 3, py); ctx.fill(); }
   });
@@ -9057,8 +9088,6 @@ function invTap(x, y) {
   }
   if (game.inv.tab === 1) { const rows = bagItemRows(0); rows.forEach((r, i) => { if (inRect(bagItemRect(L, i, rows.length), x, y)) openFromBag(r[5]); }); return; }
   if (game.inv.tab) return;
-  if (inRect({ ...L.rites, w: L.rites.w + 84 }, x, y)) { openRites('inv'); return; }
-  if (Math.hypot(x - L.censer.x, y - L.censer.y) < L.censer.r + 5) { openCenser('inv'); return; }
   if (game.inv.selling) {
     const i = L.opts.findIndex((r) => inRect(r, x, y));
     if (i >= 0) bulkSell(SELL_RULES[i]);
@@ -9213,31 +9242,22 @@ function renderInventory() {
     const sel = game.inv.sel && game.inv.sel.from === 'equip' && game.inv.sel.slot === sl;
     itemSlot(r, SAVE.equip[sl], { ghost: sl, sel });
   }
-  // The Censer: tap for what it does and its upgrades.
-  const CS = L.censer, lit = CENSER_UP.filter((u) => censerUp(u.id)).length;
-  ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(CS.x, CS.y, CS.r + 1, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = SAVE.censerNew ? PAL.gold1 : PAL.ember2; ctx.beginPath(); ctx.arc(CS.x, CS.y, CS.r, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = PAL.ink0; ctx.beginPath(); ctx.arc(CS.x, CS.y, CS.r - 2, 0, Math.PI * 2); ctx.fill();
-  sprC('fx', 'thurible', Math.floor(game.real * 6), CS.x, CS.y + 1);
-  text(`${lit}/${CENSER_UP.length}`, CS.x, CS.y + CS.r + 4, lit ? PAL.ember0 : PAL.stone2, { small: true, align: 'center' });
-  if (SAVE.censerNew) { ctx.fillStyle = PAL.blood0; ctx.fillRect(CS.x + CS.r - 4, CS.y - CS.r, 5, 5); }
-  // Totals under the doll.
+  // Round 68: the rites and the Censer have their own tabs now, so the space
+  // under the doll is one stats panel: health and Sanctity in its header,
+  // every stat as a label and value, then the sets.
   const SHORT = { dmg: 'DAMAGE', crit: 'CRIT', hp: 'MAX HP', dash: 'DASH CD', fervor: 'ZEAL', gold: 'GOLD', speed: 'SPEED', cdr: 'RITE CD', armor: 'ARMOR', lok: 'HEAL/KILL' };
-  const lines = Object.keys(STAT).filter((k) => G[k]).map((k) => `+${G[k]}${STAT[k].pct ? '%' : ''} ${SHORT[k]}`);
+  const stats = Object.keys(STAT).filter((k) => G[k]).map((k) => [SHORT[k], `+${G[k]}${STAT[k].pct ? '%' : ''}`]);
   const setL = [...Object.entries(G.sets).filter(([, n]) => n >= 2).map(([id, n]) => `${VSETS[id].name.replace(/^THE /, '')} ${n}`), ...Object.entries(G.wsets).filter(([, n]) => n >= 2).map(([id]) => `ARMS: ${VSETS[id].name.replace(/^THE /, '')}`)];
-  const sy = D.y + 150;
-  inset(D.x - 4, sy - 4, D.w + 8, L.rites.y - sy - 2);
-  text(`HP ${player.maxHp}`, D.x, sy, PAL.blood0, { small: true, outline: null });
-  text(`SANCTITY ${playerSanctity()}`, D.x + 64, sy, PAL.gold1, { small: true, outline: null });
-  if (!lines.length) text('NOTHING WORN', D.x, sy + 10, PAL.stone2, { small: true, outline: null });
-  // Only the rows that fit above the RITES button.
-  const fit = Math.max(1, Math.min(6, Math.floor((L.rites.y - 4 - (sy + 10)) / 9))) * 2;
-  lines.slice(0, fit).forEach((l, i) => text(l, D.x + (i % 2) * 96, sy + 10 + Math.floor(i / 2) * 9, PAL.cloth1, { small: true, outline: null }));
-  let py = sy + 12 + Math.max(1, Math.ceil(Math.min(fit, lines.length) / 2)) * 9;
-  for (const l of setL) { if (py < L.rites.y - 6) text(l, D.x, py - 2, RARITY[4].color, { small: true, outline: null }); py += 9; }
-  // The rites button, bottom left, with the three chosen rites beside it.
-  invButton(L.rites, 'RITES', PAL.crimson3);
-  RITE_SLOTS.forEach(([slot], i) => riteSocket(L.rites.x + L.rites.w + 16 + i * 24, L.rites.y + 10, 10, riteOf(slot).icon, 0.7, PAL.ink3));
+  const sy = D.y + 150, bot = L.y0 + L.ph - 6, small = { small: true, outline: null }, cw = Math.floor((D.w - 6) / 2);
+  inset(D.x - 4, sy - 4, D.w + 8, bot - (sy - 4), '255,209,85');
+  text(`HP ${player.maxHp}`, D.x, sy - 2, PAL.blood0, { ...small, bold: true });
+  text(`SANCTITY ${playerSanctity()}`, D.x + D.w, sy - 2, PAL.gold1, { ...small, bold: true, align: 'right' });
+  let py = sy + 14;
+  if (!stats.length) { text('NOTHING WORN', D.x, py, PAL.stone2, small); py += 10; }
+  const rows = Math.ceil(stats.length / 2);
+  stats.forEach(([k, v], i) => { const c = i < rows ? 0 : 1, r = i % rows, x = D.x + c * (cw + 6), y = py + r * 9; if (y > bot - 9) return; text(k, x, y, PAL.stone1, small); text(v, x + cw, y, PAL.white, { ...small, align: 'right' }); });
+  py += rows * 9 + 3;
+  for (const l of setL) { if (py <= bot - 9) text(fitText(l, D.w), D.x, py, RARITY[4].color, small); py += 9; }
   // The bag.
   const B = L.bag, cover = L.narrow && (it || game.inv.selling);
   if (!cover) {

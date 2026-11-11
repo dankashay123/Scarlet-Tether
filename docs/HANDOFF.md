@@ -249,6 +249,20 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 68:** polish. Town services (Pell's stall, the Forge, the
+  Enchanter, the Altar) put their list in a panel with a lit header strip
+  (`listPanel(L, acc, label, note, bottom)`) and draw rows with `rowPlate`;
+  the Enchanter's card is lit in the enchant's colour. Every talent has an
+  icon (`TAL_ICON`, `talIcon`: passive icons in the tree's colour, plus a few
+  rite and loot icons). Motion: switching hub tabs slides the page in from
+  the side the tab lies on and fades it up (`game.hubT`, `game.hubDir`, the
+  translate round the menu calls in `render`); an item card fades in when a
+  new piece is picked (`cardAnim` in `cardPlate`); fades are queued in
+  `UI_FADES` and drawn over the screen at the end of `render`. The bag's
+  Gear tab dropped its Rites button and Censer badge (they are tabs now) for
+  one stats panel: health and Sanctity in the header, every stat as label
+  and value, then sets. Wound cards are as tall as their text needs
+  (`stigLayout`) and show the rank. Rite names on two lines drop the set line.
 - **Round 67:** the character hub and menus, part 3. The bag, rites, talents
   and the Censer share one row of tabs in the title bar (`HUB`, `hubTabs`,
   `drawHub`, `hubTap`, `hubGo`; `hubEnter`/`hubClose` and `game.hubBack`
