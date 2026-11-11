@@ -247,6 +247,19 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 65:** menus, part 1: dark glass and gold. A UI kit replaced the
+  flat ink boxes everywhere: `panelFrame` (translucent body, accent wash at
+  the top, fine rim and inner rule, gilt corners), `headerBar`, `inset`,
+  `rowPlate`, `tabPlate`/`tabButtons`, `goldRule`, `invButton` (gradient
+  pill, gold rim, dips where tapped), `pickerBtn` (every `< X >` label), and
+  `itemSlot` (a sunken socket lit from inside in the rarity's colour). Item
+  cards (`cardPlate`, `drawItemCard` and the bag's own card) show the piece's
+  icon in a socket, a gold divider, arrows on stat comparisons and a badge for
+  better or worse than worn. The bag: a spotlit hero on a pedestal, glass
+  panels for totals and the grid, a capacity bar. Title text can glow.
+  Windows fade in. Next: re-lay out the pause screen as a card, the Descent
+  panel, Wound cards and the title screen.
+
 - **Round 64:** brightness. Pixel effects skip each ramp's near-white
   shades (`dimR`); Judgement and Hammer of Heaven pillars are warmer and
   see-through, cast flares, arcs, crescent rings, pool glows and impact glows

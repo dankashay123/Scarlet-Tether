@@ -108,9 +108,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '64';
+const BUILD = '65';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '65': ['NEW MENUS: DARK GLASS AND GOLD EVERYWHERE. GLOWING RARITY SOCKETS, ITEM CARDS WITH THE PIECE\'S ICON AND ARROWS ON EVERY STAT AGAINST WHAT YOU WEAR, A SPOTLIT HERO IN THE BAG, CLEAN PICKERS IN SETTINGS, AND WINDOWS THAT FADE IN.'],
   '64': ['BRIGHT RITES ARE SOFTER: HOLY AND GOLD LIGHT NO LONGER WASHES OUT TO WHITE, AND JUDGEMENT\'S PILLARS ARE WARMER.', 'A RECKONING NOW OPENS A TURNING SIGIL ON THE FLOOR IN ITS SET\'S COLOUR, AND A WARDEN FALLS IN A COLUMN OF GOLD.', 'THE BURNING CHOIR AT 6 PIECES: RECKONING DEALS X1.9 (WAS X2.2) WHILE IT LASTS.'],
   '63': ['MONSTERS: SWIPES AND BREATHS LEAVE A STREAK, SLAMS AND LOBBED BLASTS SHAKE THE FLOOR AND CRACK IT, SHOTS BURST WHERE THEY HIT, A RING TIGHTENS AT A MONSTER\'S FEET BEFORE A BIG BLOW, AND EVERY KILL BURSTS IN THE MONSTER\'S COLOUR AS ITS SOUL RISES. ELITES AND WARDENS GO OUT IN A BEAM OF LIGHT.'],
   '62': ['BOTH SAINTS MOVE MORE: AN 8-FRAME IDLE THAT BREATHES, A FOUR-STEP CAST, A FULLER FLINCH, AND DUST AT EVERY FOOTFALL.'],
@@ -2261,7 +2262,7 @@ function featFrame(L, title, col = PAL.gold1, style = '') {
   text(title, L.x0 + 12, L.y0 + 9, col);
   sprC('loot', 'coin', 0, L.close.x - 64, L.y0 + 13); text(String(SAVE.gold || 0), L.close.x - 57, L.y0 + 9, PAL.gold1);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.card.x, L.card.y, L.card.w, L.card.h);
+  inset(L.card.x, L.card.y, L.card.w, L.card.h);
 }
 const featOut = (L, x, y) => Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y);
 // An item's card: name, rarity, Sanctity, stats (rows returned for taps).
@@ -2474,7 +2475,7 @@ const EMBER_PRICE = 500, EMBER_PACKS = [1, 10, 50];
 const emberBuyRow = (L, i) => ({ x: L.x0 + Math.round(L.pw / 2) - 130, y: L.y0 + 84 + i * 34, w: 260, h: 28 });
 function renderForgeBuy(L) {
   const small = { small: true, outline: null }, cx = L.x0 + L.pw / 2, gold = SAVE.gold || 0;
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0 + 8, L.y0 + 30, L.pw - 16, L.ph - 38);
+  inset(L.x0 + 8, L.y0 + 30, L.pw - 16, L.ph - 38);
   if (SPR.loot.anims.emberstone) { ctx.save(); ctx.translate(cx - 60, L.y0 + 54); ctx.scale(2, 2); sprC('loot', 'emberstone', 0, 0, 0); ctx.restore(); }
   text(`YOU HOLD ${embers()}`, cx - 38, L.y0 + 42, PAL.ember1);
   text(`${EMBER_PRICE} GOLD EACH. WARDENS DROP THEM FOR FREE.`, cx - 38, L.y0 + 56, PAL.stone1, small);
@@ -2493,6 +2494,26 @@ function forgeBuyTap(L, x, y) {
     const buy = () => { if (!spend(cost)) return; SAVE.embers = embers() + n; persist(); toast(`+${n} EMBERSTONE${n > 1 ? 'S' : ''}`, 1.6); game.toastColor = PAL.ember1; };
     if (n > 1) ask(`BUY ${n} EMBERSTONES FOR ${cost.toLocaleString('en-US')} GOLD?`, buy, 'BUY'); else buy();
   });
+}
+// A list row on glass: a coloured edge on the left (its set or kind), a gold rim and a warm glow when chosen.
+function rowPlate(b, sel, rgb = '255,209,85', strong = false) {
+  ctx.fillStyle = PAL.outline; ctx.fillRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2);
+  const g = ctx.createLinearGradient(b.x, 0, b.x + b.w, 0); g.addColorStop(0, sel ? 'rgba(255,209,85,0.16)' : 'rgba(255,255,255,0.05)'); g.addColorStop(1, sel ? 'rgba(255,209,85,0.03)' : 'rgba(255,255,255,0.015)');
+  ctx.fillStyle = 'rgba(12,8,18,0.92)'; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.fillStyle = g; ctx.fillRect(b.x, b.y, b.w, b.h);
+  ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(b.x, b.y, b.w, 1);
+  ctx.fillStyle = `rgba(${rgb},${sel || strong ? 0.95 : 0.4})`; ctx.fillRect(b.x, b.y, 2, b.h);
+  if (sel) { ctx.fillStyle = 'rgba(255,209,85,0.9)'; ctx.fillRect(b.x, b.y - 1, b.w, 1); ctx.fillRect(b.x, b.y + b.h, b.w, 1); ctx.fillRect(b.x + b.w, b.y, 1, b.h); }
+}
+// One tab's plate (for tabs drawn by hand): the same look as tabButtons.
+function tabPlate(t, on) {
+  if (on) { const g = ctx.createLinearGradient(0, t.y, 0, t.y + t.h); g.addColorStop(0, 'rgba(255,209,85,0)'); g.addColorStop(1, 'rgba(255,209,85,0.2)'); ctx.fillStyle = g; ctx.fillRect(t.x, t.y, t.w, t.h); goldRule(t.x - 2, t.y + t.h - 1, t.w + 4, '255,209,85', false); ctx.fillStyle = 'rgba(255,209,85,0.9)'; ctx.fillRect(t.x + 3, t.y + t.h - 1, t.w - 6, 1); }
+  else { ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(t.x, t.y, t.w, t.h); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(t.x, t.y + t.h - 1, t.w, 1); }
+}
+// A picker: a glass field with the value in gold and a chevron at each end (tap to step).
+function pickerBtn(r, value, on = true) {
+  inset(r.x, r.y, r.w, r.h); ctx.fillStyle = on ? 'rgba(255,209,85,0.45)' : 'rgba(255,255,255,0.1)'; ctx.fillRect(r.x, r.y + r.h - 1, r.w, 1);
+  for (const [cx, d] of [[r.x + 8, -1], [r.x + r.w - 8, 1]]) { ctx.fillStyle = PAL.gold1; for (let k = 0; k < 4; k++) { ctx.fillRect(cx + d * k - (d < 0 ? 0 : 1) + (d < 0 ? 0 : 0), r.y + r.h / 2 - 4 + k, 1, 1); ctx.fillRect(cx + d * k, r.y + r.h / 2 + 3 - k, 1, 1); } }
+  text(fitText(value, r.w - 30, null, false), r.x + r.w / 2, r.y + Math.round(r.h / 2) - 4, on ? PAL.gold0 : PAL.stone2, { align: 'center' });
 }
 // Tabs: quiet text, and for the open one a glow rising from a gold underline.
 function tabButtons(tabs, on) {
@@ -2535,7 +2556,7 @@ function renderForge() {
 // The VALUES tab: every stat's range at each quality, for the chosen piece's rarity.
 function renderForgeValues(L, it) {
   const ri = it ? it.ri : 0, x0 = L.x0 + 10, w = L.pw - 20, small = { small: true, outline: null };
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(x0 - 4, L.y0 + 30, w + 8, L.ph - 38);
+  inset(x0 - 4, L.y0 + 30, w + 8, L.ph - 38);
   const keys = Object.keys(STAT), lw = Math.min(104, Math.floor(w * 0.26)), cw = Math.floor((w - lw) / QUALITY.length);
   const top = L.y0 + 34, rh = Math.max(10, Math.min(15, Math.floor((L.ph - 76) / keys.length)));
   QUALITY.forEach((Q, q) => { const cx = x0 + lw + q * cw + cw / 2; text(Q.name, cx, top, Q.col, { ...small, align: 'center' }); text(`${Q.p}%`, cx, top + 10, PAL.stone2, { ...small, align: 'center' }); });
@@ -2868,7 +2889,7 @@ function renderPlush() {
   Gm.tabs.forEach((r, i) => invButton(r, PLUSH_TABS[i].label, i === P.tab ? PAL.crimson3 : PAL.ink3, true));
   list.forEach((c, i) => {
     const r = Gm.row(i), own = plushOwn(P.tab, c.id), worn = plushWorn(P.tab) === c.id, sel = (P.sel ?? plushWorn(P.tab)) === c.id, locked = c.earn && !own;
-    ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+    rowPlate(r, !!(sel));
     const sw = plushSwatch(P.tab, c, r.x + 4, r.y + 3, Math.min(14, r.h - 6));
     const tx = r.x + 10 + sw, tag = worn ? 'WORN' : own ? 'OWNED' : locked ? 'EARN' : String(c.price), tw = textW(tag, 1, true) + (own || worn || locked ? 0 : 9);
     text(fitText(c.name, r.x + r.w - tx - tw - 14, c.short), tx, r.y + Math.round(r.h / 2) - 4, worn ? PAL.gold0 : own ? PAL.cloth0 : locked ? PAL.stone2 : PAL.stone1, small);
@@ -2932,8 +2953,7 @@ function renderCanonry() {
     text(String(TAL_NEED[ri]), L.x0 + 12 + L.lab / 2, y + (L.rh - 4) / 2 - 3, open ? PAL.stone1 : PAL.stone3, { align: 'center', small: true, outline: null });
     row.forEach((t, ci) => {
       const r = L.cell(ri, ci, row.length), n = tal(t.id), sel = game.talSel === t.id;
-      ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
-      ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+      rowPlate(r, !!(sel));
       if (n) { ctx.fillStyle = `rgba(${T0.rgb},0.22)`; ctx.fillRect(r.x, r.y, Math.round(r.w * n / t.max), r.h); }
       if (sel) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1); }
       const col = !open ? PAL.stone3 : n >= t.max ? PAL.gold1 : t.cap ? T0.col : PAL.cloth0;
@@ -2989,7 +3009,7 @@ function renderGift() {
   wrapW('CHOOSE A SET: TWO PIECES YOU LACK, AT YOUR BEST STATION.', L.pw - 28).slice(0, 2).forEach((l, i) => text(l, L.x0 + 14, L.y0 + 34 + i * 10, PAL.cloth1, { small: true, outline: null }));
   MAIN_SETS.forEach((id, i) => {
     const r = giftRow(L, i), S = VSETS[id], own = new Set(setOwned(id).map((it) => it.slot)).size;
-    ctx.fillStyle = PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+    rowPlate(r, false);
     sprC('ui', 'set_' + id, 0, r.x + 13, r.y + 13);
     text(S.name, r.x + 28, r.y + 4, RARITY[4].color);
     text(`${own}/6 OWNED`, r.x + 28, r.y + 15, PAL.stone2, { small: true, outline: null });
@@ -3073,8 +3093,8 @@ function renderYardPanel() {
   ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
   panelFrame(G0.x0, G0.y0, G0.pw, G0.ph, '_iron'); headerBar(G0.x0, G0.y0, G0.pw, 26);
   text('THE TRAINING YARD', G0.x0 + 12, G0.y0 + 9, PAL.gold1); sprC('ui', 'close', 0, G0.close.x, G0.close.y);
-  YARD_TABS.forEach(([name], i) => { const t = G0.tab(i), on = Y.tab === i; ctx.fillStyle = PAL.outline; ctx.fillRect(t.x - 1, t.y - 1, t.w + 2, t.h + 2); ctx.fillStyle = on ? PAL.ink3 : PAL.ink2; ctx.fillRect(t.x, t.y, t.w, t.h); if (on) { ctx.fillStyle = PAL.gold1; ctx.fillRect(t.x, t.y + t.h - 2, t.w, 2); } text(name, t.x + t.w / 2, t.y + 5, on ? PAL.gold1 : PAL.stone1, { ...small, align: 'center' }); });
-  yardList(Y.tab).forEach((id, i) => { const c = G0.cell(i), m = MON[id]; ctx.fillStyle = PAL.outline; ctx.fillRect(c.x - 1, c.y - 1, c.w + 2, c.h + 2); ctx.fillStyle = PAL.ink2; ctx.fillRect(c.x, c.y, c.w, c.h);
+  YARD_TABS.forEach(([name], i) => { const t = G0.tab(i), on = Y.tab === i; rowPlate(t, !!(on)); if (on) { ctx.fillStyle = PAL.gold1; ctx.fillRect(t.x, t.y + t.h - 2, t.w, 2); } text(name, t.x + t.w / 2, t.y + 5, on ? PAL.gold1 : PAL.stone1, { ...small, align: 'center' }); });
+  yardList(Y.tab).forEach((id, i) => { const c = G0.cell(i), m = MON[id]; inset(c.x, c.y, c.w, c.h);
     ctx.fillStyle = m.stratum === 3 ? PAL.bone2 : m.stratum === 2 ? PAL.teal2 : PAL.ink3; ctx.fillRect(c.x, c.y, 2, c.h);
     text(fitText(m.name.replace(/^THE /, ''), c.w - 10), c.x + 6, c.y + 4, PAL.cloth0, small); });
   if (Y.tab === YARD_REC) return renderYardRecords(G0);
@@ -3105,7 +3125,7 @@ function renderYardRecords(G0) {
   else { const h = G0.rec(0); text('BUILD', h.x + 6, h.y - 1, PAL.stone2, small); text('5 S BEST', col(0), h.y - 1, PAL.stone2, { ...small, align: 'right' }); YARD_TESTS.forEach((len, j) => text(`${len} S TEST`, col(j + 1), h.y - 1, PAL.stone2, { ...small, align: 'right' })); }
   R0.slice(0, 4).forEach((r, i) => {
     const c = G0.rec(i + 1), on = r.k === cur, picked = r.k === Y.recSel, rgb = SET_RGB[r.set];
-    ctx.fillStyle = PAL.outline; ctx.fillRect(c.x - 1, c.y - 1, c.w + 2, c.h + 2); ctx.fillStyle = on || picked ? PAL.ink3 : PAL.ink2; ctx.fillRect(c.x, c.y, c.w, c.h);
+    rowPlate(c, !!(on || picked));
     if (rgb) { ctx.fillStyle = `rgb(${rgb})`; ctx.fillRect(c.x, c.y, 2, c.h); }
     if (picked) { ctx.strokeStyle = PAL.blood0; ctx.lineWidth = 1; ctx.strokeRect(c.x + 0.5, c.y + 0.5, c.w - 1, c.h - 1); }
     text(r.set === 'mixed' ? 'NO SET' : SET_SHORT[r.set] || r.set.toUpperCase(), c.x + 6, c.y + 4, on ? PAL.gold1 : PAL.cloth0, small);
@@ -3169,7 +3189,7 @@ function renderCells() {
   text('THE PENITENT CELLS', L.x0 + 12, L.y0 + 9, PAL.gold1); sprC('ui', 'close', 0, L.close.x, L.close.y);
   MAIN_SETS.forEach((id, i) => {
     const r = cellRow(L, i), C = CELLS[id], worn = sb(id, 6), done = cellDone(id);
-    ctx.fillStyle = PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+    rowPlate(r, false);
     sprC('ui', 'set_' + id, 0, r.x + 13, r.y + 14);
     text(VSETS[id].name.replace(/^THE /, ''), r.x + 28, r.y + 4, done ? PAL.gold1 : RARITY[4].color);
     text(done ? 'CLEARED. BANNER EARNED.' : `${C.line} ${C.goal} IN ${CELL_TIME} S.`, r.x + 28, r.y + 16, PAL.stone1, { small: true, outline: null });
@@ -3284,31 +3304,24 @@ function renderRites() {
   ctx.fillStyle = 'rgba(11,7,16,0.8)'; ctx.fillRect(0, 0, W, H);
   panelFrame(L.x0, L.y0, L.pw, L.ph);
   headerBar(L.x0, L.y0, L.pw, 26);
-  ctx.fillStyle = PAL.gold3; ctx.fillRect(L.x0, L.y0 + 26, L.pw, 1);
-  text('RITES', L.x0 + 12, L.y0 + 9, PAL.gold1);
+  text('RITES', L.x0 + 12, L.y0 + 9, PAL.gold1, { glow: true });
   const nx = nextRite(), sub = focus === 'passive' ? 'PASSIVES ARE ALWAYS ON. SOME ARE EARNED BY DEEDS.' : nx ? `NEXT: ${RITE_BY[nx.id].name} AT LEVEL ${nx.lv}` : 'CHOOSE ONE PER SLOT. EACH SUITS A VESTMENT SET.';
   text(fitText(sub, L.pw - 100), L.x0 + 64, L.y0 + 10, focus !== 'passive' && nx ? PAL.flame1 : PAL.stone1, small);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
   // Slot tabs, each with the rite chosen for it.
   RITE_SLOTS.forEach(([slot, label], c) => {
     const t = L.tab(c), on = slot === focus;
-    ctx.fillStyle = PAL.outline; ctx.fillRect(t.x - 1, t.y - 1, t.w + 2, t.h + 2);
-    ctx.fillStyle = on ? PAL.ink3 : PAL.ink2; ctx.fillRect(t.x, t.y, t.w, t.h);
-    if (on) { ctx.fillStyle = PAL.gold1; ctx.fillRect(t.x, t.y + t.h - 2, t.w, 2); }
+    tabPlate(t, on);
     if (textW(label, 1, true) <= t.w - 28) { riteSocket(t.x + 11, t.y + 11, 8, riteOf(slot).icon, 0.5, on ? PAL.gold2 : PAL.ink3, on ? 1 : 0.7); text(label, t.x + 23, t.y + 8, on ? PAL.gold1 : PAL.stone1, small); }
     else { const sc = Math.max(0.75, Math.min(1, (t.w - 6) / textW(label, 1, true))); text(label, t.x + t.w / 2, t.y + 8 + (1 - sc) * 4, on ? PAL.gold1 : PAL.stone1, { ...small, sc, align: 'center' }); }
   });
   // The fourth tab: passive skills.
-  { const t = L.tab(3), on = focus === 'passive'; ctx.fillStyle = PAL.outline; ctx.fillRect(t.x - 1, t.y - 1, t.w + 2, t.h + 2); ctx.fillStyle = on ? PAL.ink3 : PAL.ink2; ctx.fillRect(t.x, t.y, t.w, t.h);
-    if (on) { ctx.fillStyle = PAL.gold1; ctx.fillRect(t.x, t.y + t.h - 2, t.w, 2); } text(fitText('PASSIVES', t.w - 6, 'PASSIVE'), t.x + t.w / 2, t.y + 8, on ? PAL.gold1 : PAL.stone1, { ...small, align: 'center' }); }
+  { const t = L.tab(3), on = focus === 'passive'; tabPlate(t, on);
+    text(fitText('PASSIVES', t.w - 6, 'PASSIVE'), t.x + t.w / 2, t.y + 8, on ? PAL.gold1 : PAL.stone1, { ...small, align: 'center' }); }
   if (focus === 'passive') return renderPassives(L);
   riteList(focus).forEach((r, i) => {
     const b = L.card(0, i), sel = riteOf(focus).id === r.id, syn = sb(r.set, 2) || sbw(r.set), rgb = SET_RGB[r.set];
-    ctx.fillStyle = PAL.outline; ctx.fillRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2);
-    ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(b.x, b.y, b.w, b.h);
-    ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(b.x, b.y, b.w, 2);
-    ctx.fillStyle = `rgba(${rgb},${syn || sel ? 0.95 : 0.45})`; ctx.fillRect(b.x, b.y, 3, b.h);
-    if (sel) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 2; ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2); }
+    rowPlate(b, sel, rgb, syn);
     const cy = b.y + Math.round(b.h / 2), tx = b.x + 34, tw = b.x + b.w - 6 - tx;
     const sr = Math.min(11, Math.floor(b.h / 2) - 2); riteSocket(b.x + 18, cy, sr, r.icon, sr / 11 * 0.72, sel ? PAL.gold2 : syn ? `rgb(${rgb})` : PAL.ink3, sel ? 1 : 0.75);
     text(fitText(r.name, tw - 34), tx, cy - 10, sel ? PAL.gold1 : PAL.cloth0, small);
@@ -3323,10 +3336,9 @@ function renderRites() {
 function renderRiteDetail(L, slot) {
   const D = L.detail, r = riteOf(slot), M = RITE_MORE[r.id], rgb = SET_RGB[r.set], small = { small: true, outline: null };
   const syn = sb(r.set, 2) || sbw(r.set), worn = G.sets[r.set] || 0, arms = G.wsets[r.set] >= 2;
-  ctx.fillStyle = PAL.outline; ctx.fillRect(D.x - 1, D.y - 1, D.w + 2, D.h + 2);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(D.x, D.y, D.w, D.h);
-  ctx.fillStyle = `rgba(${rgb},0.16)`; ctx.fillRect(D.x, D.y, D.w, 44);
-  ctx.fillStyle = `rgb(${rgb})`; ctx.fillRect(D.x, D.y + 44, D.w, 1);
+  inset(D.x, D.y, D.w, D.h, rgb);
+  { const g = ctx.createLinearGradient(0, D.y, 0, D.y + 44); g.addColorStop(0, `rgba(${rgb},0.22)`); g.addColorStop(1, `rgba(${rgb},0.04)`); ctx.fillStyle = g; ctx.fillRect(D.x + 1, D.y + 1, D.w - 2, 43); }
+  goldRule(D.x + 4, D.y + 44, D.w - 8, rgb, false);
   riteSocket(D.x + 21, D.y + 22, 14, r.icon, 0.82, PAL.gold2);
   const big = textW(r.name) <= D.w - 46; text(big ? r.name : fitText(r.name, D.w - 46), D.x + 40, D.y + (big ? 8 : 10), PAL.gold1, big ? {} : small);
   const cd = r.cd ? `${RITE_SLOTS.find((s) => s[0] === slot)[1]}, ${(r.cd * G.cdrK * (r.id === 'censer' && G.powers.has('censerPlus') ? 0.6 : 1)).toFixed(1)} S` : 'CHARGED BY ZEAL';
@@ -3334,7 +3346,7 @@ function renderRiteDetail(L, slot) {
   let y = D.y + 52;
   const para = (s, col, step = 11) => { for (const l of wrapW(s, D.w - 16, true)) { text(l, D.x + 8, y, col, small); y += step; } };
   para(r.text, PAL.cloth0);
-  y += 5; ctx.fillStyle = PAL.ink3; ctx.fillRect(D.x + 8, y, D.w - 16, 1); y += 7;
+  y += 5; goldRule(D.x + 8, y, D.w - 16, '255,209,85', false); y += 7;
   sprC('ui', 'set_' + r.set, 0, D.x + 16, y + 6);
   text(fitText(VSETS[r.set].name, D.w - 36), D.x + 30, y + 3, `rgb(${rgb})`, small); y += 17;
   para(M.syn, syn ? PAL.cloth1 : PAL.stone2);
@@ -3382,7 +3394,7 @@ function renderPassives(L) {
     if (isSel) { ctx.strokeStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.lineWidth = 1; ctx.strokeRect(b.x - 1.5, b.y - 1.5, b.w + 3, b.h + 3); }
   });
   // The chosen passive in full.
-  const D = L.detail; ctx.fillStyle = PAL.outline; ctx.fillRect(D.x - 1, D.y - 1, D.w + 2, D.h + 2); ctx.fillStyle = PAL.ink2; ctx.fillRect(D.x, D.y, D.w, D.h);
+  const D = L.detail; inset(D.x, D.y, D.w, D.h);
   let y = D.y + 10;
   if (!sel) { for (const l of wrapW('TAP A PASSIVE TO READ IT. PASSIVES ARE ALWAYS ON.', D.w - 16, true)) { text(l, D.x + 8, y, PAL.stone1, small); y += 11; } y += 6;
     for (const l of wrapW(`SLOTS OPEN AT SAINT LEVEL ${PASSIVE_AT.join(', ')}. YOU ARE LEVEL ${saintLv()}.`, D.w - 16, true)) { text(l, D.x + 8, y, PAL.stone2, small); y += 11; } return; }
@@ -3463,7 +3475,7 @@ function renderCenser() {
   // Left: what it is, and what it does now.
   const X = L.x0 + 10, w = L.lw;
   ctx.fillStyle = PAL.outline; ctx.fillRect(X - 1, L.y0 + 33, w + 2, L.ph - 40);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(X, L.y0 + 34, w, L.ph - 42);
+  inset(X, L.y0 + 34, w, L.ph - 42);
   ctx.fillStyle = 'rgba(255,122,31,0.14)'; ctx.fillRect(X, L.y0 + 34, w, 58);
   const cx = X + w / 2, cy = L.y0 + 62;
   ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(cx, cy, 23, 0, Math.PI * 2); ctx.fill();
@@ -3483,8 +3495,7 @@ function renderCenser() {
   // Right: the twelve upgrades.
   CENSER_UP.forEach((u, i) => {
     const r = L.row(i), on = censerUp(u.id), have = Math.min(u.need, lifeOf(u.stat)), k = have / u.need;
-    ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
-    ctx.fillStyle = on ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+    rowPlate(r, !!(on));
     ctx.fillStyle = on ? PAL.ember1 : PAL.ink3; ctx.fillRect(r.x, r.y, 3, r.h);
     const kn = (v) => (v >= 10000 ? `${Math.floor(v / 1000)}K` : v >= 1000 ? `${+(v / 1000).toFixed(1)}K` : `${v}`), cnt = on ? 'LIT' : `${kn(have)}/${kn(u.need)}`;
     text(fitText(u.name, r.w - 18 - textW(cnt, 1, true)), r.x + 8, r.y + 4, on ? PAL.gold1 : PAL.cloth1, small);
@@ -3539,7 +3550,7 @@ function renderBoard() {
   text(`EACH PAYS ${150 * il} GOLD, ${250 * il} XP AND A PIECE OF GEAR`, L.x0 + 14, L.y0 + 30, PAL.stone1, { small: true, outline: null });
   B.list.forEach((b, i) => {
     const r = bountyRow(L, i), D = BOUNTIES[b.id], done = b.have >= b.need;
-    ctx.fillStyle = PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+    rowPlate(r, false);
     text(D.text(b.need), r.x + 8, r.y + 5, b.claimed ? PAL.stone2 : done ? PAL.gold1 : PAL.cloth0);
     const bw = r.w - 150; ctx.fillStyle = PAL.outline; ctx.fillRect(r.x + 7, r.y + 22, bw + 2, 7); ctx.fillStyle = PAL.ink3; ctx.fillRect(r.x + 8, r.y + 23, bw, 5);
     ctx.fillStyle = done ? PAL.gold1 : PAL.blood1; ctx.fillRect(r.x + 8, r.y + 23, Math.round(bw * b.have / b.need), 5);
@@ -3608,7 +3619,7 @@ function renderPool() {
   if (Wg) {
     // A wager stands: show it, and let it be withdrawn.
     const y = Gm.st.y, pay = Math.round(Wg.stake * Wg.k);
-    ctx.fillStyle = PAL.ink2; ctx.fillRect(Gm.x, y, Gm.w, Gm.go.y - y - 10);
+    inset(Gm.x, y, Gm.w, Gm.go.y - y - 10);
     text('YOUR WAGER', Gm.x + 8, y + 7, PAL.gold1);
     [['STATION', DIFF[Wg.diff].name, DIFF[Wg.diff].col], ['THE MARK', WAGER_MARKS[Wg.mark].name, PAL.cloth0], ['STAKE', `${Wg.stake} GOLD`, PAL.gold1], ['ODDS', `X${Wg.k}`, PAL.flame1], ['IT PAYS', `${pay} GOLD`, PAL.gold0]]
       .forEach(([a, b, c], j) => { text(a, Gm.x + 8, y + 24 + j * 13, PAL.stone1, small); text(b, Gm.x + Gm.w - 8, y + 24 + j * 13, c, { ...small, align: 'right' }); });
@@ -3623,7 +3634,7 @@ function renderPool() {
   text(`UP TO ${wagerCap(P.i)} HERE`, Gm.st.x - 8, Gm.sk.y + 6, PAL.stone2, { ...small, align: 'right' });
   WAGER_MARKS.forEach((M, k) => {
     const r = Gm.mark(k), sel = P.mark === k, odds = wagerOdds(P.i, k);
-    ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+    rowPlate(r, !!(sel));
     const my = r.y + Math.round(r.h / 2);
     text(M.name, r.x + 8, M.text ? my - 9 : my - 4, sel ? PAL.gold0 : PAL.cloth0); if (M.text) text(M.text, r.x + 8, my + 3, PAL.stone2, small);
     text(`X${odds}`, r.x + r.w - 92, my - 4, PAL.flame1, { align: 'right' });
@@ -3698,7 +3709,7 @@ function renderRoll() {
   text('THE VIGIL ROLL', L.x0 + 12, L.y0 + 9, PAL.rose1 || PAL.gold1); sprC('ui', 'close', 0, L.close.x, L.close.y);
   // Left: the best kept Vigils.
   const lw = Math.floor((L.pw - 30) * 0.42), lx = L.x0 + 12, top = L.y0 + 34, bot = L.y0 + L.ph - 24;
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(lx, top, lw, bot - top); ctx.fillStyle = PAL.ink3; ctx.fillRect(lx, top, lw, 13);
+  inset(lx, top, lw, bot - top, '255,209,85');
   text('BEST KEPT VIGILS', lx + 6, top + 3, PAL.gold1, small);
   const roll = (SAVE.vigilRoll && SAVE.vigilRoll.length) ? SAVE.vigilRoll : SAVE.vigilBest ? [{ L: SAVE.vigilBest, left: null }] : [];
   const rh = Math.max(14, Math.min(22, Math.floor((bot - top - 18) / 5)));
@@ -3712,7 +3723,7 @@ function renderRoll() {
   });
   // Right: the halo stands, five to a row.
   const rx = lx + lw + 6, rw = L.x0 + L.pw - 12 - rx;
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(rx, top, rw, bot - top); ctx.fillStyle = PAL.ink3; ctx.fillRect(rx, top, rw, 13);
+  inset(rx, top, rw, bot - top, '255,209,85');
   const n = EARNED.filter((q) => own.includes(`h:${q.id}`)).length;
   text('EARNED HALOS', rx + 6, top + 3, PAL.gold1, small); text(`${n} / ${EARNED.length}`, rx + rw - 6, top + 3, PAL.stone1, { ...small, align: 'right' });
   const per = Math.ceil(EARNED.length / 2), cw = Math.floor(rw / per), ch = Math.floor((bot - top - 16) / 2);
@@ -3825,8 +3836,7 @@ function renderAltar() {
   }
   list.slice(game.altarPage * Gm.n, (game.altarPage + 1) * Gm.n).forEach((it, i) => {
     const r = Gm.row(i), known = A.known.includes(it.power), sel = game.altarSel === it.id;
-    ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
-    ctx.fillStyle = sel ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+    rowPlate(r, !!(sel));
     ctx.fillStyle = known ? PAL.ink3 : RARITY[3].color; ctx.fillRect(r.x, r.y, 3, r.h);
     if (sel) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 2; ctx.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2); }
     itemIcon(it, r.x + 14, r.y + r.h / 2, { alpha: known ? 0.45 : 1 });
@@ -3846,8 +3856,7 @@ function renderAltar() {
   ALTAR_SOCKETS.forEach(([k, label, slots], i) => {
     const b = altarSock(L, i), id = A.sockets[k], P = id && POWERS[id], Lg = id && LEGENDS.find((q) => q.id === id);
     const known = A.known.filter((q) => slots.includes(LEGENDS.find((x) => x.id === q).slot)).length, all = altarPickLegends(k).length;
-    ctx.fillStyle = PAL.outline; ctx.fillRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2);
-    ctx.fillStyle = PAL.ink2; ctx.fillRect(b.x, b.y, b.w, b.h);
+    inset(b.x, b.y, b.w, b.h);
     ctx.fillStyle = Lg ? RARITY[3].color : PAL.ink3; ctx.fillRect(b.x, b.y, 3, b.h);
     text(label, b.x + 8, b.y + 4, PAL.gold1, { small: true });
     text(`${known}/${all}`, b.x + b.w - 76, b.y + 5, PAL.stone2, { ...small, align: 'right' });
@@ -3899,8 +3908,7 @@ function renderAltarPick() {
     if (sel) { ctx.strokeStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.lineWidth = 2; ctx.strokeRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4); }
   });
   const D = G.det, L = list.find((q) => q.id === P.sel);
-  ctx.fillStyle = PAL.outline; ctx.fillRect(D.x - 1, D.y - 1, D.w + 2, D.h + 2);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(D.x, D.y, D.w, D.h);
+  inset(D.x, D.y, D.w, D.h);
   ctx.fillStyle = 'rgba(255,122,31,0.12)'; ctx.fillRect(D.x, D.y, D.w, 14);
   if (!L) { text('TAP A POWER TO READ IT.', D.x + D.w / 2, D.y + 26, PAL.stone1, { ...small, align: 'center' }); }
   else {
@@ -3924,8 +3932,7 @@ function altarPickTap(x, y) {
 }
 function renderAltarDetail(L, Gm, A, C, small) {
   const D = Gm.det, it = altarFodder().find((q) => q.id === game.altarSel);
-  ctx.fillStyle = PAL.outline; ctx.fillRect(D.x - 1, D.y - 1, D.w + 2, D.h + 2);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(D.x, D.y, D.w, D.h);
+  inset(D.x, D.y, D.w, D.h);
   ctx.fillStyle = 'rgba(255,122,31,0.12)'; ctx.fillRect(D.x, D.y, D.w, 36);
   if (!it) {
     text('TAP A PIECE TO READ ITS POWER', D.x + D.w / 2, D.y + 8, PAL.stone1, { ...small, align: 'center' });
@@ -4004,7 +4011,7 @@ function renderAltarFx(L, Gm) {
   const fade = t > ALTAR_FX_T ? 1 - (t - ALTAR_FX_T) / 0.6 : 1;
   ctx.save(); ctx.globalAlpha = fade;
   ctx.fillStyle = PAL.ink1; ctx.fillRect(X, top, Wd, bot - top);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(X + 4, top + 4, Wd - 8, bot - top - 8);
+  inset(X + 4, top + 4, Wd - 8, bot - top - 8);
   const rise = Math.min(1, t / 0.6), hot = F.kind === 'ash' ? Math.max(0, 1 - (t - 0.6) / 0.6) : 1;
   // Flames: blocky tongues in palette steps, rising from the floor of the panel.
   // Overlapping tongues that narrow to a point, outer red to a white-gold core.
@@ -4091,7 +4098,7 @@ function renderSettings() {
   ctx.fillStyle = 'rgba(11,7,16,0.78)'; ctx.fillRect(0, 0, W, H);
   panelFrame(L.x0, L.y0, L.pw, L.ph);
   headerBar(L.x0, L.y0, L.pw, 22); text('SETTINGS', L.x0 + 10, L.y0 + 7, PAL.gold1); sprC('ui', 'close', 0, L.close.x, L.close.y);
-  OPT_ROWS.forEach((r, i) => { const b = L.row(i); text(r.name, L.x0 + 14, b.y + Math.floor(b.h / 2) - 4, PAL.cloth0); invButton(b, `< ${r.show(opt(r.k))} >`, PAL.crimson3, true); });
+  OPT_ROWS.forEach((r, i) => { const b = L.row(i); text(r.name, L.x0 + 14, b.y + Math.floor(b.h / 2) - 4, PAL.cloth0); pickerBtn(b, r.show(opt(r.k))); });
 }
 function settingsTap(x, y) {
   const L = setLayout();
@@ -4254,7 +4261,7 @@ function renderDev() {
   // Tabs, then one line saying what the tab is for.
   DEV_TABS.forEach((t, i) => {
     const r = { x: L.x0 + 12 + i * L.tabW, y: L.tabY, w: L.tabW - 4, h: 18 }, on = i === DEV.tab;
-    ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); ctx.fillStyle = on ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
+    rowPlate(r, !!(on));
     if (on) { ctx.fillStyle = PAL.flame1; ctx.fillRect(r.x, r.y + r.h - 2, r.w, 2); }
     text(t, r.x + r.w / 2, r.y + 5, on ? PAL.flame1 : PAL.stone1, { ...small, align: 'center' });
   });
@@ -4671,7 +4678,7 @@ function renderDescent() {
   const room = L.go.y - 6 - top, full = room >= 144 + 44, foot = full ? 44 : om.length ? 22 : 0, colH = Math.min(144, room - foot), rh = Math.round(9 * TEXT_K), nRows = Math.floor((colH - 15) / rh); // rows space out with the text size; the last ones drop first
   const goldK = df.gold * (1 + G.gold / 100);
   const row = (c, i, label, val, col = PAL.cloth0) => { const y = top + 15 + i * rh; text(fitText(label, cw - 16 - textW(val, 1, true)), cx(c) + 6, y, PAL.stone1, { small: true, outline: null }); text(val, cx(c) + cw - 6, y, col, { small: true, outline: null, align: 'right' }); };
-  const head = (c, t) => { ctx.fillStyle = PAL.ink2; ctx.fillRect(cx(c), top, cw, colH); ctx.fillStyle = PAL.ink3; ctx.fillRect(cx(c), top, cw, 12); text(t, cx(c) + 6, top + 3, PAL.gold1, { small: true, outline: null }); };
+  const head = (c, t) => { inset(cx(c), top, cw, colH, '255,209,85'); text(t, cx(c) + 6, top + 3, PAL.gold1, { small: true, outline: null }); };
   const x = (v) => v >= 100 ? `X${Math.round(v)}` : `X${+v.toFixed(1)}`;
   const red = (v) => v > 1 ? PAL.blood0 : PAL.cloth0;
   head(0, 'THE MAP');
@@ -8201,7 +8208,7 @@ function renderPause() {
   const names = ws.map(([w, n]) => `${heroText(w.name)} ${'I'.repeat(n)}`), nw = Math.max(0, ...names.map((t) => textW(t, 1, true))) + 14;
   const cols = Math.max(1, Math.min(ws.length > 8 ? 3 : 2, Math.floor((W - 24) / Math.max(1, nw)))), rows = Math.ceil(ws.length / cols), rh = 10;
   const listH = ws.length ? 14 + rows * rh : 0, blockH = 34 + (ws.length ? 10 + listH : 0), top = Math.max(8, Math.round((bottom - blockH) / 2));
-  text('PAUSED', W / 2, top, PAL.gold1, { sc: 3, align: 'center' });
+  text('PAUSED', W / 2, top, PAL.gold1, { sc: 3, align: 'center', glow: true }); goldRule(W / 2 - 90, top + 24, 180);
   text('TAP TO RESUME', W / 2, top + 26, PAL.cloth1, { align: 'center' });
   if (ws.length) {
     const ly = top + 44, x0 = Math.round(W / 2 - (cols * nw) / 2);
@@ -8324,7 +8331,7 @@ function renderReceipt(survived = false) {
 // What hurt most, beside the receipt after a death.
 function renderRecap(R, x, y, w, h) {
   const small = { small: true, outline: null };
-  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, h + 2); ctx.fillStyle = PAL.ink2; ctx.fillRect(x, y, w, h);
+  inset(x, y, w, h);
   ctx.fillStyle = PAL.ink3; ctx.fillRect(x, y, w, 16); text('WHAT HURT MOST', x + 8, y + 5, PAL.gold1, small);
   R.top.forEach((q, i) => {
     const yy = y + 24 + i * 28;
@@ -8849,6 +8856,7 @@ let UI_PRESS = null;
 const hexRgb = (h) => { if (!h || h[0] !== '#') return '120,110,140'; const n = parseInt(h.slice(1), 16); return `${n >> 16 & 255},${n >> 8 & 255},${n & 255}`; };
 const shade = (rgb, k) => rgb.split(',').map((v) => Math.max(0, Math.min(255, Math.round(+v * k)))).join(',');
 function invButton(r, label, col, on = true) {
+  if (typeof label === 'string' && label.startsWith('< ') && label.endsWith(' >')) { pickerBtn(r, label.slice(2, -2), on); return; } // every '< X >' is a picker
   const pressed = on && UI_PRESS && game.real - UI_PRESS.t < 0.14 && UI_PRESS.x >= r.x && UI_PRESS.x <= r.x + r.w && UI_PRESS.y >= r.y && UI_PRESS.y <= r.y + r.h;
   const x = r.x, y = r.y + (pressed ? 1 : 0), w = r.w, h = r.h, c = hexRgb(col);
   ctx.fillStyle = PAL.outline; ctx.fillRect(x, y - 1, w, h + 2); ctx.fillRect(x - 1, y, w + 2, h);
