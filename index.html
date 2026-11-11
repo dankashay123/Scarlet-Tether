@@ -5706,6 +5706,9 @@ let vparts = [];
 // angle, on the art's grid) in an FXR ramp, with soft glow underneath:
 // muzzle flashes, hit bursts, mace smears, ground shockwaves, floor cracks.
 let pfx = [];
+// Round 64: effects skip the near-white top of a ramp (average above 240), so holy and gold light reads as colour, not glare.
+const DIMR = {};
+const dimR = (name) => DIMR[name] || (DIMR[name] = (() => { const a = FXR[name] || FXR.gold, i = a.findIndex((c) => c.split(',').reduce((t, v) => t + +v, 0) / 3 <= 240); return a.slice(Math.max(0, Math.min(i, a.length - 2))); })());
 const PFX_CAP = () => (LOWFX ? 40 : 160);
 function addPfx(o) { if (pfx.length < PFX_CAP()) pfx.push({ t: 0, ...o }); }
 // The shot colour of this hero's set (or the Plush stall's trail).
@@ -5730,7 +5733,7 @@ function drawPfx(ground) {
   }
   for (const f of pfx) {
     if (!!f.ground !== ground) continue;
-    const k = f.t / f.max, R = FXR[f.ramp] || FXR.gold;
+    const k = f.t / f.max, R = dimR(f.ramp);
     if (f.kind === 'muzzle') { // a star flash at the bow's tip, longest along the shot
       const L = 16 * Math.sin(Math.min(1, k * 1.6) * Math.PI);
       pxRay(f.x, f.y, f.a, L * 1.4, R, 2); pxRay(f.x, f.y, f.a + 0.7, L * 0.6, R); pxRay(f.x, f.y, f.a - 0.7, L * 0.6, R); pxRay(f.x, f.y, f.a + Math.PI, L * 0.35, R);
@@ -5762,8 +5765,8 @@ function drawPfx(ground) {
       for (let i = -2; i <= 2; i++) pxRay(f.x + i * f.r * 0.22, f.y - 2 - Math.abs(i) * 2, -Math.PI / 2, up * (1 - Math.abs(i) * 0.22), R);
     }
     if (f.kind === 'beam') { // a pillar of light dropping from above, narrowing as it fades
-      const w = Math.round(8 * (1 - k)), top = f.y - 140;
-      for (let y = top; y < f.y; y += 2) for (let dx = -w; dx <= w; dx += 2) px2(f.x + dx, y, R[Math.abs(dx) < w * 0.35 ? 0 : Math.abs(dx) < w * 0.7 ? 1 : 2], 0.9);
+      const w = Math.round(6 * (1 - k)), top = f.y - 140;
+      for (let y = top; y < f.y; y += 2) for (let dx = -w; dx <= w; dx += 2) px2(f.x + dx, y, R[Math.abs(dx) < w * 0.35 ? 0 : Math.abs(dx) < w * 0.7 ? 1 : 2], 0.6 * (y - top) / (f.y - top) + 0.15);
     }
     if (f.kind === 'flames') { // a ring of pixel flame tongues
       const fade = k < 0.8 ? 1 : 1 - (k - 0.8) / 0.2, n = LOWFX ? 10 : 22, r = f.r * Math.min(1, 0.4 + k * 3);
@@ -5771,20 +5774,20 @@ function drawPfx(ground) {
     }
     if (f.kind === 'crack') { // a crack in the floor that cools from glowing to dark, then fades
       const glowK = Math.max(0, 1 - f.t / 0.5), a = f.t > f.max - 0.8 ? (f.max - f.t) / 0.8 : 1;
-      for (const seg of f.segs) for (const [x, y] of seg) px2(x, y, glowK > 0 ? R[Math.min(4, 2 + Math.floor((1 - glowK) * 3))] : '42,34,54', a * (glowK > 0 ? 1 : 0.75));
+      for (const seg of f.segs) for (const [x, y] of seg) px2(x, y, glowK > 0 ? R[Math.min(R.length - 1, 2 + Math.floor((1 - glowK) * 3))] : '42,34,54', a * (glowK > 0 ? 1 : 0.75));
     }
   }
 }
 function drawPfxGlow() {
   for (const f of pfx) {
-    const k = f.t / f.max, R = FXR[f.ramp] || FXR.gold;
+    const k = f.t / f.max, R = dimR(f.ramp);
     if (f.kind === 'muzzle') glow(f.x, f.y, 16 * (1 - k), `rgba(${R[2]},0.7)`);
     if (f.kind === 'hit' && !f.small) glow(f.x, f.y, (f.crit ? 24 : 12) * (1 - k), `rgba(${R[2]},${f.crit ? 0.55 : 0.35})`);
     if (f.kind === 'smear' && k < 0.7) glow(f.x + Math.cos(f.a) * f.r * 0.8, f.y + Math.sin(f.a) * f.r * 0.5, 22 * (1 - k), `rgba(${R[2]},0.45)`);
-    if (f.kind === 'quake' && k < 0.5) glow(f.x, f.y, 24 * (1 - k * 2), `rgba(${R[3]},0.35)`);
-    if (f.kind === 'rune') glow(f.x, f.y - f.r * 0.6, f.r * 1.2 * (1 - k), `rgba(${R[2]},0.45)`);
-    if (f.kind === 'beam') glow(f.x, f.y - 40, 40 * (1 - k), `rgba(${R[1]},0.6)`);
-    if (f.kind === 'flames' && game.real % 0.1 < 0.05) glow(f.x, f.y, f.r * 1.1, `rgba(${R[3]},0.18)`);
+    if (f.kind === 'quake' && k < 0.5) glow(f.x, f.y, 24 * (1 - k * 2), `rgba(${R[Math.min(3, R.length - 1)]},0.35)`);
+    if (f.kind === 'rune') glow(f.x, f.y - f.r * 0.6, f.r * 1.2 * (1 - k), `rgba(${R[2]},0.3)`);
+    if (f.kind === 'beam') glow(f.x, f.y - 40, 32 * (1 - k), `rgba(${R[1]},0.35)`);
+    if (f.kind === 'flames' && game.real % 0.1 < 0.05) glow(f.x, f.y, f.r * 1.1, `rgba(${R[Math.min(3, R.length - 1)]},0.18)`);
     if (f.kind === 'crack' && f.t < 0.5) for (const seg of f.segs) { const [x, y] = seg[seg.length >> 1]; glow(x, y, 8, `rgba(${R[2]},${0.5 * (1 - f.t / 0.5)})`); }
   }
 }
@@ -5807,7 +5810,7 @@ function pfxSkill(f) {
   if (f.t < 0) return;
   const R = f.ramp && FXR[f.ramp] ? f.ramp : KIND_RAMP[f.kind] || 'gold';
   if (f.kind === 'nova' && !f.pq) { f.pq = 1; addPfx({ kind: 'quake', x: f.x, y: f.y, r: f.r * 1.1, max: 0.45, ramp: R, ground: true }); pfxHit(f.x, f.y - 10, true, R); if (f.r > 60) pfxCrack(f.x, f.y, 5, R); }
-  if (f.kind === 'pillar' && f.hit && !f.pq) { f.pq = 1; addPfx({ kind: 'beam', x: f.x, y: f.y, max: 0.32, ramp: 'holy' }); pfxHit(f.x, f.y - 10, true, 'holy'); addPfx({ kind: 'quake', x: f.x, y: f.y, r: 44, max: 0.35, ramp: 'holy', ground: true }); pfxCrack(f.x, f.y, 4, 'holy'); }
+  if (f.kind === 'pillar' && f.hit && !f.pq) { f.pq = 1; addPfx({ kind: 'beam', x: f.x, y: f.y, max: 0.32, ramp: 'gold' }); pfxHit(f.x, f.y - 10, false, 'gold'); addPfx({ kind: 'quake', x: f.x, y: f.y, r: 44, max: 0.35, ramp: 'gold', ground: true }); pfxCrack(f.x, f.y, 4, 'gold'); }
   if ((f.kind === 'brand' || f.kind === 'choir') && f.hit && !f.pq) { f.pq = 1; addPfx({ kind: 'quake', x: f.x, y: f.y, r: f.kind === 'choir' ? f.r : 70, max: 0.45, ramp: R, ground: true }); pfxHit(f.x, f.y - 8, true, R); pfxCrack(f.x, f.y, 6, R); }
   if (f.kind === 'blaze' && !f.pq) { f.pq = 1; addPfx({ kind: 'flames', x: f.x, y: f.y, r: f.r, max: Math.max(0.5, f.max), ramp: 'fire' }); addPfx({ kind: 'quake', x: f.x, y: f.y, r: f.r, max: 0.4, ramp: 'fire', ground: true }); }
   if (f.kind === 'crescent' && !f.pq) { f.pq = 1; addPfx({ kind: 'smear', x: f.x, y: f.y, a: f.dir > 0 ? 0 : Math.PI, arc: 1.7, r: f.r * 0.8, max: 0.3, ramp: 'holy' }); }
@@ -7384,7 +7387,7 @@ function render() {
     ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -f.w + 3, -Math.floor(f.h / 2), f.w, f.h); ctx.restore();
   }
   // Chunky pixel trails behind the bolts, cooling down the shot's ramp (round 60).
-  { const R = FXR[shotRamp()], st = LOWFX ? 4 : 2; for (const b of bolts) if (b.trail && b.trail.length) { const pts = [[b.x, b.y], ...b.trail], tot = pts.length - 1; for (let i = 0; i < tot; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], L = Math.hypot(x1 - x0, y1 - y0); for (let d = 0; d < L; d += st) { const u = (i + d / Math.max(1, L)) / tot; px2(x0 + (x1 - x0) * d / L, y0 + (y1 - y0) * d / L, R[Math.min(5, 1 + Math.floor(u * 4))], 1 - u * 0.75); } } } }
+  { const R = dimR(shotRamp()), st = LOWFX ? 4 : 2; for (const b of bolts) if (b.trail && b.trail.length) { const pts = [[b.x, b.y], ...b.trail], tot = pts.length - 1; for (let i = 0; i < tot; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], L = Math.hypot(x1 - x0, y1 - y0); for (let d = 0; d < L; d += st) { const u = (i + d / Math.max(1, L)) / tot; px2(x0 + (x1 - x0) * d / L, y0 + (y1 - y0) * d / L, R[Math.min(R.length - 1, Math.floor(u * 4))], 1 - u * 0.75); } } } }
   for (const f of fxs) {
     if (f.skip && f.t * f.fps < 1) continue;
     const i = Math.min(f.n - 1, Math.floor(f.t * f.fps) + (f.skip || 0));
@@ -7440,7 +7443,7 @@ function render() {
     glow(b.x, b.y, b.crit ? 14 : 9, `rgba(${c},${b.crit ? 0.6 : 0.35})`);
   }
   for (const p of parts) if (p.kind === 'spark') glow(p.x, p.y, 4, 'rgba(255,192,74,0.5)');
-  for (const f of fxs) if (f.anim === 'impact' && !f.small) glow(f.x, f.y, 20 * (1 - f.t * f.fps / f.n), 'rgba(255,244,176,0.6)');
+  for (const f of fxs) if (f.anim === 'impact' && !f.small) glow(f.x, f.y, 18 * (1 - f.t * f.fps / f.n), 'rgba(255,209,85,0.35)');
   if (game.aim && game.aim.on && game.state === 'play') renderAim();
   for (const r of rings) {
     const k = r.t / r.max;
@@ -7745,10 +7748,10 @@ function drawAbilitiesAir() {
 function drawAbilitiesGlow() {
   for (let ci = 0; ci < censers(); ci++) { const t = thuriblePos(ci); glow(t.x, t.y, 18, 'rgba(255,122,31,0.4)'); }
   const RF = riteFx();
-  for (const pl of pools) glow(pl.x, pl.y, pl.r * 1.4, `rgba(${RF.glow},${0.5 * Math.min(1, (T.flask.time - pl.t) / 0.5)})`);
+  for (const pl of pools) glow(pl.x, pl.y, pl.r * 1.3, `rgba(${RF.glow},${0.3 * Math.min(1, (T.flask.time - pl.t) / 0.5)})`);
   for (const f of flasks) { const k = f.t / T.flask.flight; glow(f.sx + (f.tx - f.sx) * k, f.sy + (f.ty - f.sy) * k - Math.sin(k * Math.PI) * 36, 10, `rgba(${RF.glow},0.6)`); }
   for (const l of lashes) if (l.hit) glow(l.x, l.y, 28, `rgba(${RF.rain},${0.8 * (1 - (l.t - 0.12) / 0.18)})`);
-  for (const f of skillFx) if (f.kind === 'flare') { const k = f.t / f.max; glow(f.x, f.y, f.r * (0.5 + k), `rgba(${f.rgb},${0.75 * (1 - k)})`); glow(f.x, f.y, f.r * 0.3 * (1 - k) + 4, `rgba(255,255,255,${0.8 * (1 - k)})`); }
+  for (const f of skillFx) if (f.kind === 'flare') { const k = f.t / f.max; glow(f.x, f.y, f.r * (0.5 + k), `rgba(${f.rgb},${0.5 * (1 - k)})`); glow(f.x, f.y, f.r * 0.3 * (1 - k) + 4, `rgba(255,244,176,${0.4 * (1 - k)})`); }
   if ((player.wardT || 0) > game.time) { const pu = 0.5 + Math.sin(game.real * 9) * 0.15; glow(player.x, player.y - 22, 34, `rgba(255,209,85,${pu})`); }
   if (player.rainT > 0) { const rgb = SET_RGB[(RITE_BY[player.penKind] || {}).set] || '224,32,46'; glow(player.x, player.y - 10, 46 + Math.sin(game.real * 7) * 6, `rgba(${rgb},0.4)`); }
   for (const f of skillFx) if (f.kind === 'hymn' && f.t < f.max) { const d = f.L * Math.min(1, f.t / f.max); glow(f.x + Math.cos(f.a) * d, f.y + Math.sin(f.a) * d * 0.8 - 6, 30, 'rgba(255,122,31,0.55)'); }
@@ -8470,7 +8473,7 @@ function updateSkills(dt) {
     if (f.kind === 'pillar' && !f.hit && f.t >= 0.22) {
       f.hit = true; game.shake = Math.max(game.shake, 3); sfx('penance', { vol: 0.35, rate: 1.4, gap: 0.08 });
       for (const e of nearestFoes(f.x, f.y, 99, 24 * WS)) { hurtEnemy(e, f.dmg, rng() < 0.3, 0, 1, 40); if (f.stun && !e.boss) e.bound = Math.max(e.bound || 0, f.stun); }
-      playFx('fx', 'impact', f.x, f.y - 10, 22, { big: true });
+      playFx('fx', 'impact', f.x, f.y - 10, 22);
     }
     if (f.kind === 'nova' && !f.fx) { f.fx = 1; const R = f.ramp || 'gold'; vemit(f.x, f.y - 4, { n: 22, ramp: R, sp: f.r * 3.2, up: 30, life: 0.45, drag: 3, size: 2, glow: 7 }); if (R === 'fire') vemit(f.x, f.y, { n: 8, ramp: 'fire', sp: 30, up: 60, life: 0.8, grav: -10, glow: 5 }); }
     if (f.kind === 'nova' && !f.done) { const r = f.r * Math.min(1, f.t / f.max); for (const e of enemies) if (!e.dead && !f.hits.has(e) && Math.hypot(e.x - f.x, (e.y - f.y) / 0.7) < r) { f.hits.add(e); const dx = e.x - f.x, dy = e.y - f.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, f.dmg, false, dx / d, dy / d, 120, { kind: 'nova' }); } }
@@ -8593,20 +8596,20 @@ function drawSkillsGlow() {
       const sweep = Math.min(1, k * 1.6) * 4.6, fade = 1 - Math.max(0, (k - 0.55) / 0.45);
       for (let q = 0; q < 9; q++) {
         const r = f.r - q * 2.2, a1 = f.a + sweep * f.dir, a0 = a1 - f.dir * (1.6 - q * 0.12);
-        ctx.strokeStyle = `rgba(${q < 2 ? '255,255,255' : q < 5 ? '170,240,255' : '90,180,255'},${(0.95 - q * 0.09) * fade})`; ctx.lineWidth = q < 2 ? 4 : 3;
+        ctx.strokeStyle = `rgba(${q < 2 ? '216,247,255' : q < 5 ? '170,240,255' : '90,180,255'},${(0.7 - q * 0.06) * fade})`; ctx.lineWidth = q < 2 ? 4 : 3;
         ctx.beginPath(); ctx.ellipse(f.x, f.y, r, r * 0.62, 0, Math.min(a0, a1), Math.max(a0, a1)); ctx.stroke();
       }
     }
     if (f.kind === 'pillar' && f.t > 0) {
       const strike = f.t >= 0.22, w = strike ? 28 * (1 - (f.t - 0.22) / 0.48) + 4 : 4, top = f.y - 300;
-      const g = ctx.createLinearGradient(0, top, 0, f.y); g.addColorStop(0, 'rgba(255,244,176,0)'); g.addColorStop(1, `rgba(255,244,176,${strike ? 0.95 : 0.35})`);
+      const g = ctx.createLinearGradient(0, top, 0, f.y); g.addColorStop(0, 'rgba(255,244,176,0)'); g.addColorStop(1, `rgba(255,224,138,${strike ? 0.6 : 0.25})`);
       ctx.fillStyle = g; ctx.fillRect(Math.round(f.x - w / 2), top, Math.round(w), f.y - top);
-      if (strike) { ctx.fillStyle = `rgba(255,255,255,${0.9 * (1 - k)})`; ctx.fillRect(Math.round(f.x - w / 6), top, Math.max(1, Math.round(w / 3)), f.y - top); glow(f.x, f.y - 6, 50 * (1 - k) + 14, 'rgba(255,224,138,0.85)'); }
+      if (strike) { ctx.fillStyle = `rgba(255,244,176,${0.45 * (1 - k)})`; ctx.fillRect(Math.round(f.x - w / 6), top, Math.max(1, Math.round(w / 3)), f.y - top); glow(f.x, f.y - 6, 40 * (1 - k) + 12, 'rgba(255,209,85,0.5)'); }
     }
     if (f.kind === 'blaze') glow(f.x, f.y - 6, f.r * (0.6 + f.t / f.max * 0.6), `rgba(255,122,31,${0.5 * (1 - f.t / f.max)})`);
     if (f.kind === 'brand' && !f.hit) { const q = Math.min(1, f.t / f.max); glow(f.sx + (f.x - f.sx) * q, f.sy + (f.y - f.sy) * q - Math.sin(q * Math.PI) * 40, 16, 'rgba(255,122,31,0.7)'); }
     if (f.kind === 'trail') { const fade = Math.min(1, (f.max - f.t) / 0.7), n = Math.max(1, Math.round(Math.hypot(f.x1 - f.x0, f.y1 - f.y0) / 14)); for (let q = 0; q <= n; q++) glow(f.x0 + (f.x1 - f.x0) * q / n, f.y0 + (f.y1 - f.y0) * q / n - 5, 16, `rgba(255,122,31,${0.45 * fade})`); }
-    if (f.kind === 'arc') { lightning(f.x0, f.y0, f.x1, f.y1, f.seed, 1 - k, '170,235,255'); glow(f.x1, f.y1, 14, `rgba(216,247,255,${0.9 * (1 - k)})`); glow(f.x0, f.y0, 8, `rgba(170,235,255,${0.6 * (1 - k)})`); }
+    if (f.kind === 'arc') { lightning(f.x0, f.y0, f.x1, f.y1, f.seed, 1 - k, '170,235,255'); glow(f.x1, f.y1, 14, `rgba(138,224,255,${0.6 * (1 - k)})`); glow(f.x0, f.y0, 8, `rgba(170,235,255,${0.6 * (1 - k)})`); }
     if (f.kind === 'nova') { // a hot flash, a thick bright shock ring with a white edge, and a fainter inner ring
       const R0 = FXR[f.ramp || 'gold'], r = f.r * Math.min(1, k * 1.2), a = 1 - k;
       glow(f.x, f.y - 6, f.r * 0.55 * a + 8, `rgba(${R0[1]},${0.8 * a})`);
@@ -8615,9 +8618,9 @@ function drawSkillsGlow() {
     if (f.kind === 'choir') { if (f.hit) glow(f.x, f.y - 10, f.r * (0.6 + (f.t - 0.55)), `rgba(255,209,85,${0.6 * (1 - (f.t - 0.55) / 0.45)})`); else glow(f.x, f.y - 10, 20 + f.t * 30, 'rgba(255,209,85,0.25)'); }
     if (f.kind === 'levelup') {
       const w = 26 * (1 - k) + 4, top = f.y - 220, g = ctx.createLinearGradient(0, top, 0, f.y);
-      g.addColorStop(0, 'rgba(255,209,85,0)'); g.addColorStop(1, `rgba(255,209,85,${0.8 * (1 - k)})`);
+      g.addColorStop(0, 'rgba(255,209,85,0)'); g.addColorStop(1, `rgba(255,209,85,${0.5 * (1 - k)})`);
       ctx.fillStyle = g; ctx.fillRect(Math.round(player.x - w / 2), top, Math.round(w), player.y - top);
-      glow(player.x, player.y - 20, 40 * (1 - k) + 12, `rgba(255,244,176,${0.6 * (1 - k)})`);
+      glow(player.x, player.y - 20, 34 * (1 - k) + 12, `rgba(255,209,85,${0.4 * (1 - k)})`);
     }
   }
 }
