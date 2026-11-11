@@ -11,7 +11,7 @@ const S = process.argv[2];
   // Shop: buy the first piece.
   await p.evaluate(() => HS.openShop()); await p.waitForTimeout(250); await p.screenshot({ path: `${S}/shots/s1-shop.png` });
   const before = await p.evaluate(() => [HS.SAVE.gold, HS.SAVE.bag.length + Object.values(HS.SAVE.equip).filter(Boolean).length]);
-  await p.evaluate(() => { const L = HS.featLayout(); HS.shopTap(L.btnA.x + 5, L.btnA.y + 5); }); await p.waitForTimeout(200);
+  await p.evaluate(() => { const L = HS.featLayout(); HS.shopTap(L.btnB.x + 5, L.btnB.y + 5); }); await p.waitForTimeout(200); // BUY is the right-hand button (round 69)
   const after = await p.evaluate(() => [HS.SAVE.gold, HS.SAVE.bag.length + Object.values(HS.SAVE.equip).filter(Boolean).length, HS.SAVE.shop.items.map((i) => `${i.ri}:${i.il}:${i.price}${i.sold ? 'S' : ''}`).join(' ')]);
   console.log('shop', JSON.stringify(before), JSON.stringify(after));
   await p.screenshot({ path: `${S}/shots/s2-bought.png` });

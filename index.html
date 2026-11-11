@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '68';
+const BUILD = '69';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '69': ['PELL\'S STALL HAS COMPARE: YOUR WORN PIECE\'S CARD BESIDE THE ONE FOR SALE.', 'TAPPING A TALENT OPENS ITS CARD BY THE NODE.', 'MENUS TICK AS YOU SWITCH TABS, AND BUYING AND LEARNING HAVE THEIR OWN SOUNDS.', 'A DOT ON THE GEAR TAB MARKS NEW PIECES. THE DESCENT PANEL IS EASIER TO READ.'],
   '68': ['PELL\'S STALL, THE FORGE, THE ENCHANTER AND THE ALTAR: THEIR LISTS SIT IN PANELS WITH A HEADER, BESIDE THE CARD.', 'EVERY TALENT HAS ITS OWN ICON.', 'PAGES SLIDE IN WHEN YOU SWITCH BAG TABS, AND CARDS FADE IN.', 'THE BAG\'S GEAR TAB SHOWS EVERY STAT. LEVEL-UP CARDS FIT THEIR TEXT AND SHOW THE RANK.'],
   '67': ['THE BAG HAS TABS FOR RITES, TALENTS AND THE CENSER. LEARN TALENTS ANYWHERE.', 'RITES: A RAIL OF SLOTS, EACH SLOT\'S RITES AS ICONS, AND THE CHOSEN ONE IN FULL.', 'TALENTS ARE A TREE OF NODES. SETTINGS HAS SECTIONS AND ONE-TAP CHOICES.', 'THE HUD, LEVEL-UP CARDS AND DEATH SUMMARY MATCH THE NEW MENUS.'],
   '66': ['A NEW FONT, AND TEXT IN UPPER AND LOWER CASE.', 'MENUS FILL THE SCREEN: A DEEP BACKDROP, A TITLE BAR WITH A BACK ARROW, GOLD TABS, BRIGHT BUTTONS AND ITEM TILES IN THEIR RARITY\'S COLOUR.', 'THE PAUSE SCREEN IS A PANEL OF TILES: BAG, RITES, MAP, SETTINGS, SOUND AND SWITCH SAINT.'],
@@ -2329,13 +2330,14 @@ const featOut = (L, x, y) => Math.hypot(x - L.close.x, y - L.close.y) < L.close.
 // Round 65: an item card's plate: rarity-lit glass and the piece in a socket at the top right.
 const rarRGB = (it) => hexRgb(it.set || it.wset ? RARITY[4].cell : RARITY[it.ri].cell);
 // Round 68: a card fades in when a new piece is picked (UI_FADES, drawn over everything at the end of render).
-let CARD_KEY = null, CARD_T = 0; const UI_FADES = [];
+const CARD_SEEN = {}, UI_FADES = []; // per card position: the piece it shows and when that started
 function cardAnim(key, r) {
-  if (key !== CARD_KEY) { CARD_KEY = key; CARD_T = game.real; }
-  const k = Math.min(1, (game.real - CARD_T) / 0.18); if (k < 1 && key) UI_FADES.push({ x: r.x, y: r.y, w: r.w, h: r.h, a: 0.85 * (1 - k) * (1 - k) });
+  const at = `${r.x}|${r.y}`, c = CARD_SEEN[at] || (CARD_SEEN[at] = { key: null, t: 0 });
+  if (key !== c.key) { if (key && c.key !== null) sfx('tap', { vol: 0.25, rate: 1.25, gap: 0.05 }); c.key = key; c.t = game.real; }
+  const k = Math.min(1, (game.real - c.t) / 0.18); if (k < 1 && key) UI_FADES.push({ x: r.x, y: r.y, w: r.w, h: r.h, a: 0.85 * (1 - k) * (1 - k) });
 }
 function cardPlate(it, C) {
-  cardAnim(it ? `${it.id || it.name}|${it.ri}|${C.x}` : null, C);
+  cardAnim(it ? `${it.id || it.name}|${it.ri}` : null, C);
   inset(C.x, C.y, C.w, C.h, it ? rarRGB(it) : null);
   if (!it) return;
   const r = { x: C.x + C.w - 34, y: C.y + 5, w: 29, h: 29 }; itemSlot(r, it);
@@ -2401,8 +2403,14 @@ const shopRow = (L, i) => { const step = Math.min(34, Math.floor((L.y0 + L.ph - 
 function renderShop() {
   const L = featLayout(), items = SAVE.shop.items, it = items[game.shop.sel];
   featFrame(L, "PELL'S CURIO STALL");
-  listPanel(L, '255,209,85', 'STOCK', 'NEW AFTER EVERY DESCENT');
-  items.forEach((q, i) => {
+  // Round 69: COMPARE swaps the list for the worn piece's card, so the two sit side by side.
+  const cmp = !!(game.shop.cmp && it && !it.sold);
+  if (cmp) {
+    const worn = SAVE.equip[it.slot], WC = { x: L.list.x - 4, y: L.card.y, w: L.list.w + 8, h: L.card.h };
+    if (worn) drawItemCard(worn, WC, null); else { inset(WC.x, WC.y, WC.w, WC.h); text('NOTHING WORN IN THIS SLOT.', WC.x + 8, WC.y + 10, PAL.stone1, { small: true, outline: null }); }
+    pill('WORN', WC.x + WC.w / 2, WC.y + WC.h - 14, PAL.gold1);
+  } else listPanel(L, '255,209,85', 'STOCK', 'NEW AFTER EVERY DESCENT');
+  if (!cmp) items.forEach((q, i) => {
     const r = shopRow(L, i), sel = i === game.shop.sel;
     rowPlate(r, sel, q.sold ? '90,96,110' : hexRgb(RARITY[q.ri].cell), !q.sold);
     if (q.sold) { text('SOLD', r.x + r.w / 2, r.y + 11, PAL.stone2, { align: 'center' }); return; }
@@ -2415,17 +2423,19 @@ function renderShop() {
   if (it && !it.sold) {
     drawItemCard(it, L.card, SAVE.equip[it.slot]);
     const can = (SAVE.gold || 0) >= it.price && (SAVE.bag.length < BAG_SIZE || !SAVE.equip[it.slot]);
-    invButton({ ...L.btnA, w: L.btnA.w * 2 + 6 }, can ? `BUY FOR ${it.price}` : (SAVE.gold || 0) < it.price ? 'NOT ENOUGH GOLD' : 'BAG IS FULL', PAL.gold3, can);
+    invButton(L.btnA, game.shop.cmp ? 'STOCK' : 'COMPARE', PAL.stone4, true);
+    invButton(L.btnB, can ? `BUY ${it.price}` : (SAVE.gold || 0) < it.price ? 'NEED GOLD' : 'BAG FULL', PAL.gold3, can);
   } else text('SOLD OUT.', L.card.x + 6, L.card.y + 8, PAL.stone1, { small: true, outline: null });
 }
 function shopTap(x, y) {
   const L = featLayout(), items = SAVE.shop.items;
   if (featOut(L, x, y)) { game.state = 'play'; sfx('tap'); return; }
-  for (let i = 0; i < items.length; i++) if (inRect(shopRow(L, i), x, y)) { game.shop.sel = i; sfx('tap', { vol: 0.5 }); return; }
   const it = items[game.shop.sel];
-  if (it && !it.sold && inRect({ ...L.btnA, w: L.btnA.w * 2 + 6 }, x, y) && (SAVE.bag.length < BAG_SIZE || !SAVE.equip[it.slot]) && spend(it.price)) {
+  if (it && !it.sold && inRect(L.btnA, x, y)) { game.shop.cmp = !game.shop.cmp; sfx('tap', { vol: 0.4, rate: 1.3 }); return; }
+  if (!(game.shop.cmp && it && !it.sold)) for (let i = 0; i < items.length; i++) if (inRect(shopRow(L, i), x, y)) { game.shop.sel = i; sfx('tap', { vol: 0.5 }); return; }
+  if (it && !it.sold && inRect(L.btnB, x, y) && (SAVE.bag.length < BAG_SIZE || !SAVE.equip[it.slot]) && spend(it.price)) {
     const copy = { ...it, stats: it.stats.map((q) => [...q]), id: `${it.id}b` }; delete copy.price;
-    it.sold = true; bagAdd(copy); toast(`BOUGHT ${nm(copy)}`, 2); game.toastColor = RARITY[copy.ri].color; persist();
+    it.sold = true; bagAdd(copy); sfx('buy'); toast(`BOUGHT ${nm(copy)}`, 2); game.toastColor = RARITY[copy.ri].color; persist();
   }
 }
 
@@ -3063,16 +3073,30 @@ function renderCanonry() {
     text(String(n), bx, by - 4, n >= t.max ? TAB_INK : n ? '#ffd155' : PAL.stone2, { ...small, align: 'center' });
     wrapW(heroText(t.name), L.cw - 6, true).slice(0, 2).forEach((l, k) => text(l, p.x, p.y + r + 4 + k * 9, sel ? PAL.gold1 : n ? PAL.white : open ? PAL.cloth1 : PAL.stone3, { ...small, align: 'center' }));
   }));
-  // The chosen talent along the foot, with LEARN and RESET.
+  // Round 69: the chosen talent's card opens beside its node; the foot keeps LEARN and RESET.
   ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(L.x0 + 8, L.fy, L.pw - 16, 1);
   const t = game.talSel && TAL_BY[game.talSel];
   if (t) {
-    const n = tal(t.id), open = talOpen(t), wmax = L.reset.x - L.x0 - 22;
-    text(`${heroText(t.name)} ${n}/${t.max}`.toUpperCase(), L.x0 + 12, L.fy + 5, TALENT_TREES[t.tree].col);
-    const now = n ? heroText(t.text(n)) : '', next = n < t.max ? heroText(t.text(n + 1)) : '';
-    const line = !open ? `OPENS WITH ${TAL_NEED[t.row]} POINTS IN ${TALENT_TREES[t.tree].name}.` : n >= t.max ? now : n ? `${now} NEXT: ${next}` : next;
-    wrapW(line, wmax, true).slice(0, 2).forEach((l, i) => text(l, L.x0 + 12, L.fy + 18 + i * 9, PAL.stone1, small));
+    const n = tal(t.id), open = talOpen(t), T1 = TALENT_TREES[t.tree];
     invButton(L.learn, n >= t.max ? 'MAX' : 'LEARN', PAL.gold3, open && pts > 0 && n < t.max);
+    text(!open ? `OPENS WITH ${TAL_NEED[t.row]} POINTS IN ${T1.name}.` : n >= t.max ? 'FULLY LEARNED.' : pts ? 'LEARN ADDS ONE POINT.' : 'NO POINTS. ONE EACH SAINT LEVEL.', L.x0 + 12, L.fy + 14, open && n < t.max && pts ? PAL.cloth1 : PAL.stone2, small);
+    // The card.
+    const row = T0.rows[t.row], ci = row.findIndex((q) => q.id === t.id), p = L.node(t.row, ci, row.length), cw = Math.min(160, Math.max(120, Math.round(L.gw * 0.4)));
+    const lines = []; const add = (s0, col) => { for (const l of wrapW(s0, cw - 14, true)) lines.push([l, col]); };
+    if (n) add(`NOW: ${heroText(t.text(n))}`, PAL.cloth0);
+    if (n < t.max) add(`${n ? 'NEXT' : 'AT RANK 1'}: ${heroText(t.text(n + 1))}`, open ? PAL.flame1 : PAL.stone2);
+    const ch = 30 + lines.length * 9;
+    let cx0 = p.x + L.nr + 10; if (cx0 + cw > L.x0 + L.pw - 6) cx0 = p.x - L.nr - 10 - cw;
+    const cy0 = Math.max(L.ay + 14, Math.min(L.fy - 4 - ch, p.y - 18));
+    layerBreak();
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(cx0 + 2, cy0 + 3, cw, ch);
+    { const g = ctx.createLinearGradient(0, cy0, 0, cy0 + ch); g.addColorStop(0, `rgb(${shade(T1.rgb, 0.3)})`); g.addColorStop(0.5, '#121a2c'); g.addColorStop(1, '#0a0f1b'); ctx.fillStyle = g; ctx.fillRect(cx0, cy0, cw, ch); }
+    ctx.fillStyle = `rgb(${T1.rgb})`; ctx.fillRect(cx0, cy0, cw, 2); ctx.fillStyle = 'rgba(170,190,225,0.25)'; ctx.fillRect(cx0, cy0 + ch - 1, cw, 1); ctx.fillRect(cx0, cy0, 1, ch); ctx.fillRect(cx0 + cw - 1, cy0, 1, ch);
+    // A small pointer towards the node.
+    { const left = cx0 > p.x, ex = left ? cx0 : cx0 + cw, ay = Math.max(cy0 + 8, Math.min(cy0 + ch - 8, p.y)); ctx.fillStyle = '#16203a'; ctx.beginPath(); ctx.moveTo(ex, ay - 5); ctx.lineTo(ex + (left ? -6 : 6), ay); ctx.lineTo(ex, ay + 5); ctx.fill(); }
+    text(heroText(t.name), cx0 + 7, cy0 + 6, `rgb(${T1.rgb})`, { bold: true });
+    text(`RANK ${n}/${t.max}`, cx0 + cw - 7, cy0 + 8, n >= t.max ? PAL.gold1 : PAL.stone1, { ...small, align: 'right' });
+    lines.forEach(([l, col], i) => text(l, cx0 + 7, cy0 + 22 + i * 9, col, small));
   } else text('TAP A TALENT. ONE POINT EACH SAINT LEVEL.', L.x0 + 12, L.fy + 14, PAL.stone2, small);
   invButton(L.reset, 'RESET', PAL.stone4, talSpent() > 0);
 }
@@ -3087,7 +3111,7 @@ function canonryTap(x, y) {
   if (t && inRect(L.learn, x, y)) {
     if (!talOpen(t)) { toast(`PUT ${TAL_NEED[t.row]} POINTS IN ${TALENT_TREES[t.tree].name} FIRST.`, 2); return; }
     if (talPts() <= 0 || tal(t.id) >= t.max) return;
-    SAVE.talents = SAVE.talents || {}; SAVE.talents[t.id] = tal(t.id) + 1; applyGear(); persist(); sfx('shrine', { gap: 0.15, vol: 0.6 }); return;
+    SAVE.talents = SAVE.talents || {}; SAVE.talents[t.id] = tal(t.id) + 1; applyGear(); persist(); sfx('learn', { gap: 0.15, vol: 0.55, rate: 1.15 }); game.talPulse = game.real; return;
   }
   if (inRect(L.reset, x, y) && talSpent() > 0) {
     const cost = talReset();
@@ -3418,7 +3442,7 @@ function drawHub(L) {
   for (const b of hubTabs(L)) {
     tabPlate(b, b.id === on);
     text(b.t, b.x + b.w / 2, b.y + 4, b.id === on ? TAB_INK : PAL.stone1, { small: true, outline: null, align: 'center', bold: b.id === on });
-    const dot = (b.id === 'talents' && talPts() > 0) || (b.id === 'censer' && SAVE.censerNew);
+    const dot = (b.id === 'talents' && talPts() > 0) || (b.id === 'censer' && SAVE.censerNew) || (b.id === 'gear' && on !== 'gear' && SAVE.bag.some((q) => q.isNew));
     if (dot) { ctx.fillStyle = PAL.outline; ctx.fillRect(b.x + b.w - 5, b.y - 1, 6, 6); ctx.fillStyle = PAL.blood0; ctx.fillRect(b.x + b.w - 4, b.y, 4, 4); }
   }
 }
@@ -3435,7 +3459,7 @@ function hubGo(id) {
   else if (id === 'censer') { game.state = 'censer'; SAVE.censerNew = false; censerCheck(); }
   game.hubT = game.real; game.hubDir = HUB.findIndex((h) => h[0] === id) >= from ? 1 : -1;
   if (id !== 'gear' && id !== 'items' && id !== 'ingr' && game.inv) for (const it of SAVE.bag) it.isNew = false;
-  sfx('tap', { vol: 0.5 });
+  sfx('tap', { vol: 0.35, rate: 1.5 }); // a light tick for a tab
 }
 const hubTap = (L, x, y) => { const b = hubTabs(L).find((r) => inRect(r, x, y)); if (!b) return false; if (b.id !== hubOn()) hubGo(b.id); return true; };
 // A pointy-topped hexagon path.
@@ -4482,7 +4506,8 @@ function renderVigil() {
   headerBar(L.x0, L.y0, L.pw, 26);
   text('THE BLEEDING VIGIL', L.x0 + 12, L.y0 + 9, PAL.blood0);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
-  for (const [b, ch] of [[L.prev, '<'], [L.next, '>']]) { ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 1, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = PAL.ink3; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); text(ch, b.x, b.y - 5, PAL.gold1, { align: 'center' }); }
+  navArrows(L, true, true);
+
   text('VIGIL LEVEL', L.x0 + L.pw / 2, L.y0 + 30, PAL.stone2, { align: 'center', small: true, outline: null });
   { const J = vigilJumps(L); for (const [b, t] of [[J.down, '-10'], [J.up, '+10']]) { ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 1, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = PAL.ink3; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); text(t, b.x, b.y - 4, PAL.blood0, { align: 'center', small: true }); } }
   text(String(P.L), L.x0 + L.pw / 2, L.y0 + 43, PAL.blood0, { align: 'center', sc: 2 });
@@ -4820,6 +4845,16 @@ function descentTap(x, y) {
   if (inRect(L.omen, x, y)) { const n = ((D.omens || []).length + 1) % 3; D.omens = [...OMENS].sort(() => Math.random() - 0.5).slice(0, n).map((o) => o.id); sfx('tap', { vol: 0.6 }); return; }
   if (inRect(L.go, x, y) && diffOpen(D.i)) beginDescent(D.i);
 }
+// Round 69: the < > arrows of the Descent and Vigil panels: navy discs with a gold ring and a gold chevron.
+function navArrows(L, canPrev, canNext) {
+  for (const [b, d] of [[L.prev, -1], [L.next, 1]]) {
+    const can = d < 0 ? canPrev : canNext;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.arc(b.x, b.y + 1, b.r + 1, 0, Math.PI * 2); ctx.fill();
+    const g = ctx.createLinearGradient(0, b.y - b.r, 0, b.y + b.r); g.addColorStop(0, '#24314a'); g.addColorStop(1, '#0c1220'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = can ? 'rgba(255,209,85,0.85)' : 'rgba(120,110,90,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(b.x, b.y, b.r - 0.5, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = can ? '#ffd155' : '#6a6458'; for (let k = 0; k < 4; k++) { ctx.fillRect(Math.round(b.x - d * (2 - k)), Math.round(b.y - 4 + k), 2, 1); ctx.fillRect(Math.round(b.x - d * (2 - k)), Math.round(b.y + 3 - k), 2, 1); }
+  }
+}
 function renderDescent() {
   const L = descentLayout(), D = game.descent, df = DIFF[D.i], open = diffOpen(D.i);
   ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
@@ -4832,18 +4867,18 @@ function renderDescent() {
   text(`STRATUM ${ROMAN[sk - 1]}`, L.strat.x + L.strat.w / 2, L.strat.y + L.strat.h + 3, PAL.stone2, { align: 'center', small: true, outline: null });
   sprC('ui', 'close', 0, L.close.x, L.close.y);
   // Station picker.
-  for (const [b, ch] of [[L.prev, '<'], [L.next, '>']]) { ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 1, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = PAL.ink3; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); text(ch, b.x, b.y - 5, PAL.gold1, { align: 'center' }); }
+  navArrows(L, D.i > 0, D.i < DIFF.length - 1);
   text(df.band, L.x0 + L.pw / 2, L.y0 + 30, open ? df.col : PAL.stone2, { align: 'center', small: true, outline: null });
   text(df.name, L.x0 + L.pw / 2, L.y0 + 43, open ? df.col : PAL.stone2, { align: 'center', sc: 2 });
   if (!open) badge('lock', L.x0 + L.pw / 2 - textW(df.name, 2) / 2 - 14, L.y0 + 53);
-  const dstep = Math.min(10, Math.floor(220 / (DIFF.length - 1))); DIFF.forEach((q, k) => { const px = L.x0 + L.pw / 2 - Math.round((DIFF.length - 1) * dstep / 2) + k * dstep; ctx.fillStyle = PAL.outline; ctx.fillRect(px - 3, L.y0 + 66, 6, 6); ctx.fillStyle = k === D.i ? PAL.white : diffOpen(k) ? q.col : PAL.ink3; ctx.fillRect(px - 2, L.y0 + 67, 4, 4); });
+  const dstep = Math.min(10, Math.floor(220 / (DIFF.length - 1))); DIFF.forEach((q, k) => { const px = L.x0 + L.pw / 2 - Math.round((DIFF.length - 1) * dstep / 2) + k * dstep; ctx.fillStyle = k === D.i ? '#ffd155' : 'rgba(0,0,0,0.6)'; ctx.fillRect(px - 3, L.y0 + 66, 6, 6); ctx.fillStyle = k === D.i ? PAL.white : diffOpen(k) ? q.col : '#2a3346'; ctx.fillRect(px - 2, L.y0 + 67, 4, 4); });
   text(open ? df.text : `LOCKED. ${diffNeed(D.i)} TO OPEN IT.`, L.x0 + L.pw / 2, L.y0 + 77, open ? PAL.cloth1 : PAL.blood0, { align: 'center', small: true, outline: null });
   // Three columns of numbers.
   // Short screens drop the footer notes and the least useful rows.
   const cw = Math.floor((L.pw - 32) / 3), top = L.y0 + 88, cx = (c) => L.x0 + 12 + c * (cw + 4), om = D.omens || [];
   const room = L.go.y - 6 - top, full = room >= 144 + 44, foot = full ? 44 : om.length ? 22 : 0, colH = Math.min(144, room - foot), rh = Math.round(9 * TEXT_K), nRows = Math.floor((colH - 15) / rh); // rows space out with the text size; the last ones drop first
   const goldK = df.gold * (1 + G.gold / 100);
-  const row = (c, i, label, val, col = PAL.cloth0) => { const y = top + 15 + i * rh; text(fitText(label, cw - 16 - textW(val, 1, true)), cx(c) + 6, y, PAL.stone1, { small: true, outline: null }); text(val, cx(c) + cw - 6, y, col, { small: true, outline: null, align: 'right' }); };
+  const row = (c, i, label, val, col = PAL.cloth0) => { const y = top + 15 + i * rh; if (i % 2 === 0) { ctx.fillStyle = 'rgba(255,255,255,0.035)'; ctx.fillRect(cx(c) + 2, y - 1, cw - 4, rh); } text(fitText(label, cw - 16 - textW(val, 1, true)), cx(c) + 6, y, PAL.stone1, { small: true, outline: null }); text(val, cx(c) + cw - 6, y, col, { small: true, outline: null, align: 'right' }); };
   const head = (c, t) => { inset(cx(c), top, cw, colH, '255,209,85'); text(t, cx(c) + 6, top + 3, PAL.gold1, { small: true, outline: null }); };
   const x = (v) => v >= 100 ? `X${Math.round(v)}` : `X${+v.toFixed(1)}`;
   const red = (v) => v > 1 ? PAL.blood0 : PAL.cloth0;
@@ -4872,7 +4907,7 @@ function renderDescent() {
   RARITY.forEach((R0, i) => {
     const y = top + 25 + i * rs;
     text(R0.name, cx(2) + 6, y, R0.color, { small: true, outline: null });
-    const bw = cw - 12; ctx.fillStyle = PAL.ink1; ctx.fillRect(cx(2) + 6, y + 9, bw, 3); ctx.fillStyle = R0.color; ctx.fillRect(cx(2) + 6, y + 9, Math.max(1, Math.round(bw * Math.min(1, base[i] / 60))), 3);
+    const bw = cw - 12; ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(cx(2) + 6, y + 9, bw, 3); ctx.fillStyle = R0.color; ctx.fillRect(cx(2) + 6, y + 9, Math.max(1, Math.round(bw * Math.min(1, base[i] / 60))), 3);
     text(pct(base[i]), fx, y, PAL.cloth0, { small: true, outline: null, align: 'right' });
     if (both) text(pct(elite[i]), cx(2) + cw - 6, y, PAL.cloth0, { small: true, outline: null, align: 'right' });
   });

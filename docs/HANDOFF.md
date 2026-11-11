@@ -249,6 +249,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 69:** Pell's stall has COMPARE (`game.shop.cmp`): the worn piece's
+  card takes the list's place beside the one for sale; BUY moved to the right
+  button. Tapping a talent opens its card by the node (now, next, rank; drawn
+  after a `layerBreak`), and the foot keeps LEARN and RESET with a hint.
+  Sounds: a light tick on hub tabs and a softer one when a card changes,
+  `buy` on a purchase, `learn` on a talent point. A dot marks the Gear tab
+  while the bag holds new pieces. The Descent and Vigil arrows are drawn by
+  `navArrows`; the Descent's columns have banded rows. `cardAnim` keeps one
+  timer per card position (`CARD_SEEN`), so two cards on one page do not
+  restart each other's fade.
 - **Round 68:** polish. Town services (Pell's stall, the Forge, the
   Enchanter, the Altar) put their list in a panel with a lit header strip
   (`listPanel(L, acc, label, note, bottom)`) and draw rows with `rowPlate`;
