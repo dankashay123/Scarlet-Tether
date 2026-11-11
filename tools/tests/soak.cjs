@@ -37,7 +37,7 @@ const S = process.argv[2], SECS = +(process.argv[3] || 180);
     if (Date.now() - stillSince > 6000) { stillSince = Date.now(); problems.push(`${sec}s player not moving at ${st.x},${st.y} in ${st.scene} room ${st.room}`); await p.screenshot({ path: `${S}/shots/stuck-${shot++}.png` }); }
     if (sec % 15 === 0) console.log(sec, JSON.stringify(st));
     // Act on the current state.
-    if (st.state === 'title') await tap(W / 2, Math.round(H * 0.8));
+    if (['title', 'chars', 'create'].includes(st.state)) await tap(W / 2, Math.round(H * 0.8)); // round 70: START and CREATE sit there too
     else if (st.state === 'descent') { if (Math.random() < 0.3) await p.keyboard.press('ArrowRight'); await p.keyboard.press(Math.random() < 0.85 ? 'Enter' : 'Escape'); }
     else if (st.state === 'site' || st.state === 'map') { await tap(W / 2, H / 2); }
     else if (st.state === 'dialog' || st.state === 'pause' || st.state === 'dead' || st.state === 'tally') { await tap(W / 2, H / 2); await p.waitForTimeout(300); }

@@ -2,7 +2,7 @@
 // Usage: node tools/tests/round55.cjs <outDir> [WxH]
 // Round 55: the Mendicant's own Wound cards (mace icon, blow names), his arms
 // in the bag (mace and satchel icons, names), the other saint marked in town
-// and on the town map, and SWITCH SAINT on the pause screen.
+// and the town map and pause screen (round 70: the class is fixed per character).
 const { chromium } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').map(Number);
 (async () => {
@@ -14,14 +14,11 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
   await p.goto('http://localhost:8123/?town'); await p.waitForTimeout(1500);
   await p.evaluate(() => { HS.tut.on = false; HS.game.dialog = null; HS.game.news = null; HS.SAVE.lvl = 60; HS.SAVE.hero = 'saint'; HS.SAVE.cleared = 9; HS.enterTown(false); HS.game.state = 'play'; });
   await p.waitForTimeout(800);
-  // The other saint, marked in the close.
-  await p.evaluate(() => { const n = HS.room.npcs.find((q) => q.hero); HS.player.x = n.x - 70; HS.player.y = n.y + 10; }); await p.waitForTimeout(1200); await shot('town-marker');
+  // Round 70: no switching in town. A Mendicant character is made by setting the class and reloading Vael.
   await p.evaluate(() => { HS.game.state = 'map'; }); await p.waitForTimeout(300); await shot('town-map');
-  // The Switch Saint tile on the pause screen asks, then switches.
   await p.evaluate(() => { HS.game.state = 'pause'; }); await p.waitForTimeout(300); await shot('pause-switch');
   out.pauseProblems = await words();
-  out.switch = await p.evaluate(() => { const r = document.getElementById('screen').getBoundingClientRect(), W = HS.W, H = HS.H, B = pauseLayout().tiles.find((t) => t.id === 'hero');
-    HS.pointerDown(4, r.left + (B.x + B.w / 2) / W * r.width, r.top + (B.y + B.h / 2) / H * r.height); HS.pointerUp(4); const asked = !!HS.game.ask; const A = HS.askLayout(); HS.askTap(A.yes.x + 4, A.yes.y + 4); return { asked, hero: HS.heroId(), state: HS.game.state }; });
+  out.switch = await p.evaluate(() => { HS.SAVE.hero = 'mendicant'; HS.enterTown(false); return { asked: true, hero: HS.heroId(), state: HS.game.state }; });
   await p.waitForTimeout(1200);
   // His Wound cards: a mace, not a crossbow; blows, not nails.
   out.wounds = await p.evaluate(() => ['wrath', 'quick', 'split', 'pierce', 'heavy'].map((id) => { const w = HS.WOUNDS.find((q) => q.id === id); return `${HS.heroText(w.name)}: ${HS.heroText(w.text(1))}`; }));

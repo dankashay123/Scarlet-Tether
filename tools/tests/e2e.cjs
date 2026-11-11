@@ -11,6 +11,8 @@ const S = process.argv[2];
   await p.goto('http://localhost:8123/'); await p.waitForTimeout(900);
   const W = await p.evaluate(() => HS.W), H = await p.evaluate(() => HS.H);
   await tap(W / 2, Math.round(H * 0.8)); await p.waitForTimeout(500);
+  // Round 70: a fresh player makes a character first (the CREATE button sits where START was); the page reloads into Vael.
+  await tap(W / 2, Math.round(H * 0.8)); await p.waitForTimeout(2500);
   await closeDialog(); console.log('after wake', JSON.stringify(await st()));
   await p.keyboard.down('KeyA'); await p.waitForTimeout(1200); await p.keyboard.up('KeyA');
   await p.evaluate(() => { const v = HS.room.npcs.find((n) => n.npc === 'vane'); HS.player.x = v.x - 16; HS.player.y = v.y + 4; });

@@ -249,6 +249,27 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 70:** characters. Up to four (`MAX_CHARS`), each a whole save with a
+  class fixed when it is made (no switching: the other saint in the close,
+  his map marker, `askHero`/`switchHero` and the Switch Saint tile are gone).
+  The active character stays under `hollow-saint`; the others under
+  `hollow-saint-char-<id>`; the roster under `hollow-saint-chars` (`roster`,
+  `charMeta`, `playChar`, `createChar`, `deleteChar`). Settings, mute, dev and
+  the tutorial carry over (`CHAR_GLOBAL`). Changing or making a character
+  writes the saves and reloads (`sessionStorage` `hs-autostart` goes straight
+  to Vael). An old save becomes the first character on first load. Front
+  screens (`renderTitle`, `renderChars`, `renderCreate`, `frontTap`,
+  `charsLayout`, `createLayout`): splash, then character select (slots with
+  portrait, level and best Station, a delete tab, the hero on a lit ring,
+  the logo box with the class, START, REPLAY TUTORIAL), and character
+  creation (two class cards, a name: ANOTHER or TYPE ONE, CREATE). START and
+  CREATE sit just below the middle so e2e and soak taps go straight through.
+  Also: tapping a set in Odile's Gift shows its card; a claimed bounty shows
+  the gear it paid (`game.itemPop`, `renderItemPop`); the bag sorts by rarity,
+  slot or newest (`SAVE.bagSort`, `BAG_SORTS`, items get `t` in `bagAdd`);
+  the pause panel shows HP, damage, Sanctity and Saint level against
+  `SAVE.lastStats` (taken in `newRun`); the Forge's Values tab has lit quality
+  headers and banded rows; site markers in Vael are navy hexes with a gold rim.
 - **Round 69:** Pell's stall has COMPARE (`game.shop.cmp`): the worn piece's
   card takes the list's place beside the one for sale; BUY moved to the right
   button. Tapping a talent opens its card by the node (now, next, rank; drawn

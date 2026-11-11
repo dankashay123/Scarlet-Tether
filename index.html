@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '69';
+const BUILD = '70';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '70': ['CHARACTERS: MAKE UP TO FOUR, EACH WITH A CLASS CHOSEN FOR GOOD AND ITS OWN NAME, GEAR AND LEVELS. PICK ONE ON THE NEW START SCREEN. YOUR EXISTING SAVE IS YOUR FIRST CHARACTER.', 'THE OTHER SAINT NO LONGER WAITS IN THE CLOSE: MAKE A NEW CHARACTER TO PLAY THE OTHER CLASS.', 'THE BAG CAN SORT BY RARITY, SLOT OR NEWEST. THE PAUSE PANEL SHOWS HOW YOU HAVE GROWN SINCE THE LAST DESCENT.', 'TAP A SET IN ODILE\'S GIFT TO READ IT; A BOUNTY SHOWS THE GEAR IT PAID.'],
   '69': ['PELL\'S STALL HAS COMPARE: YOUR WORN PIECE\'S CARD BESIDE THE ONE FOR SALE.', 'TAPPING A TALENT OPENS ITS CARD BY THE NODE.', 'MENUS TICK AS YOU SWITCH TABS, AND BUYING AND LEARNING HAVE THEIR OWN SOUNDS.', 'A DOT ON THE GEAR TAB MARKS NEW PIECES. THE DESCENT PANEL IS EASIER TO READ.'],
   '68': ['PELL\'S STALL, THE FORGE, THE ENCHANTER AND THE ALTAR: THEIR LISTS SIT IN PANELS WITH A HEADER, BESIDE THE CARD.', 'EVERY TALENT HAS ITS OWN ICON.', 'PAGES SLIDE IN WHEN YOU SWITCH BAG TABS, AND CARDS FADE IN.', 'THE BAG\'S GEAR TAB SHOWS EVERY STAT. LEVEL-UP CARDS FIT THEIR TEXT AND SHOW THE RANK.'],
   '67': ['THE BAG HAS TABS FOR RITES, TALENTS AND THE CENSER. LEARN TALENTS ANYWHERE.', 'RITES: A RAIL OF SLOTS, EACH SLOT\'S RITES AS ICONS, AND THE CHOSEN ONE IN FULL.', 'TALENTS ARE A TREE OF NODES. SETTINGS HAS SECTIONS AND ONE-TAP CHOICES.', 'THE HUD, LEVEL-UP CARDS AND DEATH SUMMARY MATCH THE NEW MENUS.'],
@@ -256,8 +257,8 @@ const boltFx = () => { const T0 = TRAILS.find((q) => q.id === looks().bolt), B =
 // mace (updateMelee) instead of the floating crossbow; gear, levels, rites,
 // talents and sets are shared; each set dresses him too (mendicant_<set>).
 const HEROES = {
-  saint: { name: 'THE SAINT', sheet: 'saint', text: 'FIGHTS FROM RANGE WITH A FLOATING CROSSBOW.' },
-  mendicant: { name: 'THE MENDICANT', sheet: 'mendicant', text: 'FIGHTS UP CLOSE WITH A MACE THAT HITS EVERY FOE IN ITS ARC. TAKES 10% LESS DAMAGE.' },
+  saint: { name: 'THE SAINT', sheet: 'saint', role: 'RANGED, CROSSBOW', text: 'FIGHTS FROM RANGE WITH A FLOATING CROSSBOW.' },
+  mendicant: { name: 'THE MENDICANT', sheet: 'mendicant', role: 'MELEE, MACE', text: 'FIGHTS UP CLOSE WITH A MACE THAT HITS EVERY FOE IN ITS ARC. TAKES 10% LESS DAMAGE.' },
 };
 const heroId = () => (SAVE && SAVE.hero === 'mendicant' ? 'mendicant' : 'saint');
 const isMelee = () => heroId() === 'mendicant';
@@ -1958,6 +1959,8 @@ function useStratum(k) {
 function seeded(a) { return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function newRun() {
   const resume = game.resumeRun; game.resumeRun = null;
+  // Round 70: what the character had going in, for the pause panel's "since last descent".
+  if (!resume && !game.nextYard && player && game.scene === 'town') { SAVE.lastStats = { hp: player.maxHp, dmg: G.dmg || 0, sanct: playerSanctity(), lvl: SAVE.lvl || 1 }; persist(); }
   const seed = resume ? resume.seed : (Math.random() * 2 ** 31) | 0;
   rng = seeded(seed);
   const strat = game.nextVigil ? 1 : (game.nextStratum || 1);
@@ -2023,6 +2026,63 @@ const NEWS = SAVE.seenBuild !== BUILD && (SAVE.seenBuild || SAVE.descents) && CH
 SAVE.seenBuild = BUILD;
 if (/[?&]dev\b/.test(location.search)) SAVE.dev = true;
 function persist() { try { localStorage.setItem('hollow-saint', JSON.stringify(SAVE)); } catch { /* private mode */ } }
+// Round 70: characters. Each character is a whole save with a class chosen
+// when it is made (no switching later). The one being played lives under
+// 'hollow-saint' as before; the others wait under 'hollow-saint-char-<id>'.
+// The roster ('hollow-saint-chars') lists them with what the select screen
+// shows. Settings and the tutorial carry across characters. Choosing another
+// character or making one writes the saves and reloads straight into Vael.
+const CHAR_KEY = 'hollow-saint-chars', charKey = (id) => `hollow-saint-char-${id}`, MAX_CHARS = 4;
+const CHAR_GLOBAL = ['opts', 'muted', 'dev', 'seenBuild', 'tutorialDone'];
+const CHAR_NAMES = ['ALDRIC', 'BRANNOCH', 'CASSIA', 'DAGNY', 'EDRIC', 'FENNA', 'GISELA', 'HALE', 'ISOLDE', 'JORY', 'KESTREL', 'LUCAN', 'MAREN', 'NELL', 'OSRIC', 'PERRIN', 'QUILL', 'ROWAN', 'SABINE', 'TAMSIN', 'ULRIC', 'VESNA', 'WYNN', 'YSEULT', 'ANSEL', 'BRIDE', 'CORVIN', 'ELSPETH'];
+const randName = (not) => { const l = CHAR_NAMES.filter((n) => n !== not); return l[Math.floor(Math.random() * l.length)]; };
+const lsGet = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* full or private */ } };
+function roster() {
+  let R0 = lsGet(CHAR_KEY);
+  if (!R0 || !Array.isArray(R0.list)) {
+    // First run of this build: an existing save becomes the first character.
+    const played = SAVE.descents || SAVE.deaths || (SAVE.lvl || 1) > 1 || SAVE.tutorialDone;
+    R0 = { active: null, list: [] };
+    if (played) { const id = `c${Date.now().toString(36)}`; SAVE.name = SAVE.name || randName(); R0 = { active: id, list: [{ id, name: SAVE.name, hero: heroId() }] }; persist(); }
+    lsSet(CHAR_KEY, R0);
+  }
+  return R0;
+}
+// What the select screen shows for a character (the active one is read live).
+function charMeta(c, R0 = roster()) {
+  if (c.id === R0.active) return { ...c, name: SAVE.name || c.name, hero: heroId(), lvl: SAVE.lvl || 1, cleared: SAVE.cleared ?? -1 };
+  return { lvl: 1, cleared: -1, ...c };
+}
+function stashActive(R0) {
+  if (!R0.active) return;
+  lsSet(charKey(R0.active), SAVE);
+  const c = R0.list.find((q) => q.id === R0.active); if (c) Object.assign(c, { name: SAVE.name || c.name, hero: heroId(), lvl: SAVE.lvl || 1, cleared: SAVE.cleared ?? -1 });
+}
+const globalsOf = () => Object.fromEntries(CHAR_GLOBAL.filter((k) => SAVE[k] !== undefined).map((k) => [k, SAVE[k]]));
+function reloadInto(start) { try { if (start) sessionStorage.setItem('hs-autostart', '1'); } catch { /* private */ } location.reload(); }
+function playChar(id) {
+  const R0 = roster();
+  if (id === R0.active) { enterTown(); return; }
+  const G0 = globalsOf(); stashActive(R0);
+  lsSet('hollow-saint', { ...(lsGet(charKey(id)) || {}), ...G0 }); R0.active = id; lsSet(CHAR_KEY, R0); reloadInto(true);
+}
+function createChar(hero, name) {
+  const R0 = roster(); if (R0.list.length >= MAX_CHARS) return;
+  const G0 = globalsOf(); stashActive(R0);
+  const id = `c${Date.now().toString(36)}`; R0.list.push({ id, name, hero, lvl: 1, cleared: -1 }); R0.active = id; lsSet(CHAR_KEY, R0);
+  lsSet('hollow-saint', { ...G0, hero, name, metOdile: !!G0.tutorialDone }); reloadInto(true);
+}
+function deleteChar(id) {
+  const R0 = roster(), G0 = globalsOf();
+  R0.list = R0.list.filter((q) => q.id !== id); try { localStorage.removeItem(charKey(id)); } catch { /* private */ }
+  if (id === R0.active) {
+    const next = R0.list[0]; R0.active = next ? next.id : null;
+    lsSet('hollow-saint', next ? { ...(lsGet(charKey(next.id)) || {}), ...G0 } : G0); lsSet(CHAR_KEY, R0);
+    try { sessionStorage.setItem('hs-front', 'chars'); } catch { /* private */ } location.reload(); return;
+  }
+  lsSet(CHAR_KEY, R0); game.charSel = R0.active;
+}
 
 // ---------------------------------------------------------------- town ---
 // Vael's square: the Vestry (way down), the Forge, Pell's Stall and the
@@ -2235,8 +2295,7 @@ function makeTown() {
   const onPath = (P) => { const i = 1 + Math.floor(rng() * (P.length - 1)), t = rng(), [ax, ay] = P[i - 1], [bx, by] = P[i]; return { x: ax + (bx - ax) * t, y: ay + (by - ay) * t, path: P, pi: i, pd: 1 }; };
   person('town', 'odile', CATHEDRAL_X - 52, base + 44, { talk: 'odile' });
   // The other playable saint waits in the close; talking to them switches.
-  { const n = { sheet: isMelee() ? 'saint' : 'mendicant', npc: 'idle', x: CATHEDRAL_X + 56, y: base + 82, face: -1, ph: 0.5, still: true, hero: true }; npcs.push(n);
-    interact.push({ x: n.x, y: n.y, r: 34, label: `PLAY AS ${HEROES[isMelee() ? 'saint' : 'mendicant'].name.replace('THE ', '')}`, icon: 'talk', use: () => askHero() }); }
+  // Round 70: classes are chosen when a character is made; the other saint no longer waits in the close.
   person('town2', 'vane', CATHEDRAL_X + 64, base + 39, { talk: 'vane', face: -1 });
   person('town', 'pell', STALLS.stall, SY.stall + 20, { talk: 'pell' });
   person('town2', 'plushseller', STALLS.plush, SY.plush + 20, { talk: 'plushseller' });
@@ -2465,6 +2524,14 @@ function renderEnchPop() {
 // Every tier of a set piece over the bag (round 53): the card drops lower
 // tiers on small phones, and a line on it opens this.
 function setPopLayout() { const pw = Math.min(320, W - 30), it = game.setPop, ls = setLines(it).flatMap(([t, col]) => wrapW(heroText(t), pw - 24, true).map((l) => [l, col])); const ph = Math.min(H - 20, 10 + ls.length * 10 + 28); return { pw, ph, x0: Math.round(W / 2 - pw / 2), y0: Math.round(H / 2 - ph / 2), ls }; }
+// Round 70: one item's card over any page (a bounty's pay); tap to close.
+function renderItemPop() {
+  const it = game.itemPop, w = Math.min(230, W - 40), h = Math.min(H - 50, 66 + it.stats.length * 10 + (it.power || it.set || it.wset || it.ench ? 44 : 0)), C = { x: Math.round(W / 2 - w / 2), y: Math.round(H / 2 - h / 2) - 6, w, h };
+  ctx.fillStyle = 'rgba(5,8,14,0.6)'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#0d1424'; ctx.fillRect(C.x, C.y, C.w, C.h);
+  drawItemCard(it, C, SAVE.equip[it.slot]);
+  text('TAP TO CLOSE', W / 2, C.y + C.h + 6, PAL.stone1, { small: true, align: 'center' });
+}
 function renderSetPop() {
   const L = setPopLayout(), small = { small: true, outline: null };
   ctx.fillStyle = 'rgba(11,7,16,0.6)'; ctx.fillRect(0, 0, W, H);
@@ -2636,10 +2703,13 @@ function renderForgeValues(L, it) {
   inset(x0 - 4, L.y0 + 30, w + 8, L.ph - 38);
   const keys = Object.keys(STAT), lw = Math.min(104, Math.floor(w * 0.26)), cw = Math.floor((w - lw) / QUALITY.length);
   const top = L.y0 + 34, rh = Math.max(10, Math.min(15, Math.floor((L.ph - 76) / keys.length)));
-  QUALITY.forEach((Q, q) => { const cx = x0 + lw + q * cw + cw / 2; text(Q.name, cx, top, Q.col, { ...small, align: 'center' }); text(`${Q.p}%`, cx, top + 10, PAL.stone2, { ...small, align: 'center' }); });
+  // Round 70: each quality's column has a lit header in its colour; rows are banded strips.
+  QUALITY.forEach((Q, q) => { const cx = x0 + lw + q * cw + cw / 2, c = hexRgb(Q.col), g = ctx.createLinearGradient(0, top - 3, 0, top + 20); g.addColorStop(0, `rgba(${c},0.32)`); g.addColorStop(1, `rgba(${c},0.04)`); ctx.fillStyle = g; ctx.fillRect(x0 + lw + q * cw + 1, top - 3, cw - 2, 22); ctx.fillStyle = `rgba(${c},0.9)`; ctx.fillRect(x0 + lw + q * cw + 1, top - 3, cw - 2, 1);
+    text(Q.name, cx, top, Q.col, { ...small, align: 'center', bold: true }); text(`${Q.p}%`, cx, top + 10, PAL.stone1, { ...small, align: 'center' }); });
+  text('STAT', x0, top + 10, PAL.gold1, { ...small, bold: true });
   keys.forEach((key, r) => {
     const y = top + 24 + r * rh;
-    if (r % 2 === 0) { ctx.fillStyle = PAL.ink3; ctx.fillRect(x0 - 2, y - 2, w + 4, rh); }
+    ctx.fillStyle = r % 2 === 0 ? 'rgba(255,255,255,0.045)' : 'rgba(0,0,0,0.18)'; ctx.fillRect(x0 - 2, y - 2, w + 4, rh - 1);
     text(STAT[key].label, x0, y, PAL.cloth0, small);
     QUALITY.forEach((Q, q) => { const [a, b] = qualRange(key, ri, q); text(`${a}-${b}${STAT[key].pct ? '%' : ''}`, x0 + lw + q * cw + cw / 2, y, Q.col, { ...small, align: 'center' }); });
   });
@@ -2919,14 +2989,6 @@ function migrateDevotion() {
   SAVE.lvl = 1; SAVE.lxp = 0; SAVE.talents = {}; SAVE.virtues = {}; SAVE.devPts = 0;
   const keep = player; player = null; gainSaintXp(xp); player = keep; persist();
 }
-function askHero() {
-  const to = isMelee() ? 'saint' : 'mendicant', H0 = HEROES[to];
-  ask(`PLAY AS ${H0.name}? ${H0.text} YOUR GEAR, LEVELS AND RITES STAY.`, () => switchHero(to), 'SWITCH');
-}
-function switchHero(id) {
-  SAVE.hero = id; persist(); enterTown(false);
-  game.banner = { text: HEROES[id].name, sub: HEROES[id].text.split('.')[0], t: 0, color: PAL.gold0 }; sfx('shrine');
-}
 function openCanonry() { hubEnter(); game.state = 'canonry'; game.talTab = game.talTab || 0; sfx('tap'); }
 // The talents panel: three tree tabs; five rows of talents, a detail line and
 // the LEARN and RESET buttons.
@@ -3148,6 +3210,8 @@ function giftTap(x, y) {
   if (featOut(L, x, y)) { game.state = 'play'; sfx('tap'); return; }
   MAIN_SETS.forEach((id, i) => {
     const r = giftRow(L, i);
+    // Round 70: a tap on the row (not its TAKE button) shows the set's card.
+    if (inRect(r, x, y) && !inRect({ x: r.x + r.w - 56, y: r.y, w: 56, h: r.h }, x, y)) { game.setPop = { set: id, slot: VSETS[id].slots[0], ri: 4, stats: [], name: VSETS[id].name }; sfx('tap', { vol: 0.5 }); return; }
     if (!inRect({ x: r.x + r.w - 56, y: r.y + 3, w: 50, h: 20 }, x, y) || (SAVE.gifts || 0) <= 0) return;
     const S = VSETS[id], have = new Set(setOwned(id).map((it) => it.slot)), lack = S.slots.filter((sl) => !have.has(sl)).sort(() => rng() - 0.5).slice(0, 2);
     if (!lack.length) return;
@@ -3746,7 +3810,7 @@ function boardTap(x, y) {
     const il = bestIl(); b.claimed = true;
     SAVE.gold = (SAVE.gold || 0) + 150 * il; gainSaintXp(250 * il);
     let it; do { it = rollItem(4, il); } while (it.ri < 2);
-    bagAdd(it); toast(`BOUNTY PAID: ${nm(it)}`, 2.5); game.toastColor = RARITY[it.ri].color; sfx('gold');
+    bagAdd(it); toast(`BOUNTY PAID: ${nm(it)}`, 2.5); game.toastColor = RARITY[it.ri].color; sfx('gold'); game.itemPop = it; // round 70: show what it paid
     if (B.list.every((q) => q.claimed)) { let h; do { h = rollItem(6, il); } while (h.ri !== 3); bagAdd(h); B.next = (SAVE.descents || 0) + 1; game.banner = { text: 'ALL BOUNTIES CLAIMED', sub: h.name, t: 0, color: RARITY[3].color }; }
     persist();
   });
@@ -4560,8 +4624,14 @@ function drawSiteMarkers(cx, cy) {
   for (const S of SITES) {
     const x = S.x - cx, y = room.top * TILE + S.dy - 42 - (S.lift || 0) - cy + Math.round(Math.sin(game.real * 2 + S.x) * 2);
     if (x < -20 || x > W + 20) continue;
-    badge(S.badge, x, y);
-    if (!siteDone(S)) mapIcon('lock', x + 4, y + 2, PAL.cloth0);
+    // Round 70: each marker is a navy hex with a gold rim (grey while locked) and a small pin below.
+    const open = siteDone(S), hx = Math.round(x), hy = Math.round(y);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(hx - 1, hy + 10, 2, 5);
+    hexPath(hx, hy + 1, 11); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fill();
+    hexPath(hx, hy, 10); ctx.fillStyle = open ? '#ffd155' : '#7d8596'; ctx.fill();
+    hexPath(hx, hy, 9); { const g = ctx.createLinearGradient(0, hy - 9, 0, hy + 9); g.addColorStop(0, '#24314a'); g.addColorStop(1, '#0c1220'); ctx.fillStyle = g; ctx.fill(); }
+    badge(S.badge, hx, hy, false, { alpha: open ? 1 : 0.7 });
+    if (!open) mapIcon('lock', hx + 4, hy + 2, PAL.cloth0);
   }
 }
 
@@ -6327,6 +6397,7 @@ function applyGear(fill = false) {
   player.charges = fill ? G.charges : Math.min(player.charges, G.charges);
 }
 function bagAdd(it) {
+  if (!it.t) it.t = Date.now(); // when it was found, for the bag's NEWEST sort (round 70)
   // An empty slot takes the item straight away, even with a full bag.
   if (!SAVE.equip[it.slot]) { it.run = false; it.isNew = false; SAVE.equip[it.slot] = it; applyGear(); toast(`EQUIPPED ${nm(it)}`, 2); game.toastColor = RARITY[it.ri].color; persist(); return true; }
   if (SAVE.bag.length >= BAG_SIZE) return false;
@@ -7413,7 +7484,7 @@ function update(realDt) {
   if (game.news && game.state === 'play' && game.scene === 'town' && !game.dialog && !tut.on && game.real > 1.2) { game.newsFor = game.news; game.news = null; game.state = 'news'; persist(); sfx('shrine', { rate: 1.4, vol: 0.5 }); }
   // Music and ambience follow the scene.
   // While a Warden lives its battle loop plays: orchestral, or the organ in the Drowned Nave.
-  const mus = game.state === 'dead' ? 'dead' : game.state === 'title' ? 'title' : game.scene === 'wound' && game.warden ? 'warden' : game.scene;
+  const mus = game.state === 'dead' ? 'dead' : ['title', 'chars', 'create'].includes(game.state) ? 'title' : game.scene === 'wound' && game.warden ? 'warden' : game.scene;
   if (mus !== game.music) { game.music = mus; AUDIO.set(mus === 'town' || mus === 'title' ? ['music_town', 'amb_choir', 'amb_town', 'amb_crickets'] : mus === 'warden' ? [curDiff().vigil ? 'music_warden' : ['music_warden', 'music_warden', 'music_warden_nave', 'music_warden_ossuary'][stratum()]] : mus === 'wound' ? [curDiff().vigil ? 'music_dungeon' : ['music_undercroft', 'music_undercroft', 'music_nave', 'music_ossuary'][stratum()]] : []); }
   // The altar's and the forge's fires crackle as the Saint walks by.
   // Near the cathedral doors the chant is sung: the choir rises as the organ falls away.
@@ -7535,7 +7606,7 @@ function render() {
   { const k = TEXT_SIZES[opt('text')] || 1; if (k !== TEXT_K) { TEXT_K = k; TEXT_W.clear(); } }
   ctx.fillStyle = '#0b0710'; ctx.fillRect(0, 0, W, H);
   if (game.state === 'designer' && DES) { renderDesigner(); if (game.ask) { layerBreak(); renderAsk(); } if (game.toast) text(game.toast.msg, W / 2, Math.round(H * 0.4), game.toastColor || PAL.gold1, { align: 'center' }); blit(); flushText(); return; }
-  if (game.state === 'title' || !player) { UI_SOFT = true; renderTitle(); blit(); flushText(); return; }
+  if (game.state === 'title' || game.state === 'chars' || game.state === 'create' || !player) { UI_SOFT = true; if (game.state === 'chars') renderChars(); else if (game.state === 'create') renderCreate(); else renderTitle(); if (game.ask) { layerBreak(); renderAsk(); } blit(); flushText(); return; }
   const shk = opt('shake') ? game.shake : 0;
   const sx = shk ? Math.round(rand(-shk, shk)) : 0, sy = shk ? Math.round(rand(-shk, shk)) : 0;
   const cx = Math.round(cam.x) + sx, cy = Math.round(cam.y) + sy;
@@ -7604,12 +7675,6 @@ function render() {
     const it = game.interact, ty = it.who ? it.y - 40 : it.door ? it.y - 30 : it.y - 46;
     const label = it.who ? NPC_INFO[it.who.talk || it.who.npc].name : it.label;
     text(label, it.x, ty + Math.round(Math.sin(game.real * 5)), it.who ? PAL.gold1 : PAL.holy1, { align: 'center' });
-  }
-  // Round 55: the other playable saint stands out in the close: his name over his head and a gold ring at his feet.
-  if (room.kind === 'town' && game.state === 'play') for (const n of room.npcs) if (n.hero) {
-    const near = game.interact && game.interact.x === n.x && game.interact.y === n.y, pulse = 0.5 + 0.5 * Math.sin(game.real * 3);
-    ctx.strokeStyle = `rgba(255,209,85,${0.35 + 0.35 * pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(n.x, n.y, 13 + pulse * 2, 6 + pulse, 0, 0, Math.PI * 2); ctx.stroke();
-    if (!near) { text(HEROES[isMelee() ? 'saint' : 'mendicant'].name, n.x, n.y - 74 + Math.round(Math.sin(game.real * 3)), PAL.gold1, { align: 'center' }); text('PLAY AS HIM', n.x, n.y - 62 + Math.round(Math.sin(game.real * 3)), PAL.cloth1, { align: 'center', small: true }); }
   }
   drawAbilitiesAir();
   if (game.scene === 'wound') drawSkillsAir();
@@ -7747,14 +7812,15 @@ function render() {
   if (game.state === 'loading') renderLoading();
   if (hubDx) ctx.restore();
   if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; }
-  if (game.setPop && game.state === 'inv') { layerBreak(); renderSetPop(); } else game.setPop = null;
+  if (game.setPop && (game.state === 'inv' || game.state === 'gift')) { layerBreak(); renderSetPop(); } else game.setPop = null;
+  if (game.itemPop && HUB_STATES.concat(['board', 'shop', 'gift']).includes(game.state)) { layerBreak(); renderItemPop(); } else game.itemPop = null;
   if (game.enchPop && game.state === 'inv') { layerBreak(); renderEnchPop(); if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; } } else game.enchPop = null;
   if (game.ask) { layerBreak(); renderAsk(); if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; } }
   blit(); flushText();
   // Round 65: a window fades in over 0.14 s when it opens.
   if (game.state !== UI_LAST) { UI_LAST = game.state; UI_OPEN = game.real; }
   if (UI_FADES.length) { sctx.save(); sctx.setTransform(1, 0, 0, 1, 0, 0); for (const f of UI_FADES) { sctx.fillStyle = `rgba(10,15,27,${f.a})`; sctx.fillRect(Math.round(f.x * PRE), Math.round(f.y * PRE), Math.round(f.w * PRE), Math.round(f.h * PRE)); } sctx.restore(); UI_FADES.length = 0; }
-  const ua = game.state !== 'play' && game.state !== 'title' ? 1 - (game.real - UI_OPEN) / 0.14 : 0;
+  const ua = !['play', 'title', 'chars', 'create'].includes(game.state) ? 1 - (game.real - UI_OPEN) / 0.14 : 0;
   if (ua > 0) { sctx.save(); sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.fillStyle = `rgba(11,7,16,${0.55 * ua})`; sctx.fillRect(0, 0, sctx.canvas.width, sctx.canvas.height); sctx.restore(); }
 }
 let UI_LAST = '', UI_OPEN = 0;
@@ -8345,10 +8411,8 @@ function renderTownMap() {
   for (const S of SITES) { const y = sy(room.top * TILE + S.dy - 20); badge(S.badge, sx(S.x), y, true); if (!siteDone(S)) mapIcon('lock', sx(S.x) + 5, y + 4, PAL.cloth0); }
   badge('descend', sx(CATHEDRAL_X), sy(room.top * TILE + CATHEDRAL_DY - 20), true);
   for (const n of room.npcs) if (NPC_BADGE[n.npc]) badge(NPC_BADGE[n.npc], sx(n.x), sy(n.y) - 4);
-  for (const n of room.npcs) if (n.hero) badge('npc', sx(n.x), sy(n.y) - 4);
   // Round 67: labels go on last, each on a dark backing, and step aside when they would overlap.
-  const labels = [...DISTRICTS.map(([name, x0, y0, x1, y1]) => [name.replace(/^THE /, '').replace('CATHEDRAL OF THE WOUND', 'CATHEDRAL'), sx((x0 + x1) / 2), sy(y1) - 10, PAL.cloth1]),
-    ...room.npcs.filter((n) => n.hero).map((n) => ['SWITCH SAINT', sx(n.x), sy(n.y) + 6, PAL.gold0])], placed = [];
+  const labels = [...DISTRICTS.map(([name, x0, y0, x1, y1]) => [name.replace(/^THE /, '').replace('CATHEDRAL OF THE WOUND', 'CATHEDRAL'), sx((x0 + x1) / 2), sy(y1) - 10, PAL.cloth1])], placed = [];
   const px = sx(player.x), py = sy(player.y);
   ctx.fillStyle = PAL.outline; ctx.fillRect(px - 4, py - 4, 9, 9);
   ctx.fillStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.fillRect(px - 3, py - 3, 7, 7);
@@ -8472,7 +8536,7 @@ function renderHud() {
 // Bag, Rites, Map, Settings, Sound, Switch Saint, and Dev and Layout when the
 // dev menu is on. The game stays in view on the left with the Stigmata of the run.
 function pauseLayout() {
-  const tiles = [['bag', 'BAG'], ...(game.scene === 'wound' || game.scene === 'town' ? [['rites', 'RITES'], ['map', 'MAP']] : []), ['settings', 'SETTINGS'], ['sound', AUDIO.muted ? 'SOUND OFF' : 'SOUND ON'], ...(game.scene === 'town' ? [['hero', 'SWITCH SAINT']] : []), ...(devOn() ? [['dev', 'DEV'], ['layout', 'LAYOUT']] : []), ['resume', 'RESUME']];
+  const tiles = [['bag', 'BAG'], ...(game.scene === 'wound' || game.scene === 'town' ? [['rites', 'RITES'], ['map', 'MAP']] : []), ['settings', 'SETTINGS'], ['sound', AUDIO.muted ? 'SOUND OFF' : 'SOUND ON'], ...(devOn() ? [['dev', 'DEV'], ['layout', 'LAYOUT']] : []), ['resume', 'RESUME']];
   const pw = Math.max(168, Math.min(232, Math.round(W * 0.4))), px = W - pw - SAFE.r, cols = 3, gap = 4, tw = Math.floor((pw - 16 - gap * (cols - 1)) / cols);
   const top = 46, rows = Math.ceil(tiles.length / cols), th = Math.max(36, Math.min(54, Math.floor((H - top - 10 - gap * (rows - 1)) / rows)));
   return { px, pw, tiles: tiles.map(([id, label], i) => ({ id, label, x: px + 8 + (i % cols) * (tw + gap), y: top + Math.floor(i / cols) * (th + gap), w: tw, h: th })), back: { x: W - SAFE.r - 18, y: 17, r: 12 } };
@@ -8496,8 +8560,8 @@ function renderPause() {
     ctx.fillStyle = 'rgba(170,190,225,0.22)'; ctx.fillRect(P.px, 0, 1, H); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(P.px - 2, 0, 2, H); }
   // Who is playing: the portrait, the saint's name and Saint level.
   { const f = frameOf('ui', 'portrait', 0); if (f) { const k = Math.min(1, 28 / f.h); ctx.save(); ctx.translate(P.px + 22, 20); ctx.scale(k, k); sprC('ui', 'portrait', 0, 0, 0); ctx.restore(); }
-    text(saintBase() === 'mendicant' ? 'THE MENDICANT' : 'THE SAINT', P.px + 42, 8, PAL.white, { bold: true });
-    text(`SAINT LEVEL ${SAVE.lvl || 1}`, P.px + 42, 21, PAL.stone1, { small: true });
+    text(SAVE.name || HEROES[heroId()].name, P.px + 42, 8, PAL.white, { bold: true });
+    text(`${HEROES[heroId()].name.replace('THE ', '')} · LEVEL ${SAVE.lvl || 1}`, P.px + 42, 21, PAL.stone1, { small: true });
     backArrow(P.back.x, P.back.y);
     ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(P.px + 8, 38, P.pw - 16, 1); }
   for (const t of P.tiles) {
@@ -8508,6 +8572,15 @@ function renderPause() {
     pauseIcon(t.id, t.x + t.w / 2, t.y + Math.round(t.h * 0.42));
     text(fitText(t.label, t.w - 4, null, true), t.x + t.w / 2, t.y + t.h - 11, t.id === 'resume' ? PAL.gold1 : '#d8dde6', { small: true, align: 'center' });
   }
+  // Round 70: under the tiles, how the character has grown since the last descent began.
+  { const last = P.tiles[P.tiles.length - 1], y0 = last.y + last.h + 8, S0 = SAVE.lastStats;
+    if (S0 && player && y0 + 50 <= H - 6) {
+      const x = P.px + 8, w = P.pw - 16, rows = [['HP', player.maxHp, S0.hp], ['DAMAGE', `+${G.dmg || 0}%`, S0.dmg, G.dmg || 0], ['SANCTITY', playerSanctity(), S0.sanct], ['SAINT LEVEL', SAVE.lvl || 1, S0.lvl]];
+      inset(x, y0, w, Math.min(H - 6 - y0, 14 + rows.length * 10), '255,209,85'); text('SINCE THE LAST DESCENT', x + 5, y0 + 2, PAL.gold1, { small: true, outline: null });
+      rows.forEach(([k, v, was, now = v], i) => { const y = y0 + 16 + i * 10; if (y > H - 14) return; const d = now - was;
+        text(k, x + 5, y, PAL.stone1, { small: true, outline: null }); text(String(v), x + w - 36, y, PAL.white, { small: true, outline: null, align: 'right' });
+        text(d ? `${d > 0 ? '+' : ''}${d}` : '-', x + w - 5, y, d > 0 ? PAL.flame1 : d < 0 ? PAL.blood0 : PAL.stone3, { small: true, outline: null, align: 'right' }); });
+    } }
   // The left: Paused, and the Stigmata of this run.
   const ws = game.scene === 'wound' && game.run && game.run.wounds ? Object.entries(game.run.wounds).map(([id, n]) => [WOUNDS.find((q) => q.id === id), n]).filter(([w]) => w) : [];
   const errY = H - 16, small = { small: true }, cx = Math.round(lw / 2);
@@ -8534,7 +8607,6 @@ function pauseTap(x, y) {
     if (t.id === 'map') { game.state = 'map'; return; }
     if (t.id === 'settings') { game.state = 'settings'; return; }
     if (t.id === 'sound') { AUDIO.setMuted(!AUDIO.muted); return; }
-    if (t.id === 'hero') return askHero();
     if (t.id === 'dev') return openDev();
     if (t.id === 'layout') return openDesigner();
     game.state = 'play'; return;
@@ -8557,47 +8629,151 @@ function overlay(title, sub) {
 }
 
 const ODDS = ['3 TO 1', '5 TO 2', '7 TO 4', '2 TO 1', 'EVENS', '9 TO 2'];
-// Title menu buttons (internal pixels).
-function menuButtons() {
-  const b = [{ id: 'begin', label: SAVE.descents || SAVE.deaths ? 'CONTINUE' : 'BEGIN', x: W / 2, y: Math.round(H * 0.84), w: 124, h: 24 }];
-  if (SAVE.tutorialDone) b.push({ id: 'tutorial', label: 'REPLAY TUTORIAL', x: W / 2, y: Math.round(H * 0.84) + 24, w: 116, h: 14, small: true });
-  return b;
+// Round 70: the front screens. The splash (title), the character select
+// (chars) and making a character (create), after the owner's references.
+// Start and Create sit just below the middle so a tap there goes straight on.
+function menuButtons() { return [{ id: 'begin', label: 'TAP TO START', x: W / 2, y: Math.round(H * 0.84), w: W, h: 24 }]; }
+function frontBack() {
+  const sky = ctx.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#0d1424'); sky.addColorStop(0.6, '#0b0912'); sky.addColorStop(1, '#06050a');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  // A moon behind thin cloud, high on the right.
+  const mx = Math.round(W * 0.78), my = Math.round(H * 0.16), mg = ctx.createRadialGradient(mx, my, 4, mx, my, 70); mg.addColorStop(0, 'rgba(210,225,255,0.28)'); mg.addColorStop(1, 'rgba(210,225,255,0)'); ctx.fillStyle = mg; ctx.fillRect(mx - 70, my - 70, 140, 140);
+  ctx.fillStyle = '#d9e2f2'; ctx.beginPath(); ctx.arc(mx, my, 11, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(13,20,36,0.85)'; ctx.beginPath(); ctx.arc(mx + 5, my - 3, 10, 0, Math.PI * 2); ctx.fill();
+  if (IMG.town2) { const f = frameOf('town2', 'cathedral', 0); ctx.globalAlpha = 0.24; spr('town2', 'cathedral', 0, Math.round(W / 2), Math.round(H * 0.74), { tint: null }); ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(8,8,16,0.5)'; ctx.fillRect(Math.round(W / 2 - f.w / 2), Math.round(H * 0.74 - f.h), f.w, f.h); }
+  const g = ctx.createRadialGradient(W / 2, H * 0.66, 6, W / 2, H * 0.66, H * 0.5); g.addColorStop(0, 'rgba(255,150,70,0.18)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const gr = ctx.createLinearGradient(0, H * 0.72, 0, H); gr.addColorStop(0, '#0b0a12'); gr.addColorStop(1, '#040308'); ctx.fillStyle = gr; ctx.fillRect(0, Math.round(H * 0.74), W, H);
+  for (let i = 0; i < 18; i++) { const x = (i * 131 + game.real * (5 + i % 4) * 3) % W, y = (i * 71 + game.real * (9 + i % 5) * 2) % H; ctx.globalAlpha = 0.55; ctx.fillStyle = i % 3 ? PAL.ember1 : PAL.gold1; ctx.fillRect(Math.round(x), Math.round(H - y), 2, 2); }
+  ctx.globalAlpha = 1;
+}
+// A hero standing on a lit ring of floor.
+function frontHero(hero, x, y, k, live = false) {
+  ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(k, k);
+  const g = ctx.createRadialGradient(0, -20, 2, 0, -20, 46); g.addColorStop(0, 'rgba(255,200,120,0.22)'); g.addColorStop(1, 'rgba(255,200,120,0)'); ctx.fillStyle = g; ctx.fillRect(-46, -66, 92, 92);
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.ellipse(0, 0, 15, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,209,85,0.5)'; ctx.lineWidth = 1 / k; ctx.beginPath(); ctx.ellipse(0, 0, 17, 4.5, 0, 0, Math.PI * 2); ctx.stroke();
+  spr(live ? saintSheet() : HEROES[hero].sheet, 'idle', Math.floor(game.real * 6), 0, 0); ctx.restore();
+}
+// A head-and-shoulders crop of a hero in a box.
+function heroPortrait(hero, x, y, w, h, live = false) {
+  const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#2a3550'); g.addColorStop(1, '#0d1220'); ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.translate(Math.round(x + w / 2 + 4), y + 114); ctx.scale(2, 2); spr(live ? saintSheet() : HEROES[hero].sheet, 'idle', 0, 0, 0); ctx.restore();
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, y, w, 1);
 }
 function renderTitle() {
   if (!PAL) return;
-  // A quiet backdrop: night sky, the cathedral in silhouette, one warm glow.
-  const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, '#120c1e'); sky.addColorStop(0.7, '#0b0710'); sky.addColorStop(1, '#07050b');
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
-  if (IMG.town2) { const f = frameOf('town2', 'cathedral', 0); ctx.globalAlpha = 0.22; spr('town2', 'cathedral', 0, Math.round(W / 2), Math.round(H * 0.74), { tint: null }); ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(11,7,16,0.55)'; ctx.fillRect(Math.round(W / 2 - f.w / 2), Math.round(H * 0.74 - f.h), f.w, f.h); }
-  const g = ctx.createRadialGradient(W / 2, H * 0.62, 6, W / 2, H * 0.62, H * 0.42);
-  g.addColorStop(0, 'rgba(255,170,90,0.20)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#07050b'; ctx.fillRect(0, Math.round(H * 0.74), W, H);
-  // A few slow embers.
-  for (let i = 0; i < 14; i++) { const x = (i * 131 + game.real * (5 + i % 4) * 3) % W, y = (i * 71 + game.real * (9 + i % 5) * 2) % H; ctx.globalAlpha = 0.6; ctx.fillStyle = i % 3 ? PAL.ember1 : PAL.gold1; ctx.fillRect(Math.round(x), Math.round(H - y), 2, 2); }
-  ctx.globalAlpha = 1;
-  if (IMG.saint) {
-    ctx.save(); ctx.translate(Math.round(W / 2), Math.round(H * 0.74)); ctx.scale(2, 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.ellipse(0, 0, 13, 3.5, 0, 0, Math.PI * 2); ctx.fill();
-    spr(saintSheet(), 'idle', Math.floor(game.real * 4), 0, 0); ctx.restore();
-  }
-  const ty = Math.round(H * 0.1);
+  frontBack();
+  const R0 = roster(), has = !!R0.active;
+  if (IMG.saint) frontHero(has ? heroId() : 'saint', W / 2, H * 0.74, 2, has);
+  const ty = Math.round(H * 0.08);
   text('HOLLOW SAINT', W / 2, ty, PAL.gold1, { sc: 4, align: 'center', glow: true });
   const lw = textW('HOLLOW SAINT', 4, false, true) * 0.75;
   goldRule(Math.round(W / 2 - lw / 2), ty + 46, Math.round(lw), '255,209,85', true);
-  // Round 66: the start prompt sits on a dark band across the screen that fades at both ends.
-  for (const b of menuButtons()) {
-    if (!b.small) {
-      const y = Math.round(b.y - b.h / 2), g = ctx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, 'rgba(0,0,0,0.6)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = g; ctx.fillRect(0, y, W, b.h);
-      for (const yy of [y, y + b.h - 1]) { const r = ctx.createLinearGradient(0, 0, W, 0); r.addColorStop(0, 'rgba(255,209,85,0)'); r.addColorStop(0.5, 'rgba(255,209,85,0.55)'); r.addColorStop(1, 'rgba(255,209,85,0)'); ctx.fillStyle = r; ctx.fillRect(0, yy, W, 1); }
-      ctx.globalAlpha = 0.75 + 0.25 * Math.sin(game.real * 3);
-      text(b.label, b.x, b.y - 6, PAL.white, { align: 'center', sc: 1.6, bold: true });
-      ctx.globalAlpha = 1;
-    } else text(b.label, b.x, b.y - 3, PAL.stone1, { align: 'center', outline: null, small: true });
-  }
+  // The start prompt on a dark band that fades at both ends.
+  const b = menuButtons()[0], y = Math.round(b.y - b.h / 2), g = ctx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, 'rgba(0,0,0,0.6)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, y, W, b.h);
+  for (const yy of [y, y + b.h - 1]) { const r = ctx.createLinearGradient(0, 0, W, 0); r.addColorStop(0, 'rgba(255,209,85,0)'); r.addColorStop(0.5, 'rgba(255,209,85,0.55)'); r.addColorStop(1, 'rgba(255,209,85,0)'); ctx.fillStyle = r; ctx.fillRect(0, yy, W, 1); }
+  ctx.globalAlpha = 0.75 + 0.25 * Math.sin(game.real * 3); text(b.label, b.x, b.y - 6, PAL.white, { align: 'center', sc: 1.4, bold: true }); ctx.globalAlpha = 1;
+  text(`BUILD ${BUILD}`, 8 + SAFE.l, 6, PAL.stone3, { small: true, outline: null });
   HUD.mute.icon = AUDIO.muted ? 'muted' : 'sound'; button(HUD.mute);
+}
+// The character select: slots on the left, the chosen hero in the middle, the
+// game's name and the hero's class on the right, START at the bottom.
+function charsLayout() {
+  const R0 = roster(), list = R0.list.map((c) => charMeta(c, R0)), n = list.length + (list.length < MAX_CHARS ? 1 : 0);
+  const sx = 12 + SAFE.l, sw = Math.min(158, Math.round(W * 0.32)), top = 30, bot = Math.round(H * 0.82) - 16, sh = Math.min(46, Math.floor((bot - top) / Math.max(n, 3)) - 4);
+  const slots = list.map((c, i) => ({ c, x: sx, y: top + i * (sh + 4), w: sw, h: sh }));
+  const plus = list.length < MAX_CHARS ? { x: sx, y: top + list.length * (sh + 4), w: sw, h: Math.min(sh, 28) } : null;
+  const lw = Math.min(170, Math.round(W * 0.32)), logo = { x: W - SAFE.r - 12 - lw, y: 30, w: lw, h: 46 };
+  const sel = list.find((c) => c.id === (game.charSel || R0.active)) || list[0] || null;
+  return { R0, list, slots, plus, logo, sel, start: { x: Math.round(W / 2 - 75), y: Math.round(H * 0.82) - 12, w: 150, h: 24 }, back: { x: W - SAFE.r - 18, y: 15, r: 12 },
+    tut: { x: sx, y: Math.round(H * 0.82) - 9, w: 92, h: 18 }, del: sel ? (() => { const s0 = slots.find((q) => q.c.id === sel.id); return s0 && { x: s0.x + s0.w - 22, y: s0.y - 3, w: 22, h: 11 }; })() : null };
+}
+function renderChars() {
+  const L = charsLayout(), small = { small: true, outline: null };
+  frontBack();
+  ctx.fillStyle = 'rgba(5,8,14,0.35)'; ctx.fillRect(0, 0, W, H);
+  backArrow(L.back.x, L.back.y);
+  for (const S of L.slots) {
+    const c = S.c, on = L.sel && c.id === L.sel.id;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(S.x + 2, S.y + 2, S.w, S.h);
+    const g = ctx.createLinearGradient(0, S.y, 0, S.y + S.h); g.addColorStop(0, on ? 'rgba(44,56,80,0.95)' : 'rgba(24,30,44,0.88)'); g.addColorStop(1, on ? 'rgba(20,26,40,0.95)' : 'rgba(12,16,26,0.88)'); ctx.fillStyle = g; ctx.fillRect(S.x, S.y, S.w, S.h);
+    ctx.fillStyle = on ? 'rgba(240,244,255,0.9)' : 'rgba(170,190,225,0.22)'; ctx.fillRect(S.x, S.y, S.w, 1); ctx.fillRect(S.x, S.y + S.h - 1, S.w, 1); ctx.fillRect(S.x, S.y, 1, S.h); ctx.fillRect(S.x + S.w - 1, S.y, 1, S.h);
+    const ph = S.h - 4; heroPortrait(c.hero, S.x + 2, S.y + 2, ph, ph, c.id === L.R0.active);
+    text(`LV.${c.lvl}`, S.x + 4, S.y + S.h - 12, PAL.white, { small: true });
+    const tx = S.x + ph + 8;
+    text(fitText(c.name, S.w - ph - 14, null, false), tx, S.y + 4, PAL.white, { bold: on });
+    text(HEROES[c.hero].name.replace('THE ', ''), tx, S.y + 17, PAL.stone1, small);
+    if (S.h >= 40) text(c.cleared >= 0 ? `STATION ${ROMAN[c.cleared]} CLEARED` : 'NEW', tx, S.y + 28, PAL.gold1, small);
+  }
+  if (L.plus) { const P = L.plus; ctx.fillStyle = 'rgba(12,16,26,0.75)'; ctx.fillRect(P.x, P.y, P.w, P.h); ctx.fillStyle = 'rgba(170,190,225,0.22)'; ctx.fillRect(P.x, P.y, P.w, 1); ctx.fillRect(P.x, P.y + P.h - 1, P.w, 1);
+    ctx.fillStyle = '#c9ced8'; ctx.fillRect(P.x + P.w / 2 - 6, P.y + P.h / 2 - 1, 12, 2); ctx.fillRect(P.x + P.w / 2 - 1, P.y + P.h / 2 - 6, 2, 12); }
+  if (L.del) { ctx.fillStyle = '#e0a326'; ctx.fillRect(L.del.x, L.del.y, L.del.w, L.del.h); ctx.fillStyle = TAB_INK; for (let k = 0; k < 5; k++) { ctx.fillRect(L.del.x + 9 + k, L.del.y + 3 + k, 1, 1); ctx.fillRect(L.del.x + 13 - k, L.del.y + 3 + k, 1, 1); } }
+  // The game's name in a framed box, the hero's class and what it does under it.
+  { const B = L.logo; ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(B.x + 2, B.y + 3, B.w, B.h); const g = ctx.createLinearGradient(0, B.y, 0, B.y + B.h); g.addColorStop(0, '#3a2412'); g.addColorStop(1, '#140c08'); ctx.fillStyle = g; ctx.fillRect(B.x, B.y, B.w, B.h);
+    ctx.strokeStyle = 'rgba(255,209,85,0.6)'; ctx.lineWidth = 1; ctx.strokeRect(B.x + 0.5, B.y + 0.5, B.w - 1, B.h - 1); ctx.strokeRect(B.x + 2.5, B.y + 2.5, B.w - 5, B.h - 5);
+    text('HOLLOW SAINT', B.x + B.w / 2, B.y + 7, PAL.gold1, { align: 'center', sc: 1.6, glow: true });
+    text(L.sel ? HEROES[L.sel.hero].name : 'NO CHARACTER YET', B.x + B.w / 2, B.y + 31, PAL.white, { align: 'center', small: true });
+    if (L.sel) { let y = B.y + B.h + 8; text(HEROES[L.sel.hero].role, B.x + B.w / 2, y, PAL.gold1, { ...small, align: 'center' }); y += 11; for (const l of wrapW(HEROES[L.sel.hero].text, B.w - 6, true)) { text(l, B.x + B.w / 2, y, PAL.cloth1, { ...small, align: 'center' }); y += 10; } } }
+  const mid = (L.slots.length ? L.slots[0].x + L.slots[0].w : 0) / 2 + L.logo.x / 2;
+  if (L.sel) frontHero(L.sel.hero, Math.round(mid), Math.round(H * 0.72), 2, L.sel.id === L.R0.active);
+  else text('MAKE A CHARACTER TO BEGIN.', Math.round(mid), Math.round(H * 0.45), PAL.cloth1, { align: 'center' });
+  invButton(L.start, L.sel ? 'START' : 'NEW CHARACTER', PAL.gold3, true);
+  if (L.sel && SAVE.tutorialDone) invButton(L.tut, 'REPLAY TUTORIAL', PAL.stone4, true);
+}
+// Making a character: two class cards, a name, and CREATE.
+function createLayout() {
+  const cw = Math.min(190, Math.floor((W - 40) / 2)), top = 32, ch = Math.round(H * 0.82) - 12 - top - 30;
+  return { top, cw, ch, cards: ['saint', 'mendicant'].map((h, i) => ({ h, x: Math.round(W / 2) + (i ? 6 : -cw - 6), y: top, w: cw, h0: ch })), name: { x: Math.round(W / 2 - cw - 6), y: top + ch + 6, w: cw * 2 + 12, h: 20 },
+    roll: { x: Math.round(W / 2 + cw + 6) - 148, y: top + ch + 6, w: 70, h: 20 }, type: { x: Math.round(W / 2 + cw + 6) - 74, y: top + ch + 6, w: 74, h: 20 },
+    create: { x: Math.round(W / 2 - 75), y: Math.round(H * 0.82) - 12, w: 150, h: 24 }, back: { x: W - SAFE.r - 18, y: 15, r: 12 } };
+}
+const CLASS_RGB = { saint: '232,56,63', mendicant: '214,160,90' };
+function renderCreate() {
+  const L = createLayout(), C0 = game.create || (game.create = { hero: 'saint', name: randName() }), small = { small: true, outline: null };
+  frontBack(); ctx.fillStyle = 'rgba(5,8,14,0.55)'; ctx.fillRect(0, 0, W, H);
+  { const g = ctx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, 'rgba(46,34,16,0.96)'); g.addColorStop(0.28, 'rgba(7,10,17,0.94)'); g.addColorStop(1, 'rgba(7,10,17,0.94)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, 26); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(0, 26, W, 1); }
+  text('NEW CHARACTER', 12 + SAFE.l, 8, PAL.gold1, { bold: true }); text('A CLASS IS KEPT FOR GOOD', W / 2, 9, PAL.stone2, { ...small, align: 'center' }); backArrow(L.back.x, L.back.y);
+  for (const K of L.cards) {
+    const on = C0.hero === K.h, rgb = CLASS_RGB[K.h], H0 = HEROES[K.h], x = K.x, y = K.y, w = K.w, h = K.h0;
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x + 2, y + 3, w, h);
+    const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, `rgb(${shade(rgb, on ? 0.38 : 0.2)})`); g.addColorStop(0.45, '#121a2c'); g.addColorStop(1, '#0a0f1b'); ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+    const art = Math.min(96, Math.round(h * 0.52));
+    ctx.save(); ctx.beginPath(); ctx.rect(x + 1, y + 1, w - 2, art); ctx.clip();
+    const rg = ctx.createRadialGradient(x + w / 2, y + art * 0.55, 4, x + w / 2, y + art * 0.55, w * 0.6); rg.addColorStop(0, `rgba(${rgb},${on ? 0.4 : 0.18})`); rg.addColorStop(1, `rgba(${rgb},0)`); ctx.fillStyle = rg; ctx.fillRect(x, y, w, art);
+    ctx.translate(Math.round(x + w / 2), Math.round(y + art + 34)); ctx.scale(2, 2); spr(H0.sheet, 'idle', on ? Math.floor(game.real * 6) : 0, 0, 0, { alpha: on ? 1 : 0.55 }); ctx.restore();
+    ctx.fillStyle = on ? '#ffd155' : 'rgba(170,190,225,0.25)'; ctx.fillRect(x, y, w, on ? 2 : 1); ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x, y, 1, h); ctx.fillRect(x + w - 1, y, 1, h);
+    let ty = y + art + 5;
+    text(H0.name, x + w / 2, ty, on ? PAL.gold1 : PAL.cloth1, { align: 'center', bold: true, glow: on }); ty += 14;
+    pill(H0.role, x + w / 2, ty, on ? PAL.white : PAL.stone1); ty += 14;
+    for (const l of wrapW(H0.text, w - 14, true)) { if (ty > y + h - 10) break; text(l, x + w / 2, ty, on ? PAL.cloth0 : PAL.stone2, { ...small, align: 'center' }); ty += 10; }
+  }
+  // The name.
+  { const N = L.name; ctx.fillStyle = 'rgba(3,6,12,0.6)'; ctx.fillRect(N.x, N.y, N.w - 156, N.h); ctx.fillStyle = 'rgba(200,212,232,0.35)'; ctx.fillRect(N.x, N.y + N.h - 1, N.w - 156, 1);
+    text('NAME', N.x + 6, N.y + 6, PAL.stone2, small); text(C0.name, N.x + 40, N.y + 5, PAL.white, { bold: true }); }
+  invButton(L.roll, 'ANOTHER', PAL.stone4, true); invButton(L.type, 'TYPE ONE', PAL.stone4, true);
+  invButton(L.create, 'CREATE', PAL.gold3, true);
+}
+function frontTap(x, y) {
+  const st = game.state;
+  if (st === 'title') { sfx('tap'); const R0 = roster(); game.state = R0.list.length ? 'chars' : 'create'; game.charSel = R0.active; return; }
+  if (st === 'chars') {
+    const L = charsLayout();
+    if (Math.hypot(x - L.back.x, y - L.back.y) < L.back.r + 6) { game.state = 'title'; sfx('tap'); return; }
+    if (L.del && inRect({ x: L.del.x - 2, y: L.del.y - 4, w: L.del.w + 4, h: L.del.h + 8 }, x, y)) { const c = L.sel; CASE_TERMS.add(c.name); ask(`DELETE ${c.name}? EVERYTHING THIS CHARACTER OWNS IS LOST FOR GOOD.`, () => deleteChar(c.id), 'DELETE'); return; }
+    for (const S of L.slots) if (inRect(S, x, y)) { if (game.charSel !== S.c.id) { game.charSel = S.c.id; sfx('tap', { vol: 0.5, rate: 1.3 }); } return; }
+    if (L.plus && inRect(L.plus, x, y)) { game.create = { hero: 'saint', name: randName() }; game.state = 'create'; sfx('tap'); return; }
+    if (L.sel && SAVE.tutorialDone && inRect(L.tut, x, y)) { sfx('tap'); if (L.sel.id === L.R0.active) { SAVE.tutorialDone = false; SAVE.metOdile = false; persist(); Object.assign(tut, { on: true, step: 0, t: 0, flags: { moved: 0 } }); } playChar(L.sel.id); return; }
+    if (inRect(L.start, x, y)) { sfx('tap'); if (L.sel) playChar(L.sel.id); else { game.create = { hero: 'saint', name: randName() }; game.state = 'create'; } }
+    return;
+  }
+  if (st === 'create') {
+    const L = createLayout(), C0 = game.create || (game.create = { hero: 'saint', name: randName() });
+    if (Math.hypot(x - L.back.x, y - L.back.y) < L.back.r + 6) { game.state = roster().list.length ? 'chars' : 'title'; sfx('tap'); return; }
+    for (const K of L.cards) if (inRect({ x: K.x, y: K.y, w: K.w, h: K.h0 }, x, y)) { if (C0.hero !== K.h) { C0.hero = K.h; sfx('tap', { vol: 0.5, rate: 1.3 }); } return; }
+    if (inRect(L.roll, x, y)) { C0.name = randName(C0.name); sfx('tap', { vol: 0.4, rate: 1.4 }); return; }
+    if (inRect(L.type, x, y)) { let n = null; try { n = prompt('Name your character', C0.name.charAt(0) + C0.name.slice(1).toLowerCase()); } catch { /* no prompt */ } if (n && n.trim()) C0.name = n.trim().slice(0, 14).toUpperCase(); return; }
+    if (inRect(L.create, x, y)) { sfx('shrine', { vol: 0.6 }); createChar(C0.hero, C0.name); }
+  }
 }
 
 function renderDialog() {
@@ -9051,7 +9227,11 @@ function setStar(x, y, alpha = 1) {
   for (let j = 0; j < 7; j++) for (let i = 0; i < 7; i++) if (STAR_PX[j][i] === '#') { ctx.fillStyle = j < 3 ? PAL.gold0 : PAL.gold1; ctx.fillRect(x + i, y + j, 1, 1); }
   ctx.globalAlpha = 1;
 }
-function openInventory() { hubEnter(); game.state = 'inv'; game.inv = { sel: null, tab: 0 }; SAVE.bag.sort((a, b) => b.ri - a.ri || ICON_OF.indexOf(a.slot) - ICON_OF.indexOf(b.slot)); sfx('tap'); }
+// Round 70: the bag sorts by rarity, by slot or newest first (SAVE.bagSort; the SORT button in the bag cycles it).
+const BAG_SORTS = { rarity: (a, b) => b.ri - a.ri || ICON_OF.indexOf(a.slot) - ICON_OF.indexOf(b.slot), slot: (a, b) => ICON_OF.indexOf(a.slot) - ICON_OF.indexOf(b.slot) || b.ri - a.ri, newest: (a, b) => (b.t || 0) - (a.t || 0) || b.ri - a.ri };
+const sortBag = () => SAVE.bag.sort(BAG_SORTS[SAVE.bagSort] || BAG_SORTS.rarity);
+const sortBtn = (L) => ({ x: L.bag.x + 50, y: L.bag.y - 15, w: 72, h: 12 });
+function openInventory() { hubEnter(); game.state = 'inv'; game.inv = { sel: null, tab: 0 }; sortBag(); sfx('tap'); }
 function closeInventory() { hubClose(); }
 function invLayout() {
   const pw = Math.min(640, W - 16), ph = Math.min(318, H - 16), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
@@ -9123,6 +9303,7 @@ function invTap(x, y) {
   }
   if (game.inv.tab === 1) { const rows = bagItemRows(0); rows.forEach((r, i) => { if (inRect(bagItemRect(L, i, rows.length), x, y)) openFromBag(r[5]); }); return; }
   if (game.inv.tab) return;
+  if (inRect(sortBtn(L), x, y) && !(L.narrow && selItem())) { const ks = Object.keys(BAG_SORTS); SAVE.bagSort = ks[(ks.indexOf(SAVE.bagSort || 'rarity') + 1) % ks.length]; sortBag(); game.inv.sel = null; persist(); sfx('tap', { vol: 0.4, rate: 1.4 }); return; }
   if (game.inv.selling) {
     const i = L.opts.findIndex((r) => inRect(r, x, y));
     if (i >= 0) bulkSell(SELL_RULES[i]);
@@ -9298,7 +9479,10 @@ function renderInventory() {
   if (!cover) {
   inset(B.x - 5, B.y - 16, B.cols * (B.cell + 3) + 7, B.rows * (B.cell + 3) + 19);
   text(`BAG ${SAVE.bag.length}/${BAG_SIZE}`, B.x, B.y - 12, PAL.stone1);
-  { const bw = 60, bx = B.x + B.cols * (B.cell + 3) - 3 - bw, k = SAVE.bag.length / BAG_SIZE; ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(bx, B.y - 9, bw, 3); ctx.fillStyle = k > 0.85 ? PAL.blood0 : PAL.gold2; ctx.fillRect(bx, B.y - 9, Math.round(bw * k), 3); }
+  { const sb0 = sortBtn(L), on = UI_PRESS && game.real - UI_PRESS.t < 0.14 && inRect(sb0, UI_PRESS.x, UI_PRESS.y);
+    ctx.fillStyle = on ? 'rgba(80,92,116,0.95)' : 'rgba(44,54,72,0.92)'; ctx.fillRect(sb0.x, sb0.y, sb0.w, sb0.h); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(sb0.x, sb0.y, sb0.w, 1);
+    text(`SORT BY ${(SAVE.bagSort || 'rarity').toUpperCase()}`, sb0.x + sb0.w / 2, sb0.y + 2, '#d8dde6', { small: true, outline: null, align: 'center' }); }
+  { const bw = 40, bx = B.x + B.cols * (B.cell + 3) - 3 - bw, k = SAVE.bag.length / BAG_SIZE; ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(bx, B.y - 9, bw, 3); ctx.fillStyle = k > 0.85 ? PAL.blood0 : PAL.gold2; ctx.fillRect(bx, B.y - 9, Math.round(bw * k), 3); }
   for (let r = 0; r < B.rows; r++) for (let c = 0; c < B.cols; c++) {
     const i = r * B.cols + c, sel = game.inv.sel && game.inv.sel.from === 'bag' && game.inv.sel.i === i;
     itemSlot({ x: B.x + c * (B.cell + 3), y: B.y + r * (B.cell + 3), w: B.cell, h: B.cell }, SAVE.bag[i], { sel });
@@ -9599,16 +9783,10 @@ function onTap(x, y) {
   if (game.ask) { askTap(x, y); return true; }
   if (game.enchPop) { game.enchPop = null; sfx('tap', { vol: 0.5 }); return true; }
   if (game.setPop) { game.setPop = null; sfx('tap', { vol: 0.5 }); return true; }
+  if (game.itemPop) { game.itemPop = null; sfx('tap', { vol: 0.5 }); return true; }
   if (game.state === 'inv' && game.inv && game.inv.setTap && inRect(game.inv.setTap, x, y)) { game.setPop = game.inv.setTap.it; sfx('tap', { vol: 0.5 }); return true; }
   switch (game.state) {
-    case 'title': {
-      const hit = menuButtons().find((b) => x < 0 || (Math.abs(x - b.x) < b.w / 2 + 6 && Math.abs(y - b.y) < b.h / 2 + 6));
-      if (!hit) return true;
-      sfx('tap');
-      if (hit.id === 'tutorial') { SAVE.tutorialDone = false; SAVE.metOdile = false; persist(); Object.assign(tut, { on: true, step: 0, t: 0, flags: { moved: 0 } }); }
-      enterTown();
-      return true;
-    }
+    case 'title': case 'chars': case 'create': frontTap(x, y); return true;
     case 'pause': pauseTap(x, y); return true;
     case 'inv': invTap(x, y); return true;
     case 'stig': stigTap(x, y); return true;
@@ -9700,8 +9878,11 @@ if (!SAVE.stations) { SAVE.cleared = -1; SAVE.diff = 0; SAVE.stations = 1; persi
 gearInit(); G = gearStats();
 migrateDevotion();
 loadAssets().then(() => {
+  let auto = false, front = null; try { auto = sessionStorage.getItem('hs-autostart') === '1'; sessionStorage.removeItem('hs-autostart'); front = sessionStorage.getItem('hs-front'); sessionStorage.removeItem('hs-front'); } catch { /* private */ }
+  roster(); // an old save becomes the first character
   if (location.search.includes('run')) { tut.on = false; newRun(); }
-  else if (location.search.includes('town')) enterTown();
+  else if (location.search.includes('town') || auto) enterTown();
+  else if (front === 'chars') game.state = roster().list.length ? 'chars' : 'title';
   requestAnimationFrame(frame);
 }).catch((e) => { document.body.insertAdjacentHTML('beforeend', `<p style="color:#ffd155;font:14px monospace;padding:20px">Failed to load sprites: ${e}</p>`); });
 // Exposed for automated play-tests.
@@ -9718,7 +9899,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { get pfx() { return pfx; }, shotRamp, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, askHero, switchHero, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get pfx() { return pfx; }, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>
