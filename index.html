@@ -1497,7 +1497,7 @@ function wardenSlain(e) {
   // lands before it is drawn to the Saint.
   game.slowmo = 1.1; game.flash = 0.25; game.shake = 10; sfx('elite', { rate: 0.7 }); sfx(AUDIO.has(`fall_${e.type}`) ? `fall_${e.type}` : 'death', { gap: 0 }); AUDIO.duck(3, 0.2); buzz([60, 40, 90]);
   for (const [r, c] of [[110, '255,209,85'], [70, '255,244,176']]) rings.push({ x: e.x, y: e.y - 20, t: 0, max: 0.9, r, color: c });
-  addPfx({ kind: 'beam', x: e.x, y: e.y, max: 0.9, ramp: 'gold' }); addPfx({ kind: 'quake', x: e.x, y: e.y, r: 190, max: 0.9, ramp: 'gold', ground: true }); pfxHit(e.x, e.y - 30, true, 'gold'); for (let k = 0; k < 3; k++) pfxCrack(e.x + rand(-20, 20), e.y + rand(-10, 10), 6, 'gold');
+  playFx('fx', 'wardenfall', e.x, e.y, 14, { anchor: true }); addPfx({ kind: 'quake', x: e.x, y: e.y, r: 190, max: 0.9, ramp: 'gold', ground: true }); pfxHit(e.x, e.y - 30, true, 'gold'); for (let k = 0; k < 3; k++) pfxCrack(e.x + rand(-20, 20), e.y + rand(-10, 10), 6, 'gold');
   for (let k = 0; k < (opt('fx') === 'low' ? 14 : 36); k++) drops.push({ kind: 'gold', amount: Math.max(1, Math.round(rand(1, 4) * df.gold)), x: e.x + rand(-6, 6), y: e.y, z: 14, vx: rand(-120, 120), vy: rand(-70, 70), vz: rand(170, 320), t: -1.1 - rng() * 0.6 });
   if (df.vigil) {
     // The Vigil: rise by how much of the candle is left.
@@ -1943,6 +1943,18 @@ function toast(msg, t = 2) { game.toast = { msg, t }; game.toastColor = null; }
 const fervorTier = () => Math.min(3, Math.floor(game.fervor / 25));
 function addFervor(n) { if (player.inPool) n *= 2; if (player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + n * (G.powers.has('penance') ? 1.4 : 1) * (1 + 0.06 * tal('reckon'))); game.fervor = Math.min(100, game.fervor + n * (1 + G.fervor / 100)); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
 // One-shot sprite effects.
+// One-shot sprite effects; `ground` ones (a Reckoning's sigil) draw under the actors, `anchor` ones at their frame's foot.
+function drawFxs(ground) {
+  for (const f of fxs) {
+    if (!!f.ground !== ground || (f.skip && f.t * f.fps < 1)) continue;
+    const i = Math.min(f.n - 1, Math.floor(f.t * f.fps) + (f.skip || 0));
+    const fr = frameOf(f.sheet, f.anim, i);
+    const s = f.scale || (f.small ? 0.5 : f.big ? 1.6 : 1), ax = f.anchor ? fr.ax : fr.w / 2, ay = f.anchor ? fr.ay : fr.h / 2;
+    if (f.alpha) ctx.globalAlpha = f.alpha;
+    ctx.drawImage(IMG[f.sheet], fr.x, fr.y, fr.w, fr.h, Math.round(f.x - ax * s), Math.round(f.y - ay * s), Math.round(fr.w * s), Math.round(fr.h * s));
+    ctx.globalAlpha = 1;
+  }
+}
 function playFx(sheet, anim, x, y, fps = 24, o = {}) { if (fxs.length > (LOWFX ? 25 : 70) && !o.big) return; fxs.push({ sheet, anim, x, y, t: 0, fps, n: SPR[sheet].anims[anim].length, ...o }); }
 
 // ------------------------------------------------------------- saving ---
@@ -6669,7 +6681,7 @@ function riteFlare(id, x = player.x, y = player.y) {
   const rgb = SET_RGB[RITE_BY[id].set] || '255,244,176';
   const big = RITES.pen.some((q) => q.id === id) || MRITES.pen.some((q) => q.id === id), ramp = SET_RAMP[RITE_BY[id].set] || 'gold';
   addPfx({ kind: 'rune', x, y, r: big ? 52 : 32, max: big ? 0.8 : 0.5, ramp, ground: true });
-  if (big) { addPfx({ kind: 'quake', x, y, r: 140, max: 0.6, ramp, ground: true }); pfxHit(x, y - 24, true, ramp); }
+  if (big) { addPfx({ kind: 'quake', x, y, r: 140, max: 0.6, ramp, ground: true }); pfxHit(x, y - 24, true, ramp); playFx('fx', `sigil_${RITE_BY[id].set in { font: 1, nails: 1, stride: 1, confessor: 1, choir: 1 } ? RITE_BY[id].set : 'gold'}`, x, y, 16, { ground: true, scale: 2 }); }
   skillFx.push({ kind: 'flare', x, y: y - 18, t: 0, max: 0.4, r: 60, rgb });
   rings.push({ x, y, t: 0, max: 0.45, r: 70, color: rgb, flat: true }, { x, y: y - 18, t: 0, max: 0.3, r: 36, color: '255,244,176' });
   if (LOWFX) return;
@@ -7311,7 +7323,7 @@ function render() {
   mark('floor');
   drawAbilitiesGround();
   if (game.scene === 'wound') drawSkillsGround();
-  drawPfx(true);
+  drawFxs(true); drawPfx(true);
   mark('ground');
   for (const e of enemies) {
     if (e.spawnDelay > 0) continue;
@@ -7388,15 +7400,7 @@ function render() {
   }
   // Chunky pixel trails behind the bolts, cooling down the shot's ramp (round 60).
   { const R = dimR(shotRamp()), st = LOWFX ? 4 : 2; for (const b of bolts) if (b.trail && b.trail.length) { const pts = [[b.x, b.y], ...b.trail], tot = pts.length - 1; for (let i = 0; i < tot; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], L = Math.hypot(x1 - x0, y1 - y0); for (let d = 0; d < L; d += st) { const u = (i + d / Math.max(1, L)) / tot; px2(x0 + (x1 - x0) * d / L, y0 + (y1 - y0) * d / L, R[Math.min(R.length - 1, Math.floor(u * 4))], 1 - u * 0.75); } } } }
-  for (const f of fxs) {
-    if (f.skip && f.t * f.fps < 1) continue;
-    const i = Math.min(f.n - 1, Math.floor(f.t * f.fps) + (f.skip || 0));
-    const fr = frameOf(f.sheet, f.anim, i);
-    const s = f.small ? 0.5 : f.big ? 1.6 : 1;
-    if (f.alpha) ctx.globalAlpha = f.alpha;
-    ctx.drawImage(IMG[f.sheet], fr.x, fr.y, fr.w, fr.h, Math.round(f.x - fr.w * s / 2), Math.round(f.y - fr.h * s / 2), Math.round(fr.w * s), Math.round(fr.h * s));
-    ctx.globalAlpha = 1;
-  }
+  drawFxs(false);
   if (player.target) drawMarker(player.target, player.lock === player.target);
   ctx.restore();
 
@@ -7613,9 +7617,10 @@ function updateFalls(dt) {
 }
 function drawFall(f) {
   const e = f.e, d = e.def, i = Math.min(2, Math.floor(f.t / dieStep(e))), k = e.scaleK;
-  const o = { flip: e.face < 0, white: f.t < 0.05, alpha: e.illusion ? 0.6 : 1 };
-  if (k !== 1) { ctx.save(); ctx.translate(Math.round(e.x), Math.round(e.y)); ctx.scale(k, k); spr(d.sheet, d.die, i, 0, 0, o); ctx.restore(); }
-  else spr(d.sheet, d.die, i, e.x, e.y, o);
+  // The first instant of a death washes white over the sprite (round 64: not a solid white shape).
+  const draw = (o) => { if (k !== 1) { ctx.save(); ctx.translate(Math.round(e.x), Math.round(e.y)); ctx.scale(k, k); spr(d.sheet, d.die, i, 0, 0, o); ctx.restore(); } else spr(d.sheet, d.die, i, e.x, e.y, o); };
+  draw({ flip: e.face < 0, alpha: e.illusion ? 0.6 : 1 });
+  if (f.t < 0.05) draw({ flip: e.face < 0, white: true, alpha: 0.5 });
 }
 function drawEnemy(e) {
   const d = e.def, flip = e.face < 0;

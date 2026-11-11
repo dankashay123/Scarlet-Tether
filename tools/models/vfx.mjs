@@ -178,6 +178,46 @@ function scourge(i) {
   return A(f, 7, 31);
 }
 
+// -------------------------------------------- big moments (round 64) ---
+// Hand-built pixel sheets for the largest moments, drawn on whole pixels
+// (no dithering) and kept off the near-white top of each ramp.
+// A Reckoning's sigil on the floor: rings open out, spokes and four runes
+// turn, a star flares at the centre, then it all thins and fades. 12 frames,
+// seen in perspective (squashed to 0.55).
+const SIGIL_RAMP = { gold: 'gold', font: 'holy', nails: 'gold', stride: 'ember', confessor: 'violet', choir: 'crimson' };
+function sigil(i, set) {
+  const W = 112, H = 64, f = frame(W, H), cx = W / 2, cy = H / 2, n = 12, t = i / (n - 1), R = SIGIL_RAMP[set] || 'gold';
+  const sq = 0.55, ease = 1 - (1 - Math.min(1, t * 1.8)) ** 3, fade = t < 0.6 ? 0 : (t - 0.6) / 0.4;
+  const col = (k) => `${R}${Math.min(4, Math.max(1, Math.round(1 + k + fade * 2)))}`;
+  const dot = (x, y, c) => { if (y * 0 === 0) put(f, x, y, c); };
+  const ring = (r, c, dash = 0, rot = 0) => { const m = Math.max(16, Math.floor(r * 3)); for (let k = 0; k < m; k++) { if (dash && Math.floor(k / dash) % 2) continue; const a = k / m * Math.PI * 2 + rot; dot(cx + Math.cos(a) * r, cy + Math.sin(a) * r * sq, c); } };
+  const r1 = 10 + ease * 42, r2 = r1 * 0.72, r3 = r1 * 0.42, spin = t * 1.2;
+  if (fade < 0.95) { ring(r1, col(0)); ring(r1 - 1, col(1)); }
+  if (fade < 0.8) ring(r2, col(1), 3, spin);
+  if (fade < 0.6) ring(r3, col(0), 2, -spin * 1.5);
+  // Spokes between the inner and outer rings.
+  if (fade < 0.7) for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + spin; for (let r = r3 + 2; r < r2; r += 1) dot(cx + Math.cos(a) * r, cy + Math.sin(a) * r * sq, col(k % 2 ? 2 : 1)); }
+  // Four runes on the outer ring: small diamonds.
+  if (fade < 0.85) for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 - spin * 0.6 + Math.PI / 4, x = cx + Math.cos(a) * r1, y = cy + Math.sin(a) * r1 * sq; for (const [dx, dy] of [[0, -2], [-1, -1], [1, -1], [-2, 0], [2, 0], [-1, 1], [1, 1], [0, 2], [0, 0], [0, -1], [0, 1], [-1, 0], [1, 0]]) dot(x + dx, y + dy, col(dx === 0 && dy === 0 ? 0 : 1)); }
+  // The central star, early on.
+  if (t < 0.45) { const L = 14 * (1 - t / 0.45); for (let d = -L; d <= L; d++) { dot(cx + d, cy, col(Math.abs(d) < L * 0.4 ? 0 : 2)); dot(cx, cy + d * sq, col(Math.abs(d) < L * 0.4 ? 0 : 2)); } }
+  return A(f, Math.round(cx), Math.round(cy));
+}
+// A Warden's fall: a column of gold drops onto it, bursts in rays along the
+// floor and sends sparks up, then narrows away. 12 frames, anchored at the foot.
+function wardenFall(i) {
+  const W = 96, H = 176, f = frame(W, H), cx = W / 2, base = H - 18, n = 12, t = i / (n - 1);
+  const w = t < 0.25 ? 3 + t / 0.25 * 9 : 12 * (1 - (t - 0.25) / 0.75) + 1, top = t < 0.15 ? base - (base) * (t / 0.15) : 0;
+  for (let y = Math.round(top); y < base; y++) for (let x = -Math.round(w); x <= Math.round(w); x++) { const u = Math.abs(x) / Math.max(1, w); put(f, cx + x, y, u < 0.3 ? 'gold1' : u < 0.7 ? 'gold2' : 'gold3'); }
+  // Rays along the floor.
+  if (t > 0.12 && t < 0.8) { const L = 40 * Math.sin(Math.min(1, (t - 0.12) / 0.5) * Math.PI); for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; for (let d = 4; d < L * (k % 2 ? 0.6 : 1); d++) put(f, cx + Math.cos(a) * d, base + Math.sin(a) * d * 0.5, d < L * 0.4 ? 'gold1' : 'gold3'); } }
+  // A ring widening on the floor.
+  if (t > 0.2) { const r = 8 + (t - 0.2) * 48; for (let k = 0; k < 80; k++) { const a = k / 80 * Math.PI * 2; put(f, cx + Math.cos(a) * r, base + Math.sin(a) * r * 0.5, t > 0.7 ? 'gold4' : 'gold2'); } }
+  // Sparks rising on fixed paths.
+  for (let k = 0; k < 9; k++) { const sx = cx + Math.sin(k * 2.3) * 22, sy = base - (t - k * 0.04) * 150 - 6; if (t > k * 0.04 + 0.1 && sy > 4) { put(f, sx + Math.sin(t * 9 + k) * 2, sy, k % 3 ? 'ember1' : 'gold1'); put(f, sx + Math.sin(t * 9 + k) * 2, sy + 1, 'ember2'); } }
+  return A(f, cx, base);
+}
+
 // ------------------------------------------------------------ item icons ---
 // 24x24, three-quarter view, outlined, lit from the top-left.
 function icon(fn, size = 24) { const S = new Scene(); fn(S); return render(S, size, size, MATS, { contrast: 1.35 }); }
@@ -578,6 +618,8 @@ export default {
   fx: {
     bolt: () => [bolt()], ...Object.fromEntries(Object.keys(BOLTS).map((k) => [`bolt_${k}`, () => [bolt(k)]])),
     impact: () => [0, 1, 2, 3].map(impact),
+    ...Object.fromEntries(['gold', 'font', 'nails', 'stride', 'confessor', 'choir'].map((k) => [`sigil_${k}`, () => Array.from({ length: 12 }, (_, i) => sigil(i, k))])),
+    wardenfall: () => Array.from({ length: 12 }, (_, i) => wardenFall(i)),
     burst: () => [0, 1, 2, 3].map(burst),
     smoke: () => [0, 1, 2, 3].map(smoke),
     thurible: () => [0, 1].map(thurible),
