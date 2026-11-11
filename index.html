@@ -108,9 +108,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '62';
+const BUILD = '63';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '63': ['MONSTERS: SWIPES AND BREATHS LEAVE A STREAK, SLAMS AND LOBBED BLASTS SHAKE THE FLOOR AND CRACK IT, SHOTS BURST WHERE THEY HIT, A RING TIGHTENS AT A MONSTER\'S FEET BEFORE A BIG BLOW, AND EVERY KILL BURSTS IN THE MONSTER\'S COLOUR AS ITS SOUL RISES. ELITES AND WARDENS GO OUT IN A BEAM OF LIGHT.'],
   '62': ['BOTH SAINTS MOVE MORE: AN 8-FRAME IDLE THAT BREATHES, A FOUR-STEP CAST, A FULLER FLINCH, AND DUST AT EVERY FOOTFALL.'],
   '61': ['RITES LOOK FAR BETTER: A GLOWING RUNE CIRCLE ON EVERY CAST, PILLARS OF LIGHT, RINGS OF FLAME, SHOCKWAVES AND CRACKS WHERE BLOWS LAND, SPRAY ALONG WAVES, A SHIELD OF LIGHT FOR WARDS AND SHACKLES UNDER BOUND FOES.', 'FOES FLASH WHITE MORE SOFTLY WHEN HIT, SO BIG FIGHTS STAY READABLE.'],
   '60': ['NEW ATTACK EFFECTS: A FLASH WHEN THE CROSSBOW FIRES, GLOWING BOLT TRAILS AND BURSTS WHERE THEY HIT (BIGGER ON CRITS). THE MACE LEAVES A BLAZING CRESCENT, A SHOCKWAVE ALONG THE FLOOR AND CRACKS ON HEAVY BLOWS. THEY TAKE YOUR SET\'S COLOUR.'],
@@ -1496,6 +1497,7 @@ function wardenSlain(e) {
   // lands before it is drawn to the Saint.
   game.slowmo = 1.1; game.flash = 0.25; game.shake = 10; sfx('elite', { rate: 0.7 }); sfx(AUDIO.has(`fall_${e.type}`) ? `fall_${e.type}` : 'death', { gap: 0 }); AUDIO.duck(3, 0.2); buzz([60, 40, 90]);
   for (const [r, c] of [[110, '255,209,85'], [70, '255,244,176']]) rings.push({ x: e.x, y: e.y - 20, t: 0, max: 0.9, r, color: c });
+  addPfx({ kind: 'beam', x: e.x, y: e.y, max: 0.9, ramp: 'gold' }); addPfx({ kind: 'quake', x: e.x, y: e.y, r: 190, max: 0.9, ramp: 'gold', ground: true }); pfxHit(e.x, e.y - 30, true, 'gold'); for (let k = 0; k < 3; k++) pfxCrack(e.x + rand(-20, 20), e.y + rand(-10, 10), 6, 'gold');
   for (let k = 0; k < (opt('fx') === 'low' ? 14 : 36); k++) drops.push({ kind: 'gold', amount: Math.max(1, Math.round(rand(1, 4) * df.gold)), x: e.x + rand(-6, 6), y: e.y, z: 14, vx: rand(-120, 120), vy: rand(-70, 70), vz: rand(170, 320), t: -1.1 - rng() * 0.6 });
   if (df.vigil) {
     // The Vigil: rise by how much of the candle is left.
@@ -5112,11 +5114,13 @@ function performAttack(e) {
     case 'swipe': {
       const hx = e.x + Math.cos(ang) * a.reach * 0.6, hy = e.y + Math.sin(ang) * a.reach * 0.6;
       const near2 = (x, y) => Math.hypot(x - hx, y - hy) < a.reach * 0.7;
+      addPfx({ kind: 'smear', x: e.x, y: e.y - e.hy * 0.6, a: ang, arc: 1.1, r: a.reach * 0.85, max: 0.22, ramp: e.tier === 'elite' ? 'gold' : 'blood' });
       damagePlayer(e, a.dmg * k, [[player.x, player.y], [player.dashX ?? player.x, player.dashY ?? player.y]].filter(([x, y]) => near2(x, y)), 'swipe');
       break;
     }
     case 'cone': {
       const pdx = player.x - e.x, pdy = player.y - e.y, pd = Math.hypot(pdx, pdy);
+      addPfx({ kind: 'smear', x: e.x, y: e.y - 6, a: ang, arc: Math.min(1.4, a.arc / 2), r: a.len * 0.75, max: 0.24, ramp: a.slow ? 'frost' : e.tier === 'elite' ? 'gold' : 'blood' });
       let da = Math.atan2(pdy, pdx) - ang; da = Math.atan2(Math.sin(da), Math.cos(da));
       if (pd < a.len && Math.abs(da) < a.arc / 2) { damagePlayer(e, a.dmg * k, [[player.x, player.y]], 'cone'); if (a.slow) player.slowT = a.slow; }
       else if (game.time - player.dashStart < perfWin() + 0.05 && player.dashX !== undefined && Math.hypot(player.dashX - e.x, player.dashY - e.y) < a.len) damagePlayer(e, a.dmg * k, [[player.dashX, player.dashY]], 'cone');
@@ -5138,7 +5142,7 @@ function performAttack(e) {
     case 'spiral': e.state = 'act'; e.t = 0; e.actT = a.dur; e.spinA = rng() * 6; e.fireT = 0; break;
     case 'lob': for (let i = 0; i < (a.n || 1); i++) { const ox = i ? rand(-a.spreadR, a.spreadR) : 0, oy = i ? rand(-a.spreadR, a.spreadR) * 0.7 : 0; hazards.push({ kind: 'circle', x: e.tx + ox, y: e.ty + oy, r: a.rad, t: 0, delay: 0.62, dmg: a.dmg * k, pool: a.pool, poolLife: a.poolLife, poolDps: a.poolDps, from: [e.x, e.y - e.hy], shot: a.shot, src: e }); } break;
     case 'spikes': for (let i = 0; i < a.n; i++) hazards.push({ kind: 'circle', x: player.x + (i ? rand(-40, 40) : 0), y: player.y + (i ? rand(-28, 28) : 0), r: a.rad, t: 0, delay: a.delay, dmg: a.dmg * k, style: 'thorn', src: e }); break;
-    case 'shockwave': hazards.push({ kind: 'ring', x: e.x, y: e.y, R: 6, speed: a.speed, max: a.max, dmg: a.dmg * k, src: e, t: 0, slow: a.slow }); game.shake = Math.max(game.shake, 3); break;
+    case 'shockwave': addPfx({ kind: 'quake', x: e.x, y: e.y, r: (a.max || 120) * 0.5, max: 0.45, ramp: e.boss ? 'gold' : 'blood', ground: true }); hazards.push({ kind: 'ring', x: e.x, y: e.y, R: 6, speed: a.speed, max: a.max, dmg: a.dmg * k, src: e, t: 0, slow: a.slow }); game.shake = Math.max(game.shake, 3); break;
     case 'beam': for (let i = 0; i < (a.n || 1); i++) hazards.push({ kind: 'line', x: e.x, y: e.y - e.hy, ang: ang + (i - ((a.n || 1) - 1) / 2) * (a.fan || 0), len: a.len, w: 10, t: 0, delay: 0, dur: 0.3, dmg: a.dmg * k, src: e, style: 'beam' }); break;
     case 'pull': hazards.push({ kind: 'line', x: e.x, y: e.y - e.hy, ang, len: a.len, w: 12, t: 0, delay: 0, dur: 0.12, dmg: a.dmg * k, pull: e, src: e, style: 'chain' }); break;
     case 'summon': {
@@ -5228,6 +5232,7 @@ function updateHazards(dt) {
         if (h.pool) addPool(h.x, h.y, h.r * 0.9, h.poolLife || 4, h.poolDps || 10, h.pool, h.src, h.poolRate);
         const big = h.r > 20;
         playFx('fx', h.style === 'frost' ? 'impact' : 'burst', h.x, h.y - 4, 22, { big });
+        { const R = h.style === 'frost' ? 'frost' : h.style === 'blight' ? 'life' : 'fire'; addPfx({ kind: 'quake', x: h.x, y: h.y, r: h.r * 1.4, max: 0.4, ramp: R, ground: true }); pfxHit(h.x, h.y - 6, big, R, !big); if (big) pfxCrack(h.x, h.y, 5, R); }
         if (h.style === 'bell') rings.push({ x: h.x, y: h.y, t: 0, max: 0.3, r: h.r, color: '255,209,85', flat: true });
         game.shake = Math.max(game.shake, big ? 2.5 : 1.5);
         h.gone = h.t + 0.15;
@@ -5273,8 +5278,8 @@ function updateHazards(dt) {
       const sp = Math.hypot(s.vx, s.vy), a0 = Math.atan2(s.vy, s.vx); let da = Math.atan2(py - 12 - s.y, px - s.x) - a0; da = Math.atan2(Math.sin(da), Math.cos(da));
       const a1 = a0 + Math.max(-s.home * dt, Math.min(s.home * dt, da)); s.vx = Math.cos(a1) * sp; s.vy = Math.sin(a1) * sp;
     }
-    if (solidAt(s.x, s.y + 12)) { s.life = 0; sparks(s.x, s.y, PAL.stone1, 2); continue; }
-    if (Math.hypot(s.x - px, s.y - (py - 12)) < 7) { s.life = 0; damagePlayer(s.src, s.dmg, [[px, py]], s.home ? 'homing' : 'shot'); }
+    if (solidAt(s.x, s.y + 12)) { s.life = 0; sparks(s.x, s.y, PAL.stone1, 2); pfxHit(s.x, s.y, false, SHOT_KIND_RAMP[s.kind] || 'fire', true); continue; }
+    if (Math.hypot(s.x - px, s.y - (py - 12)) < 7) { s.life = 0; pfxHit(s.x, s.y, false, SHOT_KIND_RAMP[s.kind] || 'fire'); damagePlayer(s.src, s.dmg, [[px, py]], s.home ? 'homing' : 'shot'); }
   }
   shots = shots.filter((s) => s.life > 0);
 }
@@ -5662,6 +5667,9 @@ function dismember(e, dirx, diry, executed) {
   for (const k of kinds) gibs.push({ anim: armored ? 'wardenGib' : 'gib', i: k, x: e.x, y: e.y - 6, z: 10, vx: dirx * rand(30, 100) + rand(-45, 45), vy: diry * rand(30, 100) + rand(-45, 45), vz: rand(50, 120), settled: false });
   bleed(e.x, e.y - e.hy, executed ? 34 : e.elite ? 24 : 12, dirx);
   playFx('fx', 'burst', e.x, e.y - e.hy, 18, { big: e.elite || executed });
+  // Round 63: a burst in the family's colour and a soul that rises; elites shake the floor and are taken by light.
+  { const R = monRamp(e); pfxHit(e.x, e.y - e.hy, true, R, !e.elite); if (!LOWFX) vemit(e.x, e.y - e.hy, { n: e.elite ? 10 : 4, ramp: VOICE[e.type] === 'spirit' ? 'violet' : 'holy', sp: 12, up: 70, life: 0.9, grav: -30, size: 2, glow: 4 });
+    if (e.elite) { addPfx({ kind: 'quake', x: e.x, y: e.y, r: big ? 90 : 60, max: 0.5, ramp: R, ground: true }); pfxCrack(e.x, e.y, 5, R); if (big) addPfx({ kind: 'beam', x: e.x, y: e.y, max: 0.5, ramp: 'gold' }); } }
   if (big) { playFx('fx', 'burst', e.x - 10, e.y - e.hy * 1.4, 14, { big: true }); playFx('fx', 'burst', e.x + 10, e.y - e.hy * 0.6, 12, { big: true }); rings.push({ x: e.x, y: e.y - 12, t: 0, max: 0.6, r: 70, color: '255,209,85' }); }
   splat(e.x + dirx * 6, e.y, e.elite || executed);
 }
@@ -5713,6 +5721,8 @@ function pxRing(x, y, r, R, ci, squash = 0.6, gap = 0, th = 1) { const n = Math.
 function drawPfx(ground) {
   const P = player;
   if (P && game.scene === 'wound') {
+    // Wind-ups: a ring that tightens at the attacker's feet as the blow comes (round 63).
+    if (ground) for (const e of enemies) if (e.state === 'windup' && e.atk && e.atk.windup >= 0.3 && !e.dead && Math.abs(e.x - P.x) < 340 && Math.abs(e.y - P.y) < 220) { const k = Math.min(1, e.t / e.atk.windup); pxRing(e.x, e.y, e.r + 4 + 16 * (1 - k), e.tier === 'elite' || e.boss ? FXR.gold : FXR.blood, 1 + Math.floor(k * 2), 0.55, k > 0.75 ? 0 : 3, 1); }
     // Bound foes: a turning ring of shackle links at their feet.
     if (ground) for (const e of enemies) if (e.bound > 0 && !e.dead && Math.abs(e.x - P.x) < 340 && Math.abs(e.y - P.y) < 220) pxRing(e.x, e.y, e.r + 6, FXR.violet, 2 + Math.floor(game.real * 4) % 2, 0.55, 2, 1);
     // Martyr's Ward and the Penitent's Vow: a shield of light round the hero.
@@ -5786,6 +5796,10 @@ function pfxHit(x, y, crit, ramp = shotRamp(), small = false) {
   addPfx({ kind: 'hit', x, y, crit, small, rot: rng() * Math.PI, max: crit ? 0.3 : 0.2, ramp });
   if (!LOWFX && !small) vemit(x, y, { n: crit ? 8 : 3, ramp, sp: crit ? 110 : 70, up: 30, life: 0.35, grav: 160, size: 2, glow: crit ? 6 : 0 });
 }
+// Round 63: monsters. Each voice family dies in its own colour; shots burst in theirs.
+const FAM_RAMP = { bone: 'bone', flesh: 'blood', spirit: 'violet', vermin: 'blood', cleric: 'gold' };
+const monRamp = (e) => (e.tier === 'elite' ? 'gold' : FAM_RAMP[VOICE[e.type]] || 'blood');
+const SHOT_KIND_RAMP = { tear: 'frost', frost: 'frost', spit: 'life', violet: 'violet' };
 // Round 61: the ramp of each set's rites, and pixel effects on top of every rite's own effect.
 const SET_RAMP = { font: 'holy', nails: 'gold', stride: 'fire', confessor: 'violet', choir: 'blood', habit: 'gold' };
 const KIND_RAMP = { blaze: 'fire', wave: 'holy', hymn: 'fire', crescent: 'holy', choir: 'gold', brand: 'fire', pillar: 'holy', arc: 'holy' };

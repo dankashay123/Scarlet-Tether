@@ -227,6 +227,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    Chrism vial on the ground, weed mats.
 12. **Tune from play.** Wager odds (`WAGER_MARKS`, `wagerOdds`), the
    vow's doubling, `balance.cjs`, `perf.cjs`.
+14. **Animation follow-ups (rounds 60-63).** Sprite-sheet effects for the
+   biggest moments (a Reckoning cast, a Warden's fall) drawn in `vfx.mjs`;
+   more monster body frames (wind-up poses with 3 frames for every attack);
+   per-rite unique hit sparks (nails, water, chains); a LOW effects check on
+   an older phone.
 13. **Feature ideas (round 57).** (a) Relic Hunts: a weekly chase for one
    named Hallowed piece, with clues on the Bounty Board and a marked room in
    a random descent. (b) Pilgrim companions: hire a townsfolk acolyte who
@@ -241,6 +246,13 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 63:** animation overhaul, part 4 (monsters). Kills burst in the
+  monster's family colour (`FAM_RAMP`) with a rising soul; elites add a
+  shockwave, crack and beam of light, Wardens a big one as they fall.
+  Swipes and cones leave a crescent streak, slams and lobbed blasts a
+  shockwave, burst and crack, shots a burst where they land; a ring tightens
+  at a monster's feet through any wind-up of 0.3 s or more.
 
 - **Round 62:** animation overhaul, part 3 (hero bodies). Both saints:
   an 8-frame idle (breath in whole chunky pixels, the cape stirring, the
