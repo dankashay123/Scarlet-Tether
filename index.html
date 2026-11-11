@@ -426,6 +426,7 @@ function flushText() {
       if (shadow) { g.fillStyle = outline; g.fillText(q.s, x, y + Math.round(P * sc * q.k)); }
       g.strokeStyle = outline; g.lineWidth = Math.max(2, 1.6 * P * sc * q.k); g.strokeText(q.s, x, y);
     }
+    if (q.o.glow) { g.save(); g.shadowColor = q.color; g.shadowBlur = 6 * P; g.fillStyle = q.color; g.fillText(q.s, x, y); g.restore(); }
     g.fillStyle = q.color; g.fillText(q.s, x, y);
   }
   g.restore(); TEXT_Q.length = 0;
@@ -2265,20 +2266,30 @@ function featFrame(L, title, col = PAL.gold1, style = '') {
 const featOut = (L, x, y) => Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y);
 // An item's card: name, rarity, Sanctity, stats (rows returned for taps).
 // maxY: stop the lines there (the forge's controls sit below); the rest is in the bag.
+// Round 65: an item card's plate: rarity-lit glass and the piece in a socket at the top right.
+const rarRGB = (it) => hexRgb(it.set || it.wset ? RARITY[4].cell : RARITY[it.ri].cell);
+function cardPlate(it, C) {
+  inset(C.x, C.y, C.w, C.h, it ? rarRGB(it) : null);
+  if (!it) return;
+  const r = { x: C.x + C.w - 34, y: C.y + 5, w: 29, h: 29 }; itemSlot(r, it);
+}
+// A small up or down arrow in front of a comparison number.
+function cmpArrow(x, y, up) { ctx.fillStyle = up ? PAL.flame2 : PAL.blood1; for (let k = 0; k < 3; k++) ctx.fillRect(x + k, y + (up ? 2 - k : k) + 2, 5 - k * 2, 1); }
 function drawItemCard(it, C, worn = null, pick = -1, maxY = Infinity) {
-  const R0 = RARITY[it.ri]; let y = C.y + 6;
-  for (const l of wrapW(nm(it), C.w - 12)) { text(l, C.x + 6, y, R0.color); y += 12; }
-  text(heroText(`${R0.name} ${SLOT_NAME[it.slot] || it.slot.toUpperCase()}`), C.x + 6, y, PAL.stone1, { small: true, outline: null }); y += 10;
+  cardPlate(it, C);
+  const R0 = RARITY[it.ri]; let y = C.y + 7;
+  for (const l of wrapW(nm(it), C.w - 46)) { text(l, C.x + 6, y, R0.color, { glow: it.ri >= 3 }); y += 12; }
+  text(heroText(`${R0.name} ${SLOT_NAME[it.slot] || it.slot.toUpperCase()}`), C.x + 6, y, PAL.stone1, { small: true, outline: null }); y += Math.max(10, C.y + 26 - y);
   text(`SANCTITY ${itemSanctity(it)}`, C.x + 6, y, PAL.gold1, { small: true, outline: null });
-  text(`STATION ${ROMAN[(it.il || 1) - 1]}`, C.x + C.w - 6, y, PAL.stone2, { small: true, outline: null, align: 'right' });
+  text(`STATION ${ROMAN[(it.il || 1) - 1]}`, C.x + C.w - (y < C.y + 36 ? 40 : 6), y, PAL.stone2, { small: true, outline: null, align: 'right' }); // left of the icon socket
   if (worn && worn !== it) { const dv = itemSanctity(it) - itemSanctity(worn); if (dv) text(`${dv > 0 ? '+' : ''}${dv}`, C.x + 80, y, dv > 0 ? PAL.flame1 : PAL.blood0, { small: true, outline: null }); }
-  y += 13;
+  y += 11; goldRule(C.x + 6, y, C.w - 12, rarRGB(it), false); y += 4;
   const rows = [];
   it.stats.forEach((st, i) => {
     if (i === pick) { ctx.fillStyle = PAL.ink3; ctx.fillRect(C.x + 3, y - 2, C.w - 6, 10); }
     text(statLine(st), C.x + 6, y, statCol(st), { small: true, outline: null });
     if (!worn && st[2] !== undefined && QUALITY[st[2]]) text(QUALITY[st[2]].name, C.x + C.w - 6, y, statCol(st), { small: true, outline: null, align: 'right' });
-    if (worn && worn !== it) { const w0 = (worn.stats.find((q) => q[0] === st[0]) || [0, 0])[1], dv = st[1] - w0; if (dv) text(`${dv > 0 ? '+' : ''}${dv}`, C.x + C.w - 6, y, dv > 0 ? PAL.flame1 : PAL.blood0, { small: true, outline: null, align: 'right' }); }
+    if (worn && worn !== it) { const w0 = (worn.stats.find((q) => q[0] === st[0]) || [0, 0])[1], dv = st[1] - w0; if (dv) cmpArrow(C.x + C.w - 14 - textW(`${dv > 0 ? '+' : ''}${dv}`, 1, true), y, dv > 0); if (dv) text(`${dv > 0 ? '+' : ''}${dv}`, C.x + C.w - 6, y, dv > 0 ? PAL.flame1 : PAL.blood0, { small: true, outline: null, align: 'right' }); }
     rows.push({ x: C.x + 3, y: y - 2, w: C.w - 6, h: 10, i }); y += 10;
   });
   const extra = [];
@@ -2483,8 +2494,15 @@ function forgeBuyTap(L, x, y) {
     if (n > 1) ask(`BUY ${n} EMBERSTONES FOR ${cost.toLocaleString('en-US')} GOLD?`, buy, 'BUY'); else buy();
   });
 }
+// Tabs: quiet text, and for the open one a glow rising from a gold underline.
 function tabButtons(tabs, on) {
-  tabs.forEach((b, i) => { ctx.fillStyle = PAL.outline; ctx.fillRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2); ctx.fillStyle = i === on ? PAL.ink3 : PAL.ink2; ctx.fillRect(b.x, b.y, b.w, b.h); if (i === on) { ctx.fillStyle = PAL.gold1; ctx.fillRect(b.x, b.y + b.h - 2, b.w, 2); } text(b.t, b.x + b.w / 2, b.y + 4, i === on ? PAL.gold1 : PAL.stone1, { small: true, outline: null, align: 'center' }); });
+  tabs.forEach((b, i) => {
+    if (i === on) {
+      const g = ctx.createLinearGradient(0, b.y, 0, b.y + b.h); g.addColorStop(0, 'rgba(255,209,85,0)'); g.addColorStop(1, 'rgba(255,209,85,0.2)');
+      ctx.fillStyle = g; ctx.fillRect(b.x, b.y, b.w, b.h); goldRule(b.x - 2, b.y + b.h - 1, b.w + 4, '255,209,85', false); ctx.fillStyle = 'rgba(255,209,85,0.9)'; ctx.fillRect(b.x + 3, b.y + b.h - 1, b.w - 6, 1);
+    } else { ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(b.x, b.y + b.h - 1, b.w, 1); }
+    text(b.t, b.x + b.w / 2, b.y + 4, i === on ? PAL.gold0 : PAL.stone2, { small: true, outline: null, align: 'center', glow: i === on });
+  });
 }
 // An Emberstone and its count, drawn left of the gold in the title band.
 function emberCount(L) {
@@ -7520,7 +7538,12 @@ function render() {
   if (game.enchPop && game.state === 'inv') { layerBreak(); renderEnchPop(); if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; } } else game.enchPop = null;
   if (game.ask) { layerBreak(); renderAsk(); if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; } }
   blit(); flushText();
+  // Round 65: a window fades in over 0.14 s when it opens.
+  if (game.state !== UI_LAST) { UI_LAST = game.state; UI_OPEN = game.real; }
+  const ua = game.state !== 'play' && game.state !== 'title' ? 1 - (game.real - UI_OPEN) / 0.14 : 0;
+  if (ua > 0) { sctx.save(); sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.fillStyle = `rgba(11,7,16,${0.55 * ua})`; sctx.fillRect(0, 0, sctx.canvas.width, sctx.canvas.height); sctx.restore(); }
 }
+let UI_LAST = '', UI_OPEN = 0;
 
 function bigFlame(x, y, ph = 0) {
   const k = Math.floor(game.real * 10 + ph) % 4, d = game.scene === 'wound' ? draftK() : 0, s = [0, 1, 0, -1][k] + Math.round(d * 6), t = [0, 2, 1, 3][k] - Math.round(Math.abs(d) * 2); // a draught leans and flattens the flame
@@ -7808,20 +7831,38 @@ function ornament(anim, x, y, fx = 1, fy = 1) {
 let FRAME = null;
 // Styles: the gilt default, the Forge's iron, the Canonry's silver, the Vigil's crimson.
 const FRAME_RULE = { '': ['gold3', 'gold1', 'gold4'], _iron: ['iron3', 'iron2', 'iron4'], _silver: ['iron1', 'iron0', 'iron3'], _blood: ['crimson2', 'crimson1', 'crimson4'] };
+// Round 65: dark glass and gold. A translucent dark body with a soft sheen
+// at the top, a fine rim in the window's accent, a faint inner rule, and the
+// gilt corners on top. Every window goes through here.
+const UI_ACC = { '': ['255,209,85', '224,154,44'], _iron: ['255,152,64', '214,90,30'], _silver: ['190,200,214', '124,136,160'], _blood: ['240,80,80', '181,29,54'] };
 function panelFrame(x, y, w, h, style = '') {
-  FRAME = { x, y, w, h, style }; const [r0, r1, r2] = FRAME_RULE[style].map((k) => PAL[k]);
-  ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(x + 4, y + 4, w, h);
+  FRAME = { x, y, w, h, style }; const [a0, a1] = UI_ACC[style] || UI_ACC[''];
+  for (let k = 1; k <= 4; k++) { ctx.fillStyle = `rgba(0,0,0,${0.12})`; ctx.fillRect(x - k + 3, y - k + 5, w + k * 2 - 2, h + k * 2 - 2); }
+  const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, 'rgba(30,22,40,0.97)'); g.addColorStop(0.35, 'rgba(18,13,26,0.97)'); g.addColorStop(1, 'rgba(9,6,14,0.98)');
   ctx.fillStyle = PAL.outline; ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = PAL.ink3; ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
-  ctx.fillStyle = PAL.ink4; ctx.fillRect(x + 1, y + 1, w - 2, 1); ctx.fillRect(x + 1, y + 1, 1, h - 2);
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(x + 1, y + h - 2, w - 2, 1); ctx.fillRect(x + w - 2, y + 1, 1, h - 2);
-  ctx.fillStyle = r0; ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
-  ctx.fillStyle = r1; ctx.fillRect(x + 3, y + 3, w - 6, 1); ctx.fillRect(x + 3, y + 3, 1, h - 6);
-  ctx.fillStyle = r2; ctx.fillRect(x + 3, y + h - 4, w - 6, 1); ctx.fillRect(x + w - 4, y + 3, 1, h - 6);
-  ctx.fillStyle = PAL.outline; ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
-  ctx.fillStyle = lattice(); ctx.fillRect(x + 5, y + 5, w - 10, h - 10);
-  ctx.fillStyle = 'rgba(11,7,16,0.45)'; ctx.fillRect(x + 5, y + 5, w - 10, 2); ctx.fillRect(x + 5, y + 5, 2, h - 10);
+  ctx.fillStyle = g; ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+  // A wash of the accent at the top centre, like light through glass.
+  const rg = ctx.createRadialGradient(x + w / 2, y, 4, x + w / 2, y, Math.max(w, h) * 0.55); rg.addColorStop(0, `rgba(${a0},0.10)`); rg.addColorStop(1, `rgba(${a0},0)`);
+  ctx.fillStyle = rg; ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(x + 2, y + 2, w - 4, 1);
+  // The rim: a fine accent line, brighter along the top, and a faint inner rule.
+  const rim = ctx.createLinearGradient(x, 0, x + w, 0); rim.addColorStop(0, `rgba(${a1},0.85)`); rim.addColorStop(0.5, `rgba(${a0},1)`); rim.addColorStop(1, `rgba(${a1},0.85)`);
+  ctx.fillStyle = rim; ctx.fillRect(x + 2, y + 2, w - 4, 1); ctx.fillStyle = `rgba(${a1},0.75)`; ctx.fillRect(x + 2, y + h - 3, w - 4, 1); ctx.fillRect(x + 2, y + 2, 1, h - 4); ctx.fillRect(x + w - 3, y + 2, 1, h - 4);
+  ctx.fillStyle = `rgba(${a0},0.16)`; ctx.fillRect(x + 5, y + 5, w - 10, 1); ctx.fillRect(x + 5, y + h - 6, w - 10, 1); ctx.fillRect(x + 5, y + 5, 1, h - 10); ctx.fillRect(x + w - 6, y + 5, 1, h - 10);
   frameOrnaments(x, y, w, h, style);
+}
+// A sunken glass panel inside a window (a card, a list): darker, with a fine rule.
+function inset(x, y, w, h, acc = null) {
+  ctx.fillStyle = 'rgba(4,2,8,0.55)'; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y, 1, h);
+  ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x + w - 1, y, 1, h);
+  if (acc) { const g = ctx.createLinearGradient(0, y, 0, y + 28); g.addColorStop(0, `rgba(${acc},0.16)`); g.addColorStop(1, `rgba(${acc},0)`); ctx.fillStyle = g; ctx.fillRect(x + 1, y + 1, w - 2, 28); ctx.fillStyle = `rgba(${acc},0.7)`; ctx.fillRect(x + 1, y, w - 2, 1); }
+}
+// A fine gold rule that fades at both ends, with a small diamond in the middle.
+function goldRule(x, y, w, acc = '255,209,85', diamond = true) {
+  const g = ctx.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, `rgba(${acc},0)`); g.addColorStop(0.5, `rgba(${acc},0.9)`); g.addColorStop(1, `rgba(${acc},0)`);
+  ctx.fillStyle = g; ctx.fillRect(x, y, w, 1);
+  if (diamond) { const cx = Math.round(x + w / 2); ctx.fillStyle = `rgb(${acc})`; ctx.fillRect(cx - 1, y - 1, 3, 3); ctx.fillRect(cx, y - 2, 1, 5); ctx.fillRect(cx - 2, y, 5, 1); }
 }
 // Corners, crest and studs go on last so content never hides them.
 function frameOrnaments(x, y, w, h, style = '') {
@@ -7831,16 +7872,14 @@ function frameOrnaments(x, y, w, h, style = '') {
   const cr = frameOf('ui', `frame_crest${style}`, 0); ornament(`frame_crest${style}`, x + w / 2 - cr.w / 2, y + h - cr.h + 3);
   const st = frameOf('ui', `frame_stud${style}`, 0); if (h > 80) for (const sx of [x - 3, x + w + 3 - st.w]) ornament(`frame_stud${style}`, sx, y + h / 2 - st.h / 2);
 }
-// A window's title band: a raised plate with a gilt rule and end diamonds.
+// A window's title band: a darker glass strip with a fading gold rule under it.
 function headerBar(x, y, w, h = 26) {
   if (FRAME && FRAME.x === x && FRAME.y === y) { x += 5; y += 5; w -= 10; h -= 5; }
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = PAL.ink3; ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y + 2, w, 1);
-  ctx.fillStyle = 'rgba(11,7,16,0.35)'; ctx.fillRect(x, y + h - 4, w, 3);
-  ctx.fillStyle = PAL.outline; ctx.fillRect(x, y + h, w, 1);
-  const [g0, g1] = FRAME_RULE[(FRAME && FRAME.style) || ''].map((k) => PAL[k]);
-  ctx.fillStyle = g0; ctx.fillRect(x + 10, y + h - 1, w - 20, 1);
-  ctx.fillStyle = g1; for (const dx of [x + 6, x + w - 7]) { ctx.fillRect(dx, y + h - 2, 1, 3); ctx.fillRect(dx - 1, y + h - 1, 3, 1); }
+  const [a0] = UI_ACC[(FRAME && FRAME.style) || ''] || UI_ACC[''];
+  const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, `rgba(${a0},0.10)`); g.addColorStop(1, 'rgba(0,0,0,0.25)');
+  ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x, y + h, w, 1);
+  goldRule(x + 4, y + h - 1, w - 8, a0, false);
 }
 function gild(x, y, w, h) { // gilded pixel frame with bevel
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
@@ -8782,17 +8821,20 @@ function hallowSweep(r, ri, seed) {
   if (ph > 0.75) twinkles(r.x + r.w / 2, r.y + r.h / 2, r.w * 0.38, seed, ri, 1);
 }
 function itemSlot(r, it, { ghost = null, sel = false } = {}) {
+  // Round 65: a sunken glass socket; a piece lights it from inside in its rarity's colour.
   ctx.fillStyle = PAL.outline; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
-  ctx.fillStyle = it ? PAL.ink3 : PAL.ink2; ctx.fillRect(r.x, r.y, r.w, r.h);
-  ctx.fillStyle = PAL.ink1; ctx.fillRect(r.x, r.y + r.h - 2, r.w, 2);
+  ctx.fillStyle = 'rgba(6,4,10,0.9)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(r.x, r.y, r.w, 1); ctx.fillRect(r.x, r.y, 1, r.h);
+  ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fillRect(r.x, r.y + r.h - 1, r.w, 1); ctx.fillRect(r.x + r.w - 1, r.y, 1, r.h);
   if (it) {
-    // The rarity colour fills the cell (stronger for rarer pieces) and rims it in 2 px.
     const set = it.set || it.wset, rim = set ? RARITY[4].cell : RARITY[it.ri].cell;
     if (it.ri || set) {
-      ctx.globalAlpha = set ? 0.42 : [0, 0.3, 0.36, 0.42, 0.42][it.ri]; ctx.fillStyle = rim; ctx.fillRect(r.x, r.y, r.w, r.h);
-      ctx.globalAlpha = 0.35; ctx.fillStyle = PAL.ink0; ctx.fillRect(r.x, r.y + Math.round(r.h * 0.6), r.w, r.h - Math.round(r.h * 0.6)); ctx.globalAlpha = 1;
-      ctx.fillStyle = rim; ctx.fillRect(r.x, r.y, r.w, 2); ctx.fillRect(r.x, r.y + r.h - 2, r.w, 2); ctx.fillRect(r.x, r.y, 2, r.h); ctx.fillRect(r.x + r.w - 2, r.y, 2, r.h);
-    } else { ctx.strokeStyle = PAL.stone3; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1); }
+      const c = hexRgb(rim), g = ctx.createRadialGradient(r.x + r.w / 2, r.y + r.h * 0.45, 1, r.x + r.w / 2, r.y + r.h * 0.45, r.w * 0.75);
+      g.addColorStop(0, `rgba(${c},${set ? 0.5 : [0, 0.32, 0.4, 0.5, 0.5][it.ri]})`); g.addColorStop(1, `rgba(${c},0.06)`);
+      ctx.fillStyle = g; ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.fillStyle = `rgba(${c},0.95)`; ctx.fillRect(r.x, r.y, r.w, 1); ctx.fillRect(r.x, r.y + r.h - 1, r.w, 1); ctx.fillRect(r.x, r.y, 1, r.h); ctx.fillRect(r.x + r.w - 1, r.y, 1, r.h);
+      ctx.fillStyle = `rgba(${c},0.35)`; ctx.fillRect(r.x + 1, r.y + 1, r.w - 2, 1); ctx.fillRect(r.x + 1, r.y + 1, 1, r.h - 2);
+    } else { ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.strokeStyle = PAL.stone4; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1); }
     itemIcon(it, r.x + r.w / 2, r.y + r.h / 2);
     if (it.ri >= 3 && !LOWFX) hallowSweep(r, it.ri, idSeed(it));
     if (it.isNew) { ctx.fillStyle = PAL.outline; ctx.fillRect(r.x + r.w - 6, r.y + 1, 5, 5); ctx.fillStyle = PAL.gold0; ctx.fillRect(r.x + r.w - 5, r.y + 2, 3, 3); }
@@ -8801,15 +8843,24 @@ function itemSlot(r, it, { ghost = null, sel = false } = {}) {
 }
 // A plate button: ink outline with cut corners, a gilt rim when it can be
 // pressed, a lit top edge and a shaded foot.
+// Buttons: a bevelled glass pill in the button's colour with a gold rim, a
+// highlight along the top, and a dip when pressed (UI_PRESS, set in onTap).
+let UI_PRESS = null;
+const hexRgb = (h) => { if (!h || h[0] !== '#') return '120,110,140'; const n = parseInt(h.slice(1), 16); return `${n >> 16 & 255},${n >> 8 & 255},${n & 255}`; };
+const shade = (rgb, k) => rgb.split(',').map((v) => Math.max(0, Math.min(255, Math.round(+v * k)))).join(',');
 function invButton(r, label, col, on = true) {
-  const { x, y, w, h } = r;
-  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 2, w + 2, h + 4); ctx.fillRect(x - 2, y - 1, w + 4, h + 2);
-  ctx.fillStyle = on ? PAL.gold3 : PAL.ink3; ctx.fillRect(x, y - 1, w, h + 2); ctx.fillRect(x - 1, y, w + 2, h);
-  ctx.fillStyle = on ? col : PAL.ink2; ctx.fillRect(x + 1, y, w - 2, h);
-  ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x + 1, y, w - 2, 2);
-  ctx.fillStyle = 'rgba(11,7,16,0.35)'; ctx.fillRect(x + 1, y + h - 3, w - 2, 3);
-  if (on) { ctx.fillStyle = PAL.gold1; ctx.fillRect(x, y - 1, w, 1); }
-  text(fitText(label, w - 6, null, false), x + w / 2, y + Math.round(h / 2) - 4, on ? PAL.white : PAL.stone2, { align: 'center' });
+  const pressed = on && UI_PRESS && game.real - UI_PRESS.t < 0.14 && UI_PRESS.x >= r.x && UI_PRESS.x <= r.x + r.w && UI_PRESS.y >= r.y && UI_PRESS.y <= r.y + r.h;
+  const x = r.x, y = r.y + (pressed ? 1 : 0), w = r.w, h = r.h, c = hexRgb(col);
+  ctx.fillStyle = PAL.outline; ctx.fillRect(x, y - 1, w, h + 2); ctx.fillRect(x - 1, y, w + 2, h);
+  if (on) {
+    const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, `rgb(${shade(c, pressed ? 1 : 1.25)})`); g.addColorStop(0.55, `rgb(${shade(c, pressed ? 0.8 : 1)})`); g.addColorStop(1, `rgb(${shade(c, 0.6)})`);
+    ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(x + 1, y + 1, w - 2, 1);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 1, y + h - 2, w - 2, 1);
+    const rim = ctx.createLinearGradient(x, 0, x + w, 0); rim.addColorStop(0, 'rgba(224,154,44,0.7)'); rim.addColorStop(0.5, 'rgba(255,209,85,1)'); rim.addColorStop(1, 'rgba(224,154,44,0.7)');
+    ctx.fillStyle = rim; ctx.fillRect(x, y - 1, w, 1); ctx.fillStyle = 'rgba(168,96,30,0.9)'; ctx.fillRect(x, y + h, w, 1);
+  } else { ctx.fillStyle = 'rgba(30,24,40,0.95)'; ctx.fillRect(x, y, w, h); ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(x + 1, y + 1, w - 2, 1); }
+  text(fitText(label, w - 6, null, false), x + w / 2, y + Math.round(h / 2) - 4, on ? PAL.white : PAL.stone3, { align: 'center' });
 }
 // The ITEMS tab: everything you carry that is not gear, with what it is for.
 // Each row: icon, name, count, what it is for, colour, and the site it opens.
@@ -8874,8 +8925,12 @@ function renderInventory() {
   if (game.inv.tab === 2) return renderBagIngredients(L);
   // Paper doll.
   const D = L.doll;
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(D.x + 36, D.y, D.w - 72, 140);
-  ctx.save(); ctx.translate(D.x + D.w / 2, D.y + 134); ctx.scale(2, 2); spr(saintSheet(), 'idle', Math.floor(game.real * 3), 0, 0); ctx.restore();
+  // The paper doll: the hero under a soft spotlight, standing on a gilt pedestal.
+  inset(D.x - 4, D.y - 4, D.w + 8, 148);
+  { const sg = ctx.createRadialGradient(D.x + D.w / 2, D.y + 70, 4, D.x + D.w / 2, D.y + 70, 64); sg.addColorStop(0, 'rgba(255,209,85,0.16)'); sg.addColorStop(1, 'rgba(255,209,85,0)'); ctx.fillStyle = sg; ctx.fillRect(D.x + 26, D.y, D.w - 52, 140); }
+  ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.beginPath(); ctx.ellipse(D.x + D.w / 2, D.y + 134, 30, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,209,85,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(D.x + D.w / 2, D.y + 134, 30, 7, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.save(); ctx.translate(D.x + D.w / 2, D.y + 134); ctx.scale(2, 2); spr(saintSheet(), 'idle', Math.floor(game.real * 6), 0, 0); ctx.restore();
   for (const [sl, r] of Object.entries(L.slots)) {
     const sel = game.inv.sel && game.inv.sel.from === 'equip' && game.inv.sel.slot === sl;
     itemSlot(r, SAVE.equip[sl], { ghost: sl, sel });
@@ -8893,6 +8948,7 @@ function renderInventory() {
   const lines = Object.keys(STAT).filter((k) => G[k]).map((k) => `+${G[k]}${STAT[k].pct ? '%' : ''} ${SHORT[k]}`);
   const setL = [...Object.entries(G.sets).filter(([, n]) => n >= 2).map(([id, n]) => `${VSETS[id].name.replace(/^THE /, '')} ${n}`), ...Object.entries(G.wsets).filter(([, n]) => n >= 2).map(([id]) => `ARMS: ${VSETS[id].name.replace(/^THE /, '')}`)];
   const sy = D.y + 150;
+  inset(D.x - 4, sy - 4, D.w + 8, L.rites.y - sy - 2);
   text(`HP ${player.maxHp}`, D.x, sy, PAL.blood0, { small: true, outline: null });
   text(`SANCTITY ${playerSanctity()}`, D.x + 64, sy, PAL.gold1, { small: true, outline: null });
   if (!lines.length) text('NOTHING WORN', D.x, sy + 10, PAL.stone2, { small: true, outline: null });
@@ -8907,7 +8963,9 @@ function renderInventory() {
   // The bag.
   const B = L.bag, cover = L.narrow && (it || game.inv.selling);
   if (!cover) {
+  inset(B.x - 5, B.y - 16, B.cols * (B.cell + 3) + 7, B.rows * (B.cell + 3) + 19);
   text(`BAG ${SAVE.bag.length}/${BAG_SIZE}`, B.x, B.y - 12, PAL.stone1);
+  { const bw = 60, bx = B.x + B.cols * (B.cell + 3) - 3 - bw, k = SAVE.bag.length / BAG_SIZE; ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(bx, B.y - 9, bw, 3); ctx.fillStyle = k > 0.85 ? PAL.blood0 : PAL.gold2; ctx.fillRect(bx, B.y - 9, Math.round(bw * k), 3); }
   for (let r = 0; r < B.rows; r++) for (let c = 0; c < B.cols; c++) {
     const i = r * B.cols + c, sel = game.inv.sel && game.inv.sel.from === 'bag' && game.inv.sel.i === i;
     itemSlot({ x: B.x + c * (B.cell + 3), y: B.y + r * (B.cell + 3), w: B.cell, h: B.cell }, SAVE.bag[i], { sel });
@@ -8919,7 +8977,7 @@ function renderInventory() {
   }
   if (game.inv.selling) {
     const C = L.card;
-    ctx.fillStyle = PAL.ink2; ctx.fillRect(C.x, C.y, C.w, C.h);
+    inset(C.x, C.y, C.w, C.h, '232,56,63');
     text('SELL WHICH?', C.x + 6, C.y + 8, PAL.gold1);
     text('WORN PIECES ARE NEVER SOLD.', C.x + 6, C.y + 22, PAL.stone1, { small: true, outline: null });
     SELL_RULES.forEach((rule, i) => { const r = L.opts[i], pv = sellPreview(rule); invButton(r, rule.label, PAL.crimson3, pv.n > 0); text(`${pv.n} ITEMS  +${pv.gold} GOLD`, r.x + r.w / 2, r.y + r.h + 1, pv.n ? PAL.gold1 : PAL.stone2, { align: 'center', small: true, outline: null }); });
@@ -8929,20 +8987,20 @@ function renderInventory() {
   // The card.
   const C = L.card; game.inv.setTap = null;
   if (L.narrow && !it) return;
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(C.x, C.y, C.w, C.h);
+  cardPlate(it, C);
   if (L.narrow) text('TAP THE CARD TO GO BACK', C.x + 6, L.btnA.y - 12, PAL.stone2, { small: true, outline: null });
-  if (!it) { if (C.w < 100) return; wrap('TAP A PIECE TO READ IT. WORN GEAR IS SAFE IF YOU DIE.', Math.floor((C.w - 12) / 6)).forEach((l, i) => text(l, C.x + 6, C.y + 8 + i * 10, PAL.stone1, { small: true, outline: null })); return; }
+  if (!it) { if (C.w < 100) return; goldRule(C.x + 10, C.y + C.h / 2 - 16, C.w - 20); wrap('TAP A PIECE TO READ IT. WORN GEAR IS SAFE IF YOU DIE.', Math.floor((C.w - 12) / 6)).forEach((l, i) => text(l, C.x + C.w / 2, C.y + C.h / 2 - 8 + i * 10, PAL.stone1, { small: true, outline: null, align: 'center' })); return; }
   const R0 = RARITY[it.ri];
-  let y = C.y + 6;
-  for (const l of wrap(nm(it), Math.floor((C.w - 12) / 7))) { text(l, C.x + 6, y, R0.color); y += 12; }
-  text(heroText(`${R0.name} ${SLOT_NAME[it.slot] || it.slot.toUpperCase()}`), C.x + 6, y, PAL.stone1, { small: true, outline: null }); y += 10;
-  text(`SANCTITY ${itemSanctity(it)}`, C.x + 6, y, PAL.gold1, { small: true, outline: null }); const sw = textW(`SANCTITY ${itemSanctity(it)}`, 1, true) + textW(`STATION ${ROMAN[(it.il || 1) - 1]}`, 1, true) + 8 > C.w - 12; if (sw) y += 10; text(`STATION ${ROMAN[(it.il || 1) - 1]}`, sw ? C.x + 6 : C.x + C.w - 6, y, PAL.stone2, { small: true, outline: null, align: sw ? 'left' : 'right' });
+  let y = C.y + 7;
+  for (const l of wrapW(nm(it), C.w - 46)) { text(l, C.x + 6, y, R0.color, { glow: it.ri >= 3 }); y += 12; }
+  text(heroText(`${R0.name} ${SLOT_NAME[it.slot] || it.slot.toUpperCase()}`), C.x + 6, y, PAL.stone1, { small: true, outline: null }); y += Math.max(10, C.y + 26 - y);
+  text(`SANCTITY ${itemSanctity(it)}`, C.x + 6, y, PAL.gold1, { small: true, outline: null }); const sock = y < C.y + 36 ? 34 : 0, sw = textW(`SANCTITY ${itemSanctity(it)}`, 1, true) + textW(`STATION ${ROMAN[(it.il || 1) - 1]}`, 1, true) + 8 > C.w - 12 - sock; if (sw) y += 10; text(`STATION ${ROMAN[(it.il || 1) - 1]}`, sw ? C.x + 6 : C.x + C.w - 6 - (y < C.y + 36 ? 34 : 0), y, PAL.stone2, { small: true, outline: null, align: sw ? 'left' : 'right' });
   if (worn0(it)) { const dv = itemSanctity(it) - itemSanctity(worn0(it)); if (dv) text(`${dv > 0 ? '+' : ''}${dv}`, C.x + 76, y, dv > 0 ? PAL.flame1 : PAL.blood0, { small: true, outline: null }); }
-  y += 12;
+  y += 11; goldRule(C.x + 6, y, C.w - 12, rarRGB(it), false); y += 4;
   const worn = game.inv.sel.from === 'bag' ? SAVE.equip[it.slot] : null;
   for (const st of it.stats) {
     text(statLine(st), C.x + 6, y, statCol(st), { small: true, outline: null });
-    if (worn) { const w0 = (worn.stats.find((q) => q[0] === st[0]) || [0, 0])[1], dv = st[1] - w0; if (dv) text(`${dv > 0 ? '+' : ''}${dv}`, C.x + C.w - 6, y, dv > 0 ? PAL.flame1 : PAL.blood0, { small: true, outline: null, align: 'right' }); }
+    if (worn) { const w0 = (worn.stats.find((q) => q[0] === st[0]) || [0, 0])[1], dv = st[1] - w0; if (dv) cmpArrow(C.x + C.w - 14 - textW(`${dv > 0 ? '+' : ''}${dv}`, 1, true), y, dv > 0); if (dv) text(`${dv > 0 ? '+' : ''}${dv}`, C.x + C.w - 6, y, dv > 0 ? PAL.flame1 : PAL.blood0, { small: true, outline: null, align: 'right' }); }
     y += 10;
   }
   if (worn) for (const st of worn.stats) if (!it.stats.some((q) => q[0] === st[0])) { text(`-${st[1]}${STAT[st[0]].pct ? '%' : ''} ${STAT[st[0]].label}`, C.x + 6, y, PAL.blood0, { small: true, outline: null }); y += 10; }
@@ -8959,7 +9017,10 @@ function renderInventory() {
     game.inv.setTap = null;
     for (const [ws, col, , tap] of lines) { const y0 = y; for (const l of ws) { if (y + 9 > stop) break; text(l, C.x + 6, y, col, { small: true, outline: null }); y += 9; } if (tap) game.inv.setTap = { x: C.x, y: y0 - 3, w: C.w, h: y - y0 + 6, it }; }
   }
-  if (worn) { const d = itemScore(it) - itemScore(worn); text(d > 0.2 ? 'BETTER THAN WORN' : d < -0.2 ? 'WORSE THAN WORN' : 'SIDEGRADE', C.x + 6, C.y + C.h - 40, d > 0.2 ? PAL.flame1 : d < -0.2 ? PAL.blood0 : PAL.stone1, { small: true, outline: null }); }
+  if (worn) { const d = itemScore(it) - itemScore(worn), t0 = d > 0.2 ? 'BETTER THAN WORN' : d < -0.2 ? 'WORSE THAN WORN' : 'SIDEGRADE', col = d > 0.2 ? PAL.flame1 : d < -0.2 ? PAL.blood0 : PAL.stone1, bw = textW(t0, 1, true) + 12;
+    ctx.fillStyle = `rgba(${hexRgb(col)},0.16)`; ctx.fillRect(C.x + 6, C.y + C.h - 43, bw, 13); ctx.fillStyle = `rgba(${hexRgb(col)},0.6)`; ctx.fillRect(C.x + 6, C.y + C.h - 43, 2, 13);
+    if (d > 0.2 || d < -0.2) cmpArrow(C.x + 10, C.y + C.h - 40, d > 0.2);
+    text(t0, C.x + 6 + (d > 0.2 || d < -0.2 ? 10 : 6), C.y + C.h - 40, col, { small: true, outline: null }); }
   if (game.inv.sel.from === 'bag') { invButton(L.btnA, 'WEAR', PAL.gold3); invButton(L.btnB, `SELL ${SALVAGE[it.ri]}`, PAL.crimson3); }
   else invButton(L.btnA, 'TAKE OFF', PAL.stone4, SAVE.bag.length < BAG_SIZE);
 }
@@ -9201,6 +9262,7 @@ function renderDesigner() {
   if (D.menu) { layerBreak(); for (const b of desMenu()) { invButton(b, '', b.label === 'CLEAR' ? PAL.crimson3 : PAL.ink3, true); text(b.label, b.x + b.w / 2, b.y + 5, PAL.cloth0, { small: true, align: 'center', outline: null }); } }
 }
 function onTap(x, y) {
+  UI_PRESS = { x, y, t: game.real }; // buttons dip where tapped (invButton)
   if (game.ask) { askTap(x, y); return true; }
   if (game.enchPop) { game.enchPop = null; sfx('tap', { vol: 0.5 }); return true; }
   if (game.setPop) { game.setPop = null; sfx('tap', { vol: 0.5 }); return true; }
