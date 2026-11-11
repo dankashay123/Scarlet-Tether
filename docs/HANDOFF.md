@@ -43,8 +43,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   dark stone. Every pixel is on the palette (`tools/palette.mjs`, 26 ramps; `sea` was added in 32.2 for water).
   `resize()` sizes from `visualViewport` and re-checks twice a second
   (iPhone Safari's toolbars once left a black band).
-- **Text and HUD (rounds 29-30):** all text is Barlow Semi Condensed
-  SemiBold (`assets/fonts/ui.ttf`), drawn at screen resolution over the
+- **Text and HUD (rounds 29-30, font and case from round 66):** all text is
+  Saira Semi Condensed (SemiBold, Bold for titles; `assets/fonts/ui.woff2`,
+  `ui-bold.woff2`) in mixed case (`caseOf`: short labels in Title Case,
+  longer ones as sentences, game names and Roman numerals kept), drawn at screen resolution over the
   pixel art (`text()` queues, `flushText()` draws, `layerBreak()` between
   windows). HP and Zeal bars sit top left with the damage bonus and Zeal
   step under them, then the kill streak; a slim level bar is centred at
@@ -247,6 +249,34 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 66:** menus, part 2, after the owner's reference screens (a
+  mobile ARPG's full-screen menus). Font: Saira Semi Condensed from the
+  `@fontsource` npm package (Google Fonts is blocked here; npm works), SemiBold
+  plus Bold (`isBold`: titles with `glow` and text at `sc` 1.5+). Text shows
+  in mixed case: source strings stay in capitals and `caseOf` converts them
+  (memoised): up to four words with no punctuation become Title Case, longer
+  ones sentences; `CASE_TERMS` (Zeal, Warden, Station...) and every multi-word
+  `name` in the data (`caseNames`) keep their capitals inside sentences;
+  Roman numerals, HP, XP stay upper; "6 S" becomes "6 s". A string that
+  already has a lower-case letter is left alone, so `wrapW`/`wrap` case the
+  whole string first and their lines pass through. Menu text (`UI_SOFT`, set
+  in `render()` once a window is up, and on the title) gets a soft drop
+  shadow, not the black outline. Windows: `panelFrame` turns any window over
+  75% of the screen into a full-screen page (`backdrop(style)`: cached
+  canvas, navy, violet for `_silver`, ember for `_iron`, crimson for
+  `_blood`, diagonal light, a warm glow and hex lattice at the foot);
+  `headerBar` then draws a dark title bar the width of the screen. Smaller
+  windows are navy cards. The gilt corners are gone (`frameOrnaments` is a
+  no-op). The `close` sprite is drawn as a back arrow (`backArrow`) in menus.
+  Tabs are solid gold plates with dark text (`tabPlate`, `TAB_INK`); buttons
+  are bright plates (`BTN_KIND`: gold and silver with dark text, other
+  colours with white) with a sheen; pickers are dark fields with a fine edge;
+  item tiles are filled in their rarity's colour (`itemSlot`). The pause
+  screen is a right-hand panel of tiles (`pauseLayout`, `pauseIcon`,
+  `pauseTap`: Bag, Rites, Map, Settings, Sound, Switch Saint, Dev, Layout,
+  Resume) with the saint and Saint level at the top; the bag opened from it
+  returns to it (`game.invBack`). The title's start prompt sits on a fading
+  band. `menus.cjs` takes `FONT=file` and `ONLY=a,b`.
 - **Round 65:** menus, part 1: dark glass and gold. A UI kit replaced the
   flat ink boxes everywhere: `panelFrame` (translucent body, accent wash at
   the top, fine rim and inner rule, gilt corners), `headerBar`, `inset`,

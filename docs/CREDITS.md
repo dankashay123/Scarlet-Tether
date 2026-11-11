@@ -63,9 +63,10 @@ Freesound and Sonniss were not used: Freesound downloads need an account and
 its pages refuse this build machine, and the Sonniss bundles are
 multi-gigabyte archives.
 
-## Font: Barlow Semi Condensed, SIL Open Font License 1.1
+## Font: Saira Semi Condensed, SIL Open Font License 1.1
 
-- [Barlow](https://github.com/jpt/barlow) by The Barlow Project Authors (Jeremy Tribby), SemiBold, via Google Fonts. Shipped as `assets/fonts/ui.ttf`. All UI text since round 29.
+- [Saira](https://github.com/Omnibus-Type/Saira) by The Saira Project Authors (Omnibus-Type), Semi Condensed SemiBold and Bold, latin subset, via the `@fontsource/saira-semi-condensed` package. Shipped as `assets/fonts/ui.woff2` and `assets/fonts/ui-bold.woff2`; the licence is in `assets/fonts/OFL-Saira.txt`. All UI text since round 66.
+- Rounds 29 to 65: [Barlow](https://github.com/jpt/barlow) Semi Condensed SemiBold (SIL OFL 1.1) as `assets/fonts/ui.ttf`.
 - Before round 29: [Kenney Fonts](https://kenney.nl/assets/kenney-fonts) "Kenney High" (CC0 1.0) as a bitmap font. The glyph tables (`GLYPHS`, `FONT`) are still in `index.html` but unused.
 
 ## Reference

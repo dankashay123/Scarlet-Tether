@@ -17,11 +17,11 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
   // The other saint, marked in the close.
   await p.evaluate(() => { const n = HS.room.npcs.find((q) => q.hero); HS.player.x = n.x - 70; HS.player.y = n.y + 10; }); await p.waitForTimeout(1200); await shot('town-marker');
   await p.evaluate(() => { HS.game.state = 'map'; }); await p.waitForTimeout(300); await shot('town-map');
-  // SWITCH SAINT on the pause screen asks, then switches.
+  // The Switch Saint tile on the pause screen asks, then switches.
   await p.evaluate(() => { HS.game.state = 'pause'; }); await p.waitForTimeout(300); await shot('pause-switch');
   out.pauseProblems = await words();
-  out.switch = await p.evaluate(() => { const r = document.getElementById('screen').getBoundingClientRect(), W = HS.W, H = HS.H, B = { x: Math.round(W / 2 - 55), y: H - 56, w: 110, h: 20 };
-    HS.pointerDown(4, r.left + (B.x + 50) / W * r.width, r.top + (B.y + 10) / H * r.height); HS.pointerUp(4); const asked = !!HS.game.ask; const A = HS.askLayout(); HS.askTap(A.yes.x + 4, A.yes.y + 4); return { asked, hero: HS.heroId(), state: HS.game.state }; });
+  out.switch = await p.evaluate(() => { const r = document.getElementById('screen').getBoundingClientRect(), W = HS.W, H = HS.H, B = pauseLayout().tiles.find((t) => t.id === 'hero');
+    HS.pointerDown(4, r.left + (B.x + B.w / 2) / W * r.width, r.top + (B.y + B.h / 2) / H * r.height); HS.pointerUp(4); const asked = !!HS.game.ask; const A = HS.askLayout(); HS.askTap(A.yes.x + 4, A.yes.y + 4); return { asked, hero: HS.heroId(), state: HS.game.state }; });
   await p.waitForTimeout(1200);
   // His Wound cards: a mace, not a crossbow; blows, not nails.
   out.wounds = await p.evaluate(() => ['wrath', 'quick', 'split', 'pierce', 'heavy'].map((id) => { const w = HS.WOUNDS.find((q) => q.id === id); return `${HS.heroText(w.name)}: ${HS.heroText(w.text(1))}`; }));

@@ -3,11 +3,12 @@
 // Photographs every menu window (framed by panelFrame) at one phone size;
 // run it at 932x430, 844x390 and 667x375 and look for clipped text. Each
 // window also reports text that overlaps other text or runs off the screen.
-// TEXT=large (or small) sets the text size first.
+// TEXT=large (or small) sets the text size first. FONT=file tries another font; ONLY=inv,rites picks windows.
 const { chromium } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const S = process.argv[2], [w, h] = (process.argv[3] || '844x390').split('x').map(Number);
 (async () => { const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 2, isMobile: true, hasTouch: true })).newPage();
   const errs = []; p.on('pageerror', (e) => errs.push(String(e.stack || e)));
+  if (process.env.FONT) await p.route('**/assets/fonts/ui.*', (r) => r.fulfill({ path: process.env.FONT, contentType: 'font/woff2' })); // FONT=file.woff2 tries another font
   await p.goto('http://localhost:8123/?town'); await p.waitForTimeout(1300);
   if (process.env.TEXT) await p.evaluate((t) => HS.setOpt('text', t), process.env.TEXT);
   await p.evaluate(() => { HS.tut.on = false; HS.game.dialog = null; HS.game.state = 'play'; HS.SAVE.descents = 12; HS.SAVE.cleared = 9; HS.SAVE.gold = 9000; HS.SAVE.vkeys = 2; HS.SAVE.chrism = [1, 0, 2, 0];
@@ -16,7 +17,8 @@ const S = process.argv[2], [w, h] = (process.argv[3] || '844x390').split('x').ma
   const shots = [['inv', () => HS.openInventory()], ['altar', () => HS.openAltar()], ['altarpick', () => { HS.SAVE.altar = { known: ['stormHands', 'pallWard', 'chainHands', 'veilFont'], sockets: { vest: 'pallWard' } }; HS.applyGear(); HS.openAltar(); HS.openAltarPick('vest'); HS.game.altarPick.sel = 'stormHands'; }], ['altarpick2', () => { HS.openAltar(); HS.openAltarPick('relic'); }], ['descent', () => HS.startDescent()], ['vigil', () => HS.openVigil()], ['rites', () => HS.openRites('play')], ['censer', () => HS.openCenser('play')], ['shop', () => HS.openShop()], ['forge', () => HS.openForge()], ['canonry', () => HS.openCanonry()], ['board', () => HS.openBoard()], ['site', () => HS.openSite(HS.SITES.find((q) => q.id === 'martyr'))], ['settings', () => { HS.game.state = 'settings'; }], ['dev', () => HS.openDev()], ['plush', () => HS.openPlush()], ['pool', () => HS.openPool()], ['martyr', () => HS.openMartyr()], ['roll', () => HS.openRoll()]];
   shots.push(['forgevalues', () => { HS.openForge(); HS.game.forge.tab = 1; }], ['enchant', () => HS.openEnchant()], ['enchantpick', () => { HS.openEnchant(); HS.game.ench.pick = true; }], ['pause', () => { HS.game.state = 'pause'; }]);
   const problems = [];
-  for (const [n, f] of shots) {
+  const only = process.env.ONLY ? process.env.ONLY.split(',') : null; // ONLY=inv,rites photographs some
+  for (const [n, f] of shots) { if (only && !only.includes(n)) continue;
     await p.evaluate(() => { HS.game.state = 'play'; HS.game.inv = null; }); await p.evaluate(f); await p.waitForTimeout(250); await p.screenshot({ path: `${S}/shots/m-${n}-${w}.png` });
     const pr = await p.evaluate(() => HS.textProblems()); if (pr.length) problems.push(`${n}: ${pr.slice(0, 6).join('; ')}`);
   }
