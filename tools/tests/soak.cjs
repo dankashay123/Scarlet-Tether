@@ -24,7 +24,7 @@ const S = process.argv[2], SECS = +(process.argv[3] || 180);
       const num = (v) => typeof v === 'number' && isFinite(v);
       if (P && !(num(P.x) && num(P.y) && num(P.hp))) bad.push('player NaN');
       for (const e of HS.enemies) if (!(num(e.x) && num(e.y) && num(e.hp))) { bad.push(`enemy NaN ${e.type}`); break; }
-      if (P && HS.room && HS.room.isSolid(Math.floor(P.x / 16), Math.floor(P.y / 16)) && !(window.__jump > Date.now() - 400)) bad.push('player inside a wall'); // not straight after the test's own jumps
+      if (P && HS.room && HS.room.isSolid(Math.floor(P.x / 16), Math.floor(P.y / 16)) && !(window.__jumpT !== undefined && HS.game.time - window.__jumpT < 0.4)) bad.push('player inside a wall'); // not straight after the test's own jumps (game time: a menu opened after a jump pauses it)
       return { state: HS.game.state, scene: HS.game.scene, x: P && Math.round(P.x), y: P && Math.round(P.y), hp: P && Math.round(P.hp), bad, dropKinds: HS.drops.map((d) => d.kind + (d.item ? d.item.slot : '') + '@' + Math.round(Math.hypot(d.x - P.x, d.y - P.y)) + (HS.room.isSolid(Math.floor(d.x / 16), Math.floor(d.y / 16)) ? 'SOLID' : '')).join(' '), bag: HS.SAVE.bag ? HS.SAVE.bag.length : 0,
         sizes: { enemies: HS.enemies.length, bolts: HS.bolts.length, drops: HS.drops.length, hazards: HS.hazards.length, fx: HS.skillFx.length }, room: HS.game.curRoom && HS.game.curRoom.id, roomState: HS.game.curRoom && HS.game.curRoom.state, level: HS.game.run && HS.game.run.level, deathT: +(HS.game.deathT || 0).toFixed(2), kills: HS.game.kills, cpu: +(HS.game.cpu || 0).toFixed(1) };
     });
@@ -58,7 +58,7 @@ const S = process.argv[2], SECS = +(process.argv[3] || 180);
       await p.waitForTimeout(500); await p.keyboard.up(k);
       // Nudge progress: in town walk into the Descent; in the dungeon hop to a neighbouring room now and then.
       if (st.scene === 'town' && Math.random() < 0.25) await p.evaluate(() => { HS.player.x = HS.CATHEDRAL_X; HS.player.y = HS.room.top * 16 + 14; }).then(() => p.keyboard.press('KeyE'));
-      if (st.scene === 'wound' && Math.random() < 0.2) await p.evaluate(() => { const R = HS.room, r = HS.game.curRoom; if (r.state !== 'active') { const id = r.links[Math.floor(Math.random() * r.links.length)], t = R.rooms[id]; HS.player.x = (t.cx + 0.5) * 16; HS.player.y = (t.cy + 1.5) * 16; window.__jump = Date.now(); } else { for (const e of HS.enemies) if (Math.random() < 0.3) HS.killEnemy(e, 1, 0); } });
+      if (st.scene === 'wound' && Math.random() < 0.2) await p.evaluate(() => { const R = HS.room, r = HS.game.curRoom; if (r.state !== 'active') { const id = r.links[Math.floor(Math.random() * r.links.length)], t = R.rooms[id]; HS.player.x = (t.cx + 0.5) * 16; HS.player.y = (t.cy + 1.5) * 16; window.__jumpT = HS.game.time; } else { for (const e of HS.enemies) if (Math.random() < 0.3) HS.killEnemy(e, 1, 0); } });
       if (st.scene === 'wound' && Math.random() < +(process.env.SOAK_DEATH || 0.02)) await p.evaluate(() => { HS.player.hp = 1; HS.player.iframes = 0; });
       if (st.scene === 'wound' && Math.random() < 0.05) await p.evaluate(() => { if (HS.game.waystone) { HS.player.x = HS.game.waystone.x; HS.player.y = HS.game.waystone.y + 4; } }).then(() => p.keyboard.press('KeyE'));
     } else await p.waitForTimeout(400);
