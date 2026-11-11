@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '66';
+const BUILD = '67';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '67': ['THE BAG HAS TABS FOR RITES, TALENTS AND THE CENSER. LEARN TALENTS ANYWHERE.', 'RITES: A RAIL OF SLOTS, EACH SLOT\'S RITES AS ICONS, AND THE CHOSEN ONE IN FULL.', 'TALENTS ARE A TREE OF NODES. SETTINGS HAS SECTIONS AND ONE-TAP CHOICES.', 'THE HUD, LEVEL-UP CARDS AND DEATH SUMMARY MATCH THE NEW MENUS.'],
   '66': ['A NEW FONT, AND TEXT IN UPPER AND LOWER CASE.', 'MENUS FILL THE SCREEN: A DEEP BACKDROP, A TITLE BAR WITH A BACK ARROW, GOLD TABS, BRIGHT BUTTONS AND ITEM TILES IN THEIR RARITY\'S COLOUR.', 'THE PAUSE SCREEN IS A PANEL OF TILES: BAG, RITES, MAP, SETTINGS, SOUND AND SWITCH SAINT.'],
   '65': ['NEW MENUS: DARK GLASS AND GOLD EVERYWHERE. GLOWING RARITY SOCKETS, ITEM CARDS WITH THE PIECE\'S ICON AND ARROWS ON EVERY STAT AGAINST WHAT YOU WEAR, A SPOTLIT HERO IN THE BAG, CLEAN PICKERS IN SETTINGS, AND WINDOWS THAT FADE IN.'],
   '64': ['BRIGHT RITES ARE SOFTER: HOLY AND GOLD LIGHT NO LONGER WASHES OUT TO WHITE, AND JUDGEMENT\'S PILLARS ARE WARMER.', 'A RECKONING NOW OPENS A TURNING SIGIL ON THE FLOOR IN ITS SET\'S COLOUR, AND A WARDEN FALLS IN A COLUMN OF GOLD.', 'THE BURNING CHOIR AT 6 PIECES: RECKONING DEALS X1.9 (WAS X2.2) WHILE IT LASTS.'],
@@ -736,8 +737,7 @@ addEventListener('keydown', (e) => {
   if (game.state === 'dev') { if (e.code === 'Escape') closeDev(); return; }
   if (game.state === 'yard') { if (e.code === 'Escape') game.state = 'play'; return; }
   if (game.state === 'settings') { if (e.code === 'Escape') game.state = 'pause'; return; }
-  if (game.state === 'rites') { if (e.code === 'Escape') game.state = game.ritesBack || 'play'; return; }
-  if (game.state === 'censer') { if (e.code === 'Escape') game.state = game.censerBack || 'play'; return; }
+  if (game.state === 'rites' || game.state === 'censer' || game.state === 'canonry') { if (e.code === 'Escape') hubClose(); return; }
   if (game.state === 'resume') { if (e.code === 'Escape') { SAVE.suspend = null; persist(); game.state = 'play'; } return; }
   if (e.code === 'KeyT' && (game.state === 'play' || game.state === 'pause')) { openRites(game.state); return; }
   if (game.state === 'stig') { if (game.stig.t > 0.35 && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) pickStigma(+e.code.slice(5) - 1); return; }
@@ -2904,16 +2904,20 @@ function switchHero(id) {
   SAVE.hero = id; persist(); enterTown(false);
   game.banner = { text: HEROES[id].name, sub: HEROES[id].text.split('.')[0], t: 0, color: PAL.gold0 }; sfx('shrine');
 }
-function openCanonry() { game.state = 'canonry'; game.talTab = game.talTab || 0; sfx('tap'); }
+function openCanonry() { hubEnter(); game.state = 'canonry'; game.talTab = game.talTab || 0; sfx('tap'); }
 // The talents panel: three tree tabs; five rows of talents, a detail line and
 // the LEARN and RESET buttons.
-const talTabs = (L) => TALENT_TREES.map((T0, i) => ({ t: T0.name, x: L.close.x - 236 + i * 70, y: L.y0 + 5, w: 64, h: 17 }));
+// Round 67: the talents as a graph. A rail on the left picks the tree (and
+// shows the Saint level); the tree's five tiers run left to right under an
+// axis of the points each needs, one or two round nodes a tier, joined by lines.
+const talTabs = (L) => TALENT_TREES.map((T0, i) => ({ t: T0.name, x: L.rail.x, y: L.rail.y + i * 31, w: L.rail.w, h: 28 }));
 function talLayout() {
-  const L = featLayout(), top = L.y0 + 54, foot = 44, rh = Math.max(20, Math.min(30, Math.floor((L.ph - 54 - foot - 6) / 5)));
-  const lab = 34, cw = Math.floor((L.pw - 24 - lab - 6) / 2);
-  const cell = (r, c, n) => ({ x: L.x0 + 12 + lab + (n === 1 ? Math.round(cw / 2) + 3 : c * (cw + 6)), y: top + r * rh, w: cw, h: rh - 4 });
-  const fy = L.y0 + L.ph - foot;
-  return { ...L, top, rh, lab, cell, fy, learn: { x: L.x0 + L.pw - 12 - 74, y: fy + 12, w: 74, h: 20 }, reset: { x: L.x0 + L.pw - 12 - 74 - 80, y: fy + 12, w: 74, h: 20 } };
+  const L = featLayout(), foot = 40, fy = L.y0 + L.ph - foot, rail = { x: L.x0 + 8, y: L.y0 + 34, w: Math.max(84, Math.min(110, Math.round(L.pw * 0.2))) };
+  const gx = rail.x + rail.w + 10, gw = L.x0 + L.pw - 8 - gx, ay = L.y0 + 38, top = ay + 16, gh = fy - 6 - top, cw = gw / 5, nr = Math.max(10, Math.min(14, Math.floor(gh / 6)));
+  // cell(r, c, n): the node of talent c in tier r (n talents in that tier), as a box round the circle.
+  const node = (r, c, n) => ({ x: Math.round(gx + cw * (r + 0.5)), y: Math.round(top + (n === 1 ? gh * 0.42 : gh * (c ? 0.68 : 0.17))) });
+  const cell = (r, c, n) => { const p = node(r, c, n); return { x: p.x - nr - 2, y: p.y - nr - 2, w: nr * 2 + 4, h: nr * 2 + 4 }; };
+  return { ...L, rail, gx, gw, cw, ay, top, gh, nr, node, cell, fy, learn: { x: L.x0 + L.pw - 12 - 74, y: fy + 12, w: 74, h: 20 }, reset: { x: L.x0 + L.pw - 12 - 74 - 80, y: fy + 12, w: 74, h: 20 } };
 }
 // The Plush stall: robe dyes and halos, bought once with gold, worn at will.
 function openPlush() { game.state = 'plush'; game.plush = { tab: 0, sel: null }; sfx('tap'); }
@@ -2987,49 +2991,73 @@ function earnLook(how) {
   const H0 = HALOS.find((q) => q.earn === how), K = looks(); if (!H0 || K.own.includes(`h:${H0.id}`)) return;
   K.own.push(`h:${H0.id}`); persist(); setTimeout(() => { toast(`EARNED ${H0.name}`, 3.2); game.toastColor = PAL.rose1; }, 1800);
 }
+// A tree's emblem: a blade (offence), a shield (defence) or a star (rites).
+function treeEmblem(ti, x, y, col, k = 1) {
+  ctx.fillStyle = col; x = Math.round(x); y = Math.round(y);
+  const R = (a, b, w, h) => ctx.fillRect(x + Math.round(a * k), y + Math.round(b * k), Math.max(1, Math.round(w * k)), Math.max(1, Math.round(h * k)));
+  if (ti === 0) { R(-1, -7, 2, 10); R(-4, 2, 8, 2); R(-1, 4, 2, 3); }
+  else if (ti === 1) { R(-5, -6, 10, 2); R(-5, -4, 10, 5); R(-4, 1, 8, 2); R(-3, 3, 6, 2); R(-1, 5, 2, 2); }
+  else { R(-1, -7, 2, 14); R(-7, -1, 14, 2); R(-4, -4, 2, 2); R(2, -4, 2, 2); R(-4, 2, 2, 2); R(2, 2, 2, 2); }
+}
 function renderCanonry() {
-  const L = talLayout(), ti = game.talTab || 0, T0 = TALENT_TREES[ti], pts = talPts(), lv = saintLv(), spent = treeSpent(ti);
-  ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
+  const L = talLayout(), ti = game.talTab || 0, T0 = TALENT_TREES[ti], pts = talPts(), lv = saintLv(), spent = treeSpent(ti), small = { small: true, outline: null };
   panelFrame(L.x0, L.y0, L.pw, L.ph, '_silver');
   headerBar(L.x0, L.y0, L.pw, 26);
-  text('TALENTS', L.x0 + 12, L.y0 + 9, PAL.holy1); sprC('ui', 'close', 0, L.close.x, L.close.y);
-  tabButtons(talTabs(L), ti);
-  // The level and its bar.
-  const need = lvNeed(lv), full = lv >= MAX_SAINT;
-  text(`SAINT LEVEL ${lv}`, L.x0 + 12, L.y0 + 32, PAL.gold1);
-  const bx = L.x0 + 110, bw = Math.max(60, L.pw - 110 - 130); gild(bx, L.y0 + 34, bw, 5); ctx.fillStyle = PAL.ink2; ctx.fillRect(bx, L.y0 + 34, bw, 5); ctx.fillStyle = PAL.holy1; ctx.fillRect(bx, L.y0 + 34, full ? bw : Math.round(bw * (SAVE.lxp || 0) / need), 5);
-  text(full ? 'MAX' : `${Math.floor(SAVE.lxp || 0).toLocaleString('en-US')} / ${need.toLocaleString('en-US')}`, bx, L.y0 + 41, PAL.stone2, { small: true, outline: null });
-  text(pts ? `${pts} POINT${pts > 1 ? 'S' : ''}` : 'NO POINTS', L.x0 + L.pw - 12, L.y0 + 32, pts ? PAL.flame1 : PAL.stone2, { align: 'right' });
-  text(`${spent} IN ${T0.name}`, L.x0 + L.pw - 12, L.y0 + 43, PAL.stone2, { align: 'right', small: true, outline: null });
-  T0.rows.forEach((row, ri) => {
-    const open = spent >= TAL_NEED[ri], y = L.top + ri * L.rh;
-    text(String(TAL_NEED[ri]), L.x0 + 12 + L.lab / 2, y + (L.rh - 4) / 2 - 3, open ? PAL.stone1 : PAL.stone3, { align: 'center', small: true, outline: null });
-    row.forEach((t, ci) => {
-      const r = L.cell(ri, ci, row.length), n = tal(t.id), sel = game.talSel === t.id;
-      rowPlate(r, !!(sel));
-      if (n) { ctx.fillStyle = `rgba(${T0.rgb},0.22)`; ctx.fillRect(r.x, r.y, Math.round(r.w * n / t.max), r.h); }
-      if (sel) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1); }
-      const col = !open ? PAL.stone3 : n >= t.max ? PAL.gold1 : t.cap ? T0.col : PAL.cloth0;
-      text(fitText(heroText(t.name), r.w - 40), r.x + 6, r.y + Math.round((r.h - 9) / 2), col, { outline: null });
-      text(`${n}/${t.max}`, r.x + r.w - 6, r.y + Math.round((r.h - 9) / 2), open ? PAL.stone1 : PAL.stone3, { align: 'right', outline: null });
-    });
+  drawHub(L); sprC('ui', 'close', 0, L.close.x, L.close.y);
+  // The rail: the three trees, then the Saint level.
+  talTabs(L).forEach((b, i) => {
+    const on = i === ti, T1 = TALENT_TREES[i];
+    if (on) { const g = ctx.createLinearGradient(b.x, 0, b.x + b.w, 0); g.addColorStop(0, `rgba(${T1.rgb},0.85)`); g.addColorStop(1, `rgba(${T1.rgb},0.25)`); ctx.fillStyle = g; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(b.x, b.y, b.w, 1); ctx.fillRect(b.x, b.y + b.h - 1, b.w, 1); ctx.fillRect(b.x, b.y, 1, b.h); ctx.fillRect(b.x + b.w - 1, b.y, 1, b.h); }
+    else { ctx.fillStyle = 'rgba(4,7,13,0.6)'; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.fillStyle = `rgba(${T1.rgb},0.6)`; ctx.fillRect(b.x, b.y, 2, b.h); }
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.beginPath(); ctx.arc(b.x + 13, b.y + b.h / 2, 9, 0, Math.PI * 2); ctx.fill();
+    treeEmblem(i, b.x + 13, b.y + b.h / 2, on ? PAL.white : `rgb(${T1.rgb})`, 0.8);
+    text(fitText(T1.name, b.w - 30), b.x + 26, b.y + 3, on ? PAL.white : PAL.cloth1, small);
+    text(`${treeSpent(i)} SPENT`, b.x + 26, b.y + 15, on ? PAL.cloth0 : PAL.stone2, small);
   });
-  // The detail line for the chosen talent.
-  ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0 + 12, L.fy, L.pw - 24, 1);
+  { const R = L.rail, y = R.y + 3 * 31 + 6, need = lvNeed(lv), full = lv >= MAX_SAINT;
+    text(`SAINT LEVEL ${lv}`, R.x, y, PAL.gold1, small);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(R.x, y + 11, R.w, 4); ctx.fillStyle = PAL.holy1; ctx.fillRect(R.x, y + 11, full ? R.w : Math.round(R.w * (SAVE.lxp || 0) / need), 4);
+    text(full ? 'MAX' : `${Math.floor(SAVE.lxp || 0).toLocaleString('en-US')} / ${need.toLocaleString('en-US')}`, R.x, y + 18, PAL.stone2, small);
+    text(pts ? `${pts} POINT${pts > 1 ? 'S' : ''} TO SPEND` : 'NO POINTS', R.x, y + 30, pts ? PAL.flame1 : PAL.stone2, small); }
+  // The axis: the points each tier needs, lit up to what is spent.
+  const tx = (r) => Math.round(L.gx + L.cw * (r + 0.5));
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(tx(0), L.ay + 5, tx(4) - tx(0), 1);
+  let lit = 0; for (let r = 0; r < 5; r++) if (spent >= TAL_NEED[r]) lit = r;
+  ctx.fillStyle = `rgba(${T0.rgb},0.95)`; ctx.fillRect(tx(0), L.ay + 4, tx(lit) - tx(0) + Math.round(Math.min(1, (spent - TAL_NEED[lit]) / ((TAL_NEED[lit + 1] || TAL_NEED[lit] + 1) - TAL_NEED[lit])) * (lit < 4 ? L.cw : 0)), 3);
+  for (let r = 0; r < 5; r++) { const open = spent >= TAL_NEED[r], s0 = String(TAL_NEED[r]), w = textW(s0, 1, true) + 6; ctx.fillStyle = open ? PAL.white : 'rgba(40,46,60,1)'; ctx.fillRect(tx(r) - w / 2, L.ay, w, 11); text(s0, tx(r), L.ay + 1, open ? '#1b2130' : PAL.stone2, { ...small, align: 'center' }); }
+  // Lines from each node to the next tier's, then the nodes.
+  T0.rows.forEach((row, ri) => { const nx = T0.rows[ri + 1]; if (!nx) return; const on = spent >= TAL_NEED[ri + 1];
+    row.forEach((t, ci) => nx.forEach((u, cj) => { const a = L.node(ri, ci, row.length), b = L.node(ri + 1, cj, nx.length); ctx.strokeStyle = on ? `rgba(${T0.rgb},0.9)` : 'rgba(255,255,255,0.12)'; ctx.lineWidth = on ? 2 : 1; ctx.beginPath(); ctx.moveTo(a.x + L.nr, a.y); ctx.lineTo(b.x - L.nr, b.y); ctx.stroke(); })); });
+  T0.rows.forEach((row, ri) => row.forEach((t, ci) => {
+    const p = L.node(ri, ci, row.length), n = tal(t.id), open = spent >= TAL_NEED[ri], sel = game.talSel === t.id, r = L.nr;
+    if (sel && !LOWFX) glow(p.x, p.y, r * 2.2, 'rgba(255,209,85,0.35)');
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.arc(p.x, p.y + 1, r + 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = sel ? '#ffd155' : n ? PAL.white : open ? '#8a93a6' : '#3a4152'; ctx.beginPath(); ctx.arc(p.x, p.y, r + 1, 0, Math.PI * 2); ctx.fill();
+    const g = ctx.createLinearGradient(0, p.y - r, 0, p.y + r); g.addColorStop(0, n ? `rgb(${shade(T0.rgb, 0.9)})` : open ? '#2c3548' : '#151a26'); g.addColorStop(1, n ? `rgb(${shade(T0.rgb, 0.4)})` : open ? '#161c2a' : '#0b0f18');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r - 1, 0, Math.PI * 2); ctx.fill();
+    treeEmblem(ti, p.x, p.y, n ? PAL.white : open ? '#c9ced8' : '#4a5264', r / 12);
+    // The rank badge at the lower right, and the name under the node.
+    const bx = p.x + r - 2, by = p.y + r - 3; ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = n >= t.max ? '#ffd155' : '#0d1220'; ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2); ctx.fill();
+    text(String(n), bx, by - 4, n >= t.max ? TAB_INK : n ? '#ffd155' : PAL.stone2, { ...small, align: 'center' });
+    wrapW(heroText(t.name), L.cw - 6, true).slice(0, 2).forEach((l, k) => text(l, p.x, p.y + r + 4 + k * 9, sel ? PAL.gold1 : n ? PAL.white : open ? PAL.cloth1 : PAL.stone3, { ...small, align: 'center' }));
+  }));
+  // The chosen talent along the foot, with LEARN and RESET.
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(L.x0 + 8, L.fy, L.pw - 16, 1);
   const t = game.talSel && TAL_BY[game.talSel];
   if (t) {
     const n = tal(t.id), open = talOpen(t), wmax = L.reset.x - L.x0 - 22;
-    text(heroText(t.name), L.x0 + 12, L.fy + 6, TALENT_TREES[t.tree].col);
+    text(`${heroText(t.name)} ${n}/${t.max}`.toUpperCase(), L.x0 + 12, L.fy + 5, TALENT_TREES[t.tree].col);
     const now = n ? heroText(t.text(n)) : '', next = n < t.max ? heroText(t.text(n + 1)) : '';
     const line = !open ? `OPENS WITH ${TAL_NEED[t.row]} POINTS IN ${TALENT_TREES[t.tree].name}.` : n >= t.max ? now : n ? `${now} NEXT: ${next}` : next;
-    wrapW(line, wmax, true).slice(0, 2).forEach((l, i) => text(l, L.x0 + 12, L.fy + 18 + i * 10, PAL.stone1, { small: true, outline: null }));
-    invButton(L.learn, n >= t.max ? 'MAX' : 'LEARN', PAL.holy3 || PAL.ink3, open && pts > 0 && n < t.max);
-  } else text('TAP A TALENT. ONE POINT EACH SAINT LEVEL.', L.x0 + 12, L.fy + 10, PAL.stone2, { small: true, outline: null });
-  invButton(L.reset, 'RESET', PAL.crimson3, talSpent() > 0);
+    wrapW(line, wmax, true).slice(0, 2).forEach((l, i) => text(l, L.x0 + 12, L.fy + 18 + i * 9, PAL.stone1, small));
+    invButton(L.learn, n >= t.max ? 'MAX' : 'LEARN', PAL.gold3, open && pts > 0 && n < t.max);
+  } else text('TAP A TALENT. ONE POINT EACH SAINT LEVEL.', L.x0 + 12, L.fy + 14, PAL.stone2, small);
+  invButton(L.reset, 'RESET', PAL.stone4, talSpent() > 0);
 }
 function canonryTap(x, y) {
   const L = talLayout();
-  if (featOut(L, x, y)) { game.state = 'play'; sfx('tap'); return; }
+  if (featOut(L, x, y)) { hubClose(); return; }
+  if (hubTap(L, x, y)) return;
   const tb = talTabs(L).findIndex((b) => inRect(b, x, y)); if (tb >= 0) { game.talTab = tb; game.talSel = null; sfx('tap', { vol: 0.5 }); return; }
   const T0 = TALENT_TREES[game.talTab || 0];
   for (let ri = 0; ri < T0.rows.length; ri++) for (let ci = 0; ci < T0.rows[ri].length; ci++) if (inRect(L.cell(ri, ci, T0.rows[ri].length), x, y)) { game.talSel = T0.rows[ri][ci].id; sfx('tap', { vol: 0.5 }); return; }
@@ -3297,12 +3325,16 @@ function drawCellBanners() {
 // Pick one rite per slot. Opened from the pause screen or the bag. Three
 // columns of cards on the left, the chosen card's details on the right.
 function riteLayout() {
-  const pw = Math.min(660, W - 12), ph = Math.min(H - 12, 300), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
-  const dw = Math.max(170, Math.min(250, Math.round(pw * 0.42))), lx = x0 + 10, lw = pw - dw - 30, ch = Math.floor((ph - 62 - 8 - 15) / 6), tw = Math.floor((lw - 12) / 4);
-  return { pw, ph, x0, y0, lw, ch, close: { x: x0 + pw - 14, y: y0 + 13, r: 10 }, detail: { x: x0 + pw - dw - 10, y: y0 + 34, w: dw, h: ph - 42 },
-    tab: (c) => ({ x: lx + c * (tw + 4), y: y0 + 33, w: tw, h: 22 }),
-    // card(c, i): row i of the list (the list shows the slot whose tab is open).
-    card: (c, r) => ({ x: lx, y: y0 + 62 + r * (ch + 3), w: lw, h: ch }) };
+  // Round 67: a rail of slot tiles on the left, the slot's six rites as hex
+  // icons in a 3 x 2 grid, and the chosen rite in full on the right.
+  const pw = Math.min(660, W - 12), ph = Math.min(H - 12, 300), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2), top = y0 + 34, bh = ph - 42;
+  const rail = { x: x0 + 8, y: top, w: 54, h: bh }, th = Math.min(54, Math.floor((bh - 9) / 4));
+  const dw = Math.max(160, Math.min(240, Math.round(pw * 0.38))), detail = { x: x0 + pw - dw - 8, y: top, w: dw, h: bh };
+  const mid = { x: rail.x + rail.w + 8, y: top, w: detail.x - 8 - (rail.x + rail.w + 8), h: bh }, cw = Math.floor(mid.w / 3), gy = mid.y + 15, chh = Math.floor((mid.h - 15) / 2);
+  return { pw, ph, x0, y0, rail, mid, detail, lw: mid.w, close: { x: x0 + pw - 14, y: y0 + 13, r: 10 },
+    tab: (c) => ({ x: rail.x, y: rail.y + c * (th + 3), w: rail.w, h: th }),
+    // card(_, i): the i-th rite of the open slot.
+    card: (c, i) => ({ x: mid.x + (i % 3) * cw, y: gy + Math.floor(i / 3) * chh, w: cw - 3, h: chh - 3 }) };
 }
 const RITE_SLOTS = [['m1', 'RITE I'], ['m2', 'RITE II'], ['pen', 'RECKONING']];
 // What each rite gains from its set, and the Hallowed power that bends it.
@@ -3334,7 +3366,7 @@ const RITE_MORE = {
   deluge: { syn: 'WIDER, SLOWS FOES AND PROTECTS YOU.', pow: 'bigPools' }, hundredblows: { syn: 'EVERY NAIL PIERCES, SPLITS AND ADDS NAIL STACKS.', pow: 'moreShards' },
   pyre: { syn: 'DASHES LEAVE HOLY FIRE.', pow: 'hotTrail' }, verdict: { syn: `BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`, pow: 'deepTide' },
 };
-function openRites(back) { game.ritesBack = back || game.state; game.state = 'rites'; game.riteFocus = game.riteFocus || 'm1'; sfx('tap'); }
+function openRites(back) { hubEnter(back); game.state = 'rites'; game.riteFocus = game.riteFocus || 'm1'; sfx('tap'); }
 // Small text that must fit a width: drop a leading THE, try a short form,
 // then trim letters.
 const SET_SHORT = { nails: 'NAILS', stride: 'STRIDE', font: 'FONT', confessor: 'CONFESSOR', choir: 'CHOIR', habit: 'HABIT' };
@@ -3352,36 +3384,82 @@ function riteSocket(x, y, r, icon, scale, ring, alpha = 1) {
   ctx.fillStyle = PAL.ink0; ctx.beginPath(); ctx.arc(x, y, r - 2, 0, Math.PI * 2); ctx.fill();
   ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale); sprC('ui', icon, 0, 0, 0, { alpha }); ctx.restore();
 }
+// Round 67: the character hub. The bag's three tabs, the rites, the talents
+// and the Censer share one row of tabs in the title bar; each is its own state
+// (inv, rites, canonry, censer). game.hubBack is where the back arrow goes.
+const HUB = [['gear', 'GEAR'], ['items', 'ITEMS'], ['ingr', 'INGREDIENTS'], ['rites', 'RITES'], ['talents', 'TALENTS'], ['censer', 'CENSER']];
+const HUB_STATES = ['inv', 'rites', 'canonry', 'censer'];
+const hubOn = () => game.state === 'inv' ? HUB[(game.inv && game.inv.tab) || 0][0] : { rites: 'rites', canonry: 'talents', censer: 'censer' }[game.state];
+function hubTabs(L) { let x = L.x0 + 6; return HUB.map(([id, t]) => { const w = textW(t, 1, true) + 14, r = { id, t, x, y: L.y0 + 5, w, h: 17 }; x += w + 3; return r; }); }
+function drawHub(L) {
+  const on = hubOn();
+  for (const b of hubTabs(L)) {
+    tabPlate(b, b.id === on);
+    text(b.t, b.x + b.w / 2, b.y + 4, b.id === on ? TAB_INK : PAL.stone1, { small: true, outline: null, align: 'center', bold: b.id === on });
+    const dot = (b.id === 'talents' && talPts() > 0) || (b.id === 'censer' && SAVE.censerNew);
+    if (dot) { ctx.fillStyle = PAL.outline; ctx.fillRect(b.x + b.w - 5, b.y - 1, 6, 6); ctx.fillStyle = PAL.blood0; ctx.fillRect(b.x + b.w - 4, b.y, 4, 4); }
+  }
+}
+function hubEnter(back) { if (!HUB_STATES.includes(game.state)) game.hubBack = back && !HUB_STATES.includes(back) ? back : game.state; }
+function hubClose() {
+  if (game.inv) for (const it of SAVE.bag) it.isNew = false;
+  persist(); game.state = game.hubBack && !HUB_STATES.includes(game.hubBack) ? game.hubBack : 'play'; game.hubBack = null; game.inv = null; sfx('tap');
+}
+function hubGo(id) {
+  const i = ['gear', 'items', 'ingr'].indexOf(id);
+  if (i >= 0) { if (game.state !== 'inv' || !game.inv) { game.state = 'inv'; game.inv = { sel: null, tab: i }; } else { game.inv.tab = i; game.inv.sel = null; game.inv.selling = false; } }
+  else if (id === 'rites') { game.state = 'rites'; game.riteFocus = game.riteFocus || 'm1'; }
+  else if (id === 'talents') { game.state = 'canonry'; game.talTab = game.talTab || 0; }
+  else if (id === 'censer') { game.state = 'censer'; SAVE.censerNew = false; censerCheck(); }
+  if (id !== 'gear' && id !== 'items' && id !== 'ingr' && game.inv) for (const it of SAVE.bag) it.isNew = false;
+  sfx('tap', { vol: 0.5 });
+}
+const hubTap = (L, x, y) => { const b = hubTabs(L).find((r) => inRect(r, x, y)); if (!b) return false; if (b.id !== hubOn()) hubGo(b.id); return true; };
+// A pointy-topped hexagon path.
+function hexPath(cx, cy, r) { ctx.beginPath(); for (let k = 0; k < 6; k++) { const a = -Math.PI / 2 + k * Math.PI / 3; k ? ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r) : ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } ctx.closePath(); }
+// A rite's icon in a hex socket: ring in gold (chosen), its set's colour, or steel; dim when locked.
+function hexIcon(cx, cy, r, icon, { ring = '120,132,156', on = false, dim = false, frame = 0, sheet = 'ui' } = {}) {
+  cx = Math.round(cx); cy = Math.round(cy);
+  if (on && !LOWFX) { const g = ctx.createRadialGradient(cx, cy, r * 0.6, cx, cy, r * 1.7); g.addColorStop(0, 'rgba(255,209,85,0.35)'); g.addColorStop(1, 'rgba(255,209,85,0)'); ctx.fillStyle = g; ctx.fillRect(cx - r * 2, cy - r * 2, r * 4, r * 4); }
+  hexPath(cx, cy, r + 2); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fill();
+  hexPath(cx, cy, r + 1); ctx.fillStyle = on ? '#ffd155' : `rgb(${ring})`; ctx.fill();
+  hexPath(cx, cy, r - 1); const g = ctx.createLinearGradient(0, cy - r, 0, cy + r); g.addColorStop(0, '#24314a'); g.addColorStop(1, '#0c1220'); ctx.fillStyle = g; ctx.fill();
+  const f = frameOf(sheet, icon, frame); if (f) { const k = (r * 1.45) / Math.max(f.w, f.h); ctx.save(); ctx.translate(cx, cy); ctx.scale(k, k); sprC(sheet, icon, frame, 0, 0, { alpha: dim ? 0.35 : 1 }); ctx.restore(); }
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(cx - Math.round(r * 0.5), cy - r + 1, Math.round(r), 1);
+}
+// A small pill (a rank, a level) centred at x.
+function pill(s, x, y, col, bg = 'rgba(6,9,16,0.92)') { const w = textW(s, 1, true) + 8; ctx.fillStyle = bg; ctx.fillRect(Math.round(x - w / 2), y, w, 10); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(Math.round(x - w / 2), y, w, 1); text(s, x, y + 1, col, { small: true, outline: null, align: 'center' }); }
 function renderRites() {
   const L = riteLayout(), small = { small: true, outline: null }, focus = game.riteFocus || 'm1';
-  ctx.fillStyle = 'rgba(11,7,16,0.8)'; ctx.fillRect(0, 0, W, H);
   panelFrame(L.x0, L.y0, L.pw, L.ph);
   headerBar(L.x0, L.y0, L.pw, 26);
-  text('RITES', L.x0 + 12, L.y0 + 9, PAL.gold1, { glow: true });
-  const nx = nextRite(), sub = focus === 'passive' ? 'PASSIVES ARE ALWAYS ON. SOME ARE EARNED BY DEEDS.' : nx ? `NEXT: ${RITE_BY[nx.id].name} AT LEVEL ${nx.lv}` : 'CHOOSE ONE PER SLOT. EACH SUITS A VESTMENT SET.';
-  text(fitText(sub, L.pw - 100), L.x0 + 64, L.y0 + 10, focus !== 'passive' && nx ? PAL.flame1 : PAL.stone1, small);
+  drawHub(L);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
-  // Slot tabs, each with the rite chosen for it.
-  RITE_SLOTS.forEach(([slot, label], c) => {
-    const t = L.tab(c), on = slot === focus;
-    tabPlate(t, on);
-    if (textW(label, 1, true) <= t.w - 28) { riteSocket(t.x + 11, t.y + 11, 8, riteOf(slot).icon, 0.5, on ? PAL.gold2 : PAL.ink3, on ? 1 : 0.7); text(label, t.x + 23, t.y + 8, on ? TAB_INK : PAL.stone1, { ...small, bold: on }); }
-    else { const sc = Math.max(0.75, Math.min(1, (t.w - 6) / textW(label, 1, true))); text(label, t.x + t.w / 2, t.y + 8 + (1 - sc) * 4, on ? TAB_INK : PAL.stone1, { ...small, sc, align: 'center', bold: on }); }
+  // The rail: one tile per slot, showing the rite chosen for it.
+  [...RITE_SLOTS, ['passive', 'PASSIVES']].forEach(([slot, label], c) => {
+    const t = L.tab(c), on = slot === focus, cx = t.x + t.w / 2;
+    ctx.fillStyle = on ? 'rgba(255,200,80,0.16)' : 'rgba(4,7,13,0.55)'; ctx.fillRect(t.x, t.y, t.w, t.h);
+    ctx.fillStyle = on ? 'rgba(255,209,85,0.95)' : 'rgba(255,255,255,0.08)'; ctx.fillRect(t.x, t.y, 2, t.h);
+    const r = Math.min(13, Math.floor((t.h - 16) / 2));
+    if (slot === 'passive') { const P = (SAVE.passives || []).find(Boolean), q = PASSIVES.findIndex((z) => z.id === P); hexIcon(cx, t.y + 3 + r, r, 'passive', { on, frame: Math.max(0, q) }); }
+    else hexIcon(cx, t.y + 3 + r, r, riteOf(slot).icon, { on });
+    text(fitText(label, t.w - 4, label === 'RECKONING' ? 'ULTIMATE' : null), cx, t.y + t.h - 11, on ? PAL.gold1 : PAL.stone1, { ...small, align: 'center' });
   });
-  // The fourth tab: passive skills.
-  { const t = L.tab(3), on = focus === 'passive'; tabPlate(t, on);
-    text(fitText('PASSIVES', t.w - 6, 'PASSIVE'), t.x + t.w / 2, t.y + 8, on ? TAB_INK : PAL.stone1, { ...small, align: 'center', bold: on }); }
+  // The middle: a line on what is next, then the slot's rites.
+  const M = L.mid, nx = nextRite(), sub = focus === 'passive' ? 'ALWAYS ON. SOME ARE EARNED BY DEEDS.' : nx ? `NEXT: ${RITE_BY[nx.id].name} AT LEVEL ${nx.lv}` : 'CHOOSE ONE PER SLOT.';
+  text(fitText(sub, M.w - 4), M.x + 2, M.y, focus !== 'passive' && nx ? PAL.flame1 : PAL.stone2, small);
   if (focus === 'passive') return renderPassives(L);
   riteList(focus).forEach((r, i) => {
-    const b = L.card(0, i), sel = riteOf(focus).id === r.id, syn = sb(r.set, 2) || sbw(r.set), rgb = SET_RGB[r.set];
-    rowPlate(b, sel, rgb, syn);
-    const cy = b.y + Math.round(b.h / 2), tx = b.x + 34, tw = b.x + b.w - 6 - tx;
-    const sr = Math.min(11, Math.floor(b.h / 2) - 2); riteSocket(b.x + 18, cy, sr, r.icon, sr / 11 * 0.72, sel ? PAL.gold2 : syn ? `rgb(${rgb})` : PAL.ink3, sel ? 1 : 0.75);
-    text(fitText(r.name, tw - 34), tx, cy - 10, sel ? PAL.gold1 : PAL.cloth0, small);
-    text(`${r.cd ? `${r.cd} S` : 'ZEAL'}  R${riteRank(r.id)}`, b.x + b.w - 6, cy - 10, riteRank(r.id) > 1 ? PAL.gold1 : PAL.stone1, { ...small, align: 'right' });
-    text(fitText(VSETS[r.set].name.replace(/^THE /, ''), tw - 26, SET_SHORT[r.set]), tx, cy + 2, syn ? `rgb(${rgb})` : PAL.stone2, small);
-    if (syn) text('SET', b.x + b.w - 6, cy + 2, RARITY[4].color, { ...small, align: 'right' });
-    if (!riteOpen(r.id)) { ctx.fillStyle = 'rgba(11,7,16,0.66)'; ctx.fillRect(b.x, b.y, b.w, b.h); text(`SAINT LEVEL ${RITE_LV[r.id]}`, b.x + b.w - 6, cy + 2, PAL.flame1, { ...small, align: 'right' }); }
+    const b = L.card(0, i), sel = riteOf(focus).id === r.id, syn = sb(r.set, 2) || sbw(r.set), rgb = SET_RGB[r.set], open = riteOpen(r.id), cx = b.x + b.w / 2;
+    if (sel) { const g = ctx.createLinearGradient(0, b.y, 0, b.y + b.h); g.addColorStop(0, 'rgba(255,209,85,0.14)'); g.addColorStop(1, 'rgba(255,209,85,0.02)'); ctx.fillStyle = g; ctx.fillRect(b.x, b.y, b.w, b.h); }
+    const hr = Math.max(11, Math.min(17, Math.floor(b.w / 2) - 8, Math.floor((b.h - 34) / 2))), hy = b.y + hr + 4;
+    hexIcon(cx, hy, hr, r.icon, { on: sel, ring: syn ? rgb : '96,108,132', dim: !open });
+    const rk = riteRank(r.id);
+    if (!open) pill(`LEVEL ${RITE_LV[r.id]}`, cx, hy + hr - 3, PAL.flame1);
+    else if (rk > 1) pill(`R${rk}`, cx, hy + hr - 3, PAL.gold1);
+    let ty = hy + hr + 9;
+    for (const l of wrapW(r.name, b.w - 4, true).slice(0, 2)) { text(l, cx, ty, sel ? PAL.gold1 : open ? PAL.cloth0 : PAL.stone2, { ...small, align: 'center', bold: sel }); ty += 9; }
+    if (ty + 8 <= b.y + b.h) text(fitText(VSETS[r.set].name.replace(/^THE /, ''), b.w - 4, SET_SHORT[r.set]), cx, ty, syn ? `rgb(${rgb})` : PAL.stone3, { ...small, align: 'center' });
   });
   renderRiteDetail(L, focus);
 }
@@ -3421,8 +3499,8 @@ function renderRiteDetail(L, slot) {
 }
 // Passives: three slots across the top, every passive below, the chosen one in full.
 function passGeo(L) {
-  const x = L.card(0, 0).x, w = L.lw, top = L.y0 + 62, sw = Math.floor((w - 8) / 3), gy = top + 30, cols = 6, rows = Math.ceil(PASSIVES.length / cols);
-  const cs = Math.min(30, Math.floor((w - (cols - 1) * 4) / cols), Math.floor((L.y0 + L.ph - 8 - gy) / rows) - 4), ox = x + Math.floor((w - (cols * cs + (cols - 1) * 4)) / 2);
+  const M = L.mid, x = M.x, w = M.w, top = M.y + 14, sw = Math.floor((w - 8) / 3), gy = top + 30, cols = 6, rows = Math.ceil(PASSIVES.length / cols);
+  const cs = Math.min(30, Math.floor((w - (cols - 1) * 4) / cols), Math.floor((M.y + M.h - gy) / rows) - 4), ox = x + Math.floor((w - (cols * cs + (cols - 1) * 4)) / 2);
   return { slot: (i) => ({ x: x + i * (sw + 4), y: top, w: sw, h: 22 }), card: (i) => ({ x: ox + (i % cols) * (cs + 4), y: gy + Math.floor(i / cols) * (cs + 4), w: cs, h: cs }),
     btn: { x: L.detail.x + 8, y: L.detail.y + L.detail.h - 28, w: L.detail.w - 16, h: 20 } };
 }
@@ -3430,17 +3508,16 @@ function renderPassives(L) {
   const P = SAVE.passives || [], G0 = passGeo(L), small = { small: true, outline: null }, sel = game.passSel && PASSIVES.find((q) => q.id === game.passSel);
   for (let i = 0; i < 3; i++) {
     const b = G0.slot(i), open = passOpen(i), q = PASSIVES.find((z) => z.id === P[i]), on = game.passSlot === i;
-    ctx.fillStyle = PAL.outline; ctx.fillRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2); ctx.fillStyle = open ? (on ? PAL.ink3 : PAL.ink2) : PAL.ink1; ctx.fillRect(b.x, b.y, b.w, b.h);
-    if (q && open) { ctx.fillStyle = `rgb(${PASS_CAT[q.cat][1]})`; ctx.fillRect(b.x, b.y, 3, b.h); }
+    rowPlate(b, on, q && open ? PASS_CAT[q.cat][1] : '120,132,156', !!(q && open)); if (!open) { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(b.x, b.y, b.w, b.h); }
     // A worn passive shows its icon, and its name only when the whole name fits.
     if (q && open) { const fits = textW(q.name, 1, true) <= b.w - 30; sprC('ui', 'passive', PASSIVES.indexOf(q), fits ? b.x + 13 : b.x + b.w / 2, b.y + 11); if (fits) text(q.name, b.x + 26, b.y + 7, PAL.gold1, small); }
     else text(!open ? `LEVEL ${PASSIVE_AT[i]}` : 'EMPTY', b.x + b.w / 2, b.y + 7, !open ? PAL.stone2 : PAL.stone1, { ...small, align: 'center' });
-    if (on) { ctx.strokeStyle = PAL.gold1; ctx.lineWidth = 2; ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2); }
   }
   // Every passive as an icon; deed passives stay dark and locked until earned.
   passOrder().forEach((q, i) => {
     const b = G0.card(i), worn = P.includes(q.id), isSel = game.passSel === q.id, got = passEarned(q);
-    ctx.fillStyle = PAL.outline; ctx.fillRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2); ctx.fillStyle = worn ? `rgba(${PASS_CAT[q.cat][1]},0.35)` : isSel ? PAL.ink3 : PAL.ink2; ctx.fillRect(b.x, b.y, b.w, b.h);
+    { const c = PASS_CAT[q.cat][1], g = ctx.createLinearGradient(0, b.y, 0, b.y + b.h); g.addColorStop(0, worn ? `rgba(${shade(c, 0.35)},1)` : 'rgba(30,38,54,0.95)'); g.addColorStop(1, worn ? `rgba(${shade(c, 0.75)},1)` : 'rgba(44,54,74,0.95)'); ctx.fillStyle = g; ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.fillStyle = worn ? `rgba(${c},0.9)` : 'rgba(255,255,255,0.08)'; ctx.fillRect(b.x, b.y, b.w, 1); ctx.fillRect(b.x, b.y + b.h - 1, b.w, 1); ctx.fillRect(b.x, b.y, 1, b.h); ctx.fillRect(b.x + b.w - 1, b.y, 1, b.h); }
     const sc = Math.max(1, Math.floor(b.w / 20)); ctx.save(); ctx.translate(b.x + b.w / 2, b.y + b.h / 2); ctx.scale(sc, sc); sprC('ui', 'passive', PASSIVES.indexOf(q), 0, 0, { alpha: got ? 1 : 0.3 }); ctx.restore();
     if (!got) mapIcon('lock', b.x + b.w - 6, b.y + b.h - 6, PAL.cloth0);
     if (worn) { ctx.fillStyle = PAL.gold1; ctx.fillRect(b.x, b.y + b.h - 2, b.w, 2); }
@@ -3451,7 +3528,7 @@ function renderPassives(L) {
   let y = D.y + 10;
   if (!sel) { for (const l of wrapW('TAP A PASSIVE TO READ IT. PASSIVES ARE ALWAYS ON.', D.w - 16, true)) { text(l, D.x + 8, y, PAL.stone1, small); y += 11; } y += 6;
     for (const l of wrapW(`SLOTS OPEN AT SAINT LEVEL ${PASSIVE_AT.join(', ')}. YOU ARE LEVEL ${saintLv()}.`, D.w - 16, true)) { text(l, D.x + 8, y, PAL.stone2, small); y += 11; } return; }
-  ctx.fillStyle = `rgba(${PASS_CAT[sel.cat][1]},0.2)`; ctx.fillRect(D.x, D.y, D.w, 34);
+  { const g = ctx.createLinearGradient(0, D.y, 0, D.y + 34); g.addColorStop(0, `rgba(${PASS_CAT[sel.cat][1]},0.26)`); g.addColorStop(1, `rgba(${PASS_CAT[sel.cat][1]},0.03)`); ctx.fillStyle = g; ctx.fillRect(D.x + 1, D.y + 1, D.w - 2, 33); }
   text(fitText(sel.name, D.w - 16), D.x + 8, D.y + 8, PAL.gold1); text(PASS_CAT[sel.cat][0], D.x + 8, D.y + 22, `rgb(${PASS_CAT[sel.cat][1]})`, small); y = D.y + 44;
   for (const l of wrapW(heroText(sel.text), D.w - 16, true)) { text(l, D.x + 8, y, PAL.cloth0, small); y += 11; }
   const got = passEarned(sel);
@@ -3474,9 +3551,10 @@ function passTap(L, x, y) {
 }
 function ritesTap(x, y) {
   const L = riteLayout(), focus = game.riteFocus || 'm1';
-  if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { game.state = game.ritesBack === 'rites' ? 'play' : game.ritesBack || 'play'; sfx('tap'); return; }
-  RITE_SLOTS.forEach(([slot], c) => { if (inRect(L.tab(c), x, y)) { game.riteFocus = slot; sfx('tap', { vol: 0.5 }); } });
-  if (inRect(L.tab(3), x, y)) { game.riteFocus = 'passive'; sfx('tap', { vol: 0.5 }); return; }
+  if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { hubClose(); return; }
+  if (hubTap(L, x, y)) return;
+  const slots = [...RITE_SLOTS.map((q) => q[0]), 'passive'];
+  for (let c = 0; c < 4; c++) if (inRect(L.tab(c), x, y)) { game.riteFocus = slots[c]; sfx('tap', { vol: 0.5 }); return; }
   if (focus === 'passive') return passTap(L, x, y);
   riteList(focus).forEach((r, i) => {
     if (!inRect(L.card(0, i), x, y)) return;
@@ -3516,14 +3594,13 @@ const censerLayout = () => {
   const lx = x0 + lw + 18, cw = Math.floor((x0 + pw - 10 - lx - 6) / 2), rh = Math.floor((ph - 40 - 5 * 4) / 6);
   return { pw, ph, x0, y0, lw, close: { x: x0 + pw - 14, y: y0 + 13, r: 10 }, row: (i) => ({ x: lx + (i % 2) * (cw + 6), y: y0 + 34 + Math.floor(i / 2) * (rh + 4), w: cw, h: rh }) };
 };
-function openCenser(back) { game.censerBack = back || game.state; game.state = 'censer'; SAVE.censerNew = false; censerCheck(); sfx('tap'); }
+function openCenser(back) { hubEnter(back); game.state = 'censer'; SAVE.censerNew = false; censerCheck(); sfx('tap'); }
 function renderCenser() {
   const L = censerLayout(), small = { small: true, outline: null }, n = CENSER_UP.filter((u) => censerUp(u.id)).length;
   ctx.fillStyle = 'rgba(11,7,16,0.8)'; ctx.fillRect(0, 0, W, H);
   panelFrame(L.x0, L.y0, L.pw, L.ph);
   headerBar(L.x0, L.y0, L.pw, 26);
-  text('THE CENSER', L.x0 + 12, L.y0 + 9, PAL.gold1);
-  text(`${n} OF ${CENSER_UP.length} UPGRADES`, L.x0 + 98, L.y0 + 10, PAL.stone1, small);
+  drawHub(L);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
   // Left: what it is, and what it does now.
   const X = L.x0 + 10, w = L.lw;
@@ -3561,9 +3638,9 @@ function renderCenser() {
   });
 }
 function censerTap(x, y) {
-  const L = censerLayout();
+  const L = censerLayout(); if (hubTap(L, x, y)) return;
   CENSER_UP.forEach((u, i) => { if (inRect(L.row(i), x, y)) { toast(`${u.name}: ${u.text}`, 2.6); game.toastColor = censerUp(u.id) ? PAL.ember0 : PAL.stone1; } });
-  if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { game.state = game.censerBack || 'play'; sfx('tap'); }
+  if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { hubClose(); }
 }
 // The censer's numbers after its upgrades (Wounds included).
 function censerStats() {
@@ -4125,35 +4202,55 @@ const opt = (k) => (SAVE.opts && SAVE.opts[k] !== undefined ? SAVE.opts[k] : OPT
 function setOpt(k, v) { SAVE.opts = SAVE.opts || {}; SAVE.opts[k] = v; persist(); if (k === 'music' || k === 'sound' || k === 'voices') AUDIO.setVol(); if (k === 'hand') layoutHud(); }
 // A short buzz where the browser allows it (Android; iPhone Safari has no vibration).
 function buzz(ms) { if (opt('haptics') && navigator.vibrate) try { navigator.vibrate(ms); } catch { /* not allowed */ } }
+// Round 67: settings is a full page. A rail of sections on the left; each row
+// a label and a strip of choices (the chosen one gold), as in the reference.
+const VOL_SEG = ['OFF', 'LOW', 'MID', 'HIGH'];
 const OPT_ROWS = [
-  { k: 'fx', name: 'EFFECTS', vals: ['full', 'low'], show: (v) => (v === 'full' ? 'FULL' : 'LOW (OLDER PHONES)') },
-  { k: 'shake', name: 'SCREEN SHAKE', vals: [true, false], show: (v) => (v ? 'ON' : 'OFF') },
-  { k: 'nums', name: 'DAMAGE NUMBERS', vals: ['all', 'crits', 'taken', 'off'], show: (v) => (v === 'taken' ? 'DAMAGE TAKEN' : v === 'off' ? 'OFF (NONE)' : v.toUpperCase()) },
-  { k: 'text', name: 'TEXT SIZE', vals: ['small', 'normal', 'large'], show: (v) => v.toUpperCase() },
-  { k: 'haptics', name: 'HAPTICS', vals: [true, false], show: (v) => (v ? 'ON' : 'OFF') },
-  { k: 'music', name: 'MUSIC', vals: [0, 1, 2, 3], show: (v) => (v ? '#'.repeat(v) : 'OFF') },
-  { k: 'sound', name: 'SOUNDS', vals: [0, 1, 2, 3], show: (v) => (v ? '#'.repeat(v) : 'OFF') },
-  { k: 'voices', name: 'VOICES', vals: [0, 1, 2, 3], show: (v) => (v ? '#'.repeat(v) : 'OFF') },
-  { k: 'cries', name: 'MONSTER CRIES', vals: ['all', 'fewer', 'off'], show: (v) => (v === 'fewer' ? 'RARES AND ELITES' : v.toUpperCase()) },
-  { k: 'hand', name: 'CONTROLS', vals: ['right', 'left'], show: (v) => (v === 'right' ? 'STICK LEFT' : 'STICK RIGHT') },
+  { sec: 0, k: 'fx', name: 'EFFECTS', vals: ['full', 'low'], seg: ['FULL', 'LOW'], show: (v) => (v === 'full' ? 'FULL' : 'LOW (OLDER PHONES)') },
+  { sec: 0, k: 'shake', name: 'SCREEN SHAKE', vals: [false, true], seg: ['OFF', 'ON'], show: (v) => (v ? 'ON' : 'OFF') },
+  { sec: 0, k: 'nums', name: 'DAMAGE NUMBERS', vals: ['all', 'crits', 'taken', 'off'], seg: ['ALL', 'CRITS', 'TAKEN', 'OFF'], show: (v) => (v === 'taken' ? 'DAMAGE TAKEN' : v === 'off' ? 'OFF (NONE)' : v.toUpperCase()) },
+  { sec: 0, k: 'text', name: 'TEXT SIZE', vals: ['small', 'normal', 'large'], seg: ['SMALL', 'NORMAL', 'LARGE'], show: (v) => v.toUpperCase() },
+  { sec: 1, k: 'music', name: 'MUSIC', vals: [0, 1, 2, 3], seg: VOL_SEG, show: (v) => (v ? '#'.repeat(v) : 'OFF') },
+  { sec: 1, k: 'sound', name: 'SOUNDS', vals: [0, 1, 2, 3], seg: VOL_SEG, show: (v) => (v ? '#'.repeat(v) : 'OFF') },
+  { sec: 1, k: 'voices', name: 'VOICES', vals: [0, 1, 2, 3], seg: VOL_SEG, show: (v) => (v ? '#'.repeat(v) : 'OFF') },
+  { sec: 1, k: 'cries', name: 'MONSTER CRIES', vals: ['all', 'fewer', 'off'], seg: ['ALL', 'FEWER', 'OFF'], show: (v) => (v === 'fewer' ? 'RARES AND ELITES' : v.toUpperCase()) },
+  { sec: 2, k: 'haptics', name: 'HAPTICS', vals: [false, true], seg: ['OFF', 'ON'], show: (v) => (v ? 'ON' : 'OFF') },
+  { sec: 2, k: 'hand', name: 'MOVE STICK', vals: ['right', 'left'], seg: ['LEFT', 'RIGHT'], show: (v) => (v === 'right' ? 'STICK LEFT' : 'STICK RIGHT') },
 ];
+const SET_SECS = [['GRAPHICS', 'LOW EFFECTS RUN BETTER ON OLDER PHONES. CRITS SHOWS ONLY BIG HITS.'], ['SOUND', 'FEWER CRIES KEEPS ONLY RARES, ELITES AND WARDENS. N MUTES ON A KEYBOARD.'], ['CONTROLS', 'HAPTICS BUZZ ON BIG HITS WHERE THE PHONE ALLOWS IT.']];
 function setLayout() {
-  // Rows shrink to fit short phones.
-  const n = OPT_ROWS.length, rh = Math.max(20, Math.min(26, Math.floor((H - 12 - 40) / n))), bh = Math.min(20, rh - 2);
-  const pw = Math.min(420, W - 16), ph = Math.min(30 + n * rh + 10, H - 12), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
-  return { pw, ph, x0, y0, bh, close: { x: x0 + pw - 14, y: y0 + 13, r: 10 }, row: (i) => ({ x: x0 + pw - 180, y: y0 + 30 + i * rh, w: 166, h: bh }) };
+  const pw = Math.min(660, W - 12), ph = Math.min(H - 12, 300), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2), sec = game.setSec || 0;
+  const rail = { x: x0 + 8, y: y0 + 36, w: Math.max(84, Math.min(120, Math.round(pw * 0.22))) }, ax = rail.x + rail.w + 12, aw = x0 + pw - 10 - ax, lw = Math.min(130, Math.round(aw * 0.36));
+  const rows = OPT_ROWS.filter((r) => r.sec === sec), rh = Math.max(24, Math.min(30, Math.floor((ph - 70) / 4)));
+  return { pw, ph, x0, y0, sec, rows, ax, aw, lw, rh, close: { x: x0 + pw - 14, y: y0 + 13, r: 10 },
+    tab: (i) => ({ x: rail.x, y: rail.y + i * 30, w: rail.w, h: 26 }),
+    line: (i) => ({ x: ax, y: y0 + 54 + i * rh, w: aw, h: rh - 3 }),
+    // row(i): the strip of choices of the section's i-th setting.
+    row: (i) => ({ x: ax + lw, y: y0 + 54 + i * rh + 2, w: aw - lw - 4, h: rh - 7 }) };
 }
 function renderSettings() {
-  const L = setLayout();
-  ctx.fillStyle = 'rgba(11,7,16,0.78)'; ctx.fillRect(0, 0, W, H);
-  panelFrame(L.x0, L.y0, L.pw, L.ph);
-  headerBar(L.x0, L.y0, L.pw, 22); text('SETTINGS', L.x0 + 10, L.y0 + 7, PAL.gold1); sprC('ui', 'close', 0, L.close.x, L.close.y);
-  OPT_ROWS.forEach((r, i) => { const b = L.row(i); text(r.name, L.x0 + 14, b.y + Math.floor(b.h / 2) - 4, PAL.cloth0); pickerBtn(b, r.show(opt(r.k))); });
+  const L = setLayout(), small = { small: true, outline: null };
+  panelFrame(L.x0, L.y0, L.pw, L.ph); headerBar(L.x0, L.y0, L.pw, 26);
+  text('SETTINGS', L.x0 + 12, L.y0 + 9, PAL.gold1, { bold: true }); sprC('ui', 'close', 0, L.close.x, L.close.y);
+  SET_SECS.forEach(([name], i) => { const t = L.tab(i), on = i === L.sec;
+    if (on) { tabPlate(t, true); } else { ctx.fillStyle = 'rgba(4,7,13,0.5)'; ctx.fillRect(t.x, t.y, t.w, t.h); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(t.x, t.y, 2, t.h); }
+    text(name, t.x + 10, t.y + Math.round(t.h / 2) - 4, on ? TAB_INK : PAL.cloth1, { bold: on }); });
+  text(SET_SECS[L.sec][0], L.ax, L.y0 + 36, PAL.white, { bold: true }); goldRule(L.ax, L.y0 + 49, L.aw, '200,212,232', false);
+  L.rows.forEach((r, i) => {
+    const ln = L.line(i), b = L.row(i), cur = r.vals.indexOf(opt(r.k)), n = r.vals.length, sw = b.w / n;
+    ctx.fillStyle = 'rgba(4,7,13,0.45)'; ctx.fillRect(ln.x, ln.y, ln.w, ln.h); ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(ln.x, ln.y + ln.h, ln.w, 1);
+    text(fitText(r.name, L.lw - 10), ln.x + 8, ln.y + Math.round(ln.h / 2) - 4, PAL.cloth0);
+    r.seg.forEach((lab, j) => { const c = { x: Math.round(b.x + j * sw), y: b.y, w: Math.round(sw) - 3, h: b.h }, on = j === cur;
+      if (on) invButton(c, lab, PAL.gold3); else text(fitText(lab, c.w - 4, null, false), c.x + c.w / 2, c.y + Math.round(c.h / 2) - 4, PAL.stone1, { align: 'center' }); });
+  });
+  const ny = L.y0 + 54 + L.rows.length * L.rh + 8;
+  wrapW(SET_SECS[L.sec][1], L.aw - 16, true).forEach((l, i) => text(l, L.ax + 8, ny + i * 10, PAL.stone2, small));
 }
 function settingsTap(x, y) {
   const L = setLayout();
   if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { game.state = 'pause'; sfx('tap'); return; }
-  OPT_ROWS.forEach((r, i) => { const b = L.row(i); if (!inRect(b, x, y)) return; const d = x < b.x + b.w / 2 ? -1 : 1, j = r.vals.indexOf(opt(r.k)); setOpt(r.k, r.vals[(j + d + r.vals.length) % r.vals.length]); sfx('tap', { vol: 0.6 }); });
+  for (let i = 0; i < SET_SECS.length; i++) if (inRect(L.tab(i), x, y)) { game.setSec = i; sfx('tap', { vol: 0.5 }); return; }
+  L.rows.forEach((r, i) => { const b = L.row(i); if (!inRect(b, x, y)) return; const j = Math.min(r.vals.length - 1, Math.floor((x - b.x) / (b.w / r.vals.length))); setOpt(r.k, r.vals[j]); sfx('tap', { vol: 0.6 }); });
 }
 
 // ------------------------------------------------------------ dev menu ---
@@ -7965,13 +8062,15 @@ function backArrow(x, y) {
     ctx.fillRect(x - 5 + o, y + o, 12, 1); ctx.fillRect(x + 4 + o, y - 1 + o, 4, 3);
   }
 }
-function gild(x, y, w, h) { // gilded pixel frame with bevel
-  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
-  ctx.fillStyle = PAL.gold3; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
-  ctx.fillStyle = PAL.gold1; ctx.fillRect(x - 2, y - 2, w + 4, 1); ctx.fillRect(x - 2, y - 2, 1, h + 4);
-  ctx.fillStyle = PAL.gold0; ctx.fillRect(x - 2, y - 2, 2, 1);
-  ctx.fillStyle = PAL.gold4; ctx.fillRect(x - 2, y + h + 1, w + 4, 1); ctx.fillRect(x + w + 1, y - 2, 1, h + 4);
-  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+// Round 67: HUD frames in navy and gold: a dark navy case, a fine gold rim
+// brighter in the middle, and a soft shadow.
+function gild(x, y, w, h) {
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(x - 2, y - 1, w + 5, h + 5);
+  ctx.fillStyle = '#0a101c'; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+  const g = ctx.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, 'rgba(214,150,50,0.75)'); g.addColorStop(0.5, 'rgba(255,214,110,1)'); g.addColorStop(1, 'rgba(214,150,50,0.75)');
+  ctx.fillStyle = g; ctx.fillRect(x - 2, y - 2, w + 4, 1);
+  ctx.fillStyle = 'rgba(176,112,34,0.85)'; ctx.fillRect(x - 2, y + h + 1, w + 4, 1); ctx.fillRect(x - 2, y - 1, 1, h + 2); ctx.fillRect(x + w + 1, y - 1, 1, h + 2);
+  ctx.fillStyle = '#05080f'; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
 }
 // A HUD bar: ink case with a thin gilt edge, a three-band fill, a pale strip
 // for what was just lost, a top sheen, and optional segment ticks.
@@ -7981,7 +8080,7 @@ function hudBar(x, y, w, h, k, ghost, ramp, hit = false, segs = 0) {
   k = Math.max(0, Math.min(1, k)); const fw = Math.round(w * k), gw = Math.round(w * Math.max(k, Math.min(1, ghost || 0)));
   ctx.fillStyle = PAL.outline; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
   ctx.fillStyle = hit ? PAL.blood0 : PAL.gold3; ctx.fillRect(x - 1, y - 1, w + 2, 1); ctx.fillRect(x - 1, y + h, w + 2, 1); ctx.fillRect(x - 1, y, 1, h); ctx.fillRect(x + w, y, 1, h);
-  ctx.fillStyle = PAL.ink1; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#0a0f1a'; ctx.fillRect(x, y, w, h);
   if (gw > fw) { ctx.fillStyle = 'rgba(255,244,176,0.55)'; ctx.fillRect(x + fw, y, gw - fw, h); }
   if (fw > 0) {
     ctx.fillStyle = PAL[ramp + '2']; ctx.fillRect(x, y, fw, h);
@@ -8040,13 +8139,32 @@ function renderAim() {
   }
   ctx.restore();
 }
+// Round 67: the round HUD buttons in navy and gold. The bone-white button art
+// is recoloured once per icon: its light disc turns navy, its dark lines turn
+// pale, and saturated colours stay as they are; a gold ring goes round it.
+const BTN_NAVY = {};
+function navyBtn(icon) {
+  if (BTN_NAVY[icon] !== undefined) return BTN_NAVY[icon];
+  const f = frameOf('ui', icon, 0); if (!f || !IMG.ui || !IMG.ui.complete) return null;
+  const c = document.createElement('canvas'); c.width = f.w; c.height = f.h; const g = c.getContext('2d'); g.drawImage(IMG.ui, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h);
+  try {
+    const d = g.getImageData(0, 0, f.w, f.h), q = d.data, A = [20, 30, 52], B = [236, 228, 206];
+    for (let i = 0; i < q.length; i += 4) { if (!q[i + 3]) continue; const mx = Math.max(q[i], q[i + 1], q[i + 2]), mn = Math.min(q[i], q[i + 1], q[i + 2]); if (mx - mn > 70) continue;
+      const t = 1 - (q[i] * 0.3 + q[i + 1] * 0.59 + q[i + 2] * 0.11) / 255, k = Math.min(1, Math.max(0, (t - 0.12) * 1.25)); for (let j = 0; j < 3; j++) q[i + j] = Math.round(A[j] + (B[j] - A[j]) * k); }
+    g.putImageData(d, 0, 0);
+  } catch { return (BTN_NAVY[icon] = null); }
+  return (BTN_NAVY[icon] = { c, ax: Math.floor(f.w / 2), ay: Math.floor(f.h / 2) });
+}
 function button(b, { active = true, cd = 0, cdText = '', ring = 0, ringColor = PAL.blood1 } = {}) {
-  const pr = b.pressed ? 1 : 0;
+  const pr = b.pressed ? 1 : 0, nb = navyBtn(b.icon);
   if (ring > 0) {
     ctx.strokeStyle = PAL.outline; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 2, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = ringColor; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 2, -Math.PI / 2, -Math.PI / 2 + ring * Math.PI * 2); ctx.stroke();
   }
-  sprC('ui', b.icon, 0, b.x, b.y + pr, { alpha: active ? 1 : 0.55 });
+  if (nb) {
+    ctx.globalAlpha = active ? 1 : 0.6; ctx.drawImage(nb.c, Math.round(b.x - nb.ax), Math.round(b.y + pr - nb.ay)); ctx.globalAlpha = 1;
+    ctx.strokeStyle = active ? 'rgba(255,209,85,0.85)' : 'rgba(150,120,70,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(b.x, b.y + pr, b.r - 1.5, 0, Math.PI * 2); ctx.stroke();
+  } else sprC('ui', b.icon, 0, b.x, b.y + pr, { alpha: active ? 1 : 0.55 });
   if (cd > 0) { // dark sweep for the remaining cooldown, plus seconds left
     ctx.fillStyle = 'rgba(11,7,16,0.62)'; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.arc(b.x, b.y, b.r - 1, -Math.PI / 2, -Math.PI / 2 + cd * Math.PI * 2); ctx.closePath(); ctx.fill();
     if (cdText) text(cdText, b.x, b.y - 3, PAL.cloth0, { align: 'center' });
@@ -8162,15 +8280,24 @@ function renderTownMap() {
   ctx.drawImage(room.mapCanvas || roomCanvas, 0, srcY, room.pw, srcH, mx, my, room.pw * k, srcH * k);
   const sx = (wx) => mx + Math.round(wx * k), sy = (wy) => my + Math.round((wy - srcY) * k);
   // District names on each street.
-  for (const [name, x0, y0, x1, y1] of DISTRICTS) text(name.replace(/^THE /, '').replace('CATHEDRAL OF THE WOUND', 'CATHEDRAL'), sx((x0 + x1) / 2), sy(y1) - 10, PAL.cloth1, { small: true, align: 'center' });
   for (const S of SITES) { const y = sy(room.top * TILE + S.dy - 20); badge(S.badge, sx(S.x), y, true); if (!siteDone(S)) mapIcon('lock', sx(S.x) + 5, y + 4, PAL.cloth0); }
   badge('descend', sx(CATHEDRAL_X), sy(room.top * TILE + CATHEDRAL_DY - 20), true);
   for (const n of room.npcs) if (NPC_BADGE[n.npc]) badge(NPC_BADGE[n.npc], sx(n.x), sy(n.y) - 4);
-  for (const n of room.npcs) if (n.hero) { badge('npc', sx(n.x), sy(n.y) - 4); text('SWITCH SAINT', sx(n.x), sy(n.y) + 6, PAL.gold0, { align: 'center', small: true }); }
+  for (const n of room.npcs) if (n.hero) badge('npc', sx(n.x), sy(n.y) - 4);
+  // Round 67: labels go on last, each on a dark backing, and step aside when they would overlap.
+  const labels = [...DISTRICTS.map(([name, x0, y0, x1, y1]) => [name.replace(/^THE /, '').replace('CATHEDRAL OF THE WOUND', 'CATHEDRAL'), sx((x0 + x1) / 2), sy(y1) - 10, PAL.cloth1]),
+    ...room.npcs.filter((n) => n.hero).map((n) => ['SWITCH SAINT', sx(n.x), sy(n.y) + 6, PAL.gold0])], placed = [];
   const px = sx(player.x), py = sy(player.y);
   ctx.fillStyle = PAL.outline; ctx.fillRect(px - 4, py - 4, 9, 9);
   ctx.fillStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.fillRect(px - 3, py - 3, 7, 7);
-  text('YOU', px, py + 7, PAL.gold0, { align: 'center', small: true });
+  labels.unshift(['YOU', px, py + 7, PAL.gold0]);
+  for (const [t0, lx0, ly0, col] of labels) {
+    const w = textW(t0, 1, true) + 6, h = 10;
+    let at = null; for (const d of [0, 10, -10, 20, -20, 30]) { const r = { x: lx0 - w / 2, y: ly0 + d - 1, w, h }; if (!placed.some((q) => r.x < q.x + q.w && r.x + r.w > q.x && r.y < q.y + q.h && r.y + r.h > q.y)) { at = r; break; } }
+    if (!at) continue; placed.push(at);
+    ctx.fillStyle = 'rgba(5,8,14,0.62)'; ctx.fillRect(Math.round(at.x), Math.round(at.y), Math.round(at.w), h);
+    text(t0, lx0, at.y + 1, col, { align: 'center', small: true, outline: null });
+  }
   // Legend: sites with their lock state, then people.
   // Legend to the right of the map.
   const lx = mx + Math.round(room.pw * k) + 10, ly = my, lw = x0 + pw - 8 - lx, cols = Math.max(1, Math.floor(lw / 170)), colW = Math.floor(lw / cols);
@@ -8263,7 +8390,7 @@ function renderHud() {
   // Bottom-left: joystick.
   const jx = stick.active ? stick.ox : HUD.joy.x, jy = stick.active ? stick.oy : HUD.joy.y;
   sprC('ui', 'ring', 0, jx, jy, { alpha: stick.active ? 0.85 : 0.4 });
-  sprC('ui', 'knob', 0, stick.active ? stick.x : jx, stick.active ? stick.y : jy, { alpha: stick.active ? 1 : 0.6 });
+  { const kb = navyBtn('knob'), kx = stick.active ? stick.x : jx, ky = stick.active ? stick.y : jy; if (kb) { ctx.globalAlpha = stick.active ? 1 : 0.7; ctx.drawImage(kb.c, Math.round(kx - kb.ax), Math.round(ky - kb.ay)); ctx.globalAlpha = 1; } else sprC('ui', 'knob', 0, kx, ky, { alpha: stick.active ? 1 : 0.6 }); }
   renderRoomStatus();
   renderWaystoneArrow();
   // Banners, messages and tutorial hints wait while the game is paused.
@@ -8443,41 +8570,42 @@ function renderReceipt(survived = false) {
   if (k < 1) return;
   const r = game.receipt, w = 260, h = r.pool ? 190 : 176, rc = !survived && r.recap, rw = rc ? Math.min(200, W - w - 26) : 0;
   const x = Math.round(W / 2 - (w + (rc ? rw + 8 : 0)) / 2), y = Math.round(H / 2 - h / 2), mid = x + w / 2;
-  ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
-  ctx.fillStyle = PAL.bone1; ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = PAL.bone0; ctx.fillRect(x, y, w, 2);
-  for (let i = 0; i < w; i += 4) { ctx.fillStyle = PAL.bone1; ctx.fillRect(x + i, y + h, 2, 2); }
-  const line = (s, yy, c = PAL.ink1, al = 'center') => text(s, al === 'center' ? mid : x + 10, y + yy, c, { outline: null, align: al });
-  line('HOLLOW SAINT', 10, PAL.crimson3);
-  line(survived ? 'DESCENT COMPLETE' : 'YOU DIED', 23);
-  ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 36, w - 20, 1);
+  // Round 67: a navy card, lit crimson after a death and gold after a full descent.
+  const acc = survived ? '255,209,85' : '232,64,80';
+  ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x + 2, y + 3, w, h);
+  { const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, `rgb(${shade(acc, 0.28)})`); g.addColorStop(0.3, '#121a2c'); g.addColorStop(1, '#0a0f1b'); ctx.fillStyle = g; ctx.fillRect(x, y, w, h); }
+  ctx.fillStyle = `rgb(${acc})`; ctx.fillRect(x, y, w, 2); ctx.fillStyle = 'rgba(170,190,225,0.22)'; ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x, y, 1, h); ctx.fillRect(x + w - 1, y, 1, h);
+  const line = (s, yy, c = PAL.cloth0, al = 'center', o = {}) => text(s, al === 'center' ? mid : x + 10, y + yy, c, { align: al, ...o });
+  line('HOLLOW SAINT', 8, PAL.stone1, 'center', { small: true });
+  line(survived ? 'DESCENT COMPLETE' : 'YOU DIED', 18, survived ? PAL.gold1 : PAL.blood0, 'center', { bold: true, glow: true });
+  goldRule(x + 10, y + 36, w - 20, acc, false);
   const m = Math.floor(r.time / 60), s = String(Math.floor(r.time % 60)).padStart(2, '0');
-  const row = (a, b, yy) => { line(a, yy, PAL.ink1, 'left'); text(b, x + w - 10, y + yy, PAL.ink1, { outline: null, align: 'right' }); };
+  const row = (a, b, yy) => { line(a, yy, PAL.stone1, 'left'); text(b, x + w - 10, y + yy, PAL.white, { align: 'right' }); };
   row('TIME', `${m}:${s}`, 44); row(r.vigil ? 'THE VIGIL' : 'THE STATION', r.where, 57); row('KILLS', String(r.kills), 70); row('GOLD GATHERED', String(r.gold), 83);
   row(survived ? 'GEAR FOUND' : 'LOST', survived ? String(r.items.length) : `${r.tithe} GOLD, ${r.lostItems} GEAR`, 96);
   const best = [...r.items].sort((a, b) => b.ri - a.ri)[0];
-  if (best) text(fitText(best.name, w - 16, null, false), mid, y + 138, RARITY[best.ri].color, { align: 'center', outline: PAL.ink1, shadow: false });
-  ctx.fillStyle = PAL.bone3; ctx.fillRect(x + 10, y + 107, w - 20, 1);
-  if (survived) { line('EVERYTHING KEPT.', 113, PAL.crimson3); }
-  else { line(r.martyr ? 'VOW FAILED. ALL FINDS LOST.' : 'HALF YOUR GOLD AND FINDS LOST.', 113, PAL.crimson3); }
-  if (best) line('FINEST FIND', 126, PAL.stone1);
-  if (r.pool) text(fitText(r.pool.text, w - 16), mid, y + 154, r.pool.won ? PAL.gold3 : PAL.crimson3, { align: 'center', small: true, outline: null });
+  if (best) text(fitText(best.name, w - 16, null, false), mid, y + 138, RARITY[best.ri].color, { align: 'center', glow: best.ri >= 3 });
+  goldRule(x + 10, y + 107, w - 20, '200,212,232', false);
+  if (survived) { line('EVERYTHING KEPT.', 113, PAL.flame1); }
+  else { line(r.martyr ? 'VOW FAILED. ALL FINDS LOST.' : 'HALF YOUR GOLD AND FINDS LOST.', 113, PAL.blood0); }
+  if (best) line('FINEST FIND', 126, PAL.stone2, 'center', { small: true });
+  if (r.pool) text(fitText(r.pool.text, w - 16), mid, y + 154, r.pool.won ? PAL.gold1 : PAL.blood0, { align: 'center', small: true, outline: null });
   if (rc) renderRecap(r.recap, x + w + 8, y, rw, h);
-  if (game.deathT > 1.4 && Math.floor(game.real * 2) % 2 === 0) line(survived ? 'TAP TO RETURN TO VAEL' : 'TAP TO RETURN TO VAEL', h - 18);
+  if (game.deathT > 1.4 && Math.floor(game.real * 2) % 2 === 0) line('TAP TO RETURN TO VAEL', h - 18, PAL.cloth1, 'center', { small: true });
 }
 
 // What hurt most, beside the receipt after a death.
 function renderRecap(R, x, y, w, h) {
   const small = { small: true, outline: null };
-  inset(x, y, w, h);
-  ctx.fillStyle = PAL.ink3; ctx.fillRect(x, y, w, 16); text('WHAT HURT MOST', x + 8, y + 5, PAL.gold1, small);
+  ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x + 2, y + 3, w, h); ctx.fillStyle = '#0d1424'; ctx.fillRect(x, y, w, h);
+  inset(x, y, w, h, '232,64,80'); text('WHAT HURT MOST', x + 8, y + 3, PAL.gold1, small);
   R.top.forEach((q, i) => {
     const yy = y + 24 + i * 28;
     text(fitText(q.who, w - 44), x + 8, yy, PAL.cloth0, small); text(`${q.pct}%`, x + w - 8, yy, i ? PAL.stone1 : PAL.blood0, { ...small, align: 'right' });
     text(fitText(q.how, w - 16), x + 8, yy + 10, PAL.stone2, small);
-    ctx.fillStyle = PAL.ink1; ctx.fillRect(x + 8, yy + 19, w - 16, 3); ctx.fillStyle = i ? PAL.stone2 : PAL.blood1; ctx.fillRect(x + 8, yy + 19, Math.round((w - 16) * q.pct / 100), 3);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x + 8, yy + 19, w - 16, 3); ctx.fillStyle = i ? PAL.stone2 : PAL.blood1; ctx.fillRect(x + 8, yy + 19, Math.round((w - 16) * q.pct / 100), 3);
   });
-  let yy = y + 24 + R.top.length * 28 + 4; ctx.fillStyle = PAL.ink3; ctx.fillRect(x + 8, yy - 4, w - 16, 1);
+  let yy = y + 24 + R.top.length * 28 + 4; ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(x + 8, yy - 4, w - 16, 1);
   text('TIP', x + 8, yy, PAL.gold1, small); yy += 11;
   for (const l of wrapW(R.tip, w - 16, true)) { if (yy > y + h - 10) break; text(l, x + 8, yy, PAL.cloth1, small); yy += 10; }
 }
@@ -8606,24 +8734,28 @@ function woundIcon(icon, x, y, t) {
 }
 function renderStigmata() {
   const S = game.stig, k = Math.min(1, S.t * 4);
-  ctx.fillStyle = `rgba(11,7,16,${0.75 * k})`; ctx.fillRect(0, 0, W, H);
-  text(`LEVEL ${game.run.level}`, W / 2, 20, PAL.gold0, { align: 'center', sc: 2 });
-  text('CHOOSE A WOUND', W / 2, 44, PAL.cloth1, { align: 'center' });
+  ctx.fillStyle = `rgba(6,10,18,${0.8 * k})`; ctx.fillRect(0, 0, W, H);
+  // Round 67: cards in the menus' style: navy glass, lit from the top in the rarity's colour, the icon in a hex.
+  text(`LEVEL ${game.run.level}`, W / 2, 16, PAL.gold0, { align: 'center', sc: 2, glow: true });
+  goldRule(W / 2 - 80, 39, 160, '255,209,85', true);
+  text('CHOOSE A WOUND', W / 2, 43, PAL.cloth1, { align: 'center', small: true });
   stigLayout().forEach((r, i) => {
-    const c = S.cards[i], R0 = WOUND_RARITY[c.r], rank = wound(c.id), lift = Math.round((1 - Math.min(1, S.t * 3 - i * 0.25)) * 30);
+    const c = S.cards[i], R0 = WOUND_RARITY[c.r], rank = wound(c.id), lift = Math.round((1 - Math.min(1, S.t * 3 - i * 0.25)) * 30), rgb = hexRgb(R0.col);
     if (lift >= 30) return;
     const y = r.y + Math.max(0, lift);
-    panelFrame(r.x, y, r.w, r.h);
-    ctx.fillStyle = R0.col; ctx.globalAlpha = 0.18; ctx.fillRect(r.x, y, r.w, 64); ctx.globalAlpha = 1;
-    ctx.fillStyle = R0.col; ctx.fillRect(r.x, y + 64, r.w, 1);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(r.x + 2, y + 3, r.w, r.h);
+    const g = ctx.createLinearGradient(0, y, 0, y + r.h); g.addColorStop(0, `rgb(${shade(rgb, 0.32)})`); g.addColorStop(0.42, '#121a2c'); g.addColorStop(1, '#0a0f1b'); ctx.fillStyle = g; ctx.fillRect(r.x, y, r.w, r.h);
+    { const rg = ctx.createRadialGradient(r.x + r.w / 2, y + 34, 4, r.x + r.w / 2, y + 34, r.w * 0.6); rg.addColorStop(0, `rgba(${rgb},0.35)`); rg.addColorStop(1, `rgba(${rgb},0)`); ctx.fillStyle = rg; ctx.fillRect(r.x, y, r.w, 70); }
+    ctx.fillStyle = `rgb(${rgb})`; ctx.fillRect(r.x, y, r.w, 2); ctx.fillStyle = `rgba(${rgb},0.45)`; ctx.fillRect(r.x, y + r.h - 1, r.w, 1); ctx.fillRect(r.x, y, 1, r.h); ctx.fillRect(r.x + r.w - 1, y, 1, r.h);
     if (c.r === 2) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(r.x + r.w / 2, y + 32, 40 + Math.sin(game.real * 4) * 4, 'rgba(255,209,85,0.25)'); ctx.restore(); }
+    hexPath(r.x + r.w / 2, y + 34, 24); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fill(); ctx.strokeStyle = `rgba(${rgb},0.9)`; ctx.lineWidth = 1; ctx.stroke();
     woundIcon(c.icon, r.x + r.w / 2, y + 34, game.real);
-    let ty = y + 72;
-    for (const l of wrap(heroText(c.name), Math.floor((r.w - 10) / 7))) { text(l, r.x + r.w / 2, ty, R0.col, { align: 'center' }); ty += 12; }
-    text(R0.name, r.x + r.w / 2, ty, PAL.stone1, { align: 'center', small: true, outline: null }); ty += 13;
-    for (const l of wrap(heroText(c.text(rank + 1)), Math.floor((r.w - 12) / 6))) { text(l, r.x + r.w / 2, ty, PAL.cloth0, { align: 'center', small: true, outline: null }); ty += 10; }
-    // Rank pips.
-    for (let q = 0; q < c.max; q++) { const px = r.x + r.w / 2 - c.max * 4 + q * 8; ctx.fillStyle = PAL.outline; ctx.fillRect(px, y + r.h - 14, 6, 6); ctx.fillStyle = q < rank ? R0.col : q === rank ? PAL.white : PAL.ink3; ctx.fillRect(px + 1, y + r.h - 13, 4, 4); }
+    let ty = y + 66;
+    for (const l of wrapW(heroText(c.name), r.w - 10)) { text(l, r.x + r.w / 2, ty, R0.col, { align: 'center', bold: true }); ty += 12; }
+    pill(R0.name, r.x + r.w / 2, ty, PAL.stone1); ty += 15;
+    for (const l of wrapW(heroText(c.text(rank + 1)), r.w - 12, true)) { text(l, r.x + r.w / 2, ty, PAL.cloth0, { align: 'center', small: true, outline: null }); ty += 10; }
+    // Rank pips as small diamonds.
+    for (let q = 0; q < c.max; q++) { const px = Math.round(r.x + r.w / 2 - c.max * 4 + q * 8 + 3), py = y + r.h - 10; ctx.fillStyle = q < rank ? R0.col : q === rank ? PAL.white : '#2a3346'; ctx.beginPath(); ctx.moveTo(px, py - 3); ctx.lineTo(px + 3, py); ctx.lineTo(px, py + 3); ctx.lineTo(px - 3, py); ctx.fill(); }
   });
 }
 
@@ -8853,8 +8985,8 @@ function setStar(x, y, alpha = 1) {
   for (let j = 0; j < 7; j++) for (let i = 0; i < 7; i++) if (STAR_PX[j][i] === '#') { ctx.fillStyle = j < 3 ? PAL.gold0 : PAL.gold1; ctx.fillRect(x + i, y + j, 1, 1); }
   ctx.globalAlpha = 1;
 }
-function openInventory() { game.invBack = game.state === 'pause' ? 'pause' : 'play'; game.state = 'inv'; game.inv = { sel: null, tab: 0 }; SAVE.bag.sort((a, b) => b.ri - a.ri || ICON_OF.indexOf(a.slot) - ICON_OF.indexOf(b.slot)); sfx('tap'); }
-function closeInventory() { for (const it of SAVE.bag) it.isNew = false; persist(); game.state = game.invBack === 'pause' ? 'pause' : 'play'; game.invBack = null; game.inv = null; sfx('tap'); }
+function openInventory() { hubEnter(); game.state = 'inv'; game.inv = { sel: null, tab: 0 }; SAVE.bag.sort((a, b) => b.ri - a.ri || ICON_OF.indexOf(a.slot) - ICON_OF.indexOf(b.slot)); sfx('tap'); }
+function closeInventory() { hubClose(); }
 function invLayout() {
   const pw = Math.min(640, W - 16), ph = Math.min(318, H - 16), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
   const cell = 27, cols = 6, rows = 5;
@@ -8913,11 +9045,11 @@ const inRect = (r, x, y) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r
 function selItem() { const s = game.inv && game.inv.sel; if (!s) return null; return s.from === 'bag' ? SAVE.bag[s.i] : SAVE.equip[s.slot]; }
 // The bag's tabs, in the title band left of the gold: gear, the things you
 // carry (keys, stones, Chrism), and enchant ingredients.
-const invTabs = (L) => { const ws = [46, 50, 84]; let x = L.close.x - 72 - ws.reduce((a, w) => a + w + 4, 0); return ['GEAR', 'ITEMS', 'INGREDIENTS'].map((t, i) => { const r = { t, x, y: L.y0 + 5, w: ws[i], h: 17 }; x += ws[i] + 4; return r; }); };
+const invTabs = (L) => hubTabs(L).slice(0, 3); // the bag's tabs are the first three of the hub's
 function invTap(x, y) {
   const L = invLayout();
   if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || x < 0 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { closeInventory(); return; }
-  const tb = invTabs(L).findIndex((b) => inRect(b, x, y)); if (tb >= 0) { game.inv.tab = tb; game.inv.sel = null; game.inv.selling = false; sfx('tap', { vol: 0.5 }); return; }
+  if (hubTap(L, x, y)) return;
   if (game.inv.tab === 2) { // tap an enchant's box to read its ingredients' names
     const cw = Math.floor((L.pw - 24 - 9) / 4), rh = Math.floor((L.ph - 58) / 4), c = Math.floor((x - L.x0 - 12) / (cw + 3)), r = Math.floor((y - L.y0 - 34) / rh), e = r * 4 + c;
     if (c >= 0 && c < 4 && r >= 0 && r < 4) enchPop(ENCHANTS[e].id, enchT(ENCHANTS[e].id) || 1);
@@ -9063,11 +9195,10 @@ function renderInventory() {
   ctx.fillStyle = 'rgba(11,7,16,0.72)'; ctx.fillRect(0, 0, W, H);
   panelFrame(L.x0, L.y0, L.pw, L.ph);
   headerBar(L.x0, L.y0, L.pw, 26);
-  text('THE BAG', L.x0 + 12, L.y0 + 9, PAL.gold1);
+  drawHub(L);
   const gold = game.scene === 'wound' ? game.run.gold : SAVE.gold || 0;
   sprC('loot', 'coin', 0, L.close.x - 64, L.y0 + 13); text(String(gold), L.close.x - 57, L.y0 + 9, PAL.gold1);
   sprC('ui', 'close', 0, L.close.x, L.close.y);
-  tabButtons(invTabs(L), game.inv.tab || 0);
   if (game.inv.tab === 1) return renderBagItems(L, gold);
   if (game.inv.tab === 2) return renderBagIngredients(L);
   // Paper doll.

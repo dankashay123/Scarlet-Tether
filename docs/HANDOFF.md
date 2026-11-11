@@ -249,6 +249,26 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 67:** the character hub and menus, part 3. The bag, rites, talents
+  and the Censer share one row of tabs in the title bar (`HUB`, `hubTabs`,
+  `drawHub`, `hubTap`, `hubGo`; `hubEnter`/`hubClose` and `game.hubBack`
+  replace the old per-page back states; `invTabs` is the first three hub
+  tabs). Talents can be learned anywhere from the bag. Rites: a rail of slot
+  tiles (Rite I, Rite II, Reckoning, Passives) with hex icons (`hexPath`,
+  `hexIcon`, `pill`), the slot's six rites as hex icons in a 3 x 2 grid (rank
+  and level pills), the chosen rite in full on the right; `riteLayout` keeps
+  `tab(c)` and `card(_, i)`. Talents: a tree rail (`talTabs`, emblems in
+  `treeEmblem`) and a node graph (tiers left to right under an axis of
+  `TAL_NEED`, round nodes with rank badges, lines lit once the next tier is
+  open; `talLayout().node`/`cell`). Settings: a full page with a section rail
+  (`SET_SECS`; `OPT_ROWS` carry `sec` and `seg`) and a strip of choices per row
+  (`row(i)` is the strip of the open section's i-th row). HUD: `gild` and the
+  bars are navy and gold; round buttons and the stick knob are recoloured
+  once per icon (`navyBtn`: the light disc turns navy, dark lines pale,
+  saturated colour kept) with a gold ring. Wound cards are navy cards lit in
+  their rarity's colour with the icon in a hex; the death summary is a navy
+  card (crimson after a death, gold after a full descent). The town map's
+  labels sit on dark backings and step aside when they would overlap.
 - **Round 66:** menus, part 2, after the owner's reference screens (a
   mobile ARPG's full-screen menus). Font: Saira Semi Condensed from the
   `@fontsource` npm package (Google Fonts is blocked here; npm works), SemiBold
