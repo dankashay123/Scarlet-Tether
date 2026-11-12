@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '72';
+const BUILD = '73';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '73': ['THE ANCHORESS\'S SHARDS ARE ICE-BLUE CRYSTALS THAT HOVER IN A RING ABOVE HER HEAD. RITES THAT THROW THEM BRING THEM DOWN TO CIRCLE HER.', 'LEVEL-UP CARDS ONLY OFFER WHAT YOUR CLASS AND YOUR CHOSEN RITES USE. EACH CLASS HAS A CARD OF ITS OWN: ORBITING NAILS, AFTERSHOCK AND RELIQUARY\'S CALL.'],
   '72': ['EACH CLASS NOW HAS ITS OWN FIVE SETS AND STARTER SET. THE MENDICANT: THE BEGGAR KING\'S IRON, THE WANDERER\'S ROAD, THE ALMSGIVER\'S BOWL, THE GAOLER\'S KEYS AND THE CRACKED BELL. THE ANCHORESS: THE SHATTERED RELIQUARY, THE GLASS MARTYR, THE MOTHER\'S PSALTER, THE VEILED LANTERN AND THE THORNED CRUCIBLE.', 'SET PIECES YOUR MENDICANT OR ANCHORESS ALREADY OWNS BECOME THE MATCHING SET OF THEIR OWN.', 'THE ANCHORESS RAISES HER RELIQUARY AS HER SHARDS FIRE. HITS ON ONE FOE ADD INTO ONE NUMBER.', 'THE FORGE\'S AFFIXES TAB LISTS EVERY LINE YOU CAN CUT. NEW LINES: A CHANCE TO HIT TWICE, LIGHTNING EVERY 12TH HIT, KILLS THAT BURST.'],
   '71': ['A NEW CLASS: THE ANCHORESS. RELIQUARY SHARDS CIRCLE HER AND FIRE ON THEIR OWN. 18 RITES OF HER OWN, HER SET THE SHATTERED RELIQUARY, HER ARMS AND SIX HALLOWED PIECES. MAKE A NEW CHARACTER TO PLAY HER.', 'GEAR CAN NOW CARRY GRAVEN AND BEATIFIED LINES, TWO OF EACH. GRAVEN LINES SOMETIMES DROP ON RARE AND BETTER PIECES. BEATIFIED LINES NEVER DROP.', 'THE FORGE HAS AN AFFIXES TAB: CUT GRAVEN LINES FOR EMBERSTONES AND GOLD, AND BEATIFIED LINES FOR FAR MORE AND A RELIQUARY TEAR. TEARS ARE RARE: THE WEEPING RELIQUARY AND WARDENS OF STATION X AND DEEPER CAN DROP ONE.'],
   '70': ['CHARACTERS: MAKE UP TO FOUR, EACH WITH A CLASS CHOSEN FOR GOOD AND ITS OWN NAME, GEAR AND LEVELS. PICK ONE ON THE NEW START SCREEN. YOUR EXISTING SAVE IS YOUR FIRST CHARACTER.', 'THE OTHER SAINT NO LONGER WAITS IN THE CLOSE: MAKE A NEW CHARACTER TO PLAY THE OTHER CLASS.', 'THE BAG CAN SORT BY RARITY, SLOT OR NEWEST. THE PAUSE PANEL SHOWS HOW YOU HAVE GROWN SINCE THE LAST DESCENT.', 'TAP A SET IN ODILE\'S GIFT TO READ IT; A BOUNTY SHOWS THE GEAR IT PAID.'],
@@ -253,7 +254,7 @@ const BOLT_FX = {
   font: { trail: '138,224,255', crit: '216,247,255', spark: 'holy1' },
   confessor: { trail: '178,188,203', crit: '154,106,230', spark: 'violet0' },
   choir: { trail: '255,90,74', crit: '255,209,85', spark: 'ember0' },
-  reliquary: { trail: '212,176,255', crit: '255,209,85', spark: 'violet0' },
+  reliquary: { trail: '216,247,255', crit: '138,224,255', spark: 'holy1' },
   iron: { trail: '178,188,203', crit: '255,209,85', spark: 'iron0' }, road: { trail: '242,220,182', crit: '255,192,74', spark: 'sand0' },
   alms: { trail: '182,211,106', crit: '255,209,85', spark: 'moss0' }, gaol: { trail: '232,162,122', crit: '255,90,74', spark: 'brick0' },
   bell: { trail: '142,174,171', crit: '255,209,85', spark: 'teal0' }, glass: { trail: '216,247,255', crit: '138,224,255', spark: 'holy1' },
@@ -294,6 +295,9 @@ const HERO_TEXT = [
 ];
 // The Anchoress reads crossbow lines as her reliquary (round 71): her shards fire bolts, so bolt lines stand.
 const HERO_TEXT_A = [
+  // Wound and passive names for her (round 73): shards, not nails.
+  ['NAIL OF WRATH', 'SHARD OF WRATH'], ['SPLIT NAIL', 'SPLIT SHARD'], ['PIERCING FAITH', 'PIERCING SHARDS'], ['NAILS PIERCE ONE MORE FOE.', 'SHARD BOLTS PIERCE ONE MORE FOE.'],
+  ['HEAVY NAILS', 'HEAVY SHARDS'], ['CRITICAL NAILS DEAL 50% MORE.', 'CRITICAL SHARD BOLTS DEAL 50% MORE.'], ['ANSWERING NAIL', 'ANSWERING SHARD'], [/DASHING FIRES A NAIL/g, 'DASHING FIRES A SHARD BOLT'],
   ['THE CROSSBOW OR MACE IS 25% SLOWER AND HITS TWICE AS HARD.', 'YOUR SHARDS FIRE 25% SLOWER AND HIT TWICE AS HARD.'],
   ['THE CROSSBOW FIRES ONE MORE NAIL.', 'EACH SHARD FIRES ONE MORE BOLT.'], [/THE CROSSBOW FIRES/g, 'YOUR SHARDS FIRE'], [/FIRES (\d+) NAILS IN A SPREAD\./, 'EACH SHARD FIRES $1 BOLTS.'],
   [/EMBER-BOW/g, 'EMBER-RELIQUARY'], [/CANTICLE BOW/g, 'CANTICLE RELIQUARY'], [/\bCROSSBOW\b/g, 'RELIQUARY'], [/\bARBALEST\b/g, 'RELIQUARY'], [/\bREPEATER\b/g, 'SHRINE'],
@@ -7207,7 +7211,7 @@ const ARITES = {
   m1: [
     { id: 'svolley', name: 'SHARD VOLLEY', set: 'reliquary', icon: 'svolley', cd: 5, text: 'EVERY SHARD FIRES 3 BOLTS AT ONCE AT YOUR FOES.' },
     { id: 'consecrate', name: 'CONSECRATED SHARD', set: 'psalter', icon: 'consecrate', cd: 6, text: 'HURL A SHARD. IT BREAKS INTO A HOLY POOL AND 8 SPLINTERS.' },
-    { id: 'shrapnel', name: 'SHRAPNEL', set: 'glass', icon: 'shrapnel', cd: 6, text: 'EVERY SHARD BURSTS, THROWING 4 NAILS OUTWARD. EVERY NAIL COUNTS AS A BOLT.' },
+    { id: 'shrapnel', name: 'SHRAPNEL', set: 'glass', icon: 'shrapnel', cd: 6, text: 'EVERY SHARD BURSTS, THROWING 4 SPLINTERS OUTWARD. EVERY SPLINTER COUNTS AS A BOLT.' },
     { id: 'flight', name: "THE PILGRIM'S FLIGHT", set: 'thorn', icon: 'flight', cd: 5, text: 'LEAP. YOUR SHARDS FOLLOW IN A TRAIL OF FIRE AND BURST WHERE YOU LAND. COUNTS AS A DASH.' },
     { id: 'snova', name: 'RELIQUARY NOVA', set: 'reliquary', icon: 'snova', cd: 7, text: 'YOUR SHARDS FLY OUT IN A WIDE RING AND BACK, CUTTING EVERY FOE THEY PASS.' },
     { id: 'emberrelic', name: 'EMBER RELIC', set: 'lantern', icon: 'emberrelic', cd: 9, text: 'FOR 5 S YOUR SHARDS BURN: THEIR BOLTS SET FOES ALIGHT AND GIVE ZEAL.' },
@@ -7438,7 +7442,7 @@ const shatterOn = () => player && player.rainT > 0 && player.penKind === 'shatte
 const cathedralOn = () => player && player.rainT > 0 && player.penKind === 'cathedral';
 function shardCount() {
   const p = player; if (!p) return 0;
-  let n = SHARD.base + (G.shards || 0) + (sb('reliquary', 2) ? 2 : 0) + (sbw('reliquary') ? 1 : 0) + (G.powers.has('crownShards') ? 2 : 0) + (G.powers.has('sealShard') ? 1 : 0) + (G.powers.has('anchorhold') ? 3 : 0);
+  let n = SHARD.base + (G.shards || 0) + (sb('reliquary', 2) ? 2 : 0) + (sbw('reliquary') ? 1 : 0) + (G.powers.has('crownShards') ? 2 : 0) + (G.powers.has('sealShard') ? 1 : 0) + (G.powers.has('anchorhold') ? 3 : 0) + wound('ashard');
   p.votives = (p.votives || []).filter((t) => t > game.time); n += p.votives.length;
   n = Math.min(SHARD.cap, n);
   if (shatterOn()) n *= twist('shattered') ? 3 : 2;
@@ -7448,12 +7452,22 @@ const shardDmgK = (n) => Math.pow(SHARD.base / Math.max(SHARD.base, n), 0.35) * 
 // Where shard i of n is now: round the Anchoress, tighter in Shard Ward, flung
 // out by Reliquary Nova, wheeling wide in the Cathedral of Shards.
 function shardPos(i, n) {
-  const p = player; let R = (SHARD.orbit + n * 1.3) * (G.powers.has('wideOrbit') ? 1.35 : 1) * (sb('thorn', 2) ? 1.25 : 1), spin = SHARD.spin * (sb('thorn', 6) ? 2 : 1);
+  const p = player;
+  // Round 73: at rest the shards hover in a ring above her head, pointing outward.
+  // Rites that throw or wheel them (Reliquary Nova, the Cathedral, the Thorned
+  // Crucible, the wide orbit) bring them down to circle her on the ground.
+  if (!(p.snova || cathedralOn() || sb('thorn', 2) || G.powers.has('wideOrbit'))) {
+    let R = Math.min(64, 28 + n * 2.2), spin = 0.5;
+    if ((p.swardT || 0) > game.time) { R *= 0.75; spin = 3; }
+    const a = game.time * spin + i / n * Math.PI * 2, ry = R * 0.36;
+    return { x: p.x + Math.cos(a) * R, y: p.y + Math.sin(a) * ry + 1, z: 64 + Math.sin(a) * ry + Math.sin(game.time * 2.2 + i * 1.3) * 1.5, a, up: true };
+  }
+  let R = (SHARD.orbit + n * 1.3) * (G.powers.has('wideOrbit') ? 1.35 : 1) * (sb('thorn', 2) ? 1.25 : 1), spin = SHARD.spin * (sb('thorn', 6) ? 2 : 1);
   if ((p.swardT || 0) > game.time) { R *= 0.55; spin *= 2.4; }
   if (p.snova) { const k = (game.time - p.snova.t0) / p.snova.dur; if (k >= 1) p.snova = null; else R += Math.sin(k * Math.PI) * p.snova.r; }
   if (cathedralOn()) { R = 96 * (aSyn('cathedral') ? 1.25 : 1); spin = 2.6; }
   const a = game.time * spin + i / n * Math.PI * 2;
-  return { x: p.x + Math.cos(a) * R, y: p.y + Math.sin(a) * R * 0.55, z: SHARD.z + Math.sin(game.time * 3 + i * 1.7) * 2 };
+  return { x: p.x + Math.cos(a) * R, y: p.y + Math.sin(a) * R * 0.55, z: SHARD.z + Math.sin(game.time * 3 + i * 1.7) * 2, a, up: false };
 }
 // Round 72: Graven and Beatified procs on a hit (hit twice, lightning).
 function procHit(b, e, raw) {
@@ -7507,6 +7521,7 @@ function afterSwingSets(o, a) {
   const p = player;
   if (o.crush && sb('iron', 6)) maceHit(p.x + Math.cos(a) * 30, p.y + Math.sin(a) * 20, 70, MELEE.k, { rgb: '178,188,203', ramp: 'iron' });
   if (o.nova) maceRing(80, MELEE.k, { rgb: '242,220,182', ramp: 'gold' });
+  if (wound('aftershock') && p.blowN % 5 === 0) maceRing(70, MELEE.k * (0.4 + 0.3 * wound('aftershock')), { rgb: '255,244,176', ramp: 'bone' });
   if (o.alms) { maceRing(85, MELEE.k * 1.5, { rgb: '255,209,85', ramp: 'gold' }); vemit(p.x, p.y - 10, { n: LOWFX ? 4 : 12, ramp: 'gold', sp: 90, up: 50, life: 0.5, grav: 120, size: 2, glow: 4 }); }
   if (o.ring) {
     maceRing(o.ring, MELEE.k * 0.8 * (sb('bell', 6) ? SETK.ringK6 : 1), { rgb: '142,174,171', ramp: 'teal', each: (e) => { if (sb('bell', 4) && !e.boss) e.bound = Math.max(e.bound || 0, 0.6); } });
@@ -7535,7 +7550,7 @@ function fireShard(s, t, n, o = {}) {
   const pierce = T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce') + tal('pierce') + (sb('nails', 2) ? 1 : 0) + (sbw('reliquary') ? 1 : 0) + (G.powers.has('sealShard') ? 1 : 0) + (great ? 99 : 0);
   for (let k = 0; k < m; k++) { const a = base + (k - (m - 1) / 2) * 0.16; bolts.push({ z: z0, zv, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce, hit: new Set(), crit, trail: [], great, bind, fire, shard: true, ember: (p.emberRelicT || 0) > game.time, split: (p.splinterT || 0) > game.time ? (twist('splinter') ? 3 : 2) : crit && sb('glass', 4) ? 2 : 0, dmgK: shardDmgK(n) * (o.k || 1) }); }
   if (!o.quiet) sfx('shoot', { vol: 0.32, rate: 1.5 + rng() * 0.2, gap: 0.035 });
-  vemit(sx, sy, { n: 2, ramp: 'violet', sp: 30, life: 0.2, glow: 3, size: 1 });
+  vemit(sx, sy, { n: 2, ramp: 'holy', sp: 30, life: 0.2, glow: 3, size: 1 });
 }
 // A shard flying through foes cuts them (Shard Ward, Reliquary Nova, the Cathedral, the Walled Cell's mantle).
 function shardCut(s, n, k) {
@@ -7562,7 +7577,9 @@ function updateShards(dt, town = false) {
   const ward = (p.swardT || 0) > game.time, cut = !town && (ward || p.snova || cathedralOn() || G.powers.has('wideOrbit') || sb('thorn', 2));
   const cutK = (cathedralOn() ? 0.8 * (1 + wound('riteCathedral') * 0.3) : p.snova ? p.snova.k : ward ? 0.5 : sb('thorn', 2) ? 0.7 : 0.35) * (sbw('thorn') ? 1.5 : 1);
   S.forEach((s, i) => {
-    Object.assign(s, shardPos(i, n));
+    const q = shardPos(i, n);
+    if (s.x === undefined || s.a === undefined) Object.assign(s, q);
+    else { const k = Math.min(1, dt * 10); s.x += (q.x - s.x) * k; s.y += (q.y - s.y) * k; s.z += (q.z - s.z) * k; s.a = q.a; s.up = q.up; }
     if (cut) shardCut(s, n, cutK);
     if (town) return;
     s.cd -= dt;
@@ -8406,8 +8423,11 @@ function renderLight(cx, cy) {
 
 // One reliquary shard: a soft shadow on the floor, the turning crystal above it (lit with fire during Ember Relic).
 function drawShard(s, i) {
-  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(s.x, s.y, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
-  sprC('fx', 'shard', Math.floor(game.real * 8 + i * 1.3) % 4, s.x, s.y - s.z);
+  if (s.z < 40) { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(s.x, s.y, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill(); }
+  // Round 73: an ice-blue crystal pointing out from the ring (16 headings).
+  const fr = ((Math.round((s.a || 0) / (Math.PI * 2) * 16) % 16) + 16) % 16;
+  if (SPR.fx.anims.crystal) sprC('fx', 'crystal', fr, Math.round(s.x), Math.round(s.y - s.z)); else sprC('fx', 'shard', 0, s.x, s.y - s.z);
+  if (!LOWFX && rng() < 0.012) vemit(s.x, s.y - s.z, { n: 1, ramp: 'holy', sp: 6, up: 6, life: 0.4, glow: 3, size: 1 });
   if ((player.emberRelicT || 0) > game.time && !LOWFX && rng() < 0.3) vemit(s.x, s.y - s.z - 4, { n: 1, ramp: 'fire', sp: 8, up: 20, life: 0.35, glow: 3, size: 1 });
 }
 function drawPlayer() {
@@ -8591,7 +8611,7 @@ function drawAbilitiesGlow() {
   for (const f of flasks) { const k = f.t / T.flask.flight; glow(f.sx + (f.tx - f.sx) * k, f.sy + (f.ty - f.sy) * k - Math.sin(k * Math.PI) * 36, 10, `rgba(${RF.glow},0.6)`); }
   for (const l of lashes) if (l.hit) glow(l.x, l.y, 28, `rgba(${RF.rain},${0.8 * (1 - (l.t - 0.12) / 0.18)})`);
   for (const f of skillFx) if (f.kind === 'flare') { const k = f.t / f.max; glow(f.x, f.y, f.r * (0.5 + k), `rgba(${f.rgb},${0.5 * (1 - k)})`); glow(f.x, f.y, f.r * 0.3 * (1 - k) + 4, `rgba(255,244,176,${0.4 * (1 - k)})`); }
-  if (isAnch() && player.shards) { const em = (player.emberRelicT || 0) > game.time; for (const sh of player.shards) glow(sh.x, sh.y - sh.z, 9, em ? 'rgba(255,140,60,0.5)' : 'rgba(190,130,255,0.45)'); if ((player.swardT || 0) > game.time) glow(player.x, player.y - 16, 40, 'rgba(190,130,255,0.3)'); }
+  if (isAnch() && player.shards) { const em = (player.emberRelicT || 0) > game.time; for (const sh of player.shards) glow(sh.x, sh.y - sh.z, 10, em ? 'rgba(255,140,60,0.5)' : 'rgba(138,224,255,0.42)'); if ((player.swardT || 0) > game.time) glow(player.x, player.y - 16, 40, 'rgba(190,130,255,0.3)'); }
   if ((player.wardT || 0) > game.time) { const pu = 0.5 + Math.sin(game.real * 9) * 0.15; glow(player.x, player.y - 22, 34, `rgba(255,209,85,${pu})`); }
   if (player.rainT > 0) { const rgb = SET_RGB[(RITE_BY[player.penKind] || {}).set] || '224,32,46'; glow(player.x, player.y - 10, 46 + Math.sin(game.real * 7) * 6, `rgba(${rgb},0.4)`); }
   for (const f of skillFx) if (f.kind === 'hymn' && f.t < f.max) { const d = f.L * Math.min(1, f.t / f.max); glow(f.x + Math.cos(f.a) * d, f.y + Math.sin(f.a) * d * 0.8 - 6, 30, 'rgba(255,122,31,0.55)'); }
@@ -9400,9 +9420,12 @@ const WOUNDS = [
   { id: 'letting', name: 'BLOOD MEAL', r: 1, max: 3, icon: 'relic', text: () => '+2 HP FOR EVERY KILL.' },
   { id: 'crescent', name: 'CRESCENT OF GRACE', r: 2, max: 3, icon: 'crescent', text: (n) => `A CRESCENT SWEEPS AROUND YOU EVERY ${(3.2 - (n - 1) * 0.5).toFixed(1)} S.` },
   { id: 'pillar', name: 'PILLARS OF LIGHT', r: 2, max: 3, icon: 'pillar', text: (n) => `LIGHT STRIKES ${n + 1} FOES FROM ABOVE EVERY 4 S.` },
-  { id: 'orbit', name: 'ORBITING NAILS', r: 1, max: 3, icon: 'orbit', text: (n) => `${2 + n * 2} HOLY NAILS CIRCLE YOU.` },
+  { id: 'orbit', name: 'ORBITING NAILS', hero: 'saint', r: 1, max: 3, icon: 'orbit', text: (n) => `${2 + n * 2} HOLY NAILS CIRCLE YOU.` },
   { id: 'arc', name: "SAINT'S LIGHTNING", r: 2, max: 3, icon: 'arc', text: (n) => `CRITS ARC TO ${n + 1} MORE FOES.` },
   { id: 'nova', name: 'HOLY NOVA', r: 1, max: 3, icon: 'nova', text: () => 'DASHING RELEASES A RING OF LIGHT.' },
+  // Round 73: one Wound of each class's own (hero: offered only to that class).
+  { id: 'aftershock', name: 'AFTERSHOCK', hero: 'mendicant', r: 1, max: 3, icon: 'nova', text: (n) => `EVERY 5TH BLOW SENDS A SHOCKWAVE THROUGH FOES AROUND YOU (${40 + n * 30}% DAMAGE).` },
+  { id: 'ashard', name: "RELIQUARY'S CALL", hero: 'anchoress', r: 1, max: 3, icon: 'orbit', text: () => '+1 RELIQUARY SHARD.' },
   // One for each rite; offered only while that rite is chosen.
   { id: 'riteWave', name: 'BAPTISMAL TIDE', rite: 'wave', r: 0, max: 3, icon: 'rite:wave', text: () => 'BAPTISM HITS 50% HARDER AND LEAVES ONE MORE POOL.' },
   { id: 'riteStorm', name: 'STORMWRIGHT', rite: 'storm', r: 0, max: 3, icon: 'rite:storm', text: () => 'NAIL STORM SHOOTS 4 MORE NAILS.' },
@@ -9442,7 +9465,7 @@ const WOUNDS = [
   // The Anchoress's (round 71).
   { id: 'riteSvolley', name: 'FULLER VOLLEY', rite: 'svolley', r: 0, max: 3, icon: 'rite:svolley', text: () => 'SHARD VOLLEY FIRES 1 MORE BOLT A SHARD.' },
   { id: 'riteConsecrate', name: 'DEEPER BLESSING', rite: 'consecrate', r: 0, max: 3, icon: 'rite:consecrate', text: () => 'CONSECRATED SHARD BREAKS INTO 4 MORE SPLINTERS.' },
-  { id: 'riteShrapnel', name: 'SHARPER SHRAPNEL', rite: 'shrapnel', r: 0, max: 3, icon: 'rite:shrapnel', text: () => 'SHRAPNEL THROWS 2 MORE NAILS A SHARD.' },
+  { id: 'riteShrapnel', name: 'SHARPER SHRAPNEL', rite: 'shrapnel', r: 0, max: 3, icon: 'rite:shrapnel', text: () => 'SHRAPNEL THROWS 2 MORE SPLINTERS A SHARD.' },
   { id: 'riteFlight', name: 'LONGER FLIGHT', rite: 'flight', r: 0, max: 3, icon: 'rite:flight', text: () => "THE FLIGHT'S LANDING HITS 40% HARDER." },
   { id: 'riteSnova', name: 'WIDER NOVA', rite: 'snova', r: 0, max: 3, icon: 'rite:snova', text: () => 'RELIQUARY NOVA REACHES 25% FARTHER.' },
   { id: 'riteEmberrelic', name: 'HOTTER RELIC', rite: 'emberrelic', r: 1, max: 3, icon: 'rite:emberrelic', text: () => 'EMBER RELIC LASTS 2 S LONGER.' },
@@ -9482,7 +9505,7 @@ function levelBurst() {
 }
 function rollStigmata() {
   const riteOn = (id) => RITE_SLOTS.some(([sl]) => riteOf(sl).id === id);
-  const pool = WOUNDS.filter((w) => wound(w.id) < w.max && (!w.rite || riteOn(w.rite)) && !(w.id === 'pierce' && isMelee())), out = [];
+  const pool = WOUNDS.filter((w) => wound(w.id) < w.max && (!w.rite || riteOn(w.rite)) && (!w.hero || w.hero === heroId())), out = [];
   for (let k = 0; k < 3 && pool.length; k++) {
     let tot = 0; for (const w of pool) tot += WOUND_RARITY[w.r].w;
     let roll = rng() * tot, i = 0; for (; i < pool.length - 1; i++) { roll -= WOUND_RARITY[pool[i].r].w; if (roll <= 0) break; }
@@ -10454,7 +10477,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { get pfx() { return pfx; }, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get pfx() { return pfx; }, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

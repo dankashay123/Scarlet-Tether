@@ -120,12 +120,29 @@ function shard(i) {
   if (i !== 2) dot(f, 6, 7, 'white');
   return f;
 }
+// Round 73: the Anchoress's shards as ice-blue crystal blades, 16 headings
+// (frame i points at angle i / 16 of a turn, seen from above at a slant so
+// shards pointing at or away from the camera look shorter). Two facets: the
+// upper one pale and lit, the lower one deep blue.
+const CM = { ...MATS, ice: { ramp: 'holy', spec: 0.9, bias: 0.12, max: 4 }, iceDark: { ramp: 'holy', bias: -0.18, min: 2, max: 6 } };
+function crystal(i) {
+  const a = i / 16 * Math.PI * 2, dx0 = Math.cos(a), dy0 = Math.sin(a) * 0.55, dl = Math.hypot(dx0, dy0), dx = dx0 / dl, dy = dy0 / dl;
+  const L = 15 + 9 * Math.abs(Math.cos(a)), c = [17, 17], S = new Scene();
+  const at = (t) => [c[0] + dx * t, c[1] + dy * t, 3];
+  S.add(capsule(at(-L * 0.18), at(L * 0.6), 4.8, 0.35, 'ice'), 0);
+  S.add(capsule(at(-L * 0.18), at(-L * 0.34), 4.8, 1.6, 'ice'), 0.4);
+  const nx = -dy, ny = dx, down = ny > 0 || (ny === 0 && nx < 0) ? 1 : -1;
+  S.paint({ f: (x, y) => -((x - c[0]) * nx + (y - c[1]) * ny) * down, mat: 'iceDark' });
+  const f = render(S, 34, 34, CM, { contrast: 1.2 });
+  put(f, c[0] - nx * down * 1.5 + dx * 1, c[1] - ny * down * 1.5 + dy * 1, 'white');
+  return f;
+}
 function shardBolt() {
   const S = new Scene();
-  S.add(ellipsoid([12, 4.5, 2], [8, 2.2, 1.8], 'shardGlow'), 0);
-  S.add(ellipsoid([5, 4.5, 2], [2.5, 1.2, 1.2], 'violet'), 0.5);
-  const f = render(S, 23, 9, MATS, { contrast: 1.5 });
-  put(f, 19, 4, 'white'); put(f, 18, 4, 'violet0');
+  S.add(capsule([4, 4.5, 2], [20, 4.5, 2], 2.4, 0.4, 'ice'), 0);
+  S.paint({ f: (x, y) => 4.5 - y, mat: 'iceDark' });
+  const f = render(S, 23, 9, CM, { contrast: 1.3 });
+  put(f, 17, 4, 'white');
   return f;
 }
 // The thurible: a pierced brass censer on its chain, embers glowing inside.
@@ -713,7 +730,7 @@ export default {
     burst: () => [0, 1, 2, 3].map(burst),
     smoke: () => [0, 1, 2, 3].map(smoke),
     thurible: () => [0, 1].map(thurible),
-    shard: () => [0, 1, 2, 3].map(shard), shardbolt: () => [shardBolt()],
+    shard: () => [0, 1, 2, 3].map(shard), shardbolt: () => [shardBolt()], crystal: () => Array.from({ length: 16 }, (_, i) => crystal(i)),
     flask: () => [flask()],
     link: () => [0, 1].map(link),
     hook: () => [hook()],

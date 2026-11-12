@@ -317,8 +317,6 @@ export const SKINS = {
   reliquary: {
     hero: 'anchoress',
     mats: { robe: 'violetRobe', robeDark: 'violetDark', cowl: 'silver', cape: 'violetDark', trim: 'gold', capeHem: 'gold', cross: 'violet', hose: 'ink', tabard: 'slateDark' },
-    add: (S, { hx, hy }) => { for (const [dx, dy] of [[-6, -6], [0, -10], [6, -6]]) S.add(rotZ(ellipsoid([hx + dx, hy + dy, 2], [1.3, 2.6, 1.3], 'shardGlow'), [hx + dx, hy + dy], dx * 0.08), 0); },
-    dots: (f, { hx, hy }) => { for (const [dx, dy] of [[-6, -7], [0, -11], [6, -7]]) dot(f, hx + dx, hy + dy, 'violet0'); },
   },
   // The Burning Choir: a white mantle and a crown of lit candles.
   choir: {

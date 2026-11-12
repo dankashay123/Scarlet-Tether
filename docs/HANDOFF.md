@@ -260,6 +260,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 73:** the Anchoress's shards are crystal blades (fx `crystal`, 16
+  headings, `crystal(i)` in `vfx.mjs`; `shardbolt` is ice too) hovering in a
+  ring over her head (`shardPos` returns `up`; ground orbit only for Nova,
+  the Cathedral, the Thorned Crucible and the wide orbit; shards glide
+  between the two). Level-up cards: Wounds take `hero` (`rollStigmata`
+  filters by class and equipped rites); the Saint keeps Orbiting Nails, the
+  Mendicant gets Long Reach (Piercing Faith) and Aftershock, the Anchoress
+  Reliquary's Call (+1 shard) and shard names for the nail cards
+  (`HERO_TEXT_A`). Test: `round73.cjs` (rolls every rite loadout per class).
+
 - **Round 72:** every class has its own five sets and starter set; none are
   shared (`HERO_SETS`, `STARTER`, `mySets()`, `starterSet()`, `ALL_SETS`).
   The Mendicant: the Mendicant's Rags (starter), the Beggar King's Iron
