@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 75 (build 75, on `master`). Read
+Last updated 2026-11-12, after round 76 (build 76, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -296,6 +296,19 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 76:** shards in flight use a slimmer crystal (`crystalbolt`, 16
+  headings, `crystal(i, true)` in `vfx.mjs`) and ring with a glass ping
+  (`chime`, synthesised by `tools/build-chime.py`, no sample pack). Every
+  common, elite and Warden attack has a second wind-up frame: the wind-up
+  pose reared back about the feet (`rear(make, rot)` in `base.mjs`, built on
+  `posedFrame`); the engine already played 3-frame attacks. Anchoress
+  balance, 4 seeds (kills a second, VI / XII): reliquary 17.7 / 7.5, glass
+  18.1 / 6.1, psalter 15.0 / 5.8, thorn 12.1 / 7.1, lantern 13.9 / 6.8,
+  after flat 6-piece multipliers for the Lantern and the Psalter (`SETK.six`
+  1.3 each; raising `lampK` or `psalK6` did nothing measurable). Note: edit
+  `SETK` by matching text, not by line number (a `sed` by line missed once).
+  Tests starved when seven ran at once: run at most four in parallel.
 
 - **Round 75:** the shards the Anchoress fires are drawn with the hovering
   `crystal` sprite, picked by heading (the frame whose slanted angle matches

@@ -125,16 +125,17 @@ function shard(i) {
 // shards pointing at or away from the camera look shorter). Two facets: the
 // upper one pale and lit, the lower one deep blue.
 const CM = { ...MATS, ice: { ramp: 'holy', spec: 0.9, bias: 0.12, max: 4 }, iceDark: { ramp: 'holy', bias: -0.18, min: 2, max: 6 } };
-function crystal(i) {
+// Round 76: `slim` is the same blade thinner and a little shorter, for shards in flight (`crystalbolt`).
+function crystal(i, slim = false) {
   const a = i / 16 * Math.PI * 2, dx0 = Math.cos(a), dy0 = Math.sin(a) * 0.55, dl = Math.hypot(dx0, dy0), dx = dx0 / dl, dy = dy0 / dl;
-  const L = 15 + 9 * Math.abs(Math.cos(a)), c = [17, 17], S = new Scene();
+  const L = (15 + 9 * Math.abs(Math.cos(a))) * (slim ? 0.85 : 1), c = [17, 17], S = new Scene(), R0 = slim ? 3.1 : 4.8;
   const at = (t) => [c[0] + dx * t, c[1] + dy * t, 3];
-  S.add(capsule(at(-L * 0.18), at(L * 0.6), 4.8, 0.35, 'ice'), 0);
-  S.add(capsule(at(-L * 0.18), at(-L * 0.34), 4.8, 1.6, 'ice'), 0.4);
+  S.add(capsule(at(-L * 0.18), at(L * 0.6), R0, 0.35, 'ice'), 0);
+  S.add(capsule(at(-L * 0.18), at(-L * 0.34), R0, slim ? 1.2 : 1.6, 'ice'), 0.4);
   const nx = -dy, ny = dx, down = ny > 0 || (ny === 0 && nx < 0) ? 1 : -1;
   S.paint({ f: (x, y) => -((x - c[0]) * nx + (y - c[1]) * ny) * down, mat: 'iceDark' });
   const f = render(S, 34, 34, CM, { contrast: 1.2 });
-  put(f, c[0] - nx * down * 1.5 + dx * 1, c[1] - ny * down * 1.5 + dy * 1, 'white');
+  put(f, c[0] - nx * down * (slim ? 1 : 1.5) + dx * 1, c[1] - ny * down * (slim ? 1 : 1.5) + dy * 1, 'white');
   return f;
 }
 function shardBolt() {
@@ -730,7 +731,7 @@ export default {
     burst: () => [0, 1, 2, 3].map(burst),
     smoke: () => [0, 1, 2, 3].map(smoke),
     thurible: () => [0, 1].map(thurible),
-    shard: () => [0, 1, 2, 3].map(shard), shardbolt: () => [shardBolt()], crystal: () => Array.from({ length: 16 }, (_, i) => crystal(i)),
+    shard: () => [0, 1, 2, 3].map(shard), shardbolt: () => [shardBolt()], crystal: () => Array.from({ length: 16 }, (_, i) => crystal(i)), crystalbolt: () => Array.from({ length: 16 }, (_, i) => crystal(i, true)),
     flask: () => [flask()],
     link: () => [0, 1].map(link),
     hook: () => [hook()],

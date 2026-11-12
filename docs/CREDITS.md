@@ -69,6 +69,8 @@ multi-gigabyte archives.
 - Rounds 29 to 65: [Barlow](https://github.com/jpt/barlow) Semi Condensed SemiBold (SIL OFL 1.1) as `assets/fonts/ui.ttf`.
 - Before round 29: [Kenney Fonts](https://kenney.nl/assets/kenney-fonts) "Kenney High" (CC0 1.0) as a bitmap font. The glyph tables (`GLYPHS`, `FONT`) are still in `index.html` but unused.
 
+- `chime.mp3` (the Anchoress's shards): synthesised by `tools/build-chime.py`, no sample used.
+
 ## Reference
 
 - Otherworld Legends (ChillyRoom) was studied as a style reference only. None of its art or audio is in this repo.

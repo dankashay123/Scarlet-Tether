@@ -36,8 +36,8 @@ module builds only its own. Test: `tools/tests/round72.cjs`.
 | Anchoress | The Anchorite's Shroud (starter) | +1 shard | +15% damage, +1 dash | |
 | Anchoress | The Shattered Reliquary | +2 shards | +15% a shard above 4 | votive shards on each rite |
 | Anchoress | The Glass Martyr | +10% shard crit | crits split | x1.4, crits x3, call glass shards |
-| Anchoress | The Mother's Psalter | rites 15% faster | each rite fires every shard | x3 shards and faster for 4 s |
-| Anchoress | The Veiled Lantern | shards burn | burning foes +40% from shards | +150%, burning deaths spread fire |
+| Anchoress | The Mother's Psalter | rites 15% faster | each rite fires every shard | x3 shards and faster for 4 s; all damage x1.3 |
+| Anchoress | The Veiled Lantern | shards burn | burning foes +40% from shards | +150%, burning deaths spread fire; all damage x1.3 |
 | Anchoress | The Thorned Crucible | ring 25% wider and cuts | cut foes slowed, +30% | spins and cuts twice as fast, +150%, x1.5, Zeal |
 
 ## What we take from Diablo 3

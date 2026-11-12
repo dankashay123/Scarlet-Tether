@@ -1,7 +1,7 @@
 // Sculpted elites (and the Collection Imp) for the mon_elite and loot sheets.
 // Every model faces right; ax/ay mark where the feet meet the ground.
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, folds, bumpy, clip, render, dot, pline, under } from '../sdf.mjs';
-import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt } from './base.mjs';
+import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt, rear } from './base.mjs';
 import { NAMES } from '../palette.mjs';
 // Hand-placed pixel only where the sculpt shows a dark cavity (mouths).
 const inMaw = (fr, x, y) => { const v = under(fr, x, y); return v >= 0 && /^(ink|blood)/.test(NAMES[v]); };
@@ -854,7 +854,7 @@ function organist(t = 0, atk = 0) {
 }
 const WARDENS = { bellwright, candlemass, cardinal, charnelKing, ladyOfNails, tideBishop, organist };
 
-const set = (fn, walk = HALF, atk = [1, 2]) => ({ walk: () => walk.map((t) => fn(t, 0)), attack: () => atk.map((a) => fn(0, a)), ...reactions(() => fn(0, 0), 0.8) });
+const set = (fn, walk = HALF, atk = [1, 2]) => ({ walk: () => walk.map((t) => fn(t, 0)), attack: () => [fn(0, atk[0]), rear(() => fn(0, atk[0]), -0.08), fn(0, atk[1])], ...reactions(() => fn(0, 0), 0.8) });
 const R = { colossus: set(colossus), titan: set(titan), inquisitor: set(inquisitor), seraph: set(seraph), effigy: set(effigy), abbess: set(abbess), golem: set(golem), thrice: set(thrice), manymouthed: set(manymouthed), leviathan: set(leviathan) };
 const mon_elite = {};
 for (const [id, s] of Object.entries(R)) { mon_elite[`${id}_walk`] = s.walk; mon_elite[`${id}_attack`] = s.attack; mon_elite[`${id}_hit`] = s.hit; mon_elite[`${id}_die`] = s.die; }

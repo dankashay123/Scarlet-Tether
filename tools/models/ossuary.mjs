@@ -6,7 +6,7 @@
 // forms, lit from the top-left, eyes placed by hand, facing right, ax/ay at
 // the feet.
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, noise3, dot, under } from '../sdf.mjs';
-import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt } from './base.mjs';
+import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt, rear } from './base.mjs';
 
 const PI = Math.PI, sin = Math.sin, cos = Math.cos;
 const MM = {
@@ -356,7 +356,7 @@ const mon_common = {}, mon_rare = {}, mon_warden = {};
 for (const [id, fn, flat] of [['gleaner', gleaner, false], ['cinderMoth', cinderMoth, true]]) {
   const r = reactions(() => fn(0), 0, flat);
   mon_common[`${id}_walk`] = () => HALF.map((t) => fn(t));
-  mon_common[`${id}_attack`] = () => [fn(0, 0), fn(0, 1)];
+  mon_common[`${id}_attack`] = () => [fn(0, 0), rear(() => fn(0, 0)), fn(0, 1)];
   mon_common[`${id}_hit`] = r.hit; mon_common[`${id}_die`] = r.die;
 }
 {

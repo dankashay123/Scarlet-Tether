@@ -3,7 +3,7 @@
 // hand-placed eyes and glints. Everything faces right; frames carry ax/ay at
 // the ground contact point.
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, noise3, dot, pline, under } from '../sdf.mjs';
-import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt, posedFrame } from './base.mjs';
+import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt, posedFrame, rear } from './base.mjs';
 
 const MM = {
   ...MATS,
@@ -557,7 +557,7 @@ function dummy() {
 
 // ================================================================ export ===
 const walk = (fn) => () => HALF.map((t) => fn(t));
-const attack = (fn) => () => [fn(0, 0), fn(0, 1)];
+const attack = (fn) => () => [fn(0, 0), rear(() => fn(0, 0)), fn(0, 1)];
 const MODELS = { risen, crawler, mourner, acolyte, gravewarden, rat, votary, flagellant, cherub, wisp, siltWretch, naveEel };
 const mon = {};
 for (const [id, fn] of Object.entries(MODELS)) {
