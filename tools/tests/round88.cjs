@@ -15,8 +15,8 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
   out.limit = await p.evaluate(() => ({ max: HS.TAL_MAX_PTS, ranks: HS.TAL_RANKS, nodes: HS.TALENT_TREES.map((T0) => T0.nodes.length) }));
   // Two builds: learn on I, swap to II (empty), learn there, swap back; no swap in a descent.
   out.pages = await p.evaluate(() => { HS.openCanonry(); HS.game.talTab = 0; const L = HS.talLayout(), tap = (r) => HS.canonryTap(r.x + 4, r.y + 4), learn = (id) => { const c = L.cell(HS.TAL_BY[id]); HS.canonryTap(c.x + c.w / 2, c.y + c.h / 2); tap(L.learn); };
-    const r = {}; learn('might'); learn('might'); r.one = HS.talSpent(); tap(L.page(1)); r.two = HS.talSpent(); r.page = HS.talPageNo(); learn('precise'); tap(L.page(0)); r.back = [HS.tal('might'), HS.tal('precise')]; tap(L.page(1)); r.again = [HS.tal('might'), HS.tal('precise')]; tap(L.page(0));
-    const sc = HS.game.scene; HS.game.scene = 'wound'; tap(L.page(1)); r.inRun = HS.talPageNo(); HS.game.scene = sc; return r; });
+    const r = {}; learn('might'); learn('might'); r.one = HS.talSpent(); HS.talPage(1, true); r.two = HS.talSpent(); r.page = HS.talPageNo(); learn('precise'); HS.talPage(0, true); r.back = [HS.tal('might'), HS.tal('precise')]; HS.talPage(1, true); r.again = [HS.tal('might'), HS.tal('precise')]; HS.talPage(0, true);
+    const sc = HS.game.scene; HS.game.scene = 'wound'; HS.talPage(1, true); r.inRun = HS.talPageNo(); HS.game.scene = sc; return r; });
   await p.waitForTimeout(300); await shot('talents'); await check('talents');
   await p.evaluate(() => { HS.game.talSel = 'zealstorm'; }); await check('talents card'); await p.evaluate(() => { HS.game.talSel = 'greatbolt'; }); await check('talents locked'); await shot('talents-locked');
   // Level gifts.

@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 88 (build 88, on `master`). Read
+Last updated 2026-11-12, after round 89 (build 89, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-88 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-89 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -306,9 +306,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 2. **Talent follow-ups (round 87).** Ask the owner how the webs feel: the
    column thresholds (`TAL_NEED`), whether a full chain should be needed
    for a legendary talent, and the legendary numbers (set by eye). The Cull
-   and Sanctuary are the two most likely to need a second look. Measure the
-   fourth passive slot (level 50) with `setbal.cjs`. The titles show only
-   on the pause panel: the character select could show them too.
+   and Sanctuary measured inside the noise in a crowd (round 89); a Warden
+   fight was not measured (Sanctuary matters most there). Some talent icons
+   are hard to read at 19 px (Feast, Resolve, Blessing): redraw if the
+   owner says so.
 2. **Rites panel.** The 35-40 gap is the last long one (Iron Brand 35, the
    Great Penance 40). (The Saint-level toast names the next rite since round 74.)
 3. **Round 42 follow-ups.** Ask the owner how the talent numbers and the
@@ -364,6 +365,19 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 89:** the owner picked 1-5. **Measured** (`setbal.cjs`, Saint,
+  Station XII, nails / stride, 3 seeds, 35 s; it now takes `PASSIVES`,
+  `TALENTS`, `LVL`; runs move about 20%): three damage passives 9.8 / 11.3
+  kills a second, with a fourth (Zealous Fury) 10.5 / 11.6; Offence talents
+  12.3 / 11.1, with the Cull 13.1 / 12.4; Rites talents took 1217 / 290
+  damage a second, with Sanctuary 1368 / 241. All inside the noise, so the
+  fourth slot, the Cull and Sanctuary were left as they are. **Icons:**
+  each of the 62 plain talents has its own relief icon (ui `talnode`).
+  **Builds:** tapping the build in use names it (9 letters, `prompt`);
+  tapping the other asks first and shows its points a tree and legendary
+  talents. **Titles** show on the character select (gold from level 50).
+  Test: `round89.cjs`.
 
 - **Round 88:** the owner asked that the talents can never all be filled
   (already true; `round87.cjs` now fails if it stops being so), then picked

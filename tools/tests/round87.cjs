@@ -16,7 +16,7 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
   out.max = await p.evaluate(() => HS.MAX_SAINT);
   // The data: every node has an icon, a text, a place of its own; links point left; four legends a tree.
   out.data = await p.evaluate(() => HS.TALENT_TREES.map((T0) => { const seen = new Set(); let bad = 0, ranks = 0;
-    for (const t of T0.nodes) { const k = `${t.c},${t.r}`; if (seen.has(k)) bad++; seen.add(k); ranks += t.max; if (!t.text(1)) bad++; for (const id of t.f || []) if (!HS.TAL_BY[id] || HS.TAL_BY[id].c >= t.c || HS.TAL_BY[id].tree !== t.tree) bad++; }
+    for (const t of T0.nodes) { if (!t.legend && !HS.TAL_NODES.includes(t.id)) bad++; if (t.legend && !HS.TAL_LEGENDS.includes(t.id)) bad++; const k = `${t.c},${t.r}`; if (seen.has(k)) bad++; seen.add(k); ranks += t.max; if (!t.text(1)) bad++; for (const id of t.f || []) if (!HS.TAL_BY[id] || HS.TAL_BY[id].c >= t.c || HS.TAL_BY[id].tree !== t.tree) bad++; }
     return { nodes: T0.nodes.length, ranks, legends: T0.nodes.filter((t) => t.legend).length, bad }; }));
   // The owner's rule: the points can never fill every talent, nor reach every legendary talent.
   out.cap = await p.evaluate(() => { HS.SAVE.lvl = HS.MAX_SAINT; HS.SAVE.cleared = 29; HS.SAVE.talents = {}; const pts = HS.talPts(), ranks = HS.TALENT_TREES.flatMap((T0) => T0.nodes).reduce((a, t) => a + t.max, 0);
@@ -28,7 +28,7 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
   // Learning: a locked node refuses; a chain learned to its end takes the legendary talent.
   out.learn = await p.evaluate(() => { HS.SAVE.talents = {}; HS.openCanonry(); HS.game.talTab = 0; const L = HS.talLayout(), tapN = (id) => { const c = L.cell(HS.TAL_BY[id]); HS.canonryTap(c.x + c.w / 2, c.y + c.h / 2); HS.canonryTap(L.learn.x + 4, L.learn.y + 4); };
     const r = {}; tapN('greatbolt'); r.locked = HS.tal('greatbolt'); tapN('brawn'); r.unlinked = HS.tal('brawn');
-    for (const id of ['might', 'brawn', 'precise', 'heavy', 'keen', 'force', 'ruin', 'brutal']) for (let i = 0; i < 5; i++) tapN(id);
+    for (const id of ['might', 'brawn', 'precise', 'steady', 'heavy', 'force', 'edge', 'ruin']) for (let i = 0; i < 5; i++) tapN(id);
     tapN('greatbolt'); r.legend = HS.tal('greatbolt'); r.spent = HS.talSpent(); r.dmg = HS.ts('dmg'); return r; });
   await p.waitForTimeout(300); await shot('offence');
   // Every tree, with every card opened once (text problems on any of them).

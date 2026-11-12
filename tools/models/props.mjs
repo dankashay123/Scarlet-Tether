@@ -709,6 +709,82 @@ export const TAL_ICONS = [
   ['choir', 'gold', (u, v) => (v > -0.45 && v < 0.3 && Math.abs(u) < 0.18 + (v + 0.45) * 0.36) || (Math.abs(v - 0.34) < 0.07 && Math.abs(u) < 0.56) || Math.hypot(u, v - 0.54) < 0.1 || Math.hypot(u, v + 0.54) < 0.09],
   ['sanctuary', 'gold', (u, v) => (v < 0.14 && Math.hypot(u, v - 0.14) < 0.54 && Math.hypot(u, v - 0.14) > 0.38) || (Math.abs(v - 0.22) < 0.08 && Math.abs(u) < 0.6) || drop(u, v, 0, -0.02, 0.13) || (Math.abs(v - 0.44) < 0.06 && Math.abs(u) < 0.42)],
 ];
+// Round 89: every plain talent has its own icon (index.html TAL_NODES, same order), in its tree's colour.
+const bx = (u, v, x, y, w, h) => Math.abs(u - x) < w && Math.abs(v - y) < h;
+const dk = (u, v, x, y, r) => Math.hypot(u - x, v - y) < r;
+const el = (u, v, x, y, a, b) => Math.hypot((u - x) / a, (v - y) / b) < 1;
+const chevUp = (u, v, y, w, t) => Math.abs(v - y - Math.abs(u) * 0.8) < t && Math.abs(u) < w;
+const heartG = (u, v) => dk(u, v, -0.2, -0.15, 0.25) || dk(u, v, 0.2, -0.15, 0.25) || (v > -0.12 && v < 0.52 && Math.abs(u) < (0.52 - v) * 0.85);
+const star4 = (u, v, x, y, r) => Math.pow(Math.abs(u - x) / r, 0.6) + Math.pow(Math.abs(v - y) / r, 0.6) < 1;
+const rays = (u, v, r0, r1, w) => [0, 1, 2, 3, 4, 5, 6, 7].some((k) => { const a = k * Math.PI / 4; return seg(u, v, Math.cos(a) * r0, Math.sin(a) * r0, Math.cos(a) * r1, Math.sin(a) * r1, w); });
+const bootG = (u, v) => bx(u, v, -0.08, -0.1, 0.16, 0.42) || bx(u, v, 0.12, 0.38, 0.36, 0.14);
+export const TAL_NODE_ICONS = [
+  // Offence.
+  ['might', 'crimson', (u, v) => bx(u, v, 0, -0.12, 0.1, 0.46) || bx(u, v, 0, 0.3, 0.3, 0.07) || dk(u, v, 0, 0.52, 0.1)],
+  ['brawn', 'crimson', (u, v) => seg(u, v, -0.42, 0.45, 0.42, -0.45, 0.09) || seg(u, v, 0.42, 0.45, -0.42, -0.45, 0.09)],
+  ['force', 'crimson', (u, v) => bx(u, v, 0, -0.3, 0.42, 0.19) || bx(u, v, 0, 0.22, 0.08, 0.38)],
+  ['edge', 'crimson', (u, v) => seg(u, v, -0.42, 0.42, 0.3, -0.3, 0.13) || star4(u, v, 0.36, -0.36, 0.3)],
+  ['ruin', 'crimson', (u, v) => (dk(u, v, 0, -0.1, 0.46) && !dk(u, v, -0.19, -0.12, 0.13) && !dk(u, v, 0.19, -0.12, 0.13)) || bx(u, v, 0, 0.44, 0.2, 0.14)],
+  ['quick', 'crimson', (u, v) => seg(u, v, -0.15, 0, 0.3, 0, 0.08) || (u > 0.15 && u < 0.6 && Math.abs(v) < (0.6 - u) * 0.8) || bx(u, v, -0.42, -0.26, 0.14, 0.05) || bx(u, v, -0.42, 0.26, 0.14, 0.05)],
+  ['pierce', 'crimson', (u, v) => ring2(u, v, 0.32, 0.08) || seg(u, v, -0.6, 0, 0.4, 0, 0.07) || (u > 0.3 && u < 0.64 && Math.abs(v) < (0.64 - u) * 0.7)],
+  ['swift', 'crimson', (u, v) => [-0.26, 0.26].some((y) => seg(u, v, -0.45, y, 0.1, y, 0.08) || (u > 0.05 && u < 0.58 && Math.abs(v - y) < (0.58 - u) * 0.5))],
+  ['precise', 'crimson', (u, v) => ring2(u, v, 0.38, 0.07) || dk(u, v, 0, 0, 0.1) || (Math.abs(u) < 0.06 && Math.abs(v) > 0.22 && Math.abs(v) < 0.62) || (Math.abs(v) < 0.06 && Math.abs(u) > 0.22 && Math.abs(u) < 0.62)],
+  ['steady', 'crimson', (u, v) => (Math.abs(v) < 0.34 * (1 - (u / 0.6) * (u / 0.6)) && !dk(u, v, 0, 0, 0.2)) || dk(u, v, 0, 0, 0.1)],
+  ['heavy', 'crimson', (u, v) => bx(u, v, 0, -0.2, 0.12, 0.38) || (v > 0.08 && v < 0.6 && Math.abs(u) < (0.6 - v) * 0.8)],
+  ['keen', 'crimson', (u, v) => (Math.abs(u) + Math.abs(v) < 0.56 && Math.abs(u) + Math.abs(v) > 0.3) || dk(u, v, 0, 0, 0.1)],
+  ['brutal', 'crimson', (u, v) => dk(u, v, 0, 0, 0.3) || rays(u, v, 0.28, 0.58, 0.08)],
+  ['zeal', 'crimson', (u, v) => drop(u, v, 0, 0.22, 0.34) && !drop(u, v, 0, 0.32, 0.14)],
+  ['zealflame', 'crimson', (u, v) => drop(u, v, -0.24, 0.28, 0.22) || drop(u, v, 0.2, 0.2, 0.28)],
+  ['zealstorm', 'crimson', (u, v) => seg(u, v, 0.22, -0.58, -0.18, -0.02, 0.1) || seg(u, v, -0.18, 0, 0.2, 0, 0.08) || seg(u, v, 0.2, 0.02, -0.2, 0.58, 0.1)],
+  ['onslaught', 'crimson', (u, v) => [-0.42, -0.12, 0.18].some((y) => chevUp(u, v, y, 0.45, 0.08))],
+  ['execute', 'crimson', (u, v) => bx(u, v, 0, -0.5, 0.5, 0.07) || bx(u, v, -0.46, 0, 0.06, 0.55) || bx(u, v, 0.46, 0, 0.06, 0.55) || (Math.abs(u) < 0.34 && v > -0.4 && v < 0.02 + u * 0.4)],
+  ['cruel', 'crimson', (u, v) => [-0.26, 0.26].some((x) => v > -0.5 && v < 0.5 && Math.abs(u - x) < (0.5 - v) * 0.24) || bx(u, v, 0, -0.5, 0.5, 0.06)],
+  ['bane', 'crimson', (u, v) => bx(u, v, 0, 0.3, 0.48, 0.14) || [-0.38, 0, 0.38].some((x) => v <= 0.18 && v > -0.5 && Math.abs(u - x) < (v + 0.5) * 0.3)],
+  ['finisher', 'crimson', (u, v) => bx(u, v, 0, 0.12, 0.1, 0.46) || bx(u, v, 0, -0.3, 0.3, 0.07) || dk(u, v, 0, -0.52, 0.1) || (v > 0.5 && v < 0.66 && Math.abs(u) < (0.66 - v) * 0.7)],
+  ['giant', 'crimson', (u, v) => (bx(u, v, 0, 0.08, 0.32, 0.5) || bx(u, v, 0, -0.48, 0.42, 0.08)) && !(seg(u, v, 0.1, -0.4, -0.08, -0.05, 0.05) || seg(u, v, -0.08, -0.05, 0.1, 0.1, 0.05) || seg(u, v, 0.1, 0.1, -0.05, 0.56, 0.05))],
+  // Defence.
+  ['vigour', 'holy', heartG],
+  ['hale', 'holy', (u, v) => heartG(u, v) && !(bx(u, v, 0, 0.02, 0.06, 0.22) || bx(u, v, 0, 0.02, 0.22, 0.06))],
+  ['hearty', 'holy', (u, v) => heartG(u, v) && !heartG(u / 0.55, (v - 0.02) / 0.55)],
+  ['orbs', 'holy', (u, v) => dk(u, v, 0, 0, 0.44) && !dk(u, v, -0.15, -0.15, 0.12)],
+  ['feast', 'holy', (u, v) => (v > 0.02 && dk(u, v, 0, 0.02, 0.5)) || bx(u, v, 0, 0.56, 0.24, 0.06) || dk(u, v, 0, -0.3, 0.17)],
+  ['mend', 'holy', (u, v) => bx(u, v, 0, 0, 0.14, 0.5) || bx(u, v, 0, 0, 0.5, 0.14)],
+  ['lifeblood', 'holy', (u, v) => drop(u, v, 0, 0.2, 0.42) && !(bx(u, v, 0, 0.2, 0.06, 0.22) || bx(u, v, 0, 0.2, 0.22, 0.06))],
+  ['warding', 'holy', shieldG],
+  ['guard', 'holy', (u, v) => shieldG(u, v) && !(Math.abs(v + 0.12) < 0.07) && !(Math.abs(u) < 0.07 && v > -0.12)],
+  ['steadfast', 'holy', (u, v) => bx(u, v, 0, 0, 0.18, 0.42) || bx(u, v, 0, -0.5, 0.38, 0.09) || bx(u, v, 0, 0.5, 0.38, 0.09)],
+  ['resolve', 'holy', (u, v) => shieldG(u, v) && !chevUp(u, v, -0.25, 0.3, 0.07) && !chevUp(u, v, 0, 0.26, 0.07)],
+  ['bastion', 'holy', (u, v) => bx(u, v, 0, 0, 0.52, 0.44) && !(Math.abs(Math.abs(v) - 0.15) < 0.04) && !(Math.abs(v) > 0.15 ? Math.abs(u) < 0.04 : Math.abs(Math.abs(u) - 0.26) < 0.04)],
+  ['deft', 'holy', (u, v) => { const a = (u - v) / 1.414, b = (u + v) / 1.414; return (a > -0.2 && Math.abs(b) < 0.24 * (1 - Math.pow((a - 0.2) / 0.5, 2))) || seg(u, v, -0.48, 0.48, 0, 0, 0.06); }],
+  ['poise', 'holy', (u, v) => bx(u, v, 0, -0.34, 0.52, 0.05) || bx(u, v, 0, 0.08, 0.05, 0.42) || bx(u, v, 0, 0.52, 0.26, 0.06) || [-0.42, 0.42].some((x) => v > -0.1 && dk(u, v, x, -0.1, 0.17))],
+  ['calm', 'holy', (u, v) => ring2(u, v, 0.44, 0.07) || [-0.14, 0.14].some((y) => Math.abs(v - y - Math.sin(u * 9) * 0.05) < 0.06 && Math.abs(u) < 0.26)],
+  ['feet', 'holy', bootG],
+  ['quickdash', 'holy', (u, v) => seg(u, v, -0.05, -0.42, 0.35, 0, 0.11) || seg(u, v, 0.35, 0, -0.05, 0.42, 0.11) || bx(u, v, -0.4, -0.2, 0.14, 0.05) || bx(u, v, -0.4, 0.2, 0.14, 0.05)],
+  ['swiftfoot', 'holy', (u, v) => bootG(u - 0.14, v) || [-0.36, -0.1, 0.16].some((y) => bx(u, v, -0.44, y, 0.13, 0.05))],
+  ['stride', 'holy', (u, v) => el(u, v, -0.22, 0.24, 0.17, 0.3) || el(u, v, 0.22, -0.24, 0.17, 0.3)],
+  ['windstep', 'holy', (u, v) => (ring2(u, v, 0.48, 0.07) && (u > 0 || v < 0)) || (ring2(u, v, 0.22, 0.07) && (u < 0 || v > 0)) || bx(u, v, -0.3, 0.48, 0.3, 0.06)],
+  // Rites.
+  ['ritepower', 'gold', (u, v) => star4(u, v, 0, 0, 0.62)],
+  ['surge', 'gold', (u, v) => bx(u, v, 0, 0.18, 0.11, 0.4) || (v < 0 && v > -0.58 && Math.abs(u) < (v + 0.58) * 0.8)],
+  ['torrent', 'gold', (u, v) => drop(u, v, -0.3, 0.32, 0.17) || drop(u, v, 0.02, 0.02, 0.2) || drop(u, v, 0.34, 0.34, 0.17)],
+  ['flood', 'gold', (u, v) => (Math.abs(u) < 0.58 && Math.abs(v + 0.12 - Math.sin(u * 6) * 0.13) < 0.09) || (Math.abs(u) < 0.58 && Math.abs(v - 0.2 - Math.sin(u * 6) * 0.13) < 0.09) || bx(u, v, 0, 0.5, 0.58, 0.07)],
+  ['piety', 'gold', (u, v) => bx(u, v, 0, 0.24, 0.13, 0.32) || drop(u, v, 0, -0.28, 0.15) || bx(u, v, 0, 0.56, 0.3, 0.06)],
+  ['chant', 'gold', (u, v) => dk(u, v, -0.16, 0.36, 0.18) || bx(u, v, -0.02, -0.06, 0.05, 0.44) || seg(u, v, 0, -0.46, 0.36, -0.26, 0.08)],
+  ['ardour', 'gold', (u, v) => ring2(u, v, 0.5, 0.07) || drop(u, v, 0, 0.14, 0.22)],
+  ['devout', 'gold', (u, v) => bx(u, v, 0, 0, 0.1, 0.58) || bx(u, v, 0, -0.2, 0.34, 0.1)],
+  ['prayer', 'gold', (u, v) => bx(u, v, 0, 0, 0.5, 0.38) && Math.abs(u) > 0.04 && !(Math.abs(u) > 0.12 && Math.abs(u) < 0.4 && [-0.14, 0.08].some((y) => Math.abs(v - y) < 0.04))],
+  ['again', 'gold', (u, v) => (ring2(u, v, 0.4, 0.08) && !(u > 0.05 && v < -0.05)) || (v > -0.62 && v < -0.18 && u > 0 && u < 0.36 && u - 0 < (v + 0.62) * 0.9)],
+  ['quicken', 'gold', (u, v) => (Math.abs(v) > 0.46 && Math.abs(v) < 0.58 && Math.abs(u) < 0.4) || (Math.abs(v) <= 0.46 && Math.abs(u) < Math.abs(v) * 0.78 + 0.06)],
+  ['tempo', 'gold', (u, v) => (v > -0.55 && v < 0.5 && Math.abs(u) < (v + 0.55) * 0.42 + 0.06 && !(v > -0.3 && v < 0.36 && Math.abs(u) < (v + 0.55) * 0.42 - 0.06)) || seg(u, v, 0, 0.36, 0.2, -0.4, 0.05) || bx(u, v, 0, 0.5, 0.5, 0.07)],
+  ['reckon', 'gold', (u, v) => dk(u, v, 0, 0, 0.26) || rays(u, v, 0.38, 0.6, 0.07)],
+  ['doom', 'gold', (u, v) => dk(u, v, 0.22, 0.22, 0.24) || seg(u, v, 0.1, 0.1, -0.5, -0.5, 0.08) || seg(u, v, 0.3, -0.02, -0.1, -0.5, 0.05) || seg(u, v, -0.02, 0.3, -0.5, -0.1, 0.05)],
+  ['herald', 'gold', (u, v) => (u > -0.52 && u < 0.34 && Math.abs(v) < 0.07 + (u + 0.52) * 0.34) || bx(u, v, 0.42, 0, 0.08, 0.5) || bx(u, v, -0.56, 0, 0.06, 0.14)],
+  ['fortune', 'gold', (u, v) => [0.38, 0.04, -0.3].some((y) => bx(u, v, 0, y, 0.44, 0.11))],
+  ['purse', 'gold', (u, v) => dk(u, v, 0, 0.18, 0.4) || (v > -0.56 && v < -0.2 && Math.abs(u) < 0.1 + (-0.2 - v) * 0.5) || bx(u, v, 0, -0.22, 0.24, 0.05)],
+  ['grace', 'gold', (u, v) => (el(u, v, 0, -0.38, 0.4, 0.15) && !el(u, v, 0, -0.38, 0.24, 0.06)) || dk(u, v, 0, 0.24, 0.26)],
+  ['blessing', 'gold', (u, v) => star4(u, v, -0.14, 0.08, 0.42) || star4(u, v, 0.34, -0.34, 0.24) || star4(u, v, 0.36, 0.38, 0.18)],
+  ['mercy', 'gold', (u, v) => dk(u, v, -0.05, 0.02, 0.52) && !dk(u, v, 0.2, -0.14, 0.44)],
+];
 // Round 72: the Mendicant's and the Anchoress's sets.
 Object.assign(BADGE_GLYPH, {
   iron: (u, v) => (Math.abs(v - 0.3) < 0.12 && Math.abs(u) < 0.5) || [-0.34, 0, 0.34].some((x) => v < 0.3 && v > -0.5 + Math.abs(x) * 0.4 && Math.abs(u - x) < (0.3 - v) * 0.22 + 0.03),
@@ -787,6 +863,7 @@ export default {
     // Round 85: passive icons as reliefs in their kind's colour (crimson offence, blue defence, gold utility).
     passive: () => PASS_ICONS.map(([, ramp, g]) => riteButton(19, g, RITE_INK[ramp] ? ramp : 'gold', 0.6)),
     talent: () => TAL_ICONS.map(([, ramp, g]) => riteButton(21, g, ramp, 0.6)),
+    talnode: () => TAL_NODE_ICONS.map(([, ramp, g]) => riteButton(19, g, ramp, 0.6)),
     ring: () => [ring()], knob: () => [button(32, GLYPH.knob)], bag: () => [button(26, GLYPH.bag)], close: () => [button(22, GLYPH.close)],
   },
 };

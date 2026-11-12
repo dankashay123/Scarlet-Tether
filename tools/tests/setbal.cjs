@@ -26,12 +26,14 @@ const BUILDS = [['none', null, null], ...SETS.map((k) => [k, k, null]), ...SETS.
   const b = await chromium.launch(); const p = await (await b.newContext({ ...devices['iPhone 13 landscape'] })).newPage();
   const errs = []; p.on('pageerror', (e) => errs.push(String(e.stack || e)));
   await p.goto('http://localhost:8123/?run'); await p.waitForTimeout(1500); if (process.env.SETK) await p.evaluate((o) => Object.assign(HS.SETK, o), JSON.parse(process.env.SETK)); // SETK='{"choir":1.5}' tries other set numbers
+  // PASSIVES=a,b,c,d wears passives, TALENTS='{"might":5}' learns talents, LVL sets the Saint level (round 89).
+  await p.evaluate(([P, T, L]) => { window.__PAS = P; window.__TAL = T; window.__LVL = L; }, [(process.env.PASSIVES || '').split(',').filter(Boolean), JSON.parse(process.env.TALENTS || '{}'), +(process.env.LVL || 60)]);
   const rows = [];
   for (const [name, main, second] of BUILDS.filter(([n]) => !ONLY.length || ONLY.includes(n))) for (const seed of seeds) {
     await p.evaluate(([st, main, second, R, seed, ENCH, ENCHT, HERO, WOUNDS, HPK]) => {
       // The same dice for every build: items, map and crowd come from one seed.
       let x = seed * 2654435761 >>> 0; Math.random = () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; };
-      window.HS_AUTOSTIG = true; HS.tut.on = false; HS.DEV.god = false; HS.SAVE.virtues = {}; HS.SAVE.altar = { known: [], sockets: {} }; HS.SAVE.passives = []; HS.SAVE.riteXp = {};
+      window.HS_AUTOSTIG = true; HS.tut.on = false; HS.DEV.god = false; HS.SAVE.virtues = {}; HS.SAVE.altar = { known: [], sockets: {} }; HS.SAVE.passives = window.__PAS || []; HS.SAVE.talents = window.__TAL || {}; HS.SAVE.riteXp = {};
       const il = st, slots = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic', 'bow', 'quiver'];
       HS.SAVE.equip = {}; for (const sl of slots) HS.SAVE.equip[sl] = HS.makeItem(sl, 2, 'X', undefined, il);
       if (main) {
@@ -41,7 +43,7 @@ const BUILDS = [['none', null, null], ...SETS.map((k) => [k, k, null]), ...SETS.
         for (const sl of ['bow', 'quiver']) HS.SAVE.equip[sl] = HS.armsItem(main, sl, il);
       }
       // Each build casts its own set's rites (the braces were missing before round 50, so every build cast the none rites).
-      const r = R[main || 'none']; HS.SAVE.lvl = 60; HS.SAVE.hero = HERO; HS.SAVE[HERO === 'mendicant' ? 'mrites' : HERO === 'anchoress' ? 'arites' : 'rites'] = { m1: r[0], m2: r[1], pen: r[2] };
+      const r = R[main || 'none']; HS.SAVE.lvl = window.__LVL || 60; HS.SAVE.hero = HERO; HS.SAVE[HERO === 'mendicant' ? 'mrites' : HERO === 'anchoress' ? 'arites' : 'rites'] = { m1: r[0], m2: r[1], pen: r[2] };
       slots.forEach((sl, i) => { if (ENCH[i]) { HS.SAVE.equip[sl].ench = ENCH[i]; HS.SAVE.equip[sl].enchT = ENCHT; } });
       HS.game.nextDiff = st - 1; HS.game.nextStratum = 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.game.stigAt = 1e9; HS.game.run.wounds = WOUNDS; HS.applyGear(true);
       for (const e of HS.enemies) e.dead = true;
