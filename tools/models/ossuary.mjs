@@ -101,7 +101,7 @@ function gleaner(t = 0, atk = -1) {
   S.add(capsule([hx - 2, hy - 2.4, -0.6], [hx - 6, hy - 4.6, -1.4], 2.6, 0.8, 'rag'), 1.4);
   S.sub(ellipsoid([hx + 2.8, hy + 0.8, 3.4], [2.6, 2.8, 3], 'hollow'), 0.5);
   S.add(ellipsoid([hx + 3.2, hy + 2.8, 2.6], [1.4, 0.9, 1.2], 'ashDark'), 0.4);
-  const f = render(S, w, h, MM, { ground: gy });
+  const f = render(S, w, h, MM, { ground: gy, rich: { melt: 1.3, meltAdd: 0.3, detail: 0.7 } });
   eye(f, hx + 2, hy, 'ember0', 'ember2'); eye(f, hx + 4.2, hy + 0.4, 'ember1');
   // Drag marks in the dust behind the sack.
   if (atk < 0) { free(f, sx - 8 - odd(t) * 2, gy - 1, 'stone4'); free(f, sx - 11, gy - 2, 'stone5'); }
@@ -146,7 +146,7 @@ function cinderMoth(t = 0, atk = -1) {
     S.add(capsule([bx + 5, by + s * 0.8, 4], [bx + 9.5, by + s * 3.4, 4], 1.1, 0.9, 'furDark'), 0.3);
   }
   wings(S, bx, by, spread, 1);
-  const f = render(S, w, h, MM, { ground: gy, contourDepth: 2.5 });
+  const f = render(S, w, h, MM, { ground: gy, contourDepth: 2.5, rich: { melt: 1.3, meltAdd: 0.3, detail: 0.7 } });
   eye(f, bx + 5, by - 1, 'ember0');
   // Sparks shed from the burning wings.
   if (atk < 0) { free(f, bx - 10 - (t % 2) * 2, by + 2 + Math.floor(t) % 3, 'ember1'); free(f, bx - 6, by + 10 + Math.floor(t * 2) % 3, 'ember2'); }
@@ -208,7 +208,7 @@ function abbot({ bob = 0, sw = 0, swB = -sw, lift = [0, 0], t = 0, pose = 'walk'
   S.sub(cut, 0.6);
   S.paint({ mat: 'habit', f: (x, y, z) => Math.max(cut.f(x, y, z) - 0.9, -hood.f(x, y, z) - 0.7) });
   S.add(ellipsoid([fc[0] + 0.6, fc[1] + 1.6, fc[2] - 1.2], [1.8, 2.2, 1.6], 'ashDark'), 0.6);
-  const f = Object.assign(render(S, RW, RH, MM, { ground: GY }), { ax: CX, ay: GY - 1 });
+  const f = Object.assign(render(S, RW, RH, MM, { ground: GY, rich: { melt: 1.4, meltAdd: 0.4, detail: 0.85 } }), { ax: CX, ay: GY - 1 });
   eye(f, fc[0] - 0.6, fc[1] - 0.8, 'flame0', 'flame2'); eye(f, fc[0] + 1.8, fc[1] - 0.6, 'flame1');
   // The candle on the skull's crown and the skull's lit sockets.
   const cn = [sk[0], sk[1] - 7];

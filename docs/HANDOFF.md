@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 78 (build 78, on `master`). Read
+Last updated 2026-11-12, after round 79 (build 79, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -296,6 +296,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 79:** the three boxiest models re-sculpted (`elite.mjs`). The
+  Coffin Golem is a barrel chest of stone swelling into shoulders and hips,
+  with the coffin lid painted onto the chest as a breastplate (`lid(x, y)`,
+  straps and cross kept to it). The Bellwright's bell hangs tipped from a
+  wooden yoke over his shoulder with leather straps (`TB` tips its parts).
+  The Organist has no case: a hump under the robe, a rounded wind-chest and
+  seven pipes fanning out of his back. `rich` shading now also covers
+  commons (`common.mjs` `RICH`), rares, the Ossuary's commons and rare, and
+  the three heroes with all their set looks (`base.mjs`, calmer numbers).
+  `NORICH=1` renders the old shading for a comparison sheet.
 
 - **Round 78:** the owner found elites and Wardens looked pieced together.
   `render()` takes `rich: true` (`sdf.mjs`; all elites and Wardens through

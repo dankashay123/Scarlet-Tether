@@ -24,7 +24,9 @@ const MM = {
 };
 
 const A = (f, ax, ay) => Object.assign(f, { ax, ay });
-const R = (S, w, h, ground, o = {}) => render(S, w, h, MM, { ground, ...o });
+const R = (S, w, h, ground, o = {}) => render(S, w, h, MM, { ground, rich: RICH, ...o });
+// Round 79: commons take the blended shading too, a little calmer (they are small).
+const RICH = process.env.NORICH ? false : { melt: 1.3, meltAdd: 0.3, detail: 0.7 };
 const sin = Math.sin, cos = Math.cos, PI = Math.PI;
 // A two-pixel glowing eye (bright over dim).
 const D = (f, x, y, c) => dot(f, Math.floor(x), Math.floor(y), c);

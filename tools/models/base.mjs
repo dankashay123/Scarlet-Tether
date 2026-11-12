@@ -160,7 +160,7 @@ export function saintModel(pose = {}) {
   const J = { cx, B, X, hx, hy, hand, fc, swing, hero };
   if (skin) SKINS[skin].add?.(S, J);
   if (HR) HR.add(S, J);
-  const f = render(S, FW, 68, MATS, { ground: 62 });
+  const f = render(S, FW, 68, MATS, { ground: 62, rich: process.env.NORICH ? false : { melt: 1.25, meltAdd: 0.25, detail: 0.7, fall: 0.08 } }); // round 79: the heroes shade like the elites
   // Hand-placed touches: the two eyes (green; ember for the Mendicant).
   const eye = HR ? HR.eyes : ['flame0', 'flame2', 'flame3'];
   if (!blink) for (const ex of [fc[0] - 1.3, fc[0] + 1]) { dot(f, ex, fc[1] - 0.6, eye[0]); dot(f, ex, fc[1] + 0.4, eye[1]); }

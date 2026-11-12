@@ -28,7 +28,7 @@ const MM = {
 };
 
 // ---------------------------------------------------------------- helpers ---
-const frame = (S, o = {}) => Object.assign(render(S, W, H, MM, { ground: GY, ...o }), { ax: CX, ay: GY - 1 });
+const frame = (S, o = {}) => Object.assign(render(S, W, H, MM, { ground: GY, rich: process.env.NORICH ? false : { melt: 1.4, meltAdd: 0.4, detail: 0.85 }, ...o }), { ax: CX, ay: GY - 1 });
 // Pixel coordinates for hand-placed touches (model x 30.5 is pixel 30).
 const px = (f, x, y, c) => dot(f, Math.floor(x), Math.floor(y), c);
 const eye = (f, x, y, top, bot) => { px(f, x, y, top); if (bot) px(f, x, y + 1, bot); };

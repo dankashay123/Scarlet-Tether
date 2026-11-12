@@ -429,22 +429,25 @@ function abbess(t = 0, atk = 0) {
 function golem(t = 0, atk = 0) {
   const S = new Scene(), B = atk ? 0 : bobAt(t) / 1.22, cx = 42;
   legs(S, { x: cx, hipY: 72 + B, footY: 100, z: 6.5, thigh: 5.4, shin: 5, mt: 'statueDark', ms: 'statue', mf: 'statueDark', foot: [5.6, 3, 4.4], t: atk ? 0.3 : t, stride: atk ? 1.5 : 2.6, lift: 3, k: 1.2, knee: 0.6, xs: 6, spread: 6.5 });
-  // Coffin chest: a tapered hexagonal casket.
+  // Round 79: one body, not a box with limbs: a barrel chest of piled stone that
+  // swells into the shoulders and hips, wearing the coffin's lid as a breastplate
+  // (painted onto the chest, so it bends with the body).
   const top = 36 + B, bot = 74 + B, mid = 46 + B;
-  S.add({ mat: 'wood', bb: [cx - 14, top - 1, -9, cx + 14, bot + 1, 9], f: (x, y, z) => {
-    const w = y < mid ? 9 + (y - top) / (mid - top) * 4 : 13 - (y - mid) / (bot - mid) * 4;
-    const qx = Math.abs(x - cx) - w, qy = Math.max(top - y, y - bot), qz = Math.abs(z) - 6.6;
-    return Math.min(Math.max(qx, qy, qz), 0) + Math.hypot(Math.max(qx, 0), Math.max(qy, 0), Math.max(qz, 0)) - 1.4; } }, 0);
-  // Iron corner straps and a gold cross on the lid.
-  S.paint({ mat: 'ironDark', f: (x, y) => Math.min(Math.abs(y - (top + 3)), Math.abs(y - (bot - 3))) - 1 });
-  S.paint({ mat: 'gold', f: (x, y, z) => Math.max(Math.min(Math.max(Math.abs(x - cx - 1) - 1.3, Math.abs(y - (mid + 6)) - 15), Math.max(Math.abs(x - cx - 1) - 7, Math.abs(y - (mid - 1)) - 1.3)), -z + 5) });
+  S.add(bumpy(ellipsoid([cx, 54 + B, 0], [14.5, 20, 9.5], 'statue'), 0.6, 0.3, 2), 3);
+  S.add(bumpy(ellipsoid([cx, 71 + B, 0], [11.5, 7, 8], 'statueDark'), 0.5, 0.4, 5), 3.5);
+  S.add(ellipsoid([cx, 38 + B, -1], [15, 7, 8], 'statue'), 3.5);
+  const lid = (x, y) => { const w = y < mid ? 7 + (y - top) / (mid - top) * 4 : 11 - (y - mid) / (bot - mid) * 4.5; return Math.max(Math.abs(x - cx - 1) - w, top + 2 - y, y - (bot - 2)); };
+  S.paint({ mat: 'wood', f: (x, y, z) => Math.max(lid(x, y), -z + 3) });
+  // Iron straps across the lid and a gold cross on it.
+  S.paint({ mat: 'ironDark', f: (x, y, z) => Math.max(Math.min(Math.abs(y - (top + 6)), Math.abs(y - (bot - 6))) - 1, lid(x, y) - 2.5, -z + 3) });
+  S.paint({ mat: 'gold', f: (x, y, z) => Math.max(Math.min(Math.max(Math.abs(x - cx - 1) - 1.3, Math.abs(y - (mid + 7)) - 13), Math.max(Math.abs(x - cx - 1) - 6, Math.abs(y - (mid + 1)) - 1.3)), -z + 5) });
   // Reliquary skulls set into the wood.
-  for (const [sx, sy, sz] of [[-8, 58, 6], [8, 64, 6], [-6, 42, 6.4]]) S.add(sphere([cx + sx, sy + B, sz], 2.8, 'bone'), 0.6);
+  for (const [sx, sy, sz] of [[-8, 58, 7.5], [8, 64, 7.5], [-6, 44, 7.5]]) S.add(sphere([cx + sx, sy + B, sz], 2.8, 'bone'), 0.6);
   // Shoulders of piled bone.
   const lift = atk === 1 ? -22 : atk === 2 ? -4 : 0;
   for (const side of [-1, 1]) {
     const shz = side * 8, sh = [cx + side * 12, 40 + B, shz];
-    S.add(bumpy(sphere(sh, 6, side < 0 ? 'boneDark' : 'bone'), 0.5, 0.5, side + 3), 2);
+    S.add(bumpy(sphere(sh, 6.6, side < 0 ? 'boneDark' : 'bone'), 0.5, 0.5, side + 3), 3);
     const swing = atk ? 0 : Math.sin(t * PI / 2 + (side > 0 ? 0 : PI)) * 3;
     const fist = atk === 1 ? [cx + side * 6, 22, shz] : atk === 2 ? [cx + 20 + side * 2, 52, shz + 2] : [cx + side * 16 + swing, 70 + B, shz];
     const el = atk === 1 ? [cx + side * 14, 28, shz] : atk === 2 ? [cx + 16 + side * 3, 44, shz] : [cx + side * 17 + swing * 0.3, 55 + B, shz];
@@ -464,7 +467,7 @@ function golem(t = 0, atk = 0) {
   S.paint({ mat: 'ironDark', f: (x, y) => Math.abs(y - (hy - 3)) - 1.2 });
   const o = shoot(S, { w: 100, h: 112, s: 1.22, gx: cx, gy: 100, ax: 50, ay: 108 });
   for (const ex of [hx + 1, hx + 4.4]) o.dot(ex, hy + 0.4, 'ember0');
-  for (const [sx, sy] of [[-8, 58], [8, 64], [-6, 42]]) { o.dot(cx + sx - 0.8, sy + B, 'ink0'); o.dot(cx + sx + 0.9, sy + B, 'ink0'); }
+  for (const [sx, sy] of [[-8, 58], [8, 64], [-6, 44]]) { o.dot(cx + sx - 0.8, sy + B, 'ink0'); o.dot(cx + sx + 0.9, sy + B, 'ink0'); }
   return o.f;
 }
 
@@ -619,13 +622,17 @@ function bellwright(t = 0, atk = 0) {
   const S = new Scene(), cx = 56, B = atk ? 0 : bobAt(t) / 1.25;
   const lean = atk === 1 ? -4 : atk === 2 ? 6 : 1;
   legs(S, { x: cx, hipY: 84 + B, footY: 110, z: 8, thigh: 6.4, shin: 5.4, mt: 'sack', ms: 'fleshDark', mf: 'leather', foot: [6, 3, 5], t: atk ? 0.5 : t, stride: atk ? 2 : 5, lift: 2.5, k: 2.6, knee: 2 });
-  // The bell on his back, mouth down, its rim catching the light.
-  const bx = cx - 14 + lean * 0.4, by = 46 + B;
-  S.add(skirt(bx, by - 18, by + 12, 8, 16, -8, 0.9, 'goldDark'), 0);
-  S.add(sphere([bx, by - 19, -8], 8.5, 'goldDark'), 2);
-  S.add(torus([bx, by + 12, -8], 15.5, 2.2, 1.35, 'gold'), 0.6);
-  S.paint({ mat: 'gold', f: (x, y) => Math.abs(y - (by - 4)) - 1.1 });
-  S.sub(capsule([bx - 6, by - 10, 5], [bx + 3, by + 4, 7], 0.8, 0.6, 'void'), 0.5);
+  // Round 79: the bell hangs from a wooden yoke across his shoulders, tipped with his
+  // hunch and half hidden behind him, held by leather straps over the robe.
+  const bx = cx - 25 + lean * 0.4, by = 52 + B, tip = -0.2;
+  const TB = (p) => rotZ(p, [bx, by - 16], tip);
+  S.add(TB(skirt(bx, by - 15, by + 14, 7, 15, -7, 0.9, 'goldDark')), 0.4);
+  S.add(TB(sphere([bx, by - 15, -7], 7.6, 'goldDark')), 1.6);
+  S.add(TB(torus([bx, by + 14, -7], 14.6, 2.3, 1.35, 'gold')), 0.6);
+  S.add(TB(torus([bx, by - 2, -7], 10.4, 1.2, 1.2, 'gold')), 0.3);
+  S.add(TB(capsule([bx, by - 22, -7], [bx, by - 28, -7], 2.2, 1.8, 'ironDark')), 0.8);
+  S.add(capsule([bx - 8, by - 26, -7], [cx + 12 + lean, 38 + B, -2], 2.8, 2.6, 'wood'), 1.2);
+  for (const sx of [cx - 2, cx + 8]) S.add(capsule([sx + lean * 0.5, 38 + B, 9], [sx + 4 + lean * 0.5, 66 + B, 13.5], 1.5, 1.5, 'leather'), 0.8);
   // Hunched torso and sack robe.
   S.add(bumpy(ellipsoid([cx + 2 + lean * 0.6, 58 + B, 1], [17, 18, 13], 'sack'), 0.3, 0.3, 4), 3);
   S.add(folds(skirt(cx + 2, 70 + B, 96, 16, 18, 1, 0.85, 'sack'), { cx: cx + 2, n: 9, amp: 0.7, y0: 72, y1: 96 }), 2);
@@ -825,10 +832,16 @@ function organist(t = 0, atk = 0) {
   const S = new Scene(), cx = 56, B = atk ? 0 : bobAt(t) / 1.25;
   const lean = atk === 1 ? -4 : atk === 2 ? 5 : 2;
   legs(S, { x: cx, hipY: 82 + B, footY: 110, z: 7, thigh: 5, shin: 4.2, mt: 'slate', ms: 'silt', mf: 'leather', foot: [5, 2.6, 4], t: atk ? 0.5 : t, stride: atk ? 2 : 4.6, lift: 2.5, k: 2, knee: 2 });
-  // The organ on his back: a case and a rank of pipes.
-  const ox = cx - 12 + lean * 0.4, oy = 54 + B;
-  S.add(box([ox, oy, -8], [11, 14, 6], 1.2, 'wood'), 0);
-  for (let k = 0; k < 7; k++) { const x = ox - 9 + k * 3, hgt = 16 + Math.abs(3 - k) * -3 + 14; S.add(capsule([x, oy - 10, -6 + (k % 2)], [x, oy - 10 - hgt, -6 + (k % 2)], 1.5, 1.5, k % 2 ? 'gold' : 'iron'), 0); S.sub(capsule([x, oy - 10 - hgt + 3, -4.4 + (k % 2)], [x, oy - 10 - hgt + 5, -4.4 + (k % 2)], 0.7, 0.7, 'void'), 0.2); }
+  // Round 79: no case. The organ has grown into him: a hump under the sodden robe,
+  // a rounded wind-chest sunk into it, and the pipes fanning up out of his back.
+  const ox = cx - 11 + lean * 0.4, oy = 54 + B;
+  S.add(bumpy(ellipsoid([ox + 2, oy + 6, -3], [13, 15, 9], 'slate'), 0.4, 0.3, 6), 4);
+  S.add(ellipsoid([ox, oy - 7, -4], [11.5, 4.6, 6.5], 'wood'), 2);
+  S.paint({ mat: 'ironDark', f: (x, y, z) => Math.max(Math.abs(y - (oy - 6)) - 0.9, Math.abs(x - ox) - 12, Math.abs(z + 4) - 8, -(Math.hypot((x - ox) / 11.5, (y - (oy - 7)) / 4.6) - 0.55)) });
+  for (let k = 0; k < 7; k++) { const u = k - 3, x = ox + u * 3.1, hgt = 30 - Math.abs(u) * 4.2 + (k % 2) * 2, fan = u * 0.9, z = -5 + (k % 2) * 1.2;
+    S.add(capsule([x, oy - 8, z], [x + fan, oy - 8 - hgt, z], 1.9, 1.7, k % 2 ? 'gold' : 'iron'), 0.5);
+    S.add(sphere([x + fan * 0.12, oy - 12, z + 0.4], 2.3, 'ironDark'), 0.3);
+    S.sub(capsule([x + fan * 0.8, oy - 8 - hgt + 4, z + 1.6], [x + fan * 0.75, oy - 8 - hgt + 7, z + 1.6], 0.8, 0.8, 'void'), 0.2); }
   // Body: a sodden robe, hunched forward.
   S.add(bumpy(ellipsoid([cx + 3 + lean * 0.6, 62 + B, 2], [12, 14, 10], 'slate'), 0.3, 0.3, 2), 3);
   S.add(folds(skirt(cx + 3, 70 + B, 92, 12, 14, 2, 0.85, 'slate'), { cx: cx + 3, n: 8, amp: 0.6, y0: 72, y1: 92 }), 2);
