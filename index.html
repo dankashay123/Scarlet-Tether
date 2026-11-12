@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '73';
+const BUILD = '74';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '74': ['THE MENDICANT\'S ALMSGIVER\'S BOWL SENDS ITS WAVE FROM 4 PIECES (WIDER AND MORE OFTEN AT 6). THE GAOLER\'S KEYS THROW CHAINS EVERY 4TH BLOW AND DRAG FOES IN FROM FARTHER. THE CRACKED BELL\'S 6-PIECE RING HITS X3.', 'THE LEVEL-UP SCREEN IS DARKER, SO NOTHING SHOWS THROUGH THE CARDS. LOCKED RITES ARE EASIER TO READ.', 'FOES WADING IN THE DROWNED NAVE LEAVE RIPPLES.', 'A SAINT LEVEL NOW NAMES ONLY YOUR OWN CLASS\'S RITES, AND TELLS YOU WHEN THE NEXT ONE OPENS.'],
   '73': ['THE ANCHORESS\'S SHARDS ARE ICE-BLUE CRYSTALS THAT HOVER IN A RING ABOVE HER HEAD. RITES THAT THROW THEM BRING THEM DOWN TO CIRCLE HER.', 'LEVEL-UP CARDS ONLY OFFER WHAT YOUR CLASS AND YOUR CHOSEN RITES USE. EACH CLASS HAS A CARD OF ITS OWN: ORBITING NAILS, AFTERSHOCK AND RELIQUARY\'S CALL.'],
   '72': ['EACH CLASS NOW HAS ITS OWN FIVE SETS AND STARTER SET. THE MENDICANT: THE BEGGAR KING\'S IRON, THE WANDERER\'S ROAD, THE ALMSGIVER\'S BOWL, THE GAOLER\'S KEYS AND THE CRACKED BELL. THE ANCHORESS: THE SHATTERED RELIQUARY, THE GLASS MARTYR, THE MOTHER\'S PSALTER, THE VEILED LANTERN AND THE THORNED CRUCIBLE.', 'SET PIECES YOUR MENDICANT OR ANCHORESS ALREADY OWNS BECOME THE MATCHING SET OF THEIR OWN.', 'THE ANCHORESS RAISES HER RELIQUARY AS HER SHARDS FIRE. HITS ON ONE FOE ADD INTO ONE NUMBER.', 'THE FORGE\'S AFFIXES TAB LISTS EVERY LINE YOU CAN CUT. NEW LINES: A CHANCE TO HIT TWICE, LIGHTNING EVERY 12TH HIT, KILLS THAT BURST.'],
   '71': ['A NEW CLASS: THE ANCHORESS. RELIQUARY SHARDS CIRCLE HER AND FIRE ON THEIR OWN. 18 RITES OF HER OWN, HER SET THE SHATTERED RELIQUARY, HER ARMS AND SIX HALLOWED PIECES. MAKE A NEW CHARACTER TO PLAY HER.', 'GEAR CAN NOW CARRY GRAVEN AND BEATIFIED LINES, TWO OF EACH. GRAVEN LINES SOMETIMES DROP ON RARE AND BETTER PIECES. BEATIFIED LINES NEVER DROP.', 'THE FORGE HAS AN AFFIXES TAB: CUT GRAVEN LINES FOR EMBERSTONES AND GOLD, AND BEATIFIED LINES FOR FAR MORE AND A RELIQUARY TEAR. TEARS ARE RARE: THE WEEPING RELIQUARY AND WARDENS OF STATION X AND DEEPER CAN DROP ONE.'],
@@ -1486,7 +1487,7 @@ function addToll(e) {
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
 // fourOf(id): a set's damage at 4 or 5 pieces (fourBy overrides SETK.four for one set).
 const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
-const SETK = { choirHp: 2, choirHp6: 3, choirR: 110, fontHp: 4, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 7, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 3.5, bound4: 2.8, choir4: 2.2, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 155 } , shardPer: 15, crushK: 3, momK: 12, almsMax: 40, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, thornK: 30, crushK6: 5, ringK6: 2, momK6: 25, almsK6: 3.5, fetK6: 35, thornK6: 150, psalK6: 3, lampK6: 150, six: { iron: 1.25, alms: 2, gaol: 2, thorn: 1.5, glass: 1.4 } };
+const SETK = { choirHp: 2, choirHp6: 3, choirR: 110, fontHp: 4, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 7, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 3.5, bound4: 2.8, choir4: 2.2, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 155 } , shardPer: 15, crushK: 3, momK: 12, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, thornK: 30, crushK6: 5, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 35, thornK6: 150, psalK6: 3, lampK6: 150, six: { iron: 1.25, alms: 2, gaol: 2, thorn: 1.5, glass: 1.4 } };
 const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 2 };
 // Gear per kill, before the Station's multiplier. Kept low: progress should take farming.
 const DROP = { kill: 0.003, rare: 0.1, elite: 0.5 }; // hp: the average MON Warden
@@ -1840,6 +1841,13 @@ function updateDrips(dt) {
     if ((player.wadeT = (player.wadeT || 0) - dt) <= 0) { player.wadeT = mv > 20 ? 0.16 : 0.8; ripples.push({ x: player.x, y: player.y + 1, t: 0, max: 0.6, r: mv > 20 ? 14 : 10, a: 0.6 }); }
   }
   if (player) { player.wx = player.x; player.wy = player.y; }
+  // Round 74: foes wading in view ring the flood too (smaller, capped).
+  if (!LOWFX && ripples.length < 36) for (const e of enemies) {
+    if (e.dead || e.fly || Math.abs(e.x - player.x) > W / 2 + 10 || Math.abs(e.y - player.y) > H / 2 + 10) continue;
+    if ((e.wadeT = (e.wadeT ?? rand(0, 0.4)) - dt) > 0) continue;
+    const mv = Math.abs(e.x - (e.wx ?? e.x)) + Math.abs(e.y - (e.wy ?? e.y)); e.wx = e.x; e.wy = e.y; e.wadeT = rand(0.3, 0.45);
+    if (mv > 2 && inWater(e.x, e.y)) { ripples.push({ x: e.x, y: e.y + 1, t: 0, max: 0.5, r: Math.min(16, 6 + (e.r || 8) * 0.5), a: 0.4 }); if (ripples.length >= 36) break; }
+  }
   for (const r of ripples) r.t += dt;
   ripples = ripples.filter((r) => r.t < r.max);
 }
@@ -3095,8 +3103,8 @@ function gainSaintXp(n) {
   while (SAVE.lvl < MAX_SAINT && SAVE.lxp >= lvNeed(SAVE.lvl)) {
     SAVE.lxp -= lvNeed(SAVE.lvl); SAVE.lvl++;
     if (player && game.scene === 'wound') nums.push({ x: player.x, y: player.y - 84, v: `SAINT LEVEL ${SAVE.lvl}`, t: 0, color: PAL.holy0, crit: true });
-    const r = Object.keys(RITE_LV).find((id) => RITE_LV[id] === SAVE.lvl);
-    if (player) { toast(r ? `SAINT LEVEL ${SAVE.lvl}: NEW RITE, ${RITE_BY[r].name}` : `SAINT LEVEL ${SAVE.lvl}: A TALENT POINT`, 2.6); game.toastColor = PAL.holy0; }
+    const r = Object.keys(RITE_LV).find((id) => RITE_LV[id] === SAVE.lvl && RITE_SLOTS.some(([sl]) => riteList(sl).some((q) => q.id === id))), nx = nextRite(); // this class's rites only
+    if (player) { toast(r ? `SAINT LEVEL ${SAVE.lvl}: NEW RITE, ${RITE_BY[r].name}` : nx ? `SAINT LEVEL ${SAVE.lvl}. NEXT RITE AT ${nx.lv}` : `SAINT LEVEL ${SAVE.lvl}: A TALENT POINT`, 2.6); game.toastColor = PAL.holy0; }
   }
   if (SAVE.lvl >= MAX_SAINT) SAVE.lxp = 0;
 }
@@ -3705,8 +3713,8 @@ function renderRites() {
     if (!open) pill(`LEVEL ${RITE_LV[r.id]}`, cx, hy + hr - 3, PAL.flame1);
     else if (rk > 1) pill(`R${rk}`, cx, hy + hr - 3, PAL.gold1);
     let ty = hy + hr + 9; const nl = wrapW(r.name, b.w - 4, true).slice(0, 2);
-    for (const l of nl) { text(l, cx, ty, sel ? PAL.gold1 : open ? PAL.cloth0 : PAL.stone2, { ...small, align: 'center', bold: sel }); ty += 9; }
-    if (nl.length < 2 && ty + 10 <= b.y + b.h) text(fitText(VSETS[r.set].name.replace(/^THE /, ''), b.w - 4, SET_SHORT[r.set]), cx, ty, syn ? `rgb(${rgb})` : PAL.stone3, { ...small, align: 'center' }); // a two-line name on a short cell drops the set line
+    for (const l of nl) { text(l, cx, ty, sel ? PAL.gold1 : open ? PAL.cloth0 : PAL.stone1, { ...small, align: 'center', bold: sel }); ty += 10; }
+    if (nl.length < 2 && ty + 10 <= b.y + b.h) text(fitText(VSETS[r.set].name.replace(/^THE /, ''), b.w - 4, SET_SHORT[r.set]), cx, ty, `rgba(${rgb},${syn ? 1 : open ? 0.7 : 0.5})`, { ...small, align: 'center' }); // a two-line name on a short cell drops the set line
   });
   renderRiteDetail(L, focus);
 }
@@ -6443,8 +6451,8 @@ const VSETS = {
   rags: { name: "THE MENDICANT'S RAGS", piece: 'RAGGED', hero: 'mendicant', starter: true, slots: GEAR_SLOTS, bonus: [[2, '10% LESS DAMAGE TAKEN.'], [4, '+15% DAMAGE, +15% MAX HEALTH.']] },
   iron: { name: "THE BEGGAR KING'S IRON", piece: "BEGGAR KING'S", hero: 'mendicant', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BLOWS REACH 20% FARTHER.'], [4, `+${fourOf('iron')}% DAMAGE (+${SETK.four6}% AT 6). EVERY 4TH BLOW CRUSHES: X${SETK.crushK} DAMAGE, STUNS FOR 0.5 S.`], [6, `ALL YOUR DAMAGE X${SETK.six.iron}. EVERY 3RD BLOW CRUSHES FOR X${SETK.crushK6} AND SENDS A SHOCKWAVE THROUGH FOES AROUND YOU.`]] },
   road: { name: "THE WANDERER'S ROAD", piece: "WANDERER'S", hero: 'mendicant', slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+15% MOVE SPEED.'], [4, `+${fourOf('road')}% DAMAGE (+${SETK.four6}% AT 6). MOVING BUILDS MOMENTUM (UP TO 10). YOUR NEXT BLOW SPENDS IT: +${SETK.momK}% DAMAGE A STACK.`], [6, `MOMENTUM BUILDS TWICE AS FAST AND GIVES +${SETK.momK6}% A STACK. DASHES GIVE 5. A BLOW THAT SPENDS 5 OR MORE RELEASES A NOVA.`]] },
-  alms: { name: "THE ALMSGIVER'S BOWL", piece: "ALMSGIVER'S", hero: 'mendicant', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'BLOWS SWEEP 25% WIDER. KILLS HEAL 1% OF YOUR HEALTH.'], [4, `+${fourOf('alms')}% DAMAGE (+${SETK.four6}% AT 6). KILLS GIVE 2 ALMS (UP TO ${SETK.almsMax}): +${SETK.almsK}% DAMAGE EACH. THEY FADE 3 S AFTER YOUR LAST KILL.`], [6, `ALL YOUR DAMAGE X${SETK.six.alms}. EACH ALMS GIVES +${SETK.almsK6}% DAMAGE AND 0.5% LESS DAMAGE TAKEN. AT 20 OR MORE, EVERY 4TH BLOW SCATTERS A WAVE OF ALMS THROUGH FOES AROUND YOU. AT ${SETK.almsMax} YOUR BLOWS SET FOES ALIGHT.`]] },
-  gaol: { name: "THE GAOLER'S KEYS", piece: "GAOLER'S", hero: 'mendicant', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, 'BLOWS PUT 2 FETTERS ON FOES (UP TO 5). EACH SLOWS THEM 5%.'], [4, `+${fourOf('gaol')}% DAMAGE (+${SETK.four6}% AT 6). FETTERED FOES ARE DRAGGED TOWARD YOU AND TAKE ${SETK.fetK}% MORE DAMAGE PER FETTER.`], [6, `ALL YOUR DAMAGE X${SETK.six.gaol}. FOES TAKE ${SETK.fetK6}% MORE PER FETTER. THE 5TH FETTER LOCKS: THE FOE IS STUNNED FOR 2 S AND THE BLOW CRASHES THROUGH FOES AROUND IT FOR X3.`]] },
+  alms: { name: "THE ALMSGIVER'S BOWL", piece: "ALMSGIVER'S", hero: 'mendicant', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'BLOWS SWEEP 25% WIDER. KILLS HEAL 1% OF YOUR HEALTH.'], [4, `+${fourOf('alms')}% DAMAGE (+${SETK.four6}% AT 6). KILLS GIVE 2 ALMS (UP TO ${SETK.almsMax}): +${SETK.almsK}% DAMAGE EACH. THEY FADE 3 S AFTER YOUR LAST KILL. AT 20 OR MORE, EVERY 5TH BLOW SENDS A WAVE THROUGH FOES AROUND YOU.`], [6, `ALL YOUR DAMAGE X${SETK.six.alms}. EACH ALMS GIVES +${SETK.almsK6}% DAMAGE AND 0.5% LESS DAMAGE TAKEN. THE WAVE IS WIDER AND COMES EVERY 3RD BLOW. AT ${SETK.almsMax} YOUR BLOWS SET FOES ALIGHT.`]] },
+  gaol: { name: "THE GAOLER'S KEYS", piece: "GAOLER'S", hero: 'mendicant', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, 'BLOWS PUT 2 FETTERS ON FOES (UP TO 5). EACH SLOWS THEM 5%.'], [4, `+${fourOf('gaol')}% DAMAGE (+${SETK.four6}% AT 6). EVERY 4TH BLOW THROWS CHAINS: 2 FETTERS ON FOES NEARBY. FETTERED FOES ARE DRAGGED TOWARD YOU AND TAKE ${SETK.fetK}% MORE DAMAGE PER FETTER.`], [6, `ALL YOUR DAMAGE X${SETK.six.gaol}. FOES TAKE ${SETK.fetK6}% MORE PER FETTER. THE 5TH FETTER LOCKS: THE FOE IS STUNNED FOR 2 S AND THE BLOW CRASHES THROUGH FOES AROUND IT FOR X3.`]] },
   bell: { name: 'THE CRACKED BELL', piece: "BELL-RINGER'S", hero: 'mendicant', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'EVERY 6TH BLOW RINGS: A WAVE HITS EVERY FOE AROUND YOU.'], [4, `+${fourOf('bell')}% DAMAGE (+${SETK.four6}% AT 6). RINGS STUN FOR 0.6 S. STUNNED FOES TAKE ${SETK.stunK}% MORE DAMAGE.`], [6, `EVERY 3RD BLOW RINGS, TWICE AS WIDE AND X${SETK.ringK6} AS HARD. EACH RING GIVES 3 ZEAL.`]] },
   // The Anchoress's.
   shroud: { name: "THE ANCHORITE'S SHROUD", piece: "ANCHORITE'S", hero: 'anchoress', starter: true, slots: GEAR_SLOTS, bonus: [[2, '+1 RELIQUARY SHARD.'], [4, '+15% DAMAGE, +1 DASH CHARGE.']] },
@@ -7098,7 +7106,7 @@ function updateStatus(e, dt) {
     e.burn -= dt; statusTick(e, 'burnAcc', T.thurible.burn.dps * (e.hotBurn ? 1.5 : 1), dt, PAL.ember1); if (e.burn <= 0) e.hotBurn = false;
     if (rng() < dt * 10) parts.push({ kind: 'spark', x: e.x + rand(-4, 4), y: e.y - rand(4, 20), z: 0, vx: 0, vy: -24, vz: 0, c: pick([PAL.ember0, PAL.ember1]), life: 0.35 });
   }
-  if (sb('gaol', 4) && (e.fetT || 0) > game.time && e.fet > 0 && !e.boss && player) { const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy); if (d > 26 && d < 160) { e.kx = (e.kx || 0) + dx / d * 55 * dt * e.fet; e.ky = (e.ky || 0) + dy / d * 55 * dt * e.fet; } } // the Gaoler's Keys drag fettered foes in
+  if (sb('gaol', 4) && (e.fetT || 0) > game.time && e.fet > 0 && !e.boss && player) { const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy); if (d > 26 && d < SETK.gaolR + 30) { e.kx = (e.kx || 0) + dx / d * 75 * dt * e.fet; e.ky = (e.ky || 0) + dy / d * 75 * dt * e.fet; } } // the Gaoler's Keys drag fettered foes in
   e.slowK = ((e.thSlowT || 0) > game.time ? 0.7 : 1) * ((e.fetT || 0) > game.time ? 1 - 0.05 * (e.fet || 0) : 1) * (sb('thorn', 4) && (e.thornT || 0) > game.time ? 0.6 : 1);
   let inPool = false;
   for (const p of pools) {
@@ -7507,7 +7515,8 @@ function swingSets(a) {
   const every = sb('bell', 6) ? 3 : sbw('bell') ? 5 : sb('bell', 2) ? 6 : 0;
   if (every && p.blowN % every === 0) o.ring = sb('bell', 6) ? 120 : 70;
   if (sb('alms', 6) && (p.alms || 0) >= SETK.almsMax) o.fire = true;
-  if (sb('alms', 6) && (p.alms || 0) >= 20 && p.blowN % 4 === 0) o.alms = true;
+  if (sb('alms', 4) && (p.alms || 0) >= 20 && p.blowN % (sb('alms', 6) ? 3 : 5) === 0) o.alms = true; // round 74: the wave starts at 4 pieces
+  if (sb('gaol', 4) && p.blowN % 4 === 0) o.chains = true;
   return o;
 }
 function strikeSets(o, e) {
@@ -7522,7 +7531,8 @@ function afterSwingSets(o, a) {
   if (o.crush && sb('iron', 6)) maceHit(p.x + Math.cos(a) * 30, p.y + Math.sin(a) * 20, 70, MELEE.k, { rgb: '178,188,203', ramp: 'iron' });
   if (o.nova) maceRing(80, MELEE.k, { rgb: '242,220,182', ramp: 'gold' });
   if (wound('aftershock') && p.blowN % 5 === 0) maceRing(70, MELEE.k * (0.4 + 0.3 * wound('aftershock')), { rgb: '255,244,176', ramp: 'bone' });
-  if (o.alms) { maceRing(85, MELEE.k * 1.5, { rgb: '255,209,85', ramp: 'gold' }); vemit(p.x, p.y - 10, { n: LOWFX ? 4 : 12, ramp: 'gold', sp: 90, up: 50, life: 0.5, grav: 120, size: 2, glow: 4 }); }
+  if (o.chains) { for (const f of nearestFoes(p.x, p.y, 30, SETK.gaolR)) { f.fet = Math.min(5, ((f.fetT || 0) > game.time ? f.fet || 0 : 0) + 2); f.fetT = game.time + 4; } rings.push({ x: p.x, y: p.y, t: 0, max: 0.4, r: SETK.gaolR, color: '191,112,86', flat: true }); } // round 74: chains reach foes the mace cannot
+  if (o.alms) { maceRing(sb('alms', 6) ? SETK.almsR6 : SETK.almsR, MELEE.k * 1.5, { rgb: '255,209,85', ramp: 'gold' }); vemit(p.x, p.y - 10, { n: LOWFX ? 4 : 12, ramp: 'gold', sp: 90, up: 50, life: 0.5, grav: 120, size: 2, glow: 4 }); }
   if (o.ring) {
     maceRing(o.ring, MELEE.k * 0.8 * (sb('bell', 6) ? SETK.ringK6 : 1), { rgb: '142,174,171', ramp: 'teal', each: (e) => { if (sb('bell', 4) && !e.boss) e.bound = Math.max(e.bound || 0, 0.6); } });
     for (const r of [o.ring * 0.6, o.ring]) rings.push({ x: p.x, y: p.y, t: 0, max: 0.5, r, color: '255,209,85', flat: true });
@@ -8284,6 +8294,7 @@ function render() {
   mark('glow');
   const numMode = opt('nums'), placed = [];
   for (const n of nums) {
+    if (game.state === 'stig') break; // no numbers behind the level-up cards
     // OFF hides every number, damage taken too; DAMAGE TAKEN keeps only the Saint's.
     if (typeof n.v === 'number' && (numMode === 'off' || (numMode === 'taken' && n.color !== PAL.blood0) || (numMode === 'crits' && !n.crit && n.color !== PAL.blood0))) continue;
     const rise = 16 * Math.min(1, n.t * 6) + n.t * 8, pop = Math.max(0, 1 - n.t / 0.12);
@@ -9548,7 +9559,7 @@ function woundIcon(icon, x, y, t) {
 }
 function renderStigmata() {
   const S = game.stig, k = Math.min(1, S.t * 4);
-  ctx.fillStyle = `rgba(6,10,18,${0.8 * k})`; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = `rgba(6,10,18,${0.92 * k})`; ctx.fillRect(0, 0, W, H); // dark enough that HUD text under it cannot be read
   // Round 67: cards in the menus' style: navy glass, lit from the top in the rarity's colour, the icon in a hex.
   text(`LEVEL ${game.run.level}`, W / 2, 16, PAL.gold0, { align: 'center', sc: 2, glow: true });
   goldRule(W / 2 - 80, 39, 160, '255,209,85', true);

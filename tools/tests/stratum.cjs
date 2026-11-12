@@ -10,7 +10,7 @@ const S = process.argv[2];
   await p.goto('http://localhost:8123/?town'); await p.waitForTimeout(1000); await p.evaluate(() => { window.HS_AUTOSTIG = true; });
   await p.evaluate(() => { HS.tut.on = false; HS.SAVE.cleared = 2; HS.startDescent(); HS.descent.stratum = 2; });
   await p.waitForTimeout(250); await p.screenshot({ path: `${S}/shots/n1-panel.png` });
-  await p.evaluate(() => { HS.game.nextStratum = 2; HS.game.nextDiff = 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.game.stigAt = 1e9; HS.player.hp = HS.player.maxHp = 1e7; });
+  await p.evaluate(() => { HS.game.nextMap = 'rooms'; HS.game.nextStratum = 2; HS.game.nextDiff = 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.game.stigAt = 1e9; HS.player.hp = HS.player.maxHp = 1e7; });
   const info = await p.evaluate(() => { const c = {}; for (const e of HS.enemies) c[e.type] = (c[e.type] || 0) + 1; return JSON.stringify({ name: HS.room.name, stratum: HS.game.run.stratum, foes: HS.enemies.length, types: c }); });
   console.log('run', info);
   await p.waitForTimeout(400); await p.screenshot({ path: `${S}/shots/n2-start.png` });

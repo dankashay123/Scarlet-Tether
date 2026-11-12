@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 73 (build 73, on `master`). Read
+Last updated 2026-11-12, after round 74 (build 74, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -211,10 +211,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Mendicant set tuning.** The Almsgiver's Bowl (8.9) and the Gaoler's
-  Keys (7.4) trail at Station VI, where the Saint's sets run 14-16 (round
-  72 data). As a melee class he kills only what reaches him, so more area
-  (wider Alms waves, a pull) helps more than damage. Station XII is fine.
+- **Mendicant sets, a second look.** Round 74 gave the Alms and Gaol sets
+  more reach (VI: 12.0 and 10.2 kills a second, 3 seeds; XII 6.7 and 7.8)
+  and the Bell a x3 six-piece ring (XII 5.2, VI 13.8). The Beggar King's
+  Iron is now his lowest deep (4.9 at XII). Ask the owner how they feel.
+- **Whole-game review, what round 74 did not reach.** The sheets and
+  screens were looked over and are clean; ideas left: a third wind-up frame
+  for monster attacks, a longer hero dash (3 frames), a hint card in the
+  bag's empty right third on wide phones, the Descent panel's tight rows.
+  A brow gem for the Shattered Reliquary look was tried and dropped (it
+  vanishes on the 2x2 grid). Shackle Circle and Martyr's Ward effects were
+  checked and are fine (the old note below is stale).
 - **Anchoress follow-ups.** With the Hundred Nails gone from her list, rerun
   `HERO=anchoress setbal.cjs` at VI and XII with 4 seeds; the Glass Martyr
   swings between top at VI and bottom at XII. A crystal chime for the shards
@@ -289,6 +296,19 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 74:** a review pass over the whole game. Balance (Mendicant): the
+  Almsgiver's wave starts at 4 pieces (every 5th blow at 20+ Alms, radius
+  `SETK.almsR`; every 3rd and `almsR6` at 6); the Gaoler's Keys throw chains
+  every 4th blow at 4 pieces (2 Fetters on foes within `SETK.gaolR`) and
+  drag from farther and faster; the Bell's `ringK6` 3 (was 2). Menus: the
+  level-up screen's shade is 0.92 and damage numbers stop under it; locked
+  rites in the Rites grid are brighter and every set line shows in its
+  set's colour. Fix: the Saint-level toast named the first rite of any class
+  at that level (a Mendicant read "Nail Storm"); it now names only the
+  class's own and otherwise says when the next rite opens. Ambience: foes
+  wading in the Nave leave ripples (capped at 36, off under `LOWFX`).
+  `stratum.cjs` forces a room map (it failed on open maps now and then).
 
 - **Round 73:** the Anchoress's shards are crystal blades (fx `crystal`, 16
   headings, `crystal(i)` in `vfx.mjs`; `shardbolt` is ice too) hovering in a

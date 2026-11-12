@@ -30,9 +30,9 @@ module builds only its own. Test: `tools/tests/round72.cjs`.
 | Mendicant | The Mendicant's Rags (starter) | 10% less damage taken | +15% damage, +15% health | |
 | Mendicant | The Beggar King's Iron | reach +20% | every 4th blow crushes (x3, stun) | every 3rd, x5, shockwave; all damage x1.25 |
 | Mendicant | The Wanderer's Road | +15% move speed | moving builds Momentum, spent on the next blow | builds twice as fast, +25% a stack, dashes give 5, novas |
-| Mendicant | The Almsgiver's Bowl | blows sweep wider, kills heal 1% | kills give Alms (+1.5% each) | x2, +3.5% each, waves at 20+, fire at 40 |
-| Mendicant | The Gaoler's Keys | blows put Fetters on (slow) | fettered foes are dragged in, +15% a Fetter | x2, +35% a Fetter, the 5th locks and crashes round |
-| Mendicant | The Cracked Bell | every 6th blow rings | rings stun, stunned foes +40% | every 3rd, wider, x2, Zeal |
+| Mendicant | The Almsgiver's Bowl | blows sweep wider, kills heal 1% | kills give Alms (+1.5% each); at 20+ every 5th blow sends a wave | x2, +3.5% each, wider wave every 3rd blow, fire at 40 |
+| Mendicant | The Gaoler's Keys | blows put Fetters on (slow) | every 4th blow chains foes nearby (2 Fetters); fettered foes are dragged in, +15% a Fetter | x2, +35% a Fetter, the 5th locks and crashes round |
+| Mendicant | The Cracked Bell | every 6th blow rings | rings stun, stunned foes +40% | every 3rd, wider, x3, Zeal |
 | Anchoress | The Anchorite's Shroud (starter) | +1 shard | +15% damage, +1 dash | |
 | Anchoress | The Shattered Reliquary | +2 shards | +15% a shard above 4 | votive shards on each rite |
 | Anchoress | The Glass Martyr | +10% shard crit | crits split | x1.4, crits x3, call glass shards |
