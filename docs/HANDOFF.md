@@ -32,6 +32,12 @@ see "The owner's preferences".) When the owner answers with numbers
    this): give them the art rules from `CLAUDE.md`, tell them not to touch
    `index.html` or commit, and review their previews yourself before
    wiring anything in.
+6. Run at most four Playwright tests at once: with more, a test can poke
+   the page before it has loaded (`HS.player` or `HS.shards` undefined) and
+   fail; rerun it alone before looking for a bug. `setbal.cjs` runs take
+   minutes per build; three classes in parallel is fine.
+7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
+   and pushed to `master` each round.
 
 ## Where the game stands
 
@@ -43,7 +49,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   Legends look), whole-number scaling, a 305 px tall view, torch light on
   dark stone. Every pixel is on the palette (`tools/palette.mjs`, 26 ramps; `sea` was added in 32.2 for water).
   `resize()` sizes from `visualViewport` and re-checks twice a second
-  (iPhone Safari's toolbars once left a black band).
+  (iPhone Safari's toolbars once left a black band). Since rounds 78-79
+  every monster, Warden and hero renders with `rich` shading (`sdf.mjs`:
+  parts melt together, cast soft shadows on each other, seams crease, cloth
+  folds and flesh lumps; `NORICH=1` previews the old look). Round 79
+  re-sculpted the three boxiest models (the Coffin Golem, the Bellwright,
+  the Drowned Organist). Every monster attack has three frames (wind-up,
+  a second wind-up from `rear()`, strike; elites and Wardens each lean
+  their own way, `WIND` in `elite.mjs`).
 - **Text and HUD (rounds 29-30, font and case from round 66):** all text is
   Saira Semi Condensed (SemiBold, Bold for titles; `assets/fonts/ui.woff2`,
   `ui-bold.woff2`) in mixed case (`caseOf`: short labels in Title Case,
@@ -111,7 +124,9 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
     (`SHARD`, `shardCount`, `updateShards`, `fireShard`). Since round 73
     they are ice-blue crystal blades hovering in a ring over her head (fx
     `crystal`, 16 headings); rites that throw them bring them to the
-    ground. Fewer shards hit harder each, so every extra shard is about
+    ground. In flight they draw as a slimmer crystal (`crystalbolt`) with a
+    faint ice trail, burst ice-blue on a hit and fire with a glass `chime`
+    at four pitches. Fewer shards hit harder each, so every extra shard is about
     +10-15%. She raises her reliquary as they fire (`raise` anim). Rites
     `ARITES` (`castAM1`/`castAM2`; her Reckonings `shattered` and
     `cathedral` run in `updateShards`).
@@ -128,8 +143,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   +10% damage each. Executions, kill streaks and the Carnage bonus.
   Monsters are punishing: telegraphed snipes, blight pools, novas,
   barrages, homing shots, the Sentence. A death recap names what hurt most.
-- **Run levels:** up to 15 (`MAX_LEVEL`). Each level offers 3 of the Wounds:
-  only the class's own and those of its chosen rites (`round73.cjs` checks).
+- **Run levels and Wounds (rounds 73, 80-81):** up to 15 levels
+  (`MAX_LEVEL`). Each level offers 3 Wounds: shared ones, the class's own (7
+  each since round 80) and those of its chosen rites (`round73.cjs` and
+  `round80.cjs` check). The level-up screen also has:
+  - **REROLL:** new cards for `REROLL_BASE` (500) x the Station's gold rate
+    (500 at I, about 1,380 at VI, 2,430 at XII; about a quarter of a full
+    clear), paid from the run's gold only.
+  - **SACRIFICE:** asks first, then takes 7 random ranks for a random
+    mythic Wound (one rank each, never on a card; 3 shared plus 2 per
+    class, each with its own emblem). The owner wants it random: a gamble.
+  - **Held Wounds:** small rarity-framed tiles with ranks in the top
+    corners (`heldStrip`).
 - **Gear:** 10 slots (8 vestments plus two arms slots: crossbow and quiver,
   a mace and satchel for him, a reliquary and phylactery for her), 5
   rarities, item level = Station (Sanctity). Drops are rare on purpose
@@ -179,11 +204,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 - **Settings and tools:** settings panel (effects, shake, damage numbers,
   text size, haptics, music, sounds, voices, monster cries, left-handed),
   dev menu (`devRows()`), `?prof` and `?fps` profiling.
-- **Not yet checked by ear:** the round 31 sounds (`roar_`/`fall_ossuarch`,
-  `roar_`/`fall_ashWidow`, `music_ossuary`, `music_warden_ossuary`) were
-  only measured (loudness, peaks, loop seams). Ask the owner how they
-  sound. A backup battle track ("Heavy Dungeon", MintoDog, CC0) was noted
-  but not downloaded into the repo.
+- **Sound (round 77):** every attack has a sound: the mace's swing and
+  blow, monster swings, casts and slams (`sfxAt`, quieter with distance,
+  deeper for elites and Wardens), a cast on every rite, glass on a shard
+  crit, the Anchoress's chime. Built from CC0 OpenGameArt packs already in
+  `docs/CREDITS.md` (`build-sfx.py`; the packs download from
+  opengameart.org here, kenney.nl is blocked; the chime is synthesised by
+  `tools/build-chime.py`).
+- **Not yet checked by ear:** the round 77 attack sounds and the chime, and
+  the round 31 sounds (`roar_`/`fall_ossuarch`, `roar_`/`fall_ashWidow`,
+  `music_ossuary`, `music_warden_ossuary`) were only measured. Ask the owner
+  how they sound and whether any are too loud (`VOL`). A backup battle track
+  ("Heavy Dungeon", MintoDog, CC0) was noted but not downloaded.
 
 ## The owner's preferences
 
@@ -211,22 +243,27 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Mendicant sets, a second look.** Round 74 gave the Alms and Gaol sets
-  more reach (VI: 12.0 and 10.2 kills a second, 3 seeds; XII 6.7 and 7.8)
-  and the Bell a x3 six-piece ring (XII 5.2, VI 13.8). The Beggar King's
-  Iron is now his lowest deep (4.9 at XII). Ask the owner how they feel.
-- **Whole-game review, what round 74 did not reach.** The sheets and
-  screens were looked over and are clean; ideas left: a third wind-up frame
-  for monster attacks, a longer hero dash (3 frames), a hint card in the
-  bag's empty right third on wide phones, the Descent panel's tight rows.
-  A brow gem for the Shattered Reliquary look was tried and dropped (it
-  vanishes on the 2x2 grid). Shackle Circle and Martyr's Ward effects were
-  checked and are fine (the old note below is stale).
-- **Anchoress follow-ups.** With the Hundred Nails gone from her list, rerun
-  `HERO=anchoress setbal.cjs` at VI and XII with 4 seeds; the Glass Martyr
-  swings between top at VI and bottom at XII. A crystal chime for the shards
-  firing; the Shattered Reliquary look lost its floating shards in round 73
-  and could take a violet gem on the hood. More Wounds of her own.
+- **Mythic Wounds with gear.** Round 81 measured them bare at Station VI
+  (see its history entry). The Mendicant's barely move there because his
+  kills are capped by foes reaching him; rerun his three with a full set at
+  VI and XII (`setbal.cjs` takes `WOUNDS` and `HPK`) and retune. Prism Heart
+  (x1.17) is the Anchoress's lowest.
+- **Wound follow-ups.** Tapping a held tile could show that Wound's card; a
+  short sacrifice animation (seven ranks breaking into the emblem) with its
+  own sound; each extra reroll in one level could cost more if rerolling
+  feels too cheap late in a run.
+- **Set balance, where it stands.** Mendicant (round 74, 3 seeds): Alms 12.0
+  and Gaol 10.2 at VI, Bell 13.8 at VI and 5.2 at XII; the Beggar King's
+  Iron is his lowest deep (4.9 at XII). Anchoress (round 76, 4 seeds):
+  reliquary 17.7 / 7.5, glass 18.1 / 6.1, psalter 15.0 / 5.8, thorn 13.1 /
+  6.9 (after round 77's wider ring), lantern about 6.8 at XII (VI / XII).
+- **More re-sculpts.** The Penitent Colossus's sack hood sits like a lump on
+  his shoulder and the Inquisitor's shoulder plates are flat slabs; menu
+  portraits and gear icons still use the old (non-`rich`) shading.
+- **Whole-game review leftovers (round 74).** A longer hero dash (3
+  frames), a hint card in the bag's empty right third on wide phones, the
+  Descent panel's tight rows. A brow gem for the Shattered Reliquary was
+  tried and dropped (it vanishes on the 2x2 grid).
 - **Set polish.** Some 6-piece texts run to three lines on small cards
   (the Wanderer's Road); the new sets' Penitent Cells reuse old monster
   mixes; the Iron and Thorn crowns have no halo. One Hallowed piece per
@@ -240,12 +277,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    bushes and oaks could get the same 3/4 tilt, and the square's empty
    cobbles south of the fountain could take a market cart or two.
 2. **Rites panel.** The 35-40 gap is the last long one (Iron Brand 35, the
-   Great Penance 40). The level-up toast could name the next rite too.
+   Great Penance 40). (The Saint-level toast names the next rite since round 74.)
 3. **Round 42 follow-ups.** Ask the owner how the talent numbers and the
    level curve feel (`lvNeed`, `TALENT_TREES`) and whether rite levels
-   (`RITE_LV`) open too slowly for the Font and Confessor sets. Talent icons
-   (the Canonry is text only) and effects for Shackle Circle, the Great
-   Penance and Martyr's Ward are still plain.
+   (`RITE_LV`) open too slowly for the Font and Confessor sets.
 4. **Tune enchants and reforge odds from play.** Enchant strengths are set
    by eye (`enchKill`, `passK`, `damagePlayer`); try them at Stations X to
    XV and in the Training Yard.
@@ -264,8 +299,8 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 7. **Warden blows.** Round 49 caps one Warden blow at 40% of health
    (`WARDEN_BLOW`); `balance.cjs` now shows 2.5 blows to die from Station XI
    on. Ask whether the deep Stations still feel hard enough.
-8. **More ambience.** Monsters wading in the Nave could ripple too; the
-   Undercroft's draught could carry a few leaves or ash flakes.
+8. **More ambience.** The Undercroft's draught could carry a few leaves or
+   ash flakes. (Foes wading in the Nave ripple since round 74.)
 9. **The pool's crowd.** Let the crowd at the Scrying Pool cheer or jeer
    when a wager settles in Vael, and show past wagers (won and lost).
 10. **A fourth class.** Done for three (round 71 added the Anchoress). A
@@ -279,8 +314,8 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    vow's doubling, `balance.cjs`, `perf.cjs`.
 14. **Animation follow-ups (rounds 60-63).** Sprite-sheet effects for the
    biggest moments (a Reckoning cast, a Warden's fall) drawn in `vfx.mjs`;
-   more monster body frames (wind-up poses with 3 frames for every attack);
-   per-rite unique hit sparks (nails, water, chains); a LOW effects check on
+   hand-sculpted wind-up poses for the Wardens in place of `rear()`'s lean;
+   per-rite unique hit sparks and cast sounds (nails, water, chains); a LOW effects check on
    an older phone.
 13. **Feature ideas (round 57).** (a) Relic Hunts: a weekly chase for one
    named Hallowed piece, with clues on the Bounty Board and a marked room in
@@ -291,8 +326,8 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    Emberstones to restore parts of Vael (a bell tower, a scriptorium), each
    unlocking a small perk or vendor. (e) Warden trophies: each Warden kill
    at a new Station adds a trophy to a hall in town, with a one-line record.
-   (f) A codex: monsters, Wardens, sets and Hallowed pieces you have seen,
-   with kill counts. (g) Weekly mutators on the Vigil (fast foes, double
+   (f) A codex: monsters, Wardens, sets, Hallowed pieces and Wounds you
+   have seen, with kill counts (suggested again in rounds 77-81). (g) Weekly mutators on the Vigil (fast foes, double
    elites, no dashing) with their own leaderboard.
 
 ## History by round
