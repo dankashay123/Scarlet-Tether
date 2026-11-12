@@ -27,7 +27,7 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
     out[hero].sac = await p.evaluate(() => { const R = HS.game.run; R.wounds = { wrath: 3, luck: 3, swift: 2, vigil: 1 }; HS.applyGear(); HS.game.stig.t = 1; const held = HS.woundRanks(); const pend = R.pending; HS.askSacrifice(); const asked = !!HS.game.ask; return { held, asked, pend }; });
     await p.waitForTimeout(250); await shot(`ask-${hero}`);
     out[hero].sac2 = await p.evaluate(() => { const y = HS.game.ask.yes; HS.game.ask = null; y(); const R = HS.game.run; const myth = Object.keys(R.wounds).filter((id) => HS.WOUNDS.find((w) => w.id === id).mythic); return { left: HS.woundRanks(), myth, pending: R.pending, reveal: !!HS.game.stig.reveal }; });
-    await p.waitForTimeout(500); await shot(`mythic-${hero}`); { const pr = await p.evaluate(() => HS.textProblems()); if (pr.length) probs.push(`${hero} reveal: ${pr.slice(0, 4).join('; ')}`); }
+    await p.waitForTimeout(1700); await shot(`mythic-${hero}`); { const pr = await p.evaluate(() => HS.textProblems()); if (pr.length) probs.push(`${hero} reveal: ${pr.slice(0, 4).join('; ')}`); }
     await p.evaluate(() => { HS.pickStigma(0); });
     // Every new Wound and every mythic at once, in a crowd.
     await p.evaluate((hero) => { const R = HS.game.run; R.wounds = {}; for (const w of HS.WOUNDS) if ((w.hero === hero || (!w.hero && w.mythic)) && (w.id.length && (w.mythic || /^[sma][A-Z]/.test(w.id)))) R.wounds[w.id] = w.max; HS.applyGear(); HS.player.hp = HS.player.maxHp;

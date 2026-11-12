@@ -256,7 +256,9 @@ function wardenFall(i) {
 
 // ------------------------------------------------------------ item icons ---
 // 24x24, three-quarter view, outlined, lit from the top-left.
-function icon(fn, size = 24) { const S = new Scene(); fn(S); return render(S, size, size, MATS, { contrast: 1.35 }); }
+// Round 82: icons shade like the models (soft cast shadows, creases); gentle numbers, they are small.
+const IRICH = process.env.NORICH ? false : { melt: 1.1, meltAdd: 0.1, detail: 0.5, fall: 0.06, reach: 8, shadow: 0.36 };
+function icon(fn, size = 24) { const S = new Scene(); fn(S); return render(S, size, size, MATS, { contrast: 1.35, rich: IRICH }); }
 // Slot icons: a body (the sculpt) and an optional post pass (hand-placed pixels).
 const BODY = {
   // The crossbow, aimed up-right: wood stock, gilt prod, iron nail.
@@ -725,7 +727,7 @@ const INGR = [
 // MYTHIC_ICONS order: halo, fury, zeal, nailstorm heart, eye of heaven, giant's mace,
 // earthbreaker, choir of glass, prism heart. Each sits on a rose-lit ground.
 const MM = { ...MATS, rose: { ramp: 'blood', spec: 0.5, bias: 0.12 }, roseDark: { ramp: 'blood', bias: -0.15, min: 2 }, glass: { ramp: 'holy', spec: 0.9, bias: 0.1 } };
-const micon = (fn) => { const S = new Scene(); fn(S); return render(S, 24, 24, MM, { contrast: 1.35 }); };
+const micon = (fn) => { const S = new Scene(); fn(S); return render(S, 24, 24, MM, { contrast: 1.35, rich: IRICH }); };
 const octa = (c, r, mat) => ({ mat, bb: [c[0] - r, c[1] - r, c[2] - r, c[0] + r, c[1] + r, c[2] + r], f: (x, y, z) => (Math.abs(x - c[0]) + Math.abs((y - c[1]) * 0.8) + Math.abs(z - c[2]) - r) * 0.577 });
 const heart = (S, cx, cy, r, mat) => { S.add(sphere([cx - r * 0.5, cy - r * 0.25, 2], r * 0.62, mat), 0); S.add(sphere([cx + r * 0.5, cy - r * 0.25, 2], r * 0.62, mat), 0.8); S.add(capsule([cx, cy + r * 0.9, 2], [cx, cy + r * 0.1, 2], 0.6, r * 0.75, mat), 1.4); };
 const MYTHIC_ICONS = [

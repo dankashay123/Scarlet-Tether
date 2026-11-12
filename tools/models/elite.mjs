@@ -126,11 +126,16 @@ function colossus(t = 0, atk = 0) {
   // Shackles on the wrists.
   cuff(S, fArm[1], fArm[2], 0.62, 1.6, 7.6, 'steel');
   cuff(S, bArm[1], bArm[2], 0.62, 1.6, 7, 'steel');
-  // The sack-hooded head, sunk low between the shoulders.
-  const hx = cx + 15 + lean * 1.3 + (atk === 1 ? -2 : 0), hy = 35 + B + (atk === 2 ? 6 : 0) + (atk === 1 ? 3 : 0);
-  S.add(bumpy(ellipsoid([hx, hy, 4], [9.6, 10, 9.5], 'sack'), 0.4, 0.55, 2), 3.5);
-  S.add(capsule([hx - 3, hy - 7, 1], [hx - 9, hy - 15, -1], 3.6, 1, 'sack'), 2.2);
-  S.paint({ mat: 'leather', f: (x, y, z) => Math.max(Math.abs(Math.hypot(x - (hx - 4.4), z - 0) - 3.2) - 1.4, Math.abs(y - (hy - 8.6)) - 0.9) });
+  // The sack-hooded head (round 82): a big hood sunk between the shoulders, its cowl
+  // lying over both of them and its point flopping back, so it reads as worn, not perched.
+  const hx = cx + 14 + lean * 1.3 + (atk === 1 ? -2 : 0), hy = 35 + B + (atk === 2 ? 6 : 0) + (atk === 1 ? 3 : 0), hz = 9;
+  S.add(folds(skirt(hx - 3, hy + 2, hy + 17, 10, 18, hz - 3, 0.95, 'sack'), { cx: hx - 3, cz: hz - 3, n: 7, amp: 0.8, y0: hy + 3, y1: hy + 17 }), 1.2);
+  S.add(bumpy(ellipsoid([hx, hy, hz], [11.5, 12, 11], 'sack'), 0.4, 0.55, 2), 1.6);
+  S.add(capsule([hx - 4, hy - 8, hz - 3], [hx - 12, hy - 15, hz - 5], 4.6, 1.6, 'sack'), 2.4);
+  S.add(sphere([hx - 13, hy - 12.5, hz - 5], 2.2, 'sack'), 2);
+  S.paint({ mat: 'leather', f: (x, y, z) => Math.max(Math.abs(Math.hypot(x - hx, z - hz) - 11) - 1.8, Math.abs(y - (hy + 8.5)) - 1, hz - 6 - z) });
+  // The shadowed opening of the hood.
+  S.sub(ellipsoid([hx + 8, hy + 1, hz + 6], [5, 6, 6], 'maw'), 1.2);
   // Chain wound across the chest, lying on the skin.
   const pts = [];
   for (let i = 0; i <= 14; i++) {
@@ -145,9 +150,7 @@ function colossus(t = 0, atk = 0) {
   for (const [x0, y0] of [[cx - 16, 40], [cx - 18, 47], [cx - 15, 55]]) S.paint({ mat: 'wound', f: (x, y, z) => Math.max(Math.abs((y - y0 - B) - (x - x0) * 0.5) - 0.6, Math.abs(x - x0 - 3) - 4, -z) });
   const o = shoot(S, { w: 112, h: 128, s: 1.24, gx: cx, gy: 106, ax: 54, ay: 123 });
   // Ember eyes cut in the sackcloth, and a stitched mouth.
-  for (const ex of [hx + 4, hx + 8.5]) { o.dot(ex, hy - 1.2, 'ember0'); o.dot(ex + 0.8, hy - 1.2, 'ember1'); o.dot(ex, hy - 0.4, 'ember3'); }
-  o.line(hx + 2, hy + 4.6, hx + 9, hy + 5, 'shroud6');
-  for (let k = 0; k < 4; k++) o.dot(hx + 2.6 + k * 1.9, hy + 4, 'bone3');
+  for (const ex of [hx + 4.5, hx + 8.5]) { for (const [dx, dy, c] of [[0, 0, 'ember0'], [0.8, 0, 'ember0'], [0, 0.8, 'ember1'], [0.8, 0.8, 'ember2']]) o.dot(ex + dx, hy + dy, c); }
   return o.f;
 }
 
@@ -179,6 +182,18 @@ function pauldron(S, c, r, plate, trim) {
   S.add(ellipsoid([c[0] - 0.6, c[1] + r * 0.45, c[2]], [r * 0.95, r * 0.6, r * 0.9], plate), 1);
   S.add(ellipsoid(c, [r, r * 0.8, r * 0.95], plate), 1);
   S.paint({ mat: trim, f: (x, y, z) => Math.max(Math.abs(Math.hypot((x - c[0]) / r, (z - c[2]) / (r * 0.95)) - 0.92) * r - 0.7, y - c[1] - r * 0.5, c[1] - y - 0.6) });
+}
+
+// The Inquisitor's spaulder (round 82): a high dome, two lames stepping down the arm,
+// an upswept steel flange by the neck and a spike. side is -1 (far) or 1 (near).
+function spaulder(S, c, r, side) {
+  S.add(ellipsoid([c[0] + side * 0.6, c[1] + r * 0.95, c[2] + side * 0.4], [r * 0.8, r * 0.5, r * 0.8], 'black'), 0.7);
+  S.add(ellipsoid([c[0] + side * 0.3, c[1] + r * 0.5, c[2] + side * 0.2], [r * 0.95, r * 0.55, r * 0.92], 'black'), 0.7);
+  S.add(ellipsoid([c[0], c[1] - r * 0.1, c[2]], [r * 1.05, r * 0.85, r], 'black'), 0.8);
+  S.add(capsule([c[0] - side * r * 0.5, c[1] - r * 0.55, c[2] - side * 2.4], [c[0] - side * r * 0.75, c[1] - r * 1.35, c[2] - side * 2.8], 1.5, 0.9, 'steel'), 0.6);
+  S.add(capsule([c[0] + side * r * 0.25, c[1] - r * 0.7, c[2] + side * 0.6], [c[0] + side * r * 0.8, c[1] - r * 1.5, c[2] + side], 1.4, 0.3, 'steel'), 0.5);
+  const rim = (dy) => S.paint({ mat: 'steel', f: (x, y, z) => Math.max(Math.abs(y - (c[1] + dy)) - 0.5, Math.hypot(x - c[0], z - c[2]) - r * 1.2) });
+  rim(r * 0.3); rim(r * 0.82);
 }
 
 // ===================================================== Censer Titan ===
@@ -239,14 +254,14 @@ function inquisitor(t = 0, atk = 0) {
   S.add(rotZ(clip(cape, (x, y, z) => z + 1.4), [cx - 2, 40 + B], atk === 2 ? -0.35 : -0.08 - odd(t) * 0.04), 0);
   knight(S, { t, atk, cx, plate: 'black', plateDark: 'black', trim: 'steel', tabard: 'crimson', bulk: 0.95, B, lean });
   const lp = [cx - 7.5 + lean, 41 + B, -4.5], rp = [cx + 8 + lean, 42 + B, 4.6];
-  pauldron(S, lp, 5, 'black', 'steel');
+  spaulder(S, lp, 6, -1);
   limb(S, [lp[0], lp[1] + 3, lp[2]], [cx - 10 + lean, 54 + B, -5], [cx - 7 + lean, 63 + B, -4], 3, 2.7, 2.6, 'black', 1.3);
   // Sword arm and the blade.
   const hand = atk === 1 ? [cx - 6, 60, 6] : atk === 2 ? [cx + 22, 50, 8] : [cx + 12 + lean, 62 + B, 7];
   const elbow = atk === 1 ? [cx + 2, 56, 7] : atk === 2 ? [cx + 16, 47, 7] : [cx + 13 + lean, 53 + B, 7];
   limb(S, [rp[0], rp[1] + 2, rp[2]], elbow, hand, 3.2, 2.9, 2.8, 'black', 1.3);
   S.add(sphere(hand, 2.9, 'leather'), 0.8);
-  pauldron(S, rp, 5.6, 'black', 'steel');
+  spaulder(S, rp, 7, 1);
   const dir = atk === 1 ? [-0.9, 0.42] : atk === 2 ? [1, -0.06] : [0.55, -0.83], bl = 30;
   const n = Math.hypot(...dir), d = [dir[0] / n, dir[1] / n];
   const hz = hand[2] + 1;

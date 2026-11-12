@@ -70,6 +70,7 @@ multi-gigabyte archives.
 - Before round 29: [Kenney Fonts](https://kenney.nl/assets/kenney-fonts) "Kenney High" (CC0 1.0) as a bitmap font. The glyph tables (`GLYPHS`, `FONT`) are still in `index.html` but unused.
 
 - `chime.mp3` (the Anchoress's shards): synthesised by `tools/build-chime.py`, no sample used.
+- `sacrifice.mp3` (the Wound sacrifice): synthesised by `tools/build-sacrifice.py`, no sample used.
 
 ## Reference
 

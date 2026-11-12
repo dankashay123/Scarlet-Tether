@@ -344,7 +344,7 @@ function portrait(skin = null) {
     S.add(torus([cx, hy - 7, 0], 7, 1.6, 0.3, 'gold'), 0.8);
     for (const dx of [-5, 0, 5]) S.add(capsule([cx + dx, hy - 8.5, 4], [cx + dx * 1.1, hy - (skin === 'choir' ? 11.5 : dx ? 13 : 15), 4], skin === 'choir' ? 1.6 : 1.9, skin === 'choir' ? 1.6 : 0.9, skin === 'choir' ? 'wax' : 'gold'), 0.6);
   } else { S.add(torus([cx - 0.6, hy - 11.6, 0], 7.4, 1.1, 0.42, 'halo'), 0); S.sub(sphere([cx + 5.4, hy - 11.4, 3.4], 1.6), 0); }
-  const fr = render(S, 34, 34, MATS, { ground: 99 });
+  const fr = render(S, 34, 34, MATS, { ground: 99, rich: process.env.NORICH ? false : { melt: 1.15, meltAdd: 0.15, detail: 0.6, fall: 0.07, reach: 10 } }); // round 82: shaded like the hero models
   for (const ex of [fc[0] - 2.1, fc[0] + 1.9]) { dot(fr, ex, fc[1] - 1.2, 'flame0'); dot(fr, ex, fc[1] - 0.2, 'flame1'); dot(fr, ex, fc[1] + 0.8, 'flame3'); }
   if (skin === 'choir') for (const dx of [-5, 0, 5]) { for (const [yy, c] of [[-13.5, 'ember2'], [-14.5, 'ember1'], [-15.5, 'ember0']]) { dot(fr, cx + dx * 1.1, hy + yy, c); dot(fr, cx + dx * 1.1 + 1, hy + yy, c); } }
   return fr;

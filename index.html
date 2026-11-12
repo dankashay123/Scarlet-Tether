@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '81';
+const BUILD = '82';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '82': ['TAP A HELD WOUND ON THE LEVEL-UP SCREEN TO READ ITS CARD.', 'THE SACRIFICE PLAYS OUT: THE SEVEN RANKS BREAK ONE BY ONE, WITH ITS OWN SOUND.', 'EACH REROLL IN THE SAME LEVEL COSTS HALF AS MUCH AGAIN. THE PRICE RESETS NEXT LEVEL.', 'THE PENITENT COLOSSUS WEARS A PROPER HOOD AND THE INQUISITOR HAS LAYERED, SPIKED SHOULDER PLATES. GEAR ICONS AND THE PORTRAIT HAVE THE DEEPER SHADING.'],
   '81': ['A REROLL NOW COSTS 500 GOLD AT STATION I, MORE AT DEEPER STATIONS (ABOUT A QUARTER OF WHAT A FULL CLEAR PAYS).', 'MYTHIC WOUNDS HAVE THEIR OWN ICONS. ENDLESS ZEAL, THE GIANT\'S MACE, EARTHBREAKER, CHOIR OF GLASS AND PRISM HEART ARE STRONGER; THE NAILSTORM HEART NO LONGER ADDS PIERCE.', 'THE LEVEL-UP SCREEN SHOWS THE WOUNDS YOU HOLD AND THEIR RANKS IN ITS TOP CORNERS.'],
   '80': ['SIX NEW LEVEL-UP WOUNDS FOR EACH CLASS.', 'NEW ON THE LEVEL-UP SCREEN: REROLL THE THREE CARDS, PAID FROM THE GOLD YOU HAVE FOUND THIS RUN.', 'OR SACRIFICE 7 RANKS OF YOUR WOUNDS, AT RANDOM, FOR A RANDOM MYTHIC WOUND. NINE MYTHIC WOUNDS, ONE RANK EACH.'],
   '79': ['THE BELLWRIGHT, THE DROWNED ORGANIST AND THE COFFIN GOLEM ARE REMADE: THE BELL HANGS FROM A YOKE, THE PIPES GROW FROM HIS BACK, AND THE GOLEM IS ONE BODY WEARING ITS COFFIN LID.', 'EVERY MONSTER AND ALL THREE CLASSES NOW HAVE THE DEEPER, BLENDED SHADING.'],
@@ -549,8 +550,8 @@ if (document.fonts) Promise.all([document.fonts.load(fontOf(22, false)), documen
 // <audio> elements routed through the same context, so memory stays low.
 // iOS 17+: audioSession 'ambient' makes the game follow the silent switch.
 const AUDIO = (() => {
-  const SFX = ['swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'execute', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_ashWidow', 'fall_ashWidow'];
-  const VOL = { swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, execute: 0.8, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
+  const SFX = ['swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'sacrifice', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'execute', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_ashWidow', 'fall_ashWidow'];
+  const VOL = { swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, sacrifice: 0.7, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, execute: 0.8, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
   const A = { ctx: null, buf: {}, last: {}, muted: false, master: null, sfxBus: null, voiceBus: null, musicBus: null, tracks: {}, want: [] };
   try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch { /* not supported */ }
   try { A.muted = !!JSON.parse(localStorage.getItem('hollow-saint') || '{}').muted; } catch { /* private mode */ }
@@ -778,7 +779,7 @@ addEventListener('keydown', (e) => {
   if (game.state === 'rites' || game.state === 'censer' || game.state === 'canonry') { if (e.code === 'Escape') hubClose(); return; }
   if (game.state === 'resume') { if (e.code === 'Escape') { SAVE.suspend = null; persist(); game.state = 'play'; } return; }
   if (e.code === 'KeyT' && (game.state === 'play' || game.state === 'pause')) { openRites(game.state); return; }
-  if (game.state === 'stig') { if (game.stig.t > 0.35 && game.stig.reveal) pickStigma(0); else if (game.stig.t > 0.35 && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) pickStigma(+e.code.slice(5) - 1); else if (game.stig.t > 0.35 && e.code === 'KeyR' && canReroll()) rerollWounds(); return; }
+  if (game.state === 'stig') { if (game.stig.peek) game.stig.peek = null; else if (game.stig.t > 0.35 && game.stig.reveal) pickStigma(0); else if (game.stig.t > 0.35 && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) pickStigma(+e.code.slice(5) - 1); else if (game.stig.t > 0.35 && e.code === 'KeyR' && canReroll()) rerollWounds(); return; }
   if (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyK') input.dash = true;
   if (e.code === 'KeyE' || e.code === 'KeyJ') { if (game.state === 'descent') descentTap(-1, -1); else if (game.state === 'play' && game.interact && !game.execTarget) game.interact.use(); else input.execute = true; }
   if (e.code === 'KeyQ' || e.code === 'Digit1') input.m1 = true;
@@ -8068,7 +8069,7 @@ function update(realDt) {
   for (const k of ['dash', 'm1', 'm2', 'pen']) if (HUD[k] && HUD[k].pressed) HUD[k].pressed = Math.max(0, HUD[k].pressed - realDt);
   if (game.state === 'dead' || game.state === 'tally') game.deathT += realDt;
   if (game.state === 'dialog') game.dialog.t += realDt;
-  if (game.state === 'stig') game.stig.t += realDt;
+  if (game.state === 'stig') { if (game.stig.sac) updateSacrifice(realDt); else game.stig.t += realDt; if (game.stig && game.stig.peek) game.stig.peek.t += realDt; }
   if (game.state === 'loading') { game.loadT += realDt; if (game.loadT > 1.8) newRun(); }
   if (game.state !== 'play') return;
   readMove();
@@ -9567,7 +9568,9 @@ const WOUND_RARITY = [{ name: 'WOUND', col: '#c2b6aa', w: 10 }, { name: 'DEEP WO
 const SACRIFICE_N = 7, REROLL_BASE = 500;
 const woundRanks = () => Object.entries((game.run && game.run.wounds) || {}).reduce((t, [id, n]) => t + (WOUNDS.find((q) => q.id === id && !q.mythic) ? n : 0), 0);
 const mythicPool = () => WOUNDS.filter((w) => w.mythic && !wound(w.id) && (!w.hero || w.hero === heroId()));
-const rerollCost = () => Math.round(REROLL_BASE * ((game.run && curDiff().gold) || 1) / 10) * 10;
+// Round 82: each reroll within one level costs half as much again as the last (REROLL_UP).
+const REROLL_UP = 1.5;
+const rerollCost = () => Math.round(REROLL_BASE * ((game.run && curDiff().gold) || 1) * Math.pow(REROLL_UP, (game.stig && game.stig.rolls) || 0) / 10) * 10;
 const wound = (id) => (game.run && game.run.wounds && game.run.wounds[id]) || 0;
 // Each level needs XP_G times the last; a run stops at MAX_LEVEL.
 const MAX_LEVEL = 15, XP_G = 1.22;
@@ -9624,8 +9627,13 @@ function stigButtons() {
 const canReroll = () => !!game.run && (game.run.gold || 0) >= rerollCost();
 const canSacrifice = () => woundRanks() >= SACRIFICE_N && mythicPool().length > 0;
 function stigTap(x, y) {
-  const S = game.stig; if (S.t < 0.35) return;
+  const S = game.stig; if (S.sac) return; // the sacrifice is playing
+  if (S.t < 0.35) return;
   if (S.reveal) { pickStigma(0); return; }
+  if (S.peek) { S.peek = null; sfx('tap', { rate: 0.8 }); return; }
+  // Round 82: a held tile shows that Wound's card (a little slack round each small tile).
+  const hit = heldTiles().find((q) => x >= q.x - 1 && x < q.x + q.s + 1 && y >= q.y - 1 && y < q.y + q.s + 1);
+  if (hit) { S.peek = { w: hit.w, n: hit.n, t: 0 }; sfx('tap'); return; }
   const B = stigButtons();
   if (inRect(B.reroll, x, y)) { if (canReroll()) rerollWounds(); else sfx('tap', { rate: 0.6 }); return; }
   if (inRect(B.sac, x, y)) { if (canSacrifice()) askSacrifice(); else sfx('tap', { rate: 0.6 }); return; }
@@ -9633,19 +9641,48 @@ function stigTap(x, y) {
 }
 // Round 81: the Wounds held this run, as small tiles in the two top corners beside the title
 // (left corner first, two rows each), rank in the corner of each, mythics first.
-function heldStrip() {
-  const R = game.run; if (!R) return;
+function heldTiles() {
+  const R = game.run; if (!R) return [];
   const held = Object.entries(R.wounds).map(([id, n]) => [WOUNDS.find((q) => q.id === id), n]).filter(([w, n]) => w && n > 0).sort((a, b) => b[0].r - a[0].r || b[1] - a[1]);
-  if (!held.length) return;
-  const cs = 17, gap = 2, side = Math.floor((W / 2 - 96 - 10) / (cs + gap)), per = Math.max(1, side) * 2;
-  held.slice(0, per * 2).forEach(([w, n], i) => {
-    const right = i >= per, j = right ? i - per : i, col = j % Math.max(1, side), row = Math.floor(j / Math.max(1, side));
-    const x = right ? W - 8 - (col + 1) * (cs + gap) + gap : 8 + col * (cs + gap), y = 7 + row * (cs + gap), rgb = hexRgb(WOUND_RARITY[w.r].col);
-    ctx.fillStyle = 'rgba(8,12,22,0.9)'; ctx.fillRect(x, y, cs, cs); ctx.fillStyle = `rgba(${rgb},0.85)`; ctx.fillRect(x, y, cs, 1); ctx.fillRect(x, y + cs - 1, cs, 1); ctx.fillRect(x, y, 1, cs); ctx.fillRect(x + cs - 1, y, 1, cs);
-    ctx.save(); ctx.beginPath(); ctx.rect(x + 1, y + 1, cs - 2, cs - 2); ctx.clip(); ctx.translate(x + cs / 2, y + cs / 2); ctx.scale(0.32, 0.32); woundIcon(w.icon, 0, 0, game.real); ctx.restore();
-    if (!w.mythic) text(String(n), x + cs - 2, y + cs - 8, WOUND_RARITY[w.r].col, { align: 'right', small: true, sc: 0.85 });
+  const cs = 17, gap = 2, side = Math.max(1, Math.floor((W / 2 - 96 - 10) / (cs + gap))), per = side * 2;
+  const out = held.slice(0, per * 2).map(([w, n], i) => {
+    const right = i >= per, j = right ? i - per : i, col = j % side, row = Math.floor(j / side);
+    return { w, n, s: cs, x: right ? W - 8 - (col + 1) * (cs + gap) + gap : 8 + col * (cs + gap), y: 7 + row * (cs + gap) };
   });
-  if (held.length > per * 2) text(`+${held.length - per * 2}`, W - 8, 7 + 2 * (cs + gap), PAL.stone1, { align: 'right', small: true });
+  out.more = held.length - out.length;
+  return out;
+}
+function heldTile(w, n, x, y, cs, a = 1) {
+  const rgb = hexRgb(WOUND_RARITY[w.r].col);
+  ctx.save(); ctx.globalAlpha *= a;
+  ctx.fillStyle = 'rgba(8,12,22,0.9)'; ctx.fillRect(x, y, cs, cs); ctx.fillStyle = `rgba(${rgb},0.85)`; ctx.fillRect(x, y, cs, 1); ctx.fillRect(x, y + cs - 1, cs, 1); ctx.fillRect(x, y, 1, cs); ctx.fillRect(x + cs - 1, y, 1, cs);
+  ctx.beginPath(); ctx.rect(x + 1, y + 1, cs - 2, cs - 2); ctx.clip(); ctx.translate(x + cs / 2, y + cs / 2); ctx.scale(0.32 * cs / 17, 0.32 * cs / 17); woundIcon(w.icon, 0, 0, game.real); ctx.restore();
+}
+function heldStrip() {
+  const T = heldTiles(); if (!T.length) return;
+  for (const q of T) { heldTile(q.w, q.n, q.x, q.y, q.s); if (!q.w.mythic) text(String(q.n), q.x + q.s - 2, q.y + q.s - 8, WOUND_RARITY[q.w.r].col, { align: 'right', small: true, sc: 0.85 }); }
+  if (T.more > 0) text(`+${T.more}`, W - 8, 7 + 2 * 19, PAL.stone1, { align: 'right', small: true });
+}
+// Round 82: the card of a held Wound, over the level-up cards. Any tap closes it.
+function renderPeek() {
+  const S = game.stig, P = S.peek, c = P.w, R0 = WOUND_RARITY[c.r], rgb = hexRgb(R0.col), k = Math.min(1, P.t * 7);
+  layerBreak();
+  ctx.fillStyle = `rgba(4,7,14,${0.88 * k})`; ctx.fillRect(0, 0, W, H);
+  const cw = Math.min(190, W - 60), name = wrapW(heroText(c.name), cw - 12), body = wrapW(heroText(c.text(P.n)), cw - 16, true);
+  const ch = 66 + name.length * 12 + 15 + body.length * 10 + 30, x = Math.round(W / 2 - cw / 2), y = Math.round(Math.max(6, (H - ch) / 2 - 4) + (1 - k) * 8);
+  ctx.globalAlpha = k;
+  ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x + 2, y + 3, cw, ch);
+  const g = ctx.createLinearGradient(0, y, 0, y + ch); g.addColorStop(0, `rgb(${shade(rgb, 0.32)})`); g.addColorStop(0.42, '#121a2c'); g.addColorStop(1, '#0a0f1b'); ctx.fillStyle = g; ctx.fillRect(x, y, cw, ch);
+  ctx.fillStyle = `rgb(${rgb})`; ctx.fillRect(x, y, cw, 2); ctx.fillStyle = `rgba(${rgb},0.45)`; ctx.fillRect(x, y + ch - 1, cw, 1); ctx.fillRect(x, y, 1, ch); ctx.fillRect(x + cw - 1, y, 1, ch);
+  hexPath(W / 2, y + 34, 24); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fill(); ctx.strokeStyle = `rgba(${rgb},0.9)`; ctx.lineWidth = 1; ctx.stroke();
+  woundIcon(c.icon, W / 2, y + 34, game.real);
+  ctx.globalAlpha = 1;
+  if (k < 1) return;
+  let ty = y + 66;
+  for (const l of name) { text(l, W / 2, ty, R0.col, { align: 'center', bold: true }); ty += 12; }
+  pill(R0.name, W / 2, ty, PAL.stone1); ty += 15;
+  for (const l of body) { text(l, W / 2, ty, PAL.cloth0, { align: 'center', small: true, outline: null }); ty += 10; }
+  text(c.mythic ? 'ONE RANK ONLY' : `HELD: RANK ${P.n} OF ${c.max}`, W / 2, y + ch - 16, PAL.stone2, { align: 'center', small: true, outline: null });
 }
 // Round 80: a new set of three cards, paid from the gold found this run (the run's gold, not the account's).
 function rerollWounds() {
@@ -9665,8 +9702,11 @@ function sacrificeWounds() {
   }
   const pool = mythicPool(), m = pool[Math.floor(rng() * pool.length)];
   R.wounds[m.id] = 1; R.pending--; applyGear(); player.hp = Math.min(player.hp, player.maxHp);
-  game.stig = { cards: [m], t: 0, reveal: true, lost: Object.entries(lost).map(([id, n]) => `${WOUNDS.find((q) => q.id === id).name}${n > 1 ? ' X' + n : ''}`) };
-  game.flash = 0.15; game.shake = Math.max(game.shake, 4); sfx('legend');
+  // Round 82: the seven ranks fly to the middle and break one by one (SAC_T seconds), then the mythic card comes up.
+  const tiles = []; for (const [id, n] of Object.entries(lost)) for (let j = 0; j < n; j++) tiles.push(WOUNDS.find((q) => q.id === id));
+  game.stig = { cards: [m], t: 0, reveal: true, sac: window.HS_AUTOSTIG ? null : { t: 0, tiles, broke: 0, bits: [] }, lost: Object.entries(lost).map(([id, n]) => `${WOUNDS.find((q) => q.id === id).name}${n > 1 ? ' X' + n : ''}`) };
+  sfx('sacrifice');
+  if (!game.stig.sac) { game.flash = 0.15; game.shake = Math.max(game.shake, 4); }
   rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.7, r: 90, color: '255,106,138' }); vemit(player.x, player.y - 20, { n: LOWFX ? 8 : 24, ramp: 'blood', sp: 120, up: 60, life: 0.6, glow: 6, size: 2 });
 }
 // A small drawn emblem for a Wound: a sprite where one fits, light where it does not.
@@ -9685,8 +9725,31 @@ function woundIcon(icon, x, y, t) {
   if (icon === 'choir') { ctx.strokeStyle = 'rgba(255,209,85,0.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); for (let k = 0; k <= 5; k++) { const a = t + k * Math.PI * 4 / 5 - Math.PI / 2; ctx[k ? 'lineTo' : 'moveTo'](x + Math.cos(a) * 20, y + Math.sin(a) * 20); } ctx.stroke(); }
   ctx.restore();
 }
+// Round 82: the sacrifice playing out. Tiles start on a ring, fall to the middle in turn and break
+// into pixels in their rarity's colour; the mythic emblem grows where they land.
+const SAC_T = 1.15;
+function renderSacrifice() {
+  const S = game.stig, A = S.sac, n = A.tiles.length, cx = W / 2, cy = Math.round(H / 2) - 6, m = S.cards[0];
+  ctx.fillStyle = 'rgba(6,10,18,0.92)'; ctx.fillRect(0, 0, W, H);
+  const grow = Math.max(0, Math.min(1, (A.t - 0.15) / 0.75));
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(cx, cy, 14 + grow * 44, `rgba(255,106,138,${0.12 + grow * 0.3})`); ctx.restore();
+  A.tiles.forEach((w, i) => {
+    const t0 = 0.05 + i * 0.1, u = (A.t - t0) / 0.2, a = -Math.PI / 2 + i * Math.PI * 2 / n, R = Math.min(H * 0.36, 92);
+    if (u >= 1) { if (i >= A.broke) { A.broke = i + 1; game.shake = Math.max(game.shake, 1.5); const rgb = hexRgb(WOUND_RARITY[w.r].col); for (let q = 0; q < (LOWFX ? 5 : 12); q++) { const d = Math.random() * 6.28, v = 40 + Math.random() * 90; A.bits.push({ x: cx, y: cy, vx: Math.cos(d) * v, vy: Math.sin(d) * v * 0.8 - 20, t: 0, max: 0.35 + Math.random() * 0.3, rgb }); } } return; }
+    const e = u <= 0 ? 0 : u * u, x = cx + Math.cos(a) * R * (1 - e), y = cy + Math.sin(a) * R * 0.62 * (1 - e), cs = 21;
+    heldTile(w, 1, Math.round(x - cs / 2), Math.round(y - cs / 2), cs, Math.min(1, A.t * 8));
+  });
+  for (const b of A.bits) { const q = 1 - b.t / b.max; if (q <= 0) continue; ctx.fillStyle = `rgba(${b.rgb},${q})`; ctx.fillRect(Math.round((b.x + b.vx * b.t) / 2) * 2, Math.round((b.y + b.vy * b.t + 120 * b.t * b.t) / 2) * 2, 2, 2); }
+  if (grow > 0) { ctx.save(); ctx.globalAlpha = grow; ctx.translate(cx, cy); ctx.scale(0.4 + grow * 0.6, 0.4 + grow * 0.6); woundIcon(m.icon, 0, 0, game.real); ctx.restore(); }
+}
+function updateSacrifice(dt) {
+  const S = game.stig, A = S && S.sac; if (!A) return;
+  A.t += dt; for (const b of A.bits) b.t += dt;
+  if (A.t >= SAC_T) { S.sac = null; S.t = 0; game.flash = 0.15; game.shake = Math.max(game.shake, 4); sfx('legend', { vol: 0.6 }); }
+}
 function renderStigmata() {
   const S = game.stig, k = Math.min(1, S.t * 4);
+  if (S.sac) { renderSacrifice(); return; }
   ctx.fillStyle = `rgba(6,10,18,${0.92 * k})`; ctx.fillRect(0, 0, W, H); // dark enough that HUD text under it cannot be read
   // Round 67: cards in the menus' style: navy glass, lit from the top in the rarity's colour, the icon in a hex.
   if (S.reveal) { text('MYTHIC WOUND', W / 2, 16, WOUND_RARITY[3].col, { align: 'center', sc: 2, glow: true }); goldRule(W / 2 - 80, 39, 160, '255,106,138', true); text('TAP TO GO ON', W / 2, 43, PAL.cloth1, { align: 'center', small: true }); }
@@ -9720,6 +9783,7 @@ function renderStigmata() {
     // Rank pips as small diamonds.
     if (!S.reveal) for (let q = 0; q < c.max; q++) { const px = Math.round(r.x + r.w / 2 - c.max * 4 + q * 8 + 3), py = y + r.h - 10; ctx.fillStyle = q < rank ? R0.col : q === rank ? PAL.white : '#2a3346'; ctx.beginPath(); ctx.moveTo(px, py - 3); ctx.lineTo(px + 3, py); ctx.lineTo(px, py + 3); ctx.lineTo(px - 3, py); ctx.fill(); }
   });
+  if (S.peek) renderPeek();
 }
 
 // ------------------------------------------------------ big miracles ---
@@ -10625,7 +10689,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { get pfx() { return pfx; }, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get pfx() { return pfx; }, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>
