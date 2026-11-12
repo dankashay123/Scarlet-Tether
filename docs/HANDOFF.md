@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 85 (build 85, on `master`). Read
+Last updated 2026-11-12, after round 86 (build 86, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -37,7 +37,8 @@ see "The owner's preferences".) When the owner answers with numbers
    fail; rerun it alone before looking for a bug. `setbal.cjs` runs take
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
-   and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`.
+   and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
+   round 86 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -271,24 +272,20 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   Saint's sets being nearer the kill ceiling, not his own two mythics.
   Nothing was changed for him. Those Saint runs shared the machine with
   other tests: rerun alone before tuning from them.
-- **Wound follow-ups.** A REROLL count on the button ("2nd reroll"); the
-  held strip on the pause screen too; ask the owner how the sacrifice sound
+- **Wound follow-ups.** The held strip on the pause screen too; ask the owner how the sacrifice sound
   and the 1.5x reroll step feel.
 - **Set balance, where it stands.** Mendicant (round 74, 3 seeds): Alms 12.0
   and Gaol 10.2 at VI, Bell 13.8 at VI and 5.2 at XII; the Beggar King's
   Iron is his lowest deep (4.9 at XII). Anchoress (round 76, 4 seeds):
   reliquary 17.7 / 7.5, glass 18.1 / 6.1, psalter 15.0 / 5.8, thorn 13.1 /
   6.9 (after round 77's wider ring), lantern about 6.8 at XII (VI / XII).
-- **More art.** The talent tree reuses passive icons (`TAL_ICON`): unlearned
-  nodes read darker than before round 85; check on a phone and lift their
-  alpha if they are hard to see. Set looks have busts for the Saint only
+- **More art.** Set looks have busts for the Saint only
   (`portrait_<set>`); the class busts show only on the pause panel. The
   non-rite HUD buttons could get the relief look too.
 - **Sounds.** The owner said the sounds are good (round 84), so the
   round 77 attack sounds, the chime and the sacrifice need no change. The
   round 31 Ossuary sounds were not asked about separately.
-- **Codex follow-ups.** A NEW dot
-  on the pause tile when an entry is added; bigger tiles on tall phones (the
+- **Codex follow-ups.** Bigger tiles on tall phones (the
   grid leaves room below it); monster cards could list attacks.
 - **Whole-game review leftovers (round 74).** A longer hero dash (3
   frames), a hint card in the bag's empty right third on wide phones, the
@@ -361,6 +358,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 86:** the owner said "continue" with no pick, so three small
+  follow-ups from these notes. **Codex NEW marks:** an entry seen for the
+  first time goes into `SAVE.codexNew` (keys `section:id`, from
+  `codexSee`; the first build of an old save's Codex adds none,
+  `CODEX_QUIET`). A pink dot (`newDot`) shows on the pause tile, the section
+  tab and the cell; the marks on a page clear when the player leaves it
+  (tab, page or close, `codexClearPage`). The pause tile opens the first
+  section with news. **Reroll count:** the button reads "2nd reroll: 2,320
+  gold" from the second reroll of a level. **Talents:** unlearned nodes
+  draw their icon at 0.92 alpha and locked ones at 0.55 (were 0.7 / 0.3),
+  one pixel larger; locked names are a shade lighter. Test: `round86.cjs`.
 
 - **Round 85:** the owner picked suggestion 1 and asked for these notes to
   be brought up to date. The Mendicant's and the Anchoress's 36 rite icons
