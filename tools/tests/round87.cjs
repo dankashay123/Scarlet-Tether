@@ -18,6 +18,13 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
   out.data = await p.evaluate(() => HS.TALENT_TREES.map((T0) => { const seen = new Set(); let bad = 0, ranks = 0;
     for (const t of T0.nodes) { const k = `${t.c},${t.r}`; if (seen.has(k)) bad++; seen.add(k); ranks += t.max; if (!t.text(1)) bad++; for (const id of t.f || []) if (!HS.TAL_BY[id] || HS.TAL_BY[id].c >= t.c || HS.TAL_BY[id].tree !== t.tree) bad++; }
     return { nodes: T0.nodes.length, ranks, legends: T0.nodes.filter((t) => t.legend).length, bad }; }));
+  // The owner's rule: the points can never fill every talent, nor reach every legendary talent.
+  out.cap = await p.evaluate(() => { HS.SAVE.lvl = HS.MAX_SAINT; HS.SAVE.cleared = 29; HS.SAVE.talents = {}; const pts = HS.talPts(), ranks = HS.TALENT_TREES.flatMap((T0) => T0.nodes).reduce((a, t) => a + t.max, 0);
+    // The cheapest way to hold all twelve legendary talents: each one's cheapest chain, shared nodes counted once.
+    const need = new Set(), cost = (t) => t.max + (t.f ? Math.min(...t.f.map((id) => cost(HS.TAL_BY[id]))) : 0), walk = (t) => { need.add(t.id); if (t.f) walk(HS.TAL_BY[t.f.slice().sort((x, y) => cost(HS.TAL_BY[x]) - cost(HS.TAL_BY[y]))[0]]); };
+    for (const T0 of HS.TALENT_TREES) for (const t of T0.nodes) if (t.legend) walk(t);
+    const legends = [...need].reduce((a, id) => a + HS.TAL_BY[id].max, 0); return { pts, ranks, legends, ok: ranks >= pts * 1.4 && legends > pts }; });
+  if (!out.cap.ok) errs.push('TALENT CAP: the points can fill too much of the trees ' + JSON.stringify(out.cap));
   // Learning: a locked node refuses; a chain learned to its end takes the legendary talent.
   out.learn = await p.evaluate(() => { HS.SAVE.talents = {}; HS.openCanonry(); HS.game.talTab = 0; const L = HS.talLayout(), tapN = (id) => { const c = L.cell(HS.TAL_BY[id]); HS.canonryTap(c.x + c.w / 2, c.y + c.h / 2); HS.canonryTap(L.learn.x + 4, L.learn.y + 4); };
     const r = {}; tapN('greatbolt'); r.locked = HS.tal('greatbolt'); tapN('brawn'); r.unlinked = HS.tal('brawn');

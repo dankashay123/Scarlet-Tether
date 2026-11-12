@@ -3138,6 +3138,8 @@ function ts(k) {
 const treeSpent = (ti) => TALENT_TREES[ti].nodes.reduce((a, t) => a + tal(t.id), 0);
 const talSpent = () => TALENT_TREES.reduce((a, T0, ti) => a + treeSpent(ti), 0);
 // Points: one a Saint level past the first, and one for each Station cleared, I to XX.
+// The owner's rule: the points must never fill every talent (175 ranks against 119 points), nor reach all twelve
+// legendary talents (149 points at the cheapest). round87.cjs fails if a change breaks this.
 const TAL_STATIONS = 20, stationPts = () => Math.min(TAL_STATIONS, (SAVE.cleared ?? -1) + 1);
 const talPts = () => Math.max(0, saintLv() - 1 + stationPts() - talSpent());
 const talLinked = (t) => !t.f || t.f.some((id) => tal(id) >= TAL_BY[id].max);
