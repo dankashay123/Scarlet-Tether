@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 82 (build 82, on `master`). Read
+Last updated 2026-11-12, after round 83 (build 83, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -37,7 +37,7 @@ see "The owner's preferences".) When the owner answers with numbers
    fail; rerun it alone before looking for a bug. `setbal.cjs` runs take
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
-   and pushed to `master` each round; round 82 on `claude/nifty-darwin-4oposd`.
+   and pushed to `master` each round; rounds 82-83 on `claude/nifty-darwin-4oposd`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -248,11 +248,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Mythic Wounds, what is left.** Round 82 measured the Mendicant's and
-  Prism Heart with full sets (see its history entry). Endless Zeal is the
-  weakest for the Mendicant (about x1.1) and the Anchoress (x1.13 bare)
-  against the Saint's x1.46: it could give each class something of its own.
-  Earthbreaker does little for the Cracked Bell at VI.
+- **Mythic Wounds.** Measured with full sets in rounds 82-83; all sit at
+  about x1.3-1.6 at Station XII now. Earthbreaker still does little at VI
+  and for the Cracked Bell. Nothing has been measured for the Saint with
+  sets (round 81's Saint numbers are bare).
 - **Wound follow-ups.** A REROLL count on the button ("2nd reroll"); the
   held strip on the pause screen too; ask the owner how the sacrifice sound
   and the 1.5x reroll step feel.
@@ -261,10 +260,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   Iron is his lowest deep (4.9 at XII). Anchoress (round 76, 4 seeds):
   reliquary 17.7 / 7.5, glass 18.1 / 6.1, psalter 15.0 / 5.8, thorn 13.1 /
   6.9 (after round 77's wider ring), lantern about 6.8 at XII (VI / XII).
-- **More art.** Rite glyphs, passive icons, ingredients and loot on the
-  ground still use the old (non-`rich`) shading (round 82 did gear, set,
-  Hallowed and mythic icons and the portrait). The Mendicant's and
-  Anchoress's HUD portraits are the Saint's bust recoloured.
+- **More art.** Rite glyphs and passive icons are flat hand-drawn glyphs
+  on buttons (`button`, `badge` in `props.mjs`), not sculpts, so `rich`
+  shading does not apply to them; a re-draw would be its own job. The class
+  busts (`portrait_m`, `portrait_a`) show only on the pause panel; set looks
+  have busts for the Saint only (`portrait_<set>`).
+- **Sounds, still unheard.** Round 83 measured every effect's loudest 100 ms
+  times its `VOL`: the round 77 attack sounds play at -21 to -30 dB (the
+  other effects' median is -20, `shoot` is -30), so none stands out; the
+  sacrifice was as loud as `legend` and `hurt` and was lowered (0.7 to
+  0.55). The owner has not said how any of them sound.
 - **Whole-game review leftovers (round 74).** A longer hero dash (3
   frames), a hint card in the bag's empty right third on wide phones, the
   Descent panel's tight rows. A brow gem for the Shattered Reliquary was
@@ -336,6 +341,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 83:** the owner picked suggestions 1, 2, 3 again. **Endless Zeal
+  per class:** the Mendicant gets +45% damage (not +20%), the Anchoress
+  +20% and 2 shards; the Saint's is unchanged (its text reads per class).
+  With full sets, 3 seeds: Mendicant iron / alms / bell at VI x1.12 / 1.07 /
+  1.20, at XII x1.16 / 1.54 / 1.37 (was x1.07 / 1.27 / 1.09); Anchoress
+  reliquary / glass at XII x1.57 / 1.44. **Feel:** the owner gave no notes,
+  so sounds were levelled by measurement only (see "Sounds, still unheard").
+  **Art:** the Mendicant and the Anchoress have their own busts
+  (`portrait(skin, hero)` in `townfolk.mjs`: his brown hood, steel rim and
+  iron mantle with ember eyes; her violet hood under the cream veil with
+  violet eyes; `bustAnim()` in `index.html` picks one for the pause panel).
+  Ingredients, ground loot and the small fx props render with `IRICH`; at
+  their size nothing visible changes. Note: `heroPortrait` already exists
+  (the character screen's model portrait): a second `const` of that name
+  broke the page until renamed; run `err.cjs` after adding any helper.
 
 - **Round 82:** the owner picked suggestions 1, 2, 3. **Mythic Wounds with
   gear** (`setbal.cjs`, full sets, 3 seeds, kills a second against the same
