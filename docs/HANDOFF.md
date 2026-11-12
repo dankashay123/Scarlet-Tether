@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 90 (build 90, on `master`). Read
+Last updated 2026-11-12, after round 91 (build 91, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-90 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-91 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -364,6 +364,23 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 91:** the owner asked why Swift Relic (Deep) was weaker than
+  Quickened Faith (common) and picked 1 and 4. **Wounds:** five class
+  Wounds of round 80 were Deep but no better than a common one with the
+  same stat; now Swift Relic 25% haste (was 10), Brawler 20% haste and 20%
+  elite damage (was 8 and 15), Seeking Glass 35% elite damage (was 20),
+  Litany 15% rite recharge (was 10), Unbowed 12% health and 6% less damage
+  (was 8 and 5). Quickened Faith is x0.85 on the cooldown, so 17.6% faster
+  a rank: any Deep haste must beat that. **Names under nodes** (`talNamed`):
+  only where a lane is at least 2 x radius + 12 + 9 x text size tall and
+  every name fits its column. That is 932x430 phones (lane 43 px, the
+  owner's) but not 844x390 (37) or 667x375 (35); at 844 the legendary
+  nodes' gold bands would touch the names. Note: the phone runs at device
+  scale 3; tests at scale 2 get smaller lanes (`round91.cjs` uses 3).
+  **Cues:** the Mark draws a red sight over the head; the Cull a red burst;
+  Sanctuary the ward's shield in blue; Frenzy red sparks rising (more with
+  stacks), Blood Rush red motes, Cadence gold motes (per stack).
 
 - **Round 90:** the owner confirmed the five-tap dev corner works in the
   Home Screen app (that app has its own storage and the manifest's
