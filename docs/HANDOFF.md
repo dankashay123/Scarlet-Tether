@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 77 (build 77, on `master`). Read
+Last updated 2026-11-12, after round 78 (build 78, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -296,6 +296,20 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 78:** the owner found elites and Wardens looked pieced together.
+  `render()` takes `rich: true` (`sdf.mjs`; all elites and Wardens through
+  `elite.mjs`'s and `ossuary.mjs`'s `wshoot` render calls): smooth-union
+  radii grow (x1.5 + 0.5; a prim with `noMelt` keeps its own), each point
+  marches toward the light for a soft cast shadow from other parts, a second
+  wider occlusion sample darkens creases, the whole figure falls off toward
+  its bottom-right, material seams on one surface drop a shade on the side
+  away from the light, and the normal is bent for detail: hanging folds on
+  cloth ramps (`RICH_CLOTH`), broad lumps on flesh, bone and stone
+  (`RICH_LUMP`), a faint grain on wood. Options: `rich: { melt, meltAdd,
+  shadow, fall, reach, detail }`. Still to do by hand if the owner wants
+  more: the bell on the Bellwright's back and the Organist's organ are
+  separate boxes by design; rares and commons do not use `rich` yet.
 
 - **Round 77:** shards in flight are a little bigger (`crystal(i, true)`:
   radius 3.9), leave a faint ice pixel trail (the `holy` ramp at 0.3 alpha)

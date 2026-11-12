@@ -227,7 +227,7 @@ function wshoot(S, gx) {
   const { w, h, s, gy, ax, ay } = WFRAME, dx = ax - gx * s, dy = ay - gy * s, T = new Scene();
   for (const p of S.prims) { const f = p.f, b = p.bb; T.prims.push({ ...p, k: p.k * s, bb: [b[0] * s + dx, b[1] * s + dy, b[2] * s, b[3] * s + dx, b[4] * s + dy, b[5] * s], f: (x, y, z) => s * f((x - dx) / s, (y - dy) / s, z / s) }); }
   for (const p of S.paints) { const f = p.f; T.paints.push({ mat: p.mat, f: (x, y, z) => f((x - dx) / s, (y - dy) / s, z / s) }); }
-  const fr = render(T, w, h, MM, { ground: ay });
+  const fr = render(T, w, h, MM, { ground: ay, rich: true });
   fr.ax = ax; fr.ay = ay;
   const P = (x, y) => [x * s + dx, y * s + dy];
   return { f: fr, P, dot: (x, y, c) => dot(fr, ...P(x, y), c), free: (x, y, c) => { const [a, b] = P(x, y); if (under(fr, Math.floor(a), Math.floor(b)) < 0) dot(fr, a, b, c); } };

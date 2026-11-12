@@ -84,7 +84,7 @@ function shoot(S, { w, h, s = 1, gx, gy, ax, ay, ...opts }) {
     T.prims.push({ ...p, k: p.k * s, bb: [b[0] * s + dx, b[1] * s + dy, b[2] * s, b[3] * s + dx, b[4] * s + dy, b[5] * s], f: (x, y, z) => s * f((x - dx) / s, (y - dy) / s, z / s) });
   }
   for (const p of S.paints) { const f = p.f; T.paints.push({ mat: p.mat, f: (x, y, z) => f((x - dx) / s, (y - dy) / s, z / s) }); }
-  const fr = render(T, w, h, MM, { ground: ay, ...opts });
+  const fr = render(T, w, h, MM, { ground: ay, rich: true, ...opts });
   fr.ax = ax; fr.ay = ay;
   const P = (x, y) => [x * s + dx, y * s + dy];
   return { f: fr, P, dot: (x, y, c) => dot(fr, ...P(x, y), c), line: (x0, y0, x1, y1, c) => pline(fr, ...P(x0, y0), ...P(x1, y1), c) };

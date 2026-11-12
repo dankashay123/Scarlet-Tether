@@ -101,6 +101,7 @@ function evalScene(prims, x, y, z) {
 
 // --------------------------------------------------------------- render ---
 // MATS maps a material name to { ramp, min, max (in 9 fine steps), spec, glow, flat }.
+const RICH_CLOTH = new Set(['cloth', 'crimson', 'shroud', 'violet', 'moss', 'flag', 'blood', 'teal', 'sand']), RICH_LUMP = new Set(['skin', 'rot', 'bone', 'stone', 'slate', 'pot']), RICH_GRAIN = new Set(['wood']);
 export const LIGHT = (() => { const v = [-0.55, -0.75, 0.62]; const d = len3(...v); return v.map((c) => c / d); })();
 // 3/4 view: tilt a shape back about the x axis around the ground line, so its
 // top faces turn toward the viewer (Otherworld Legends props show their tops).
@@ -169,6 +170,18 @@ function renderGrid(scene, w, h, MATS, opts, k) {
     const t = (p) => { const q = t0(p), f = q.f; return { ...q, bb: q.bb && [q.bb[0], q.bb[1] - lift, q.bb[2], q.bb[3], q.bb[4] - lift, q.bb[5]], f: (x, y, z) => f(x, y + lift, z) }; };
     const S2 = new Scene(); S2.prims = scene.prims.map((p) => ({ ...t(p), k: p.k, op: p.op })); S2.paints = scene.paints.map(t); scene = S2;
   }
+  // rich (round 78, elites and Wardens): one blended figure, not parts set side by side.
+  // Forms melt further into each other, parts cast soft shadows on the parts behind
+  // them, creases between forms darken over a wider reach, and the whole figure
+  // falls off from its lit top-left to its bottom-right.
+  const rich = opts.rich ? (typeof opts.rich === 'object' ? opts.rich : {}) : null;
+  let all = scene.prims, fig = null;
+  if (rich) {
+    const kk = rich.melt ?? 1.5, kAdd = rich.meltAdd ?? 0.5;
+    const S2 = new Scene(); S2.prims = scene.prims.map((p) => ({ ...p, k: p.op === 'sub' || p.noMelt ? p.k : p.k * kk + kAdd })); S2.paints = scene.paints; scene = S2; all = S2.prims;
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const p of all) if (p.op !== 'sub') { x0 = Math.min(x0, p.bb[0]); y0 = Math.min(y0, p.bb[1]); x1 = Math.max(x1, p.bb[3]); y1 = Math.max(y1, p.bb[4]); }
+    fig = [(x0 + x1) / 2, (y0 + y1) / 2, Math.max(1, (x1 - x0) / 2), Math.max(1, (y1 - y0) / 2)];
+  }
   const zmax = opts.zmax ?? 60, zmin = opts.zmin ?? -60;
   const px = new Int16Array(w * h).fill(-1), dep = new Float32Array(w * h).fill(-1e9), mid = new Int16Array(w * h).fill(-1), step = new Int8Array(w * h).fill(-1);
   const matNames = [];
@@ -189,10 +202,18 @@ function renderGrid(scene, w, h, MATS, opts, k) {
     const nx = evalScene(prims, sx + e, sy, z)[0] - evalScene(prims, sx - e, sy, z)[0];
     const ny = evalScene(prims, sx, sy + e, z)[0] - evalScene(prims, sx, sy - e, z)[0];
     const nz = evalScene(prims, sx, sy, z + e)[0] - evalScene(prims, sx, sy, z - e)[0];
-    const nl = len3(nx, ny, nz) || 1, n = [nx / nl, ny / nl, nz / nl];
+    let nl = len3(nx, ny, nz) || 1, n = [nx / nl, ny / nl, nz / nl];
     // Paint overrides (trims, stripes, emblems, eyes).
     for (const pt of scene.paints) if (pt.f(sx, sy, z) < 0) mat = pt.mat;
     const M = MATS[mat] || MATS.default;
+    if (rich && M.glow === undefined && !M.spec_only) {
+      // Surface detail in the light only (the outline keeps its shape): hanging folds
+      // on cloth, soft lumps on flesh, bone and stone. Broad, never single pixels.
+      const kind = RICH_CLOTH.has(M.ramp) || RICH_GRAIN.has(M.ramp) ? 1 : RICH_LUMP.has(M.ramp) ? 2 : 0, amp = (rich.detail ?? 1) * (RICH_GRAIN.has(M.ramp) ? 0.4 : 1);
+      if (kind === 1) { const w0 = Math.sin(sx * 0.62 + noise3(sx * 0.07, sy * 0.05, 3.1) * 2.4 + sy * 0.04); n[0] += 0.42 * amp * w0; n[2] -= 0.12 * amp * Math.abs(w0); }
+      else if (kind === 2) { const e2 = 1.2, f0 = 0.105; n[0] += 0.3 * amp * (noise3((sx + e2) * f0, sy * f0, z * f0 + 7) - noise3((sx - e2) * f0, sy * f0, z * f0 + 7)) / e2 * 3; n[1] += 0.3 * amp * (noise3(sx * f0, (sy + e2) * f0, z * f0 + 7) - noise3(sx * f0, (sy - e2) * f0, z * f0 + 7)) / e2 * 3; }
+      if (kind) { nl = len3(n[0], n[1], n[2]) || 1; n = [n[0] / nl, n[1] / nl, n[2] / nl]; }
+    }
     let v;
     if (M.glow !== undefined) v = null;
     else {
@@ -205,6 +226,15 @@ function renderGrid(scene, w, h, MATS, opts, k) {
       const spec = (M.spec || 0) * Math.pow(clamp(rz, 0, 1), 18);
       const groundAO = opts.ground ? clamp((sy - (opts.ground - 6)) / 6, 0, 1) * 0.12 : 0;
       v = 0.04 + 0.98 * diff * (0.55 + 0.45 * ao) + rim - groundAO;
+      if (rich) {
+        // A soft shadow from whatever stands between this point and the light.
+        let sh = 1; const ox = sx + n[0] * 1.2, oy = sy + n[1] * 1.2, oz = z + n[2] * 1.2;
+        for (let t = 1.5; t < (rich.reach ?? 16); ) { const dd = evalScene(all, ox + LIGHT[0] * t, oy + LIGHT[1] * t, oz + LIGHT[2] * t)[0]; if (dd < 0.05) { sh = 0; break; } sh = Math.min(sh, 5 * dd / t); t += Math.max(dd, 0.8); }
+        // Wider creases: how open the surface is 7 px out.
+        const wide = clamp(evalScene(all, sx + n[0] * 7, sy + n[1] * 7, z + n[2] * 7)[0] / 7, 0, 1);
+        v *= (1 - (rich.shadow ?? 0.42) * (1 - clamp(sh, 0, 1))) * (0.74 + 0.26 * wide);
+        v -= (rich.fall ?? 0.11) * (0.5 * (sx - fig[0]) / fig[2] + 0.8 * (sy - fig[1]) / fig[3]);
+      }
       v = clamp(0.5 + (v - 0.5) * (opts.contrast ?? 1.3) + spec + (M.bias || 0), 0, 1);
     }
     const i = y * w + x;
@@ -219,6 +249,12 @@ function renderGrid(scene, w, h, MATS, opts, k) {
     if (mid[L] === mid[i] && mid[R] === mid[i] && step[L] === step[R] && step[L] >= 0 && step[L] !== step[i] && Math.abs(step[L] - step[i]) === 1 && (step[U] !== step[i] || step[D] !== step[i])) step[i] = step[L];
     else if (mid[U] === mid[i] && mid[D] === mid[i] && step[U] === step[D] && step[U] >= 0 && step[U] !== step[i] && Math.abs(step[U] - step[i]) === 1 && (step[L] !== step[i] || step[R] !== step[i])) step[i] = step[U];
   }
+  // rich: a crease where two materials meet on one surface: the side away from the
+  // light (right of, or below, the seam) drops a shade, so the join reads as a fold.
+  if (rich) { const add = new Int8Array(w * h);
+    for (let y = 1; y < h; y++) for (let x = 1; x < w; x++) { const i = y * w + x; if (step[i] < 0) continue; const M = MATS[matNames[mid[i]]] || MATS.default; if (M.glow !== undefined) continue;
+      for (const j of [i - 1, i - w]) if (step[j] >= 0 && mid[j] !== mid[i] && Math.abs(dep[j] - dep[i]) <= (opts.contourDepth ?? 5) && dep[j] >= dep[i] - 0.5) { add[i] = 1; break; } }
+    for (let i = 0; i < w * h; i++) if (add[i]) { const M = MATS[matNames[mid[i]]] || MATS.default; step[i] = Math.min(M.max ?? 8, step[i] + 1); } }
   // Soft inner contours where a nearer form overlaps a farther one.
   const contour = new Int8Array(w * h);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
