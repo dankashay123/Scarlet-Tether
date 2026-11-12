@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 93 (build 93, on `master`). Read
+Last updated 2026-11-12, after round 94 (build 94, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-93 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-94 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -265,6 +265,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **Rubrics follow-ups (round 94).** A Rubrics tab in the bag (all owned,
+  salvage spares for Emberstones), a Codex section, Might on the burns a
+  rite starts, and drop rates from play (the owner wants them rare).
+
 - **Mythic Wounds.** All three classes are measured with full sets
   (rounds 82-84). At Station XII the Mendicant's and Anchoress's sit at
   about x1.3-1.6; the Saint's at x1.1-1.3 (round 84), and so does the shared
@@ -364,6 +368,30 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 94:** the owner asked for a balance pass on enchants, affixes and
+  the forge ("+3 shards a piece?") and for rite support skills found as rare
+  drops, three a rite. **Audit** (pinned dummy, Station XII, a set worn):
+  every stat mythic and the best two Graven and two Beatified lines on all
+  ten pieces gave about 150x (Saint) and 110x (Anchoress) the damage of the
+  same gear with plain rolls: Beatified MORE DAMAGE multiplied per piece
+  (1.2^10), crit 130%, move speed +210%, haste +370%, 16 shards. Mythic
+  stats alone were 2.5-2.9x; lines alone 44-90x. **Now:** affix totals over
+  all gear are capped and applied once (`AFF_CAP`: might 40, critd 100,
+  elite 60, haste 30, reck 60, vital 30, shard 2, echo 20; wrath 40, aegis
+  25, fury 40, litany 40, flight 2, shards 4, reaper 25); gear stats capped
+  (`GEAR_CAP`: crit 50, speed 40, fervor 120, gold 150, lok 15); shards from
+  gear at most 6 (`SHARD_GEAR`), affix haste at most 60; the Shattered
+  Reliquary's bonus counts shards up to 12 (`SHARD.bonusCap`). The god roll
+  is now 7.7x (Saint) and 11.4x (Anchoress) a plain-roll build with ten
+  Tier II enchants; `balance.cjs max` is unchanged (122k a second at XII).
+  Enchants: ten at Tier II add about 35% on top; left alone. Base damage
+  from gear is not capped (it is the chase). CAPPED shows on a card's line
+  when the total is over; ALL LINES lists each cap. **Rubrics:** see
+  CLAUDE.md. Might III measured on a held dummy: Chain x1.37, Nail Storm
+  x1.31, Holy Water x1.20 (its pool's burn is a shared status and is not
+  counted). Drops: Wardens 20%, elites 2%, rares 0.4%, from Station II;
+  tier II from VIII (35%), III from XV (18%). Test: `round94.cjs`.
 
 - **Round 93:** the owner asked for a mark on enchants already worn and a
   rework of the Enchanter after a reference screen (a list of rows with an
