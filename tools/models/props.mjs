@@ -535,6 +535,23 @@ function button(size, glyph) {
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) { const d = Math.hypot(x + 0.5 - c, y + 0.5 - c); if (d >= r - 0.6 && d < r + 1.4) put(f, x, y, 'outline'); }
   return f;
 }
+// Round 84: a rite's icon as a small relief: a dark navy disc, the glyph raised from it in
+// its set's colour (lit edge top-left, dark edge bottom-right) with a shadow under it.
+// The game draws these as they are (RICH_BTN in index.html skips the HUD's recolour).
+const RITE_INK = { font: ['holy2', 'holy3', 'holy4'], nails: ['crimson0', 'crimson1', 'crimson3'], stride: ['ember1', 'ember2', 'ember4'], confessor: ['violet0', 'violet1', 'violet3'], choir: ['gold0', 'gold1', 'gold3'] };
+function riteButton(size, glyph, set) {
+  const f = { w: size, h: size, px: new Int16Array(size * size).fill(-1) }, r = size / 2 - 1.6, c = size / 2, [hi, mid, lo] = RITE_INK[set];
+  const G = (x, y) => glyph((x + 0.5 - c) / r, (y + 0.5 - c) / r) && Math.hypot(x + 0.5 - c, y + 0.5 - c) < r - 1.5;
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const dx = x + 0.5 - c, dy = y + 0.5 - c, d = Math.hypot(dx, dy); if (d >= r + 1.4) continue;
+    if (d >= r - 0.6) { put(f, x, y, 'outline'); continue; }
+    // The disc: lit along its top-left rim, darker toward the bottom-right.
+    put(f, x, y, d > r - 2.4 && dx + dy < -r * 0.5 ? 'slate2' : d > r - 2.4 && dx + dy > r * 0.5 ? 'ink0' : dx + dy < -r * 0.15 ? 'slate4' : 'ink2');
+  }
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!G(x, y) && (G(x - 1, y - 1) || G(x - 2, y - 2)) && f.px[y * size + x] >= 0 && Math.hypot(x + 0.5 - c, y + 0.5 - c) < r - 0.6) put(f, x, y, 'ink0');
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (G(x, y)) put(f, x, y, !G(x - 1, y - 1) || !G(x, y - 1) && !G(x - 1, y) ? hi : !G(x + 1, y + 1) ? lo : mid);
+  return f;
+}
 const seg = (u, v, ax, ay, bx, by, w) => { const dx = bx - ax, dy = by - ay, t = clamp(((u - ax) * dx + (v - ay) * dy) / (dx * dx + dy * dy), 0, 1); return Math.hypot(u - ax - dx * t, v - ay - dy * t) < w; };
 const GLYPH = {
   dash: (u, v) => [-0.42, -0.02, 0.38].some((o) => seg(u, v, o - 0.2, -0.36, o + 0.12, 0, 0.12) || seg(u, v, o + 0.12, 0, o - 0.2, 0.36, 0.12)),
@@ -743,6 +760,8 @@ export default {
     lock: () => [button(50, BADGE_GLYPH.lock)], use: () => [button(50, GLYPH.use)], map: () => [button(26, BADGE_GLYPH.board)],
     badge: () => MAP_BADGES.map(([g, ramp]) => badge(15, ramp, g)), badgeBig: () => MAP_BADGES.map(([g, ramp]) => badge(21, ramp, g)),
     ...Object.fromEntries(SET_BADGES.map(([g, ramp]) => [`set_${g}`, () => [badge(21, ramp, g)]])),
+    // Round 84: the Saint's 18 rites as coloured reliefs (override the flat ones above).
+    flask: () => [riteButton(40, GLYPH.flask, 'font')], wave: () => [riteButton(40, GLYPH.wave, 'font')], storm: () => [riteButton(40, GLYPH.storm, 'nails')], step: () => [riteButton(40, GLYPH.step, 'stride')], brand: () => [riteButton(40, GLYPH.brand, 'confessor')], hymn: () => [riteButton(40, GLYPH.hymn, 'choir')], chain: () => [riteButton(40, GLYPH.chain, 'confessor')], shackle: () => [riteButton(40, GLYPH.shackle, 'confessor')], censer: () => [riteButton(40, GLYPH.censer, 'choir')], ward: () => [riteButton(40, GLYPH.ward, 'stride')], nailring: () => [riteButton(40, GLYPH.nailring, 'nails')], asperse: () => [riteButton(40, GLYPH.asperse, 'font')], penance: () => [riteButton(44, GLYPH.penance, 'choir')], pillars: () => [riteButton(44, GLYPH.pillars, 'choir')], font: () => [riteButton(44, GLYPH.font, 'font')], volley: () => [riteButton(44, GLYPH.volley, 'nails')], pilgrim: () => [riteButton(44, GLYPH.pilgrim, 'stride')], greatpen: () => [riteButton(44, GLYPH.greatpen, 'confessor')],
     passive: () => PASS_ICONS.map(([, ramp, g]) => { BADGE_GLYPH.__p = g; return badge(19, ramp, '__p', ramp === 'holy' ? 5 : ramp === 'gold' ? 3 : 2); }),
     ring: () => [ring()], knob: () => [button(32, GLYPH.knob)], bag: () => [button(26, GLYPH.bag)], close: () => [button(22, GLYPH.close)],
   },

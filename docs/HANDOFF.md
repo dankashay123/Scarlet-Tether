@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 83 (build 83, on `master`). Read
+Last updated 2026-11-12, after round 84 (build 84, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -37,7 +37,7 @@ see "The owner's preferences".) When the owner answers with numbers
    fail; rerun it alone before looking for a bug. `setbal.cjs` runs take
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
-   and pushed to `master` each round; rounds 82-83 on `claude/nifty-darwin-4oposd`.
+   and pushed to `master` each round; rounds 82-84 on `claude/nifty-darwin-4oposd`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -201,6 +201,13 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   frame = enchant * 3 + k) that Wardens of Station X and deeper drop 1% of
   the time each (`ENCH_FROM`, `ENCH_DROP`; about 0.5 ingredients a Warden,
   about 180 Warden kills for one chosen enchant).
+- **The Codex and Warden trophies (round 84):** a CODEX tile on the pause
+  screen opens a page with five sections: Monsters (kills each), Wardens
+  (trophies: kills, deepest Station, fastest kill per Station), Sets (pieces
+  found), Hallowed (found) and Wounds (times taken). Unseen entries show a
+  question mark. It counts per character from build 84 on; nothing is
+  back-filled. The Vigil Roll in town has a TROPHIES button to the Wardens
+  section.
 - **Account systems:** the Saint level (1-60) and its talent trees (Canonry), the Ember Forge
   (reforge, temper), the Ashen Altar (burn a Hallowed piece to learn its
   power; three sockets; Chrism and pity raise the odds), the Censer's 12
@@ -265,11 +272,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   shading does not apply to them; a re-draw would be its own job. The class
   busts (`portrait_m`, `portrait_a`) show only on the pause panel; set looks
   have busts for the Saint only (`portrait_<set>`).
-- **Sounds, still unheard.** Round 83 measured every effect's loudest 100 ms
-  times its `VOL`: the round 77 attack sounds play at -21 to -30 dB (the
-  other effects' median is -20, `shoot` is -30), so none stands out; the
-  sacrifice was as loud as `legend` and `hurt` and was lowered (0.7 to
-  0.55). The owner has not said how any of them sound.
+- **Sounds.** The owner said the sounds are good (round 84), so the
+  round 77 attack sounds, the chime and the sacrifice need no change. The
+  round 31 Ossuary sounds were not asked about separately.
+- **Rite icons for the other two classes.** The Saint's 18 are coloured
+  reliefs (round 84); if the owner likes them, do the Mendicant's and the
+  Anchoress's 36 (`riteButton`, add their sets to `RITE_INK` and their
+  names to `RICH_BTN`), then the passive icons.
+- **Codex follow-ups.** Back-fill what old saves can prove (sets and
+  Hallowed pieces in the bag or worn, `SAVE.cleared` for Wardens); a NEW dot
+  on the pause tile when an entry is added; bigger tiles on tall phones (the
+  grid leaves room below it); monster cards could list attacks.
 - **Whole-game review leftovers (round 74).** A longer hero dash (3
   frames), a hint card in the bag's empty right third on wide phones, the
   Descent panel's tight rows. A brow gem for the Shattered Reliquary was

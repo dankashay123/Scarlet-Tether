@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '83';
+const BUILD = '84';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '84': ['NEW: THE CODEX ON THE PAUSE SCREEN. MONSTERS YOU HAVE KILLED, SETS AND HALLOWED PIECES FOUND, WOUNDS TAKEN. IT COUNTS FROM NOW ON.', 'NEW: WARDEN TROPHIES. EACH WARDEN KEEPS ITS KILLS, DEEPEST STATION AND FASTEST KILL PER STATION. SEE THEM IN THE CODEX OR AT THE VIGIL ROLL.', 'THE SAINT\'S 18 RITE ICONS ARE REDRAWN IN THEIR SET\'S COLOUR.'],
   '83': ['ENDLESS ZEAL GIVES EACH CLASS ITS OWN EXTRA: THE MENDICANT +45% DAMAGE, THE ANCHORESS +2 SHARDS.', 'THE MENDICANT AND THE ANCHORESS HAVE THEIR OWN PORTRAITS ON THE PAUSE SCREEN.', 'THE SACRIFICE SOUND IS A LITTLE QUIETER.'],
   '82': ['TAP A HELD WOUND ON THE LEVEL-UP SCREEN TO READ ITS CARD.', 'THE SACRIFICE PLAYS OUT: THE SEVEN RANKS BREAK ONE BY ONE, WITH ITS OWN SOUND.', 'EACH REROLL IN THE SAME LEVEL COSTS HALF AS MUCH AGAIN. THE PRICE RESETS NEXT LEVEL.', 'THE PENITENT COLOSSUS WEARS A PROPER HOOD AND THE INQUISITOR HAS LAYERED, SPIKED SHOULDER PLATES. GEAR ICONS AND THE PORTRAIT HAVE THE DEEPER SHADING.', 'EARTHBREAKER HITS HARDER (400%) AND REACHES FARTHER.'],
   '81': ['A REROLL NOW COSTS 500 GOLD AT STATION I, MORE AT DEEPER STATIONS (ABOUT A QUARTER OF WHAT A FULL CLEAR PAYS).', 'MYTHIC WOUNDS HAVE THEIR OWN ICONS. ENDLESS ZEAL, THE GIANT\'S MACE, EARTHBREAKER, CHOIR OF GLASS AND PRISM HEART ARE STRONGER; THE NAILSTORM HEART NO LONGER ADDS PIERCE.', 'THE LEVEL-UP SCREEN SHOWS THE WOUNDS YOU HOLD AND THEIR RANKS IN ITS TOP CORNERS.'],
@@ -779,6 +780,7 @@ addEventListener('keydown', (e) => {
   if (game.state === 'dev') { if (e.code === 'Escape') closeDev(); return; }
   if (game.state === 'yard') { if (e.code === 'Escape') game.state = 'play'; return; }
   if (game.state === 'settings') { if (e.code === 'Escape') game.state = 'pause'; return; }
+  if (game.state === 'codex') { if (e.code === 'Escape') game.state = game.codex.back; return; }
   if (game.state === 'rites' || game.state === 'censer' || game.state === 'canonry') { if (e.code === 'Escape') hubClose(); return; }
   if (game.state === 'resume') { if (e.code === 'Escape') { SAVE.suspend = null; persist(); game.state = 'play'; } return; }
   if (e.code === 'KeyT' && (game.state === 'play' || game.state === 'pause')) { openRites(game.state); return; }
@@ -1589,6 +1591,7 @@ function deathVoice(e) {
 }
 function wardenSlain(e) {
   const df = curDiff(); earnHalo(e);
+  if (wardenTrophy(e, df)) later(3.5, () => toast(`NEW TROPHY: ${e.def.name}, STATION ${ROMAN[df.n - 1]}`, 3)); // round 84
   game.warden = null; game.run.reach = Math.max(game.run.reach || 0, 2);
   // The fall: a long slow beat, a white flash, and a fountain of coins that
   // lands before it is drawn to the Saint.
@@ -4100,11 +4103,13 @@ function rollVigil(L, left) {
   R.sort((a, b) => b.L - a.L || (b.left ?? -1) - (a.left ?? -1)); R.length = Math.min(R.length, 5);
 }
 function openRoll() { game.state = 'roll'; sfx('tap'); }
+function rollTrophyBtn() { const L = featLayout(); return { x: L.x0 + L.pw - 12 - 112, y: L.y0 + 5, w: 86, h: 17 }; } // round 84: the Warden trophies (the Codex's Wardens page)
 function renderRoll() {
   const L = featLayout(), small = { small: true, outline: null }, own = looks().own;
   ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H);
   panelFrame(L.x0, L.y0, L.pw, L.ph, '_blood'); headerBar(L.x0, L.y0, L.pw, 26);
   text('THE VIGIL ROLL', L.x0 + 12, L.y0 + 9, PAL.rose1 || PAL.gold1); sprC('ui', 'close', 0, L.close.x, L.close.y);
+  invButton(rollTrophyBtn(), 'TROPHIES', PAL.gold3);
   // Left: the best kept Vigils.
   const lw = Math.floor((L.pw - 30) * 0.42), lx = L.x0 + 12, top = L.y0 + 34, bot = L.y0 + L.ph - 24;
   inset(lx, top, lw, bot - top, '255,209,85');
@@ -4134,7 +4139,83 @@ function renderRoll() {
   });
   text(fitText(`VIGIL OPEN TO ${SAVE.vigilOpen || 1}   KEYS ${SAVE.vkeys || 0}   VOWS KEPT ${SAVE.vowsKept || 0}   DEEPEST STATION ${(SAVE.cleared ?? -1) >= 0 ? ROMAN[SAVE.cleared] : 'NONE'}`, L.pw - 24), L.x0 + 12, bot + 6, PAL.stone1, small);
 }
-function rollTap() { game.state = 'play'; sfx('tap'); }
+function rollTap(x, y) { const b = rollTrophyBtn(); if (inRect(b, x, y)) return openCodex(1, 'roll'); game.state = 'play'; sfx('tap'); }
+
+// ------------------------------------------------------------ the Codex ---
+// Round 84: what this character has met. Monsters (kills), Wardens (trophies: kills, the
+// deepest Station and the fastest kill at each), sets and Hallowed pieces found, Wounds taken.
+// SAVE.codex = { m: {monster: kills}, h: {Hallowed id: found}, s: {set: pieces found}, w: {Wound: times taken} };
+// SAVE.trophies = { warden: { n: kills, st: { Station number: fastest seconds } } }.
+const CODEX_SECS = ['MONSTERS', 'WARDENS', 'SETS', 'HALLOWED', 'WOUNDS'];
+const codexData = () => (SAVE.codex ||= { m: {}, h: {}, s: {}, w: {} });
+function codexSee(kind, id, n = 1) { if (!id) return; const C = codexData(), o = (C[kind] ||= {}); o[id] = (o[id] || 0) + n; }
+function codexItem(it) { if (!it) return; if (it.power) codexSee('h', it.power); const st = it.wset || (it.set === true ? 'habit' : it.set); if (st) codexSee('s', st); }
+function wardenTrophy(e, df) {
+  const T0 = (SAVE.trophies ||= {}), t = (T0[e.type] ||= { n: 0, st: {} }), secs = Math.max(1, Math.round(game.time - (e.bornT || game.time)));
+  t.n++; if (df.vigil) return null;
+  const was = t.st[df.n]; if (!was || secs < was) t.st[df.n] = secs;
+  return !was; // a new Station for this Warden: a new trophy
+}
+const mmss = (v) => `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`;
+const TIER_NAME = { common: 'COMMON', rare: 'RARE', elite: 'ELITE', imp: 'IMP' };
+function codexList(sec) {
+  const C = codexData(), hero = heroId(), strat = (d) => STRATA[d.stratum || 1].name;
+  const monIcon = (id) => (x, y, sz) => { const d = MON[id], S0 = SPR[d.sheet], f = S0 && S0.anims[d.walk] && S0.anims[d.walk][0]; if (!f) return; const k = Math.min(1, (sz - 2) / Math.max(f.w, f.h)); ctx.save(); ctx.translate(x, y); ctx.scale(k, k); sprC(d.sheet, d.walk, 0, 0, 0); ctx.restore(); };
+  if (sec === 0) return Object.keys(MON).filter((id) => id !== 'dummy' && !MON[id].warden && MON[id].name).map((id) => { const d = MON[id], n = C.m[id] || 0; return { id, name: d.name, seen: n > 0, icon: monIcon(id), tag: TIER_NAME[d.tier] || 'ELITE', rgb: d.tier === 'elite' ? '255,209,85' : d.tier === 'rare' ? '138,224,255' : '194,182,170', lines: [strat(d), `KILLED: ${n.toLocaleString('en-US')}`] }; });
+  if (sec === 1) return Object.keys(MON).filter((id) => MON[id].warden).map((id) => { const d = MON[id], t = (SAVE.trophies || {})[id], sts = t ? Object.keys(t.st).map(Number).sort((a, b) => b - a) : [];
+    return { id, name: d.name, seen: !!(t && t.n), icon: monIcon(id), tag: 'WARDEN', rgb: '255,106,138', lines: !t ? [strat(d)] : [strat(d), `KILLED: ${t.n.toLocaleString('en-US')}`, ...(sts.length ? [`DEEPEST: STATION ${ROMAN[sts[0] - 1]}`, 'FASTEST KILL AT EACH STATION:', sts.slice(0, 12).map((n) => `${ROMAN[n - 1]} ${mmss(t.st[n])}`).join(', ')] : ['KILLED ONLY IN VIGILS SO FAR.'])] }; });
+  if (sec === 2) return [...mySets(), starterSet()].map((id) => { const n = C.s[id] || 0, i = SET_ICONS.indexOf(id); return { id, name: VSETS[id].name, seen: n > 0, icon: (x, y) => sprC('loot', 'setitem', i * 10, x, y), tag: 'SET', rgb: SET_RGB[id] || '255,209,85', lines: [`PIECES FOUND: ${n.toLocaleString('en-US')}`, `WORN NOW: ${setCount(id)}`] }; });
+  if (sec === 3) return LEGENDS.map((L, i) => [L, i]).filter(([L]) => !L.hero || L.hero === hero).map(([L, i]) => { const n = C.h[L.id] || 0; return { id: L.id, name: L.name, seen: n > 0, icon: (x, y) => sprC('loot', 'legend', i, x, y), tag: 'HALLOWED', rgb: '255,122,31', lines: [heroText(L.text), `FOUND: ${n.toLocaleString('en-US')}`] }; });
+  return WOUNDS.filter((w) => (!w.hero || w.hero === hero) && (!w.rite || ['m1', 'm2', 'pen'].some((sl) => riteList(sl).some((r) => r.id === w.rite)))).map((w) => { const n = C.w[w.id] || 0; return { id: w.id, name: heroText(w.name), seen: n > 0, icon: (x, y) => { ctx.save(); ctx.translate(x, y); ctx.scale(0.36, 0.36); woundIcon(w.icon, 0, 0, game.real); ctx.restore(); }, tag: WOUND_RARITY[w.r].name, rgb: hexRgb(WOUND_RARITY[w.r].col), lines: [heroText(w.text(1)), `TAKEN: ${n.toLocaleString('en-US')}`] }; });
+}
+function openCodex(sec = 0, back = 'pause') { game.state = 'codex'; game.codex = { sec, sel: -1, page: 0, back }; sfx('tap'); }
+function codexLayout() {
+  const pw = Math.min(660, W - 12), ph = Math.min(H - 12, 300), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2), K = game.codex;
+  const rail = { x: x0 + 8, y: y0 + 36, w: Math.max(78, Math.min(104, Math.round(pw * 0.19))) }, ax = rail.x + rail.w + 10;
+  const cardW = Math.max(132, Math.min(190, Math.round(pw * 0.32))), cardX = x0 + pw - 10 - cardW, top = y0 + 54, bot = y0 + ph - 10;
+  const cs = 22, gap = 3, gw = cardX - 8 - ax, cols = Math.max(3, Math.floor((gw + gap) / (cs + gap))), rows = Math.max(2, Math.floor((bot - 22 - top + gap) / (cs + gap))), per = cols * rows;
+  const list = codexList(K.sec), pages = Math.max(1, Math.ceil(list.length / per)); K.page = Math.min(K.page, pages - 1);
+  return { pw, ph, x0, y0, ax, top, bot, cs, cols, rows, per, list, pages, gw, close: { x: x0 + pw - 14, y: y0 + 13, r: 10 },
+    tab: (i) => ({ x: rail.x, y: rail.y + i * 28, w: rail.w, h: 24 }),
+    cell: (j) => ({ x: ax + (j % cols) * (cs + gap), y: top + Math.floor(j / cols) * (cs + gap), w: cs, h: cs }),
+    card: { x: cardX, y: y0 + 34, w: cardW, h: bot - y0 - 34 },
+    prev: { x: ax, y: bot - 18, w: 40, h: 18 }, next: { x: ax + 46, y: bot - 18, w: 40, h: 18 } };
+}
+function renderCodex() {
+  const L = codexLayout(), K = game.codex, small = { small: true, outline: null }, seen = L.list.filter((q) => q.seen).length;
+  panelFrame(L.x0, L.y0, L.pw, L.ph); headerBar(L.x0, L.y0, L.pw, 26);
+  text('CODEX', L.x0 + 12, L.y0 + 9, PAL.gold1, { bold: true }); sprC('ui', 'close', 0, L.close.x, L.close.y);
+  CODEX_SECS.forEach((name, i) => { const t = L.tab(i), on = i === K.sec;
+    if (on) tabPlate(t, true); else { ctx.fillStyle = 'rgba(4,7,13,0.5)'; ctx.fillRect(t.x, t.y, t.w, t.h); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(t.x, t.y, 2, t.h); }
+    text(name, t.x + 8, t.y + Math.round(t.h / 2) - 4, on ? TAB_INK : PAL.cloth1, { bold: on }); });
+  text(CODEX_SECS[K.sec], L.ax, L.y0 + 36, PAL.white, { bold: true }); text(`${seen} / ${L.list.length}`, L.ax + L.gw, L.y0 + 37, PAL.stone1, { ...small, align: 'right' });
+  goldRule(L.ax, L.y0 + 49, L.gw, '200,212,232', false);
+  L.list.slice(K.page * L.per, (K.page + 1) * L.per).forEach((q, j) => {
+    const c = L.cell(j), on = K.sel === K.page * L.per + j;
+    ctx.fillStyle = 'rgba(4,7,13,0.6)'; ctx.fillRect(c.x, c.y, c.w, c.h);
+    ctx.fillStyle = on ? '#ffd155' : q.seen ? `rgba(${q.rgb},0.7)` : 'rgba(120,132,156,0.3)'; ctx.fillRect(c.x, c.y, c.w, 1); ctx.fillRect(c.x, c.y + c.h - 1, c.w, 1); ctx.fillRect(c.x, c.y, 1, c.h); ctx.fillRect(c.x + c.w - 1, c.y, 1, c.h);
+    ctx.save(); ctx.beginPath(); ctx.rect(c.x + 1, c.y + 1, c.w - 2, c.h - 2); ctx.clip();
+    if (q.seen) q.icon(c.x + c.w / 2, c.y + c.h / 2, c.w); else { ctx.fillStyle = 'rgba(120,132,156,0.5)'; ctx.fillRect(c.x + 9, c.y + 6, 4, 2); ctx.fillRect(c.x + 12, c.y + 8, 2, 3); ctx.fillRect(c.x + 10, c.y + 11, 2, 2); ctx.fillRect(c.x + 10, c.y + 15, 2, 2); }
+    ctx.restore();
+  });
+  if (L.pages > 1) { invButton(L.prev, '<', PAL.stone4, K.page > 0); invButton(L.next, '>', PAL.stone4, K.page < L.pages - 1); text(`${K.page + 1} / ${L.pages}`, L.next.x + L.next.w + 8, L.next.y + 5, PAL.stone1, small); }
+  // The card of the picked entry.
+  const C = L.card, q = L.list[K.sel]; inset(C.x, C.y, C.w, C.h, q && q.seen ? q.rgb : null);
+  if (!q) { wrapW('TAP AN ENTRY TO READ IT.', C.w - 16, true).forEach((l, i) => text(l, C.x + 8, C.y + 22 + i * 10, PAL.stone2, small)); return; }
+  let ty = C.y + 20;
+  if (!q.seen) { text('NOT SEEN YET', C.x + 8, ty, PAL.stone1, { bold: true }); wrapW(['KILL IT ONCE TO ADD IT.', 'KILL THIS WARDEN TO ADD ITS TROPHY.', 'FIND A PIECE TO ADD THE SET.', 'FIND IT TO ADD IT.', 'TAKE IT ON A LEVEL-UP TO ADD IT.'][K.sec], C.w - 16, true).forEach((l, i) => text(l, C.x + 8, ty + 16 + i * 10, PAL.stone2, small)); return; }
+  for (const l of wrapW(q.name, C.w - 16)) { text(l, C.x + 8, ty, `rgb(${q.rgb})`, { bold: true }); ty += 12; }
+  pill(q.tag, C.x + 8 + Math.round((textW(q.tag, 1, true) + 8) / 2), ty + 1, PAL.stone1); ty += 16;
+  for (const ln of q.lines) { if (!ln) continue; for (const l of wrapW(ln, C.w - 16, true)) { if (ty > C.y + C.h - 12) break; text(l, C.x + 8, ty, PAL.cloth0, small); ty += 10; } ty += 3; }
+}
+function codexTap(x, y) {
+  const L = codexLayout(), K = game.codex;
+  if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { game.state = K.back; sfx('tap'); return; }
+  for (let i = 0; i < CODEX_SECS.length; i++) if (inRect(L.tab(i), x, y)) { K.sec = i; K.sel = -1; K.page = 0; sfx('tap', { vol: 0.5 }); return; }
+  if (L.pages > 1) { if (inRect(L.prev, x, y)) { K.page = Math.max(0, K.page - 1); sfx('tap', { vol: 0.5 }); return; } if (inRect(L.next, x, y)) { K.page = Math.min(L.pages - 1, K.page + 1); sfx('tap', { vol: 0.5 }); return; } }
+  const n = Math.min(L.per, L.list.length - K.page * L.per);
+  for (let j = 0; j < n; j++) if (inRect(L.cell(j), x, y)) { K.sel = K.page * L.per + j; sfx('tap', { vol: 0.5, rate: 1.2 }); return; }
+}
 
 // ------------------------------------------------------ suspend, resume ---
 // A descent is saved every few seconds and when the page hides. Coming back
@@ -6095,7 +6176,7 @@ function killEnemy(e, dirx, diry, executed = false) {
     enchKill(e);
     return;
   }
-  addToll(e); enchKill(e);
+  addToll(e); enchKill(e); if (!e.minion) codexSee('m', e.type);
   // The Last Confessor (6): a bound foe bursts as it dies.
   if (pas('burst') && Math.random() < 0.1) skillFx.push({ kind: 'nova', ramp: 'holy', x: e.x, y: e.y, t: 0, max: 0.25, r: 48 * WS, dmg: 18, hits: new Set([e]) });
   if (e.bound > 0 && sb('confessor', 4)) { for (const o of nearestFoes(e.x, e.y, 6, 44)) if (o !== e && !o.dead) later(0.05, () => hurtEnemy(o, T.chain.dmg * 2, false, 0, 0, 40, { status: true, color: PAL.iron0 })); rings.push({ x: e.x, y: e.y, t: 0, max: 0.3, r: 40, color: '178,188,203', flat: true }); }
@@ -6699,6 +6780,7 @@ function applyGear(fill = false) {
   player.charges = fill ? G.charges : Math.min(player.charges, G.charges);
 }
 function bagAdd(it) {
+  if (!it.t) codexItem(it); // round 84: the Codex counts each piece once, when it is first found
   if (!it.t) it.t = Date.now(); // when it was found, for the bag's NEWEST sort (round 70)
   // An empty slot takes the item straight away, even with a full bag.
   if (!SAVE.equip[it.slot]) { it.run = false; it.isNew = false; SAVE.equip[it.slot] = it; applyGear(); toast(`EQUIPPED ${nm(it)}`, 2); game.toastColor = RARITY[it.ri].color; persist(); return true; }
@@ -8390,6 +8472,7 @@ function render() {
   if (game.state === 'pool') renderPool();
   if (game.state === 'martyr') renderMartyr();
   if (game.state === 'roll') renderRoll();
+  if (game.state === 'codex') renderCodex();
   if (game.state === 'resume') renderResume();
   if (game.state === 'map') renderTownMap();
   if (game.state === 'loading') renderLoading();
@@ -8875,13 +8958,15 @@ function renderAim() {
 // is recoloured once per icon: its light disc turns navy, its dark lines turn
 // pale, and saturated colours stay as they are; a gold ring goes round it.
 const BTN_NAVY = {};
+// Round 84: rite icons drawn as coloured reliefs on their own navy disc (props.mjs riteButton): no recolour.
+const RICH_BTN = new Set(['flask', 'wave', 'storm', 'step', 'brand', 'hymn', 'chain', 'shackle', 'censer', 'ward', 'nailring', 'asperse', 'penance', 'pillars', 'font', 'volley', 'pilgrim', 'greatpen']);
 function navyBtn(icon) {
   if (BTN_NAVY[icon] !== undefined) return BTN_NAVY[icon];
   const f = frameOf('ui', icon, 0); if (!f || !IMG.ui || !IMG.ui.complete) return null;
   const c = document.createElement('canvas'); c.width = f.w; c.height = f.h; const g = c.getContext('2d'); g.drawImage(IMG.ui, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h);
   try {
     const d = g.getImageData(0, 0, f.w, f.h), q = d.data, A = [20, 30, 52], B = [236, 228, 206];
-    for (let i = 0; i < q.length; i += 4) { if (!q[i + 3]) continue; const mx = Math.max(q[i], q[i + 1], q[i + 2]), mn = Math.min(q[i], q[i + 1], q[i + 2]); if (mx - mn > 70) continue;
+    for (let i = 0; i < q.length; i += 4) { if (!q[i + 3] || RICH_BTN.has(icon)) continue; const mx = Math.max(q[i], q[i + 1], q[i + 2]), mn = Math.min(q[i], q[i + 1], q[i + 2]); if (mx - mn > 70) continue;
       const t = 1 - (q[i] * 0.3 + q[i + 1] * 0.59 + q[i + 2] * 0.11) / 255, k = Math.min(1, Math.max(0, (t - 0.12) * 1.25)); for (let j = 0; j < 3; j++) q[i + j] = Math.round(A[j] + (B[j] - A[j]) * k); }
     g.putImageData(d, 0, 0);
   } catch { return (BTN_NAVY[icon] = null); }
@@ -9140,13 +9225,17 @@ function renderHud() {
 // Bag, Rites, Map, Settings, Sound, Switch Saint, and Dev and Layout when the
 // dev menu is on. The game stays in view on the left with the Stigmata of the run.
 function pauseLayout() {
-  const tiles = [['bag', 'BAG'], ...(game.scene === 'wound' || game.scene === 'town' ? [['rites', 'RITES'], ['map', 'MAP']] : []), ['settings', 'SETTINGS'], ['sound', AUDIO.muted ? 'SOUND OFF' : 'SOUND ON'], ...(devOn() ? [['dev', 'DEV'], ['layout', 'LAYOUT']] : []), ['resume', 'RESUME']];
+  const tiles = [['bag', 'BAG'], ...(game.scene === 'wound' || game.scene === 'town' ? [['rites', 'RITES'], ['map', 'MAP']] : []), ['codex', 'CODEX'], ['settings', 'SETTINGS'], ['sound', AUDIO.muted ? 'SOUND OFF' : 'SOUND ON'], ...(devOn() ? [['dev', 'DEV'], ['layout', 'LAYOUT']] : []), ['resume', 'RESUME']];
   const pw = Math.max(168, Math.min(232, Math.round(W * 0.4))), px = W - pw - SAFE.r, cols = 3, gap = 4, tw = Math.floor((pw - 16 - gap * (cols - 1)) / cols);
   const top = 46, rows = Math.ceil(tiles.length / cols), th = Math.max(36, Math.min(54, Math.floor((H - top - 10 - gap * (rows - 1)) / rows)));
   return { px, pw, tiles: tiles.map(([id, label], i) => ({ id, label, x: px + 8 + (i % cols) * (tw + gap), y: top + Math.floor(i / cols) * (th + gap), w: tw, h: th })), back: { x: W - SAFE.r - 18, y: 17, r: 12 } };
 }
 function pauseIcon(id, x, y) {
   const ic = { bag: ['ui', 'bag'], rites: ['ui', isMelee() ? 'smite' : isAnch() ? 'svolley' : 'storm'], map: ['ui', 'map'], sound: ['ui', AUDIO.muted ? 'muted' : 'sound'], hero: ['ui', 'portrait'], dev: ['ui', 'use'], layout: ['ui', 'badge'] }[id];
+  if (id === 'codex') { // a book
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(x - 8, y - 8, 18, 20); ctx.fillStyle = '#b51d36'; ctx.fillRect(x - 9, y - 10, 18, 20); ctx.fillStyle = '#7d1233'; ctx.fillRect(x - 9, y - 10, 3, 20);
+    ctx.fillStyle = '#eadfc4'; ctx.fillRect(x - 6, y + 7, 15, 3); ctx.fillStyle = '#ffd155'; ctx.fillRect(x - 2, y - 5, 8, 2); ctx.fillRect(x + 1, y - 8, 2, 9); return;
+  }
   if (id === 'settings') { // a cog
     ctx.save(); ctx.translate(x, y); ctx.fillStyle = '#d8dde6';
     for (let k = 0; k < 8; k++) { ctx.rotate(Math.PI / 4); ctx.fillRect(-2, -10, 4, 5); }
@@ -9209,6 +9298,7 @@ function pauseTap(x, y) {
     if (t.id === 'bag') return openInventory();
     if (t.id === 'rites') return openRites('pause');
     if (t.id === 'map') { game.state = 'map'; return; }
+    if (t.id === 'codex') return openCodex(game.codex ? game.codex.sec : 0, 'pause');
     if (t.id === 'settings') { game.state = 'settings'; return; }
     if (t.id === 'sound') { AUDIO.setMuted(!AUDIO.muted); return; }
     if (t.id === 'dev') return openDev();
@@ -9609,7 +9699,7 @@ function openStigmata() {
 function pickStigma(i) {
   if (game.stig.reveal) { game.stig = null; game.state = 'play'; sfx('tap'); return; } // the mythic card was only shown
   const c = game.stig.cards[i]; if (!c) return;
-  const R = game.run; R.wounds[c.id] = (R.wounds[c.id] || 0) + 1; R.pending--;
+  const R = game.run; R.wounds[c.id] = (R.wounds[c.id] || 0) + 1; R.pending--; codexSee('w', c.id);
   applyGear(); if (c.id === 'vigil') player.hp = player.maxHp;
   rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 50, color: '138,224,255' });
   sfx('perfect'); game.stig = null; game.state = 'play';
@@ -9704,7 +9794,7 @@ function sacrificeWounds() {
     const id = ranks[Math.floor(rng() * ranks.length)]; R.wounds[id]--; if (R.wounds[id] <= 0) delete R.wounds[id]; lost[id] = (lost[id] || 0) + 1;
   }
   const pool = mythicPool(), m = pool[Math.floor(rng() * pool.length)];
-  R.wounds[m.id] = 1; R.pending--; applyGear(); player.hp = Math.min(player.hp, player.maxHp);
+  R.wounds[m.id] = 1; R.pending--; codexSee('w', m.id); applyGear(); player.hp = Math.min(player.hp, player.maxHp);
   // Round 82: the seven ranks fly to the middle and break one by one (SAC_T seconds), then the mythic card comes up.
   const tiles = []; for (const [id, n] of Object.entries(lost)) for (let j = 0; j < n; j++) tiles.push(WOUNDS.find((q) => q.id === id));
   game.stig = { cards: [m], t: 0, reveal: true, sac: window.HS_AUTOSTIG ? null : { t: 0, tiles, broke: 0, bits: [] }, lost: Object.entries(lost).map(([id, n]) => `${WOUNDS.find((q) => q.id === id).name}${n > 1 ? ' X' + n : ''}`) };
@@ -10605,6 +10695,7 @@ function onTap(x, y) {
     case 'pool': poolTap(x, y); return true;
     case 'martyr': martyrTap(x, y); return true;
     case 'roll': rollTap(x, y); return true;
+    case 'codex': codexTap(x, y); return true;
     case 'resume': resumeTap(x, y); return true;
     case 'map': sfx('tap'); game.state = 'play'; return true;
     case 'dialog': {
@@ -10692,7 +10783,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { get pfx() { return pfx; }, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get pfx() { return pfx; }, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>
