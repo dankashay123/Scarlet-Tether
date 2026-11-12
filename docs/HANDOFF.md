@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 91 (build 91, on `master`). Read
+Last updated 2026-11-12, after round 92 (build 92, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-91 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-92 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -364,6 +364,24 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 92:** the owner asked whether the Shattered Reliquary's 4-piece
+  (+15% a shard above 4) works at 12 shards, and for a Lantern burn buff.
+  **Reliquary:** it works. On a dummy held in place (Station VI gear):
+  12 shards with 4 pieces 926-1134 damage a second, with 3 pieces 420-507.
+  Each hit only grows about 22% from 6 to 12 shards, because `shardDmgK`
+  weakens each shard as the count rises; the gain comes from twice as many
+  shots. So hit numbers barely move and that reads as "not working". The
+  card now shows the bonus live ("NOW +120%", `reliqNow`, added in
+  `setLines`). Trap found: an unpinned test dummy is knocked out of range
+  by shard bolts, so more shards look weaker; pin it. **Lantern:** the
+  burn was the thurible's 4 a second at any Station. Now a lit foe burns
+  for `SETK.lampBurn` (100)% of the lighting hit a second (`e.lampDps`,
+  max of hits, cleared when the fire ends, x1.5 with the arms, spread by
+  the 6-piece). Station XII, 4 seeds: lantern 7.2 -> 10.6 kills a second
+  (thorn 8.4, reliquary 7.4, psalter 7.5, glass 6.8 before). Tried 80 (8.2),
+  120 (11.7), 150 (11.4), 250 (14.5). Now her best set at XII: trim
+  `lampBurn` if it runs away. Test: `round92.cjs`.
 
 - **Round 91:** the owner asked why Swift Relic (Deep) was weaker than
   Quickened Faith (common) and picked 1 and 4. **Wounds:** five class
