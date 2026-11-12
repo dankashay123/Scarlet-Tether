@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 92 (build 92, on `master`). Read
+Last updated 2026-11-12, after round 93 (build 93, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-92 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-93 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -364,6 +364,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 93:** the owner asked for a mark on enchants already worn and a
+  rework of the Enchanter after a reference screen (a list of rows with an
+  emblem, the effect and a badge of three coloured gems; a big framed item
+  on the right with BASIC / IN-DEPTH tabs, a material count and one ENTER
+  button). Now: one column of 16 rows (32 px), each with a ringed emblem
+  (first ingredient inside; gold ring when worn), the name, a second line
+  (WORN: PIECE II in gold, READY TO ENCHANT, or n/3 INGREDIENTS) and a
+  badge (TIER I/II or NEEDS over three ingredient diamonds, dim when
+  missing); a gold edge marks worn rows; the header counts them. Drag (or
+  the wheel) scrolls; a violet scroll bar shows where. Right: the piece
+  in a glowing octagon (tap it for the gear picker; the Enchanter opens on
+  the first worn piece), its name and enchant, then the enchant's name with
+  a TIER I / TIER II switch (opens on the tier an ENCHANT would give),
+  its text, three ingredient chips and REMOVE / ENCHANT. Old tests (rounds
+  33-38) still pass. Test: `round93.cjs`.
 
 - **Round 92:** the owner asked whether the Shattered Reliquary's 4-piece
   (+15% a shard above 4) works at 12 shards, and for a Lantern burn buff.

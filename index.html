@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '92';
+const BUILD = '93';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '93': ['THE ENCHANTER IS REBUILT: A FULL LIST WITH EACH ENCHANT\'S INGREDIENTS, DRAG TO SCROLL, AND A SHOWCASE OF THE PIECE. TAP THE FRAME TO CHOOSE ANOTHER PIECE.', 'ENCHANTS YOU WEAR ARE MARKED IN GOLD, WITH THE PIECE AND ITS TIER.'],
   '92': ['THE VEILED LANTERN BURNS MUCH HOTTER: EACH SECOND THE FIRE DEALS 100% OF THE SHARD HIT THAT LIT IT.', 'THE SHATTERED RELIQUARY CARD SHOWS ITS SHARD BONUS AT YOUR CURRENT SHARDS. IT HAS ALWAYS WORKED: EACH SHARD HITS A LITTLE SOFTER AS YOU ADD MORE, SO HIT NUMBERS GROW SLOWLY, BUT MORE SHARDS FIRE MORE OFTEN.'],
   '91': ['DEEP WOUNDS NOW BEAT THE COMMON WOUND WITH THE SAME STAT: SWIFT RELIC 25% (WAS 10%), BRAWLER 20%, SEEKING GLASS 35%, LITANY 15%, UNBOWED 12% HEALTH AND 6% LESS DAMAGE.', 'TALENT NAMES SHOW UNDER THE NODES ON WIDER PHONES.', 'LEGENDARY TALENTS SHOW WHEN THEY WORK: A SIGHT OVER MARKED FOES, A BURST ON A CULL, A SHIELD DURING SANCTUARY, SPARKS FOR FRENZY, BLOOD RUSH AND CADENCE.'],
   '90': ['TAP A TALENT AGAIN, OR ANY EMPTY SPOT, TO CLOSE ITS CARD.', 'CLEARER ICONS FOR NINE TALENTS.'],
@@ -723,6 +724,7 @@ const hitBtn = (b, x, y, pad = 6) => b && Math.hypot(x - b.x, y - b.y) <= b.r + 
 
 function pointerDown(id, cx, cy) {
   const [x, y] = toLocal(cx, cy);
+  if (game.state === 'enchant' && game.ench && !game.ench.pick && !game.ask && inRect(enchGeo(featLayout()).box, x, y)) game.ench.drag = { id, y0: y, s0: game.ench.scroll || 0 }; // round 93: drag the list
   if (game.state === 'designer' && DES) { if (game.ask) onTap(x, y); else desDown(id, x, y); return; }
   if (['play', 'title', 'pause'].includes(game.state) && hitBtn(HUD.mute, x, y)) { AUDIO.unlock(); AUDIO.setMuted(!AUDIO.muted); sfx('tap'); return; }
   if (onTap(x, y)) return;
@@ -750,6 +752,7 @@ function pointerDown(id, cx, cy) {
   player.lock = best && player.lock !== best ? best : null;
 }
 function pointerMove(id, cx, cy) {
+  if (game.state === 'enchant' && game.ench && game.ench.drag && game.ench.drag.id === id) { const [, y] = toLocal(cx, cy); game.ench.scroll = game.ench.drag.s0 - (y - game.ench.drag.y0); enchGeo(featLayout()); return; } // enchGeo clamps it
   if (game.state === 'designer' && DES) { const [x, y] = toLocal(cx, cy); desMove(id, x, y); return; }
   const A = game.aim;
   if (A && id === A.id) { const [x, y] = toLocal(cx, cy); A.dx = x - A.bx; A.dy = y - A.by; A.on = Math.hypot(A.dx, A.dy) > AIM_DEAD; if (A.on) A.was = true; return; }
@@ -760,6 +763,7 @@ function pointerMove(id, cx, cy) {
   if (d > max) { stick.ox = x - (x - stick.ox) / d * max; stick.oy = y - (y - stick.oy) / d * max; } // the base follows the thumb
 }
 function pointerUp(id) {
+  if (game.ench && game.ench.drag && game.ench.drag.id === id) game.ench.drag = null;
   if (game.state === 'designer' && DES) { desUp(id); return; }
   const A = game.aim;
   if (A && id === A.id) { game.aim = null; if (A.on) { input[A.k] = true; input.aim = aimOf(A); } else if (!A.was) input[A.k] = true; return; } // dragged back to the button: cancel
@@ -780,7 +784,7 @@ screen.addEventListener('touchend', (e) => { e.preventDefault(); for (const t of
 screen.addEventListener('touchcancel', (e) => { for (const t of e.changedTouches) pointerUp(t.identifier); });
 screen.addEventListener('mousedown', (e) => pointerDown('m', e.clientX, e.clientY));
 addEventListener('mousemove', (e) => { if (stick.id === 'm' || (game.aim && game.aim.id === 'm') || game.state === 'designer') pointerMove('m', e.clientX, e.clientY); });
-screen.addEventListener('wheel', (e) => { if (game.state !== 'designer' || !DES) return; e.preventDefault(); const [x, y] = toLocal(e.clientX, e.clientY); desZoom(e.deltaY < 0 ? 1.25 : 0.8, x, y); }, { passive: false });
+screen.addEventListener('wheel', (e) => { if (game.state === 'enchant' && game.ench) { game.ench.scroll = (game.ench.scroll || 0) + e.deltaY * 0.5; enchGeo(featLayout()); e.preventDefault(); return; } if (game.state !== 'designer' || !DES) return; e.preventDefault(); const [x, y] = toLocal(e.clientX, e.clientY); desZoom(e.deltaY < 0 ? 1.25 : 0.8, x, y); }, { passive: false });
 addEventListener('mouseup', () => pointerUp('m'));
 addEventListener('keydown', (e) => {
   keys.add(e.code);
@@ -2936,60 +2940,102 @@ const E2 = (id, a, b) => (enchT(id) > 1 ? b : a); // a tier I value, else tier I
 const enchLine = (it) => { const E = ENCH_BY[it.ench], t = it.enchT || 1; return `${E.name}${t > 1 ? ' II' : ''}: ${t > 1 ? E.t2 : E.text}`; };
 const UNENCHANT_COST = 5000;
 // The REMOVE button sits above the card's buttons while the piece has an enchant.
-const enchRemoveBtn = (L) => ({ x: L.btnA.x, y: L.btnA.y - 26, w: L.btnB.x + L.btnB.w - L.btnA.x, h: 18 });
-function openEnchant() { game.ench = { sel: 0, item: -1, pick: false }; game.state = 'enchant'; sfx('tap'); }
-const enchRow = (L, i) => { const cw = Math.floor((L.list.w - 4) / 2), rh = Math.max(12, Math.min(15, Math.floor((L.ph - 76) / 8))); return { x: L.list.x + (i >= 8 ? cw + 4 : 0), y: L.list.y + 14 + (i % 8) * rh, w: cw, h: rh - 2 }; };
+const enchRemoveBtn = (L) => enchGeo(L).remove;
+function openEnchant() { game.ench = { sel: 0, item: forgeItems().length ? 0 : -1, pick: false, scroll: 0, tier: 0 }; game.state = 'enchant'; sfx('tap'); }
+// Round 93: the Enchanter, after the owner's reference. Left: every enchant as a full-width row (emblem, name, where it is
+// worn, and a badge with its three ingredients), scrolled by dragging. Right: the chosen piece in a framed showcase, the
+// enchant's text with a TIER I / II switch, its ingredients and one ENCHANT button.
+const ENCH_RH = 32;
+// Which worn piece carries enchant id, and at what tier (the indicator the owner asked for).
+const enchWorn = (id) => { for (const sl of SLOT_ORDER) { const it = SAVE.equip && SAVE.equip[sl]; if (it && it.ench === id) return { it, sl, t: it.enchT || 1 }; } return null; };
+function enchGeo(L) {
+  const box = { x: L.list.x, y: L.list.y + 16, w: L.list.w, h: L.y0 + L.ph - 22 - (L.list.y + 16) };
+  const max = Math.max(0, ENCHANTS.length * ENCH_RH - box.h), N = game.ench; N.scroll = Math.max(0, Math.min(max, N.scroll || 0));
+  const C = L.card, sz = Math.max(58, Math.min(76, Math.round(C.h * 0.3))), show = { x: C.x + 8, y: C.y + 8, w: sz, h: sz };
+  return { box, max, show, row: (i) => ({ x: box.x, y: box.y + i * ENCH_RH - N.scroll, w: box.w - 6, h: ENCH_RH - 3 }),
+    tier: (k) => ({ x: C.x + C.w - 8 - (2 - k) * 46, y: show.y + show.h + 10, w: 44, h: 14 }), remove: { x: L.btnA.x, y: L.btnA.y, w: L.btnA.w, h: L.btnA.h }, go: L.btnB };
+}
+const enchRow = (L, i) => enchGeo(L).row(i);
+// An ingredient in a small diamond, dim when missing.
+function ingrGem(i, x, y, have, col, s0 = 7) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.fillStyle = have ? 'rgba(10,12,22,0.9)' : 'rgba(10,12,22,0.6)'; ctx.fillRect(-s0, -s0, s0 * 2, s0 * 2);
+  ctx.strokeStyle = have ? col : 'rgba(120,132,156,0.45)'; ctx.lineWidth = 1; ctx.strokeRect(-s0 + 0.5, -s0 + 0.5, s0 * 2 - 1, s0 * 2 - 1); ctx.restore();
+  if (SPR.loot.anims.ingr) { ctx.save(); ctx.translate(x, y); ctx.scale(s0 / 11.5, s0 / 11.5); sprC('loot', 'ingr', i, 0, 1, { alpha: have ? 1 : 0.3 }); ctx.restore(); }
+}
 function renderEnchant() {
-  const L = featLayout(), N = game.ench, E = ENCHANTS[N.sel], items = forgeItems(), it = items[N.item], small = { small: true, outline: null };
+  const L = featLayout(), N = game.ench, E = ENCHANTS[N.sel], items = forgeItems(), it = items[N.item], small = { small: true, outline: null }, Gm = enchGeo(L);
   featFrame(L, 'THE ENCHANTER', PAL.violet0);
   if (N.pick) {
     listPanel(L, '190,120,255', 'YOUR GEAR', 'TAP A PIECE TO ENCHANT');
     items.forEach((q, i) => { const c = forgeCell(L, i); if (c.y < L.y0 + L.ph - 30) { itemSlot(c, q, { sel: i === N.item }); if (q.ench) { ctx.fillStyle = ENCH_BY[q.ench].col; ctx.fillRect(c.x + c.w - 6, c.y + 2, 4, 4); } } });
   } else {
-    listPanel(L, '190,120,255', 'ENCHANTS', null);
+    const worn = ENCHANTS.filter((Q) => enchWorn(Q.id)).length;
+    listPanel(L, '190,120,255', 'ENCHANTS', `${worn} WORN`);
+    const B = Gm.box; ctx.save(); ctx.beginPath(); ctx.rect(B.x - 2, B.y - 1, B.w + 4, B.h + 2); ctx.clip();
     ENCHANTS.forEach((Q, i) => {
-      const r = enchRow(L, i), own = [0, 1, 2].map((k) => ingrs()[i * 3 + k] > 0), ready = own.every(Boolean);
-      rowPlate(r, i === N.sel, hexRgb(Q.col), ready);
-      text(fitText(Q.name, r.w - 26), r.x + 5, r.y + Math.floor((r.h - 8) / 2), ready ? Q.col : PAL.stone1, small);
-      own.forEach((o, k) => { ctx.fillStyle = o ? Q.col : PAL.ink1; ctx.fillRect(r.x + r.w - 18 + k * 6, r.y + Math.floor(r.h / 2) - 2, 4, 4); });
+      const r = Gm.row(i); if (r.y + r.h < B.y || r.y > B.y + B.h) return;
+      const T0 = (s0, tx0, ty0, c0, o0) => { if (ty0 >= B.y - 1 && ty0 + 9 <= B.y + B.h) text(s0, tx0, ty0, c0, o0); }; // text is drawn after the clip, so rows half out of view skip it
+      const have = [0, 1, 2].map((k) => ingrs()[i * 3 + k] > 0), ready = have.every(Boolean), W0 = enchWorn(Q.id), sel = i === N.sel, rgb = hexRgb(Q.col);
+      // The row: a dark bar, lit in the enchant's colour when chosen; a gold edge when worn.
+      { const g = ctx.createLinearGradient(r.x, 0, r.x + r.w, 0); g.addColorStop(0, sel ? `rgba(${rgb},0.38)` : 'rgba(22,30,48,0.92)'); g.addColorStop(1, sel ? 'rgba(22,30,48,0.95)' : 'rgba(14,20,34,0.92)'); ctx.fillStyle = g; ctx.fillRect(r.x, r.y, r.w, r.h); }
+      ctx.fillStyle = sel ? `rgb(${rgb})` : 'rgba(170,190,225,0.16)'; ctx.fillRect(r.x, r.y, r.w, 1); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(r.x, r.y + r.h - 1, r.w, 1);
+      if (W0) { ctx.fillStyle = PAL.gold1; ctx.fillRect(r.x, r.y, 2, r.h); }
+      // The emblem: a dark disc ringed in the enchant's colour, its first ingredient inside.
+      const ex = r.x + 15, ey = r.y + r.h / 2; ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.beginPath(); ctx.arc(ex, ey + 1, 11, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = W0 ? PAL.gold1 : ready ? Q.col : 'rgba(120,132,156,0.6)'; ctx.beginPath(); ctx.arc(ex, ey, 10, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#0d1220'; ctx.beginPath(); ctx.arc(ex, ey, 8.5, 0, Math.PI * 2); ctx.fill();
+      if (SPR.loot.anims.ingr) { ctx.save(); ctx.translate(ex, ey); ctx.scale(0.8, 0.8); sprC('loot', 'ingr', i * 3, 0, 1, { alpha: ready || W0 ? 1 : 0.55 }); ctx.restore(); }
+      // Name, then where it is worn (or how close the ingredients are).
+      const tx = r.x + 31, bw = 52;
+      T0(fitText(Q.name, r.x + r.w - bw - 8 - tx), tx, r.y + 4, ready || W0 ? Q.col : PAL.cloth1, { bold: sel });
+      const n = have.filter(Boolean).length;
+      T0(W0 ? `WORN: ${heroText(SLOT_NAME[W0.sl] || W0.sl.toUpperCase())}${W0.t > 1 ? ' II' : ''}` : ready ? 'READY TO ENCHANT' : `${n}/3 INGREDIENTS`, tx, r.y + 17, W0 ? PAL.gold1 : ready ? PAL.flame1 : PAL.stone2, small);
+      // The badge: the tier worn (or the ingredients) over three ingredient gems.
+      const bx = r.x + r.w - bw - 3; ctx.fillStyle = 'rgba(4,7,13,0.55)'; ctx.fillRect(bx, r.y + 3, bw, r.h - 6);
+      T0(W0 ? `TIER ${W0.t > 1 ? 'II' : 'I'}` : 'NEEDS', bx + bw / 2, r.y + 2, W0 ? PAL.gold1 : PAL.stone1, { ...small, align: 'center' });
+      for (let k = 0; k < 3; k++) ingrGem(i * 3 + k, bx + 9 + k * 17, r.y + r.h - 9, have[k], Q.col, 5.5);
     });
-    for (const [i, l] of wrapW(ingrChanceLine(), L.list.w, true).entries()) text(l, L.list.x, enchRow(L, 7).y + enchRow(L, 7).h + 6 + i * 9, PAL.stone2, small);
+    ctx.restore();
+    // The scroll bar.
+    if (Gm.max > 0) { const th = Math.max(16, B.h * B.h / (ENCHANTS.length * ENCH_RH)), ty = B.y + (B.h - th) * (N.scroll / Gm.max); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(B.x + B.w - 3, B.y, 3, B.h); ctx.fillStyle = 'rgba(190,130,255,0.75)'; ctx.fillRect(B.x + B.w - 3, Math.round(ty), 3, Math.round(th)); }
+    text(fitText(ingrChanceLine(), L.list.w), L.list.x, B.y + B.h + 5, PAL.stone2, small);
   }
-  // The card: what the enchant does, its three ingredients, the piece.
-  const C = L.card; let y = C.y + 6; inset(C.x, C.y, C.w, C.h, hexRgb(E.col));
-  // With the piece already holding this enchant, the card shows tier II.
-  const up = !!it && it.ench === E.id, t2 = up && (it.enchT || 1) >= 1;
-  text(fitText(`${E.name}${up ? ((it.enchT || 1) > 1 ? ' II (MAX)' : ' > II') : ''}`, C.w - 12), C.x + 6, y, E.col); y += 13;
-  for (const l of wrapW(t2 ? E.t2 : E.text, C.w - 12, true)) { text(l, C.x + 6, y, PAL.cloth0, small); y += 9; }
-  y += 4;
-  for (let k = 0; k < 3; k++) {
-    const i = N.sel * 3 + k, n = ingrs()[i];
-    if (SPR.loot.anims.ingr) sprC('loot', 'ingr', i, C.x + 15, y + 8);
-    text(fitText(ingName(i), C.w - 60), C.x + 28, y + 4, n ? E.col : PAL.stone1, small);
-    text(`${Math.min(n, 99)}/1`, C.x + C.w - 6, y + 4, n ? PAL.flame1 : PAL.blood0, { ...small, align: 'right' });
-    y += 19;
-  }
-  y += 2;
-  if (it) {
-    text(fitText(`PIECE: ${nm(it)}`, C.w - 12), C.x + 6, y, RARITY[it.ri].color, small); y += 10;
-    if (it.ench && it.ench !== E.id) text(fitText(`REPLACES ${ENCH_BY[it.ench].name}${(it.enchT || 1) > 1 ? ' II' : ''}`, C.w - 12), C.x + 6, y, PAL.blood0, small);
-    else if (it.ench === E.id) text((it.enchT || 1) > 1 ? 'AT TIER II.' : 'A SECOND SET RAISES IT TO TIER II.', C.x + 6, y, PAL.stone2, small);
-  } else text('NO PIECE CHOSEN.', C.x + 6, y, PAL.stone2, small);
-  if (it && it.ench) invButton(enchRemoveBtn(L), `REMOVE ENCHANT: ${UNENCHANT_COST} GOLD`, PAL.blood2 || PAL.crimson3, (SAVE.gold || 0) >= UNENCHANT_COST);
-  invButton(L.btnA, N.pick ? 'ENCHANTS' : 'CHOOSE PIECE', PAL.stone4);
-  const lvl = it && it.ench === E.id ? it.enchT || 1 : 0;
-  invButton(L.btnB, lvl === 1 ? 'UPGRADE TO II' : lvl === 2 ? 'AT TIER II' : 'ENCHANT', PAL.violet2 || PAL.crimson3, !!it && enchReady(N.sel) && lvl < 2);
+  // The showcase: the piece in a lit octagon; tap it to choose another.
+  const C = L.card, S0 = Gm.show, rgb = hexRgb(E.col); inset(C.x, C.y, C.w, C.h);
+  { const cx = S0.x + S0.w / 2, cy = S0.y + S0.h / 2, R = S0.w / 2, oct = (r0) => { ctx.beginPath(); for (let k = 0; k < 8; k++) { const a = (k + 0.5) * Math.PI / 4; ctx[k ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); } ctx.closePath(); };
+    if (!LOWFX) glow(cx, cy, R * 1.6, `rgba(${rgb},${(0.22 + 0.06 * Math.sin(game.real * 2.5)).toFixed(2)})`);
+    ctx.fillStyle = '#0a0f1c'; oct(R); ctx.fill(); ctx.strokeStyle = `rgba(${rgb},0.9)`; ctx.lineWidth = 2; oct(R - 1); ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1; oct(R - 5); ctx.stroke();
+    if (it) { ctx.save(); ctx.translate(cx, cy); ctx.scale(2, 2); itemIcon(it, 0, 0); ctx.restore(); }
+    else { ctx.fillStyle = 'rgba(200,212,232,0.5)'; ctx.fillRect(cx - 6, cy - 1, 12, 2); ctx.fillRect(cx - 1, cy - 6, 2, 12); } }
+  { const tx = S0.x + S0.w + 8, tw = C.x + C.w - 8 - tx; let y = S0.y + 2;
+    if (it) { for (const l of wrapW(nm(it), tw).slice(0, 2)) { text(l, tx, y, RARITY[it.ri].color, { bold: true }); y += 12; }
+      text(it.ench ? `HAS ${ENCH_BY[it.ench].name}${(it.enchT || 1) > 1 ? ' II' : ''}` : 'NO ENCHANT', tx, y + 1, it.ench ? ENCH_BY[it.ench].col : PAL.stone2, small); y += 11; }
+    else { text('NO PIECE', tx, y, PAL.stone1, { bold: true }); y += 13; }
+    text('TAP THE FRAME TO CHANGE', tx, y + 1, PAL.stone2, small); }
+  // The enchant: name, the tier switch, its text at that tier.
+  const lvl = it && it.ench === E.id ? it.enchT || 1 : 0; if (N.tierFor !== `${N.sel}|${N.item}`) { N.tierFor = `${N.sel}|${N.item}`; N.tier = lvl >= 1 ? 1 : 0; }
+  const ty0 = Gm.tier(0).y; text(fitText(E.name, Gm.tier(0).x - C.x - 14), C.x + 8, ty0 + 1, E.col, { bold: true });
+  [0, 1].forEach((k) => { const b = Gm.tier(k); tabPlate(b, N.tier === k); text(`TIER ${k ? 'II' : 'I'}`, b.x + b.w / 2, b.y + 3, N.tier === k ? TAB_INK : PAL.cloth1, { ...small, align: 'center' }); });
+  let y = ty0 + 20; const ys = Gm.go.y - 30;
+  for (const l of wrapW(N.tier ? E.t2 : E.text, C.w - 16, true)) { if (y > ys - 30) break; text(l, C.x + 8, y, PAL.cloth0, small); y += 10; }
+  if (N.tier) { text('A SECOND SET OF INGREDIENTS ON THE SAME PIECE.', C.x + 8, y, PAL.stone2, small); }
+  // The ingredients: three chips with counts.
+  { const cw = Math.floor((C.w - 16 - 8) / 3); for (let k = 0; k < 3; k++) { const i = N.sel * 3 + k, n = ingrs()[i], x = C.x + 8 + k * (cw + 4), cy = ys; ctx.fillStyle = 'rgba(4,7,13,0.6)'; ctx.fillRect(x, cy, cw, 22); ctx.fillStyle = n ? `rgba(${rgb},0.6)` : 'rgba(224,32,46,0.5)'; ctx.fillRect(x, cy + 21, cw, 1);
+    ingrGem(i, x + 10, cy + 11, n > 0, E.col); text(`${Math.min(n, 99)}/1`, x + cw - 4, cy + 7, n ? PAL.flame1 : PAL.blood0, { ...small, align: 'right' }); } }
+  // The buttons: remove (or choose a piece) and enchant.
+  if (it && it.ench) invButton(Gm.remove, `REMOVE: ${UNENCHANT_COST}`, PAL.blood2 || PAL.crimson3, (SAVE.gold || 0) >= UNENCHANT_COST);
+  else invButton(Gm.remove, N.pick ? 'ENCHANTS' : 'CHOOSE PIECE', PAL.stone4);
+  invButton(Gm.go, lvl === 1 ? 'UPGRADE TO II' : lvl === 2 ? 'AT TIER II' : 'ENCHANT', PAL.gold3, !!it && enchReady(N.sel) && lvl < 2);
 }
 function enchantTap(x, y) {
-  const L = featLayout(), N = game.ench, items = forgeItems();
+  const L = featLayout(), N = game.ench, items = forgeItems(), Gm = enchGeo(L);
   if (featOut(L, x, y)) { game.state = 'play'; sfx('tap'); return; }
   if (N.pick) { for (let i = 0; i < items.length; i++) if (inRect(forgeCell(L, i), x, y)) { N.item = i; N.pick = false; sfx('tap', { vol: 0.5 }); return; } }
-  else for (let i = 0; i < ENCHANTS.length; i++) if (inRect(enchRow(L, i), x, y)) { N.sel = i; sfx('tap', { vol: 0.5 }); return; }
-  if (inRect(L.btnA, x, y)) { N.pick = !N.pick; sfx('tap', { vol: 0.5 }); return; }
+  else if (inRect(Gm.box, x, y)) { for (let i = 0; i < ENCHANTS.length; i++) if (inRect(Gm.row(i), x, y)) { if (N.sel !== i) sfx('tap', { vol: 0.5 }); N.sel = i; return; } return; }
+  if (inRect(Gm.show, x, y)) { N.pick = !N.pick; sfx('tap', { vol: 0.5 }); return; }
   const it = items[N.item], E = ENCHANTS[N.sel];
-  // A tap on the card names the ingredients (short phones show icons only).
-  if (inRect({ ...L.card, h: enchRemoveBtn(L).y - L.card.y - 4 }, x, y)) { toast(E.ing.map((n, k) => `${n} ${ingrs()[N.sel * 3 + k]}/1`).join(', '), 3); game.toastColor = E.col; return; }
-  if (it && it.ench && inRect(enchRemoveBtn(L), x, y)) {
+  for (const k of [0, 1]) if (inRect(Gm.tier(k), x, y)) { N.tier = k; sfx('tap', { vol: 0.4 }); return; }
+  if (inRect(Gm.remove, x, y)) {
+    if (!(it && it.ench)) { N.pick = !N.pick; sfx('tap', { vol: 0.5 }); return; }
     if ((SAVE.gold || 0) < UNENCHANT_COST) { toast(`REMOVING AN ENCHANT COSTS ${UNENCHANT_COST} GOLD.`, 2); return; }
     const old = ENCH_BY[it.ench];
     ask(`REMOVE ${old.name} FROM ${nm(it)} FOR ${UNENCHANT_COST} GOLD? ONE OF ITS THREE INGREDIENTS COMES BACK.`, () => {
@@ -2999,7 +3045,7 @@ function enchantTap(x, y) {
     }, 'REMOVE');
     return;
   }
-  if (inRect(L.btnB, x, y)) {
+  if (inRect(Gm.go, x, y)) {
     if (!it) { toast('CHOOSE A PIECE FIRST.', 1.6); return; }
     if (!enchReady(N.sel)) { toast('YOU NEED ALL THREE INGREDIENTS.', 1.8); return; }
     if (it.ench === E.id) {
@@ -10921,7 +10967,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { get pfx() { return pfx; }, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get pfx() { return pfx; }, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeCell, forgeItems, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>
