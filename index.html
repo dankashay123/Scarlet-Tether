@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '74';
+const BUILD = '75';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '75': ['THE SHARDS THE ANCHORESS FIRES ARE THE SAME CRYSTALS THAT HOVER OVER HER HEAD.'],
   '74': ['THE MENDICANT\'S ALMSGIVER\'S BOWL SENDS ITS WAVE FROM 4 PIECES (WIDER AND MORE OFTEN AT 6). THE GAOLER\'S KEYS THROW CHAINS EVERY 4TH BLOW AND DRAG FOES IN FROM FARTHER. THE CRACKED BELL\'S 6-PIECE RING HITS X3.', 'THE LEVEL-UP SCREEN IS DARKER, SO NOTHING SHOWS THROUGH THE CARDS. LOCKED RITES ARE EASIER TO READ.', 'FOES WADING IN THE DROWNED NAVE LEAVE RIPPLES.', 'A SAINT LEVEL NOW NAMES ONLY YOUR OWN CLASS\'S RITES, AND TELLS YOU WHEN THE NEXT ONE OPENS.'],
   '73': ['THE ANCHORESS\'S SHARDS ARE ICE-BLUE CRYSTALS THAT HOVER IN A RING ABOVE HER HEAD. RITES THAT THROW THEM BRING THEM DOWN TO CIRCLE HER.', 'LEVEL-UP CARDS ONLY OFFER WHAT YOUR CLASS AND YOUR CHOSEN RITES USE. EACH CLASS HAS A CARD OF ITS OWN: ORBITING NAILS, AFTERSHOCK AND RELIQUARY\'S CALL.'],
   '72': ['EACH CLASS NOW HAS ITS OWN FIVE SETS AND STARTER SET. THE MENDICANT: THE BEGGAR KING\'S IRON, THE WANDERER\'S ROAD, THE ALMSGIVER\'S BOWL, THE GAOLER\'S KEYS AND THE CRACKED BELL. THE ANCHORESS: THE SHATTERED RELIQUARY, THE GLASS MARTYR, THE MOTHER\'S PSALTER, THE VEILED LANTERN AND THE THORNED CRUCIBLE.', 'SET PIECES YOUR MENDICANT OR ANCHORESS ALREADY OWNS BECOME THE MATCHING SET OF THEIR OWN.', 'THE ANCHORESS RAISES HER RELIQUARY AS HER SHARDS FIRE. HITS ON ONE FOE ADD INTO ONE NUMBER.', 'THE FORGE\'S AFFIXES TAB LISTS EVERY LINE YOU CAN CUT. NEW LINES: A CHANCE TO HIT TWICE, LIGHTNING EVERY 12TH HIT, KILLS THAT BURST.'],
@@ -8226,6 +8227,9 @@ function render() {
   for (const p of parts) { ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x), Math.round(p.y - p.z), p.s || 1, p.s || 1); }
   const boltAnim = G && G.xskin ? `bolt_${G.xskin}` : 'bolt';
   for (const b of bolts) {
+    // Round 75: a fired shard is the same crystal that hovers over her head, turned to its heading (16 frames, no rotation so pixels stay square).
+    if (b.shard && SPR.fx.anims.crystal) { const a = Math.atan2(b.vy / 0.55, b.vx), fr = ((Math.round(a / (Math.PI * 2) * 16) % 16) + 16) % 16, c = frameOf('fx', 'crystal', fr), k = b.great ? 2 : 1;
+      ctx.drawImage(IMG.fx, c.x, c.y, c.w, c.h, Math.round(b.x) - (c.w >> 1) * k, Math.round(b.y) - (c.h >> 1) * k, c.w * k, c.h * k); continue; }
     const f = frameOf('fx', b.shard ? 'shardbolt' : boltAnim, 0);
     ctx.save(); ctx.translate(Math.round(b.x), Math.round(b.y)); ctx.rotate(Math.atan2(b.vy, b.vx)); if (b.great) ctx.scale(2, 2);
     ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -f.w + 3, -Math.floor(f.h / 2), f.w, f.h); ctx.restore();

@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 74 (build 74, on `master`). Read
+Last updated 2026-11-12, after round 75 (build 75, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -296,6 +296,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 75:** the shards the Anchoress fires are drawn with the hovering
+  `crystal` sprite, picked by heading (the frame whose slanted angle matches
+  the flight, no canvas rotation; `shardbolt` stays only as a fallback).
 
 - **Round 74:** a review pass over the whole game. Balance (Mendicant): the
   Almsgiver's wave starts at 4 pieces (every 5th blow at 20+ Alms, radius
