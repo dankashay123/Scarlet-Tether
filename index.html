@@ -361,7 +361,7 @@ function tintKey(sheet, rgb) {
   return TINT[k][sheet] ? k : null;
 }
 // Round 83: each class has its own bust (ui portrait, portrait_m, portrait_a).
-const heroPortrait = () => isMelee() && SPR.ui.anims.portrait_m ? 'portrait_m' : isAnch() && SPR.ui.anims.portrait_a ? 'portrait_a' : 'portrait';
+const bustAnim = () => isMelee() && SPR.ui.anims.portrait_m ? 'portrait_m' : isAnch() && SPR.ui.anims.portrait_a ? 'portrait_a' : 'portrait';
 const CROWNED = ['saint_nails', 'saint_choir', 'portrait_nails', 'portrait_choir']; // crowns, not halos
 const looks = () => { const K = (SAVE.looks = SAVE.looks || { dye: 'crimson', halo: 'gold', own: ['d:crimson', 'h:gold'] }); if (!K.bolt) { K.bolt = 'set'; K.dash = 'white'; K.own.push('b:set', 's:white'); } return K; };
 const rampOf = (name) => Object.keys(PAL).filter((k) => new RegExp(`^${name}\\d+h?$`).test(k)).sort((a, b) => parseFloat(a.replace(name, '').replace('h', '.5')) - parseFloat(b.replace(name, '').replace('h', '.5')));
@@ -9153,7 +9153,7 @@ function pauseIcon(id, x, y) {
     ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#1a2233'; ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill(); ctx.restore(); return;
   }
   if (id === 'resume') { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.moveTo(x - 5, y - 8); ctx.lineTo(x + 9, y + 1); ctx.lineTo(x - 5, y + 10); ctx.fill(); ctx.fillStyle = PAL.gold1; ctx.beginPath(); ctx.moveTo(x - 6, y - 9); ctx.lineTo(x + 8, y); ctx.lineTo(x - 6, y + 9); ctx.fill(); return; }
-  if (id === 'hero') { const f = frameOf('ui', 'portrait', 0); if (f) { const k = Math.min(1, 24 / f.h); ctx.save(); ctx.translate(x, y); ctx.scale(k, k); sprC('ui', heroPortrait(), 0, 0, 0); ctx.restore(); } return; }
+  if (id === 'hero') { const f = frameOf('ui', 'portrait', 0); if (f) { const k = Math.min(1, 24 / f.h); ctx.save(); ctx.translate(x, y); ctx.scale(k, k); sprC('ui', bustAnim(), 0, 0, 0); ctx.restore(); } return; }
   if (ic && SPR.ui.anims[ic[1]]) { const f = frameOf(ic[0], ic[1], 0), k = Math.min(1, 26 / Math.max(f.w, f.h)); ctx.save(); ctx.translate(x, y); ctx.scale(k, k); sprC(ic[0], ic[1], 0, 0, 0); ctx.restore(); }
 }
 function renderPause() {
@@ -9163,7 +9163,7 @@ function renderPause() {
   { const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(12,18,30,0.97)'); g.addColorStop(1, 'rgba(16,24,40,0.97)'); ctx.fillStyle = g; ctx.fillRect(P.px, 0, W - P.px, H);
     ctx.fillStyle = 'rgba(170,190,225,0.22)'; ctx.fillRect(P.px, 0, 1, H); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(P.px - 2, 0, 2, H); }
   // Who is playing: the portrait, the saint's name and Saint level.
-  { const f = frameOf('ui', 'portrait', 0); if (f) { const k = Math.min(1, 28 / f.h); ctx.save(); ctx.translate(P.px + 22, 20); ctx.scale(k, k); sprC('ui', heroPortrait(), 0, 0, 0); ctx.restore(); }
+  { const f = frameOf('ui', 'portrait', 0); if (f) { const k = Math.min(1, 28 / f.h); ctx.save(); ctx.translate(P.px + 22, 20); ctx.scale(k, k); sprC('ui', bustAnim(), 0, 0, 0); ctx.restore(); }
     text(SAVE.name || HEROES[heroId()].name, P.px + 42, 8, PAL.white, { bold: true });
     text(`${HEROES[heroId()].name.replace('THE ', '')} · LEVEL ${SAVE.lvl || 1}`, P.px + 42, 21, PAL.stone1, { small: true });
     backArrow(P.back.x, P.back.y);
