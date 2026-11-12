@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '82';
+const BUILD = '83';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '83': ['ENDLESS ZEAL GIVES EACH CLASS ITS OWN EXTRA: THE MENDICANT +45% DAMAGE, THE ANCHORESS +2 SHARDS.', 'THE MENDICANT AND THE ANCHORESS HAVE THEIR OWN PORTRAITS ON THE PAUSE SCREEN.', 'THE SACRIFICE SOUND IS A LITTLE QUIETER.'],
   '82': ['TAP A HELD WOUND ON THE LEVEL-UP SCREEN TO READ ITS CARD.', 'THE SACRIFICE PLAYS OUT: THE SEVEN RANKS BREAK ONE BY ONE, WITH ITS OWN SOUND.', 'EACH REROLL IN THE SAME LEVEL COSTS HALF AS MUCH AGAIN. THE PRICE RESETS NEXT LEVEL.', 'THE PENITENT COLOSSUS WEARS A PROPER HOOD AND THE INQUISITOR HAS LAYERED, SPIKED SHOULDER PLATES. GEAR ICONS AND THE PORTRAIT HAVE THE DEEPER SHADING.', 'EARTHBREAKER HITS HARDER (400%) AND REACHES FARTHER.'],
   '81': ['A REROLL NOW COSTS 500 GOLD AT STATION I, MORE AT DEEPER STATIONS (ABOUT A QUARTER OF WHAT A FULL CLEAR PAYS).', 'MYTHIC WOUNDS HAVE THEIR OWN ICONS. ENDLESS ZEAL, THE GIANT\'S MACE, EARTHBREAKER, CHOIR OF GLASS AND PRISM HEART ARE STRONGER; THE NAILSTORM HEART NO LONGER ADDS PIERCE.', 'THE LEVEL-UP SCREEN SHOWS THE WOUNDS YOU HOLD AND THEIR RANKS IN ITS TOP CORNERS.'],
   '80': ['SIX NEW LEVEL-UP WOUNDS FOR EACH CLASS.', 'NEW ON THE LEVEL-UP SCREEN: REROLL THE THREE CARDS, PAID FROM THE GOLD YOU HAVE FOUND THIS RUN.', 'OR SACRIFICE 7 RANKS OF YOUR WOUNDS, AT RANDOM, FOR A RANDOM MYTHIC WOUND. NINE MYTHIC WOUNDS, ONE RANK EACH.'],
@@ -359,6 +360,8 @@ function tintKey(sheet, rgb) {
   if (!TINT[k][sheet] && WHITE[sheet]) { const W0 = WHITE[sheet], c = document.createElement('canvas'); c.width = W0.width; c.height = W0.height; const x = c.getContext('2d'); x.drawImage(W0, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = `rgb(${rgb})`; x.fillRect(0, 0, c.width, c.height); TINT[k][sheet] = c; }
   return TINT[k][sheet] ? k : null;
 }
+// Round 83: each class has its own bust (ui portrait, portrait_m, portrait_a).
+const heroPortrait = () => isMelee() && SPR.ui.anims.portrait_m ? 'portrait_m' : isAnch() && SPR.ui.anims.portrait_a ? 'portrait_a' : 'portrait';
 const CROWNED = ['saint_nails', 'saint_choir', 'portrait_nails', 'portrait_choir']; // crowns, not halos
 const looks = () => { const K = (SAVE.looks = SAVE.looks || { dye: 'crimson', halo: 'gold', own: ['d:crimson', 'h:gold'] }); if (!K.bolt) { K.bolt = 'set'; K.dash = 'white'; K.own.push('b:set', 's:white'); } return K; };
 const rampOf = (name) => Object.keys(PAL).filter((k) => new RegExp(`^${name}\\d+h?$`).test(k)).sort((a, b) => parseFloat(a.replace(name, '').replace('h', '.5')) - parseFloat(b.replace(name, '').replace('h', '.5')));
@@ -551,7 +554,7 @@ if (document.fonts) Promise.all([document.fonts.load(fontOf(22, false)), documen
 // iOS 17+: audioSession 'ambient' makes the game follow the silent switch.
 const AUDIO = (() => {
   const SFX = ['swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'sacrifice', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'execute', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_ashWidow', 'fall_ashWidow'];
-  const VOL = { swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, sacrifice: 0.7, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, execute: 0.8, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
+  const VOL = { swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, sacrifice: 0.55, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, execute: 0.8, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
   const A = { ctx: null, buf: {}, last: {}, muted: false, master: null, sfxBus: null, voiceBus: null, musicBus: null, tracks: {}, want: [] };
   try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch { /* not supported */ }
   try { A.muted = !!JSON.parse(localStorage.getItem('hollow-saint') || '{}').muted; } catch { /* private mode */ }
@@ -6663,7 +6666,7 @@ function gearStats() {
   g.cdr += 10 * wound('sLitany') + 10 * wound('aPrayer') + 30 * wound('xZeal'); g.dash += 15 * wound('sGrace'); g.xcharges = (g.xcharges || 0) + (wound('sGrace') >= 2 ? 1 : 0);
   g.armor += 6 * wound('mIron') + 4 * wound('aVeil'); g.gold += 15 * wound('mBeggar'); g.lok += wound('mBeggar');
   g.vital = (g.vital || 0) + 8 * wound('mUnbowed') + 5 * wound('aVeil') + 25 * wound('xHalo'); g.dmg += 40 * wound('xHalo') + 50 * wound('xGiant');
-  g.fervor += 200 * wound('xZeal'); g.dmg += 20 * wound('xZeal') + 30 * wound('xChoir'); g.shards = (g.shards || 0) + 4 * wound('xChoir'); g.speed += wound('swift') * 10; g.fervor += wound('fervent') * 30; g.lok += wound('letting') * 2;
+  g.fervor += 200 * wound('xZeal'); g.dmg += (isMelee() ? 45 : 20) * wound('xZeal') + 30 * wound('xChoir'); g.shards = (g.shards || 0) + 4 * wound('xChoir') + (isAnch() ? 2 : 0) * wound('xZeal'); // round 83: Endless Zeal's extra per class g.speed += wound('swift') * 10; g.fervor += wound('fervent') * 30; g.lok += wound('letting') * 2;
   // Sanctity multiplies damage, and health a little less (as monster damage climbs).
   g.power = playerSanctity() / 10;
   // Talents (the Saint's level).
@@ -9150,7 +9153,7 @@ function pauseIcon(id, x, y) {
     ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#1a2233'; ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill(); ctx.restore(); return;
   }
   if (id === 'resume') { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.moveTo(x - 5, y - 8); ctx.lineTo(x + 9, y + 1); ctx.lineTo(x - 5, y + 10); ctx.fill(); ctx.fillStyle = PAL.gold1; ctx.beginPath(); ctx.moveTo(x - 6, y - 9); ctx.lineTo(x + 8, y); ctx.lineTo(x - 6, y + 9); ctx.fill(); return; }
-  if (id === 'hero') { const f = frameOf('ui', 'portrait', 0); if (f) { const k = Math.min(1, 24 / f.h); ctx.save(); ctx.translate(x, y); ctx.scale(k, k); sprC('ui', saintBase() === 'mendicant' && SPR.ui.anims.portrait_m ? 'portrait_m' : 'portrait', 0, 0, 0); ctx.restore(); } return; }
+  if (id === 'hero') { const f = frameOf('ui', 'portrait', 0); if (f) { const k = Math.min(1, 24 / f.h); ctx.save(); ctx.translate(x, y); ctx.scale(k, k); sprC('ui', heroPortrait(), 0, 0, 0); ctx.restore(); } return; }
   if (ic && SPR.ui.anims[ic[1]]) { const f = frameOf(ic[0], ic[1], 0), k = Math.min(1, 26 / Math.max(f.w, f.h)); ctx.save(); ctx.translate(x, y); ctx.scale(k, k); sprC(ic[0], ic[1], 0, 0, 0); ctx.restore(); }
 }
 function renderPause() {
@@ -9160,7 +9163,7 @@ function renderPause() {
   { const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(12,18,30,0.97)'); g.addColorStop(1, 'rgba(16,24,40,0.97)'); ctx.fillStyle = g; ctx.fillRect(P.px, 0, W - P.px, H);
     ctx.fillStyle = 'rgba(170,190,225,0.22)'; ctx.fillRect(P.px, 0, 1, H); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(P.px - 2, 0, 2, H); }
   // Who is playing: the portrait, the saint's name and Saint level.
-  { const f = frameOf('ui', 'portrait', 0); if (f) { const k = Math.min(1, 28 / f.h); ctx.save(); ctx.translate(P.px + 22, 20); ctx.scale(k, k); sprC('ui', 'portrait', 0, 0, 0); ctx.restore(); }
+  { const f = frameOf('ui', 'portrait', 0); if (f) { const k = Math.min(1, 28 / f.h); ctx.save(); ctx.translate(P.px + 22, 20); ctx.scale(k, k); sprC('ui', heroPortrait(), 0, 0, 0); ctx.restore(); }
     text(SAVE.name || HEROES[heroId()].name, P.px + 42, 8, PAL.white, { bold: true });
     text(`${HEROES[heroId()].name.replace('THE ', '')} · LEVEL ${SAVE.lvl || 1}`, P.px + 42, 21, PAL.stone1, { small: true });
     backArrow(P.back.x, P.back.y);
@@ -9554,7 +9557,7 @@ const WOUNDS = [
   // Mythic Wounds (round 80): never offered on a card. Sacrifice 7 ranks on the level-up screen for one at random. One rank each.
   { id: 'xHalo', mythic: true, name: 'THE UNBROKEN HALO', r: 3, max: 1, icon: 'myth:0', text: () => '+40% DAMAGE AND +25% MAX HP.' },
   { id: 'xFury', mythic: true, name: "MARTYR'S FURY", r: 3, max: 1, icon: 'myth:1', text: () => 'BELOW HALF HEALTH YOUR DAMAGE IS DOUBLED.' },
-  { id: 'xZeal', mythic: true, name: 'ENDLESS ZEAL', r: 3, max: 1, icon: 'myth:2', text: () => 'YOUR RECKONING CHARGES THREE TIMES AS FAST. RITES RECHARGE 30% FASTER. +20% DAMAGE.' },
+  { id: 'xZeal', mythic: true, name: 'ENDLESS ZEAL', r: 3, max: 1, icon: 'myth:2', text: () => `YOUR RECKONING CHARGES THREE TIMES AS FAST. RITES RECHARGE 30% FASTER. ${isMelee() ? '+45% DAMAGE.' : isAnch() ? '+20% DAMAGE AND +2 RELIQUARY SHARDS.' : '+20% DAMAGE.'}` },
   { id: 'xSplit', mythic: true, hero: 'saint', name: 'THE NAILSTORM HEART', r: 3, max: 1, icon: 'myth:3', text: () => 'THE CROSSBOW FIRES 2 MORE BOLTS IN A SPREAD.' },
   { id: 'xCrit', mythic: true, hero: 'saint', name: 'EYE OF HEAVEN', r: 3, max: 1, icon: 'myth:4', text: () => '+20% CRIT CHANCE. CRITS DEAL TRIPLE.' },
   { id: 'xGiant', mythic: true, hero: 'mendicant', name: "THE GIANT'S MACE", r: 3, max: 1, icon: 'myth:5', text: () => 'THE MACE REACHES 40% FARTHER, SWEEPS WIDER AND HITS 50% HARDER.' },

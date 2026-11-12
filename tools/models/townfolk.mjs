@@ -3,7 +3,7 @@
 // { sheetName: { animName: () => frames } }. Characters face right; each
 // frame carries ax/ay at the feet.
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, dot, pline, under } from '../sdf.mjs';
-import { MATS, torus, SKINS } from './base.mjs';
+import { MATS, torus, SKINS, HEROES } from './base.mjs';
 
 const M = {
   ...MATS,
@@ -324,17 +324,25 @@ function crow(i) {
 // ------------------------------------------------------ the portrait ---
 // A bust of the Saint for the dialog box: hood, gilt-rimmed void, eyes. 34x34.
 // The HUD portrait; a vestment set skin recolours it and swaps the halo for its crown.
-function portrait(skin = null) {
-  const K = { hood: 'crimson', cowl: 'crimson', trim: 'gold', cross: 'crimson', ...(skin ? SKINS[skin].mats : {}) };
-  const S = new Scene(), cx = 16, hy = 16;
-  // Shoulders and mantle, with the gold stole.
-  S.add(ellipsoid([cx, 33, -1], [14, 7, 7], K.cowl), 0);
+function portrait(skin = null, hero = null) {
+  // hero (round 83): the Mendicant's and the Anchoress's own busts, in their models' materials.
+  const HR = hero ? HEROES[hero] : null, hm = HR ? HR.mats : {};
+  const K = { hood: 'crimson', cowl: 'crimson', trim: 'gold', cross: 'crimson', ...(HR ? { hood: hm.hood, cowl: hero === 'mendicant' ? 'iron' : hm.cowl, trim: hero === 'mendicant' ? 'steel' : hm.trim, cross: hm.cross } : {}), ...(skin ? SKINS[skin].mats : {}) };
+  const S = new Scene(), cx = 16, hy = 16, wide = HR && HR.broad ? 1.5 : 0;
+  // Shoulders and mantle, with the stole.
+  S.add(ellipsoid([cx, 33, -1], [14 + wide, 7 + wide * 0.6, 7], K.cowl), 0);
   S.paint({ f: (x, y, z) => Math.max(Math.abs(x - (cx + 3)) - 2.2, 27 - y, -z + 1), mat: K.trim });
   S.paint({ f: (x, y, z) => Math.min(Math.max(Math.abs(x - (cx + 3)) - 1.5, Math.abs(y - 31) - 0.55), Math.max(Math.abs(x - (cx + 3)) - 0.55, Math.abs(y - 31) - 1.8)) + (z < 1 ? 9 : 0), mat: K.cross });
   // The hood, its folds and the point falling back.
-  const hood = ellipsoid([cx, hy, 0], [9.8, 9.4, 8.6], K.hood);
+  const hood = ellipsoid([cx, hy, 0], [9.8 + wide * 0.4, 9.4, 8.6], K.hood);
   S.add(folds(hood, { cx, cz: 0, n: 7, amp: 0.3, y0: hy - 9, y1: hy + 9 }), 2.6);
   S.add(capsule([cx - 4, hy - 6, -2], [cx - 11, hy - 9, -5], 5, 1.4, K.hood), 2.6);
+  // The Anchoress's veil: over the crown and down behind the shoulder.
+  if (hero === 'anchoress') {
+    S.add(ellipsoid([cx - 1.5, hy - 6.5, -0.5], [8.6, 4.6, 8], 'cream'), 1.4);
+    S.add(capsule([cx - 8, hy - 4, -3], [cx - 12.5, hy + 9, -4], 3.4, 2.4, 'cream'), 1.6);
+    S.add(capsule([cx - 12.5, hy + 9, -4], [cx - 13, hy + 15, -4], 2.4, 1.8, 'creamDark'), 1);
+  }
   // The hollow where a face should be, nearly facing us.
   const fc = [cx + 2.2, hy + 1.6, 7.6];
   const cut = ellipsoid(fc, [5, 6, 4.8], 'void');
@@ -345,7 +353,8 @@ function portrait(skin = null) {
     for (const dx of [-5, 0, 5]) S.add(capsule([cx + dx, hy - 8.5, 4], [cx + dx * 1.1, hy - (skin === 'choir' ? 11.5 : dx ? 13 : 15), 4], skin === 'choir' ? 1.6 : 1.9, skin === 'choir' ? 1.6 : 0.9, skin === 'choir' ? 'wax' : 'gold'), 0.6);
   } else { S.add(torus([cx - 0.6, hy - 11.6, 0], 7.4, 1.1, 0.42, 'halo'), 0); S.sub(sphere([cx + 5.4, hy - 11.4, 3.4], 1.6), 0); }
   const fr = render(S, 34, 34, MATS, { ground: 99, rich: process.env.NORICH ? false : { melt: 1.15, meltAdd: 0.15, detail: 0.6, fall: 0.07, reach: 10 } }); // round 82: shaded like the hero models
-  for (const ex of [fc[0] - 2.1, fc[0] + 1.9]) { dot(fr, ex, fc[1] - 1.2, 'flame0'); dot(fr, ex, fc[1] - 0.2, 'flame1'); dot(fr, ex, fc[1] + 0.8, 'flame3'); }
+  const E = HR ? HR.eyes : ['flame0', 'flame1', 'flame3'];
+  for (const ex of [fc[0] - 2.1, fc[0] + 1.9]) { dot(fr, ex, fc[1] - 1.2, E[0]); dot(fr, ex, fc[1] - 0.2, E[1]); dot(fr, ex, fc[1] + 0.8, E[2]); }
   if (skin === 'choir') for (const dx of [-5, 0, 5]) { for (const [yy, c] of [[-13.5, 'ember2'], [-14.5, 'ember1'], [-15.5, 'ember0']]) { dot(fr, cx + dx * 1.1, hy + yy, c); dot(fr, cx + dx * 1.1 + 1, hy + yy, c); } }
   return fr;
 }
@@ -358,5 +367,5 @@ export default {
     kid: () => [0, 1, 2, 3].map((t) => child(t, 0)), kid2: () => [0, 1, 2, 3].map((t) => child(t, 1)),
     crow: () => [0, 1, 2, 3].map(crow),
   },
-  ui: { portrait: () => [portrait()], ...Object.fromEntries(Object.keys(SKINS).filter((k) => !SKINS[k].hero || SKINS[k].hero === 'saint').map((k) => [`portrait_${k}`, () => [portrait(k)]])) },
+  ui: { portrait: () => [portrait()], portrait_m: () => [portrait(null, 'mendicant')], portrait_a: () => [portrait(null, 'anchoress')], ...Object.fromEntries(Object.keys(SKINS).filter((k) => !SKINS[k].hero || SKINS[k].hero === 'saint').map((k) => [`portrait_${k}`, () => [portrait(k)]])) },
 };

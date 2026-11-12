@@ -116,7 +116,7 @@ function shard(i) {
   const S = new Scene(), a = [0, 0.5, 0, -0.5][i], w = [1, 0.62, 0.3, 0.62][i];
   S.add(rotZ(ellipsoid([7, 9, 2], [2.6 * w + 0.6, 5.2, 2], 'shardGlow'), [7, 9], a * 0.3), 0);
   S.add(rotZ(capsule([7, 3.6, 2], [7, 2, 2], 1.6 * w + 0.5, 0.6, 'gold'), [7, 9], a * 0.3), 0.3);
-  const f = render(S, 14, 16, MATS, { contrast: 1.5 });
+  const f = render(S, 14, 16, MATS, { contrast: 1.5, rich: IRICH });
   if (i !== 2) dot(f, 6, 7, 'white');
   return f;
 }
@@ -155,7 +155,7 @@ function thurible(i) {
   S.add(torus([cx, 2.4, 2], 1.6, 0.55, 0, 'iron'), 0);
   S.add(box([cx, 19.6, 2], [2.4, 0.8, 2], 0.4, 'gold'), 0.6);
   S.paint({ f: (x, y) => Math.abs(y - 11.2) - 0.5, mat: 'leather' });
-  const f = render(S, 20, 22, MATS, { contrast: 1.35 });
+  const f = render(S, 20, 22, MATS, { contrast: 1.35, rich: IRICH });
   // Pierced holes with ember light, flickering between frames.
   const holes = [[cx - 3, 14], [cx, 13], [cx + 3, 14], [cx - 1.5, 16.5], [cx + 1.5, 16.5]];
   holes.forEach(([x, y], k) => { put(f, x, y, (k + i) % 2 ? 'ember0' : 'ember1'); put(f, x, y + 1, 'ember2'); });
@@ -169,7 +169,7 @@ function flask(mat = 'holy') {
   S.add(capsule([8, 6.5, 2], [8, 3.5, 2], 1.8, 1.6, mat), 1);
   S.add(capsule([8, 3.2, 2.2], [8, 1.4, 2.2], 1.7, 1.7, 'wood'), 0);
   S.paint({ f: (x, y) => Math.abs(y - 5.6) - 0.5, mat: 'gold' });
-  const f = render(S, 16, 17, MATS, { contrast: 1.4 });
+  const f = render(S, 16, 17, MATS, { contrast: 1.4, rich: IRICH });
   put(f, 6, 9, 'white'); put(f, 6, 10, `${mat}0`); put(f, 7, 8, `${mat}0`);
   return f;
 }
@@ -187,7 +187,7 @@ function hook() {
   S.add(capsule([6.5, 7, 2], [11, 7, 2], 1.2, 1.1, 'iron'), 0.6);
   S.add(capsule([11, 7, 2], [14, 3.5, 2], 1.1, 0.4, 'iron'), 0.8);
   S.add(capsule([11, 7, 2], [14, 10.5, 2], 1.1, 0.4, 'iron'), 0.8);
-  const f = render(S, 16, 14, MATS, { contrast: 1.5 });
+  const f = render(S, 16, 14, MATS, { contrast: 1.5, rich: IRICH });
   put(f, 14, 3, 'white');
   return f;
 }
@@ -199,7 +199,7 @@ function dagger() {
   S.add(box([6, 9, 2.5], [4, 0.9, 1], 0.5, 'gold'), 0);
   S.add(capsule([6, 8, 2], [6, 3.5, 2], 1.1, 1.1, 'leather'), 0);
   S.add(sphere([6, 2.4, 2.2], 1.6, 'gold'), 0);
-  const f = render(S, 12, 24, MATS, { contrast: 1.4 });
+  const f = render(S, 12, 24, MATS, { contrast: 1.4, rich: IRICH });
   pline(f, 5, 11, 5, 19, 'iron0');
   return A(f, 6, 23);
 }
@@ -547,14 +547,14 @@ const setIcon = (set, slot) => { const L = SET_LOOK[set]; return legendIcon(slot
 function coin(i) {
   const S = new Scene();
   S.add(ellipsoid([5.5, 5.5, 2], [i ? 1.6 : 4.2, 4.2, 1.2], 'gold'), 0);
-  const f = render(S, 11, 11, MATS, { contrast: 1.4 });
+  const f = render(S, 11, 11, MATS, { contrast: 1.4, rich: IRICH });
   if (!i) { put(f, 4, 3, 'white'); pline(f, 5, 4, 5, 7, 'gold2'); }
   return f;
 }
 function goldPile(n) {
   const S = new Scene(), pts = [[11, 12], [7, 13], [15, 13], [9, 10], [13, 10], [11, 8], [5, 11], [17, 11], [11, 14]].slice(0, [3, 6, 9][n]);
   for (const [x, y] of pts) S.add(ellipsoid([x, y, 2], [3.4, 1.6, 3], 'gold'), 0);
-  const f = render(S, 22, 17, MATS, { contrast: 1.35 });
+  const f = render(S, 22, 17, MATS, { contrast: 1.35, rich: IRICH });
   for (const [x, y] of pts.slice(0, 3)) put(f, x - 1, y - 1, 'white');
   return f;
 }
@@ -574,7 +574,7 @@ function roseKey() {
   S.add(capsule([10, 15, 2], [10, 26, 2], 2, 1.9, 'rose'), 0.6);
   S.add(box([14, 21, 2], [2.4, 1.3, 1.4], 0.3, 'rose'), 0.4);
   S.add(box([14, 25, 2], [2.4, 1.3, 1.4], 0.3, 'rose'), 0.4);
-  const f = render(S, 20, 29, MATS, { contrast: 1.4 });
+  const f = render(S, 20, 29, MATS, { contrast: 1.4, rich: IRICH });
   put(f, 8, 6, 'white'); put(f, 9, 6, 'white');
   return f;
 }
@@ -582,7 +582,7 @@ function roseKey() {
 function soundIcon(on) {
   const S = new Scene();
   S.add(ellipsoid([12, 12, 0], [10.5, 10.5, 3], 'cloth'), 0);
-  const f = render(S, 24, 24, MATS, { contrast: 1.2 });
+  const f = render(S, 24, 24, MATS, { contrast: 1.2, rich: IRICH });
   const ink = (x, y) => put(f, x, y, 'ink1');
   for (let y = 10; y <= 14; y++) for (let x = 6; x <= 8; x++) ink(x, y);
   for (let x = 9; x <= 12; x++) for (let y = 12 - (x - 8) - 1; y <= 12 + (x - 8) + 1; y++) ink(x, y);
@@ -608,7 +608,7 @@ function emberstone() {
   const cracks = [seg(3, 7, 6, 8, 1), seg(6, 8, 9, 10.5, 1.1), seg(9, 10.5, 12, 7, 1), seg(12, 7, 15, 6.5, 0.9), seg(9, 10.5, 7, 15, 1), seg(9, 10.5, 14, 13, 0.9)];
   S.paint({ f: (x, y) => Math.min(...cracks.map((c) => c(x, y))), mat: 'crack' });
   S.paint({ f: (x, y) => Math.hypot(x - 9, y - 10.5) - 2.2, mat: 'crackHot' });
-  const f = render(S, 18, 18, FM, { contrast: 1.4 });
+  const f = render(S, 18, 18, FM, { contrast: 1.4, rich: IRICH });
   dot(f, 9, 10, 'white');
   dot(f, 5, 4, 'stone1');
   return f;
@@ -623,7 +623,7 @@ function relTear() {
   S.add(sphere([9, 6.5, 3], 2.6, 'tearGlass'), 3.5);
   S.add(sphere([9, 3, 3], 1.3, 'tearGlass'), 2.5);
   S.paint({ f: (x, y) => Math.hypot(x - 9.5, y - 12) - 2.2, mat: 'tearCore' });
-  const f = render(S, 18, 18, TM, { contrast: 1.35 });
+  const f = render(S, 18, 18, TM, { contrast: 1.35, rich: IRICH });
   dot(f, 7, 9, 'white'); dot(f, 8, 5, 'rose1');
   return f;
 }
@@ -643,7 +643,7 @@ function facets(list, bb, mat) {
   const ps = list.map(([nx, ny, nz, d]) => { const l = Math.hypot(nx, ny, nz); return [nx / l, ny / l, nz / l, d / l]; });
   return { mat, bb, f: (x, y, z) => { let m = -1e9; for (const [a, b, c, d] of ps) { const v = a * x + b * y + c * z - d; if (v > m) m = v; } return m; } };
 }
-const ingrRender = (S) => A(render(S, 18, 18, IM, { contrast: 1.45 }), 9, 9);
+const ingrRender = (S) => A(render(S, 18, 18, IM, { contrast: 1.45, rich: IRICH }), 9, 9);
 const lit = (r, s) => FINE[r][s];
 const INGR_SHAPES = {
   // A tied sack with a heap of coloured dust spilling out in front.
