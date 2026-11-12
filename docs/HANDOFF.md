@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 86 (build 86, on `master`). Read
+Last updated 2026-11-12, after round 87 (build 87, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   round 86 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-87 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -303,6 +303,12 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 1. **Town polish.** Round 47 redid the hedges and flower beds; the
    bushes and oaks could get the same 3/4 tilt, and the square's empty
    cobbles south of the fountain could take a market cart or two.
+2. **Talent follow-ups (round 87).** Ask the owner how the webs feel: the
+   column thresholds (`TAL_NEED`), whether a full chain should be needed
+   for a legendary talent, and the legendary numbers (set by eye). Levels
+   61-100 give only talent points: a rite, passive slot or look at 50, 75
+   and 100 would give them more. The Cull and Sanctuary are the two most
+   likely to need a second look.
 2. **Rites panel.** The 35-40 gap is the last long one (Iron Brand 35, the
    Great Penance 40). (The Saint-level toast names the next rite since round 74.)
 3. **Round 42 follow-ups.** Ask the owner how the talent numbers and the
@@ -358,6 +364,28 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 87:** the owner sent a Torchlight-style talent screen and asked
+  for Saint level 100, a talent point per Station cleared (I to XX), far
+  more talents on linked, branching paths, and 3-4 legendary ends a tree.
+  **Levels:** `MAX_SAINT` 100 on the same `lvNeed` curve (rites and passive
+  slots still open by level 40). **Points:** level - 1 plus `stationPts()`
+  (119 in all); a first clear of Stations I-XX toasts the point. **Trees:**
+  three webs (`TALENT_TREES[k].nodes`), 7 columns at 0/4/8/12/16/20/25
+  points in the tree, 5 lanes; a linked node needs one of its `f` nodes at
+  full rank. Offence 22 nodes (62 ranks), Defence 20 (55), Rites 20 (58):
+  175 ranks for 119 points, so builds must choose. Legendary ends: Great
+  Bolt, the Mark, Blood Frenzy, the Cull; Blood Rush, Unbroken, Aegis,
+  Fleet; Brimming, Cadence, the Choir, Sanctuary (hooks in `passK`,
+  `hurtEnemy`, `killEnemy`, `damagePlayer`, `gearStats`, the rite cast in
+  `updateAbilities`). Old ids kept their hooks; stats now sum through
+  `ts(stat)`. Old points came back once (`migrateTalents`, `SAVE.talV`).
+  The panel draws nodes without names (the card names them); legendary
+  nodes wear a gold band; 12 new icons (ui `talent`). **Balance:**
+  `balance.cjs max` now spends all 119 points: damage a second on the dummy
+  rose from 67.7k to 94k at Station XII and 684k to 1.1M at XX (one run
+  each, crit-noisy), about one Station's worth for a fully farmed account.
+  Not tuned further. Test: `round87.cjs`.
 
 - **Round 86:** the owner said "continue" with no pick, so three small
   follow-ups from these notes. **Codex NEW marks:** an entry seen for the

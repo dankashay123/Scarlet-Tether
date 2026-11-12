@@ -24,7 +24,7 @@ const S = process.argv[2];
   await p.screenshot({ path: `${S}/shots/s3-forge.png` });
   // Canonry: gain Devotion, spend a point on Might.
   await p.evaluate(() => { HS.game.state = 'play'; HS.gainSaintXp(20000); HS.openCanonry(); }); await p.waitForTimeout(200);
-  await p.evaluate(() => { const L = HS.talLayout(), r = L.cell(0, 0, 2); HS.canonryTap(r.x + 4, r.y + 4); HS.canonryTap(L.learn.x + 4, L.learn.y + 4); }); await p.waitForTimeout(200);
+  await p.evaluate(() => { const L = HS.talLayout(), r = L.cell(HS.TALENT_TREES[0].nodes[0]); HS.canonryTap(r.x + 4, r.y + 4); HS.canonryTap(L.learn.x + 4, L.learn.y + 4); }); await p.waitForTimeout(200);
   console.log('canonry', await p.evaluate(() => JSON.stringify({ lvl: HS.saintLv(), pts: HS.talPts(), might: HS.tal('might'), dmg: HS.G.dmg })));
   await p.screenshot({ path: `${S}/shots/s4-canonry.png` });
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();

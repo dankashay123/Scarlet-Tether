@@ -693,6 +693,22 @@ export const PASS_ICONS = [
   ['shrine', 'gold', (u, v) => (Math.abs(u) < 0.13 && v > -0.1 && v < 0.5) || (Math.abs(v - 0.52) < 0.07 && Math.abs(u) < 0.32) || drop(u, v, 0, -0.25, 0.14)],
   ['sense', 'gold', (u, v) => { const a = Math.atan2(v, u), r = Math.hypot(u, v), k = 0.28 + 0.27 * Math.pow(Math.abs(Math.cos(a * 2.5 + Math.PI / 2)), 3); return r < k; }],
 ];
+// Round 87: the twelve legendary talents (index.html TAL_LEGENDS, same order), four a tree.
+const shieldG = (u, v) => (Math.abs(u) < 0.45 && v > -0.5 && v < 0.05) || (v >= 0.05 && v < 0.6 && Math.abs(u) < (0.6 - v) * 0.82);
+export const TAL_ICONS = [
+  ['greatbolt', 'crimson', (u, v) => seg(u, v, -0.5, 0.5, 0.2, -0.2, 0.12) || (u <= 0.6 && v >= -0.6 && u - v >= 0.42)],
+  ['mark', 'crimson', (u, v) => ring2(u, v, 0.4, 0.08) || Math.hypot(u, v) < 0.12 || (Math.abs(u) < 0.07 && Math.abs(v) > 0.3 && Math.abs(v) < 0.62) || (Math.abs(v) < 0.07 && Math.abs(u) > 0.3 && Math.abs(u) < 0.62)],
+  ['frenzy', 'crimson', (u, v) => [-0.36, 0, 0.36].some((o) => seg(u, v, o + 0.16, -0.5, o - 0.16, 0.5, 0.1))],
+  ['cull', 'crimson', (u, v) => seg(u, v, -0.1, -0.55, -0.1, 0.6, 0.08) || (u > -0.1 && u < 0.52 && Math.abs(v + 0.2) < 0.1 + (u + 0.1) * 0.62) || (u < -0.1 && u > -0.36 && Math.abs(v + 0.2) < 0.12)],
+  ['bloodrush', 'holy', (u, v) => drop(u, v, 0, 0.2, 0.42) && !((Math.abs(u) < 0.07 && v > 0.12 && v < 0.46) || (v > -0.02 && v < 0.2 && Math.abs(u) < (v + 0.02) * 1.1))],
+  ['unbroken', 'holy', (u, v) => ((Math.abs(u) < 0.46 && v > -0.2 && v < 0.55) || [-0.36, 0, 0.36].some((x) => Math.abs(u - x) < 0.11 && v > -0.52 && v <= -0.2)) && !(Math.abs(u) < 0.12 && v > 0.18)],
+  ['aegis', 'holy', (u, v) => shieldG(u, v) && !((Math.abs(u) < 0.07 && v > -0.34 && v < 0.32) || (Math.abs(v + 0.1) < 0.07 && Math.abs(u) < 0.27))],
+  ['fleet', 'holy', (u, v) => [-0.02, 0.36].some((o) => seg(u, v, o - 0.2, -0.4, o + 0.14, 0, 0.1) || seg(u, v, o + 0.14, 0, o - 0.2, 0.4, 0.1)) || [-0.3, 0, 0.3].some((y) => Math.abs(v - y) < 0.06 && u > -0.62 && u < -0.34)],
+  ['brimming', 'gold', (u, v) => (v >= -0.24 && Math.hypot(u, v + 0.24) < 0.42) || (Math.abs(u) < 0.07 && v > 0.1 && v < 0.48) || (Math.abs(v - 0.52) < 0.07 && Math.abs(u) < 0.3) || Math.hypot(u, v + 0.5) < 0.1 || Math.hypot(Math.abs(u) - 0.3, v + 0.44) < 0.08],
+  ['cadence', 'gold', (u, v) => [[-0.38, 0.05], [0, 0.32], [0.38, 0.58]].some(([x, h]) => Math.abs(u - x) < 0.12 && v < 0.5 && v > -h)],
+  ['choir', 'gold', (u, v) => (v > -0.45 && v < 0.3 && Math.abs(u) < 0.18 + (v + 0.45) * 0.36) || (Math.abs(v - 0.34) < 0.07 && Math.abs(u) < 0.56) || Math.hypot(u, v - 0.54) < 0.1 || Math.hypot(u, v + 0.54) < 0.09],
+  ['sanctuary', 'gold', (u, v) => (v < 0.14 && Math.hypot(u, v - 0.14) < 0.54 && Math.hypot(u, v - 0.14) > 0.38) || (Math.abs(v - 0.22) < 0.08 && Math.abs(u) < 0.6) || drop(u, v, 0, -0.02, 0.13) || (Math.abs(v - 0.44) < 0.06 && Math.abs(u) < 0.42)],
+];
 // Round 72: the Mendicant's and the Anchoress's sets.
 Object.assign(BADGE_GLYPH, {
   iron: (u, v) => (Math.abs(v - 0.3) < 0.12 && Math.abs(u) < 0.5) || [-0.34, 0, 0.34].some((x) => v < 0.3 && v > -0.5 + Math.abs(x) * 0.4 && Math.abs(u - x) < (0.3 - v) * 0.22 + 0.03),
@@ -770,6 +786,7 @@ export default {
     smite: () => [riteButton(40, GLYPH.smite, 'alms')], undertow: () => [riteButton(40, GLYPH.undertow, 'alms')], nailburst: () => [riteButton(40, GLYPH.nailburst, 'iron')], charge: () => [riteButton(40, GLYPH.charge, 'road')], shackleblow: () => [riteButton(40, GLYPH.shackleblow, 'gaol')], cinderslam: () => [riteButton(40, GLYPH.cinderslam, 'bell')], hook: () => [riteButton(40, GLYPH.hook, 'gaol')], chainsweep: () => [riteButton(40, GLYPH.chainsweep, 'gaol')], toll: () => [riteButton(40, GLYPH.toll, 'bell')], vow: () => [riteButton(40, GLYPH.vow, 'road')], shards: () => [riteButton(40, GLYPH.shards, 'iron')], wellspring: () => [riteButton(40, GLYPH.wellspring, 'alms')], tolling: () => [riteButton(44, GLYPH.tolling, 'bell')], hammer: () => [riteButton(44, GLYPH.hammer, 'bell')], deluge: () => [riteButton(44, GLYPH.deluge, 'alms')], hundredblows: () => [riteButton(44, GLYPH.hundredblows, 'iron')], pyre: () => [riteButton(44, GLYPH.pyre, 'road')], verdict: () => [riteButton(44, GLYPH.verdict, 'gaol')], svolley: () => [riteButton(40, GLYPH.svolley, 'reliquary')], consecrate: () => [riteButton(40, GLYPH.consecrate, 'psalter')], shrapnel: () => [riteButton(40, GLYPH.shrapnel, 'glass')], flight: () => [riteButton(40, GLYPH.flight, 'thorn')], snova: () => [riteButton(40, GLYPH.snova, 'reliquary')], emberrelic: () => [riteButton(40, GLYPH.emberrelic, 'lantern')], sward: () => [riteButton(40, GLYPH.sward, 'reliquary')], votive: () => [riteButton(40, GLYPH.votive, 'reliquary')], splinter: () => [riteButton(40, GLYPH.splinter, 'glass')], shardchain: () => [riteButton(40, GLYPH.shardchain, 'thorn')], shardknell: () => [riteButton(40, GLYPH.shardknell, 'lantern')], mending: () => [riteButton(40, GLYPH.mending, 'psalter')], shattered: () => [riteButton(44, GLYPH.shattered, 'reliquary')], cathedral: () => [riteButton(44, GLYPH.cathedral, 'reliquary')], hundredshards: () => [riteButton(44, GLYPH.hundredshards, 'glass')], relicpyre: () => [riteButton(44, GLYPH.relicpyre, 'thorn')], reliquaryfont: () => [riteButton(44, GLYPH.reliquaryfont, 'psalter')], relicjudge: () => [riteButton(44, GLYPH.relicjudge, 'lantern')],
     // Round 85: passive icons as reliefs in their kind's colour (crimson offence, blue defence, gold utility).
     passive: () => PASS_ICONS.map(([, ramp, g]) => riteButton(19, g, RITE_INK[ramp] ? ramp : 'gold', 0.6)),
+    talent: () => TAL_ICONS.map(([, ramp, g]) => riteButton(21, g, ramp, 0.6)),
     ring: () => [ring()], knob: () => [button(32, GLYPH.knob)], bag: () => [button(26, GLYPH.bag)], close: () => [button(22, GLYPH.close)],
   },
 };

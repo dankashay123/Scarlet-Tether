@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '86';
+const BUILD = '87';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '87': ['SAINT LEVELS NOW RUN TO 100.', 'EACH STATION YOU CLEAR, I TO XX, GIVES A TALENT POINT.', 'THE TALENT TREES ARE REBUILT AS WEBS: OVER TWICE AS MANY TALENTS, LINKED PATHS THAT BRANCH, AND FOUR LEGENDARY TALENTS AT THE END OF EACH TREE.', 'YOUR TALENT POINTS WERE GIVEN BACK. SPEND THEM AGAIN AT THE CANONRY.'],
   '86': ['THE CODEX MARKS NEW ENTRIES WITH A DOT: ON THE PAUSE TILE, THE SECTION AND THE ENTRY.', 'THE REROLL BUTTON SAYS WHICH REROLL OF THIS LEVEL IT IS.', 'TALENTS NOT YET OPEN ARE EASIER TO SEE.'],
   '85': ['THE MENDICANT\'S AND THE ANCHORESS\'S RITE ICONS ARE REDRAWN IN THEIR SET\'S COLOUR, LIKE THE SAINT\'S.', 'PASSIVE ICONS ARE REDRAWN TOO: RED FOR OFFENCE, BLUE FOR DEFENCE, GOLD FOR UTILITY.'],
   '84': ['NEW: THE CODEX ON THE PAUSE SCREEN. MONSTERS YOU HAVE KILLED, SETS AND HALLOWED PIECES FOUND, WOUNDS TAKEN. IT COUNTS FROM NOW ON.', 'NEW: WARDEN TROPHIES. EACH WARDEN KEEPS ITS KILLS, DEEPEST STATION AND FASTEST KILL PER STATION. SEE THEM IN THE CODEX OR AT THE VIGIL ROLL.', 'THE SAINT\'S 18 RITE ICONS ARE REDRAWN IN THEIR SET\'S COLOUR.'],
@@ -1615,6 +1616,7 @@ function wardenSlain(e) {
     bumpBounty('wardens'); if (game.time - (e.bornT || 0) < 75) bumpBounty('fast');
     SAVE.cleared = Math.max(SAVE.cleared ?? -1, df.n - 1);
     if (first && [3, 6, 9].includes(df.n)) { SAVE.gifts = (SAVE.gifts || 0) + 1; toast("SISTER ODILE HAS A GIFT FOR YOU IN VAEL", 3); }
+    else if (first && df.n <= TAL_STATIONS) { toast('STATION CLEARED: A TALENT POINT', 3); game.toastColor = PAL.holy0; }
     persist();
     game.banner = { text: 'THE WARDEN FALLS', sub: first && df.n < MAX_STATION ? `STATION ${ROMAN[df.n]} UNLOCKED` : 'USE THE WAYSTONE TO RETURN', t: 0, color: PAL.gold0 };
     dropLoot(e.x, e.y, { gold: 25, item: WARDEN.items, itemBoost: 2, globe: 2, warden: true }); maybeChrism(e.x, e.y, 0.4); dropVkey(e); wardenMats(e, df); deepPayout(e, df);
@@ -2052,7 +2054,7 @@ function newRun() {
 
 function toast(msg, t = 2) { game.toast = { msg, t }; game.toastColor = null; }
 const fervorTier = () => Math.min(3, Math.floor(game.fervor / 25));
-function addFervor(n) { if (player.inPool) n *= 2; if (player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + n * (G.powers.has('penance') ? 1.4 : 1) * (1 + (G.reck || 0) / 100) * (1 + 0.06 * tal('reckon'))); game.fervor = Math.min(100, game.fervor + n * (1 + G.fervor / 100)); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
+function addFervor(n) { if (player.inPool) n *= 2; if (player.rainT <= 0) player.penance = Math.min(T.penance.charge, player.penance + n * (G.powers.has('penance') ? 1.4 : 1) * (1 + (G.reck || 0) / 100) * (1 + ts('reckon') / 100)); game.fervor = Math.min(100, game.fervor + n * (1 + G.fervor / 100)); game.fervorT = 0; game.best = Math.max(game.best, game.fervor); }
 // One-shot sprite effects.
 // One-shot sprite effects; `ground` ones (a Reckoning's sigil) draw under the actors, `anchor` ones at their frame's foot.
 function drawFxs(ground) {
@@ -3070,43 +3072,80 @@ function secondBreath() {
 // ------------------------------------- the Saint's level, the Canonry ---
 // The Saint's level (round 42, replacing Devotion): 1 to MAX_SAINT, kept for
 // good. Every bit of experience feeds it; each level past the first gives a
-// talent point for the three trees, and some levels open a new rite.
-const MAX_SAINT = 60;
+// talent point for the three trees (so does each Station cleared, I to XX), and some levels open a new rite.
+const MAX_SAINT = 100;
 const lvNeed = (l) => Math.round(60 + 16 * Math.pow(l, 1.8)); // XP from level l to l + 1
 const saintLv = () => SAVE.lvl || 1;
-// Talent trees: each talent has ranks; a row opens once enough points are in
-// that tree (`need`). Read a talent's rank with tal(id).
+// Talent trees (round 87): each tree is a web of nodes on a grid of 7 columns (`c`, opened by
+// the points spent in that tree, TAL_NEED) and 5 lanes (`r`). A node with `f` also needs one
+// of those nodes at full rank (the lines of the web). `s` holds what a rank gives (stat: per
+// rank, read with ts(stat)); `legend` marks the four ends of a tree (one rank, own hook, tal(id)).
+const TAL_TXT = {
+  dmg: (v) => `+${v}% DAMAGE.`, crit: (v) => `+${v}% CRIT CHANCE.`, quick: (v) => `THE CROSSBOW FIRES ${v}% FASTER.`, exec: (v) => `+${v}% DAMAGE TO FOES BELOW 35% HEALTH.`,
+  heavy: (v) => `CRITS DEAL ${v}% MORE.`, pierce: () => 'BOLTS PIERCE ONE MORE FOE.', zeal: (v) => `EACH ZEAL STEP GIVES ${v}% MORE DAMAGE.`, bane: (v) => `+${v}% DAMAGE TO RARES, ELITES AND WARDENS.`,
+  vigour: (v) => `+${v}% MAX HEALTH.`, warding: (v) => `TAKE ${v}% LESS DAMAGE.`, mend: (v) => `HEAL ${v.toFixed(1)}% OF YOUR HEALTH A SECOND.`, feet: (v) => `+${v}% MOVE SPEED.`,
+  quickdash: (v) => `DASHES RECHARGE ${v}% FASTER.`, deft: (v) => `THE PERFECT DODGE WINDOW IS ${v}% LONGER.`, orbs: (v) => `HEALTH ORBS HEAL ${v}% MORE.`, steadfast: (v) => `BELOW 35% HEALTH, TAKE ${v}% LESS DAMAGE.`,
+  poise: (v) => `A PERFECT DODGE HEALS ${v}% OF YOUR HEALTH.`, devout: (v) => `RITES RECHARGE ${v}% FASTER.`, piety: (v) => `+${v}% ZEAL GAIN.`, ritepower: (v) => `+${v}% DAMAGE FROM RITES, POOLS, FIRE AND BLASTS.`,
+  fortune: (v) => `+${v}% GOLD.`, reckon: (v) => `RECKONING CHARGES ${v}% FASTER.`, chant: (v) => `CASTING A RITE GIVES ${v} ZEAL.`, grace: (v) => `CASTING A RITE HEALS ${v}% OF YOUR HEALTH.`, again: (v) => `${v}% CHANCE A RITE COMES BACK AT ONCE.`,
+};
+const TN = (id, name, c, r, max, s, f) => ({ id, name, c, r, max, s, f, text: (n) => Object.entries(s).map(([k, v]) => TAL_TXT[k](Math.round(v * n * 10) / 10)).join(' ') });
+const TL = (id, name, r, f, txt) => ({ id, name, c: 6, r, max: 1, s: {}, f, legend: true, text: () => txt });
 const TALENT_TREES = [
-  { id: 'off', name: 'OFFENCE', col: '#e8383f', rgb: '232,56,63', rows: [
-    [{ id: 'might', name: 'MIGHT', max: 5, text: (n) => `+${3 * n}% DAMAGE.` }, { id: 'precise', name: 'PRECISION', max: 5, text: (n) => `+${n}% CRIT CHANCE.` }],
-    [{ id: 'quick', name: 'QUICK DRAW', max: 5, text: (n) => `THE CROSSBOW FIRES ${3 * n}% FASTER.` }, { id: 'execute', name: 'EXECUTIONER', max: 3, text: (n) => `+${5 * n}% DAMAGE TO FOES BELOW 35% HEALTH.` }],
-    [{ id: 'heavy', name: 'HEAVY BOLTS', max: 3, text: (n) => `CRITS DEAL ${10 * n}% MORE.` }, { id: 'pierce', name: 'PIERCING', max: 1, text: () => 'BOLTS PIERCE ONE MORE FOE.' }],
-    [{ id: 'zeal', name: "ZEAL'S EDGE", max: 3, text: (n) => `EACH ZEAL STEP GIVES ${2 * n}% MORE DAMAGE.` }, { id: 'bane', name: 'ELITE BANE', max: 3, text: (n) => `+${5 * n}% DAMAGE TO RARES, ELITES AND WARDENS.` }],
-    [{ id: 'greatbolt', name: 'GREAT BOLT', max: 1, cap: true, text: () => 'EVERY 10TH BOLT DEALS X3 AND PIERCES EVERY FOE.' }],
+  { id: 'off', name: 'OFFENCE', col: '#e8383f', rgb: '232,56,63', nodes: [
+    TN('might', 'MIGHT', 0, 0, 5, { dmg: 3 }), TN('brawn', 'BRAWN', 1, 0, 3, { dmg: 2 }, ['might']), TN('force', 'FORCE', 3, 0, 3, { dmg: 3 }, ['brawn']), TN('ruin', 'RUIN', 5, 0, 3, { dmg: 4 }, ['force']),
+    TN('quick', 'QUICK DRAW', 1, 1, 5, { quick: 3 }, ['might']), TN('pierce', 'PIERCING', 2, 1, 1, { pierce: 1 }, ['quick']), TN('swift', 'SWIFT HANDS', 4, 1, 3, { quick: 2 }, ['pierce', 'force']),
+    TL('greatbolt', 'GREAT BOLT', 0, ['ruin', 'swift'], 'EVERY 10TH BOLT DEALS X3 AND PIERCES EVERY FOE.'),
+    TN('precise', 'PRECISION', 0, 2, 5, { crit: 1 }), TN('heavy', 'HEAVY BOLTS', 2, 2, 3, { heavy: 10 }, ['precise']), TN('keen', 'KEEN EYE', 3, 2, 3, { crit: 2 }, ['heavy']), TN('brutal', 'BRUTAL', 5, 2, 3, { heavy: 10 }, ['keen']),
+    TL('mark', 'THE MARK', 2, ['brutal'], 'A FOE YOU CRIT TAKES 20% MORE DAMAGE FOR 3 S.'),
+    TN('zeal', "ZEAL'S EDGE", 1, 3, 3, { zeal: 2 }, ['precise']), TN('zealflame', "ZEAL'S FLAME", 3, 3, 3, { zeal: 2 }, ['zeal']), TN('onslaught', 'ONSLAUGHT', 5, 3, 3, { dmg: 2 }, ['zealflame']),
+    TL('frenzy', 'BLOOD FRENZY', 3, ['onslaught'], 'EACH KILL GIVES +1% DAMAGE FOR 4 S, UP TO +25%.'),
+    TN('execute', 'EXECUTIONER', 0, 4, 3, { exec: 5 }), TN('bane', 'ELITE BANE', 2, 4, 3, { bane: 5 }, ['execute']), TN('finisher', 'FINISHER', 4, 4, 3, { exec: 5 }, ['bane', 'zealflame']), TN('giant', 'GIANT KILLER', 5, 4, 3, { bane: 5 }, ['finisher']),
+    TL('cull', 'THE CULL', 4, ['giant'], 'FOES BELOW 10% HEALTH DIE AT ONCE. NOT WARDENS.'),
   ] },
-  { id: 'def', name: 'DEFENCE', col: '#3fa4f0', rgb: '63,164,240', rows: [
-    [{ id: 'vigour', name: 'VIGOUR', max: 5, text: (n) => `+${4 * n}% MAX HEALTH.` }, { id: 'warding', name: 'WARDING', max: 5, text: (n) => `TAKE ${2 * n}% LESS DAMAGE.` }],
-    [{ id: 'mend', name: 'MENDING', max: 3, text: (n) => `HEAL ${(0.3 * n).toFixed(1)}% OF YOUR HEALTH A SECOND.` }, { id: 'feet', name: 'SURE FEET', max: 3, text: (n) => `+${4 * n}% MOVE SPEED.` }],
-    [{ id: 'quickdash', name: 'QUICK DASH', max: 3, text: (n) => `DASHES RECHARGE ${5 * n}% FASTER.` }, { id: 'deft', name: 'DEFT', max: 2, text: (n) => `THE PERFECT DODGE WINDOW IS ${15 * n}% LONGER.` }],
-    [{ id: 'orbs', name: 'BLESSED ORBS', max: 3, text: (n) => `HEALTH ORBS HEAL ${15 * n}% MORE.` }, { id: 'steadfast', name: 'STEADFAST', max: 3, text: (n) => `BELOW 35% HEALTH, TAKE ${6 * n}% LESS DAMAGE.` }],
-    [{ id: 'aegis', name: 'AEGIS', max: 1, cap: true, text: () => 'A PERFECT DODGE HALVES THE DAMAGE YOU TAKE FOR 2 S.' }],
+  { id: 'def', name: 'DEFENCE', col: '#3fa4f0', rgb: '63,164,240', nodes: [
+    TN('vigour', 'VIGOUR', 0, 0, 5, { vigour: 4 }), TN('hale', 'HALE', 1, 0, 3, { vigour: 3 }, ['vigour']), TN('orbs', 'BLESSED ORBS', 3, 0, 3, { orbs: 15 }, ['hale']), TN('feast', 'FEAST', 5, 0, 3, { orbs: 15 }, ['orbs', 'lifeblood']),
+    TL('bloodrush', 'BLOOD RUSH', 0, ['feast'], 'A HEALTH ORB ALSO GIVES +20% DAMAGE FOR 6 S.'),
+    TN('mend', 'MENDING', 2, 1, 3, { mend: 0.3 }, ['hale']), TN('lifeblood', 'LIFEBLOOD', 4, 1, 3, { mend: 0.2 }, ['mend']),
+    TN('warding', 'WARDING', 0, 2, 5, { warding: 2 }), TN('guard', 'GUARD', 1, 2, 3, { warding: 1 }, ['warding']), TN('steadfast', 'STEADFAST', 3, 2, 3, { steadfast: 6 }, ['guard']), TN('bastion', 'BASTION', 5, 2, 3, { warding: 1 }, ['steadfast']),
+    TL('unbroken', 'UNBROKEN', 2, ['bastion'], 'NO BLOW TAKES MORE THAN 30% OF YOUR MAX HEALTH.'),
+    TN('deft', 'DEFT', 2, 3, 2, { deft: 15 }, ['guard', 'quickdash']), TN('poise', 'POISE', 4, 3, 3, { poise: 2 }, ['deft']),
+    TL('aegis', 'AEGIS', 3, ['poise'], 'A PERFECT DODGE HALVES THE DAMAGE YOU TAKE FOR 2 S.'),
+    TN('feet', 'SURE FEET', 0, 4, 3, { feet: 4 }), TN('quickdash', 'QUICK DASH', 1, 4, 3, { quickdash: 5 }, ['feet']), TN('swiftfoot', 'SWIFT FOOT', 3, 4, 3, { feet: 3 }, ['quickdash']), TN('windstep', 'WIND STEP', 5, 4, 3, { quickdash: 5 }, ['swiftfoot']),
+    TL('fleet', 'FLEET', 4, ['windstep'], 'ONE MORE DASH CHARGE.'),
   ] },
-  { id: 'rite', name: 'RITES', col: '#ffc04a', rgb: '255,192,74', rows: [
-    [{ id: 'devout', name: 'DEVOUT', max: 5, text: (n) => `RITES RECHARGE ${2 * n}% FASTER.` }, { id: 'piety', name: 'PIETY', max: 5, text: (n) => `+${4 * n}% ZEAL GAIN.` }],
-    [{ id: 'ritepower', name: 'RITE POWER', max: 5, text: (n) => `+${5 * n}% DAMAGE FROM RITES, POOLS, FIRE AND BLASTS.` }, { id: 'fortune', name: 'FORTUNE', max: 3, text: (n) => `+${5 * n}% GOLD.` }],
-    [{ id: 'reckon', name: 'RECKONER', max: 3, text: (n) => `RECKONING CHARGES ${6 * n}% FASTER.` }, { id: 'chant', name: 'CHANT', max: 3, text: (n) => `CASTING A RITE GIVES ${4 * n} ZEAL.` }],
-    [{ id: 'grace', name: 'GRACE', max: 3, text: (n) => `CASTING A RITE HEALS ${n}% OF YOUR HEALTH.` }, { id: 'again', name: 'ANSWERED', max: 3, text: (n) => `${5 * n}% CHANCE A RITE COMES BACK AT ONCE.` }],
-    [{ id: 'choir', name: 'THE CHOIR', max: 1, cap: true, text: () => 'YOUR RECKONING RESETS BOTH RITES.' }],
+  { id: 'rite', name: 'RITES', col: '#ffc04a', rgb: '255,192,74', nodes: [
+    TN('ritepower', 'RITE POWER', 0, 0, 5, { ritepower: 4 }), TN('surge', 'SURGE', 2, 0, 3, { ritepower: 3 }, ['ritepower']), TN('torrent', 'TORRENT', 4, 0, 3, { ritepower: 3 }, ['surge']),
+    TL('brimming', 'BRIMMING', 0, ['torrent', 'ardour'], 'AT THE TOP ZEAL STEP, RITES DEAL 30% MORE.'),
+    TN('piety', 'PIETY', 1, 1, 5, { piety: 4 }, ['ritepower', 'devout']), TN('chant', 'CHANT', 3, 1, 3, { chant: 4 }, ['piety']), TN('ardour', 'ARDOUR', 5, 1, 3, { piety: 5 }, ['chant']),
+    TN('devout', 'DEVOUT', 0, 2, 5, { devout: 2 }), TN('again', 'ANSWERED', 2, 2, 3, { again: 5 }, ['devout']), TN('quicken', 'QUICKEN', 4, 2, 3, { devout: 2 }, ['again']),
+    TL('cadence', 'CADENCE', 2, ['quicken'], 'CASTING A RITE GIVES +8% DAMAGE FOR 6 S. STACKS 3 TIMES.'),
+    TN('reckon', 'RECKONER', 1, 3, 3, { reckon: 6 }, ['devout']), TN('doom', 'DOOMSAYER', 3, 3, 3, { reckon: 5 }, ['reckon']), TN('herald', 'HERALD', 5, 3, 3, { reckon: 5 }, ['doom']),
+    TL('choir', 'THE CHOIR', 3, ['herald'], 'YOUR RECKONING RESETS BOTH RITES.'),
+    TN('fortune', 'FORTUNE', 0, 4, 3, { fortune: 5 }), TN('purse', 'FULL PURSE', 1, 4, 3, { fortune: 5 }, ['fortune']), TN('grace', 'GRACE', 2, 4, 3, { grace: 1 }, ['purse']), TN('blessing', 'BLESSING', 4, 4, 3, { grace: 1 }, ['grace']),
+    TL('sanctuary', 'SANCTUARY', 4, ['blessing'], 'CASTING A RITE BLOCKS ALL DAMAGE FOR 0.6 S.'),
   ] },
 ];
-const TAL_NEED = [0, 5, 10, 15, 20]; // points in a tree to open each row
-const TAL_BY = Object.fromEntries(TALENT_TREES.flatMap((T0, ti) => T0.rows.flatMap((row, ri) => row.map((t) => [t.id, { ...t, tree: ti, row: ri }]))));
+const TAL_NEED = [0, 4, 8, 12, 16, 20, 25]; // points in a tree to open each column
+const TAL_COLS = TAL_NEED.length, TAL_LANES = 5;
+const TAL_BY = Object.fromEntries(TALENT_TREES.flatMap((T0, ti) => T0.nodes.map((t) => [t.id, Object.assign(t, { tree: ti })])));
 const tal = (id) => (SAVE.talents && SAVE.talents[id]) || 0;
-const treeSpent = (ti) => TALENT_TREES[ti].rows.flat().reduce((a, t) => a + tal(t.id), 0);
+// The sum of one stat over every learned node (rebuilt once a frame and whenever gear is applied).
+const TS = { t: -1, src: null, v: {} };
+function ts(k) {
+  if (TS.t !== game.real || TS.src !== SAVE.talents) { TS.t = game.real; TS.src = SAVE.talents; TS.v = {}; for (const id in SAVE.talents || {}) { const t = TAL_BY[id], n = SAVE.talents[id]; if (t && n) for (const q in t.s) TS.v[q] = (TS.v[q] || 0) + t.s[q] * n; } }
+  return TS.v[k] || 0;
+}
+const treeSpent = (ti) => TALENT_TREES[ti].nodes.reduce((a, t) => a + tal(t.id), 0);
 const talSpent = () => TALENT_TREES.reduce((a, T0, ti) => a + treeSpent(ti), 0);
-const talPts = () => Math.max(0, saintLv() - 1 - talSpent());
-const talOpen = (t) => treeSpent(t.tree) >= TAL_NEED[t.row];
+// Points: one a Saint level past the first, and one for each Station cleared, I to XX.
+const TAL_STATIONS = 20, stationPts = () => Math.min(TAL_STATIONS, (SAVE.cleared ?? -1) + 1);
+const talPts = () => Math.max(0, saintLv() - 1 + stationPts() - talSpent());
+const talLinked = (t) => !t.f || t.f.some((id) => tal(id) >= TAL_BY[id].max);
+const talOpen = (t) => treeSpent(t.tree) >= TAL_NEED[t.c] && talLinked(t);
+const talWhy = (t) => treeSpent(t.tree) < TAL_NEED[t.c] ? `OPENS WITH ${TAL_NEED[t.c]} POINTS IN ${TALENT_TREES[t.tree].name}.` : `NEEDS ${t.f.map((id) => heroText(TAL_BY[id].name)).join(' OR ')} AT FULL RANK.`;
 const talReset = () => 100 * saintLv(); // gold to take back every point
+// Round 87: the trees changed shape, so points spent in the old ones come back once.
+function migrateTalents() { if ((SAVE.talV || 0) >= 87) return; if (SAVE.talents && Object.keys(SAVE.talents).length) SAVE.talBack = true; SAVE.talents = {}; SAVE.talV = 87; }
 // Rites open by Saint level (one of each slot from the start).
 const RITE_LV = { water: 1, chain: 1, rain: 1, storm: 3, censer: 5, step: 7, volley: 9, nailring: 11, hymn: 13, ward: 15, pillars: 18, wave: 20, shackle: 22, pilgrim: 25, asperse: 28, font: 31, brand: 35, greatpen: 40,
   // The Mendicant's rites (round 50) open at the same levels as the Saint's in each slot.
@@ -3143,11 +3182,11 @@ function openCanonry() { hubEnter(); game.state = 'canonry'; game.talTab = game.
 const talTabs = (L) => TALENT_TREES.map((T0, i) => ({ t: T0.name, x: L.rail.x, y: L.rail.y + i * 31, w: L.rail.w, h: 28 }));
 function talLayout() {
   const L = featLayout(), foot = 40, fy = L.y0 + L.ph - foot, rail = { x: L.x0 + 8, y: L.y0 + 34, w: Math.max(84, Math.min(110, Math.round(L.pw * 0.2))) };
-  const gx = rail.x + rail.w + 10, gw = L.x0 + L.pw - 8 - gx, ay = L.y0 + 38, top = ay + 16, gh = fy - 6 - top, cw = gw / 5, nr = Math.max(10, Math.min(14, Math.floor(gh / 6)));
-  // cell(r, c, n): the node of talent c in tier r (n talents in that tier), as a box round the circle.
-  const node = (r, c, n) => ({ x: Math.round(gx + cw * (r + 0.5)), y: Math.round(top + (n === 1 ? gh * 0.42 : gh * (c ? 0.68 : 0.17))) });
-  const cell = (r, c, n) => { const p = node(r, c, n); return { x: p.x - nr - 2, y: p.y - nr - 2, w: nr * 2 + 4, h: nr * 2 + 4 }; };
-  return { ...L, rail, gx, gw, cw, ay, top, gh, nr, node, cell, fy, learn: { x: L.x0 + L.pw - 12 - 74, y: fy + 12, w: 74, h: 20 }, reset: { x: L.x0 + L.pw - 12 - 74 - 80, y: fy + 12, w: 74, h: 20 } };
+  const gx = rail.x + rail.w + 10, gw = L.x0 + L.pw - 8 - gx, ay = L.y0 + 38, top = ay + 14, gh = fy - 4 - top, cw = gw / TAL_COLS, rh = gh / TAL_LANES, nr = Math.max(8, Math.min(10, Math.floor(rh / 2) - 3));
+  // node(t): the centre of a talent's node; cell(t): the box a tap on it must land in.
+  const node = (t) => ({ x: Math.round(gx + cw * (t.c + 0.5)), y: Math.round(top + rh * (t.r + 0.5)) });
+  const cell = (t) => { const p = node(t), hw = Math.min(cw / 2, nr + 8), hh = Math.min(rh / 2, nr + 6); return { x: p.x - hw, y: p.y - hh, w: hw * 2, h: hh * 2 }; };
+  return { ...L, rail, gx, gw, cw, rh, ay, top, gh, nr, node, cell, fy, learn: { x: L.x0 + L.pw - 12 - 74, y: fy + 12, w: 74, h: 20 }, reset: { x: L.x0 + L.pw - 12 - 74 - 80, y: fy + 12, w: 74, h: 20 } };
 }
 // The Plush stall: robe dyes and halos, bought once with gold, worn at will.
 function openPlush() { game.state = 'plush'; game.plush = { tab: 0, sel: null }; sfx('tap'); }
@@ -3226,9 +3265,12 @@ function earnLook(how) {
 const TAL_ICON = { might: ['ui', 'passive', 4], precise: ['ui', 'passive', 2], quick: ['ui', 'passive', 3], execute: ['ui', 'passive', 16], heavy: ['ui', 'passive', 18], pierce: ['ui', 'passive', 0], bane: ['ui', 'passive', 17], zeal: ['ui', 'passive', 1], greatbolt: ['ui', 'passive', 19],
   vigour: ['ui', 'passive', 7], warding: ['ui', 'passive', 6], mend: ['ui', 'passive', 10], feet: ['ui', 'passive', 20], quickdash: ['ui', 'passive', 11], deft: ['ui', 'passive', 21], orbs: ['loot', 'globe', 0], steadfast: ['ui', 'passive', 9], aegis: ['ui', 'passive', 8],
   devout: ['ui', 'passive', 13], piety: ['ui', 'passive', 22], ritepower: ['ui', 'passive', 23], fortune: ['ui', 'passive', 14], reckon: ['ui', 'passive', 12], chant: ['ui', 'toll', 0], grace: ['ui', 'passive', 15], again: ['ui', 'brand', 0], choir: ['ui', 'hymn', 0] };
+// Round 87: a new node borrows the icon of the old talent with its stat; legendary talents have their own (ui `talent`, TAL_LEGENDS order, props.mjs).
+const TAL_LEGENDS = ['greatbolt', 'mark', 'frenzy', 'cull', 'bloodrush', 'unbroken', 'aegis', 'fleet', 'brimming', 'cadence', 'choir', 'sanctuary'];
+const TAL_KEY_ICON = { dmg: 'might', crit: 'precise', exec: 'execute', poise: 'deft' };
 function talIcon(id, x, y, r, alpha = 1) {
-  const ic = TAL_ICON[id]; const f = ic && frameOf(ic[0], ic[1], ic[2]); if (!f) return false;
-  const k = (r * 2 - 2) / Math.max(f.w, f.h); ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(k, k); sprC(ic[0], ic[1], ic[2], 0, 0, { alpha }); ctx.restore(); return true;
+  const t = TAL_BY[id], k0 = t && Object.keys(t.s)[0], ic = t && t.legend ? ['ui', 'talent', TAL_LEGENDS.indexOf(id)] : TAL_ICON[id] || TAL_ICON[TAL_KEY_ICON[k0] || k0]; const f = ic && frameOf(ic[0], ic[1], ic[2]); if (!f) return false;
+  const k = Math.min(1, (r * 2) / Math.max(f.w, f.h)); ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(k, k); sprC(ic[0], ic[1], ic[2], 0, 0, { alpha }); ctx.restore(); return true;
 }
 // A tree's emblem: a blade (offence), a shield (defence) or a star (rites).
 function treeEmblem(ti, x, y, col, k = 1) {
@@ -3258,37 +3300,43 @@ function renderCanonry() {
     ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(R.x, y + 11, R.w, 4); ctx.fillStyle = PAL.holy1; ctx.fillRect(R.x, y + 11, full ? R.w : Math.round(R.w * (SAVE.lxp || 0) / need), 4);
     text(full ? 'MAX' : `${Math.floor(SAVE.lxp || 0).toLocaleString('en-US')} / ${need.toLocaleString('en-US')}`, R.x, y + 18, PAL.stone2, small);
     text(pts ? `${pts} POINT${pts > 1 ? 'S' : ''} TO SPEND` : 'NO POINTS', R.x, y + 30, pts ? PAL.flame1 : PAL.stone2, small); }
-  // The axis: the points each tier needs, lit up to what is spent.
-  const tx = (r) => Math.round(L.gx + L.cw * (r + 0.5));
-  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(tx(0), L.ay + 5, tx(4) - tx(0), 1);
-  let lit = 0; for (let r = 0; r < 5; r++) if (spent >= TAL_NEED[r]) lit = r;
-  ctx.fillStyle = `rgba(${T0.rgb},0.95)`; ctx.fillRect(tx(0), L.ay + 4, tx(lit) - tx(0) + Math.round(Math.min(1, (spent - TAL_NEED[lit]) / ((TAL_NEED[lit + 1] || TAL_NEED[lit] + 1) - TAL_NEED[lit])) * (lit < 4 ? L.cw : 0)), 3);
-  for (let r = 0; r < 5; r++) { const open = spent >= TAL_NEED[r], s0 = String(TAL_NEED[r]), w = textW(s0, 1, true) + 6; ctx.fillStyle = open ? PAL.white : 'rgba(40,46,60,1)'; ctx.fillRect(tx(r) - w / 2, L.ay, w, 11); text(s0, tx(r), L.ay + 1, open ? '#1b2130' : PAL.stone2, { ...small, align: 'center' }); }
-  // Lines from each node to the next tier's, then the nodes.
-  T0.rows.forEach((row, ri) => { const nx = T0.rows[ri + 1]; if (!nx) return; const on = spent >= TAL_NEED[ri + 1];
-    row.forEach((t, ci) => nx.forEach((u, cj) => { const a = L.node(ri, ci, row.length), b = L.node(ri + 1, cj, nx.length); ctx.strokeStyle = on ? `rgba(${T0.rgb},0.9)` : 'rgba(255,255,255,0.12)'; ctx.lineWidth = on ? 2 : 1; ctx.beginPath(); ctx.moveTo(a.x + L.nr, a.y); ctx.lineTo(b.x - L.nr, b.y); ctx.stroke(); })); });
-  T0.rows.forEach((row, ri) => row.forEach((t, ci) => {
-    const p = L.node(ri, ci, row.length), n = tal(t.id), open = spent >= TAL_NEED[ri], sel = game.talSel === t.id, r = L.nr;
+  // The axis: the points each column needs, lit up to what is spent.
+  const tx = (c) => Math.round(L.gx + L.cw * (c + 0.5)), last = TAL_COLS - 1;
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(tx(0), L.ay + 5, tx(last) - tx(0), 1);
+  let lit = 0; for (let c = 0; c < TAL_COLS; c++) if (spent >= TAL_NEED[c]) lit = c;
+  ctx.fillStyle = `rgba(${T0.rgb},0.95)`; ctx.fillRect(tx(0), L.ay + 4, tx(lit) - tx(0) + Math.round(Math.min(1, (spent - TAL_NEED[lit]) / ((TAL_NEED[lit + 1] || TAL_NEED[lit] + 1) - TAL_NEED[lit])) * (lit < last ? L.cw : 0)), 3);
+  for (let c = 0; c < TAL_COLS; c++) { const open = spent >= TAL_NEED[c], s0 = String(TAL_NEED[c]), w = textW(s0, 1, true) + 6; ctx.fillStyle = open ? PAL.white : 'rgba(40,46,60,1)'; ctx.fillRect(tx(c) - w / 2, L.ay, w, 11); text(s0, tx(c), L.ay + 1, open ? '#1b2130' : PAL.stone2, { ...small, align: 'center' }); }
+  // The web: a line from each node to the nodes it opens (lit once it is at full rank), then the nodes.
+  const rad = (t) => L.nr + (t.legend ? 1 : 0);
+  for (const pass of [0, 1]) for (const t of T0.nodes) for (const id of t.f || []) {
+    const u = TAL_BY[id], on = tal(id) >= u.max; if (on !== !!pass) continue; // lit lines over dim ones
+    const a = L.node(u), b = L.node(t), d = Math.hypot(b.x - a.x, b.y - a.y) || 1, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
+    ctx.strokeStyle = on ? `rgba(${T0.rgb},0.9)` : 'rgba(255,255,255,0.16)'; ctx.lineWidth = on ? 2 : 1; ctx.beginPath(); ctx.moveTo(a.x + ux * (rad(u) + 2), a.y + uy * (rad(u) + 2)); ctx.lineTo(b.x - ux * (rad(t) + 2), b.y - uy * (rad(t) + 2)); ctx.stroke();
+  }
+  for (const t of T0.nodes) {
+    const p = L.node(t), n = tal(t.id), open = talOpen(t), sel = game.talSel === t.id, r = rad(t);
     if (sel && !LOWFX) glow(p.x, p.y, r * 2.2, 'rgba(255,209,85,0.35)');
-    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.arc(p.x, p.y + 1, r + 2, 0, Math.PI * 2); ctx.fill();
+    else if (t.legend && open && !n && !LOWFX) glow(p.x, p.y, r * 2, `rgba(255,209,85,${(0.16 + 0.1 * Math.sin(game.real * 4)).toFixed(2)})`);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.arc(p.x, p.y + 1, r + (t.legend ? 3 : 2), 0, Math.PI * 2); ctx.fill();
+    // A legendary talent wears a gold band with a stud on each side.
+    if (t.legend) { const gc = n ? '#ffd155' : open ? '#b08a2e' : '#4d4226'; ctx.fillStyle = gc; ctx.beginPath(); ctx.arc(p.x, p.y, r + 2.5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = gc; for (const ox of [-1, 1]) ctx.fillRect(p.x + ox * (r + 3) - 2, p.y - 2, 4, 4); }
     ctx.fillStyle = sel ? '#ffd155' : n ? PAL.white : open ? '#8a93a6' : '#3a4152'; ctx.beginPath(); ctx.arc(p.x, p.y, r + 1, 0, Math.PI * 2); ctx.fill();
     const g = ctx.createLinearGradient(0, p.y - r, 0, p.y + r); g.addColorStop(0, n ? `rgb(${shade(T0.rgb, 0.9)})` : open ? '#2c3548' : '#151a26'); g.addColorStop(1, n ? `rgb(${shade(T0.rgb, 0.4)})` : open ? '#161c2a' : '#0b0f18');
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r - 1, 0, Math.PI * 2); ctx.fill();
-    if (!talIcon(t.id, p.x, p.y, r, n ? 1 : open ? 0.92 : 0.55)) treeEmblem(ti, p.x, p.y, n ? PAL.white : open ? '#c9ced8' : '#4a5264', r / 12);
-    // The rank badge at the lower right, and the name under the node.
-    const bx = p.x + r - 2, by = p.y + r - 3; ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = n >= t.max ? '#ffd155' : '#0d1220'; ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2); ctx.fill();
-    text(String(n), bx, by - 4, n >= t.max ? TAB_INK : n ? '#ffd155' : PAL.stone2, { ...small, align: 'center' });
-    wrapW(heroText(t.name), L.cw - 6, true).slice(0, 2).forEach((l, k) => text(l, p.x, p.y + r + 4 + k * 9, sel ? PAL.gold1 : n ? PAL.white : open ? PAL.cloth1 : PAL.stone2, { ...small, align: 'center' }));
-  }));
+    if (!talIcon(t.id, p.x, p.y, r, n ? 1 : open ? 0.92 : 0.5)) treeEmblem(ti, p.x, p.y, n ? PAL.white : open ? '#c9ced8' : '#4a5264', r / 12);
+    // The rank badge at the lower right.
+    const bx = p.x + r - 1, by = p.y + r - 2; ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = n >= t.max ? '#ffd155' : '#0d1220'; ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2); ctx.fill();
+    text(String(n), bx, by - 4, n >= t.max ? TAB_INK : n ? '#ffd155' : open ? PAL.cloth1 : PAL.stone2, { ...small, align: 'center' });
+  }
   // Round 69: the chosen talent's card opens beside its node; the foot keeps LEARN and RESET.
   ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(L.x0 + 8, L.fy, L.pw - 16, 1);
   const t = game.talSel && TAL_BY[game.talSel];
   if (t) {
     const n = tal(t.id), open = talOpen(t), T1 = TALENT_TREES[t.tree];
     invButton(L.learn, n >= t.max ? 'MAX' : 'LEARN', PAL.gold3, open && pts > 0 && n < t.max);
-    text(!open ? `OPENS WITH ${TAL_NEED[t.row]} POINTS IN ${T1.name}.` : n >= t.max ? 'FULLY LEARNED.' : pts ? 'LEARN ADDS ONE POINT.' : 'NO POINTS. ONE EACH SAINT LEVEL.', L.x0 + 12, L.fy + 14, open && n < t.max && pts ? PAL.cloth1 : PAL.stone2, small);
+    text(!open ? talWhy(t) : n >= t.max ? 'FULLY LEARNED.' : pts ? 'LEARN ADDS ONE POINT.' : 'NO POINTS LEFT.', L.x0 + 12, L.fy + 14, open && n < t.max && pts ? PAL.cloth1 : PAL.stone2, small);
     // The card.
-    const row = T0.rows[t.row], ci = row.findIndex((q) => q.id === t.id), p = L.node(t.row, ci, row.length), cw = Math.min(160, Math.max(120, Math.round(L.gw * 0.4)));
+    const p = L.node(t), cw = Math.min(160, Math.max(120, Math.round(L.gw * 0.4)));
     const lines = []; const add = (s0, col) => { for (const l of wrapW(s0, cw - 14, true)) lines.push([l, col]); };
     if (n) add(`NOW: ${heroText(t.text(n))}`, PAL.cloth0);
     if (n < t.max) add(`${n ? 'NEXT' : 'AT RANK 1'}: ${heroText(t.text(n + 1))}`, open ? PAL.flame1 : PAL.stone2);
@@ -3301,10 +3349,10 @@ function renderCanonry() {
     ctx.fillStyle = `rgb(${T1.rgb})`; ctx.fillRect(cx0, cy0, cw, 2); ctx.fillStyle = 'rgba(170,190,225,0.25)'; ctx.fillRect(cx0, cy0 + ch - 1, cw, 1); ctx.fillRect(cx0, cy0, 1, ch); ctx.fillRect(cx0 + cw - 1, cy0, 1, ch);
     // A small pointer towards the node.
     { const left = cx0 > p.x, ex = left ? cx0 : cx0 + cw, ay = Math.max(cy0 + 8, Math.min(cy0 + ch - 8, p.y)); ctx.fillStyle = '#16203a'; ctx.beginPath(); ctx.moveTo(ex, ay - 5); ctx.lineTo(ex + (left ? -6 : 6), ay); ctx.lineTo(ex, ay + 5); ctx.fill(); }
-    text(heroText(t.name), cx0 + 7, cy0 + 6, `rgb(${T1.rgb})`, { bold: true });
-    text(`RANK ${n}/${t.max}`, cx0 + cw - 7, cy0 + 8, n >= t.max ? PAL.gold1 : PAL.stone1, { ...small, align: 'right' });
+    text(heroText(t.name), cx0 + 7, cy0 + 6, t.legend ? PAL.gold1 : `rgb(${T1.rgb})`, { bold: true });
+    text(t.legend ? 'LEGENDARY' : `RANK ${n}/${t.max}`, cx0 + cw - 7, cy0 + 8, n >= t.max ? PAL.gold1 : PAL.stone1, { ...small, align: 'right' });
     lines.forEach(([l, col], i) => text(l, cx0 + 7, cy0 + 22 + i * 9, col, small));
-  } else text('TAP A TALENT. ONE POINT EACH SAINT LEVEL.', L.x0 + 12, L.fy + 14, PAL.stone2, small);
+  } else text('A POINT EACH SAINT LEVEL AND EACH STATION, I TO XX.', L.x0 + 12, L.fy + 14, PAL.stone2, small);
   invButton(L.reset, 'RESET', PAL.stone4, talSpent() > 0);
 }
 function canonryTap(x, y) {
@@ -3313,10 +3361,10 @@ function canonryTap(x, y) {
   if (hubTap(L, x, y)) return;
   const tb = talTabs(L).findIndex((b) => inRect(b, x, y)); if (tb >= 0) { game.talTab = tb; game.talSel = null; sfx('tap', { vol: 0.5 }); return; }
   const T0 = TALENT_TREES[game.talTab || 0];
-  for (let ri = 0; ri < T0.rows.length; ri++) for (let ci = 0; ci < T0.rows[ri].length; ci++) if (inRect(L.cell(ri, ci, T0.rows[ri].length), x, y)) { game.talSel = T0.rows[ri][ci].id; sfx('tap', { vol: 0.5 }); return; }
+  for (const q of T0.nodes) if (inRect(L.cell(q), x, y)) { game.talSel = q.id; sfx('tap', { vol: 0.5 }); return; }
   const t = game.talSel && TAL_BY[game.talSel];
   if (t && inRect(L.learn, x, y)) {
-    if (!talOpen(t)) { toast(`PUT ${TAL_NEED[t.row]} POINTS IN ${TALENT_TREES[t.tree].name} FIRST.`, 2); return; }
+    if (!talOpen(t)) { toast(talWhy(t), 2); return; }
     if (talPts() <= 0 || tal(t.id) >= t.max) return;
     SAVE.talents = SAVE.talents || {}; SAVE.talents[t.id] = tal(t.id) + 1; applyGear(); persist(); sfx('learn', { gap: 0.15, vol: 0.55, rate: 1.15 }); game.talPulse = game.real; return;
   }
@@ -4690,7 +4738,7 @@ function devRows() {
       R('LEVELS', B('+1 LEVEL', run(() => gainXp(xpNeed(game.run.level)))), B('+5 LEVELS', run(() => { for (let i = 0; i < 5; i++) gainXp(xpNeed(game.run.level + i)); })), B('MAX LEVEL', run(() => { for (let i = game.run.level; i < MAX_LEVEL; i++) gainXp(xpNeed(i)); }))),
       R('WOUND', B(`< ${WOUNDS[DEV.wound].name} >`, (d) => { DEV.wound = cyc(DEV.wound, WOUNDS.length, d); }, { w: 2 }), B('TAKE IT', run(() => { const w = WOUNDS[DEV.wound]; game.run.wounds[w.id] = Math.min(w.max, (game.run.wounds[w.id] || 0) + 1); applyGear(); toast(`${w.name} ${game.run.wounds[w.id]}/${w.max}`, 1.2); }))),
       R('WOUNDS', B('ALL SKILL WOUNDS', run(() => { for (const w of WOUNDS) if (w.r === 2 || w.id === 'orbit' || w.id === 'nova') game.run.wounds[w.id] = w.max; applyGear(); })), B('CLEAR WOUNDS', () => { if (game.run) game.run.wounds = {}; applyGear(); }), B('SHRINE BUFF', () => { const ks = Object.keys(SHRINES); game.buff = { kind: ks[Math.floor(rng() * ks.length)], t: 30 }; })),
-      R('SAINT LEVEL', B('+1 SAINT LV', () => { gainSaintXp(lvNeed(saintLv()) - (SAVE.lxp || 0)); persist(); }), B('SAINT LV 60', () => { while (saintLv() < MAX_SAINT) gainSaintXp(lvNeed(saintLv())); persist(); }), B('MAX RITE RANKS', () => { SAVE.riteXp = Object.fromEntries(Object.keys(RITE_BY).map((id) => [id, RANK_AT[RANK_AT.length - 1]])); persist(); toast('EVERY RITE AT RANK 5', 1.2); })),
+      R('SAINT LEVEL', B('+1 SAINT LV', () => { gainSaintXp(lvNeed(saintLv()) - (SAVE.lxp || 0)); persist(); }), B('SAINT LV MAX', () => { while (saintLv() < MAX_SAINT) gainSaintXp(lvNeed(saintLv())); persist(); }), B('MAX RITE RANKS', () => { SAVE.riteXp = Object.fromEntries(Object.keys(RITE_BY).map((id) => [id, RANK_AT[RANK_AT.length - 1]])); persist(); toast('EVERY RITE AT RANK 5', 1.2); })),
       R('TEST', B('KILL ME', () => { DEV.god = false; player.hp = 1; hurtPlayerRaw(99999, PAL.blood0); closeDev(); }, { danger: true }), B('RESET BREATH', run(() => { game.run.breath = false; toast('SECOND BREATH READY', 1.2); })), B('OPEN RITES', () => openRites('dev'))),
       { info: `HP ${Math.round(player ? player.hp : 0)}/${player ? player.maxHp : 0}   LEVEL ${game.run ? game.run.level : '-'}   SAINT ${saintLv()}   ZEAL ${Math.round(game.fervor || 0)}` },
     ];
@@ -5867,7 +5915,7 @@ function setGuard() {
   if (sb('font', 4) && player.inPool) k *= 0.6;
   if (sb('confessor', 4)) k *= 1 - Math.min(40, (game.boundN || 0) * 8) / 100;
   if ((player.wardT || 0) > game.time) k *= 0.4;
-  k *= 1 - 0.02 * tal('warding'); if (tal('steadfast') && player.hp < player.maxHp * 0.35) k *= 1 - 0.06 * tal('steadfast'); if ((player.aegisT || 0) > game.time) k *= 0.5;
+  k *= 1 - ts('warding') / 100; if (ts('steadfast') && player.hp < player.maxHp * 0.35) k *= 1 - ts('steadfast') / 100; if ((player.aegisT || 0) > game.time) k *= 0.5;
   k *= G.lessK || 1; if (pas('hide')) k *= 0.85;
   if (sb('rags', 2)) k *= 0.9; if (sb('alms', 6)) k *= 1 - Math.min(SETK.almsMax, player.alms || 0) * 0.005; if (pas('laststand') && player.hp < player.maxHp * 0.3) k *= 0.7; if (pas('ironvigil') && (player.ivT || 0) > game.time) k *= 0.7;
   return k;
@@ -6014,7 +6062,7 @@ function drawShots() {
 }
 
 // --------------------------------------------------------- taking damage ---
-const perfWin = () => T.dash.perfectWindow * (pas('deft') ? 1.5 : 1) * (1 + 0.15 * tal('deft'));
+const perfWin = () => T.dash.perfectWindow * (pas('deft') ? 1.5 : 1) * (1 + ts('deft') / 100);
 // One Warden blow takes at most this share of the Saint's health, so deep
 // Stations stay heavy but a single mistake is not death from full health.
 const WARDEN_BLOW = 0.4;
@@ -6036,6 +6084,7 @@ function damagePlayer(src, dmg, contacts, how) {
   if ((player.vowT || 0) > game.time) { dmg *= 0.5; if (src && src.maxHp && !src.dead && enemies.includes(src)) { const d = Math.hypot(src.x - player.x, src.y - player.y) || 1; boltStrike({ x: src.x, y: src.y - (src.hy || 10), vx: (src.x - player.x) / d, vy: (src.y - player.y) / d, dmgK: G.powers.has('longVow') ? 6 : 3, melee: true, hit: new Set() }, src); sparks(src.x, src.y - 12, PAL.ember0, 6); } }
   dmg = Math.max(1, Math.round(dmg * G.armorK * setGuard()));
   if (isWardenSrc(src)) dmg = Math.min(dmg, Math.ceil(player.maxHp * WARDEN_BLOW));
+  if (tal('unbroken')) dmg = Math.min(dmg, Math.ceil(player.maxHp * 0.3));
   noteHurt(src, how, dmg);
   player.hp -= dmg; player.iframes = T.hurtIframes; player.hurt = 0.3; if (pas('ironvigil')) player.ivT = game.time + 2; game.lastHit = src.type; sfx('hurt'); buzz(35);
   if (G.powers.has('ashRing') && (player.ashT || 0) < game.time) { player.ashT = game.time + 2; fireRing(14); }
@@ -6056,6 +6105,7 @@ function cleanseSentence(p) {
 }
 function perfectDodge() {
   player.perfectUsed = true; game.perfects++; buzz(15); lifeBump('perfects');
+  if (ts('poise')) player.hp = Math.min(player.maxHp, player.hp + player.maxHp * ts('poise') / 100);
   if (tal('aegis')) { player.aegisT = game.time + 2; rings.push({ x: player.x, y: player.y - 18, t: 0, max: 0.4, r: 34, color: '63,164,240' }); }
   if (ench('ghoststep')) vemit(player.x, player.y - 16, { n: 14, ramp: 'violet', sp: 70, up: 20, life: 0.45, glow: 6 });
   if (ench('ghoststep')) player.charges = E2('ghoststep', Math.min(G.charges, player.charges + 1), G.charges);
@@ -6084,9 +6134,12 @@ function passK(e, crit) {
   if (ench('reaper') && e.hp < e.maxHp * E2('reaper', 0.25, 0.35)) k *= 2;
   if (ench('lastlight') && player && player.hp < player.maxHp * 0.5) k *= E2('lastlight', 1.4, 1.6);
   if (ench('frostbite') && e.boltSlowT > game.time) k *= E2('frostbite', 1.15, 1.3);
-  if (tal('execute') && e.hp < e.maxHp * 0.35) k *= 1 + 0.05 * tal('execute');
-  if (tal('bane') && (e.tier === 'rare' || e.tier === 'elite' || e.boss)) k *= 1 + 0.05 * tal('bane');
-  if (tal('ritepower') && !HIT_BOLT) k *= 1 + 0.05 * tal('ritepower');
+  if (ts('exec') && e.hp < e.maxHp * 0.35) k *= 1 + ts('exec') / 100;
+  if (ts('bane') && (e.tier === 'rare' || e.tier === 'elite' || e.boss)) k *= 1 + ts('bane') / 100;
+  if (!HIT_BOLT) { if (ts('ritepower')) k *= 1 + ts('ritepower') / 100; if (tal('brimming') && fervorTier() >= 3) k *= 1.3; }
+  // Round 87: the legendary talents that are plain multipliers.
+  if (e.markT > game.time) k *= 1.2;
+  if (player) { if ((player.frenzyT || 0) > game.time) k *= 1 + 0.01 * player.frenzyN; if ((player.rushT || 0) > game.time) k *= 1.2; if ((player.cadT || 0) > game.time) k *= 1 + 0.08 * player.cadN; }
   return k;
 }
 function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
@@ -6097,8 +6150,10 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   if (e.ward > 0) { nums.push({ x: e.x, y: e.y - e.hy * 2 - 4, v: 'WARDED', t: 0, color: PAL.holy1, small: true }); return; }
   let blocked = false;
   if (!opts.status && !(e.bound > 0) && e.def.shield && e.state !== 'stagger' && Math.sign(dirx) === -e.face && Math.abs(dirx) > Math.abs(diry) * 0.6) { dmg = Math.max(1, Math.round(dmg * 0.35)); blocked = true; crit = false; }
-  if (!opts.share) dmg = Math.round(dmg * (1 + fervorTier() * (0.1 + 0.02 * tal('zeal'))) * (game.buff && game.buff.kind === 'fervor' ? 2 : 1));
+  if (!opts.share) dmg = Math.round(dmg * (1 + fervorTier() * (0.1 + ts('zeal') / 100)) * (game.buff && game.buff.kind === 'fervor' ? 2 : 1));
   const before = e.hp / e.maxHp;
+  if (crit && tal('mark')) e.markT = game.time + 3;
+  if (tal('cull') && !e.boss && e.type !== 'dummy' && e.hp - dmg > 0 && e.hp - dmg < e.maxHp * 0.1) dmg = e.hp; // the Cull
   e.hp -= dmg; e.flash = 0.05;
   if (!opts.status && !blocked) e.hitT = HIT_T;
   if (ench('bloodlet') && player.hp > 0) { // Bloodletting: 2% of damage dealt, at most 3% of health a second
@@ -6183,6 +6238,7 @@ function hitStop(t, big = false) {
 }
 function killEnemy(e, dirx, diry, executed = false) {
   if (e.dead) return;
+  if (tal('frenzy') && player) { player.frenzyN = (player.frenzyT || 0) > game.time ? Math.min(25, (player.frenzyN || 0) + 1) : 1; player.frenzyT = game.time + 4; }
   e.dead = true; sfx(rng() < 0.5 ? 'kill0' : 'kill1', { vol: e.elite ? 1.3 : 1, rate: e.tier === 'elite' ? 0.8 : 1 }); deathVoice(e);
   if (player.lock === e) player.lock = null;
   if (e.illusion) { playFx('fx', 'smoke', e.x, e.y - 8, 14); return; }
@@ -6713,7 +6769,7 @@ function gearInit() {
   SAVE.bag = SAVE.bag || [];
   for (const it of SAVE.bag) it.run = false; // a run left unfinished keeps what it found
   for (const it of [...SAVE.bag, ...Object.values(SAVE.equip)]) { if (it && it.set === true) it.set = 'habit'; if (it && it.wset) it.set = false; } // old Saint's set pieces
-  migrateSets();
+  migrateSets(); migrateTalents();
   // Old saves kept a flat stash of names; turn them into real items once.
   if (SAVE.stash && SAVE.stash.length) {
     const map = { '+DAMAGE': 'dmg', '+CRIT CHANCE': 'crit', '+MAX HP': 'hp', '+DASH RECHARGE': 'dash', '+FERVOR GAIN': 'fervor', '+GOLD FIND': 'gold', '+MOVE SPEED': 'speed', '+MIRACLE COOLDOWN': 'cdr', '+ARMOR': 'armor', '+LIFE ON KILL': 'lok' };
@@ -6768,8 +6824,8 @@ function gearStats() {
   // Sanctity multiplies damage, and health a little less (as monster damage climbs).
   g.power = playerSanctity() / 10;
   // Talents (the Saint's level).
-  g.dmg += 3 * tal('might'); g.crit += tal('precise'); g.speed += 4 * tal('feet'); g.fervor += 4 * tal('piety'); g.gold += 5 * tal('fortune'); g.cdr += 2 * tal('devout'); g.dash += 5 * tal('quickdash');
-  g.hpPct = 4 * tal('vigour') + wound('vigil') * 10 + g.vital;
+  TS.t = -1; g.dmg += ts('dmg'); g.crit += ts('crit'); g.speed += ts('feet'); g.fervor += ts('piety'); g.gold += ts('fortune'); g.cdr += ts('devout'); g.dash += ts('quickdash'); g.xcharges += tal('fleet');
+  g.hpPct = ts('vigour') + wound('vigil') * 10 + g.vital;
   // Four pieces of any vestment set also add damage, so 4+2 mixes stay worth wearing.
   // Counted once, for the best set: two sets at 4 pieces do not stack it.
   g.dmg += Math.max(0, ...ALL_SETS.filter((id) => !VSETS[id].noFour).map((id) => (g.sets[id] || 0) >= 6 ? SETK.four6 : (g.sets[id] || 0) >= 4 ? fourOf(id) : 0));
@@ -6851,7 +6907,7 @@ function updateDrops(dt) {
       if (d.kind === 'ingr') { ingrs()[d.i]++; persist(); const E = ENCHANTS[Math.floor(d.i / 3)]; toast(`${ingName(d.i)} FOUND`, 3); game.toastColor = E.col; game.flash = 0.1; sfx('legend', { gap: 0.2 }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.6, r: 50, color: E.rgb }); }
       if (d.kind === 'chrism') { chrisms()[d.tier]++; persist(); toast(`${CHRISM[d.tier].name} FOUND`, 2.6); game.toastColor = RARITY[d.tier].color; game.flash = 0.08; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: RARITY[d.tier].rgb }); }
       if (d.kind === 'gold') { d.amount = Math.round(d.amount * (1 + G.gold / 100) * (game.run.martyr ? 2 : 1)); game.run.gold += d.amount; nums.push({ x: player.x + rand(-6, 6), y: player.y - 39, v: `+${d.amount}`, t: 0, color: PAL.gold0, small: true }); }
-      if (d.kind === 'globe') { if (G.powers.has('tithe')) addFervor(10); const h = Math.round(player.maxHp * 0.15 * (G.powers.has('globe') ? 2 : 1) * (1 + 0.15 * tal('orbs'))); player.hp = Math.min(player.maxHp, player.hp + h); nums.push({ x: player.x, y: player.y - 55, v: `+${h}`, t: 0, color: PAL.flame1, small: false }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.3, r: 20, color: '224,32,46' }); }
+      if (d.kind === 'globe') { if (G.powers.has('tithe')) addFervor(10); const h = Math.round(player.maxHp * 0.15 * (G.powers.has('globe') ? 2 : 1) * (1 + ts('orbs') / 100)); if (tal('bloodrush')) player.rushT = game.time + 6; player.hp = Math.min(player.maxHp, player.hp + h); nums.push({ x: player.x, y: player.y - 55, v: `+${h}`, t: 0, color: PAL.flame1, small: false }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.3, r: 20, color: '224,32,46' }); }
       if (d.kind === 'item') { game.run.items.push(d.item); const R = RARITY[d.item.ri]; const auto = !SAVE.equip[d.item.slot]; bagAdd(d.item); if (!auto) { toast(`${nm(d.item)}`, 2); game.toastColor = R.color; } if (d.item.ri >= 3) { game.flash = 0.06; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: R.rgb }); } }
     }
   }
@@ -7046,7 +7102,7 @@ function drawFloatBowGlow() {
 // Seconds between shots (or mace swings): talents, powers, Wounds and the Hundredfold.
 function fireCdOf(base) {
   const volley = player.rainT > 0 && player.penKind === 'volley';
-  return base / (1 + (G.haste || 0) / 100) * (1 - 0.03 * tal('quick')) * (G.powers.has('fire') ? 0.8 : 1) * Math.pow(0.85, wound('quick')) * (volley ? 0.33 * Math.pow(0.8, wound('riteVolley') + wound('riteHundred') + wound('riteHundredshards')) : 1) * (G.powers.has('heavyBolts') ? 1.25 : 1);
+  return base / (1 + (G.haste || 0) / 100) * (1 - ts('quick') / 100) * (G.powers.has('fire') ? 0.8 : 1) * Math.pow(0.85, wound('quick')) * (volley ? 0.33 * Math.pow(0.8, wound('riteVolley') + wound('riteHundred') + wound('riteHundredshards')) : 1) * (G.powers.has('heavyBolts') ? 1.25 : 1);
 }
 // The Mendicant's mace: a swing at the nearest foe in reach hits every foe in
 // its arc, a little after the wind-up (the strike frame).
@@ -7145,7 +7201,7 @@ function boltStrike(b, e) {
   // The Last Confessor: every 10th hit binds its foe for 1 s (every 6th at 4 pieces).
   if (sb('confessor', 2) && !e.boss && (player.confN = (player.confN || 0) + 1) % (sb('confessor', 4) ? SETK.bindEvery : SETK.bindEvery2) === 0) { e.bound = Math.max(e.bound || 0, 1); sparks(e.x, e.y - (e.hy || 10), PAL.iron0, 4); }
   const sp = Math.hypot(b.vx, b.vy) || 1, [lo, hi] = T.crossbow.dmg;
-  const raw = Math.round(rand(lo, hi + 1) * (b.crit ? (G.powers.has('critX') ? 3 : 2) * (1 + (G.critD || 0) / 100) * (b.shard ? (sb('glass', 6) ? 1.5 : 1) * (sbw('glass') ? 1.5 : 1) : 1) * (1 + wound('heavy') * 0.5) * (1 + 0.1 * tal('heavy')) : 1) * (b.great ? 3 : 1) * (b.dmgK || 1));
+  const raw = Math.round(rand(lo, hi + 1) * (b.crit ? (G.powers.has('critX') ? 3 : 2) * (1 + (G.critD || 0) / 100) * (b.shard ? (sb('glass', 6) ? 1.5 : 1) * (sbw('glass') ? 1.5 : 1) : 1) * (1 + wound('heavy') * 0.5) * (1 + ts('heavy') / 100) : 1) * (b.great ? 3 : 1) * (b.dmgK || 1));
   HIT_BOLT = b; hurtEnemy(e, raw, b.crit, b.vx / sp, b.vy / sp, b.melee ? 110 : 60, { kind: 'bolt' }); HIT_BOLT = null;
   // Round 80, Groundbreaker: a mace crit cracks the floor round the target (capped, and never from its own shockwave).
   if (b.melee && b.crit && wound('mQuake') && !QUAKING && game.time - (player.quakeT || 0) > 0.35) { player.quakeT = game.time; QUAKING = true; maceHit(e.x, e.y, 46, MELEE.k * (0.6 + 0.4 * wound('mQuake'))); QUAKING = false; }
@@ -7891,12 +7947,13 @@ function updateAbilities(dt) {
   p.m1cd = Math.max(0, p.m1cd - dt * hk); p.m2cd = Math.max(0, p.m2cd - dt * hk);
   if (ench('phantom') && game.scene === 'wound') { p.phT = (p.phT ?? 4) - dt; if (p.phT <= 0) { p.phT = E2('phantom', 4, 3); rings.push({ x: p.x, y: p.y - 24, t: 0, max: 0.3, r: 30, color: '142,174,171' }); vemit(p.x, p.y - 24, { n: 12, ramp: 'iron', sp: 80, life: 0.3, glow: 5 }); const nb = E2('phantom', 8, 12); for (let k = 0; k < nb; k++) spawnBolt(p.x, p.y - 24, k / nb * Math.PI * 2, rng() < T.crossbow.crit + G.crit / 100, { dmgK: 0.8 }); sfx('shoot', { rate: 1.3, vol: 0.6 }); } }
   if (DEV.nocd) { p.m1cd = 0; p.m2cd = 0; }
-  const lucky = (k) => { if (p[k] > 0) { if (tal('chant')) addFervor(4 * tal('chant')); if (tal('grace')) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01 * tal('grace')); }
-    if (p[k] > 0 && ((G.powers.has('luckyRite') && rng() < 0.25) || rng() < 0.05 * tal('again'))) { p[k] = 0; nums.push({ x: p.x, y: p.y - 60, v: 'AGAIN', t: 0, color: PAL.gold0, small: true }); } };
+  const lucky = (k) => { if (p[k] > 0) { if (ts('chant')) addFervor(ts('chant')); if (ts('grace')) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01 * ts('grace'));
+      if (tal('cadence')) { p.cadN = (p.cadT || 0) > game.time ? Math.min(3, (p.cadN || 0) + 1) : 1; p.cadT = game.time + 6; } if (tal('sanctuary')) p.iframes = Math.max(p.iframes, 0.6); }
+    if (p[k] > 0 && ((G.powers.has('luckyRite') && rng() < 0.25) || rng() < ts('again') / 100)) { p[k] = 0; nums.push({ x: p.x, y: p.y - 60, v: 'AGAIN', t: 0, color: PAL.gold0, small: true }); } };
   const aim = input.aim; input.aim = null;
   runLater();
   if (pas('mending') && p.hp > 0) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01 * dt);
-  if (tal('mend') && p.hp > 0) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.003 * tal('mend') * dt);
+  if (ts('mend') && p.hp > 0) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01 * ts('mend') * dt);
   if (pas('secondwind') && p.hp > 0 && p.hp < p.maxHp * 0.3 && (p.swT || 0) <= game.time) { p.swT = game.time + 60; p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.3); rings.push({ x: p.x, y: p.y - 16, t: 0, max: 0.5, r: 50, color: '95,220,108' }); nums.push({ x: p.x, y: p.y - 60, v: 'SECOND WIND', t: 0, color: PAL.flame1, crit: true }); sfx('heal'); }
   const votive6 = () => { if (isAnch() && sb('reliquary', 6)) { p.votives = (p.votives || []).filter((t) => t > game.time); for (let k = 0; k < 2 && p.votives.length < 12; k++) p.votives.push(game.time + 6); } }; // the Shattered Reliquary at 6
   if (input.m1) { input.m1 = false; if (p.m1cd <= 0) { castM1(aim && aim.k === 'm1' ? aim : null); if (p.m1cd > 0) { bumpRite(riteOf('m1').id); riteFlare(riteOf('m1').id); votive6(); } tut.flags.m1 = true; lucky('m1cd'); } }
@@ -10801,7 +10858,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { get pfx() { return pfx; }, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get pfx() { return pfx; }, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>
