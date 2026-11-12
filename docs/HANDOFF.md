@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 89 (build 89, on `master`). Read
+Last updated 2026-11-12, after round 90 (build 90, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-89 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-90 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -306,10 +306,9 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 2. **Talent follow-ups (round 87).** Ask the owner how the webs feel: the
    column thresholds (`TAL_NEED`), whether a full chain should be needed
    for a legendary talent, and the legendary numbers (set by eye). The Cull
-   and Sanctuary measured inside the noise in a crowd (round 89); a Warden
-   fight was not measured (Sanctuary matters most there). Some talent icons
-   are hard to read at 19 px (Feast, Resolve, Blessing): redraw if the
-   owner says so.
+   and Sanctuary measured inside the noise in a crowd (round 89); Sanctuary
+   takes about 14% off Warden damage (round 90). Nine icons were redrawn in
+   round 90; ask the owner if any others read poorly on the phone.
 2. **Rites panel.** The 35-40 gap is the last long one (Iron Brand 35, the
    Great Penance 40). (The Saint-level toast names the next rite since round 74.)
 3. **Round 42 follow-ups.** Ask the owner how the talent numbers and the
@@ -365,6 +364,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 90:** the owner confirmed the five-tap dev corner works in the
+  Home Screen app (that app has its own storage and the manifest's
+  `start_url` drops `?dev`), said the Home Screen layout looks fine, and
+  reported that a talent's card would not close. **Fix:** tapping the open
+  talent again, or anything that is not a node or button, closes the card
+  (`canonryTap`). **Sanctuary against Wardens** (the five of Stratum I at
+  Station XII, Rites build, 2 seeds, 30 s each): blows landing 1.52 to 1.43
+  a second, health lost 27.8% to 24.0% of max a second (about 14% less).
+  Left as it is. **Icons redrawn:** Might, Zeal's Flame, Onslaught, Giant
+  Killer, Feast (an orb with a cross), Resolve (an anchor), Bastion (a
+  tower), Prayer (an open book), Blessing. Test: `round90.cjs`.
 
 - **Round 89:** the owner picked 1-5. **Measured** (`setbal.cjs`, Saint,
   Station XII, nails / stride, 3 seeds, 35 s; it now takes `PASSIVES`,

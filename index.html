@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '89';
+const BUILD = '90';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '90': ['TAP A TALENT AGAIN, OR ANY EMPTY SPOT, TO CLOSE ITS CARD.', 'CLEARER ICONS FOR NINE TALENTS.'],
   '89': ['EVERY TALENT HAS ITS OWN ICON.', 'NAME YOUR TWO TALENT BUILDS: TAP THE ONE IN USE. SWAPPING SHOWS WHAT THE OTHER BUILD HOLDS FIRST.', 'YOUR TITLE SHOWS ON THE CHARACTER SCREEN.'],
   '88': ['TWELVE MORE TALENTS: THERE ARE NOW FAR MORE THAN YOUR POINTS CAN FILL. THE TALENTS PAGE SHOWS THE LIMIT.', 'TWO TALENT BUILDS A CHARACTER. SWAP BETWEEN THEM FREE IN VAEL.', 'SAINT LEVEL 50 OPENS A FOURTH PASSIVE SLOT. LEVEL 75 GIVES GILDED BOLTS AND STEPS, LEVEL 100 GOLD ROBES, AT THE PLUSH STALL. EACH GIVES A TITLE.'],
   '87': ['SAINT LEVELS NOW RUN TO 100.', 'EACH STATION YOU CLEAR, I TO XX, GIVES A TALENT POINT.', 'THE TALENT TREES ARE REBUILT AS WEBS: OVER TWICE AS MANY TALENTS, LINKED PATHS THAT BRANCH, AND FOUR LEGENDARY TALENTS AT THE END OF EACH TREE.', 'YOUR TALENT POINTS WERE GIVEN BACK. SPEND THEM AGAIN AT THE CANONRY.'],
@@ -3403,7 +3404,8 @@ function canonryTap(x, y) {
   const tb = talTabs(L).findIndex((b) => inRect(b, x, y)); if (tb >= 0) { game.talTab = tb; game.talSel = null; sfx('tap', { vol: 0.5 }); return; }
   for (const i of [0, 1]) if (inRect(L.page(i), x, y)) { talPage(i); return; }
   const T0 = TALENT_TREES[game.talTab || 0];
-  for (const q of T0.nodes) if (inRect(L.cell(q), x, y)) { game.talSel = q.id; sfx('tap', { vol: 0.5 }); return; }
+  // Round 90: tapping the open talent again closes its card.
+  for (const q of T0.nodes) if (inRect(L.cell(q), x, y)) { game.talSel = game.talSel === q.id ? null : q.id; sfx('tap', { vol: 0.5 }); return; }
   const t = game.talSel && TAL_BY[game.talSel];
   if (t && inRect(L.learn, x, y)) {
     if (!talOpen(t)) { toast(talWhy(t), 2); return; }
@@ -3416,7 +3418,10 @@ function canonryTap(x, y) {
       if ((SAVE.gold || 0) < cost) { toast('NOT ENOUGH GOLD.', 1.6); return; }
       SAVE.gold -= cost; SAVE.talents = {}; applyGear(); persist(); sfx('buy');
     }, 'RESET');
+    return;
   }
+  // Round 90: a tap anywhere else (the card, the empty web) closes the card.
+  if (t) { game.talSel = null; sfx('tap', { vol: 0.4 }); }
 }
 
 // ------------------------------------------------------- Odile's Gift ---

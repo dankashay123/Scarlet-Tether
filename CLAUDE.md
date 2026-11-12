@@ -67,6 +67,7 @@ node tools/tests/setbal.cjs [secs] [station] [seeds] # set balance (HERO=mendica
 node tools/tests/round26.cjs <outDir> [WxH] # six new rites, ranks, twists, aimed Judgement and Font, the death recap
 node tools/tests/aim.cjs <outDir> [WxH]   # drag to aim each rite, cancel, plain tap
 node tools/tests/menus.cjs <outDir> [WxH] # every menu window at one phone size (run at 932x430, 844x390, 667x375); TEXT=large checks the large text size; FONT=file.woff2 tries another font, ONLY=inv,rites picks windows; prints `text problems N` for text that overlaps, runs off the screen or sits a pixel off its neighbour (`HS.textProblems()`)
+node tools/tests/round90.cjs <outDir> [WxH] # a talent's card closes on a second tap or an empty tap; LEARN still works with a card open; the trees' icons
 node tools/tests/round89.cjs <outDir> [WxH] # every talent's own icon, named builds and the summary asked before a swap, titles on the character select
 node tools/tests/round88.cjs <outDir> [WxH] # the talent limit on the page, two talent builds (swap in Vael only), level gifts at 50, 75, 100 (fourth passive slot, earned looks, titles)
 node tools/tests/round87.cjs <outDir> [WxH] # Saint level 100, Station talent points, the three talent webs (links, legendary ends, every card), old points handed back
