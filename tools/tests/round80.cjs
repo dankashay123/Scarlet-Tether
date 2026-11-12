@@ -1,7 +1,7 @@
 // Playwright check. Serve the repo on :8123 first (python3 -m http.server 8123).
 // Usage: node tools/tests/round80.cjs <outDir> [WxH]
-// Round 80: the new class Wounds, the level-up screen's REROLL (10% of the
-// run's gold) and SACRIFICE (7 ranks for a mythic Wound), the mythic reveal,
+// Round 80: the new class Wounds, the level-up screen's REROLL (paid from the
+// run's gold; round 81: REROLL_BASE scaled by the Station's gold) and SACRIFICE (7 ranks for a mythic Wound), the mythic reveal,
 // and every new Wound at work in a fight for each class.
 const { chromium } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').map(Number);
@@ -21,7 +21,7 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
       const own = HS.WOUNDS.filter((w) => w.hero === hero && !w.mythic).map((w) => w.id);
       return { own: own.length, ownSeen: own.filter((id) => seen.has(id)).length, mythicOffered: mythic, mythicPool: HS.mythicPool().map((w) => w.id) }; }, hero);
     // Reroll: costs 10% of the run's gold, the account's gold is untouched.
-    out[hero].reroll = await p.evaluate(() => { const R = HS.game.run; R.gold = 1000; HS.SAVE.gold = 5000; R.pending = 1; HS.openStigmata(); HS.game.stig.t = 1; const before = HS.game.stig.cards.map((c) => c.id).join(); const cost = HS.rerollCost(); HS.rerollWounds(); return { cost, gold: R.gold, account: HS.SAVE.gold, changed: HS.game.stig.cards.map((c) => c.id).join() !== before }; });
+    out[hero].reroll = await p.evaluate(() => { const R = HS.game.run; R.gold = 5000; HS.SAVE.gold = 5000; R.pending = 1; R.wounds = { wrath: 3, luck: 2, swift: 1, vigil: 2, fervent: 1, letting: 2, heavy: 1, crescent: 1, xHalo: 1 }; HS.applyGear(); HS.openStigmata(); HS.game.stig.t = 1; const before = HS.game.stig.cards.map((c) => c.id).join(); const cost = HS.rerollCost(); HS.rerollWounds(); return { cost, station: HS.game.run.diff + 1, gold: R.gold, account: HS.SAVE.gold, changed: HS.game.stig.cards.map((c) => c.id).join() !== before }; });
     await p.waitForTimeout(400); await shot(`cards-${hero}`); { const pr = await p.evaluate(() => HS.textProblems()); if (pr.length) probs.push(`${hero} cards: ${pr.slice(0, 4).join('; ')}`); }
     // Sacrifice: 9 ranks held, 7 go, one mythic comes; the question first.
     out[hero].sac = await p.evaluate(() => { const R = HS.game.run; R.wounds = { wrath: 3, luck: 3, swift: 2, vigil: 1 }; HS.applyGear(); HS.game.stig.t = 1; const held = HS.woundRanks(); const pend = R.pending; HS.askSacrifice(); const asked = !!HS.game.ask; return { held, asked, pend }; });

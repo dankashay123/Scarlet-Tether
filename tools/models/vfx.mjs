@@ -721,6 +721,33 @@ const INGR = [
   ['violet', 'thread', 'dust', 'stone'], ['teal', 'thread', 'bone', 'vial'], ['sand', 'dust', 'wax', 'stone'], ['slate', 'thread', 'vial', 'bone'],
 ];
 
+// Round 81: the nine mythic Wounds' emblems (24 px, drawn at 2x on the level-up card), in
+// MYTHIC_ICONS order: halo, fury, zeal, nailstorm heart, eye of heaven, giant's mace,
+// earthbreaker, choir of glass, prism heart. Each sits on a rose-lit ground.
+const MM = { ...MATS, rose: { ramp: 'blood', spec: 0.5, bias: 0.12 }, roseDark: { ramp: 'blood', bias: -0.15, min: 2 }, glass: { ramp: 'holy', spec: 0.9, bias: 0.1 } };
+const micon = (fn) => { const S = new Scene(); fn(S); return render(S, 24, 24, MM, { contrast: 1.35 }); };
+const octa = (c, r, mat) => ({ mat, bb: [c[0] - r, c[1] - r, c[2] - r, c[0] + r, c[1] + r, c[2] + r], f: (x, y, z) => (Math.abs(x - c[0]) + Math.abs((y - c[1]) * 0.8) + Math.abs(z - c[2]) - r) * 0.577 });
+const heart = (S, cx, cy, r, mat) => { S.add(sphere([cx - r * 0.5, cy - r * 0.25, 2], r * 0.62, mat), 0); S.add(sphere([cx + r * 0.5, cy - r * 0.25, 2], r * 0.62, mat), 0.8); S.add(capsule([cx, cy + r * 0.9, 2], [cx, cy + r * 0.1, 2], 0.6, r * 0.75, mat), 1.4); };
+const MYTHIC_ICONS = [
+  // The Unbroken Halo: a thick gilt ring, face on, round a rose light.
+  () => micon((S) => { S.add(torus([12, 12, 3], 7.2, 2.4, Math.PI / 2, 'halo'), 0); S.add(sphere([12, 12, 1], 2.4, 'rose'), 0); }),
+  // Martyr's Fury: a bleeding heart crowned with flame.
+  () => micon((S) => { heart(S, 12, 14, 7, 'rose'); for (const [x, h] of [[8, 5], [12, 7], [16, 5]]) S.add(capsule([x, 8, 4], [x + (x - 12) * 0.15, 8 - h, 4], 1.7, 0.4, 'emberLit'), 0.6); }),
+  // Endless Zeal: a sun of embers with eight rays.
+  () => micon((S) => { S.add(sphere([12, 12, 3], 4.8, 'emberLit'), 0); for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + Math.PI / 8; S.add(capsule([12 + Math.cos(a) * 5, 12 + Math.sin(a) * 5, 3], [12 + Math.cos(a) * 10.5, 12 + Math.sin(a) * 10.5, 3], 1.6, 0.5, k % 2 ? 'rose' : 'gold'), 0.4); } }),
+  // The Nailstorm Heart: three nails fanned through a rose heart.
+  () => micon((S) => { heart(S, 12, 18.5, 4.2, 'rose'); for (const a of [-0.9, 0, 0.9]) { const dx = Math.sin(a), dy = -Math.cos(a); S.add(capsule([12 + dx * 5, 17 + dy * 5, 3], [12 + dx * 12, 17 + dy * 12, 3], 1.2, 0.7, 'iron'), 0); S.add(sphere([12 + dx * 12.5, 17 + dy * 12.5, 3], 1.7, 'gold'), 0.2); } }),
+  // Eye of Heaven: an open eye with a holy iris, rays above.
+  () => micon((S) => { S.add(ellipsoid([12, 13, 2], [9, 4.6, 2.6], 'bone'), 0); S.add(sphere([12, 13, 3.2], 3.8, 'glass'), 0.2); S.add(sphere([12, 13, 6.4], 1.8, 'rose'), 0); for (const a of [-0.9, -0.45, 0, 0.45, 0.9]) S.add(capsule([12 + Math.sin(a) * 7, 13 - Math.cos(a) * 7, 2], [12 + Math.sin(a) * 10.5, 13 - Math.cos(a) * 10.5, 2], 0.9, 0.5, 'gold'), 0); }),
+  // The Giant's Mace: a great flanged head on a short haft, rose-gilt.
+  () => micon((S) => { S.add(capsule([5, 20, 2], [13, 11, 2], 1.3, 1.3, 'wood'), 0); S.add(sphere([15.5, 8.5, 2], 4.4, 'iron'), 0); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; S.add(capsule([15.5, 8.5, 2], [15.5 + Math.cos(a) * 6.5, 8.5 + Math.sin(a) * 6.5, 2], 1.1, 0.5, 'iron'), 0.6); } S.add(torus([12.6, 11.6, 2], 1.8, 0.8, 1.2, 'rose'), 0.2); }),
+  // Earthbreaker: a split slab of stone with fire in the crack.
+  () => micon((S) => { S.add(bumpy(box([12, 14, 2], [9, 6, 3], 1.2, 'stone'), 0.4, 0.5, 3), 0); S.sub(rotZ(box([12, 14, 4], [1.2, 8, 3], 0.3, 'void'), [12, 14], 0.35), 0.3); S.add(rotZ(box([12, 14, 1.5], [0.9, 6.5, 1], 0.2, 'ember'), [12, 14], 0.35), 0); }),
+  // Choir of Glass: five ice crystals in a ring round a rose light.
+  () => micon((S) => { S.add(sphere([12, 12, 2], 2.4, 'rose'), 0); for (let k = 0; k < 5; k++) { const a = k * Math.PI * 2 / 5 - Math.PI / 2; S.add(rotZ(ellipsoid([12 + Math.cos(a) * 7.5, 12 + Math.sin(a) * 7.5, 3], [1.6, 3.2, 1.6], 'glass'), [12 + Math.cos(a) * 7.5, 12 + Math.sin(a) * 7.5], a + Math.PI / 2), 0); } }),
+  // Prism Heart: a cut gem, rose at its heart, glass at its rim.
+  () => micon((S) => { S.add(octa([12, 12, 3], 8.5, 'glass'), 0); S.paint({ mat: 'rose', f: (x, y) => Math.abs(x - 12) + Math.abs(y - 12) * 0.8 - 3.6 }); }),
+];
 export default {
   ui: { sound: () => [soundIcon(true)], muted: () => [soundIcon(false)] },
   fx: {
@@ -741,6 +768,7 @@ export default {
   loot: {
     item: () => ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic', 'bow', 'quiver'].map((k) => ICONS[k]()),
     legend: () => LEGEND_ICONS.map((f) => f()),
+    mythic: () => MYTHIC_ICONS.map((f) => f()),
     setitem: () => SET_ICONS.flatMap((k) => SLOT_ORDER.map((slot) => setIcon(k, slot))),
     // The Mendicant's arms: [mace, satchel] plain, then per set (set * 2 + k), then the Penitent's Prod as a mace.
     marms: () => [ICONS.mace(), ICONS.satchel(), ...SET_ICONS.flatMap((k) => [setIcon(k, 'mace'), setIcon(k, 'satchel')]),

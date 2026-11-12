@@ -109,10 +109,11 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '80';
+const BUILD = '81';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
-  '80': ['SIX NEW LEVEL-UP WOUNDS FOR EACH CLASS.', 'NEW ON THE LEVEL-UP SCREEN: REROLL THE THREE CARDS FOR 10% OF THE GOLD YOU HAVE FOUND THIS RUN.', 'OR SACRIFICE 7 RANKS OF YOUR WOUNDS, AT RANDOM, FOR A RANDOM MYTHIC WOUND. NINE MYTHIC WOUNDS, ONE RANK EACH.'],
+  '81': ['A REROLL NOW COSTS 500 GOLD AT STATION I, MORE AT DEEPER STATIONS (ABOUT A QUARTER OF WHAT A FULL CLEAR PAYS).', 'MYTHIC WOUNDS HAVE THEIR OWN ICONS. ENDLESS ZEAL, THE GIANT\'S MACE, EARTHBREAKER, CHOIR OF GLASS AND PRISM HEART ARE STRONGER; THE NAILSTORM HEART NO LONGER ADDS PIERCE.', 'THE LEVEL-UP SCREEN SHOWS THE WOUNDS YOU HOLD AND THEIR RANKS IN ITS TOP CORNERS.'],
+  '80': ['SIX NEW LEVEL-UP WOUNDS FOR EACH CLASS.', 'NEW ON THE LEVEL-UP SCREEN: REROLL THE THREE CARDS, PAID FROM THE GOLD YOU HAVE FOUND THIS RUN.', 'OR SACRIFICE 7 RANKS OF YOUR WOUNDS, AT RANDOM, FOR A RANDOM MYTHIC WOUND. NINE MYTHIC WOUNDS, ONE RANK EACH.'],
   '79': ['THE BELLWRIGHT, THE DROWNED ORGANIST AND THE COFFIN GOLEM ARE REMADE: THE BELL HANGS FROM A YOKE, THE PIPES GROW FROM HIS BACK, AND THE GOLEM IS ONE BODY WEARING ITS COFFIN LID.', 'EVERY MONSTER AND ALL THREE CLASSES NOW HAVE THE DEEPER, BLENDED SHADING.'],
   '78': ['ELITES AND WARDENS ARE REDRAWN WITH DEEPER SHADING: THEIR PARTS BLEND INTO ONE FIGURE, CAST SHADOWS ON EACH OTHER, AND CLOTH, FLESH AND STONE SHOW FOLDS AND LUMPS.'],
   '77': ['THE ANCHORESS\'S SHARDS ARE A LITTLE BIGGER IN FLIGHT AND LEAVE A FAINT ICE TRAIL, NOT A LINE. THEIR HITS BURST ICE-BLUE.', 'NEW SOUNDS FOR ATTACKS: THE MACE, MONSTER SWINGS, SLAMS AND SPELLS, RITE CASTS, SHARD CRITS. THE SHARDS CHIME AT FOUR PITCHES.', 'THE THORNED CRUCIBLE\'S RING IS WIDER AT 4 AND 6 PIECES.', 'ELITES AND WARDENS EACH WIND UP IN THEIR OWN WAY.'],
@@ -6654,14 +6655,14 @@ function gearStats() {
   // Stigmata taken this run.
   g.dmg += wound('wrath') * 15; g.crit += wound('luck') * 8;
   // Round 80: the class Wounds and the mythic ones that are plain stats.
-  g.critD = (g.critD || 0) + 25 * wound('sDeadeye') + 30 * wound('mPound') + 25 * wound('aEdge') + 50 * wound('xCrit'); // base crits deal x2, so +50% makes them triple
+  g.critD = (g.critD || 0) + 25 * wound('sDeadeye') + 30 * wound('mPound') + 25 * wound('aEdge') + 50 * wound('xCrit') + 50 * wound('xPrism'); // base crits deal x2, so +50% makes them triple
   g.eliteD = (g.eliteD || 0) + 20 * wound('sHunter') + 15 * wound('mBrawler') + 20 * wound('aHunt');
   g.haste = (g.haste || 0) + 10 * wound('sSteady') + 8 * wound('mBrawler') + 10 * wound('aSwift');
-  g.crit += 3 * wound('sSteady') + 3 * wound('aEdge') + 20 * wound('xCrit') + 20 * wound('xPrism');
-  g.cdr += 10 * wound('sLitany') + 10 * wound('aPrayer') + 20 * wound('xZeal'); g.dash += 15 * wound('sGrace'); g.xcharges = (g.xcharges || 0) + (wound('sGrace') >= 2 ? 1 : 0);
+  g.crit += 3 * wound('sSteady') + 3 * wound('aEdge') + 20 * wound('xCrit') + 25 * wound('xPrism');
+  g.cdr += 10 * wound('sLitany') + 10 * wound('aPrayer') + 30 * wound('xZeal'); g.dash += 15 * wound('sGrace'); g.xcharges = (g.xcharges || 0) + (wound('sGrace') >= 2 ? 1 : 0);
   g.armor += 6 * wound('mIron') + 4 * wound('aVeil'); g.gold += 15 * wound('mBeggar'); g.lok += wound('mBeggar');
-  g.vital = (g.vital || 0) + 8 * wound('mUnbowed') + 5 * wound('aVeil') + 25 * wound('xHalo'); g.dmg += 40 * wound('xHalo') + 30 * wound('xGiant');
-  g.fervor += 100 * wound('xZeal'); g.shards = (g.shards || 0) + 4 * wound('xChoir'); g.speed += wound('swift') * 10; g.fervor += wound('fervent') * 30; g.lok += wound('letting') * 2;
+  g.vital = (g.vital || 0) + 8 * wound('mUnbowed') + 5 * wound('aVeil') + 25 * wound('xHalo'); g.dmg += 40 * wound('xHalo') + 50 * wound('xGiant');
+  g.fervor += 200 * wound('xZeal'); g.dmg += 20 * wound('xZeal') + 30 * wound('xChoir'); g.shards = (g.shards || 0) + 4 * wound('xChoir'); g.speed += wound('swift') * 10; g.fervor += wound('fervent') * 30; g.lok += wound('letting') * 2;
   // Sanctity multiplies damage, and health a little less (as monster damage climbs).
   g.power = playerSanctity() / 10;
   // Talents (the Saint's level).
@@ -7029,7 +7030,7 @@ function updateCrossbow(dt) {
   if (fire) player.emberShots--;
   // Height above the floor: starts at the bow, sinks to the target's chest (walls are tested at floor level).
   const z0 = player.y - sy, zv = (t.hy - z0) / (d / T.crossbow.speed);
-  for (let k = 0; k < n; k++) { const a = base + (k - (n - 1) / 2) * 0.16; bolts.push({ z: z0, zv, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce') + tal('pierce') + (sb('nails', 2) ? 1 : 0) + (great ? 99 : 0) + (G.powers.has('longShot') ? 2 : 0) + 2 * wound('xSplit'), hit: new Set(), crit, trail: [], great, bind, fire, life: G.powers.has('longShot') ? 1.15 : 0.8 }); }
+  for (let k = 0; k < n; k++) { const a = base + (k - (n - 1) / 2) * 0.16; bolts.push({ z: z0, zv, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce: T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce') + tal('pierce') + (sb('nails', 2) ? 1 : 0) + (great ? 99 : 0) + (G.powers.has('longShot') ? 2 : 0), hit: new Set(), crit, trail: [], great, bind, fire, life: G.powers.has('longShot') ? 1.15 : 0.8 }); }
   sfx('shoot');
   xb.recoil = 1; xb.flash = 1;
   pfxMuzzle(sx, sy, base);
@@ -7562,7 +7563,7 @@ function afterSwingSets(o, a) {
   const p = player;
   if (o.crush && sb('iron', 6)) maceHit(p.x + Math.cos(a) * 30, p.y + Math.sin(a) * 20, 70, MELEE.k, { rgb: '178,188,203', ramp: 'iron' });
   if (o.nova) maceRing(80, MELEE.k, { rgb: '242,220,182', ramp: 'gold' });
-  if (wound('xQuake') && p.blowN % 3 === 0) maceRing(85, MELEE.k * 1.5, { rgb: '255,170,90', ramp: 'fire' }); // round 80, Earthbreaker
+  if (wound('xQuake') && p.blowN % 3 === 0) maceRing(95, MELEE.k * 2.5, { rgb: '255,170,90', ramp: 'fire' }); // round 80, Earthbreaker
   if (wound('aftershock') && p.blowN % 5 === 0) maceRing(70, MELEE.k * (0.4 + 0.3 * wound('aftershock')), { rgb: '255,244,176', ramp: 'bone' });
   if (o.chains) { for (const f of nearestFoes(p.x, p.y, 30, SETK.gaolR)) { f.fet = Math.min(5, ((f.fetT || 0) > game.time ? f.fet || 0 : 0) + 2); f.fetT = game.time + 4; } rings.push({ x: p.x, y: p.y, t: 0, max: 0.4, r: SETK.gaolR, color: '191,112,86', flat: true }); } // round 74: chains reach foes the mace cannot
   if (o.alms) { maceRing(sb('alms', 6) ? SETK.almsR6 : SETK.almsR, MELEE.k * 1.5, { rgb: '255,209,85', ramp: 'gold' }); vemit(p.x, p.y - 10, { n: LOWFX ? 4 : 12, ramp: 'gold', sp: 90, up: 50, life: 0.5, grav: 120, size: 2, glow: 4 }); }
@@ -9550,22 +9551,23 @@ const WOUNDS = [
   { id: 'aHunt', name: 'SEEKING GLASS', hero: 'anchoress', r: 1, max: 3, icon: 'orbit', text: () => '+20% DAMAGE TO ELITES AND WARDENS.' },
   { id: 'aBurst', name: 'SHATTERPOINT', hero: 'anchoress', r: 2, max: 2, icon: 'arc', text: (n) => `KILLS BURST INTO ${2 + n * 2} SPLINTERS THAT FLY AT FOES NEARBY.` },
   // Mythic Wounds (round 80): never offered on a card. Sacrifice 7 ranks on the level-up screen for one at random. One rank each.
-  { id: 'xHalo', mythic: true, name: 'THE UNBROKEN HALO', r: 3, max: 1, icon: 'pillar', text: () => '+40% DAMAGE AND +25% MAX HP.' },
-  { id: 'xFury', mythic: true, name: "MARTYR'S FURY", r: 3, max: 1, icon: 'relic', text: () => 'BELOW HALF HEALTH YOUR DAMAGE IS DOUBLED.' },
-  { id: 'xZeal', mythic: true, name: 'ENDLESS ZEAL', r: 3, max: 1, icon: 'choir', text: () => 'YOUR RECKONING CHARGES TWICE AS FAST. RITES RECHARGE 20% FASTER.' },
-  { id: 'xSplit', mythic: true, hero: 'saint', name: 'THE NAILSTORM HEART', r: 3, max: 1, icon: 'xbow', text: () => 'THE CROSSBOW FIRES 2 MORE BOLTS IN A SPREAD, AND EVERY BOLT PIERCES 2 MORE FOES.' },
-  { id: 'xCrit', mythic: true, hero: 'saint', name: 'EYE OF HEAVEN', r: 3, max: 1, icon: 'seal', text: () => '+20% CRIT CHANCE. CRITS DEAL TRIPLE.' },
-  { id: 'xGiant', mythic: true, hero: 'mendicant', name: "THE GIANT'S MACE", r: 3, max: 1, icon: 'xbow', text: () => 'THE MACE REACHES 40% FARTHER, SWEEPS WIDER AND HITS 30% HARDER.' },
-  { id: 'xQuake', mythic: true, hero: 'mendicant', name: 'EARTHBREAKER', r: 3, max: 1, icon: 'nova', text: () => 'EVERY 3RD BLOW SENDS A SHOCKWAVE THROUGH FOES AROUND YOU (150% DAMAGE).' },
-  { id: 'xChoir', mythic: true, hero: 'anchoress', name: 'CHOIR OF GLASS', r: 3, max: 1, icon: 'orbit', text: () => '+4 RELIQUARY SHARDS.' },
-  { id: 'xPrism', mythic: true, hero: 'anchoress', name: 'PRISM HEART', r: 3, max: 1, icon: 'arc', text: () => '+20% CRIT CHANCE. SHARD CRITS SPLIT INTO 2 SPLINTERS.' },
+  { id: 'xHalo', mythic: true, name: 'THE UNBROKEN HALO', r: 3, max: 1, icon: 'myth:0', text: () => '+40% DAMAGE AND +25% MAX HP.' },
+  { id: 'xFury', mythic: true, name: "MARTYR'S FURY", r: 3, max: 1, icon: 'myth:1', text: () => 'BELOW HALF HEALTH YOUR DAMAGE IS DOUBLED.' },
+  { id: 'xZeal', mythic: true, name: 'ENDLESS ZEAL', r: 3, max: 1, icon: 'myth:2', text: () => 'YOUR RECKONING CHARGES THREE TIMES AS FAST. RITES RECHARGE 30% FASTER. +20% DAMAGE.' },
+  { id: 'xSplit', mythic: true, hero: 'saint', name: 'THE NAILSTORM HEART', r: 3, max: 1, icon: 'myth:3', text: () => 'THE CROSSBOW FIRES 2 MORE BOLTS IN A SPREAD.' },
+  { id: 'xCrit', mythic: true, hero: 'saint', name: 'EYE OF HEAVEN', r: 3, max: 1, icon: 'myth:4', text: () => '+20% CRIT CHANCE. CRITS DEAL TRIPLE.' },
+  { id: 'xGiant', mythic: true, hero: 'mendicant', name: "THE GIANT'S MACE", r: 3, max: 1, icon: 'myth:5', text: () => 'THE MACE REACHES 40% FARTHER, SWEEPS WIDER AND HITS 50% HARDER.' },
+  { id: 'xQuake', mythic: true, hero: 'mendicant', name: 'EARTHBREAKER', r: 3, max: 1, icon: 'myth:6', text: () => 'EVERY 3RD BLOW SENDS A SHOCKWAVE THROUGH FOES AROUND YOU (250% DAMAGE).' },
+  { id: 'xChoir', mythic: true, hero: 'anchoress', name: 'CHOIR OF GLASS', r: 3, max: 1, icon: 'myth:7', text: () => '+4 RELIQUARY SHARDS. +30% DAMAGE.' },
+  { id: 'xPrism', mythic: true, hero: 'anchoress', name: 'PRISM HEART', r: 3, max: 1, icon: 'myth:8', text: () => '+25% CRIT CHANCE. SHARD CRITS DEAL TRIPLE AND SPLIT INTO 2 SPLINTERS.' },
 ];
 const WOUND_RARITY = [{ name: 'WOUND', col: '#c2b6aa', w: 10 }, { name: 'DEEP WOUND', col: '#8ae0ff', w: 5 }, { name: 'STIGMA', col: '#ffd155', w: 2.2 }, { name: 'MYTHIC', col: '#ff6a8a', w: 0 }];
 // Round 80: the sacrifice and the reroll on the level-up screen.
-const SACRIFICE_N = 7, REROLL_PCT = 10;
+// A reroll costs about a quarter of a full clear's gold: 500 at Station I, scaled by the Station's gold (round 81, measured).
+const SACRIFICE_N = 7, REROLL_BASE = 500;
 const woundRanks = () => Object.entries((game.run && game.run.wounds) || {}).reduce((t, [id, n]) => t + (WOUNDS.find((q) => q.id === id && !q.mythic) ? n : 0), 0);
 const mythicPool = () => WOUNDS.filter((w) => w.mythic && !wound(w.id) && (!w.hero || w.hero === heroId()));
-const rerollCost = () => Math.max(1, Math.ceil(((game.run && game.run.gold) || 0) * REROLL_PCT / 100));
+const rerollCost = () => Math.round(REROLL_BASE * ((game.run && curDiff().gold) || 1) / 10) * 10;
 const wound = (id) => (game.run && game.run.wounds && game.run.wounds[id]) || 0;
 // Each level needs XP_G times the last; a run stops at MAX_LEVEL.
 const MAX_LEVEL = 15, XP_G = 1.22;
@@ -9629,7 +9631,23 @@ function stigTap(x, y) {
   if (inRect(B.sac, x, y)) { if (canSacrifice()) askSacrifice(); else sfx('tap', { rate: 0.6 }); return; }
   stigLayout().forEach((r, i) => { if (inRect(r, x, y)) pickStigma(i); });
 }
-// Round 80: a new set of three cards for 10% of the gold found this run (the run's gold, not the account's).
+// Round 81: the Wounds held this run, as small tiles in the two top corners beside the title
+// (left corner first, two rows each), rank in the corner of each, mythics first.
+function heldStrip() {
+  const R = game.run; if (!R) return;
+  const held = Object.entries(R.wounds).map(([id, n]) => [WOUNDS.find((q) => q.id === id), n]).filter(([w, n]) => w && n > 0).sort((a, b) => b[0].r - a[0].r || b[1] - a[1]);
+  if (!held.length) return;
+  const cs = 17, gap = 2, side = Math.floor((W / 2 - 96 - 10) / (cs + gap)), per = Math.max(1, side) * 2;
+  held.slice(0, per * 2).forEach(([w, n], i) => {
+    const right = i >= per, j = right ? i - per : i, col = j % Math.max(1, side), row = Math.floor(j / Math.max(1, side));
+    const x = right ? W - 8 - (col + 1) * (cs + gap) + gap : 8 + col * (cs + gap), y = 7 + row * (cs + gap), rgb = hexRgb(WOUND_RARITY[w.r].col);
+    ctx.fillStyle = 'rgba(8,12,22,0.9)'; ctx.fillRect(x, y, cs, cs); ctx.fillStyle = `rgba(${rgb},0.85)`; ctx.fillRect(x, y, cs, 1); ctx.fillRect(x, y + cs - 1, cs, 1); ctx.fillRect(x, y, 1, cs); ctx.fillRect(x + cs - 1, y, 1, cs);
+    ctx.save(); ctx.beginPath(); ctx.rect(x + 1, y + 1, cs - 2, cs - 2); ctx.clip(); ctx.translate(x + cs / 2, y + cs / 2); ctx.scale(0.32, 0.32); woundIcon(w.icon, 0, 0, game.real); ctx.restore();
+    if (!w.mythic) text(String(n), x + cs - 2, y + cs - 8, WOUND_RARITY[w.r].col, { align: 'right', small: true, sc: 0.85 });
+  });
+  if (held.length > per * 2) text(`+${held.length - per * 2}`, W - 8, 7 + 2 * (cs + gap), PAL.stone1, { align: 'right', small: true });
+}
+// Round 80: a new set of three cards, paid from the gold found this run (the run's gold, not the account's).
 function rerollWounds() {
   const R = game.run, c = rerollCost(); if ((R.gold || 0) < c) return;
   R.gold -= c; game.stig.cards = rollStigmata(); game.stig.t = 0.35; game.stig.rolls = (game.stig.rolls || 0) + 1; sfx('buy');
@@ -9655,6 +9673,7 @@ function sacrificeWounds() {
 function woundIcon(icon, x, y, t) {
   const sp = { xbow: isMelee() ? ['weapon', 'mace', 0] : isAnch() ? ['loot', 'aarms', 0] : ['weapon', 'xbow', 0], globe: ['loot', 'globe', 0], thurible: ['fx', 'thurible', 0], flask: ['fx', 'flask', 0], link: ['fx', 'hook', 0] }[icon];
   if (sp) { ctx.save(); ctx.translate(x, y); ctx.scale(2, 2); sprC(sp[0], sp[1], sp[2], 0, 0); ctx.restore(); return; }
+  if (icon.startsWith('myth:')) { ctx.save(); ctx.translate(x, y); ctx.scale(2, 2); sprC('loot', 'mythic', +icon.slice(5), 0, 0); ctx.restore(); return; } // round 81: each mythic's own emblem
   if (icon.startsWith('rite:')) { ctx.save(); ctx.translate(x, y); ctx.scale(1.5, 1.5); sprC('ui', icon.slice(5), 0, 0, 0); ctx.restore(); return; }
   if (ICON_OF.includes(icon)) { ctx.save(); ctx.translate(x, y); ctx.scale(2, 2); sprC('loot', 'item', ICON_OF.indexOf(icon), 0, 0); ctx.restore(); return; }
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -9675,7 +9694,8 @@ function renderStigmata() {
     text(`LEVEL ${game.run.level}`, W / 2, 16, PAL.gold0, { align: 'center', sc: 2, glow: true });
     goldRule(W / 2 - 80, 39, 160, '255,209,85', true);
     text('CHOOSE A WOUND', W / 2, 43, PAL.cloth1, { align: 'center', small: true });
-    // Round 80: reroll for 10% of this run's gold, or sacrifice 7 ranks for a mythic Wound.
+    heldStrip();
+    // Round 80: reroll (paid from this run's gold), or sacrifice 7 ranks for a mythic Wound.
     const B = stigButtons(), held = woundRanks();
     invButton(B.reroll, `REROLL: ${rerollCost().toLocaleString('en-US')} GOLD`, PAL.gold3, canReroll());
     invButton(B.sac, mythicPool().length ? `SACRIFICE ${SACRIFICE_N} RANKS (${Math.min(held, 99)})` : 'NO MYTHIC LEFT', PAL.crimson3, canSacrifice());

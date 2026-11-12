@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 80 (build 80, on `master`). Read
+Last updated 2026-11-12, after round 81 (build 81, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -296,6 +296,26 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 81:** the reroll's price, measured. Gold from one full clear
+  (every foe, breakable, chest, imp, the Warden, the Reliquary 60% of the
+  time; coins 3-9 x the Station's `gold`): about 1,900 at Station I, 3,400 at
+  III, 6,500 at VI, 12,000 at X, 14,800 at XII, 20,800 at XV, 25,000 at XX. A
+  reroll costs `REROLL_BASE` 500 x the Station's gold rate, rounded to 10
+  (500 at I, 1,030 at IV, 1,380 at VI, 2,430 at XII), about a quarter of a
+  full clear; still paid from `run.gold`. The sacrifice stays random (the
+  owner wants it a gamble). Mythic balance at Station VI, no gear, 4 seeds,
+  kills a second against no Wounds (`setbal.cjs` now takes `WOUNDS` and
+  `HPK`): Saint Halo x1.31, Fury x2.0 (held at 40% health), Nailstorm x1.66
+  (pierce removed; was x2.18), Eye x1.28, Zeal x1.46; Anchoress Halo x1.21,
+  Fury x1.45, Choir x1.46, Prism x1.17, Zeal x1.13; the Mendicant x0.96-1.22
+  (bare at VI his kills are capped by foes reaching him; damage taken fell
+  from 117 to about 90 a second). Raised: Endless Zeal (x3 Zeal, 30% rite
+  recharge, +20% damage), the Giant's Mace (+50%), Earthbreaker (250%),
+  Choir of Glass (+30% damage), Prism Heart (+25% crit, shard crits triple).
+  Each mythic has its own emblem (loot `mythic`, `MYTHIC_ICONS` in `vfx.mjs`,
+  icon `myth:N`). The level-up screen shows held Wounds in its top corners
+  (`heldStrip`: rarity-framed tiles, rank in the corner, mythics first).
 
 - **Round 80:** level-up Wounds. Six more per class (`hero`-tagged in
   `WOUNDS`, ids `s*`, `m*`, `a*`): mostly stats added in `gearStats` (crit
