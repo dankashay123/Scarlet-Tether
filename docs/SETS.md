@@ -38,7 +38,7 @@ module builds only its own. Test: `tools/tests/round72.cjs`.
 | Anchoress | The Glass Martyr | +10% shard crit | crits split | x1.4, crits x3, call glass shards |
 | Anchoress | The Mother's Psalter | rites 15% faster | each rite fires every shard | x3 shards and faster for 4 s; all damage x1.3 |
 | Anchoress | The Veiled Lantern | shards burn | burning foes +40% from shards | +150%, burning deaths spread fire; all damage x1.3 |
-| Anchoress | The Thorned Crucible | ring 25% wider and cuts | cut foes slowed, +30% | spins and cuts twice as fast, +150%, x1.5, Zeal |
+| Anchoress | The Thorned Crucible | ring 25% wider and cuts | cut foes slowed, +30% | spins and cuts twice as fast, +150%, x1.5, Zeal; ring 45% wider at 4, 65% at 6 |
 
 ## What we take from Diablo 3
 

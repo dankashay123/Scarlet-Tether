@@ -128,7 +128,7 @@ const CM = { ...MATS, ice: { ramp: 'holy', spec: 0.9, bias: 0.12, max: 4 }, iceD
 // Round 76: `slim` is the same blade thinner and a little shorter, for shards in flight (`crystalbolt`).
 function crystal(i, slim = false) {
   const a = i / 16 * Math.PI * 2, dx0 = Math.cos(a), dy0 = Math.sin(a) * 0.55, dl = Math.hypot(dx0, dy0), dx = dx0 / dl, dy = dy0 / dl;
-  const L = (15 + 9 * Math.abs(Math.cos(a))) * (slim ? 0.85 : 1), c = [17, 17], S = new Scene(), R0 = slim ? 3.1 : 4.8;
+  const L = (15 + 9 * Math.abs(Math.cos(a))) * (slim ? 0.95 : 1), c = [17, 17], S = new Scene(), R0 = slim ? 3.9 : 4.8;
   const at = (t) => [c[0] + dx * t, c[1] + dy * t, 3];
   S.add(capsule(at(-L * 0.18), at(L * 0.6), R0, 0.35, 'ice'), 0);
   S.add(capsule(at(-L * 0.18), at(-L * 0.34), R0, slim ? 1.2 : 1.6, 'ice'), 0.4);

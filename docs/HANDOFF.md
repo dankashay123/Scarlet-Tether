@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 76 (build 76, on `master`). Read
+Last updated 2026-11-12, after round 77 (build 77, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -296,6 +296,24 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 77:** shards in flight are a little bigger (`crystal(i, true)`:
+  radius 3.9), leave a faint ice pixel trail (the `holy` ramp at 0.3 alpha)
+  in place of the glow-pass line, glow ice-blue and burst ice-blue on a hit.
+  Attack sounds, all from CC0 packs already credited (Swishes, 80 CC0 RPG
+  SFX, 100 CC0 SFX, Magic Spell SFX; recipes at the top of `SFX` in
+  `build-sfx.py`): `swing` and `mace` (the Mendicant), `mswing`, `mcast`
+  and `mslam` for monsters (`performAttack` and hazard detonations, through
+  `sfxAt(name, x, y, o)`, which fades with distance and is silent past 300
+  px), `cast` on every rite (`riteFlare`, lower for a Reckoning), `glass` on
+  a shard crit. The chime plays at four pitches, low for a great shard.
+  None of these were heard, only measured: ask the owner about levels
+  (`VOL`). The packs download from opengameart.org in this environment
+  (kenney.nl is blocked). Elites and Wardens each wind up their own way
+  (`WIND` in `elite.mjs`: turn and shift of the second wind-up frame; a
+  variation of the lean, not new sculpts). The Thorned Crucible's ring is
+  45% wider at 4 pieces and 65% at 6 (`SETK.thornR4`, `thornR6`): VI 13.1
+  (was 12.1, inside the noise), XII 6.9.
 
 - **Round 76:** shards in flight use a slimmer crystal (`crystalbolt`, 16
   headings, `crystal(i, true)` in `vfx.mjs`) and ring with a glass ping

@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '76';
+const BUILD = '77';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '77': ['THE ANCHORESS\'S SHARDS ARE A LITTLE BIGGER IN FLIGHT AND LEAVE A FAINT ICE TRAIL, NOT A LINE. THEIR HITS BURST ICE-BLUE.', 'NEW SOUNDS FOR ATTACKS: THE MACE, MONSTER SWINGS, SLAMS AND SPELLS, RITE CASTS, SHARD CRITS. THE SHARDS CHIME AT FOUR PITCHES.', 'THE THORNED CRUCIBLE\'S RING IS WIDER AT 4 AND 6 PIECES.', 'ELITES AND WARDENS EACH WIND UP IN THEIR OWN WAY.'],
   '76': ['THE ANCHORESS\'S SHARDS FLY AS SLIMMER CRYSTALS AND RING LIKE GLASS AS THEY FIRE.', 'MONSTERS, ELITES AND WARDENS REAR BACK BEFORE THEY STRIKE.', 'THE VEILED LANTERN (X1.3) AND THE MOTHER\'S PSALTER (X1.3) DEAL MORE DAMAGE AT 6 PIECES.'],
   '75': ['THE SHARDS THE ANCHORESS FIRES ARE THE SAME CRYSTALS THAT HOVER OVER HER HEAD.'],
   '74': ['THE MENDICANT\'S ALMSGIVER\'S BOWL SENDS ITS WAVE FROM 4 PIECES (WIDER AND MORE OFTEN AT 6). THE GAOLER\'S KEYS THROW CHAINS EVERY 4TH BLOW AND DRAG FOES IN FROM FARTHER. THE CRACKED BELL\'S 6-PIECE RING HITS X3.', 'THE LEVEL-UP SCREEN IS DARKER, SO NOTHING SHOWS THROUGH THE CARDS. LOCKED RITES ARE EASIER TO READ.', 'FOES WADING IN THE DROWNED NAVE LEAVE RIPPLES.', 'A SAINT LEVEL NOW NAMES ONLY YOUR OWN CLASS\'S RITES, AND TELLS YOU WHEN THE NEXT ONE OPENS.'],
@@ -544,8 +545,8 @@ if (document.fonts) Promise.all([document.fonts.load(fontOf(22, false)), documen
 // <audio> elements routed through the same context, so memory stays low.
 // iOS 17+: audioSession 'ambient' makes the game follow the silent switch.
 const AUDIO = (() => {
-  const SFX = ['chime', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'execute', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_ashWidow', 'fall_ashWidow'];
-  const VOL = { chime: 0.3, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, execute: 0.8, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
+  const SFX = ['swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'execute', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_ashWidow', 'fall_ashWidow'];
+  const VOL = { swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, execute: 0.8, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
   const A = { ctx: null, buf: {}, last: {}, muted: false, master: null, sfxBus: null, voiceBus: null, musicBus: null, tracks: {}, want: [] };
   try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch { /* not supported */ }
   try { A.muted = !!JSON.parse(localStorage.getItem('hollow-saint') || '{}').muted; } catch { /* private mode */ }
@@ -650,6 +651,8 @@ const AUDIO = (() => {
   return A;
 })();
 const sfx = (name, o) => AUDIO.play(name, o);
+// Round 77: a monster's attack sound, only when it is in earshot, quieter with distance.
+const sfxAt = (name, x, y, o = {}) => { if (!player) return; const d = Math.hypot(x - player.x, y - player.y); if (d < 300) sfx(name, { ...o, vol: (o.vol || 1) * (1 - d / 400) }); };
 
 // -------------------------------------------------------------- input ---
 const keys = new Set();
@@ -1489,7 +1492,7 @@ function addToll(e) {
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
 // fourOf(id): a set's damage at 4 or 5 pieces (fourBy overrides SETK.four for one set).
 const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
-const SETK = { choirHp: 2, choirHp6: 3, choirR: 110, fontHp: 4, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 7, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 3.5, bound4: 2.8, choir4: 2.2, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 155 } , shardPer: 15, crushK: 3, momK: 12, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, thornK: 30, crushK6: 5, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 35, thornK6: 150, psalK6: 3, lampK6: 150, six: { lantern: 1.3, psalter: 1.3, iron: 1.25, alms: 2, gaol: 2, thorn: 1.5, glass: 1.4 } };
+const SETK = { choirHp: 2, choirHp6: 3, choirR: 110, fontHp: 4, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 7, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 3.5, bound4: 2.8, choir4: 2.2, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 155 } , shardPer: 15, crushK: 3, momK: 12, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 35, thornK6: 150, psalK6: 3, lampK6: 150, six: { lantern: 1.3, psalter: 1.3, iron: 1.25, alms: 2, gaol: 2, thorn: 1.5, glass: 1.4 } };
 const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 2 };
 // Gear per kill, before the Station's multiplier. Kept low: progress should take farming.
 const DROP = { kill: 0.003, rare: 0.1, elite: 0.5 }; // hp: the average MON Warden
@@ -5565,6 +5568,10 @@ function performAttack(e) {
   const a = e.atk, d = e.def, k = e.dmgK;
   e.state = 'recover'; e.t = 0;
   const ang = e.ang;
+  // Round 77: every attack has a sound: a swing for blows, a cast for spells (shots have their own).
+  { const sz = e.boss ? 0.62 : e.tier === 'elite' ? 0.78 : 1, vol = e.boss ? 1.2 : e.tier === 'elite' ? 1 : 0.7;
+    if (['swipe', 'cone', 'lunge', 'multidash', 'slam'].includes(a.type)) sfxAt('mswing', e.x, e.y, { vol, rate: sz * (0.92 + Math.random() * 0.16), gap: 0.09 });
+    else if (!['shot', 'spread', 'ring', 'spiral', 'volley', 'sweep', 'burrow'].includes(a.type)) sfxAt('mcast', e.x, e.y, { vol, rate: sz * (0.95 + Math.random() * 0.1), gap: 0.15 }); }
   switch (a.type) {
     case 'swipe': {
       const hx = e.x + Math.cos(ang) * a.reach * 0.6, hy = e.y + Math.sin(ang) * a.reach * 0.6;
@@ -5687,6 +5694,7 @@ function updateHazards(dt) {
         if (h.pool) addPool(h.x, h.y, h.r * 0.9, h.poolLife || 4, h.poolDps || 10, h.pool, h.src, h.poolRate);
         const big = h.r > 20;
         playFx('fx', h.style === 'frost' ? 'impact' : 'burst', h.x, h.y - 4, 22, { big });
+        sfxAt('mslam', h.x, h.y, { vol: big ? 1 : 0.6, rate: (big ? 0.85 : 1.15) * (0.94 + Math.random() * 0.12), gap: 0.1 });
         { const R = h.style === 'frost' ? 'frost' : h.style === 'blight' ? 'life' : 'fire'; addPfx({ kind: 'quake', x: h.x, y: h.y, r: h.r * 1.4, max: 0.4, ramp: R, ground: true }); pfxHit(h.x, h.y - 6, big, R, !big); if (big) pfxCrack(h.x, h.y, 5, R); }
         if (h.style === 'bell') rings.push({ x: h.x, y: h.y, t: 0, max: 0.3, r: h.r, color: '255,209,85', flat: true });
         game.shake = Math.max(game.shake, big ? 2.5 : 1.5);
@@ -6461,7 +6469,7 @@ const VSETS = {
   glass: { name: 'THE GLASS MARTYR', piece: 'GLASS', hero: 'anchoress', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, '+10% CRIT CHANCE FOR SHARD BOLTS.'], [4, `+${fourOf('glass')}% DAMAGE (+${SETK.four6}% AT 6). SHARD CRITS SPLIT INTO 2 SPLINTERS.`], [6, `ALL YOUR DAMAGE X${SETK.six.glass}. SHARD CRITS DEAL X3 AND CALL A GLASS SHARD FOR 4 S (UP TO 4).`]] },
   psalter: { name: "THE MOTHER'S PSALTER", piece: 'PSALTER', hero: 'anchoress', slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, 'RITES COOL DOWN 15% FASTER.'], [4, `+${fourOf('psalter')}% DAMAGE (+${SETK.four6}% AT 6). EACH RITE YOU CAST MAKES EVERY SHARD FIRE AT ONCE.`], [6, `ALL YOUR DAMAGE X${SETK.six.psalter}. FOR 4 S AFTER A RITE, SHARDS DEAL X${SETK.psalK6} AND FIRE 30% FASTER.`]] },
   lantern: { name: 'THE VEILED LANTERN', piece: "LANTERN-BEARER'S", hero: 'anchoress', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'SHARD BOLTS SET FOES ALIGHT.'], [4, `+${fourOf('lantern')}% DAMAGE (+${SETK.four6}% AT 6). BURNING FOES TAKE ${SETK.lampK}% MORE FROM SHARDS.`], [6, `ALL YOUR DAMAGE X${SETK.six.lantern}. BURNING FOES TAKE ${SETK.lampK6}% MORE FROM SHARDS INSTEAD. FOES THAT DIE BURNING BURST AND SET FOES AROUND THEM ALIGHT.`]] },
-  thorn: { name: 'THE THORNED CRUCIBLE', piece: 'THORNED', hero: 'anchoress', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, 'YOUR SHARDS CIRCLE 25% WIDER AND CUT FOES THEY PASS.'], [4, `+${fourOf('thorn')}% DAMAGE (+${SETK.four6}% AT 6). FOES THEY CUT ARE SLOWED 40% AND TAKE ${SETK.thornK}% MORE DAMAGE FOR 2 S.`], [6, `ALL YOUR DAMAGE X${SETK.six.thorn}. THE RING SPINS TWICE AS FAST AND CUTS TWICE AS OFTEN. CUT FOES TAKE ${SETK.thornK6}% MORE INSTEAD. CUTS GIVE ZEAL.`]] },
+  thorn: { name: 'THE THORNED CRUCIBLE', piece: 'THORNED', hero: 'anchoress', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, 'YOUR SHARDS CIRCLE 25% WIDER AND CUT FOES THEY PASS.'], [4, `+${fourOf('thorn')}% DAMAGE (+${SETK.four6}% AT 6). THE RING IS ${Math.round((SETK.thornR4 - 1) * 100)}% WIDER. FOES IT CUTS ARE SLOWED 40% AND TAKE ${SETK.thornK}% MORE DAMAGE FOR 2 S.`], [6, `ALL YOUR DAMAGE X${SETK.six.thorn}. THE RING IS ${Math.round((SETK.thornR6 - 1) * 100)}% WIDER, SPINS TWICE AS FAST AND CUTS TWICE AS OFTEN. CUT FOES TAKE ${SETK.thornK6}% MORE INSTEAD. CUTS GIVE ZEAL.`]] },
   reliquary: { name: 'THE SHATTERED RELIQUARY', piece: 'SHATTERED', hero: 'anchoress', noFour: true, slots: ['hood', 'mantle', 'gloves', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, '+2 RELIQUARY SHARDS.'], [4, `+${SETK.shardPer}% DAMAGE FOR EVERY RELIQUARY SHARD ABOVE 4.`], [6, 'EACH RITE CALLS 2 VOTIVE SHARDS FOR 6 S.']] },
 };
 // Each class's own five sets and its starter set (round 72).
@@ -6948,7 +6956,7 @@ function updateMelee(dt) {
   if (player.shardN > 0) player.shardN--;
   for (let k = 0; k < nails; k++) spawnBolt(player.x + player.face * 10, player.y - 26, a + (k - (nails - 1) / 2) * 0.16, rng() < T.crossbow.crit + G.crit / 100);
   player.swingT = MELEE.swing; player.swingA = a; player.swingArc = arc; player.swingCrit = crit;
-  sfx('dash', { vol: 0.35, rate: 1.5, gap: 0.1 });
+  sfx('swing', { vol: 0.8, rate: 0.92 + Math.random() * 0.16, gap: 0.1 });
   // The smear starts just before the strike frame so it leads the blow.
   later(Math.max(0, MELEE.strike - 0.03), () => { if (player && player.hp > 0) addPfx({ kind: 'smear', x: player.x, y: player.y - 16, a, arc, r: reach * 0.9, max: 0.2, ramp: shotRamp() }); });
   later(MELEE.strike, () => {
@@ -6968,7 +6976,7 @@ function updateMelee(dt) {
     afterSwingSets(SW, a);
     // Weight: grit where the arc ends, and a short freeze when the blow lands in a crowd.
     if (n) { const qx = player.x + Math.cos(a) * reach * 0.7, qy = player.y + Math.sin(a) * reach * 0.45; addPfx({ kind: 'quake', x: qx, y: qy, r: crit ? 64 : n >= 3 ? 52 : 38, max: 0.38, ramp: shotRamp(), ground: true }); if (crit || n >= 3) pfxCrack(qx, qy, crit ? 6 : 4, shotRamp());
-      sfx('hit2', { vol: 0.6, rate: 0.8, gap: 0.08 }); if (crit || n >= 3) sfx('break', { vol: 0.3, rate: 0.62, gap: 0.12 }); game.shake = Math.max(game.shake, Math.min(3.5, (crit ? 2.2 : 1.2) + n * 0.3)); vemit(player.x + Math.cos(a) * reach * 0.8, player.y + Math.sin(a) * reach * 0.5, { n: LOWFX ? 2 : 6, ramp: 'bone', sp: 60, up: 30, life: 0.3, grav: 160, size: 2, glow: 0 }); if (n >= 3) hitStop(0.03); }
+      sfx('mace', { vol: 0.8, rate: 0.92 + Math.random() * 0.16, gap: 0.08 }); if (crit || n >= 3) sfx('break', { vol: 0.3, rate: 0.62, gap: 0.12 }); game.shake = Math.max(game.shake, Math.min(3.5, (crit ? 2.2 : 1.2) + n * 0.3)); vemit(player.x + Math.cos(a) * reach * 0.8, player.y + Math.sin(a) * reach * 0.5, { n: LOWFX ? 2 : 6, ramp: 'bone', sp: 60, up: 30, life: 0.3, grav: 160, size: 2, glow: 0 }); if (n >= 3) hitStop(0.03); }
   });
 }
 // The mace's arc of light as it strikes (glow pass).
@@ -7022,7 +7030,7 @@ function boltStrike(b, e) {
   const raw = Math.round(rand(lo, hi + 1) * (b.crit ? (G.powers.has('critX') ? 3 : 2) * (1 + (G.critD || 0) / 100) * (b.shard ? (sb('glass', 6) ? 1.5 : 1) * (sbw('glass') ? 1.5 : 1) : 1) * (1 + wound('heavy') * 0.5) * (1 + 0.1 * tal('heavy')) : 1) * (b.great ? 3 : 1) * (b.dmgK || 1));
   HIT_BOLT = b; hurtEnemy(e, raw, b.crit, b.vx / sp, b.vy / sp, b.melee ? 110 : 60, { kind: 'bolt' }); HIT_BOLT = null;
   procHit(b, e, raw);
-  pfxHit(e.x - b.vx / sp * 4, e.y - (e.hy || 10), b.crit || b.great, shotRamp(), !!b.melee);
+  pfxHit(e.x - b.vx / sp * 4, e.y - (e.hy || 10), b.crit || b.great, b.shard ? 'holy' : shotRamp(), !!b.melee); if (b.shard && b.crit) sfx('glass', { vol: 0.7, rate: 0.9 + Math.random() * 0.3, gap: 0.08 });
   if (ench('frostbite')) e.boltSlowT = game.time + E2('frostbite', 2, 4);
   if (b.crit && ench('stormlink')) for (const o of nearestFoes(e.x, e.y, 4, 90).filter((q) => q !== e && !q.dead).slice(0, E2('stormlink', 1, 2))) { hurtEnemy(o, raw * E2('stormlink', 0.5, 0.75), false, 0, 0, 20, { status: true, color: PAL.holy0 }); (game.zaps = game.zaps || []).push({ x0: e.x, y0: e.y - e.hy, x1: o.x, y1: o.y - o.hy, t: 0 }); }
   if (pas('kindling') && rng() < 0.1) e.burn = Math.max(e.burn || 0, T.thurible.burn.time);
@@ -7296,6 +7304,7 @@ function riteFlare(id, x = player.x, y = player.y) {
   const rgb = SET_RGB[RITE_BY[id].set] || '255,244,176';
   const big = [RITES, MRITES, ARITES].some((L) => L.pen.some((q) => q.id === id)), ramp = SET_RAMP[RITE_BY[id].set] || 'gold';
   addPfx({ kind: 'rune', x, y, r: big ? 52 : 32, max: big ? 0.8 : 0.5, ramp, ground: true });
+  sfx('cast', { vol: big ? 1 : 0.7, rate: big ? 0.75 : 0.95 + Math.random() * 0.15, gap: 0.1 });
   if (big) { addPfx({ kind: 'quake', x, y, r: 140, max: 0.6, ramp, ground: true }); pfxHit(x, y - 24, true, ramp); playFx('fx', `sigil_${RITE_BY[id].set in { font: 1, nails: 1, stride: 1, confessor: 1, choir: 1, reliquary: 1 } ? RITE_BY[id].set : 'gold'}`, x, y, 16, { ground: true, scale: 2 }); }
   skillFx.push({ kind: 'flare', x, y: y - 18, t: 0, max: 0.4, r: 60, rgb });
   rings.push({ x, y, t: 0, max: 0.45, r: 70, color: rgb, flat: true }, { x, y: y - 18, t: 0, max: 0.3, r: 36, color: '255,244,176' });
@@ -7472,7 +7481,7 @@ function shardPos(i, n) {
     const a = game.time * spin + i / n * Math.PI * 2, ry = R * 0.36;
     return { x: p.x + Math.cos(a) * R, y: p.y + Math.sin(a) * ry + 1, z: 64 + Math.sin(a) * ry + Math.sin(game.time * 2.2 + i * 1.3) * 1.5, a, up: true };
   }
-  let R = (SHARD.orbit + n * 1.3) * (G.powers.has('wideOrbit') ? 1.35 : 1) * (sb('thorn', 2) ? 1.25 : 1), spin = SHARD.spin * (sb('thorn', 6) ? 2 : 1);
+  let R = (SHARD.orbit + n * 1.3) * (G.powers.has('wideOrbit') ? 1.35 : 1) * (sb('thorn', 6) ? SETK.thornR6 : sb('thorn', 4) ? SETK.thornR4 : sb('thorn', 2) ? 1.25 : 1), spin = SHARD.spin * (sb('thorn', 6) ? 2 : 1);
   if ((p.swardT || 0) > game.time) { R *= 0.55; spin *= 2.4; }
   if (p.snova) { const k = (game.time - p.snova.t0) / p.snova.dur; if (k >= 1) p.snova = null; else R += Math.sin(k * Math.PI) * p.snova.r; }
   if (cathedralOn()) { R = 96 * (aSyn('cathedral') ? 1.25 : 1); spin = 2.6; }
@@ -7561,7 +7570,7 @@ function fireShard(s, t, n, o = {}) {
   const m = (o.n || 1) + wound('split') + (G.powers.has('twin') ? 1 : 0) + (volley ? 2 : 0), z0 = s.z, zv = ((t.hy || 10) - z0) / (d / T.crossbow.speed);
   const pierce = T.crossbow.pierce + (G.powers.has('pierce') ? 1 : 0) + wound('pierce') + tal('pierce') + (sb('nails', 2) ? 1 : 0) + (sbw('reliquary') ? 1 : 0) + (G.powers.has('sealShard') ? 1 : 0) + (great ? 99 : 0);
   for (let k = 0; k < m; k++) { const a = base + (k - (m - 1) / 2) * 0.16; bolts.push({ z: z0, zv, x: sx, y: sy, vx: Math.cos(a) * T.crossbow.speed, vy: Math.sin(a) * T.crossbow.speed, life: 0.8, pierce, hit: new Set(), crit, trail: [], great, bind, fire, shard: true, ember: (p.emberRelicT || 0) > game.time, split: (p.splinterT || 0) > game.time ? (twist('splinter') ? 3 : 2) : crit && sb('glass', 4) ? 2 : 0, dmgK: shardDmgK(n) * (o.k || 1) }); }
-  if (!o.quiet) sfx('chime', { vol: 0.5, rate: 0.85 + rng() * 0.4, gap: 0.05 }); // round 76: a glass ping, not the crossbow's thud
+  if (!o.quiet) sfx('chime', great ? { vol: 0.8, rate: 0.6 + rng() * 0.04, gap: 0.05 } : { vol: 0.5, rate: [0.84, 0.94, 1.06, 1.19][Math.floor(rng() * 4)], gap: 0.05 }); // four pitches; a low one for a great shard // round 76: a glass ping, not the crossbow's thud
   vemit(sx, sy, { n: 2, ramp: 'holy', sp: 30, life: 0.2, glow: 3, size: 1 });
 }
 // A shard flying through foes cuts them (Shard Ward, Reliquary Nova, the Cathedral, the Walled Cell's mantle).
@@ -8236,7 +8245,7 @@ function render() {
     ctx.drawImage(IMG.fx, f.x, f.y, f.w, f.h, -f.w + 3, -Math.floor(f.h / 2), f.w, f.h); ctx.restore();
   }
   // Chunky pixel trails behind the bolts, cooling down the shot's ramp (round 60).
-  { const R = dimR(shotRamp()), st = LOWFX ? 4 : 2; for (const b of bolts) if (b.trail && b.trail.length) { const pts = [[b.x, b.y], ...b.trail], tot = pts.length - 1; for (let i = 0; i < tot; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], L = Math.hypot(x1 - x0, y1 - y0); for (let d = 0; d < L; d += st) { const u = (i + d / Math.max(1, L)) / tot; px2(x0 + (x1 - x0) * d / L, y0 + (y1 - y0) * d / L, R[Math.min(R.length - 1, Math.floor(u * 4))], 1 - u * 0.75); } } } }
+  { const R0 = dimR(shotRamp()), RI = dimR('holy'), st = LOWFX ? 4 : 2; for (const b of bolts) if (b.trail && b.trail.length) { const R = b.shard ? RI : R0, fade = b.shard ? 0.3 : 1; /* a shard leaves a faint ice trail */ const pts = [[b.x, b.y], ...b.trail], tot = pts.length - 1; for (let i = 0; i < tot; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], L = Math.hypot(x1 - x0, y1 - y0); for (let d = 0; d < L; d += st) { const u = (i + d / Math.max(1, L)) / tot; px2(x0 + (x1 - x0) * d / L, y0 + (y1 - y0) * d / L, R[Math.min(R.length - 1, Math.floor(u * 4))], b.shard ? fade * (1 - u) : 1 - u * 0.75); } } } }
   drawFxs(false);
   if (player.target) drawMarker(player.target, player.lock === player.target);
   ctx.restore();
@@ -8278,6 +8287,7 @@ function render() {
   glowVparts();
   const BF = boltFx();
   for (const b of bolts) {
+    if (b.shard) { glow(b.x, b.y, b.crit ? 12 : 8, `rgba(150,215,255,${b.crit ? 0.4 : 0.25})`); continue; } // round 77: no line behind a shard, only a soft ice glow
     const c = b.crit ? BF.crit : BF.trail;
     ctx.strokeStyle = `rgba(${c},${b.crit ? 0.8 : 0.55})`; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(b.x, b.y); for (const [x, y] of b.trail) ctx.lineTo(x, y); ctx.stroke();

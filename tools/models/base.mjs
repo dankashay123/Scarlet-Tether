@@ -50,7 +50,7 @@ export function posedFrame(make, ref, { rot = 0, dx = 0, dy = 0, mid = false }) 
 }
 // Round 76: the second wind-up frame of an attack: the wind-up pose reared
 // back about the feet, so the tell reads from the body before the strike.
-export const rear = (make, rot = -0.14) => posedFrame(make, make(), { rot, dx: -2 });
+export const rear = (make, rot = -0.14, dx = -2, dy = 0) => posedFrame(make, make(), { rot, dx, dy });
 // heavy: 0 (light, thrown about) .. 1 (an elite that barely rocks).
 // flat: a creature already low to the ground rolls belly-up instead.
 export function reactions(make, heavy = 0, flat = false) {

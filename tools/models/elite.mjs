@@ -854,7 +854,11 @@ function organist(t = 0, atk = 0) {
 }
 const WARDENS = { bellwright, candlemass, cardinal, charnelKing, ladyOfNails, tideBishop, organist };
 
-const set = (fn, walk = HALF, atk = [1, 2]) => ({ walk: () => walk.map((t) => fn(t, 0)), attack: () => [fn(0, atk[0]), rear(() => fn(0, atk[0]), -0.08), fn(0, atk[1])], ...reactions(() => fn(0, 0), 0.8) });
+// Round 77: each elite and Warden winds up its own way: [turn, shift x, shift y] of the
+// second wind-up frame (rears back, hunches forward and sinks, or rises off the floor).
+const WIND = { colossus: [0.06, 0, 2], titan: [-0.1, -2, 0], inquisitor: [-0.06, -2, 0], seraph: [-0.05, 0, -4], effigy: [0, 0, -2], abbess: [-0.1, -2, 0], golem: [0.05, 0, 2], thrice: [-0.12, -2, 0], manymouthed: [0.08, 2, 0], leviathan: [-0.1, 0, -2],
+  bellwright: [-0.1, -2, 0], candlemass: [-0.04, 0, -2], cardinal: [-0.07, -2, 0], charnelKing: [0.07, 0, 2], ladyOfNails: [0, 0, -4], tideBishop: [-0.09, -4, 0], organist: [0.06, 2, 0] };
+const set = (fn, walk = HALF, atk = [1, 2]) => ({ walk: () => walk.map((t) => fn(t, 0)), attack: () => [fn(0, atk[0]), rear(() => fn(0, atk[0]), ...(WIND[fn.name] || [-0.08])), fn(0, atk[1])], ...reactions(() => fn(0, 0), 0.8) });
 const R = { colossus: set(colossus), titan: set(titan), inquisitor: set(inquisitor), seraph: set(seraph), effigy: set(effigy), abbess: set(abbess), golem: set(golem), thrice: set(thrice), manymouthed: set(manymouthed), leviathan: set(leviathan) };
 const mon_elite = {};
 for (const [id, s] of Object.entries(R)) { mon_elite[`${id}_walk`] = s.walk; mon_elite[`${id}_attack`] = s.attack; mon_elite[`${id}_hit`] = s.hit; mon_elite[`${id}_die`] = s.die; }

@@ -113,6 +113,14 @@ FIREB = 'fireball-1'; GHAST = '7-ghast-sounds'; CHEST = 'open-chest-sfx'; COINS 
 KI = 'kenney/impact-sounds'; KR = 'kenney/rpg-audio'; KS = 'kenney/sci-fi-sounds'; KU = 'kenney/interface-sounds'
 
 SFX = {
+    # --- attacks (round 77): the mace, monster swings, slams and casts, rite casts, shard crits ---
+    'swing': lambda: build('swing', [L(SWISH, 'swish-9.wav', rate=0.75), L(SWISH, 'swish-7.wav', at=0.02, db=-6, rate=0.6)], fade=0.06, lu=-18),
+    'mace': lambda: build('mace', [L(C100, 'hit_03.ogg', dur=0.3), L(C100, 'slam_04.ogg', db=-6, rate=0.8), L(RPG, 'blade_01.ogg', db=-12, dur=0.15)], fade=0.1, lu=-15),
+    'mswing': lambda: build('mswing', [L(SWISH, 'swish-3.wav', rate=0.9), L(RPG, 'blade_02.ogg', db=-14, dur=0.2)], fade=0.06, lu=-20),
+    'mslam': lambda: build('mslam', [L(C100, 'slam_02.ogg', rate=0.8), L(RPG, 'stones_04.ogg', at=0.03, db=-6), L(C100, 'explosion.ogg', db=-10, rate=0.7, lp=900)], fade=0.2, rev=(0.15, 1.0), lu=-15),
+    'mcast': lambda: build('mcast', [L(RPG, 'spell_01.ogg', dur=0.45, rate=0.85), L(MAGIC, 'magical_6_0.ogg', db=-14, dur=0.4, rate=1.2)], fade=0.2, lu=-20),
+    'cast': lambda: build('cast', [L(MAGIC, 'magical_2.ogg', dur=0.7), L(SWISH, 'swish-8.wav', db=-8, rate=0.7)], fade=0.35, rev=(0.2, 1.2), lu=-18),
+    'glass': lambda: build('glass', [L(C100, 'glass_02.ogg', dur=0.3, rate=1.3)], fade=0.12, lu=-20),
     # --- combat ---
     # The Saint's crossbow: a real crossbow release, kept short (it fires all the time).
     'shoot': lambda: build('shoot', [L(MED, 'Crossbow Shoot.wav', 0, dur=0.11, hp=120), L(KI, 'impactWood_light_002.ogg', db=-14, dur=0.06)], fade=0.03, lu=-20),

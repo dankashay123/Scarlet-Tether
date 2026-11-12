@@ -17,16 +17,16 @@ OpenGameArt.org unless marked.
 | [37 hits/punches](https://opengameart.org/content/37-hitspunches) | qubodup (Independent.nu) | hits, kills, hurt |
 | [8 wet squish slurp impacts](https://opengameart.org/content/8-wet-squish-slurp-impacts) | qubodup (Independent.nu) | the wet layer of hits, kills, the execute |
 | [Deep bone crack/break SFX](https://opengameart.org/content/deep-bone-crackbreak-sfx) | Zane Little Music | bone cracks in kills, the execute and ash, the Ossuarch's roar and collapse |
-| [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) | rubberduck | chains, thurible, coins, gems, the enemy shot, fire, stones, roar, the Ash Widow's censer chains, the Ossuarch's grinding stone |
-| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) | rubberduck | gongs and bells (Reckoning, elite, death, knells), gate slam |
+| [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) | rubberduck | the mace's edge, monster swings and casts, the stones in a slam (round 77), chains, thurible, coins, gems, the enemy shot, fire, stones, roar, the Ash Widow's censer chains, the Ossuarch's grinding stone |
+| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) | rubberduck | the mace blow, monster slams, the glass of a shard crit (round 77), gongs and bells (Reckoning, elite, death, knells), gate slam |
 | [75 CC0 breaking/falling/hit SFX](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | rubberduck | breakables, the flask glass, ash, the grind, the Ossuarch's collapse, the Ash Widow's falling censers |
 | [40 CC0 water/splash/slime SFX](https://opengameart.org/content/40-cc0-water-splash-slime-sfx) | rubberduck | the flask splash |
 | [Fantasy Sound Effects (Tinysized SFX)](https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx) | Vehicle | dash whoosh layer, water drip, coin pouch |
 | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | artisticdude | item pickup rustle |
-| [Swishes Sound Pack](https://opengameart.org/content/swishes-sound-pack) | artisticdude | dash, perfect dodge |
+| [Swishes Sound Pack](https://opengameart.org/content/swishes-sound-pack) | artisticdude | the mace swing, monster swings, the rite cast's whoosh (round 77), dash, perfect dodge |
 | [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) | pwl | perfect dodge, shrine, level up, Hallowed drop, the altar's chime |
 | [Cure Magic](https://opengameart.org/content/cure-magic) | Someoneman | health orb |
-| [Magic Spell SFX](https://opengameart.org/content/magic-spell-sfx) | jaggedstone | shrine, level up, Hallowed drop |
+| [Magic Spell SFX](https://opengameart.org/content/magic-spell-sfx) | jaggedstone | rite casts, monster casts (round 77), shrine, level up, Hallowed drop |
 | [Creepy incoherent chanting](https://opengameart.org/content/creepy-incoherent-chanting) | OwlishMedia | the choir under death, Hallowed drop and the altar's chime, the Ash Widow's wail |
 | [CC0 deep monster roar](https://opengameart.org/content/cc0-deep-monster-roar) | trazzz123 | the Warden's roar, elite toll |
 | [Fireball 1](https://opengameart.org/content/fireball-1) | Julien Matthey | the altar's flame |
