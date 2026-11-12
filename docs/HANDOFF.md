@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 84 (build 84, on `master`). Read
+Last updated 2026-11-12, after round 85 (build 85, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -37,7 +37,7 @@ see "The owner's preferences".) When the owner answers with numbers
    fail; rerun it alone before looking for a bug. `setbal.cjs` runs take
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
-   and pushed to `master` each round; rounds 82-84 on `claude/nifty-darwin-4oposd`.
+   and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -208,6 +208,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   question mark. It counts per character from build 84 on; an older save
   starts with the pieces it wears and holds. The Vigil Roll in town has a TROPHIES button to the Wardens
   section.
+- **Icons (rounds 82-85):** every rite icon of all three classes (54) and
+  the 24 passive icons are coloured reliefs: a navy disc with the glyph
+  raised in its set's colour (passives: crimson offence, blue defence, gold
+  utility), lit top-left with a dark lower edge and a shadow (`riteButton`,
+  `RITE_INK` in `props.mjs`; rite names in `RICH_BTN` in `index.html` so the
+  HUD's `navyBtn` leaves them alone). Gear, set, Hallowed and mythic icons
+  and the three class busts on the pause panel use the `rich` shading. HUD
+  buttons that are not rites (dash, pause, talk, bag) are still flat glyphs
+  that `navyBtn` recolours.
 - **Account systems:** the Saint level (1-60) and its talent trees (Canonry), the Ember Forge
   (reforge, temper), the Ashen Altar (burn a Hallowed piece to learn its
   power; three sockets; Chrism and pity raise the odds), the Censer's 12
@@ -270,18 +279,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   Iron is his lowest deep (4.9 at XII). Anchoress (round 76, 4 seeds):
   reliquary 17.7 / 7.5, glass 18.1 / 6.1, psalter 15.0 / 5.8, thorn 13.1 /
   6.9 (after round 77's wider ring), lantern about 6.8 at XII (VI / XII).
-- **More art.** Rite glyphs and passive icons are flat hand-drawn glyphs
-  on buttons (`button`, `badge` in `props.mjs`), not sculpts, so `rich`
-  shading does not apply to them; a re-draw would be its own job. The class
-  busts (`portrait_m`, `portrait_a`) show only on the pause panel; set looks
-  have busts for the Saint only (`portrait_<set>`).
+- **More art.** The talent tree reuses passive icons (`TAL_ICON`): unlearned
+  nodes read darker than before round 85; check on a phone and lift their
+  alpha if they are hard to see. Set looks have busts for the Saint only
+  (`portrait_<set>`); the class busts show only on the pause panel. The
+  non-rite HUD buttons could get the relief look too.
 - **Sounds.** The owner said the sounds are good (round 84), so the
   round 77 attack sounds, the chime and the sacrifice need no change. The
   round 31 Ossuary sounds were not asked about separately.
-- **Rite icons for the other two classes.** The Saint's 18 are coloured
-  reliefs (round 84); if the owner likes them, do the Mendicant's and the
-  Anchoress's 36 (`riteButton`, add their sets to `RITE_INK` and their
-  names to `RICH_BTN`), then the passive icons.
 - **Codex follow-ups.** A NEW dot
   on the pause tile when an entry is added; bigger tiles on tall phones (the
   grid leaves room below it); monster cards could list attacks.
@@ -349,13 +354,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    leaderboard and a daily seeded descent (same map and omens for everyone,
    scored by time and Toll). (d) Cathedral rebuilding: spend gold and
    Emberstones to restore parts of Vael (a bell tower, a scriptorium), each
-   unlocking a small perk or vendor. (e) Warden trophies: each Warden kill
-   at a new Station adds a trophy to a hall in town, with a one-line record.
-   (f) A codex: monsters, Wardens, sets, Hallowed pieces and Wounds you
-   have seen, with kill counts (suggested again in rounds 77-81). (g) Weekly mutators on the Vigil (fast foes, double
+   unlocking a small perk or vendor. (e) Warden trophies: done in round 84 as
+   a Codex section and a button on the Vigil Roll; a hall to walk into is
+   still open.
+   (f) Done in round 84 (the Codex). (g) Weekly mutators on the Vigil (fast foes, double
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 85:** the owner picked suggestion 1 and asked for these notes to
+  be brought up to date. The Mendicant's and the Anchoress's 36 rite icons
+  and the 24 passive icons are reliefs like the Saint's (`RITE_INK` gained
+  the ten other sets and the three passive ramps; `riteButton(size, glyph,
+  set, small)` takes `small` for the 19 px passive badges; `RICH_BTN` lists
+  all 54 rite icons, built from `MRITES`/`ARITES`). Checked in the three
+  Rites panels, the passives grid and the Canonry. The local server had died
+  again between prompts.
 
 - **Round 84:** the owner said the sounds are good and picked 2, 3, 4, 5.
   **Saint mythics with sets** (`setbal.cjs`, nails / stride / confessor, 3

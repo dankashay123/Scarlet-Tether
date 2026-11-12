@@ -538,10 +538,14 @@ function button(size, glyph) {
 // Round 84: a rite's icon as a small relief: a dark navy disc, the glyph raised from it in
 // its set's colour (lit edge top-left, dark edge bottom-right) with a shadow under it.
 // The game draws these as they are (RICH_BTN in index.html skips the HUD's recolour).
-const RITE_INK = { font: ['holy2', 'holy3', 'holy4'], nails: ['crimson0', 'crimson1', 'crimson3'], stride: ['ember1', 'ember2', 'ember4'], confessor: ['violet0', 'violet1', 'violet3'], choir: ['gold0', 'gold1', 'gold3'] };
-function riteButton(size, glyph, set) {
-  const f = { w: size, h: size, px: new Int16Array(size * size).fill(-1) }, r = size / 2 - 1.6, c = size / 2, [hi, mid, lo] = RITE_INK[set];
-  const G = (x, y) => glyph((x + 0.5 - c) / r, (y + 0.5 - c) / r) && Math.hypot(x + 0.5 - c, y + 0.5 - c) < r - 1.5;
+const RITE_INK = { font: ['holy2', 'holy3', 'holy4'], nails: ['crimson0', 'crimson1', 'crimson3'], stride: ['ember1', 'ember2', 'ember4'], confessor: ['violet0', 'violet1', 'violet3'], choir: ['gold0', 'gold1', 'gold3'],
+  iron: ['iron0', 'iron1', 'iron3'], road: ['sand0', 'sand1', 'sand3'], alms: ['moss0', 'moss1', 'moss3'], gaol: ['brick0', 'brick1', 'brick3'], bell: ['sea0', 'sea1', 'sea3'],
+  reliquary: ['violet0', 'violet1', 'violet3'], glass: ['holy1', 'holy2', 'holy4'], psalter: ['crimson0', 'crimson1', 'crimson3'], lantern: ['ember1', 'ember2', 'ember4'], thorn: ['rot0', 'rot1', 'rot3'],
+  // Passive icons by their badge's ramp (round 85).
+  crimson: ['crimson0', 'crimson1', 'crimson3'], holy: ['holy1', 'holy2', 'holy4'], gold: ['gold0', 'gold1', 'gold3'] };
+function riteButton(size, glyph, set, small = 0) {
+  const f = { w: size, h: size, px: new Int16Array(size * size).fill(-1) }, r = size / 2 - (small ? 1.2 : 1.6), c = size / 2, [hi, mid, lo] = RITE_INK[set];
+  const G = (x, y) => glyph((x + 0.5 - c) / (r - small), (y + 0.5 - c) / (r - small)) && Math.hypot(x + 0.5 - c, y + 0.5 - c) < r - 1.5;
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
     const dx = x + 0.5 - c, dy = y + 0.5 - c, d = Math.hypot(dx, dy); if (d >= r + 1.4) continue;
     if (d >= r - 0.6) { put(f, x, y, 'outline'); continue; }
@@ -762,7 +766,10 @@ export default {
     ...Object.fromEntries(SET_BADGES.map(([g, ramp]) => [`set_${g}`, () => [badge(21, ramp, g)]])),
     // Round 84: the Saint's 18 rites as coloured reliefs (override the flat ones above).
     flask: () => [riteButton(40, GLYPH.flask, 'font')], wave: () => [riteButton(40, GLYPH.wave, 'font')], storm: () => [riteButton(40, GLYPH.storm, 'nails')], step: () => [riteButton(40, GLYPH.step, 'stride')], brand: () => [riteButton(40, GLYPH.brand, 'confessor')], hymn: () => [riteButton(40, GLYPH.hymn, 'choir')], chain: () => [riteButton(40, GLYPH.chain, 'confessor')], shackle: () => [riteButton(40, GLYPH.shackle, 'confessor')], censer: () => [riteButton(40, GLYPH.censer, 'choir')], ward: () => [riteButton(40, GLYPH.ward, 'stride')], nailring: () => [riteButton(40, GLYPH.nailring, 'nails')], asperse: () => [riteButton(40, GLYPH.asperse, 'font')], penance: () => [riteButton(44, GLYPH.penance, 'choir')], pillars: () => [riteButton(44, GLYPH.pillars, 'choir')], font: () => [riteButton(44, GLYPH.font, 'font')], volley: () => [riteButton(44, GLYPH.volley, 'nails')], pilgrim: () => [riteButton(44, GLYPH.pilgrim, 'stride')], greatpen: () => [riteButton(44, GLYPH.greatpen, 'confessor')],
-    passive: () => PASS_ICONS.map(([, ramp, g]) => { BADGE_GLYPH.__p = g; return badge(19, ramp, '__p', ramp === 'holy' ? 5 : ramp === 'gold' ? 3 : 2); }),
+    // Round 85: the Mendicant's and the Anchoress's rites as coloured reliefs too.
+    smite: () => [riteButton(40, GLYPH.smite, 'alms')], undertow: () => [riteButton(40, GLYPH.undertow, 'alms')], nailburst: () => [riteButton(40, GLYPH.nailburst, 'iron')], charge: () => [riteButton(40, GLYPH.charge, 'road')], shackleblow: () => [riteButton(40, GLYPH.shackleblow, 'gaol')], cinderslam: () => [riteButton(40, GLYPH.cinderslam, 'bell')], hook: () => [riteButton(40, GLYPH.hook, 'gaol')], chainsweep: () => [riteButton(40, GLYPH.chainsweep, 'gaol')], toll: () => [riteButton(40, GLYPH.toll, 'bell')], vow: () => [riteButton(40, GLYPH.vow, 'road')], shards: () => [riteButton(40, GLYPH.shards, 'iron')], wellspring: () => [riteButton(40, GLYPH.wellspring, 'alms')], tolling: () => [riteButton(44, GLYPH.tolling, 'bell')], hammer: () => [riteButton(44, GLYPH.hammer, 'bell')], deluge: () => [riteButton(44, GLYPH.deluge, 'alms')], hundredblows: () => [riteButton(44, GLYPH.hundredblows, 'iron')], pyre: () => [riteButton(44, GLYPH.pyre, 'road')], verdict: () => [riteButton(44, GLYPH.verdict, 'gaol')], svolley: () => [riteButton(40, GLYPH.svolley, 'reliquary')], consecrate: () => [riteButton(40, GLYPH.consecrate, 'psalter')], shrapnel: () => [riteButton(40, GLYPH.shrapnel, 'glass')], flight: () => [riteButton(40, GLYPH.flight, 'thorn')], snova: () => [riteButton(40, GLYPH.snova, 'reliquary')], emberrelic: () => [riteButton(40, GLYPH.emberrelic, 'lantern')], sward: () => [riteButton(40, GLYPH.sward, 'reliquary')], votive: () => [riteButton(40, GLYPH.votive, 'reliquary')], splinter: () => [riteButton(40, GLYPH.splinter, 'glass')], shardchain: () => [riteButton(40, GLYPH.shardchain, 'thorn')], shardknell: () => [riteButton(40, GLYPH.shardknell, 'lantern')], mending: () => [riteButton(40, GLYPH.mending, 'psalter')], shattered: () => [riteButton(44, GLYPH.shattered, 'reliquary')], cathedral: () => [riteButton(44, GLYPH.cathedral, 'reliquary')], hundredshards: () => [riteButton(44, GLYPH.hundredshards, 'glass')], relicpyre: () => [riteButton(44, GLYPH.relicpyre, 'thorn')], reliquaryfont: () => [riteButton(44, GLYPH.reliquaryfont, 'psalter')], relicjudge: () => [riteButton(44, GLYPH.relicjudge, 'lantern')],
+    // Round 85: passive icons as reliefs in their kind's colour (crimson offence, blue defence, gold utility).
+    passive: () => PASS_ICONS.map(([, ramp, g]) => riteButton(19, g, RITE_INK[ramp] ? ramp : 'gold', 0.6)),
     ring: () => [ring()], knob: () => [button(32, GLYPH.knob)], bag: () => [button(26, GLYPH.bag)], close: () => [button(22, GLYPH.close)],
   },
 };
