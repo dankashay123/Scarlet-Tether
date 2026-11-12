@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 81 (build 81, on `master`). Read
+Last updated 2026-11-12, after round 82 (build 82, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -37,7 +37,9 @@ see "The owner's preferences".) When the owner answers with numbers
    fail; rerun it alone before looking for a bug. `setbal.cjs` runs take
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
-   and pushed to `master` each round.
+   and pushed to `master` each round; round 82 on `claude/nifty-darwin-4oposd`.
+8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
+   `xargs` (it strips the quotes and the run prints nothing).
 
 ## Where the game stands
 
@@ -149,12 +151,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   `round80.cjs` check). The level-up screen also has:
   - **REROLL:** new cards for `REROLL_BASE` (500) x the Station's gold rate
     (500 at I, about 1,380 at VI, 2,430 at XII; about a quarter of a full
-    clear), paid from the run's gold only.
+    clear), paid from the run's gold only. Each reroll in the same level
+    costs 1.5 times the last (`REROLL_UP`); the next level starts at the base.
   - **SACRIFICE:** asks first, then takes 7 random ranks for a random
     mythic Wound (one rank each, never on a card; 3 shared plus 2 per
     class, each with its own emblem). The owner wants it random: a gamble.
+    Round 82: the seven ranks fly in and break one by one (`renderSacrifice`,
+    1.15 s, sound `sacrifice`), then the mythic card.
   - **Held Wounds:** small rarity-framed tiles with ranks in the top
-    corners (`heldStrip`).
+    corners (`heldStrip`). Tapping one shows its card (round 82).
 - **Gear:** 10 slots (8 vestments plus two arms slots: crossbow and quiver,
   a mace and satchel for him, a reliquary and phylactery for her), 5
   rarities, item level = Station (Sanctity). Drops are rare on purpose
@@ -243,23 +248,23 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Mythic Wounds with gear.** Round 81 measured them bare at Station VI
-  (see its history entry). The Mendicant's barely move there because his
-  kills are capped by foes reaching him; rerun his three with a full set at
-  VI and XII (`setbal.cjs` takes `WOUNDS` and `HPK`) and retune. Prism Heart
-  (x1.17) is the Anchoress's lowest.
-- **Wound follow-ups.** Tapping a held tile could show that Wound's card; a
-  short sacrifice animation (seven ranks breaking into the emblem) with its
-  own sound; each extra reroll in one level could cost more if rerolling
-  feels too cheap late in a run.
+- **Mythic Wounds, what is left.** Round 82 measured the Mendicant's and
+  Prism Heart with full sets (see its history entry). Endless Zeal is the
+  weakest for the Mendicant (about x1.1) and the Anchoress (x1.13 bare)
+  against the Saint's x1.46: it could give each class something of its own.
+  Earthbreaker does little for the Cracked Bell at VI.
+- **Wound follow-ups.** A REROLL count on the button ("2nd reroll"); the
+  held strip on the pause screen too; ask the owner how the sacrifice sound
+  and the 1.5x reroll step feel.
 - **Set balance, where it stands.** Mendicant (round 74, 3 seeds): Alms 12.0
   and Gaol 10.2 at VI, Bell 13.8 at VI and 5.2 at XII; the Beggar King's
   Iron is his lowest deep (4.9 at XII). Anchoress (round 76, 4 seeds):
   reliquary 17.7 / 7.5, glass 18.1 / 6.1, psalter 15.0 / 5.8, thorn 13.1 /
   6.9 (after round 77's wider ring), lantern about 6.8 at XII (VI / XII).
-- **More re-sculpts.** The Penitent Colossus's sack hood sits like a lump on
-  his shoulder and the Inquisitor's shoulder plates are flat slabs; menu
-  portraits and gear icons still use the old (non-`rich`) shading.
+- **More art.** Rite glyphs, passive icons, ingredients and loot on the
+  ground still use the old (non-`rich`) shading (round 82 did gear, set,
+  Hallowed and mythic icons and the portrait). The Mendicant's and
+  Anchoress's HUD portraits are the Saint's bust recoloured.
 - **Whole-game review leftovers (round 74).** A longer hero dash (3
   frames), a hint card in the bag's empty right third on wide phones, the
   Descent panel's tight rows. A brow gem for the Shattered Reliquary was
@@ -331,6 +336,35 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 82:** the owner picked suggestions 1, 2, 3. **Mythic Wounds with
+  gear** (`setbal.cjs`, full sets, 3 seeds, kills a second against the same
+  set with no Wound; runs move about 20%). Mendicant, sets iron / alms /
+  bell: at VI none 12.1 / 11.8 / 12.7; the Giant's Mace x1.50 / 1.43 / 1.30;
+  Endless Zeal x1.14 / 1.02 / 1.05; Earthbreaker x1.29 / 0.93 / 1.09 before,
+  x1.36 / 1.03 / 0.87 after. At XII none 4.8 / 6.9 / 4.9; the Giant's Mace
+  x1.65 / 1.38 / 1.39; the Halo x1.15 / 1.49 / 1.33; Fury (40% health) x1.46
+  / 1.28 / 1.69; Zeal x1.07 / 1.27 / 1.09; Earthbreaker x1.36 / 1.25 / 0.99
+  before, x1.81 / 1.41 / 1.39 after. So his mythics work once he has a set;
+  only Earthbreaker changed (400% from 250%, radius 110 from 95). Anchoress,
+  sets reliquary / glass: at XII none 5.7 / 5.2, Prism Heart x1.45 / 1.82,
+  Choir of Glass x1.47 / 1.38; at VI Prism x1.07 / 1.04 (the kill ceiling).
+  Prism Heart was left alone: +25% damage was tried and gave x1.70 / 2.17 at
+  XII. **Wound screen:** tapping a held tile opens its card (`heldTiles`,
+  `game.stig.peek`, `renderPeek`; any tap closes); a sacrifice plays for
+  `SAC_T` 1.15 s (`renderSacrifice`: the seven ranks as tiles on a ring fall
+  to the middle in turn and break into pixels, the emblem grows; taps wait;
+  skipped under `HS_AUTOSTIG`) with its own synthesised sound (`sacrifice`,
+  `tools/build-sacrifice.py`: seven cracks, then a low bell; not heard, only
+  built); each reroll in one level costs `REROLL_UP` 1.5 times the last
+  (1,380, 2,060, 3,090 at VI). **Art:** the Penitent Colossus has a real
+  hood (a big sack head set forward, a cowl over both shoulders, a dark
+  opening with ember eyes); the Inquisitor has his own spaulders (`spaulder`
+  in `elite.mjs`: a dome, two lames with steel rims, a flange and a spike);
+  gear, set, Hallowed and mythic icons (`IRICH` in `vfx.mjs`) and the
+  portrait render with gentle `rich` shading (a small change at icon size).
+  Test: `round82.cjs`. `e2e.cjs` ends in the tutorial's Wound step
+  (`state: stig`) on build 81 as well: not new.
 
 - **Round 81:** the reroll's price, measured. Gold from one full clear
   (every foe, breakable, chest, imp, the Warden, the Reliquary 60% of the
