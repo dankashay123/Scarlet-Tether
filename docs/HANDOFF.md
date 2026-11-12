@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 79 (build 79, on `master`). Read
+Last updated 2026-11-12, after round 80 (build 80, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -296,6 +296,23 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 80:** level-up Wounds. Six more per class (`hero`-tagged in
+  `WOUNDS`, ids `s*`, `m*`, `a*`): mostly stats added in `gearStats` (crit
+  damage, elite damage, haste, rite cooldown, dash, armor, gold, health),
+  plus Great Nails (every 9th/6th bolt a great nail), Groundbreaker (mace crits
+  crack the floor; `QUAKING` guard, 0.35 s cap) and Shatterpoint (her kills
+  burst into splinters; `splint` bolts never burst again, 0.12 s cap). A
+  fourth rarity, MYTHIC (`WOUND_RARITY[3]`, `mythic: true`, one rank,
+  ids `x*`): three for everyone (the Unbroken Halo, Martyr's Fury, Endless
+  Zeal) and two per class. Mythics are never on a card; the level-up screen
+  has SACRIFICE (`askSacrifice`, `sacrificeWounds`: asks first, then takes
+  `SACRIFICE_N` 7 ranks at random from non-mythic Wounds, gives one random
+  mythic from `mythicPool()`, uses the level's pick, and shows the mythic
+  card with what was given up) and REROLL (`rerollWounds`, `rerollCost()`:
+  `REROLL_PCT` 10% of `run.gold`, rounded up, at least 1; the account's gold
+  is untouched; R on a keyboard). The HUD's level bar hides while the cards
+  are up. Test: `round80.cjs`.
 
 - **Round 79:** the three boxiest models re-sculpted (`elite.mjs`). The
   Coffin Golem is a barrel chest of stone swelling into shoulders and hips,
