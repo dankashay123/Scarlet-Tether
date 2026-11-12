@@ -187,6 +187,9 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **Mendicant set tuning.** The Almsgiver's Bowl and the Gaoler's Keys
+  trail at Station VI (see round 72); more area (wider waves, a pull on
+  Alms) would lift them without touching XII much.
 - **Anchoress balance.** Run `setbal.cjs` with `HERO=anchoress` (it may need
   her set added) and compare kills a second with the other two at VI and
   XII; tune `SHARD.rate`, `shardDmgK` and `SETK.shardPer`. Round 71 at VI
@@ -256,6 +259,33 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 72:** every class has its own five sets and starter set; none are
+  shared (`HERO_SETS`, `STARTER`, `mySets()`, `starterSet()`, `ALL_SETS`).
+  The Mendicant: the Mendicant's Rags (starter), the Beggar King's Iron
+  (crushing blows), the Wanderer's Road (Momentum), the Almsgiver's Bowl
+  (Alms stacks from kills, waves), the Gaoler's Keys (Fetters that slow,
+  drag foes in and lock), the Cracked Bell (rings). The Anchoress: the
+  Anchorite's Shroud (starter), the Shattered Reliquary, the Glass Martyr
+  (shard crits), the Mother's Psalter (rites fire every shard), the Veiled
+  Lantern (burning), the Thorned Crucible (the shard ring cuts). Each has
+  arms (`ARMS`), a skin (`SKINS` with `hero`; hero modules build only their
+  own), item icons (`SET_LOOK`, `SET_ICONS` order matches), a badge, a
+  sigil, a Penitent Cell (`CELLS`) and colours. Their rites were remapped
+  to the new sets (`MRITES`/`ARITES` `set`). Old pieces convert once
+  (`migrateSets`, `SET_MIGRATE`, `SAVE.setsV`). Also: the Anchoress raises
+  her reliquary while shards fire (`raise` anim, `p.raiseT`); hits on one
+  foe within 0.35 s merge into one number (`e.lastNum`); the forge's
+  AFFIXES tab has ALL LINES (`renderAffixList`); new proc lines (Graven
+  `echo`, Beatified `tempest` and `reaper`; `procHit`, `setsOnKill`).
+  Set balance (kills a second, 2 seeds): Station VI Saint sets about 14-16,
+  the Mendicant's iron 12.6, road 14, alms 8.9, gaol 7.4, bell 14.4, the
+  Anchoress's reliquary 16.4, glass 17-18, psalter 14.9, lantern 13.6,
+  thorn 11.7. Station XII: Saint 4.3-10.5, Mendicant 3.7-7.0, Anchoress
+  4.75-6.4 (glass 5.9 after its x1.4). His Alms and Gaol sets trail at VI:
+  melee kills there are capped by how many foes reach him, so area helps
+  more than damage. Tests: `round72.cjs`; `setbal.cjs` runs each class's
+  own sets; the soak takes `SOAK_HERO`.
 
 - **Round 71:** the Anchoress, a third class (`HEROES.anchoress`, `isAnch()`,
   `noBow()`; class card on the create screen, which now lays out every

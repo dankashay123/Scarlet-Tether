@@ -202,7 +202,7 @@ function scourge(i) {
 // A Reckoning's sigil on the floor: rings open out, spokes and four runes
 // turn, a star flares at the centre, then it all thins and fades. 12 frames,
 // seen in perspective (squashed to 0.55).
-const SIGIL_RAMP = { gold: 'gold', font: 'holy', nails: 'gold', stride: 'ember', confessor: 'violet', choir: 'crimson', reliquary: 'violet' };
+const SIGIL_RAMP = { gold: 'gold', font: 'holy', nails: 'gold', stride: 'ember', confessor: 'violet', choir: 'crimson', reliquary: 'violet', iron: 'iron', road: 'sand', alms: 'moss', gaol: 'brick', bell: 'teal', glass: 'holy', psalter: 'crimson', lantern: 'ember', thorn: 'rot' };
 function sigil(i, set) {
   const W = 112, H = 64, f = frame(W, H), cx = W / 2, cy = H / 2, n = 12, t = i / (n - 1), R = SIGIL_RAMP[set] || 'gold';
   const sq = 0.55, ease = 1 - (1 - Math.min(1, t * 1.8)) ** 3, fade = t < 0.6 ? 0 : (t - 0.6) / 0.4;
@@ -494,6 +494,32 @@ const SET_LOOK = {
 SET_LOOK.reliquary = { map: { crimson: 'violetRobe', violet: 'violetRobe', leather: 'violetDark', iron: 'silver', blood: 'shardGlow', wood: 'violetDark', bone: 'silver' },
   mark: (S) => { S.add(rotZ(ellipsoid([18.5, 18.5, 7], [1.8, 4.2, 1.5], 'shardGlow'), [18.5, 18.5], 0.5), 0); S.add(sphere([16.4, 15.2, 7.5], 1.1, 'gold'), 0); },
   post: (f) => dot(f, 18, 16, 'white') };
+// Round 72: the Mendicant's and the Anchoress's own sets (keep this order: index.html's SET_ICONS matches it).
+const ring = (S, x, y, r, mat) => S.add(torus([x, y, 7], r, 1, Math.PI / 2, mat), 0);
+Object.assign(SET_LOOK, {
+  rags: { map: { crimson: 'flag', violet: 'flag', leather: 'stone', iron: 'stone', gold: 'wood', blood: 'wood', wood: 'wood', bone: 'flag' },
+    mark: (S) => { S.add(box([18.5, 18.5, 7], [3.6, 3.6, 1], 0.5, 'leather'), 0); S.paint({ f: (x, y) => Math.abs(x - y) - 0.6, mat: 'wood' }); } },
+  iron: { map: { crimson: 'slateRobe', violet: 'slateRobe', leather: 'slateDark', gold: 'gold', blood: 'crimson', wood: 'slateDark', bone: 'steel' },
+    mark: (S) => { for (const dx of [-3, 0, 3]) S.add(capsule([18.5 + dx, 21, 7], [18.5 + dx, 15.5 - (dx ? 0 : 1.5), 7], 1.3, 0.5, 'steel'), 0.3); S.add(box([18.5, 21.5, 7], [4.4, 1.2, 1], 0.3, 'gold'), 0.3); } },
+  road: { map: { crimson: 'sandRobe', violet: 'sandRobe', leather: 'leather', iron: 'leather', gold: 'wood', blood: 'leather', wood: 'leather', bone: 'cream' },
+    mark: (S) => { S.add(torus([18.5, 18.5, 7], 3.4, 1, 0.2, 'cream'), 0); S.add(capsule([18.5, 15, 7], [18.5, 22, 7], 0.8, 0.8, 'leather'), 0); } },
+  alms: { map: { crimson: 'mossRobe', violet: 'mossRobe', leather: 'mossDark', iron: 'gold', blood: 'gold', wood: 'wood', bone: 'cream' },
+    mark: (S) => { S.add(ellipsoid([18.5, 19.5, 7], [4.4, 2.4, 2], 'wood'), 0); S.add(sphere([18.5, 17, 8], 1.4, 'gold'), 0); } },
+  gaol: { map: { crimson: 'brickRobe', violet: 'brickRobe', leather: 'roofDark', gold: 'iron', blood: 'roofDark', wood: 'roofDark', bone: 'steel' },
+    mark: (S) => { ring(S, 16.5, 16.5, 2.4, 'iron'); S.add(capsule([18, 18, 7], [22, 22, 7], 0.9, 0.9, 'iron'), 0.2); S.add(box([21.5, 22.5, 7], [1, 1.6, 1], 0.2, 'iron'), 0.2); } },
+  bell: { map: { crimson: 'tealRobe', violet: 'tealRobe', leather: 'tealDark', iron: 'bronze', gold: 'bronze', blood: 'bronze', wood: 'tealDark', bone: 'cream' },
+    mark: (S) => { S.add(ellipsoid([18.5, 18.5, 7], [3.2, 3.8, 2], 'bronze'), 0.6); S.add(box([18.5, 21.8, 7], [4.2, 0.9, 1.4], 0.3, 'bronze'), 0.5); S.add(sphere([18.5, 23, 7.5], 0.9, 'iron'), 0); } },
+  shroud: { map: { crimson: 'cream', violet: 'cream', leather: 'creamDark', iron: 'creamDark', gold: 'wood', blood: 'wood', wood: 'wood', bone: 'cream' },
+    mark: (S) => { S.add(box([18.5, 18.5, 7], [1.1, 4.2, 1], 0.3, 'wood'), 0); S.add(box([18.5, 17, 7], [3, 1.1, 1], 0.3, 'wood'), 0); } },
+  glass: { map: { crimson: 'glassRobe', violet: 'glassRobe', leather: 'blueDark', iron: 'silver', gold: 'silver', blood: 'glassGlow', wood: 'blueDark', bone: 'silver' },
+    mark: (S) => { for (const [x, a] of [[16, -0.4], [19, 0], [22, 0.4]]) S.add(rotZ(ellipsoid([x, 18.5, 7], [1.1, 3.6, 1.1], 'glassGlow'), [x, 18.5], a), 0); } },
+  psalter: { map: { crimson: 'crimson', violet: 'cream', leather: 'crimsonDark', iron: 'gold', blood: 'crimson', wood: 'crimsonDark', bone: 'cream' },
+    mark: (S) => { S.add(box([18.5, 18.5, 7], [3.6, 4.4, 1.4], 0.4, 'crimson'), 0); S.add(box([18.5, 18.5, 8.4], [0.8, 4.4, 0.4], 0.1, 'gold'), 0); } },
+  lantern: { map: { crimson: 'inkRobe', violet: 'inkRobe', leather: 'void', iron: 'bronze', gold: 'bronze', blood: 'ember', wood: 'inkRobe', bone: 'slateRobe' },
+    mark: (S) => { S.add(box([18.5, 19.5, 7], [3, 3.6, 2], 0.4, 'bronze'), 0); S.add(ellipsoid([18.5, 19.5, 9], [1.6, 2.2, 1], 'ember'), 0); S.add(capsule([18.5, 15.8, 7], [18.5, 14.2, 7], 0.8, 0.8, 'bronze'), 0); } },
+  thorn: { map: { crimson: 'rotRobe', violet: 'rotRobe', leather: 'mossDark', iron: 'wood', gold: 'wood', blood: 'crimson', wood: 'wood', bone: 'cream' },
+    mark: (S) => { S.add(torus([18.5, 18.5, 7], 3.6, 1, 0.3, 'wood'), 0.3); for (let k = 0; k < 5; k++) { const a = k * 1.256; S.add(capsule([18.5 + Math.cos(a) * 3.6, 18.5 + Math.sin(a) * 3.6, 7], [18.5 + Math.cos(a) * 5.6, 18.5 + Math.sin(a) * 5.6, 7], 0.8, 0.3, 'wood'), 0.1); } } },
+});
 const SET_ICONS = Object.keys(SET_LOOK);
 const setIcon = (set, slot) => { const L = SET_LOOK[set]; return legendIcon(slot, L.map, L.mark, L.post); };
 
@@ -682,7 +708,7 @@ export default {
   fx: {
     bolt: () => [bolt()], ...Object.fromEntries(Object.keys(BOLTS).map((k) => [`bolt_${k}`, () => [bolt(k)]])),
     impact: () => [0, 1, 2, 3].map(impact),
-    ...Object.fromEntries(['gold', 'font', 'nails', 'stride', 'confessor', 'choir', 'reliquary'].map((k) => [`sigil_${k}`, () => Array.from({ length: 12 }, (_, i) => sigil(i, k))])),
+    ...Object.fromEntries(['gold', 'font', 'nails', 'stride', 'confessor', 'choir', 'reliquary', 'iron', 'road', 'alms', 'gaol', 'bell', 'glass', 'psalter', 'lantern', 'thorn'].map((k) => [`sigil_${k}`, () => Array.from({ length: 12 }, (_, i) => sigil(i, k))])),
     wardenfall: () => Array.from({ length: 12 }, (_, i) => wardenFall(i)),
     burst: () => [0, 1, 2, 3].map(burst),
     smoke: () => [0, 1, 2, 3].map(smoke),

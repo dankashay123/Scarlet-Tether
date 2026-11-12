@@ -39,8 +39,8 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '667x375').split('x').
   out.fight = await p.evaluate(async () => { const P = HS.player, list = [];
     for (let k = 0; k < 5; k++) { const e = HS.spawnMonster('risen', P.x + 30 + (k % 2) * 8, P.y - 20 + k * 10, { room: HS.game.curRoom.id }); e.state = 'move'; e.spawnDelay = 0; e.asleep = false; e.hp = e.maxHp = 1e6; list.push(e); }
     await new Promise((r) => setTimeout(r, 1800)); return { hit: list.filter((e) => e.hp < e.maxHp).length }; });
-  // Caught mid-strike: the arc in the set's colour (the Burning Choir) with the mace head's afterimages.
-  await p.evaluate(() => { HS.devSet('choir', true); });
+  // Caught mid-strike: the arc in the set's colour (the Cracked Bell) with the mace head's afterimages.
+  await p.evaluate(() => { HS.devSet('bell', true); });
   for (let i = 0; i < 40; i++) { await p.waitForTimeout(15); const t = await p.evaluate(() => HS.MELEE.swing - HS.swingT); if (t > 0.09 && t < 0.15) break; }
   await shot('mendicant-swing');
   out.swingFrames = await p.evaluate(() => HS.player.anim + ':' + HS.player.frame);

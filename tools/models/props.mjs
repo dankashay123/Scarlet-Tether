@@ -672,7 +672,19 @@ export const PASS_ICONS = [
   ['shrine', 'gold', (u, v) => (Math.abs(u) < 0.13 && v > -0.1 && v < 0.5) || (Math.abs(v - 0.52) < 0.07 && Math.abs(u) < 0.32) || drop(u, v, 0, -0.25, 0.14)],
   ['sense', 'gold', (u, v) => { const a = Math.atan2(v, u), r = Math.hypot(u, v), k = 0.28 + 0.27 * Math.pow(Math.abs(Math.cos(a * 2.5 + Math.PI / 2)), 3); return r < k; }],
 ];
-const SET_BADGES = [['nails', 'crimson'], ['stride', 'ember'], ['font', 'holy'], ['confessor', 'slate'], ['choir', 'gold'], ['reliquary', 'violet']];
+// Round 72: the Mendicant's and the Anchoress's sets.
+Object.assign(BADGE_GLYPH, {
+  iron: (u, v) => (Math.abs(v - 0.3) < 0.12 && Math.abs(u) < 0.5) || [-0.34, 0, 0.34].some((x) => v < 0.3 && v > -0.5 + Math.abs(x) * 0.4 && Math.abs(u - x) < (0.3 - v) * 0.22 + 0.03),
+  road: (u, v) => [-0.3, 0.3].some((x) => Math.abs(u - x + v * 0.25) < 0.08 && Math.abs(v) < 0.55) || [-0.35, 0, 0.35].some((y) => Math.abs(v - y) < 0.05 && Math.abs(u + v * 0.25) < 0.1),
+  alms: (u, v) => (v > 0 && v < 0.35 && Math.hypot(u / 1.1, v) < 0.55 && Math.hypot(u / 1.1, v + 0.05) > 0.0) || Math.hypot(u, v + 0.25) < 0.16,
+  gaol: (u, v) => (Math.abs(Math.hypot(u + 0.2, v + 0.2) - 0.24) < 0.08) || seg(u, v, -0.05, -0.05, 0.42, 0.42, 0.08) || (Math.abs(u - 0.3) < 0.06 && Math.abs(v - 0.42) < 0.12),
+  bell: (u, v) => (v > -0.42 && v < 0.32 && Math.abs(u) < 0.18 + (v + 0.42) * 0.42) && !(v > 0.24) || (Math.abs(v - 0.36) < 0.07 && Math.abs(u) < 0.5) || Math.hypot(u, v - 0.5) < 0.09,
+  glass: (u, v) => [[-0.3, -0.35], [0, 0], [0.3, -0.3]].some(([x, a]) => dia(u, v, x, 0, 0.11, 0.48)),
+  psalter: (u, v) => (Math.abs(u) < 0.42 && Math.abs(v) < 0.5 && !(Math.abs(u) < 0.04)) && !(Math.abs(v + 0.15) < 0.05 && u > 0.1 && u < 0.32),
+  lantern: (u, v) => (Math.abs(u) < 0.3 && v > -0.3 && v < 0.42 && !(Math.abs(u) < 0.16 && v > -0.15 && v < 0.28)) || Math.hypot(u, v - 0.06) < 0.1 || (Math.abs(u) < 0.06 && v < -0.3 && v > -0.55),
+  thorn: (u, v) => Math.abs(Math.hypot(u, v) - 0.36) < 0.08 || [0, 1, 2, 3, 4, 5].some((k) => { const a = k * Math.PI / 3; return seg(u, v, Math.cos(a) * 0.36, Math.sin(a) * 0.36, Math.cos(a + 0.4) * 0.58, Math.sin(a + 0.4) * 0.58, 0.06); }),
+});
+const SET_BADGES = [['nails', 'crimson'], ['stride', 'ember'], ['font', 'holy'], ['confessor', 'slate'], ['choir', 'gold'], ['reliquary', 'violet'], ['iron', 'slate'], ['road', 'sand'], ['alms', 'moss'], ['gaol', 'brick'], ['bell', 'teal'], ['glass', 'holy'], ['psalter', 'crimson'], ['lantern', 'ember'], ['thorn', 'rot']];
 function badge(size, ramp, glyph, min = 2) {
   const S = new Scene(), r = size / 2 - 1.2, c = size / 2;
   S.add(ellipsoid([c, c, 0], [r, r, r * 0.5], 'disc'), 0);

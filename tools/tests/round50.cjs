@@ -20,8 +20,8 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
   out.lists = await p.evaluate(() => ['m1', 'm2', 'pen'].map((s) => HS.riteList(s).map((r) => r.id).join(',')));
   await p.evaluate(() => { HS.game.state = 'play'; });
   // Each set's look (4 pieces).
-  out.looks = await p.evaluate(() => HS.MAIN_SETS.concat(['habit']).map((id) => { HS.devSet(id, true); return HS.saintSheet(); }));
-  await p.evaluate(() => { HS.devSet('nails', true); });
+  out.looks = await p.evaluate(() => HS.HERO_SETS.mendicant.concat(['rags']).map((id) => { HS.devSet(id, true); return HS.saintSheet(); }));
+  await p.evaluate(() => { HS.devSet('iron', true); });
   await p.waitForTimeout(400); await shot('town-nails-look');
   // A crowd in Stratum I; every rite cast at it.
   await p.evaluate(() => { HS.game.nextYard = false; HS.game.nextStratum = 1; HS.game.nextDiff = 2; HS.game.nextOmens = []; HS.game.nextVigil = 0; HS.newRun(); HS.tut.on = false; HS.game.state = 'play'; HS.DEV.god = true; });

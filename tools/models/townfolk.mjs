@@ -358,5 +358,5 @@ export default {
     kid: () => [0, 1, 2, 3].map((t) => child(t, 0)), kid2: () => [0, 1, 2, 3].map((t) => child(t, 1)),
     crow: () => [0, 1, 2, 3].map(crow),
   },
-  ui: { portrait: () => [portrait()], ...Object.fromEntries(Object.keys(SKINS).map((k) => [`portrait_${k}`, () => [portrait(k)]])) },
+  ui: { portrait: () => [portrait()], ...Object.fromEntries(Object.keys(SKINS).filter((k) => !SKINS[k].hero || SKINS[k].hero === 'saint').map((k) => [`portrait_${k}`, () => [portrait(k)]])) },
 };

@@ -12,15 +12,14 @@ const ONLY = (process.env.ONLY || '').split(',').filter(Boolean); // ONLY=none,f
 const ENCH = (process.env.ENCH || '').split(',').filter(Boolean), ENCHT = +(process.env.ENCHT || 2);
 // HERO=anchoress adds her own set (round 71). HERO=mendicant runs the same builds as the Mendicant with his own rites for each set (round 50).
 const HERO = process.env.HERO || 'saint';
+// Each class's own sets (round 72) and the rites of each set.
 const RITES = HERO === 'anchoress'
-  ? { none: ['svolley', 'sward', 'shattered'], reliquary: ['svolley', 'sward', 'shattered'], nails: ['shrapnel', 'splinter', 'hundredshards'], stride: ['flight', 'votive', 'relicpyre'], font: ['consecrate', 'mending', 'reliquaryfont'], confessor: ['svolley', 'shardchain', 'cathedral'], choir: ['emberrelic', 'shardknell', 'relicjudge'] }
+  ? { none: ['svolley', 'sward', 'shattered'], reliquary: ['svolley', 'sward', 'shattered'], glass: ['shrapnel', 'splinter', 'hundredshards'], thorn: ['flight', 'shardchain', 'relicpyre'], psalter: ['consecrate', 'mending', 'reliquaryfont'], lantern: ['emberrelic', 'shardknell', 'relicjudge'] }
   : HERO === 'mendicant'
-  ? { none: ['smite', 'hook', 'tolling'], nails: ['nailburst', 'shards', 'hundredblows'], stride: ['charge', 'vow', 'pyre'], font: ['smite', 'wellspring', 'deluge'], confessor: ['shackleblow', 'hook', 'verdict'], choir: ['cinderslam', 'toll', 'tolling'] }
+  ? { none: ['smite', 'hook', 'tolling'], iron: ['nailburst', 'shards', 'hundredblows'], road: ['charge', 'vow', 'pyre'], alms: ['smite', 'wellspring', 'deluge'], gaol: ['shackleblow', 'chainsweep', 'verdict'], bell: ['cinderslam', 'toll', 'tolling'] }
   : { none: ['water', 'chain', 'rain'], nails: ['storm', 'nailring', 'volley'], stride: ['step', 'ward', 'pilgrim'], font: ['water', 'asperse', 'font'], confessor: ['brand', 'chain', 'greatpen'], choir: ['hymn', 'censer', 'rain'] };
-const BUILDS = [
-  ['none', null, null], ['nails', 'nails', null], ['stride', 'stride', null], ['font', 'font', null], ['confessor', 'confessor', null], ['choir', 'choir', null],
-  ['nails4+font2', 'nails', 'font'], ['stride4+choir2', 'stride', 'choir'], ['font4+confessor2', 'font', 'confessor'], ['confessor4+nails2', 'confessor', 'nails'], ['choir4+stride2', 'choir', 'stride'],
-].concat(HERO === 'anchoress' ? [['reliquary', 'reliquary', null], ['reliquary4+nails2', 'reliquary', 'nails']] : []);
+const SETS = Object.keys(RITES).filter((k) => k !== 'none');
+const BUILDS = [['none', null, null], ...SETS.map((k) => [k, k, null]), ...SETS.map((k, i) => [`${k}4+${SETS[(i + 2) % SETS.length]}2`, k, SETS[(i + 2) % SETS.length]])];
 (async () => {
   const b = await chromium.launch(); const p = await (await b.newContext({ ...devices['iPhone 13 landscape'] })).newPage();
   const errs = []; p.on('pageerror', (e) => errs.push(String(e.stack || e)));

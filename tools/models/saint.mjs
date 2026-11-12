@@ -49,4 +49,4 @@ const anims = (skin) => ({
     ],
 });
 // One sheet per vestment set skin: saint_nails, saint_font and so on.
-export default { saint: anims(null), ...Object.fromEntries(Object.keys(SKINS).map((k) => [`saint_${k}`, anims(k)])) };
+export default { saint: anims(null), ...Object.fromEntries(Object.keys(SKINS).filter((k) => !SKINS[k].hero || SKINS[k].hero === 'saint').map((k) => [`saint_${k}`, anims(k)])) };

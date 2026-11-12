@@ -181,6 +181,12 @@ Object.assign(MATS, {
   cream: { ramp: 'bone', spec: 0.06 }, creamDark: { ramp: 'bone', bias: -0.12, min: 2 },
   wax: { ramp: 'bone', spec: 0.25, bias: 0.1 }, steel: { ramp: 'iron', spec: 0.6, bias: -0.1 },
   smoulder: { ramp: 'ember', glow: 3 },
+  // Round 72: the Mendicant's and the Anchoress's own sets.
+  mossRobe: { ramp: 'moss', bias: -0.15, spec: 0.05 }, mossDark: { ramp: 'moss', bias: -0.4, min: 3 },
+  tealRobe: { ramp: 'teal', spec: 0.06 }, tealDark: { ramp: 'teal', bias: -0.25, min: 3 },
+  brickRobe: { ramp: 'brick', bias: -0.15, spec: 0.05 }, roofDark: { ramp: 'roof', bias: -0.15, min: 2 },
+  sandRobe: { ramp: 'sand', spec: 0.05 }, glassRobe: { ramp: 'holy', bias: -0.2, spec: 0.35, min: 2 }, glassGlow: { ramp: 'holy', glow: 1 },
+  inkRobe: { ramp: 'ink', bias: 0.3, min: 1 }, rotRobe: { ramp: 'rot', bias: -0.2, spec: 0.05 }, bronze: { ramp: 'gold', bias: -0.2, spec: 0.5 },
 });
 // A chain of links along a curve: alternate links stand at right angles.
 function chain(S, pts, mat) {
@@ -224,12 +230,47 @@ HEROES.anchoress = {
   dots: (f, { hand }) => { dot(f, hand[0] + 1.6, hand[1] - 3.4, 'violet0'); dot(f, hand[0] + 2.6, hand[1] - 7.4, 'violet1'); dot(f, hand[0] + 0.4, hand[1] - 8.6, 'violet0'); },
 };
 export const SKINS = {
+  // ---- The Mendicant's own (round 72) ----
+  // The Mendicant's Rags, his starter set: patched brown, a rope belt.
+  rags: { hero: 'mendicant', mats: { robe: 'flag', robeDark: 'stone', hood: 'stone', cowl: 'flag', cape: 'stone', capeHem: 'wood', tabard: 'shroud', trim: 'wood', cross: 'wood' } },
+  // The Beggar King's Iron: dark iron robes, gilt trim, a crown of iron spikes.
+  iron: { hero: 'mendicant', crown: true, mats: { robe: 'slateRobe', robeDark: 'slateDark', hood: 'steel', cowl: 'steel', cape: 'slateDark', trim: 'gold', capeHem: 'gold', tabard: 'crimsonDark', cross: 'gold' },
+    add: (S, { hx, hy }) => { S.add(torus([hx, hy - 4.2, 0.5], 4.6, 1.4, 0.3, 'iron'), 0.6); for (const [dx, h] of [[-3.6, 4.5], [-1.2, 6], [1.2, 6], [3.6, 4.5]]) S.add(capsule([hx + dx, hy - 5.2, 2.2], [hx + dx * 1.2, hy - 5.2 - h, 2.2], 1.5, 0.6, 'steel'), 0.4); } },
+  // The Wanderer's Road: sand and leather, a bedroll across the back.
+  road: { hero: 'mendicant', mats: { robe: 'sandRobe', robeDark: 'leather', hood: 'leather', cowl: 'sandRobe', cape: 'leather', trim: 'wood', capeHem: 'wood', tabard: 'creamDark', cross: 'wood', boot: 'leather' },
+    add: (S, { cx, B, X }) => { S.add(capsule([cx - 9 + X, 27 + B, -4.6], [cx + 1 + X, 25 + B, -4.6], 2.6, 2.6, 'cream'), 0.6); S.paint({ f: (x) => Math.abs(x - (cx - 4 + X)) - 0.7, mat: 'leather' }); } },
+  // The Almsgiver's Bowl: moss green and gold, a wooden bowl at the belt.
+  alms: { hero: 'mendicant', mats: { robe: 'mossRobe', robeDark: 'mossDark', hood: 'mossDark', cowl: 'cream', cape: 'mossDark', trim: 'gold', capeHem: 'gold', tabard: 'cream', cross: 'gold' },
+    add: (S, { cx, B, X }) => { S.add(ellipsoid([cx - 1 + X, 46 + B, 4.4], [3.4, 1.8, 2.4], 'wood'), 0.6); S.paint({ f: (x, y) => Math.abs(y - (45 + B)) - 0.5, mat: 'gold' }); } },
+  // The Gaoler's Keys: rust red and iron, a ring of keys at the hip.
+  gaol: { hero: 'mendicant', mats: { robe: 'brickRobe', robeDark: 'roofDark', hood: 'roofDark', cowl: 'steel', cape: 'roofDark', trim: 'iron', capeHem: 'iron', tabard: 'slateDark', cross: 'iron' },
+    add: (S, { cx, B, X }) => { S.add(torus([cx + 1 + X, 47 + B, 4.6], 2.2, 0.7, Math.PI / 2, 'iron'), 0.2); for (const dx of [-1.2, 1.4]) S.add(capsule([cx + 1 + dx + X, 48 + B, 4.8], [cx + 1 + dx + X, 53 + B, 4.8], 0.8, 0.8, 'iron'), 0.2); } },
+  // The Cracked Bell: teal and bronze, a small bell at the belt.
+  bell: { hero: 'mendicant', mats: { robe: 'tealRobe', robeDark: 'tealDark', hood: 'tealDark', cowl: 'bronze', cape: 'tealDark', trim: 'bronze', capeHem: 'bronze', tabard: 'cream', cross: 'bronze' },
+    add: (S, { cx, B, X }) => { S.add(ellipsoid([cx - 1 + X, 49 + B, 4.6], [2.4, 3, 2.2], 'bronze'), 0.4); S.add(sphere([cx - 1 + X, 52.6 + B, 4.8], 1, 'iron'), 0.2); } },
+  // ---- The Anchoress's own (round 72) ----
+  // The Anchorite's Shroud, her starter set: plain cream, a wooden cross.
+  shroud: { hero: 'anchoress', mats: { robe: 'cream', robeDark: 'creamDark', hood: 'creamDark', cowl: 'cream', cape: 'creamDark', capeHem: 'wood', tabard: 'shroud', trim: 'wood', cross: 'wood' } },
+  // The Glass Martyr: pale glass blue and silver, glass splinters round the head.
+  glass: { hero: 'anchoress', mats: { robe: 'glassRobe', robeDark: 'blueDark', hood: 'blueRobe', cowl: 'silver', cape: 'blueDark', trim: 'silver', capeHem: 'silver', tabard: 'slateDark', cross: 'silver' },
+    add: (S, { hx, hy }) => { for (const [dx, dy, a] of [[-6, -5, -0.5], [-2, -10, -0.15], [3, -10, 0.2], [7, -5, 0.5]]) S.add(rotZ(ellipsoid([hx + dx, hy + dy, 2], [1.1, 2.4, 1.1], 'glassGlow'), [hx + dx, hy + dy], a), 0); } },
+  // The Mother's Psalter: cream under a crimson hood, a red book at the hip.
+  psalter: { hero: 'anchoress', mats: { robe: 'cream', robeDark: 'creamDark', hood: 'crimson', cowl: 'crimson', cape: 'crimsonDark', trim: 'gold', capeHem: 'gold', tabard: 'crimsonDark', cross: 'gold' },
+    add: (S, { cx, B, X }) => { S.add(box([cx - 2 + X, 47 + B, 4.4], [2.8, 3.6, 1.4], 0.4, 'crimson'), 0.3); S.paint({ f: (x, y) => Math.abs(x - (cx + 0.6 + X)) - 0.6, mat: 'gold' }); } },
+  // The Veiled Lantern: black robes, a smoke-grey veil, a lit lantern at the hip.
+  lantern: { hero: 'anchoress', mats: { robe: 'inkRobe', robeDark: 'void', hood: 'inkRobe', cowl: 'slateRobe', cape: 'inkRobe', trim: 'bronze', capeHem: 'bronze', tabard: 'slateDark', cross: 'ember' },
+    add: (S, { cx, B, X }) => { S.add(box([cx - 1 + X, 49 + B, 4.6], [2, 2.6, 2], 0.3, 'bronze'), 0.2); S.add(capsule([cx - 1 + X, 46 + B, 4.6], [cx - 1 + X, 44.6 + B, 4.6], 0.6, 0.6, 'bronze'), 0.1); S.paint({ f: (x, y, z) => Math.max(Math.hypot(x - (cx - 1 + X), y - (49 + B)) - 1.2, -(z - 5.6)), mat: 'ember' }); } },
+  // The Thorned Crucible: dark green-grey, a crown of thorns.
+  thorn: { hero: 'anchoress', crown: true, mats: { robe: 'rotRobe', robeDark: 'mossDark', hood: 'mossDark', cowl: 'cream', cape: 'mossDark', trim: 'wood', capeHem: 'wood', tabard: 'slateDark', cross: 'wood' },
+    add: (S, { hx, hy }) => { S.add(torus([hx, hy - 4.2, 0.5], 4.6, 1.2, 0.3, 'wood'), 0.4); for (let k = 0; k < 6; k++) { const a = -0.2 + k * 0.8; S.add(capsule([hx + Math.cos(a) * 4.6, hy - 4.2, 0.5 + Math.sin(a) * 4.6 * 0.3], [hx + Math.cos(a) * 6.6, hy - 6.4, 0.5 + Math.sin(a) * 6], 0.8, 0.3, 'wood'), 0.2); } } },
   // Odile's Habit, the starter set: brown homespun under a cream collar, a rope belt.
   habit: {
+    hero: 'saint',
     mats: { robe: 'shroud', robeDark: 'shroud', hood: 'shroud', cowl: 'cream', cape: 'shroud', tabard: 'creamDark', trim: 'leather', capeHem: 'leather', cross: 'gold', hose: 'slateDark' },
   },
   // The Hundred Nails: a gilt crown on the hood, iron shoulders, a quiver of nails.
   nails: {
+    hero: 'saint',
     mats: { cowl: 'steel', cross: 'gold' }, crown: true,
     add: (S, { cx, B, X, hx, hy }) => {
       S.add(torus([hx, hy - 4.4, 0.5], 4.4, 1.4, 0.3, 'gold'), 0.6);
@@ -241,6 +282,7 @@ export const SKINS = {
   },
   // The Penitent's Stride: a cream mantle and cape, smouldering soles and hem.
   stride: {
+    hero: 'saint',
     mats: { cowl: 'cream', cape: 'cream', capeHem: 'smoulder', tabard: 'crimsonDark', cross: 'gold', hose: 'slateDark' },
     soles: 'smoulder',
     dots: (f, { hand, hero }) => { if (hero) return; dot(f, hand[0] + 1.6, hand[1] - 1.2, 'ember1'); dot(f, hand[0] + 1.8, hand[1] - 3, 'ember0'); },
@@ -248,6 +290,7 @@ export const SKINS = {
   },
   // The Drowned Font: deep blue robes, silver trim, a glowing vial in hand.
   font: {
+    hero: 'saint',
     mats: { robe: 'blueRobe', robeDark: 'blueDark', hood: 'blueRobe', cowl: 'blueRobe', cape: 'blueDark', trim: 'silver', capeHem: 'silver', cross: 'blueRobe', hose: 'slateDark' },
     add: (S, { hand, hero }) => {
       if (hero) return; // the Mendicant's hand holds the mace
@@ -259,6 +302,7 @@ export const SKINS = {
   },
   // The Last Confessor: slate robes under a cream hood, a chain from the fist.
   confessor: {
+    hero: 'saint',
     mats: { robe: 'slateRobe', robeDark: 'slateDark', hood: 'cream', cowl: 'cream', cape: 'creamDark', tabard: 'slateDark', cross: 'gold', hose: 'ink' },
     add: (S, { hand, hero }) => {
       if (hero) return;
@@ -271,12 +315,14 @@ export const SKINS = {
   // The Shattered Reliquary (round 71, the Anchoress's set): deep violet under a
   // silver mantle, three violet shards hanging in the air round the head.
   reliquary: {
+    hero: 'anchoress',
     mats: { robe: 'violetRobe', robeDark: 'violetDark', cowl: 'silver', cape: 'violetDark', trim: 'gold', capeHem: 'gold', cross: 'violet', hose: 'ink', tabard: 'slateDark' },
     add: (S, { hx, hy }) => { for (const [dx, dy] of [[-6, -6], [0, -10], [6, -6]]) S.add(rotZ(ellipsoid([hx + dx, hy + dy, 2], [1.3, 2.6, 1.3], 'shardGlow'), [hx + dx, hy + dy], dx * 0.08), 0); },
     dots: (f, { hx, hy }) => { for (const [dx, dy] of [[-6, -7], [0, -11], [6, -7]]) dot(f, hx + dx, hy + dy, 'violet0'); },
   },
   // The Burning Choir: a white mantle and a crown of lit candles.
   choir: {
+    hero: 'saint',
     mats: { cowl: 'cloth', tabard: 'cloth', cross: 'crimson', cape: 'crimson' }, crown: true,
     add: (S, { hx, hy }) => {
       S.add(torus([hx, hy - 3.6, 0.5], 5, 1.2, 0.3, 'gold'), 0.6);

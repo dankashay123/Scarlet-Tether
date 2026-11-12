@@ -30,6 +30,12 @@ const anims = (skin) => ({
       A(saintModel({ skin, lean: 1.5, reach: 1, legs: [-3, 2], cape: -4, halo: 1 })),
       A(saintModel({ skin, lean: 0.6, reach: 0.4, aim: 1, legs: [-2, 1], cape: -2, halo: 0 })),
     ],
+    // A 3-frame raise (round 72): she lifts the reliquary high while her shards fire.
+    raise: () => [
+      A(saintModel({ skin, lean: -0.6, aim: -3, reach: 0.1, cape: -1, halo: -1 })),
+      A(saintModel({ skin, lean: -1, aim: -6, reach: 0.4, legs: [-1, 1], cape: -2, halo: -2 })),
+      A(saintModel({ skin, lean: -0.6, aim: -4, reach: 0.2, cape: -1, halo: -1 })),
+    ],
     // A 3-frame flinch: knocked back, arm up; caught; recovering.
     hit: () => [
       A(saintModel({ skin, lean: -2.5, aim: -3, legs: [-2, 1], cape: 2, halo: -2, blink: true })),
@@ -52,4 +58,4 @@ const anims = (skin) => ({
     ],
 });
 // One sheet per vestment set skin: saint_nails, saint_font and so on.
-export default { anchoress: anims(null), ...Object.fromEntries(Object.keys(SKINS).map((k) => [`anchoress_${k}`, anims(k)])) };
+export default { anchoress: anims(null), ...Object.fromEntries(Object.keys(SKINS).filter((k) => !SKINS[k].hero || SKINS[k].hero === 'anchoress').map((k) => [`anchoress_${k}`, anims(k)])) };

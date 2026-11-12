@@ -53,4 +53,4 @@ const anims = (skin) => { const M = (o) => saintModel({ hero: H, skin, swing: RE
   ],
 }; };
 // One sheet per vestment set (round 50), like the Saint's: mendicant_nails and so on.
-export default { mendicant: anims(null), ...Object.fromEntries(Object.keys(SKINS).map((k) => [`mendicant_${k}`, anims(k)])) };
+export default { mendicant: anims(null), ...Object.fromEntries(Object.keys(SKINS).filter((k) => !SKINS[k].hero || SKINS[k].hero === 'mendicant').map((k) => [`mendicant_${k}`, anims(k)])) };
