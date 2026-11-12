@@ -8,7 +8,7 @@ const { chromium, devices } = (() => { try { return require('/opt/node-tools/nod
 const stations = (process.argv[2] || '1,3,5,8,11,15').split(',').map(Number);
 // Profiles: bare gear; a mid-run build (Wounds of a level-12 Saint); that build in the Hundred Nails with its arms;
 // mythic (that set with every stat mythic); chase (mythic plus tier II damage enchants);
-// max (chase plus an enchant on every slot, all 119 talent points (Saint level 100, every Station: all of Offence, 26 in Defence, 28 in Rites), altar powers, passives, more Wounds).
+// max (chase plus an enchant on every slot, all 119 talent points (Saint level 100, every Station: all 74 of Offence, 17 in Defence, 28 in Rites), altar powers, passives, more Wounds).
 const profiles = (process.argv[3] || 'bare,run,set').split(',');
 (async () => {
   const b = await chromium.launch(); const p = await (await b.newContext({ ...devices['iPhone 13 landscape'] })).newPage();
@@ -24,13 +24,13 @@ const profiles = (process.argv[3] || 'bare,run,set').split(',');
       // mythic: every stat at mid mythic. chase: that plus tier II Phantom Volley, Reaper's Mark and Stormlink.
       if (prof === 'mythic' || prof === 'chase') for (const it of Object.values(HS.SAVE.equip)) it.stats = it.stats.map(([k]) => { const [a, b] = HS.qualRange(k, it.ri, 4); return [k, Math.round((a + b) / 2), 4]; });
       if (prof === 'chase' || prof === 'max') [['hood', 'phantom'], ['mantle', 'reaper'], ['gloves', 'stormlink']].forEach(([sl, id]) => { if (HS.SAVE.equip[sl]) { HS.SAVE.equip[sl].ench = id; HS.SAVE.equip[sl].enchT = 2; } });
-      // max: a fully farmed account: mythic set, tier II enchants on every slot, all 119 talent points (Saint level 100, every Station: all of Offence, 26 in Defence, 28 in Rites), three altar powers, three passives.
+      // max: a fully farmed account: mythic set, tier II enchants on every slot, all 119 talent points (Saint level 100, every Station: all 74 of Offence, 17 in Defence, 28 in Rites), three altar powers, three passives.
       if (prof === 'max') {
         for (const it of Object.values(HS.SAVE.equip)) it.stats = it.stats.map(([k]) => { const [a, b] = HS.qualRange(k, it.ri, 4); return [k, Math.round((a + b) / 2), 4]; });
         const ids = ['phantom', 'reaper', 'stormlink', 'hunger', 'frostbite', 'bloodlet', 'boneward', 'thorns', 'lastlight', 'tithe'];
         Object.values(HS.SAVE.equip).forEach((it, i) => { it.ench = ids[i % ids.length]; it.enchT = 2; });
         HS.SAVE.altar = { known: ['seal', 'gloves', 'bow'], sockets: { 0: 'seal', 1: 'gloves', 2: 'bow' } };
-        HS.SAVE.lvl = 100; HS.SAVE.cleared = 29; HS.SAVE.talents = { vigour: 5, hale: 3, mend: 3, warding: 5, guard: 3, steadfast: 3, bastion: 3, unbroken: 1, feet: 3, ritepower: 5, surge: 3, torrent: 3, devout: 5, piety: 5, chant: 3, ardour: 3, brimming: 1 }; for (const t of HS.TALENT_TREES[0].nodes) HS.SAVE.talents[t.id] = t.max; HS.SAVE.censerDev = true; HS.SAVE.passives = ['headsman', 'hide', 'devout'];
+        HS.SAVE.lvl = 100; HS.SAVE.cleared = 29; HS.SAVE.talents = { vigour: 5, hale: 3, warding: 5, guard: 3, feet: 1, ritepower: 5, surge: 3, torrent: 3, devout: 5, piety: 5, chant: 3, ardour: 3, brimming: 1 }; for (const t of HS.TALENT_TREES[0].nodes) HS.SAVE.talents[t.id] = t.max; HS.SAVE.censerDev = true; HS.SAVE.passives = ['headsman', 'hide', 'devout'];
       } else { HS.SAVE.passives = [null, null, null]; HS.SAVE.talents = {}; }
       HS.game.nextDiff = st - 1; HS.game.nextStratum = 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.game.stigAt = 1e9; HS.game.run.wounds = prof === 'bare' ? {} : prof === 'max' ? { wrath: 5, quick: 3, split: 2, pierce: 2, luck: 3, heavy: 2 } : { wrath: 3, quick: 2, split: 1, pierce: 1, luck: 2, heavy: 1 }; HS.applyGear(true);
       for (const e of HS.enemies) e.dead = true;

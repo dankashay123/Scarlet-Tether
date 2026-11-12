@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 87 (build 87, on `master`). Read
+Last updated 2026-11-12, after round 88 (build 88, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-87 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-88 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -305,10 +305,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    cobbles south of the fountain could take a market cart or two.
 2. **Talent follow-ups (round 87).** Ask the owner how the webs feel: the
    column thresholds (`TAL_NEED`), whether a full chain should be needed
-   for a legendary talent, and the legendary numbers (set by eye). Levels
-   61-100 give only talent points: a rite, passive slot or look at 50, 75
-   and 100 would give them more. The Cull and Sanctuary are the two most
-   likely to need a second look.
+   for a legendary talent, and the legendary numbers (set by eye). The Cull
+   and Sanctuary are the two most likely to need a second look. Measure the
+   fourth passive slot (level 50) with `setbal.cjs`. The titles show only
+   on the pause panel: the character select could show them too.
 2. **Rites panel.** The 35-40 gap is the last long one (Iron Brand 35, the
    Great Penance 40). (The Saint-level toast names the next rite since round 74.)
 3. **Round 42 follow-ups.** Ask the owner how the talent numbers and the
@@ -364,6 +364,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 88:** the owner asked that the talents can never all be filled
+  (already true; `round87.cjs` now fails if it stops being so), then picked
+  1, 3, 4, 5. **Tighter webs:** twelve more nodes, most set into the chains
+  (Offence 26 nodes / 74 ranks, Defence 24 / 67, Rites 24 / 70): 211 ranks
+  against 119 points, and all twelve legendary talents would cost 182.
+  **The limit on the page:** the rail shows "Earned N of 119" and "211
+  ranks to pick from"; the foot says there are more talents than points.
+  **Two builds:** BUILD I / II buttons in the foot (`talPage`,
+  `SAVE.talPages`, `SAVE.talPage`); swapping is free but only in Vael;
+  RESET clears the build in use. **Level gifts:** 50 a fourth passive slot
+  (`PASSIVE_AT`), 75 Gilded Bolts and Gilded Steps, 100 Canonised Gold
+  robes (earned looks at the Plush stall, `levelLooks`); titles Venerable,
+  Exalted, Canonised before the class name on the pause panel
+  (`saintTitle`). The fourth passive is real power (a damage passive is
+  +25-40%): not measured. Test: `round88.cjs`.
 
 - **Round 87:** the owner sent a Torchlight-style talent screen and asked
   for Saint level 100, a talent point per Station cleared (I to XX), far
