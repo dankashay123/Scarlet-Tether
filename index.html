@@ -6663,7 +6663,7 @@ function gearStats() {
   g.cdr += 10 * wound('sLitany') + 10 * wound('aPrayer') + 30 * wound('xZeal'); g.dash += 15 * wound('sGrace'); g.xcharges = (g.xcharges || 0) + (wound('sGrace') >= 2 ? 1 : 0);
   g.armor += 6 * wound('mIron') + 4 * wound('aVeil'); g.gold += 15 * wound('mBeggar'); g.lok += wound('mBeggar');
   g.vital = (g.vital || 0) + 8 * wound('mUnbowed') + 5 * wound('aVeil') + 25 * wound('xHalo'); g.dmg += 40 * wound('xHalo') + 50 * wound('xGiant');
-  g.fervor += 200 * wound('xZeal'); g.dmg += 20 * wound('xZeal') + 30 * wound('xChoir'); g.shards = (g.shards || 0) + 4 * wound('xChoir'); g.speed += wound('swift') * 10; g.fervor += wound('fervent') * 30; g.lok += wound('letting') * 2;
+  g.fervor += 200 * wound('xZeal'); g.dmg += 20 * wound('xZeal') + 30 * wound('xChoir') + 25 * wound('xPrism'); g.shards = (g.shards || 0) + 4 * wound('xChoir'); g.speed += wound('swift') * 10; g.fervor += wound('fervent') * 30; g.lok += wound('letting') * 2;
   // Sanctity multiplies damage, and health a little less (as monster damage climbs).
   g.power = playerSanctity() / 10;
   // Talents (the Saint's level).
@@ -7564,7 +7564,7 @@ function afterSwingSets(o, a) {
   const p = player;
   if (o.crush && sb('iron', 6)) maceHit(p.x + Math.cos(a) * 30, p.y + Math.sin(a) * 20, 70, MELEE.k, { rgb: '178,188,203', ramp: 'iron' });
   if (o.nova) maceRing(80, MELEE.k, { rgb: '242,220,182', ramp: 'gold' });
-  if (wound('xQuake') && p.blowN % 3 === 0) maceRing(95, MELEE.k * 2.5, { rgb: '255,170,90', ramp: 'fire' }); // round 80, Earthbreaker
+  if (wound('xQuake') && p.blowN % 3 === 0) maceRing(110, MELEE.k * 4, { rgb: '255,170,90', ramp: 'fire' }); // round 80, Earthbreaker (round 82: 400%, wider)
   if (wound('aftershock') && p.blowN % 5 === 0) maceRing(70, MELEE.k * (0.4 + 0.3 * wound('aftershock')), { rgb: '255,244,176', ramp: 'bone' });
   if (o.chains) { for (const f of nearestFoes(p.x, p.y, 30, SETK.gaolR)) { f.fet = Math.min(5, ((f.fetT || 0) > game.time ? f.fet || 0 : 0) + 2); f.fetT = game.time + 4; } rings.push({ x: p.x, y: p.y, t: 0, max: 0.4, r: SETK.gaolR, color: '191,112,86', flat: true }); } // round 74: chains reach foes the mace cannot
   if (o.alms) { maceRing(sb('alms', 6) ? SETK.almsR6 : SETK.almsR, MELEE.k * 1.5, { rgb: '255,209,85', ramp: 'gold' }); vemit(p.x, p.y - 10, { n: LOWFX ? 4 : 12, ramp: 'gold', sp: 90, up: 50, life: 0.5, grav: 120, size: 2, glow: 4 }); }
@@ -9558,9 +9558,9 @@ const WOUNDS = [
   { id: 'xSplit', mythic: true, hero: 'saint', name: 'THE NAILSTORM HEART', r: 3, max: 1, icon: 'myth:3', text: () => 'THE CROSSBOW FIRES 2 MORE BOLTS IN A SPREAD.' },
   { id: 'xCrit', mythic: true, hero: 'saint', name: 'EYE OF HEAVEN', r: 3, max: 1, icon: 'myth:4', text: () => '+20% CRIT CHANCE. CRITS DEAL TRIPLE.' },
   { id: 'xGiant', mythic: true, hero: 'mendicant', name: "THE GIANT'S MACE", r: 3, max: 1, icon: 'myth:5', text: () => 'THE MACE REACHES 40% FARTHER, SWEEPS WIDER AND HITS 50% HARDER.' },
-  { id: 'xQuake', mythic: true, hero: 'mendicant', name: 'EARTHBREAKER', r: 3, max: 1, icon: 'myth:6', text: () => 'EVERY 3RD BLOW SENDS A SHOCKWAVE THROUGH FOES AROUND YOU (250% DAMAGE).' },
+  { id: 'xQuake', mythic: true, hero: 'mendicant', name: 'EARTHBREAKER', r: 3, max: 1, icon: 'myth:6', text: () => 'EVERY 3RD BLOW SENDS A SHOCKWAVE THROUGH FOES AROUND YOU (400% DAMAGE).' },
   { id: 'xChoir', mythic: true, hero: 'anchoress', name: 'CHOIR OF GLASS', r: 3, max: 1, icon: 'myth:7', text: () => '+4 RELIQUARY SHARDS. +30% DAMAGE.' },
-  { id: 'xPrism', mythic: true, hero: 'anchoress', name: 'PRISM HEART', r: 3, max: 1, icon: 'myth:8', text: () => '+25% CRIT CHANCE. SHARD CRITS DEAL TRIPLE AND SPLIT INTO 2 SPLINTERS.' },
+  { id: 'xPrism', mythic: true, hero: 'anchoress', name: 'PRISM HEART', r: 3, max: 1, icon: 'myth:8', text: () => '+25% CRIT CHANCE AND +25% DAMAGE. SHARD CRITS DEAL TRIPLE AND SPLIT INTO 2 SPLINTERS.' },
 ];
 const WOUND_RARITY = [{ name: 'WOUND', col: '#c2b6aa', w: 10 }, { name: 'DEEP WOUND', col: '#8ae0ff', w: 5 }, { name: 'STIGMA', col: '#ffd155', w: 2.2 }, { name: 'MYTHIC', col: '#ff6a8a', w: 0 }];
 // Round 80: the sacrifice and the reroll on the level-up screen.
