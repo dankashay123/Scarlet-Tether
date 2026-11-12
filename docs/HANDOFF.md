@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-26, after round 52 (build 52, on `master`). Read
+Last updated 2026-11-12, after round 73 (build 73, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -23,8 +23,9 @@ see "The owner's preferences".) When the owner answers with numbers
    fast-forward `master` and push both. GitHub Pages deploys from `master`.
 4. Before shipping: raise `BUILD` and add `CHANGES[BUILD]`; run the tests
    listed in `CLAUDE.md` (each prints `errors 0 []`), `menus.cjs` at
-   932x430 and 667x375 (and `TEXT=large` once), a soak
-   (`SOAK_DEATH=0.04 node tools/tests/soak.cjs <dir> 150`), and look at the
+   932x430, 844x390 and 667x375 (and `TEXT=large` once), a soak per class
+   (`SOAK_HERO=saint|mendicant|anchoress SOAK_DEATH=0.04 node
+   tools/tests/soak.cjs <dir> 300`; three run fine in parallel), and look at the
    screenshots at phone sizes (game widths run about 445 to 620 px, heights
    250 to 290). Text must fit: prefer shorter wording to `fitText` chopping.
 5. Big art or sound jobs can go to helper agents in parallel (round 31 did
@@ -97,44 +98,67 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 - **The Bleeding Vigil** (timed endless trial): each one costs a Bloodrose
   Key (`SAVE.vkeys`), dropped by Wardens of Station X and deeper half the
   time. Ten minutes to fill the Toll and kill the Warden.
-- **Two playable saints (round 49):** the Saint (the crossbow) and the
-  Mendicant (`HEROES`, `SAVE.hero`, `heroId()`, `isMelee()`), who swings a
-  mace at the nearest foe in reach and hits every foe in its arc
-  (`updateMelee`, `MELEE`: reach 50, arc 1.15 rad, 0.52 s, 1.6x bolt
-  damage, 10% less damage taken through `setGuard`; tuned in round 50). Each blow goes through
-  `boltStrike(b, e)` with `b.melee`, so crits, enchants, passives, set arms
-  and set bonuses work as they do for bolts (the Hundred Nails' bolt split
-  does not). The other saint stands by the cathedral doors; talking asks
-  and switches (`askHero`, `switchHero`). The Mendicant's sheet is
-  `mendicant` (`tools/models/mendicant.mjs`, `HEROES` in `base.mjs`:
-  `saintModel({ hero, swing })`). Every set skin dresses him too
-  (`mendicant_<set>`; skins that hold something in the hand skip it).
-  His own rites (round 50): `MRITES` (18, one per set in each slot, same
-  opening levels as the Saint's), chosen in `SAVE.mrites`; `riteList(slot)`
-  and `riteSave()` pick the hero's list. Casts in `castMM1`/`castMM2` hit
-  through `maceHit`/`maceRing` (boltStrike blows). Four Reckonings run on
-  the Saint's kinds (`PEN_BASE`: hammer on pillars, deluge on font,
-  hundredblows on volley, pyre on pilgrim, verdict on greatpen;
-  `player.penKind` is the base kind, `player.penRite` the rite) with a mace
-  extra each; the Tolling is new. Each has a set line, a twist and a Wound.
-  Yard records keep the heroes apart (`yardKey` ends in `:mendicant`).
-- **Combat:** a floating auto-aiming crossbow, dash with a perfect dodge,
-  the Censer, two rites and a Reckoning chosen from 18 (6 per slot, one per
-  set; `RITES`; 15 of them open by Saint level, `RITE_LV`, and each slot lists them lowest level first), with ranks from use (`RANK_AT`), 6-piece twists
+- **Characters and classes (rounds 70-73):** up to four characters
+  (`roster()`, `MAX_CHARS`), each a whole save with a class fixed when it is
+  made; no switching in game. Front screens: splash, character select,
+  creation with three class cards (`HEROES`). Three classes:
+  - **The Saint:** a floating auto-aiming crossbow (`updateCrossbow`).
+  - **The Mendicant:** a mace that hits every foe in its arc
+    (`updateMelee`, `MELEE`; 10% less damage taken). Blows go through
+    `boltStrike(b, e)` with `b.melee`. Rites `MRITES` (`castMM1`/`castMM2`,
+    `maceHit`).
+  - **The Anchoress (round 71):** reliquary shards that fire on their own
+    (`SHARD`, `shardCount`, `updateShards`, `fireShard`). Since round 73
+    they are ice-blue crystal blades hovering in a ring over her head (fx
+    `crystal`, 16 headings); rites that throw them bring them to the
+    ground. Fewer shards hit harder each, so every extra shard is about
+    +10-15%. She raises her reliquary as they fire (`raise` anim). Rites
+    `ARITES` (`castAM1`/`castAM2`; her Reckonings `shattered` and
+    `cathedral` run in `updateShards`).
+  Each class has 18 rites (6 per slot, one per set), its own Hallowed
+  pieces (`LEGENDS` with `hero`), its own five sets and starter set (below)
+  and its own level-up cards (Wounds with `hero`; `rollStigmata` also
+  filters by equipped rites). Text that names a weapon goes through
+  `heroText` (`HERO_TEXT` for him, `HERO_TEXT_A` for her).
+- **Combat:** each class's basic attack (above), dash with a perfect dodge,
+  the Censer, two rites and a Reckoning chosen from the class's 18 (6 per slot, one per
+  set; `RITES`, `MRITES`, `ARITES`; 15 of them open by Saint level, `RITE_LV`, and each slot lists them lowest level first), with ranks from use (`RANK_AT`), 6-piece twists
   (`TWIST`), and drag-to-aim (`AIMABLE`). Passives: three slots opened by
   Saint level (1, 10, 25), 24 in all, 8 earned by deeds (`PASSIVES`). Zeal steps give
   +10% damage each. Executions, kill streaks and the Carnage bonus.
   Monsters are punishing: telegraphed snipes, blight pools, novas,
   barrages, homing shots, the Sentence. A death recap names what hurt most.
-- **Run levels:** up to 15 (`MAX_LEVEL`). Each level offers 3 of the Wounds;
-  rite Wounds only appear for chosen rites.
-- **Gear:** 10 slots (8 vestments, crossbow, quiver), 5 rarities, item
-  level = Station (Sanctity). Drops are rare on purpose (`DROP`); Hallowed
-  pieces (30 in `LEGENDS`) are about 1-1.8% of drops. Five 6-piece
-  vestment sets with 2/4/6 bonuses (4 pieces also give +25% damage), each
-  with its own Saint skin, crossbow and bolts, plus 2-piece set Arms;
-  Odile's Habit is the starter set. Bag icons show rarity colours and set
-  pieces wear a star. Set strength lives in `SETK` (`setbal.cjs`).
+- **Run levels:** up to 15 (`MAX_LEVEL`). Each level offers 3 of the Wounds:
+  only the class's own and those of its chosen rites (`round73.cjs` checks).
+- **Gear:** 10 slots (8 vestments plus two arms slots: crossbow and quiver,
+  a mace and satchel for him, a reliquary and phylactery for her), 5
+  rarities, item level = Station (Sanctity). Drops are rare on purpose
+  (`DROP`); Hallowed pieces are about 1-1.8% of drops.
+- **Sets (round 72):** each class finds only its own five 6-piece sets and
+  starter set (`HERO_SETS`, `STARTER`, `mySets()`): the Saint the Hundred
+  Nails, Penitent's Stride, Drowned Font, Last Confessor, Burning Choir and
+  Odile's Habit; the Mendicant the Beggar King's Iron, Wanderer's Road,
+  Almsgiver's Bowl, Gaoler's Keys, Cracked Bell and his Rags; the Anchoress
+  the Shattered Reliquary, Glass Martyr, Mother's Psalter, Veiled Lantern,
+  Thorned Crucible and her Shroud. Each has 2/4/6 bonuses (4 pieces also
+  give +110% damage, 6 pieces +25% plus the set's own big 6-piece bonus),
+  2-piece arms, a skin, item icons, a badge, a sigil and a Penitent Cell.
+  Strength in `SETK`; check with `setbal.cjs` per class. `docs/SETS.md` has
+  the table.
+- **Affix tiers (round 71):** besides basic stats, a piece holds up to two
+  Graven (advanced) and two Beatified (ultimate) lines (`GRAVEN`,
+  `BEATIFIED`, `it.adv`, `it.ult`). Graven lines sometimes drop on rare+
+  pieces; Beatified never drop. The forge's AFFIXES tab cuts them (Graven 8
+  Emberstones and gold; Beatified 40 Emberstones, much more gold and a
+  Reliquary Tear, `SAVE.tears`, from the Weeping Reliquary and deep
+  Wardens). ALL LINES lists every line and range. Proc lines (round 72):
+  hit twice, lightning every 12th hit, kills that burst.
+- **Menus (rounds 66-69):** Torchlight-style panels after the owner's
+  reference screens (`panelFrame`, `headerBar`, `inset`, `rowPlate`,
+  `tabPlate`, `invButton`), one character hub with tabs (Gear, Items,
+  Ingredients, Rites, Talents, Censer), item cards that fade in, town
+  services in list panels, a pause panel of tiles, a settings page.
+  Hits on one foe within 0.35 s add into one damage number.
 - **The Ember Forge and the Enchanter (round 33):** reforging spends an
   Emberstone (`SAVE.embers`; every Warden drops 2 + 1 per two Stations, Vigils
   2 + level / 3, `wardenMats`) and rolls a quality (`QUALITY`: common 50%,
@@ -187,17 +211,21 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Mendicant set tuning.** The Almsgiver's Bowl and the Gaoler's Keys
-  trail at Station VI (see round 72); more area (wider waves, a pull on
-  Alms) would lift them without touching XII much.
-- **Anchoress balance.** Run `setbal.cjs` with `HERO=anchoress` (it may need
-  her set added) and compare kills a second with the other two at VI and
-  XII; tune `SHARD.rate`, `shardDmgK` and `SETK.shardPer`. Round 71 at VI
-  (kills a second, 2 seeds): bare 4.8 (Saint 4.5, Mendicant 4.3), her set
-  16.7, choir 15.1, nails 19.2 (the Saint's nails 14.3): nails may need a trim.
-- **Affix tuning.** Watch how fast Tears come (`TEAR`) and whether the
-  Graven drop rate (`GRAVEN_DROP`) feels right; a VALUES-style list of the
-  Graven and Beatified pools would help players plan.
+- **Mendicant set tuning.** The Almsgiver's Bowl (8.9) and the Gaoler's
+  Keys (7.4) trail at Station VI, where the Saint's sets run 14-16 (round
+  72 data). As a melee class he kills only what reaches him, so more area
+  (wider Alms waves, a pull) helps more than damage. Station XII is fine.
+- **Anchoress follow-ups.** With the Hundred Nails gone from her list, rerun
+  `HERO=anchoress setbal.cjs` at VI and XII with 4 seeds; the Glass Martyr
+  swings between top at VI and bottom at XII. A crystal chime for the shards
+  firing; the Shattered Reliquary look lost its floating shards in round 73
+  and could take a violet gem on the hood. More Wounds of her own.
+- **Set polish.** Some 6-piece texts run to three lines on small cards
+  (the Wanderer's Road); the new sets' Penitent Cells reuse old monster
+  mixes; the Iron and Thorn crowns have no halo. One Hallowed piece per
+  new set that bends its mechanic.
+- **Affix tuning.** Watch how fast Reliquary Tears come (`TEAR`) and the
+  Graven drop rate (`GRAVEN_DROP`) in play.
 0. **Town from the owner's own layout.** If the owner sends a `VAEL1:` code
    from the designer, build `makeTown` from it (keep buildings as props with
    base footprints and run `HS.townOverlaps()`).
@@ -233,9 +261,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    Undercroft's draught could carry a few leaves or ash flakes.
 9. **The pool's crowd.** Let the crowd at the Scrying Pool cheer or jeer
    when a wager settles in Vael, and show past wagers (won and lost).
-10. **A third playable saint.** The owner wants one after the Mendicant's
-   polish: pick a role (caster, summoner, thrown weapons) and reuse sets,
-   Stations and the rite framework (`MRITES` shows how).
+10. **A fourth class.** Done for three (round 71 added the Anchoress). A
+   new class needs: `HEROES` (game and `base.mjs`), a model file, 18 rites
+   with glyphs, Wounds, `RITE_MORE`/`TWIST`/`RITE_LV`, five sets and a
+   starter (see "Sets per class" in `CLAUDE.md`), Hallowed pieces with
+   icons, `heroText` lines and a create-screen card.
 11. **Art pass on small icons.** Review every sheet with `CHUNKY=2`: the
    Chrism vial on the ground, weed mats.
 12. **Tune from play.** Wager odds (`WAGER_MARKS`, `wagerOdds`), the
