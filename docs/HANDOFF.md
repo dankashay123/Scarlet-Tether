@@ -205,8 +205,8 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   screen opens a page with five sections: Monsters (kills each), Wardens
   (trophies: kills, deepest Station, fastest kill per Station), Sets (pieces
   found), Hallowed (found) and Wounds (times taken). Unseen entries show a
-  question mark. It counts per character from build 84 on; nothing is
-  back-filled. The Vigil Roll in town has a TROPHIES button to the Wardens
+  question mark. It counts per character from build 84 on; an older save
+  starts with the pieces it wears and holds. The Vigil Roll in town has a TROPHIES button to the Wardens
   section.
 - **Account systems:** the Saint level (1-60) and its talent trees (Canonry), the Ember Forge
   (reforge, temper), the Ashen Altar (burn a Hallowed piece to learn its
@@ -279,8 +279,7 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   reliefs (round 84); if the owner likes them, do the Mendicant's and the
   Anchoress's 36 (`riteButton`, add their sets to `RITE_INK` and their
   names to `RICH_BTN`), then the passive icons.
-- **Codex follow-ups.** Back-fill what old saves can prove (sets and
-  Hallowed pieces in the bag or worn, `SAVE.cleared` for Wardens); a NEW dot
+- **Codex follow-ups.** A NEW dot
   on the pause tile when an entry is added; bigger tiles on tall phones (the
   grid leaves room below it); monster cards could list attacks.
 - **Whole-game review leftovers (round 74).** A longer hero dash (3

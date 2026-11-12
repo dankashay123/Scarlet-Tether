@@ -4147,7 +4147,13 @@ function rollTap(x, y) { const b = rollTrophyBtn(); if (inRect(b, x, y)) return 
 // SAVE.codex = { m: {monster: kills}, h: {Hallowed id: found}, s: {set: pieces found}, w: {Wound: times taken} };
 // SAVE.trophies = { warden: { n: kills, st: { Station number: fastest seconds } } }.
 const CODEX_SECS = ['MONSTERS', 'WARDENS', 'SETS', 'HALLOWED', 'WOUNDS'];
-const codexData = () => (SAVE.codex ||= { m: {}, h: {}, s: {}, w: {} });
+// A save from before the Codex starts with what it can prove: the pieces worn and in the bag.
+function codexData() {
+  if (SAVE.codex) return SAVE.codex;
+  SAVE.codex = { m: {}, h: {}, s: {}, w: {} };
+  for (const it of [...Object.values(SAVE.equip || {}), ...(SAVE.bag || [])]) codexItem(it);
+  return SAVE.codex;
+}
 function codexSee(kind, id, n = 1) { if (!id) return; const C = codexData(), o = (C[kind] ||= {}); o[id] = (o[id] || 0) + n; }
 function codexItem(it) { if (!it) return; if (it.power) codexSee('h', it.power); const st = it.wset || (it.set === true ? 'habit' : it.set); if (st) codexSee('s', st); }
 function wardenTrophy(e, df) {
