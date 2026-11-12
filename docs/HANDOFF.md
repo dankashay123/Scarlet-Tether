@@ -255,10 +255,13 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Mythic Wounds.** Measured with full sets in rounds 82-83; all sit at
-  about x1.3-1.6 at Station XII now. Earthbreaker still does little at VI
-  and for the Cracked Bell. Nothing has been measured for the Saint with
-  sets (round 81's Saint numbers are bare).
+- **Mythic Wounds.** All three classes are measured with full sets
+  (rounds 82-84). At Station XII the Mendicant's and Anchoress's sit at
+  about x1.3-1.6; the Saint's at x1.1-1.3 (round 84), and so does the shared
+  Halo on him (x1.12 against the Mendicant's x1.32), so the gap is the
+  Saint's sets being nearer the kill ceiling, not his own two mythics.
+  Nothing was changed for him. Those Saint runs shared the machine with
+  other tests: rerun alone before tuning from them.
 - **Wound follow-ups.** A REROLL count on the button ("2nd reroll"); the
   held strip on the pause screen too; ask the owner how the sacrifice sound
   and the 1.5x reroll step feel.
@@ -353,6 +356,25 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 84:** the owner said the sounds are good and picked 2, 3, 4, 5.
+  **Saint mythics with sets** (`setbal.cjs`, nails / stride / confessor, 3
+  seeds; other tests ran alongside, so treat as rough): at VI none 16.9 /
+  14.1 / 13.4 and every mythic within x0.85-1.2 (the kill ceiling); at XII
+  none 7.1 / 9.8 / 7.0, the Halo x1.15 / 0.99 / 1.21, Fury x1.34 / 1.15 /
+  1.30, Zeal x1.15 / 1.20 / 1.14, the Nailstorm Heart x1.29 / 1.09 / 1.50,
+  Eye of Heaven x1.33 / 1.04 / 1.19. No change (see Next steps). **Rite
+  icons:** the Saint's 18 are coloured reliefs: a navy disc, the old glyph
+  shape raised from it in the set's colour with a lit and a dark edge and a
+  shadow (`riteButton`, `RITE_INK` in `props.mjs`; `RICH_BTN` in
+  `index.html` stops `navyBtn` recolouring them). The other classes' and the
+  passive icons wait for the owner's verdict. **The Codex:** see "Where the
+  game stands"; `round84.cjs` opens every card of every section for each
+  class at two phone sizes. A Wound tied to a rite shows only for the class
+  that has that rite. **Warden trophies:** `wardenTrophy` in `wardenSlain`;
+  a kill at a Station new for that Warden toasts NEW TROPHY; Vigil kills
+  count but set no Station time. The server had died between prompts
+  (a balance run printed nothing): check it before long jobs.
 
 - **Round 83:** the owner picked suggestions 1, 2, 3 again. **Endless Zeal
   per class:** the Mendicant gets +45% damage (not +20%), the Anchoress
