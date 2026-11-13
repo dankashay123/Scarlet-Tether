@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 95 (build 95, on `master`). Read
+Last updated 2026-11-12, after round 96 (build 96, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-95 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-96 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -265,8 +265,7 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Rubrics follow-ups (round 94).** A Rubrics tab in the bag (all owned,
-  salvage spares for Emberstones), a Codex section, Might on the burns a
+- **Rubrics follow-ups (round 94).** A Codex section, Might on the burns a
   rite starts, and drop rates from play (the owner wants them rare).
 
 - **Mythic Wounds.** All three classes are measured with full sets
@@ -368,6 +367,21 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 96:** the owner picked 3, 4, 5 and asked for the forge to match
+  the Enchanter. **Forge:** REFORGE and AFFIXES share a scrolling list of
+  gear rows (ringed icon in the rarity's colour, name, WORN: SLOT or IN THE
+  BAG with the Station, a badge of stat-quality gems or of Graven and
+  Beatified diamonds), drag or wheel to scroll; the right side is the
+  piece in the octagon frame (`pieceFrame`) with its rarity, Station and
+  Sanctity, then the stat rows (tap to pick; quality on the right) or the
+  affix rows, and the old auto-roll row and buttons. VALUES and BUY are
+  unchanged. **Bag:** a RUBRICS tab (one column, pages, salvage 2/5/12
+  Emberstones by tier, SALVAGE ALL SPARES asks first); tapping a stat in
+  the summary opens a one-line tip (`STAT_TIP`). **Wording:** Codex cards
+  are sentences (FOUND IN THE UNDERCROFT. YOU HAVE KILLED 12.); the death
+  screen says WHAT KILLED YOU, FROM ITS SWINGS, GOLD FOUND, BEST FIND.
+  Test: `round96.cjs`.
 
 - **Round 95:** the owner asked for a wording pass on the whole game
   (examples: "chance it comes back at once" should be "chance its cooldown
