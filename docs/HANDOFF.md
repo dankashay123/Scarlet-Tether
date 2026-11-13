@@ -391,8 +391,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   REFORGE tab says "Hold a stat to see what it does." when it fits.
   **Codex:** unseen Wounds carry a `hint` (rite Wounds name their rite;
   mythic ones point to SACRIFICE). **Balance:** `setbal.cjs` takes `RUB=might`
-  (tier III of each listed kind on all three rites); see the numbers below.
-  Test: `round100.cjs`.
+  (tier III of each listed kind on all three rites). At Station XII (20 s,
+  4 seeds, kills a second) Might III on every rite adds about 10% on average
+  (noise is about 20%): the Saint's Choir x1.30 and Font 4 + Choir 2 x1.57,
+  the Mendicant's Road x1.26, the Anchoress's Thorn x1.13; no build passes
+  the Stride (about 10 a second). Not tuned. Test: `round100.cjs`.
 
 - **Round 99:** the owner picked all five. **NO FOE IN REACH:** a rite
   whose cast left its cooldown at zero toasts once per 1.5 s (`noFoe`);
