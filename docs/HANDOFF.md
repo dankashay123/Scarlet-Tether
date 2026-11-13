@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-13, after round 103 (build 103, on `master`). Read
+Last updated 2026-11-13, after round 104 (build 104, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-103 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-104 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -285,14 +285,12 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 - **Executions are gone (rounds 100-101).** Sound, recipe and dagger art
   removed; the talent EXECUTIONER (`execute`, bonus damage to foes below
   35%) stays, as it never needed the execute.
-- **Set balance (round 101).** Six pieces: every set at 6.1-7.7 kills a
-  second at Station XII (6 seeds; was 4.7-11.0). 4+2 mixes run 3.2-7.2:
-  several do not answer to four-piece damage at all (Reliquary 4 + Thorn 2
-  and Psalter 4 + Reliquary 2 stay near 3.3 even at +1000%: their rites
-  kill slowly, not their numbers). Fixing those means changing rites or
-  2-piece effects, not SETK. At Station VI the crowd's ceiling hides most
-  differences (9-22).
-
+- **Set balance (rounds 101 and 104).** Six pieces: every set at about
+  6.1-7.7 kills a second at Station XII. 4+2 mixes: 5.4-7.2 (round 104;
+  were 3.2-8.2). Mixes answer to damage weakly (kills grow with about the
+  0.35-0.7 power of damage), so their `fourBy` numbers are large (Font
+  +550%, Psalter +450%). Damage taken still differs about 3x between
+  builds (the Stride safest). At Station VI the crowd caps kills.
 - **Mythic Wounds.** All three classes are measured with full sets
   (rounds 82-84). At Station XII the Mendicant's and Anchoress's sit at
   about x1.3-1.6; the Saint's at x1.1-1.3 (round 84), and so does the shared
@@ -392,6 +390,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 104:** the owner picked suggestion 2 (the weak 4+2 mixes).
+  Found that the Shattered Reliquary had `noFour` (no four-piece damage at
+  all), so raising its `fourBy` had done nothing; removed it (and its
+  six-piece multiplier, which the four6 bonus now covers). The Cracked
+  Bell rings every `SETK.ring4` (4th) blow at four pieces. `fontHp` 4 to 8,
+  `choirHp` 2 to 3, `choir4` 2.2 to 3, `momK` 12 to 22. `fourBy` now:
+  confessor 63, stride 60, iron 300, alms 320, glass 400, font 550, choir
+  233, road 300, bell 330, reliquary 318, psalter 450, lantern 200, gaol
+  140. Measured with `setbal.cjs` (4 seeds), including a +1000% probe that
+  showed every weak mix does answer to damage. No new test (round101.cjs
+  and round92.cjs cover the cards and the shard bonus).
 
 - **Round 103:** the owner asked for pets, a premium currency and a shop.
   **Pets:** `PETS` (10 battle: 2 a class and 4 for anyone; 10 drop, each on
