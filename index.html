@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '94';
+const BUILD = '95';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '95': ['A WORDING PASS ON THE WHOLE GAME: CLEARER EFFECT TEXT, PROPER CAPITALS AFTER A COLON OR A NUMBER (SET BONUSES), PER SECOND INSTEAD OF A SECOND, AND NO MORE NEEDLESS LINES.', 'SELL MANY IS NOW BULK SELL. RITE COOLDOWN ON GEAR IS NOW COOLDOWN REDUCTION.'],
   '94': ['NEW: RUBRICS. RARE DROPS FROM ELITES AND WARDENS, EACH MADE FOR ONE RITE. SOCKET UP TO THREE ON A RITE IN THE RITES PANEL: MIGHT, SWIFTNESS, ZEAL, MERCY, ECHO OR WARD, IN TIERS I TO III.', 'GEAR IS CAPPED: AFFIX LINES ADD UP ACROSS ALL GEAR TO A MAXIMUM (SEE ALL LINES AT THE FORGE), AND MORE DAMAGE NO LONGER MULTIPLIES PIECE BY PIECE. FROM GEAR: CRIT UP TO 50%, MOVE SPEED 40%, ATTACK SPEED 60%, RELIQUARY SHARDS 6.', 'THE SHATTERED RELIQUARY COUNTS SHARDS UP TO 12 FOR ITS BONUS.'],
   '93': ['THE ENCHANTER IS REBUILT: A FULL LIST WITH EACH ENCHANT\'S INGREDIENTS, DRAG TO SCROLL, AND A SHOWCASE OF THE PIECE. TAP THE FRAME TO CHOOSE ANOTHER PIECE.', 'ENCHANTS YOU WEAR ARE MARKED IN GOLD, WITH THE PIECE AND ITS TIER.'],
   '92': ['THE VEILED LANTERN BURNS MUCH HOTTER: EACH SECOND THE FIRE DEALS 100% OF THE SHARD HIT THAT LIT IT.', 'THE SHATTERED RELIQUARY CARD SHOWS ITS SHARD BONUS AT YOUR CURRENT SHARDS. IT HAS ALWAYS WORKED: EACH SHARD HITS A LITTLE SOFTER AS YOU ADD MORE, SO HIT NUMBERS GROW SLOWLY, BUT MORE SHARDS FIRE MORE OFTEN.'],
@@ -475,7 +476,8 @@ function caseOf(s) {
   let out = CASE_MEMO.get(s); if (out !== undefined) return out;
   if (!CASE_RX) caseNames();
   const words = s.trim().split(/\s+/), title = words.length <= 4 && !/[.,:;!?]/.test(s) && !(words.length >= 3 && CASE_VERBS.has(words[0]));
-  const parts = s.split(' '); out = parts.map((w, i) => wordCase(w, i === 0 || /[.!?]$/.test(parts[i - 1] || ''), title)).join(' ');
+  // Round 95: a sentence starts at its first word with letters (so '2: +2 SHARDS.' reads '2: +2 Shards.'), and again after . ! ? or :
+  const parts = s.split(' '); let start = true; out = parts.map((w) => { const has = /[A-Z]/.test(w), f = start && has; if (w && !/^[\s:()]*$/.test(w)) start = false; if (/[.!?:]$/.test(w)) start = true; return wordCase(w, f, title); }).join(' '); // a leading number ('15% CHANCE') is the sentence's first word
   if (!title) { // names inside a sentence keep their capitals
     CASE_RX.lastIndex = 0; let m; const chars = out.split('');
     while ((m = CASE_RX.exec(s))) { const t = CASE_NAMES.get(m[0]); for (let i = 0; i < t.length; i++) chars[m.index + i] = t[i]; }
@@ -1629,7 +1631,7 @@ function wardenSlain(e) {
     bumpBounty('wardens'); if (game.time - (e.bornT || 0) < 75) bumpBounty('fast');
     SAVE.cleared = Math.max(SAVE.cleared ?? -1, df.n - 1);
     if (first && [3, 6, 9].includes(df.n)) { SAVE.gifts = (SAVE.gifts || 0) + 1; toast("SISTER ODILE HAS A GIFT FOR YOU IN VAEL", 3); }
-    else if (first && df.n <= TAL_STATIONS) { toast('STATION CLEARED: A TALENT POINT', 3); game.toastColor = PAL.holy0; }
+    else if (first && df.n <= TAL_STATIONS) { toast('STATION CLEARED: +1 TALENT POINT', 3); game.toastColor = PAL.holy0; }
     persist();
     game.banner = { text: 'THE WARDEN FALLS', sub: first && df.n < MAX_STATION ? `STATION ${ROMAN[df.n]} UNLOCKED` : 'USE THE WAYSTONE TO RETURN', t: 0, color: PAL.gold0 };
     dropLoot(e.x, e.y, { gold: 25, item: WARDEN.items, itemBoost: 2, globe: 2, warden: true }); maybeChrism(e.x, e.y, 0.4); maybeRubric(e.x, e.y, RUB_DROP.warden); dropVkey(e); wardenMats(e, df); deepPayout(e, df);
@@ -1762,8 +1764,8 @@ function renderRoomStatus() {
   if (game.yard) { const d = yardDps(), T0 = game.yard.test;
     if (T0 && !T0.done) { const pre = T0.t0 - game.time;
       if (pre > 0) text(`TEST STARTS IN ${Math.ceil(pre)}`, W / 2, 9, PAL.gold1, { align: 'center' });
-      else { const left = Math.max(0, T0.end - game.time), avg = Math.round(T0.dmg / Math.max(1, Math.min(T0.len || YARD_TEST, game.time - T0.t0))); text(`TEST ${Math.ceil(left)} S LEFT`, W / 2, 9, PAL.gold1, { align: 'center' }); text(`${avg.toLocaleString('en-US')} A SECOND SO FAR`, W / 2, 21, PAL.cloth1, { align: 'center', small: true }); } }
-    else { text(`DUMMY ${d.toLocaleString('en-US')} DAMAGE A SECOND`, W / 2, 9, d ? PAL.gold1 : PAL.stone2, { align: 'center' }); text(`TOTAL ${Math.round(game.yard.total).toLocaleString('en-US')}   USE THE STATUE TO SUMMON`, W / 2, 21, PAL.stone1, { align: 'center', small: true }); } }
+      else { const left = Math.max(0, T0.end - game.time), avg = Math.round(T0.dmg / Math.max(1, Math.min(T0.len || YARD_TEST, game.time - T0.t0))); text(`TEST ${Math.ceil(left)} S LEFT`, W / 2, 9, PAL.gold1, { align: 'center' }); text(`${avg.toLocaleString('en-US')} PER SECOND SO FAR`, W / 2, 21, PAL.cloth1, { align: 'center', small: true }); } }
+    else { text(`DUMMY ${d.toLocaleString('en-US')} DAMAGE PER SECOND`, W / 2, 9, d ? PAL.gold1 : PAL.stone2, { align: 'center' }); text(`TOTAL ${Math.round(game.yard.total).toLocaleString('en-US')}   USE THE STATUE TO SUMMON`, W / 2, 21, PAL.stone1, { align: 'center', small: true }); } }
   // Centred between the HP bar and the minimap; the label sits under the bar.
   const T0 = game.toll, B = topBand(), cx0 = B.cx, w = Math.min(150, B.w), x = Math.round(cx0 - w / 2), y = 9;
   const small = { small: true };
@@ -2218,7 +2220,7 @@ const BARKS = {
   beggar: ['ALMS FOR AN OLD SAINT?', 'I WAS CHOSEN ONCE, YOU KNOW.'],
 };
 Object.assign(NPC_INFO, {
-  vane: { name: 'ARCHDEACON VANE', lines: () => ['THE CANONRY OPENS AFTER YOUR FIRST DESCENT.', 'SPEND TALENT POINTS HERE. ONE EACH SAINT LEVEL.'] },
+  vane: { name: 'ARCHDEACON VANE', lines: () => ['THE CANONRY OPENS AFTER YOUR FIRST DESCENT.', 'SPEND TALENT POINTS HERE. YOU EARN THEM FROM SAINT LEVELS AND STATIONS.'] },
   plushseller: { name: 'THE PLUSH SELLER', lines: () => ['GENUINE PLUSH SAINTS! HAND STITCHED!', `THIS YEAR'S ONE HAS YOUR SCARS. ALL ${(SAVE.deaths || 0) + 3} OF THEM.`] },
   beggar: { name: 'OLD BARNABY', lines: () => ['I WAS A SAINT ONCE. THEY LET ME KEEP THE HALO.', 'IT BURNS, AT NIGHT. LIKE A CANDLE THAT WON\'T GO OUT.', 'DON\'T LET THEM PUT YOU IN THE POOL.'] },
   guard: { name: 'GATE GUARD', lines: () => [pick(BARKS.guard)] },
@@ -2700,8 +2702,8 @@ function renderForgeBuy(L) {
   const small = { small: true, outline: null }, cx = L.x0 + L.pw / 2, gold = SAVE.gold || 0;
   inset(L.x0 + 8, L.y0 + 30, L.pw - 16, L.ph - 38);
   if (SPR.loot.anims.emberstone) { ctx.save(); ctx.translate(cx - 60, L.y0 + 54); ctx.scale(2, 2); sprC('loot', 'emberstone', 0, 0, 0); ctx.restore(); }
-  text(`YOU HOLD ${embers()}`, cx - 38, L.y0 + 42, PAL.ember1);
-  text(`${EMBER_PRICE} GOLD EACH. WARDENS DROP THEM FOR FREE.`, cx - 38, L.y0 + 56, PAL.stone1, small);
+  text(`YOU HAVE ${embers()}`, cx - 38, L.y0 + 42, PAL.ember1);
+  text(`${EMBER_PRICE} GOLD EACH. WARDENS ALSO DROP THEM.`, cx - 38, L.y0 + 56, PAL.stone1, small);
   EMBER_PACKS.forEach((n, i) => {
     const r = emberBuyRow(L, i), cost = n * EMBER_PRICE, can = gold >= cost;
     ctx.fillStyle = PAL.ink3; ctx.fillRect(r.x, r.y, r.w, r.h);
@@ -2764,14 +2766,14 @@ function renderForge() {
   if (F.tab === 1) { renderAffixes(L, items, it); if (F.list) renderAffixList(); return; }
   listPanel(L, '255,128,48', 'YOUR GEAR', 'TAP A PIECE, THEN A STAT');
   items.forEach((q, i) => { if (forgeCell(L, i).y < L.y0 + L.ph - 30) itemSlot(forgeCell(L, i), q, { sel: i === F.sel }); });
-  if (!it) { text('NOTHING TO WORK ON.', L.card.x + 6, L.card.y + 8, PAL.stone1, { small: true, outline: null }); return; }
+  if (!it) { text('NO GEAR TO WORK ON.', L.card.x + 6, L.card.y + 8, PAL.stone1, { small: true, outline: null }); return; }
   if (F.auto) autoStep(F, items);
   drawItemCard(it, L.card, null, F.stat, autoRow(L).stat.y - 14);
   const tc = temperCost(it), canT = (it.il || 1) < bestIl(), R = autoRow(L);
   if (F.autoKey && !autoKeys(it, F.stat).includes(F.autoKey)) F.autoKey = null;
   const goal = `${QUALITY[F.autoQ].name}${F.autoKey ? ` ${STAT[F.autoKey].label}` : ''}`, odds = autoOdds(it, F.stat, F.autoQ, F.autoKey);
   if (F.auto) text(fitText(`ROLLING FOR ${goal}: ${F.auto.n} ROLLS`, L.card.w - 10), L.card.x + 6, R.stat.y - 11, QUALITY[F.autoQ].col, { small: true, outline: null });
-  else text(fitText(`1 EMBERSTONE A ROLL. ${goal}: ABOUT 1 IN ${Math.round(1 / odds)}.`, L.card.w - 10, `ABOUT 1 IN ${Math.round(1 / odds)} ROLLS.`), L.card.x + 6, R.stat.y - 11, PAL.stone1, { small: true, outline: null });
+  else text(fitText(`1 EMBERSTONE PER ROLL. ${goal}: ABOUT 1 IN ${Math.round(1 / odds)}.`, L.card.w - 10, `ABOUT 1 IN ${Math.round(1 / odds)} ROLLS.`), L.card.x + 6, R.stat.y - 11, PAL.stone1, { small: true, outline: null });
   invButton(R.stat, `< ${F.autoKey ? STAT[F.autoKey].label : 'ANY STAT'} >`, PAL.stone4, !F.auto && F.stat > 0);
   invButton(R.pick, `< ${QUALITY[F.autoQ].name} >`, PAL.stone4, !F.auto);
   invButton(R.go, F.auto ? 'STOP' : 'AUTO-ROLL', F.auto ? PAL.blood2 || PAL.crimson3 : PAL.violet2 || PAL.crimson3, embers() > 0 || !!F.auto);
@@ -2790,7 +2792,7 @@ function renderAffixes(L, items, it) {
   const small = { small: true, outline: null }, C = L.card;
   listPanel(L, '255,128,48', 'YOUR GEAR', 'TAP A PIECE');
   items.forEach((q, i) => { if (forgeCell(L, i).y < L.y0 + L.ph - 30) itemSlot(forgeCell(L, i), q, { sel: i === game.forge.sel }); });
-  if (!it) { text('NOTHING TO WORK ON.', C.x + 6, C.y + 8, PAL.stone1, small); return; }
+  if (!it) { text('NO GEAR TO WORK ON.', C.x + 6, C.y + 8, PAL.stone1, small); return; }
   cardPlate(it, C);
   let y = C.y + 7; for (const l of wrapW(nm(it), C.w - 46).slice(0, 2)) { text(l, C.x + 6, y, RARITY[it.ri].color, { glow: it.ri >= 3 }); y += 12; }
   text(heroText(`${RARITY[it.ri].name} ${SLOT_NAME[it.slot] || it.slot.toUpperCase()}`), C.x + 6, y, PAL.stone1, small);
@@ -2847,7 +2849,7 @@ function affixTap(L, items, x, y) {
       applyGear(); persist(); sfx(r.tier === 'ult' ? 'legend' : 'chain', { rate: 0.7, gap: 0.1 }); game.flash = r.tier === 'ult' ? 0.12 : 0.05;
       toast(`${A.name}: ${affixLine(r.tier, list[q ? r.j : list.length - 1])}`, 2.6); game.toastColor = A.col;
     };
-    if (q) ask(`RECUT ${affixLine(r.tier, q)}? THIS LINE IS LOST. COSTS ${costText(c)}.`, cut, 'RECUT');
+    if (q) ask(`RECUT ${affixLine(r.tier, q)}? YOU LOSE THIS LINE. COSTS ${costText(c)}.`, cut, 'RECUT');
     else if (r.tier === 'ult') ask(`CUT A BEATIFIED LINE FOR ${costText(c)}?`, cut, 'CUT'); else cut();
     return;
   }
@@ -2917,15 +2919,15 @@ const ENCHANTS = [
   { id: 'stormlink', name: 'STORMLINK', text: 'CRITS JUMP TO A NEARBY FOE FOR HALF DAMAGE.', t2: 'CRITS JUMP TO TWO NEARBY FOES FOR 75% DAMAGE.', col: '#8ae0ff', rgb: '138,224,255', ing: ['BOTTLED THUNDER', 'COPPER THREAD', 'SKY GLASS'] },
   { id: 'hunger', name: 'THE HUNGER', text: 'EACH KILL ADDS 1% DAMAGE FOR 6 S, UP TO 30%.', t2: 'EACH KILL ADDS 1% DAMAGE FOR 6 S, UP TO 45%.', col: '#ff5a4a', rgb: '255,90,74', ing: ['GNAWED RIB', 'BLACK BILE', 'GRAVE SALT'] },
   { id: 'reaper', name: "REAPER'S MARK", text: 'DOUBLE DAMAGE TO FOES BELOW 25% HEALTH.', t2: 'DOUBLE DAMAGE TO FOES BELOW 35% HEALTH.', col: '#b2bccb', rgb: '178,188,203', ing: ['WHETSTONE', "HANGMAN'S CORD", 'TALLY BONE'] },
-  { id: 'breath', name: 'SECOND BREATH', text: 'ONCE A DESCENT, A KILLING BLOW LEAVES YOU AT 30% HEALTH, UNHARMED FOR 2 S.', t2: 'ONCE A DESCENT, A KILLING BLOW LEAVES YOU AT 50% HEALTH, UNHARMED FOR 3 S.', col: '#ff9ccf', rgb: '255,156,207', ing: ['LAST BREATH', 'VIGIL STUB', 'RED THREAD'] },
+  { id: 'breath', name: 'SECOND BREATH', text: 'ONCE PER DESCENT, SURVIVE A KILLING BLOW WITH 30% HEALTH AND TAKE NO DAMAGE FOR 2 S.', t2: 'ONCE PER DESCENT, SURVIVE A KILLING BLOW WITH 50% HEALTH AND TAKE NO DAMAGE FOR 3 S.', col: '#ff9ccf', rgb: '255,156,207', ing: ['LAST BREATH', 'VIGIL STUB', 'RED THREAD'] },
   { id: 'boneward', name: 'BONE WARD', text: 'EVERY 12 S, A WARD BLOCKS THE NEXT HIT.', t2: 'EVERY 8 S, A WARD BLOCKS THE NEXT HIT.', col: '#eadfc4', rgb: '234,223,196', ing: ["SAINT'S KNUCKLE", 'WARD STONE', 'CIRCLE CHALK'] },
-  { id: 'thorns', name: 'THORNED HIDE', text: 'FOES THAT HIT YOU TAKE FIVE BOLTS OF DAMAGE BACK.', t2: 'FOES THAT HIT YOU TAKE TEN BOLTS OF DAMAGE BACK.', col: '#b6d36a', rgb: '182,211,106', ing: ['BRIAR THORN', 'BRAMBLE TWINE', 'NETTLE OIL'] },
-  { id: 'bloodlet', name: 'BLOODLETTING', text: 'HEAL 2% OF THE DAMAGE YOU DEAL, UP TO 3% HEALTH A SECOND.', t2: 'HEAL 4% OF THE DAMAGE YOU DEAL, UP TO 5% HEALTH A SECOND.', col: '#e8383f', rgb: '232,56,63', ing: ['LEECH OIL', 'BLOOD WAX', "MOURNER'S FANG"] },
+  { id: 'thorns', name: 'THORNED HIDE', text: 'FOES THAT HIT YOU TAKE DAMAGE EQUAL TO FIVE BOLTS.', t2: 'FOES THAT HIT YOU TAKE DAMAGE EQUAL TO TEN BOLTS.', col: '#b6d36a', rgb: '182,211,106', ing: ['BRIAR THORN', 'BRAMBLE TWINE', 'NETTLE OIL'] },
+  { id: 'bloodlet', name: 'BLOODLETTING', text: 'HEAL 2% OF THE DAMAGE YOU DEAL, UP TO 3% HEALTH PER SECOND.', t2: 'HEAL 4% OF THE DAMAGE YOU DEAL, UP TO 5% HEALTH PER SECOND.', col: '#e8383f', rgb: '232,56,63', ing: ['LEECH OIL', 'BLOOD WAX', "MOURNER'S FANG"] },
   { id: 'splinter', name: 'SPLINTER', text: 'KILLED FOES BURST INTO 3 BOLTS.', t2: 'KILLED FOES BURST INTO 5 BOLTS.', col: '#d6955a', rgb: '214,149,90', ing: ['NAIL SPLINTER', 'IRON FILINGS', 'OLD BOWSTRING'] },
   { id: 'frostbite', name: 'FROSTBITE', text: 'BOLTS SLOW FOES BY 30% FOR 2 S. SLOWED FOES TAKE 15% MORE DAMAGE.', t2: 'BOLTS SLOW FOES BY 40% FOR 4 S. SLOWED FOES TAKE 30% MORE DAMAGE.', col: '#6fe0d0', rgb: '111,224,208', ing: ['FONT WATER', 'RIME PEARL', 'COLD ASH'] },
   { id: 'echo', name: "MARTYR'S ECHO", text: 'WHEN HIT, A BLAST STRIKES FOES AROUND YOU. ONCE EVERY 2 S.', t2: 'WHEN HIT, A BIGGER BLAST STRIKES FOES AROUND YOU. ONCE EVERY 1 S.', col: '#ffd155', rgb: '255,209,85', ing: ["MARTYR'S WICK", 'HALO SHARD', 'RELIC TOOTH'] },
   { id: 'lastlight', name: 'LAST LIGHT', text: 'BELOW 50% HEALTH, +40% DAMAGE.', t2: 'BELOW 50% HEALTH, +60% DAMAGE.', col: '#b8ff8f', rgb: '184,255,143', ing: ['GRAVE CANDLE', 'GHOST LIGHT', 'MARSH-FIRE DUST'] },
-  { id: 'relentless', name: 'RELENTLESS', text: 'EACH KILL TAKES 0.2 S OFF BOTH RITE COOLDOWNS, UP TO 0.5 S A SECOND.', t2: 'EACH KILL TAKES 0.3 S OFF BOTH RITE COOLDOWNS, UP TO 0.8 S A SECOND.', col: '#d4b0ff', rgb: '212,176,255', ing: ['ROSARY CORD', 'SAND OF HOURS', 'AMETHYST EYE'] },
+  { id: 'relentless', name: 'RELENTLESS', text: 'EACH KILL TAKES 0.2 S OFF BOTH RITE COOLDOWNS, UP TO 0.5 S PER SECOND.', t2: 'EACH KILL TAKES 0.3 S OFF BOTH RITE COOLDOWNS, UP TO 0.8 S PER SECOND.', col: '#d4b0ff', rgb: '212,176,255', ing: ['ROSARY CORD', 'SAND OF HOURS', 'AMETHYST EYE'] },
   { id: 'phantom', name: 'PHANTOM VOLLEY', text: 'EVERY 4 S, FIRE A RING OF 8 BOLTS.', t2: 'EVERY 3 S, FIRE A RING OF 12 BOLTS.', col: '#8eaeab', rgb: '142,174,171', ing: ['GHOST SILK', 'PHANTOM QUILL', 'DROWNED ECHO'] },
   { id: 'tithe', name: 'GILDED TITHE', text: 'RARE AND ELITE FOES DROP A HEALTH ORB AND GIVE 15 ZEAL.', t2: 'RARE AND ELITE FOES DROP TWO HEALTH ORBS AND GIVE 25 ZEAL.', col: '#f2dcb6', rgb: '242,220,182', ing: ['GOLD DUST', 'BEESWAX', 'TITHE COIN'] },
   { id: 'ghoststep', name: 'GHOST STEP', text: 'PERFECT DODGES GIVE BACK A DASH.', t2: 'PERFECT DODGES REFILL ALL YOUR DASHES.', col: '#c2b6aa', rgb: '194,182,170', ing: ['SHROUD THREAD', 'BOTTLED MIST', 'HOLLOW BONE'] },
@@ -3018,7 +3020,7 @@ function renderEnchant() {
   [0, 1].forEach((k) => { const b = Gm.tier(k); tabPlate(b, N.tier === k); text(`TIER ${k ? 'II' : 'I'}`, b.x + b.w / 2, b.y + 3, N.tier === k ? TAB_INK : PAL.cloth1, { ...small, align: 'center' }); });
   let y = ty0 + 20; const ys = Gm.go.y - 30;
   for (const l of wrapW(N.tier ? E.t2 : E.text, C.w - 16, true)) { if (y > ys - 30) break; text(l, C.x + 8, y, PAL.cloth0, small); y += 10; }
-  if (N.tier) { text('A SECOND SET OF INGREDIENTS ON THE SAME PIECE.', C.x + 8, y, PAL.stone2, small); }
+  if (N.tier) { text('ENCHANT THE SAME PIECE AGAIN TO REACH TIER II.', C.x + 8, y, PAL.stone2, small); }
   // The ingredients: three chips with counts.
   { const cw = Math.floor((C.w - 16 - 8) / 3); for (let k = 0; k < 3; k++) { const i = N.sel * 3 + k, n = ingrs()[i], x = C.x + 8 + k * (cw + 4), cy = ys; ctx.fillStyle = 'rgba(4,7,13,0.6)'; ctx.fillRect(x, cy, cw, 22); ctx.fillStyle = n ? `rgba(${rgb},0.6)` : 'rgba(224,32,46,0.5)'; ctx.fillRect(x, cy + 21, cw, 1);
     ingrGem(i, x + 10, cy + 11, n > 0, E.col); text(`${Math.min(n, 99)}/1`, x + cw - 4, cy + 7, n ? PAL.flame1 : PAL.blood0, { ...small, align: 'right' }); } }
@@ -3039,7 +3041,7 @@ function enchantTap(x, y) {
     if (!(it && it.ench)) { N.pick = !N.pick; sfx('tap', { vol: 0.5 }); return; }
     if ((SAVE.gold || 0) < UNENCHANT_COST) { toast(`REMOVING AN ENCHANT COSTS ${UNENCHANT_COST} GOLD.`, 2); return; }
     const old = ENCH_BY[it.ench];
-    ask(`REMOVE ${old.name} FROM ${nm(it)} FOR ${UNENCHANT_COST} GOLD? ONE OF ITS THREE INGREDIENTS COMES BACK.`, () => {
+    ask(`REMOVE ${old.name} FROM ${nm(it)} FOR ${UNENCHANT_COST} GOLD? YOU GET ONE OF ITS THREE INGREDIENTS BACK.`, () => {
       if (!spend(UNENCHANT_COST)) return;
       const k = Math.floor(Math.random() * 3), i = old.i * 3 + k; ingrs()[i]++;
       delete it.ench; delete it.enchT; applyGear(); persist(); toast(`${old.name} REMOVED. ${ingName(i)} RETURNED.`, 2.6); game.toastColor = old.col;
@@ -3062,7 +3064,7 @@ function enchantTap(x, y) {
     };
     // Warn before losing an enchant, or doubling one that only counts once.
     const warn = [];
-    if (it.ench) warn.push(`THIS REPLACES ${ENCH_BY[it.ench].name}. IT WILL BE LOST.`);
+    if (it.ench) warn.push(`THIS REPLACES ${ENCH_BY[it.ench].name}, WHICH WILL BE LOST.`);
     const twin = items.find((q) => q !== it && q.ench === E.id);
     if (twin) warn.push(`ONLY ONE ${E.name} CAN BE ACTIVE AT A TIME. ${twin.name} ALREADY HAS IT.`);
     if (warn.length) ask(`${warn.join(' ')} ENCHANT ANYWAY?`, go, 'ENCHANT'); else go();
@@ -3142,10 +3144,10 @@ const saintLv = () => SAVE.lvl || 1;
 const TAL_TXT = {
   dmg: (v) => `+${v}% DAMAGE.`, crit: (v) => `+${v}% CRIT CHANCE.`, quick: (v) => `THE CROSSBOW FIRES ${v}% FASTER.`, exec: (v) => `+${v}% DAMAGE TO FOES BELOW 35% HEALTH.`,
   heavy: (v) => `CRITS DEAL ${v}% MORE.`, pierce: () => 'BOLTS PIERCE ONE MORE FOE.', zeal: (v) => `EACH ZEAL STEP GIVES ${v}% MORE DAMAGE.`, bane: (v) => `+${v}% DAMAGE TO RARES, ELITES AND WARDENS.`,
-  vigour: (v) => `+${v}% MAX HEALTH.`, warding: (v) => `TAKE ${v}% LESS DAMAGE.`, mend: (v) => `HEAL ${v.toFixed(1)}% OF YOUR HEALTH A SECOND.`, feet: (v) => `+${v}% MOVE SPEED.`,
+  vigour: (v) => `+${v}% MAX HEALTH.`, warding: (v) => `TAKE ${v}% LESS DAMAGE.`, mend: (v) => `HEAL ${v.toFixed(1)}% OF YOUR HEALTH PER SECOND.`, feet: (v) => `+${v}% MOVE SPEED.`,
   quickdash: (v) => `DASHES RECHARGE ${v}% FASTER.`, deft: (v) => `THE PERFECT DODGE WINDOW IS ${v}% LONGER.`, orbs: (v) => `HEALTH ORBS HEAL ${v}% MORE.`, steadfast: (v) => `BELOW 35% HEALTH, TAKE ${v}% LESS DAMAGE.`,
   poise: (v) => `A PERFECT DODGE HEALS ${v}% OF YOUR HEALTH.`, devout: (v) => `RITES RECHARGE ${v}% FASTER.`, piety: (v) => `+${v}% ZEAL GAIN.`, ritepower: (v) => `+${v}% DAMAGE FROM RITES, POOLS, FIRE AND BLASTS.`,
-  fortune: (v) => `+${v}% GOLD.`, reckon: (v) => `RECKONING CHARGES ${v}% FASTER.`, chant: (v) => `CASTING A RITE GIVES ${v} ZEAL.`, grace: (v) => `CASTING A RITE HEALS ${v}% OF YOUR HEALTH.`, again: (v) => `${v}% CHANCE A RITE COMES BACK AT ONCE.`,
+  fortune: (v) => `+${v}% GOLD.`, reckon: (v) => `RECKONING CHARGES ${v}% FASTER.`, chant: (v) => `CASTING A RITE GIVES ${v} ZEAL.`, grace: (v) => `CASTING A RITE HEALS ${v}% OF YOUR HEALTH.`, again: (v) => `${v}% CHANCE A RITE'S COOLDOWN RESETS.`,
 };
 const TN = (id, name, c, r, max, s, f) => ({ id, name, c, r, max, s, f, text: (n) => Object.entries(s).map(([k, v]) => TAL_TXT[k](Math.round(v * n * 10) / 10)).join(' ') });
 const TL = (id, name, r, f, txt) => ({ id, name, c: 6, r, max: 1, s: {}, f, legend: true, text: () => txt });
@@ -3159,7 +3161,7 @@ const TALENT_TREES = [
     TN('zeal', "ZEAL'S EDGE", 1, 3, 3, { zeal: 2 }, ['precise']), TN('zealflame', "ZEAL'S FLAME", 3, 3, 3, { zeal: 2 }, ['zeal']), TN('zealstorm', "ZEAL'S STORM", 4, 3, 3, { zeal: 1 }, ['zealflame']), TN('onslaught', 'ONSLAUGHT', 5, 3, 3, { dmg: 2 }, ['zealstorm']),
     TL('frenzy', 'BLOOD FRENZY', 3, ['onslaught'], 'EACH KILL GIVES +1% DAMAGE FOR 4 S, UP TO +25%.'),
     TN('execute', 'EXECUTIONER', 0, 4, 3, { exec: 5 }), TN('cruel', 'CRUEL', 1, 4, 3, { exec: 3 }, ['execute']), TN('bane', 'ELITE BANE', 2, 4, 3, { bane: 5 }, ['cruel']), TN('finisher', 'FINISHER', 4, 4, 3, { exec: 5 }, ['bane', 'zealflame']), TN('giant', 'GIANT KILLER', 5, 4, 3, { bane: 5 }, ['finisher']),
-    TL('cull', 'THE CULL', 4, ['giant'], 'FOES BELOW 10% HEALTH DIE AT ONCE. NOT WARDENS.'),
+    TL('cull', 'THE CULL', 4, ['giant'], 'FOES BELOW 10% HEALTH DIE INSTANTLY. DOES NOT WORK ON WARDENS.'),
   ] },
   { id: 'def', name: 'DEFENCE', col: '#3fa4f0', rgb: '63,164,240', nodes: [
     TN('vigour', 'VIGOUR', 0, 0, 5, { vigour: 4 }), TN('hale', 'HALE', 1, 0, 3, { vigour: 3 }, ['vigour']), TN('hearty', 'HEARTY', 2, 0, 3, { vigour: 2 }, ['hale']), TN('orbs', 'BLESSED ORBS', 3, 0, 3, { orbs: 15 }, ['hearty']), TN('feast', 'FEAST', 5, 0, 3, { orbs: 15 }, ['orbs', 'lifeblood']),
@@ -3176,13 +3178,13 @@ const TALENT_TREES = [
   { id: 'rite', name: 'RITES', col: '#ffc04a', rgb: '255,192,74', nodes: [
     TN('ritepower', 'RITE POWER', 0, 0, 5, { ritepower: 4 }), TN('surge', 'SURGE', 2, 0, 3, { ritepower: 3 }, ['ritepower']), TN('torrent', 'TORRENT', 4, 0, 3, { ritepower: 3 }, ['surge']),
     TN('flood', 'FLOOD', 5, 0, 3, { ritepower: 2 }, ['torrent']),
-    TL('brimming', 'BRIMMING', 0, ['flood', 'ardour'], 'AT THE TOP ZEAL STEP, RITES DEAL 30% MORE.'),
+    TL('brimming', 'BRIMMING', 0, ['flood', 'ardour'], 'AT 75 ZEAL OR MORE, RITES DEAL 30% MORE DAMAGE.'),
     TN('piety', 'PIETY', 1, 1, 5, { piety: 4 }, ['ritepower', 'devout']), TN('chant', 'CHANT', 3, 1, 3, { chant: 4 }, ['piety']), TN('ardour', 'ARDOUR', 5, 1, 3, { piety: 5 }, ['chant']),
     TN('devout', 'DEVOUT', 0, 2, 5, { devout: 2 }), TN('prayer', 'PRAYER', 1, 2, 3, { devout: 1 }, ['devout']), TN('again', 'ANSWERED', 2, 2, 3, { again: 5 }, ['prayer']), TN('quicken', 'QUICKEN', 4, 2, 3, { devout: 2 }, ['again']),
     TN('tempo', 'TEMPO', 5, 2, 3, { devout: 1 }, ['quicken']),
     TL('cadence', 'CADENCE', 2, ['tempo'], 'CASTING A RITE GIVES +8% DAMAGE FOR 6 S. STACKS 3 TIMES.'),
     TN('reckon', 'RECKONER', 1, 3, 3, { reckon: 6 }, ['devout']), TN('doom', 'DOOMSAYER', 3, 3, 3, { reckon: 5 }, ['reckon']), TN('herald', 'HERALD', 5, 3, 3, { reckon: 5 }, ['doom']),
-    TL('choir', 'THE CHOIR', 3, ['herald'], 'YOUR RECKONING RESETS BOTH RITES.'),
+    TL('choir', 'THE CHOIR', 3, ['herald'], 'CASTING YOUR RECKONING RESETS BOTH RITE COOLDOWNS.'),
     TN('fortune', 'FORTUNE', 0, 4, 3, { fortune: 5 }), TN('purse', 'FULL PURSE', 1, 4, 3, { fortune: 5 }, ['fortune']), TN('grace', 'GRACE', 2, 4, 3, { grace: 1 }, ['purse']), TN('blessing', 'BLESSING', 4, 4, 3, { grace: 1 }, ['grace']),
     TN('mercy', 'MERCY', 5, 4, 3, { grace: 1 }, ['blessing']),
     TL('sanctuary', 'SANCTUARY', 4, ['mercy'], 'CASTING A RITE BLOCKS ALL DAMAGE FOR 0.6 S.'),
@@ -3249,7 +3251,7 @@ function gainSaintXp(n) {
     SAVE.lxp -= lvNeed(SAVE.lvl); SAVE.lvl++;
     if (player && game.scene === 'wound') nums.push({ x: player.x, y: player.y - 84, v: `SAINT LEVEL ${SAVE.lvl}`, t: 0, color: PAL.holy0, crit: true });
     const r = Object.keys(RITE_LV).find((id) => RITE_LV[id] === SAVE.lvl && RITE_SLOTS.some(([sl]) => riteList(sl).some((q) => q.id === id))), nx = nextRite(); // this class's rites only
-    levelLooks(); if (player) { toast(LEVEL_GIFT[SAVE.lvl] ? `SAINT LEVEL ${SAVE.lvl}: ${LEVEL_GIFT[SAVE.lvl]}` : r ? `SAINT LEVEL ${SAVE.lvl}: NEW RITE, ${RITE_BY[r].name}` : nx ? `SAINT LEVEL ${SAVE.lvl}. NEXT RITE AT ${nx.lv}` : `SAINT LEVEL ${SAVE.lvl}: A TALENT POINT`, 2.6); game.toastColor = PAL.holy0; }
+    levelLooks(); if (player) { toast(LEVEL_GIFT[SAVE.lvl] ? `SAINT LEVEL ${SAVE.lvl}: ${LEVEL_GIFT[SAVE.lvl]}` : r ? `SAINT LEVEL ${SAVE.lvl}: NEW RITE, ${RITE_BY[r].name}` : nx ? `SAINT LEVEL ${SAVE.lvl}. NEXT RITE AT LEVEL ${nx.lv}` : `SAINT LEVEL ${SAVE.lvl}: +1 TALENT POINT`, 2.6); game.toastColor = PAL.holy0; }
   }
   if (SAVE.lvl >= MAX_SAINT) SAVE.lxp = 0;
 }
@@ -3395,7 +3397,7 @@ function renderCanonry() {
     text(full ? 'MAX' : `${Math.floor(SAVE.lxp || 0).toLocaleString('en-US')} / ${need.toLocaleString('en-US')}`, R.x, y + 18, PAL.stone2, small);
     text(pts ? `${pts} POINT${pts > 1 ? 'S' : ''} TO SPEND` : 'NO POINTS', R.x, y + 30, pts ? PAL.flame1 : PAL.stone2, small);
     // Round 88: the limit, so players know they must choose.
-    text(`EARNED ${pts + talSpent()} OF ${TAL_MAX_PTS}`, R.x, y + 41, PAL.stone1, small); text(`${TAL_RANKS} RANKS TO PICK FROM`, R.x, y + 52, PAL.stone1, small); }
+    text(`POINTS EARNED: ${pts + talSpent()} OF ${TAL_MAX_PTS}`, R.x, y + 41, PAL.stone1, small); }
   // The axis: the points each column needs, lit up to what is spent.
   const tx = (c) => Math.round(L.gx + L.cw * (c + 0.5)), last = TAL_COLS - 1;
   ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(tx(0), L.ay + 5, tx(last) - tx(0), 1);
@@ -3433,7 +3435,7 @@ function renderCanonry() {
   if (t) {
     const n = tal(t.id), open = talOpen(t), T1 = TALENT_TREES[t.tree];
     invButton(L.learn, n >= t.max ? 'MAX' : 'LEARN', PAL.gold3, open && pts > 0 && n < t.max);
-    hint(!open ? talWhy(t) : n >= t.max ? 'FULLY LEARNED.' : pts ? 'LEARN ADDS ONE POINT.' : 'NO POINTS LEFT.', open && n < t.max && pts ? PAL.cloth1 : PAL.stone2);
+    hint(!open ? talWhy(t) : n >= t.max ? 'FULLY LEARNED.' : pts ? 'LEARN SPENDS ONE POINT.' : 'NO POINTS LEFT.', open && n < t.max && pts ? PAL.cloth1 : PAL.stone2);
     // The card.
     const p = L.node(t), cw = Math.min(160, Math.max(120, Math.round(L.gw * 0.4)));
     const lines = []; const add = (s0, col) => { for (const l of wrapW(s0, cw - 14, true)) lines.push([l, col]); };
@@ -3451,7 +3453,7 @@ function renderCanonry() {
     text(heroText(t.name), cx0 + 7, cy0 + 6, t.legend ? PAL.gold1 : `rgb(${T1.rgb})`, { bold: true });
     text(t.legend ? 'LEGENDARY' : `RANK ${n}/${t.max}`, cx0 + cw - 7, cy0 + 8, n >= t.max ? PAL.gold1 : PAL.stone1, { ...small, align: 'right' });
     lines.forEach(([l, col], i) => text(l, cx0 + 7, cy0 + 22 + i * 9, col, small));
-  } else hint('MORE TALENTS THAN POINTS: CHOOSE. TAP YOUR BUILD TO NAME IT.', PAL.stone2);
+  } else hint('TAP YOUR ACTIVE BUILD TO RENAME IT.', PAL.stone2);
   [0, 1].forEach((i) => invButton(L.page(i), talName(i), i === talPageNo() ? PAL.gold3 : PAL.stone4, true));
   invButton(L.reset, 'RESET', PAL.stone4, talSpent() > 0);
 }
@@ -3553,7 +3555,7 @@ function updateYard() {
     T0.done = true; const dps = Math.round(T0.dmg / len), k = yardKey(), best = (SAVE[sk] ||= {}), was = best[k] || 0;
     if (dps > was) { best[k] = dps; if (dps > (best.all || 0)) best.all = dps; }
     persist(); sfx('shrine', { gap: 0.2 });
-    game.banner = { text: `${dps.toLocaleString('en-US')} A SECOND`, sub: dps > was && was > 0 ? 'A NEW BEST FOR THIS BUILD' : `${len} S TEST DONE`, t: 0, color: PAL.gold0 };
+    game.banner = { text: `${dps.toLocaleString('en-US')} PER SECOND`, sub: dps > was && was > 0 ? 'A NEW BEST FOR THIS BUILD' : `${len} S TEST COMPLETE`, t: 0, color: PAL.gold0 };
     setTimeout(() => { if (game.yard && game.yard.test === T0) game.yard.test = null; }, 4000);
   }
   const d = Y.dummy; if (d && !d.dead) { d.x = d.home.x; d.y = d.home.y; d.kx = d.ky = 0; d.hp = d.maxHp; }
@@ -3561,7 +3563,7 @@ function updateYard() {
   // Records count only once at least 3 seconds of hits are in the window.
   const k = yardKey(), best = (SAVE.yardBest ||= {}), was = best[k] || 0;
   if (Y.hits.length && game.time - Y.hits[0][0] >= 3) { const d = yardDps(); if (d > was) { if (Y.prev === undefined) Y.prev = was; best[k] = d; if (d > (best.all || 0)) best.all = d; } }
-  if (!Y.hits.length && Y.prev !== undefined) { if (Y.prev > 0) toast(`NEW BEST: ${was.toLocaleString('en-US')} A SECOND`, 2.5); Y.prev = undefined; persist(); }
+  if (!Y.hits.length && Y.prev !== undefined) { if (Y.prev > 0) toast(`NEW BEST: ${was.toLocaleString('en-US')} PER SECOND`, 2.5); Y.prev = undefined; persist(); }
 }
 // A build for the yard's records: the set worn (4+ pieces) and the three rites.
 function yardKey() {
@@ -3588,7 +3590,7 @@ function renderYardPanel() {
     text(fitText(m.name.replace(/^THE /, ''), c.w - 10), c.x + 6, c.y + 4, PAL.cloth0, small); });
   if (Y.tab === YARD_REC) return renderYardRecords(G0);
   text(Y.tab === 0 ? 'TAP A FOE TO SUMMON THREE.' : 'TAP A FOE TO SUMMON IT.', G0.x0 + 12, G0.note, PAL.stone2, small);
-  text(`DUMMY: ${yardDps().toLocaleString('en-US')} DAMAGE A SECOND. TOTAL ${Math.round(Y.total).toLocaleString('en-US')}.`, G0.x0 + 12, G0.note + 11, PAL.cloth1, small);
+  text(`DUMMY: ${yardDps().toLocaleString('en-US')} DAMAGE PER SECOND. TOTAL ${Math.round(Y.total).toLocaleString('en-US')}.`, G0.x0 + 12, G0.note + 11, PAL.cloth1, small);
   const B = SAVE.yardBest || {}, set = yardKey().split(':')[0];
   text(`BEST, ${set === 'mixed' ? 'NO SET' : SET_SHORT[set]} AND THESE RITES: ${(B[yardKey()] || 0).toLocaleString('en-US')}. BEST EVER: ${(B.all || 0).toLocaleString('en-US')}.`, G0.x0 + 12, G0.note + 22, PAL.gold1, small);
   const diffName = DIFF[game.run.diff].name;
@@ -3757,17 +3759,17 @@ function riteLayout() {
 const RITE_SLOTS = [['m1', 'RITE I'], ['m2', 'RITE II'], ['pen', 'RECKONING']];
 // What each rite gains from its set, and the Hallowed power that bends it.
 const RITE_MORE = {
-  water: { syn: 'POOLS 30% WIDER, SLOW 40%. IN A POOL: LESS DAMAGE TAKEN, DOUBLE ZEAL.', pow: 'bigPools' },
+  water: { syn: 'POOLS ARE 30% WIDER AND SLOW FOES 40%. STANDING IN ONE, YOU TAKE LESS DAMAGE AND GAIN DOUBLE ZEAL.', pow: 'bigPools' },
   wave: { syn: 'ITS POOLS ARE WIDER, SLOW FOES AND PROTECT YOU.', pow: 'bigPools' },
   storm: { syn: 'NAILS PIERCE, SPLIT AND ADD NAIL STACKS.', pow: 'bigStorm' },
-  step: { syn: 'COUNTS AS A DASH: LEAVES HOLY FIRE AND CAN PERFECT DODGE.', pow: 'hotTrail' },
+  step: { syn: 'COUNTS AS A DASH, SO IT LEAVES HOLY FIRE AND CAN PERFECT DODGE.', pow: 'hotTrail' },
   chain: { syn: `BINDS 3 MORE. BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`, pow: 'longBind' },
   shackle: { syn: `BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE. EACH ONE: 8% LESS DAMAGE TAKEN (40% MAX).`, pow: 'longBind' },
   censer: { syn: 'ZEAL FADES HALF AS FAST.', pow: 'censerPlus' },
   ward: { syn: 'ITS PERFECT DODGE REFILLS DASHES AND HALVES DAMAGE FOR 2 S.', pow: 'wardLong' },
   rain: { syn: 'KILLS IN RECKONING HEAL YOU.', pow: 'longReck' },
   pillars: { syn: 'KILLS IN RECKONING HEAL YOU.', pow: 'fastPillars' },
-  font: { syn: 'WIDER, SLOWS FOES AND PROTECTS YOU.', pow: 'bigPools' },
+  font: { syn: 'IT IS WIDER, SLOWS FOES AND PROTECTS YOU.', pow: 'bigPools' },
   volley: { syn: 'EVERY SHOT PIERCES, SPLITS AND ADDS NAIL STACKS.', pow: 'longReck' },
   brand: { syn: `BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`, pow: 'longBind' },
   hymn: { syn: 'ZEAL FADES HALF AS FAST.', pow: 'burnVuln' },
@@ -3776,20 +3778,20 @@ const RITE_MORE = {
   pilgrim: { syn: 'DASHES LEAVE HOLY FIRE.', pow: 'hotTrail' },
   greatpen: { syn: `BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`, pow: 'longBind' },
   // The Mendicant's (round 50).
-  smite: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigBlow' }, undertow: { syn: 'ITS POOLS ARE 30% WIDER.', pow: 'deepTide' }, nailburst: { syn: '4 MORE NAILS.', pow: 'moreShards' },
-  charge: { syn: 'THE STRIKE SETS FOES ALIGHT.', pow: 'longCharge' }, shackleblow: { syn: 'HITS 30% HARDER.', pow: 'bigBlow' }, cinderslam: { syn: 'REACHES 30% FARTHER.', pow: 'loudToll' },
-  hook: { syn: 'FOES STRUCK ARE BOUND FOR 1 S.', pow: 'longCharge' }, chainsweep: { syn: 'BINDS 0.5 S LONGER.', pow: 'deepTide' }, toll: { syn: '6 MORE ZEAL.', pow: 'loudToll' },
-  vow: { syn: 'LASTS 1 S LONGER.', pow: 'longVow' }, shards: { syn: '2 MORE SWINGS.', pow: 'moreShards' }, wellspring: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigPools' },
+  smite: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigBlow' }, undertow: { syn: 'ITS POOLS ARE 30% WIDER.', pow: 'deepTide' }, nailburst: { syn: 'IT SPRAYS 4 MORE NAILS.', pow: 'moreShards' },
+  charge: { syn: 'THE STRIKE SETS FOES ALIGHT.', pow: 'longCharge' }, shackleblow: { syn: 'IT HITS 30% HARDER.', pow: 'bigBlow' }, cinderslam: { syn: 'IT REACHES 30% FARTHER.', pow: 'loudToll' },
+  hook: { syn: 'FOES STRUCK ARE BOUND FOR 1 S.', pow: 'longCharge' }, chainsweep: { syn: 'IT BINDS 0.5 S LONGER.', pow: 'deepTide' }, toll: { syn: 'IT GIVES 6 MORE ZEAL.', pow: 'loudToll' },
+  vow: { syn: 'IT LASTS 1 S LONGER.', pow: 'longVow' }, shards: { syn: 'IT LASTS 2 MORE SWINGS.', pow: 'moreShards' }, wellspring: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigPools' },
   tolling: { syn: 'SHOCKWAVES REACH 30% FARTHER.', pow: 'loudToll' }, hammer: { syn: 'KILLS IN RECKONING HEAL YOU.', pow: 'bigHammer' },
-  deluge: { syn: 'WIDER, SLOWS FOES AND PROTECTS YOU.', pow: 'bigPools' }, hundredblows: { syn: 'EVERY NAIL PIERCES, SPLITS AND ADDS NAIL STACKS.', pow: 'moreShards' },
+  deluge: { syn: 'IT IS WIDER, SLOWS FOES AND PROTECTS YOU.', pow: 'bigPools' }, hundredblows: { syn: 'EVERY NAIL PIERCES, SPLITS AND ADDS NAIL STACKS.', pow: 'moreShards' },
   pyre: { syn: 'DASHES LEAVE HOLY FIRE.', pow: 'hotTrail' }, verdict: { syn: `BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`, pow: 'deepTide' },
   // The Anchoress's (round 71).
-  svolley: { syn: 'EVERY SHARD FIRES 1 MORE BOLT.', pow: 'greatShard' }, consecrate: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigPools' }, shrapnel: { syn: '2 MORE NAILS A SHARD.', pow: 'sealShard' },
-  flight: { syn: 'THE LANDING SETS FOES ALIGHT.', pow: 'hotTrail' }, snova: { syn: 'THE SHARDS CUT 30% HARDER.', pow: 'wideOrbit' }, emberrelic: { syn: 'LASTS 2 S LONGER.', pow: 'burnVuln' },
-  sward: { syn: '50% LESS DAMAGE TAKEN INSTEAD.', pow: 'wideOrbit' }, votive: { syn: 'THE SHARDS STAY 4 S LONGER.', pow: 'votiveVial' }, splinter: { syn: 'LASTS 2 S LONGER.', pow: 'greatShard' },
-  shardchain: { syn: `BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`, pow: 'longBind' }, shardknell: { syn: 'STUNS FOR 1.5 S.', pow: 'crownShards' }, mending: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigPools' },
+  svolley: { syn: 'EVERY SHARD FIRES 1 MORE BOLT.', pow: 'greatShard' }, consecrate: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigPools' }, shrapnel: { syn: 'IT THROWS 2 MORE NAILS PER SHARD.', pow: 'sealShard' },
+  flight: { syn: 'THE LANDING SETS FOES ALIGHT.', pow: 'hotTrail' }, snova: { syn: 'THE SHARDS CUT 30% HARDER.', pow: 'wideOrbit' }, emberrelic: { syn: 'IT LASTS 2 S LONGER.', pow: 'burnVuln' },
+  sward: { syn: 'YOU TAKE 50% LESS DAMAGE INSTEAD.', pow: 'wideOrbit' }, votive: { syn: 'THE SHARDS STAY 4 S LONGER.', pow: 'votiveVial' }, splinter: { syn: 'IT LASTS 2 S LONGER.', pow: 'greatShard' },
+  shardchain: { syn: `BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`, pow: 'longBind' }, shardknell: { syn: 'IT STUNS FOR 1.5 S.', pow: 'crownShards' }, mending: { syn: 'THE POOL IS 30% WIDER.', pow: 'bigPools' },
   shattered: { syn: 'THE SHARDS FIRE 25% FASTER STILL.', pow: 'crownShards' }, cathedral: { syn: 'THE WHEEL IS 25% WIDER.', pow: 'wideOrbit' }, hundredshards: { syn: 'EVERY SHOT PIERCES, SPLITS AND ADDS NAIL STACKS.', pow: 'longReck' },
-  relicpyre: { syn: 'DASHES LEAVE HOLY FIRE.', pow: 'hotTrail' }, reliquaryfont: { syn: 'WIDER, SLOWS FOES AND PROTECTS YOU.', pow: 'bigPools' }, relicjudge: { syn: 'KILLS IN RECKONING HEAL YOU.', pow: 'longReck' },
+  relicpyre: { syn: 'DASHES LEAVE HOLY FIRE.', pow: 'hotTrail' }, reliquaryfont: { syn: 'IT IS WIDER, SLOWS FOES AND PROTECTS YOU.', pow: 'bigPools' }, relicjudge: { syn: 'KILLS IN RECKONING HEAL YOU.', pow: 'longReck' },
 };
 function openRites(back) { hubEnter(back); game.state = 'rites'; game.riteFocus = game.riteFocus || 'm1'; sfx('tap'); }
 // Small text that must fit a width: drop a leading THE, try a short form,
@@ -3909,7 +3911,7 @@ function renderRiteDetail(L, slot) {
   sprC('ui', 'set_' + r.set, 0, D.x + 16, y + 6);
   text(fitText(VSETS[r.set].name, D.w - 36), D.x + 30, y + 3, `rgb(${rgb})`, small); y += 17;
   para(M.syn, syn ? PAL.cloth1 : PAL.stone2);
-  y += 1; para(syn ? (arms && worn < 2 ? 'ACTIVE THROUGH ITS ARMS' : `ACTIVE, ${worn} OF 6 WORN`) : `WEAR 2 PIECES OR ITS ARMS. ${worn} OF 6 WORN.`, syn ? RARITY[4].color : PAL.stone2);
+  y += 1; para(syn ? (arms && worn < 2 ? 'ACTIVE THROUGH ITS ARMS' : `ACTIVE, ${worn} OF 6 WORN`) : `NEEDS 2 SET PIECES OR THE SET'S ARMS. ${worn} OF 6 WORN.`, syn ? RARITY[4].color : PAL.stone2);
   para(`6 PIECES: ${TWIST[r.id]}`, twist(r.id) ? RARITY[4].color : PAL.stone2);
   // Rank: casts so far and what the next rank needs.
   const rk = riteRank(r.id), xp = (SAVE.riteXp && SAVE.riteXp[r.id]) || 0, nx = RANK_AT[rk - 1];
@@ -3917,7 +3919,7 @@ function renderRiteDetail(L, slot) {
   const lg = LEGENDS.find((g) => g.key === M.pow), yb = (SAVE.yardBest || {})[yardKey()];
   // The build's best in the Training Yard, along the bottom.
   drawRubSockets(L, r.id); // round 94: three Rubric sockets along the bottom
-  if (yb && y < D.y + D.h - 50) text(fitText(`YARD BEST: ${yb.toLocaleString("en-US")} A SECOND`, D.w - 16), D.x + D.w / 2, D.y + D.h - 44, PAL.gold1, { small: true, outline: null, align: 'center' });
+  if (yb && y < D.y + D.h - 50) text(fitText(`YARD BEST: ${yb.toLocaleString("en-US")} PER SECOND`, D.w - 16), D.x + D.w / 2, D.y + D.h - 44, PAL.gold1, { small: true, outline: null, align: 'center' });
   if (!lg || y > D.y + D.h - 66) return;
   ctx.fillStyle = PAL.ink3; ctx.fillRect(D.x + 8, y, D.w - 16, 1); y += 7;
   const has = G.powers.has(M.pow);
@@ -4005,10 +4007,10 @@ const CENSER_UP = [
   { id: 'ashes', name: 'FALLEN ASH', stat: 'deaths', need: 5, deed: 'DIE 5 TIMES', text: 'FIRE BURST BELOW 30% HEALTH.' },
   { id: 'zeal', name: 'SWEET SMOKE', stat: 'shrines', need: 25, deed: 'PRAY AT 25 SHRINES', text: 'EACH HIT GIVES 1 ZEAL.' },
   { id: 'chain', name: 'THE LONGER CHAIN', stat: 'kills', need: 10000, deed: 'KILL 10K FOES', text: 'SWINGS 25% WIDER.' },
-  { id: 'cinders', name: 'ELITE CINDERS', stat: 'elites', need: 100, deed: 'KILL 100 ELITES', text: 'X2 DAMAGE TO RARES, ELITES.' },
+  { id: 'cinders', name: 'ELITE CINDERS', stat: 'elites', need: 100, deed: 'KILL 100 ELITES', text: 'DOUBLE DAMAGE TO RARE AND ELITE FOES.' },
   { id: 'martyr', name: "MARTYR'S SMOKE", stat: 'deaths', need: 25, deed: 'DIE 25 TIMES', text: 'SLOWS FOES IT HITS 30%.' },
   { id: 'still', name: 'THE STILL HAND', stat: 'perfects', need: 100, deed: '100 PERFECT DODGES', text: 'ERUPTS ON PERFECT DODGES.' },
-  { id: 'ember', name: "THE WARDEN'S EMBER", stat: 'wardens', need: 10, deed: 'KILL 10 WARDENS', text: 'BURNS 2X LONGER, 50% HOTTER.' },
+  { id: 'ember', name: "THE WARDEN'S EMBER", stat: 'wardens', need: 10, deed: 'KILL 10 WARDENS', text: 'BURNS LAST TWICE AS LONG AND DEAL 50% MORE DAMAGE.' },
   { id: 'tithe', name: 'GILDED BOWL', stat: 'gold', need: 100000, deed: 'BANK 100K GOLD', text: 'BURNING FOES MAY DROP GOLD.' },
   { id: 'vigil', name: 'VIGIL INCENSE', stat: 'vigil', need: 10, deed: 'REACH VIGIL 10', text: 'BURNING FOES TAKE 15% MORE.' },
   { id: 'bowl', name: 'A SECOND BOWL', stat: 'kills', need: 50000, deed: 'KILL 50K FOES', text: 'ADDS A SECOND CENSER.' },
@@ -4191,7 +4193,7 @@ function renderPool() {
   const st = poolStakes(P.i), stake = st[Math.min(P.s, st.length - 1)];
   text('STATION', Gm.x, Gm.st.y + 6, PAL.cloth0); invButton(Gm.st, `< ${DIFF[P.i].name} >`, PAL.crimson3, true);
   text('STAKE', Gm.x, Gm.sk.y + 6, PAL.cloth0); invButton(Gm.sk, `< ${stake} GOLD >`, PAL.gold3, true);
-  text(`UP TO ${wagerCap(P.i)} HERE`, Gm.st.x - 8, Gm.sk.y + 6, PAL.stone2, { ...small, align: 'right' });
+  text(`MAX BET: ${wagerCap(P.i)}`, Gm.st.x - 8, Gm.sk.y + 6, PAL.stone2, { ...small, align: 'right' });
   WAGER_MARKS.forEach((M, k) => {
     const r = Gm.mark(k), sel = P.mark === k, odds = wagerOdds(P.i, k);
     rowPlate(r, !!(sel));
@@ -4240,7 +4242,7 @@ function renderMartyr() {
   for (const [t, c] of [['NEXT DESCENT: ONE LIFE, DOUBLE GOLD AND GEAR.', PAL.cloth0],
     ['DIE AND YOU LOSE ALL GOLD AND GEAR FOUND. WORN GEAR IS SAFE.', PAL.blood0],
     [own ? 'CRACKED HALO EARNED. WEAR IT AT THE PLUSH STALL.' : 'DIE WITH THE TOLL AT 50% OR MORE TO EARN THE CRACKED HALO.', PAL.rose1],
-    ['USED ON YOUR NEXT STATION DESCENT. VIGILS DO NOT USE IT.', PAL.stone1]]) {
+    ['APPLIES TO YOUR NEXT STATION DESCENT, NOT TO VIGILS.', PAL.stone1]]) {
     for (const l of wrapW(t, tw, true)) { text(l, L.x0 + 12, y, c, small); y += 10; } y += 4;
   }
   y += 2; text(`VOWS KEPT ${SAVE.vowsKept || 0}     VOWS FAILED ${SAVE.vowsFallen || 0}`, L.x0 + 12, Math.min(y, Gm.go.y - 16), PAL.gold1, small);
@@ -4486,7 +4488,7 @@ function renderAltar() {
   const pages = Math.max(1, Math.ceil(list.length / Gm.n)); game.altarPage = Math.min(game.altarPage || 0, pages - 1);
   if (pages > 1) text(`< ${game.altarPage + 1}/${pages} >`, Gm.page.x + Gm.page.w, L.y0 + 31, PAL.gold1, { ...small, align: 'right' });
   if (!list.length) {
-    wrapW('BURN A HALLOWED PIECE FROM YOUR BAG. IF IT WORKS, ITS POWER IS LEARNED FOR GOOD.', L.list.w, true).forEach((l, i) => text(l, L.list.x, L.y0 + 46 + i * 10, PAL.stone2, small));
+    wrapW('BURN A HALLOWED PIECE FROM YOUR BAG. IF IT WORKS, YOU LEARN ITS POWER PERMANENTLY.', L.list.w, true).forEach((l, i) => text(l, L.list.x, L.y0 + 46 + i * 10, PAL.stone2, small));
   }
   list.slice(game.altarPage * Gm.n, (game.altarPage + 1) * Gm.n).forEach((it, i) => {
     const r = Gm.row(i), known = A.known.includes(it.power), sel = game.altarSel === it.id;
@@ -4570,7 +4572,7 @@ function renderAltarPick() {
     wrapW(heroText(POWERS[L.id] ? POWERS[L.id].text : L.text), D.w - (on ? 210 : 16), true).slice(0, 3).forEach((l, j) => text(l, D.x + 8, D.y + 19 + j * 10, on ? PAL.ember0 : PAL.stone2, small));
     if (!on) text('BURN ONE AT THE ALTAR TO LEARN IT.', D.x + 8, D.y + D.h - 12, PAL.stone2, small);
   }
-  if (L && A.known.includes(L.id)) invButton(G.set, A.sockets[P.k] === L.id ? 'SET' : 'SET IT', PAL.gold3, A.sockets[P.k] !== L.id);
+  if (L && A.known.includes(L.id)) invButton(G.set, A.sockets[P.k] === L.id ? 'SOCKETED' : 'SOCKET IT', PAL.gold3, A.sockets[P.k] !== L.id);
   if (A.sockets[P.k] && L && A.known.includes(L.id)) invButton(G.clear, 'EMPTY', PAL.stone4, true);
 }
 function altarPickTap(x, y) {
@@ -4579,7 +4581,7 @@ function altarPickTap(x, y) {
   list.forEach((L, i) => { if (inRect(G.cell(i), x, y)) { P.sel = L.id; sfx('tap', { vol: 0.5 }); } });
   const L = list.find((q) => q.id === P.sel);
   if (!L || !A.known.includes(L.id)) return;
-  if (inRect(G.set, x, y) && A.sockets[P.k] !== L.id) { A.sockets[P.k] = L.id; applyGear(); persist(); sfx('shrine', { rate: 1.3, vol: 0.5 }); toast(`${L.name} IS SET`, 1.6); game.toastColor = RARITY[3].color; }
+  if (inRect(G.set, x, y) && A.sockets[P.k] !== L.id) { A.sockets[P.k] = L.id; applyGear(); persist(); sfx('shrine', { rate: 1.3, vol: 0.5 }); toast(`${L.name} SOCKETED`, 1.6); game.toastColor = RARITY[3].color; }
   else if (A.sockets[P.k] && inRect(G.clear, x, y)) { A.sockets[P.k] = null; applyGear(); persist(); sfx('tap'); }
 }
 function renderAltarDetail(L, Gm, A, C, small) {
@@ -4588,7 +4590,7 @@ function renderAltarDetail(L, Gm, A, C, small) {
   ctx.fillStyle = 'rgba(255,122,31,0.12)'; ctx.fillRect(D.x, D.y, D.w, 36);
   if (!it) {
     text('TAP A PIECE TO READ ITS POWER', D.x + D.w / 2, D.y + 8, PAL.stone1, { ...small, align: 'center' });
-    text(`CHRISM HELD: ${C.join(' / ')}`, D.x + D.w / 2, D.y + 22, PAL.stone2, { ...small, align: 'center' });
+    text(`CHRISM OWNED: ${C.join(' / ')}`, D.x + D.w / 2, D.y + 22, PAL.stone2, { ...small, align: 'center' });
     const pity = altarPity();
     wrapW(`THE FLAME TAKES ${Math.round(ALTAR_WIN * 100)}%${pity ? ` (+${Math.round(pity * 100)}% ASH)` : ''}. CHRISM RAISES IT. GRIND ${GRIND_N} PIECES INTO ONE CHRISM.`, D.w - 16, true).slice(0, 3).forEach((l, i) => text(l, D.x + 8, D.y + 40 + i * 10, PAL.stone2, small));
     invButton(Gm.grind, `GRIND ${GRIND_N} TO CHRISM`, PAL.violet3, altarFodder().length >= GRIND_N);
@@ -4610,7 +4612,7 @@ function renderAltarDetail(L, Gm, A, C, small) {
   else {
     text(`SUCCESS ${Math.round(ch * 100)}%`, D.x + 8, D.y + 66, ch >= 1 ? RARITY[4].color : PAL.gold1, small);
     if (altarPity()) text(`+${Math.round(altarPity() * 100)}% ASH`, D.x + 8 + textW(`SUCCESS ${Math.round(ch * 100)}%`, 1, true) + 6, D.y + 66, PAL.stone1, small);
-    text(ch >= 1 ? 'SUCCESS IS CERTAIN.' : 'ON FAILURE THE PIECE IS LOST.', D.x + 8, D.y + 77, PAL.stone2, small);
+    text(ch >= 1 ? 'THIS BURN CANNOT FAIL.' : 'IF IT FAILS, THE PIECE IS LOST.', D.x + 8, D.y + 77, PAL.stone2, small);
   }
   invButton(Gm.burn, `BURN ${cost}`, PAL.ember3 || PAL.crimson3, !known && (SAVE.gold || 0) >= cost);
 }
@@ -4739,7 +4741,7 @@ const OPT_ROWS = [
   { sec: 2, k: 'haptics', name: 'HAPTICS', vals: [false, true], seg: ['OFF', 'ON'], show: (v) => (v ? 'ON' : 'OFF') },
   { sec: 2, k: 'hand', name: 'MOVE STICK', vals: ['right', 'left'], seg: ['LEFT', 'RIGHT'], show: (v) => (v === 'right' ? 'STICK LEFT' : 'STICK RIGHT') },
 ];
-const SET_SECS = [['GRAPHICS', 'LOW EFFECTS RUN BETTER ON OLDER PHONES. CRITS SHOWS ONLY BIG HITS.'], ['SOUND', 'FEWER CRIES KEEPS ONLY RARES, ELITES AND WARDENS. N MUTES ON A KEYBOARD.'], ['CONTROLS', 'HAPTICS BUZZ ON BIG HITS WHERE THE PHONE ALLOWS IT.']];
+const SET_SECS = [['GRAPHICS', 'LOW EFFECTS RUNS BETTER ON OLDER PHONES. CRITS ONLY SHOWS BIG HITS.'], ['SOUND', 'FEWER CRIES PLAYS ONLY RARE, ELITE AND WARDEN VOICES. PRESS N TO MUTE ON A KEYBOARD.'], ['CONTROLS', 'HAPTICS VIBRATE ON BIG HITS IF YOUR PHONE SUPPORTS IT.']];
 function setLayout() {
   const pw = Math.min(660, W - 12), ph = Math.min(H - 12, 300), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2), sec = game.setSec || 0;
   const rail = { x: x0 + 8, y: y0 + 36, w: Math.max(84, Math.min(120, Math.round(pw * 0.22))) }, ax = rail.x + rail.w + 12, aw = x0 + pw - 10 - ax, lw = Math.min(130, Math.round(aw * 0.36));
@@ -4987,7 +4989,7 @@ function renderVigil() {
   text('VIGIL LEVEL', L.x0 + L.pw / 2, L.y0 + 30, PAL.stone2, { align: 'center', small: true, outline: null });
   { const J = vigilJumps(L); for (const [b, t] of [[J.down, '-10'], [J.up, '+10']]) { ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 1, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = PAL.ink3; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); text(t, b.x, b.y - 4, PAL.blood0, { align: 'center', small: true }); } }
   text(String(P.L), L.x0 + L.pw / 2, L.y0 + 43, PAL.blood0, { align: 'center', sc: 2 });
-  text(`OPEN UP TO ${SAVE.vigilOpen || 1}   BEST KEPT ${SAVE.vigilBest || 'NONE'}`, L.x0 + L.pw / 2, L.y0 + 66, PAL.stone1, { align: 'center', small: true, outline: null });
+  text(`UNLOCKED UP TO ${SAVE.vigilOpen || 1}   BEST ${SAVE.vigilBest || 'NONE'}`, L.x0 + L.pw / 2, L.y0 + 66, PAL.stone1, { align: 'center', small: true, outline: null });
   const L0 = P.L, wk = playerSanctity() >= need * 0.7, X = (v) => (v >= 100 ? Math.round(v) : +v.toFixed(1));
   const lines = [
     ['THE CANDLE', '10 MINUTES TO FILL THE TOLL AND KILL THE WARDEN.', PAL.gold1],
@@ -4996,7 +4998,7 @@ function renderVigil() {
     ['THE WARDEN', `${Math.min(10, 3 + Math.floor(L0 / 5))} PIECES OF ${ROMAN[df.n - 1]} GEAR, CHRISM ${Math.round(VIGIL_PAY.warden(L0) * 100)}%${L0 >= VIGIL_PAY.set ? ', A SET PIECE' : ''}${L0 >= VIGIL_PAY.hallowed ? ', A HALLOWED CHRISM' : ''}.`, PAL.flame1],
     ['DEEPER', `A SET PIECE FROM ${VIGIL_PAY.set}, A HALLOWED CHRISM FROM ${VIGIL_PAY.hallowed}.`, L0 >= VIGIL_PAY.set ? RARITY[4].color : PAL.stone1],
     ['RISING', '5 MINUTES LEFT: +3 LEVELS. 3 MINUTES: +2. IN TIME: +1.', PAL.cloth0],
-    ['THE KEY', `ONE BLOODROSE KEY. YOU HOLD ${SAVE.vkeys || 0}. WARDENS OF ${ROMAN[VKEY_FROM - 1]}+ DROP THEM.`, SAVE.vkeys ? PAL.rose1 : PAL.blood0],
+    ['THE KEY', `COSTS ONE BLOODROSE KEY. YOU HAVE ${SAVE.vkeys || 0}. WARDENS OF ${ROMAN[VKEY_FROM - 1]}+ DROP THEM.`, SAVE.vkeys ? PAL.rose1 : PAL.blood0],
     ['YOUR GEAR', `SANCTITY ${playerSanctity()} / ${need}${wk ? '' : ' (TOO WEAK)'}`, wk ? PAL.cloth0 : PAL.blood0],
   ];
   // Rows share what height there is above the buttons.
@@ -5024,7 +5026,7 @@ function renderSite() {
     for (const l of wrapW(S.doneText || 'COMING SOON.', L.pw - 24, true)) { text(l, L.x0 + 12, y, PAL.stone1, { small: true, outline: null }); y += 10; }
   } else {
     badge('lock', L.x0 + 19, y + 4);
-    for (const l of wrapW(`UNLOCKED WHEN YOU ${S.need}`, L.pw - 44)) { text(l, L.x0 + 32, y, PAL.blood0); y += 12; }
+    for (const l of wrapW(`UNLOCKS WHEN YOU ${S.need}`, L.pw - 44)) { text(l, L.x0 + 32, y, PAL.blood0); y += 12; }
     y += 3;
     const bw = L.pw - 80; gild(L.x0 + 14, y, bw, 7); ctx.fillStyle = PAL.ink2; ctx.fillRect(L.x0 + 14, y, bw, 7); ctx.fillStyle = PAL.gold1; ctx.fillRect(L.x0 + 14, y, Math.round(bw * Math.min(1, a / b)), 7);
     text(`${Math.min(a, b)} / ${b}`, L.x0 + 22 + bw, y - 1, PAL.cloth0, { small: true, outline: null });
@@ -5267,7 +5269,7 @@ function vigilDiff(L) {
 // harder and pays more gold and gear (a little like map modifiers elsewhere,
 // under our own names).
 const OMENS = [
-  { id: 'restless', name: 'THE RESTLESS', text: 'MONSTERS 40% MORE NUMEROUS', dens: 1.4 },
+  { id: 'restless', name: 'THE RESTLESS', text: '40% MORE MONSTERS', dens: 1.4 },
   { id: 'iron', name: 'IRON FLESH', text: 'MONSTERS HAVE 50% MORE HEALTH', hp: 1.5 },
   { id: 'wrath', name: 'WRATH', text: 'MONSTERS DEAL 35% MORE DAMAGE', dmg: 1.35 },
   { id: 'curses', name: 'MANY CURSES', text: 'RARES AND ELITES HAVE ONE MORE CURSE', aff: 1 },
@@ -5409,7 +5411,7 @@ function renderDescent() {
   const oy = full ? fy + 22 : fy;
   if (full || om.length) text(om.length ? `OMENS: ${om.map((id) => OMENS.find((o) => o.id === id).text).join('. ')}.` : `DESCENTS ${SAVE.descents || 0}   HIGHEST STATION CLEARED ${(SAVE.cleared ?? -1) >= 0 ? ROMAN[SAVE.cleared] : 'NONE'}`, L.x0 + 12, oy, om.length ? PAL.blood0 : PAL.stone2, { small: true, outline: null });
   if (om.length) text(`EACH OMEN: +${Math.round((OMEN_PAY.gold - 1) * 100)}% GOLD, +${Math.round((OMEN_PAY.drop - 1) * 100)}% GEAR, BETTER RARITY.`, L.x0 + 12, oy + 10, PAL.flame1, { small: true, outline: null });
-  invButton(L.omen, om.length === 2 ? 'TWO OMENS (TAP: NONE)' : om.length ? 'ONE OMEN (TAP: TWO)' : 'TAKE AN OMEN', PAL.violet3 || PAL.ink3, true);
+  invButton(L.omen, om.length === 2 ? 'TWO OMENS (TAP TO CLEAR)' : om.length ? 'ONE OMEN (TAP FOR TWO)' : 'TAKE AN OMEN', PAL.violet3 || PAL.ink3, true);
   invButton(L.back, 'CANCEL', PAL.stone4);
   invButton(L.go, open ? 'DESCEND' : 'LOCKED', PAL.crimson3, open);
 }
@@ -6038,8 +6040,8 @@ const HURT_HOW = { swipe: 'SWINGS', cone: 'CONE ATTACKS', lunge: 'CHARGES', circ
 const HURT_TIP = {
   swipe: 'WATCH FOR THE WIND-UP, THEN DASH AWAY.', cone: 'CONE ATTACKS HIT IN FRONT. DASH TO THE SIDE.', lunge: 'CHARGES GO IN A STRAIGHT LINE. DASH SIDEWAYS.',
   circle: 'LEAVE THE RED CIRCLE BEFORE IT FILLS.', ring: 'DASH THROUGH A RING AS IT REACHES YOU.', line: 'A RED LINE MEANS A SHOT IS COMING. STEP OFF IT.',
-  shot: 'MOVE ACROSS SHOTS, NOT AWAY FROM THEM.', homing: 'HOMING SHOTS TURN SLOWLY. DASH AT THE LAST MOMENT.', pool: 'DO NOT STAND IN POOLS. THEY HURT EVERY TICK.',
-  chain: 'DO NOT WALK BETWEEN CHAINED FOES.', reflect: 'REMORSEFUL FOES HURT YOU BACK. KILL THEM QUICKLY.', sentence: 'THE SENTENCE BURSTS. DASH TO CLEAR IT.', hit: 'KEEP MOVING AND DASH THROUGH ATTACKS.',
+  shot: 'MOVE ACROSS SHOTS, NOT AWAY FROM THEM.', homing: 'HOMING SHOTS TURN SLOWLY. DASH AT THE LAST MOMENT.', pool: 'DON\'T STAND IN POOLS. THEY HURT EVERY TICK.',
+  chain: 'DON\'T WALK BETWEEN CHAINED FOES.', reflect: 'REMORSEFUL FOES HURT YOU BACK. KILL THEM QUICKLY.', sentence: 'THE SENTENCE BURSTS. DASH TO CLEAR IT.', hit: 'KEEP MOVING AND DASH THROUGH ATTACKS.',
 };
 // The three things that hurt most, and a tip for the worst.
 function deathRecap(R) {
@@ -6666,7 +6668,7 @@ const STAT = {
   dmg: { label: 'DAMAGE', lo: 3, hi: 7, pct: true }, crit: { label: 'CRIT CHANCE', lo: 1, hi: 3, pct: true },
   hp: { label: 'MAX HP', lo: 5, hi: 12 }, dash: { label: 'DASH RECHARGE', lo: 4, hi: 8, pct: true },
   fervor: { label: 'ZEAL GAIN', lo: 5, hi: 12, pct: true }, gold: { label: 'GOLD BONUS', lo: 8, hi: 18, pct: true },
-  speed: { label: 'MOVE SPEED', lo: 2, hi: 5, pct: true }, cdr: { label: 'RITE COOLDOWN', lo: 4, hi: 8, pct: true },
+  speed: { label: 'MOVE SPEED', lo: 2, hi: 5, pct: true }, cdr: { label: 'COOLDOWN REDUCTION', lo: 4, hi: 8, pct: true },
   armor: { label: 'ARMOR', lo: 2, hi: 5, pct: true }, lok: { label: 'HEAL ON KILL', lo: 1, hi: 2 },
 };
 const SLOT_BASE = { hood: 'hp', mantle: 'armor', gloves: 'dmg', girdle: 'hp', greaves: 'speed', rosary: 'fervor', seal: 'crit', relic: 'cdr', bow: 'dmg', quiver: 'crit' };
@@ -6685,7 +6687,7 @@ const GRAVEN = {
 };
 const BEATIFIED = {
   wrath: { label: 'MORE DAMAGE', lo: 12, hi: 20, pct: true }, aegis: { label: 'LESS DAMAGE TAKEN', lo: 8, hi: 12, pct: true },
-  fury: { label: 'ATTACK SPEED', lo: 15, hi: 25, pct: true }, litany: { label: 'RITE COOLDOWN', lo: 15, hi: 25, pct: true },
+  fury: { label: 'ATTACK SPEED', lo: 15, hi: 25, pct: true }, litany: { label: 'COOLDOWN REDUCTION', lo: 15, hi: 25, pct: true },
   flight: { label: 'DASH CHARGE', lo: 1, hi: 1 }, shards: { label: 'RELIQUARY SHARDS', lo: 2, hi: 2, hero: 'anchoress' },
   tempest: { label: 'LIGHTNING EVERY 12TH HIT', lo: 300, hi: 500, pct: true }, reaper: { label: 'CHANCE A KILL BURSTS', lo: 8, hi: 14, pct: true },
 };
@@ -6721,7 +6723,7 @@ function maybeTear(x, y, base) {
 }
 // Relic-touched (legendary) powers, one per slot.
 const POWERS = {
-  hood: { key: 'pierce', text: 'BOLTS PIERCE ONE MORE FOE.' }, mantle: { key: 'perfectHeal', text: 'PERFECT DODGES HEAL 10.' },
+  hood: { key: 'pierce', text: 'BOLTS PIERCE ONE MORE FOE.' }, mantle: { key: 'perfectHeal', text: 'PERFECT DODGES HEAL 10 HEALTH.' },
   gloves: { key: 'fire', text: 'THE CROSSBOW FIRES 20% FASTER.' }, girdle: { key: 'globe', text: 'HEALTH ORBS HEAL TWICE AS MUCH.' },
   greaves: { key: 'dashCharge', text: '+1 DASH CHARGE.' }, rosary: { key: 'decay', text: 'ZEAL FADES HALF AS FAST.' },
   seal: { key: 'critX', text: 'CRITICAL BOLTS DEAL TRIPLE DAMAGE.' }, relic: { key: 'penance', text: 'RECKONING CHARGES 40% FASTER.' },
@@ -6733,22 +6735,22 @@ const POWERS = {
 const VSETS = {
   habit: { name: "ODILE'S HABIT", piece: "ODILE'S", hero: 'saint', starter: true, slots: GEAR_SLOTS, bonus: [[2, '+10% DAMAGE.'], [4, '+1 DASH CHARGE, +15% DAMAGE.']] },
   nails: { name: 'THE HUNDRED NAILS', piece: 'NAILBEARER\'S', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BOLTS PIERCE ONE MORE FOE AND SPLIT AT THE LAST.'], [4, `+${fourOf('nails')}% DAMAGE (+${SETK.four6}% AT 6). HITS ADD NAIL STACKS (50 MAX): EACH GIVES 1% LESS DAMAGE TAKEN, +${Math.round(SETK.nail4 * 100)}% BOLT DAMAGE.`], [6, `BOLTS DEAL +${Math.round(SETK.nail * 100)}% PER NAIL STACK (INSTEAD OF ${Math.round(SETK.nail4 * 100)}%).`]] },
-  stride: { name: "THE PENITENT'S STRIDE", piece: "PENITENT'S", slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+1 DASH CHARGE. DASHES LEAVE HOLY FIRE.'], [4, `+${fourOf('stride')}% DAMAGE (+${SETK.four6}% AT 6). X${SETK.stride4} FOR ${SETK.strideT4} S AFTER A DASH. PERFECT DODGES REFILL DASHES AND HALVE DAMAGE 2 S.`], [6, `FOR ${SETK.strideT} S AFTER A DASH, BOLTS, NOVA AND FIRE DEAL X${SETK.stride}. EVERY DASH RELEASES A NOVA.`]] },
-  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, `+${fourOf('font')}% DAMAGE (+${SETK.four6}% AT 6). POOLS DEAL X${SETK.font4}, SPREAD, TAKE ${SETK.fontHp}% OF A FOE'S HEALTH A SECOND AND DRAW FOES IN. WITH 2 CONFESSOR PIECES THEY BIND. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.`], [6, `POOLS SPREAD WIDER, TAKE ${SETK.fontHp6}% OF A FOE'S HEALTH A SECOND AND DRAW FOES IN TWICE AS HARD. KILLS IN THEM SPEED THE VIAL.`]] },
+  stride: { name: "THE PENITENT'S STRIDE", piece: "PENITENT'S", slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+1 DASH CHARGE. DASHES LEAVE HOLY FIRE.'], [4, `+${fourOf('stride')}% DAMAGE (+${SETK.four6}% AT 6). X${SETK.stride4} FOR ${SETK.strideT4} S AFTER A DASH. PERFECT DODGES REFILL DASHES AND HALVE DAMAGE TAKEN FOR 2 S.`], [6, `FOR ${SETK.strideT} S AFTER A DASH, BOLTS, NOVA AND FIRE DEAL X${SETK.stride}. EVERY DASH RELEASES A NOVA.`]] },
+  font: { name: 'THE DROWNED FONT', piece: 'FONT-KEEPER\'S', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'HOLY WATER POOLS ARE 30% WIDER AND SLOW MORE.'], [4, `+${fourOf('font')}% DAMAGE (+${SETK.four6}% AT 6). POOLS DEAL X${SETK.font4}, SPREAD, TAKE ${SETK.fontHp}% OF A FOE'S HEALTH PER SECOND AND DRAW FOES IN. WITH 2 PIECES OF THE LAST CONFESSOR, THEY BIND. IN YOUR OWN POOL: 40% LESS DAMAGE TAKEN, DOUBLE ZEAL.`], [6, `POOLS SPREAD WIDER, TAKE ${SETK.fontHp6}% OF A FOE'S HEALTH PER SECOND AND DRAW FOES IN TWICE AS HARD. KILLS IN THEM SHORTEN HOLY WATER'S COOLDOWN.`]] },
   confessor: { name: 'THE LAST CONFESSOR', piece: 'CONFESSOR\'S', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, `CHAINS BIND 3 MORE. EVERY ${SETK.bindEvery2}TH HIT BINDS FOR 1 S. BOUND FOES TAKE ${Math.round((SETK.bound - 1) * 100)}% MORE.`], [4, `+${fourOf('confessor')}% DAMAGE (+${SETK.four6}% AT 6). EVERY ${SETK.bindEvery}TH HIT BINDS FOR 1 S. BOUND FOES TAKE ${Math.round((SETK.bound4 - 1) * 100)}% MORE AND BURST ON DEATH. EACH ONE CUTS DAMAGE TAKEN 8% (MAX 40%).`], [6, `BOUND FOES TAKE X${SETK.bound6} DAMAGE. THE CHAIN ENDS IN A X${SETK.crush} CRUSH.`]] },
-  choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, `+${fourOf('choir')}% DAMAGE (+${SETK.four6}% AT 6). IN RECKONING: X${SETK.choir4} DAMAGE, FOES NEAR YOU BURN FOR ${SETK.choirHp}% OF THEIR HEALTH A SECOND, NO ROOTS OR SLOWS, KILLS HEAL 2%.`], [6, `RECKONING LASTS WHILE ZEAL REMAINS${SETK.choir !== SETK.choir4 ? ` (ITS DAMAGE BECOMES X${SETK.choir})` : ''}. FOES NEAR YOU BURN FOR ${SETK.choirHp6}% A SECOND.`]] },
+  choir: { name: 'THE BURNING CHOIR', piece: 'CHORISTER\'S', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'ZEAL FADES HALF AS FAST. CRITS GIVE ZEAL.'], [4, `+${fourOf('choir')}% DAMAGE (+${SETK.four6}% AT 6). IN RECKONING: X${SETK.choir4} DAMAGE, FOES NEAR YOU BURN FOR ${SETK.choirHp}% OF THEIR HEALTH PER SECOND, YOU CAN'T BE ROOTED OR SLOWED, KILLS HEAL 2%.`], [6, `RECKONING LASTS WHILE ZEAL REMAINS${SETK.choir !== SETK.choir4 ? ` (ITS DAMAGE BECOMES X${SETK.choir})` : ''}. FOES NEAR YOU BURN FOR ${SETK.choirHp6}% PER SECOND.`]] },
   // Round 72: each class has its own five sets and its own starter set; a set drops only for its class.
   // The Mendicant's.
   rags: { name: "THE MENDICANT'S RAGS", piece: 'RAGGED', hero: 'mendicant', starter: true, slots: GEAR_SLOTS, bonus: [[2, '10% LESS DAMAGE TAKEN.'], [4, '+15% DAMAGE, +15% MAX HEALTH.']] },
   iron: { name: "THE BEGGAR KING'S IRON", piece: "BEGGAR KING'S", hero: 'mendicant', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BLOWS REACH 20% FARTHER.'], [4, `+${fourOf('iron')}% DAMAGE (+${SETK.four6}% AT 6). EVERY 4TH BLOW CRUSHES: X${SETK.crushK} DAMAGE, STUNS FOR 0.5 S.`], [6, `ALL YOUR DAMAGE X${SETK.six.iron}. EVERY 3RD BLOW CRUSHES FOR X${SETK.crushK6} AND SENDS A SHOCKWAVE THROUGH FOES AROUND YOU.`]] },
-  road: { name: "THE WANDERER'S ROAD", piece: "WANDERER'S", hero: 'mendicant', slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+15% MOVE SPEED.'], [4, `+${fourOf('road')}% DAMAGE (+${SETK.four6}% AT 6). MOVING BUILDS MOMENTUM (UP TO 10). YOUR NEXT BLOW SPENDS IT: +${SETK.momK}% DAMAGE A STACK.`], [6, `MOMENTUM BUILDS TWICE AS FAST AND GIVES +${SETK.momK6}% A STACK. DASHES GIVE 5. A BLOW THAT SPENDS 5 OR MORE RELEASES A NOVA.`]] },
+  road: { name: "THE WANDERER'S ROAD", piece: "WANDERER'S", hero: 'mendicant', slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+15% MOVE SPEED.'], [4, `+${fourOf('road')}% DAMAGE (+${SETK.four6}% AT 6). MOVING BUILDS MOMENTUM (UP TO 10). YOUR NEXT BLOW SPENDS IT: +${SETK.momK}% DAMAGE PER STACK.`], [6, `MOMENTUM BUILDS TWICE AS FAST AND GIVES +${SETK.momK6}% PER STACK. DASHES GIVE 5. A BLOW THAT SPENDS 5 OR MORE RELEASES A NOVA.`]] },
   alms: { name: "THE ALMSGIVER'S BOWL", piece: "ALMSGIVER'S", hero: 'mendicant', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'BLOWS SWEEP 25% WIDER. KILLS HEAL 1% OF YOUR HEALTH.'], [4, `+${fourOf('alms')}% DAMAGE (+${SETK.four6}% AT 6). KILLS GIVE 2 ALMS (UP TO ${SETK.almsMax}): +${SETK.almsK}% DAMAGE EACH. THEY FADE 3 S AFTER YOUR LAST KILL. AT 20 OR MORE, EVERY 5TH BLOW SENDS A WAVE THROUGH FOES AROUND YOU.`], [6, `ALL YOUR DAMAGE X${SETK.six.alms}. EACH ALMS GIVES +${SETK.almsK6}% DAMAGE AND 0.5% LESS DAMAGE TAKEN. THE WAVE IS WIDER AND COMES EVERY 3RD BLOW. AT ${SETK.almsMax} YOUR BLOWS SET FOES ALIGHT.`]] },
   gaol: { name: "THE GAOLER'S KEYS", piece: "GAOLER'S", hero: 'mendicant', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, 'BLOWS PUT 2 FETTERS ON FOES (UP TO 5). EACH SLOWS THEM 5%.'], [4, `+${fourOf('gaol')}% DAMAGE (+${SETK.four6}% AT 6). EVERY 4TH BLOW THROWS CHAINS: 2 FETTERS ON FOES NEARBY. FETTERED FOES ARE DRAGGED TOWARD YOU AND TAKE ${SETK.fetK}% MORE DAMAGE PER FETTER.`], [6, `ALL YOUR DAMAGE X${SETK.six.gaol}. FOES TAKE ${SETK.fetK6}% MORE PER FETTER. THE 5TH FETTER LOCKS: THE FOE IS STUNNED FOR 2 S AND THE BLOW CRASHES THROUGH FOES AROUND IT FOR X3.`]] },
   bell: { name: 'THE CRACKED BELL', piece: "BELL-RINGER'S", hero: 'mendicant', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'EVERY 6TH BLOW RINGS: A WAVE HITS EVERY FOE AROUND YOU.'], [4, `+${fourOf('bell')}% DAMAGE (+${SETK.four6}% AT 6). RINGS STUN FOR 0.6 S. STUNNED FOES TAKE ${SETK.stunK}% MORE DAMAGE.`], [6, `EVERY 3RD BLOW RINGS, TWICE AS WIDE AND X${SETK.ringK6} AS HARD. EACH RING GIVES 3 ZEAL.`]] },
   // The Anchoress's.
   shroud: { name: "THE ANCHORITE'S SHROUD", piece: "ANCHORITE'S", hero: 'anchoress', starter: true, slots: GEAR_SLOTS, bonus: [[2, '+1 RELIQUARY SHARD.'], [4, '+15% DAMAGE, +1 DASH CHARGE.']] },
   glass: { name: 'THE GLASS MARTYR', piece: 'GLASS', hero: 'anchoress', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, '+10% CRIT CHANCE FOR SHARD BOLTS.'], [4, `+${fourOf('glass')}% DAMAGE (+${SETK.four6}% AT 6). SHARD CRITS SPLIT INTO 2 SPLINTERS.`], [6, `ALL YOUR DAMAGE X${SETK.six.glass}. SHARD CRITS DEAL X3 AND CALL A GLASS SHARD FOR 4 S (UP TO 4).`]] },
-  psalter: { name: "THE MOTHER'S PSALTER", piece: 'PSALTER', hero: 'anchoress', slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, 'RITES COOL DOWN 15% FASTER.'], [4, `+${fourOf('psalter')}% DAMAGE (+${SETK.four6}% AT 6). EACH RITE YOU CAST MAKES EVERY SHARD FIRE AT ONCE.`], [6, `ALL YOUR DAMAGE X${SETK.six.psalter}. FOR 4 S AFTER A RITE, SHARDS DEAL X${SETK.psalK6} AND FIRE 30% FASTER.`]] },
+  psalter: { name: "THE MOTHER'S PSALTER", piece: 'PSALTER', hero: 'anchoress', slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, 'RITES RECHARGE 15% FASTER.'], [4, `+${fourOf('psalter')}% DAMAGE (+${SETK.four6}% AT 6). EACH RITE YOU CAST MAKES EVERY SHARD FIRE AT ONCE.`], [6, `ALL YOUR DAMAGE X${SETK.six.psalter}. FOR 4 S AFTER A RITE, SHARDS DEAL X${SETK.psalK6} AND FIRE 30% FASTER.`]] },
   lantern: { name: 'THE VEILED LANTERN', piece: "LANTERN-BEARER'S", hero: 'anchoress', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, `SHARD BOLTS SET FOES ALIGHT: EACH SECOND THE FIRE DEALS ${SETK.lampBurn}% OF THE HIT THAT LIT IT.`], [4, `+${fourOf('lantern')}% DAMAGE (+${SETK.four6}% AT 6). BURNING FOES TAKE ${SETK.lampK}% MORE FROM SHARDS.`], [6, `ALL YOUR DAMAGE X${SETK.six.lantern}. BURNING FOES TAKE ${SETK.lampK6}% MORE FROM SHARDS INSTEAD. FOES THAT DIE BURNING BURST AND SET FOES AROUND THEM ALIGHT.`]] },
   thorn: { name: 'THE THORNED CRUCIBLE', piece: 'THORNED', hero: 'anchoress', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, 'YOUR SHARDS CIRCLE 25% WIDER AND CUT FOES THEY PASS.'], [4, `+${fourOf('thorn')}% DAMAGE (+${SETK.four6}% AT 6). THE RING IS ${Math.round((SETK.thornR4 - 1) * 100)}% WIDER. FOES IT CUTS ARE SLOWED 40% AND TAKE ${SETK.thornK}% MORE DAMAGE FOR 2 S.`], [6, `ALL YOUR DAMAGE X${SETK.six.thorn}. THE RING IS ${Math.round((SETK.thornR6 - 1) * 100)}% WIDER, SPINS TWICE AS FAST AND CUTS TWICE AS OFTEN. CUT FOES TAKE ${SETK.thornK6}% MORE INSTEAD. CUTS GIVE ZEAL.`]] },
   reliquary: { name: 'THE SHATTERED RELIQUARY', piece: 'SHATTERED', hero: 'anchoress', noFour: true, slots: ['hood', 'mantle', 'gloves', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, '+2 RELIQUARY SHARDS.'], [4, `SHARD BOLTS DEAL +${SETK.shardPer}% FOR EVERY SHARD ABOVE 4, UP TO 12.`], [6, 'EACH RITE CALLS 2 VOTIVE SHARDS FOR 6 S.']] },
@@ -6776,12 +6778,12 @@ const ARMS = {
   iron: { name: "ARMS OF THE BEGGAR KING'S IRON", bow: "THE BEGGAR KING'S MACE", quiver: 'THE SATCHEL OF RIVETS', bonus: 'BLOWS DEAL X2 TO STUNNED FOES.' },
   road: { name: "ARMS OF THE WANDERER'S ROAD", bow: "THE WAYFARER'S CUDGEL", quiver: 'THE SATCHEL OF MILESTONES', bonus: 'DASHES RECHARGE 25% FASTER. THE FIRST BLOW AFTER A DASH DEALS X2.' },
   alms: { name: "ARMS OF THE ALMSGIVER'S BOWL", bow: "THE ALMONER'S MACE", quiver: 'THE BEGGING SATCHEL', bonus: 'KILLS HAVE A 4% CHANCE TO DROP A HEALTH ORB.' },
-  gaol: { name: "ARMS OF THE GAOLER'S KEYS", bow: "THE GAOLER'S BAR", quiver: 'THE SATCHEL OF KEYS', bonus: 'BLOWS PUT 3 FETTERS ON AT A TIME. FETTERED FOES GIVE 1 ZEAL WHEN KILLED.' },
+  gaol: { name: "ARMS OF THE GAOLER'S KEYS", bow: "THE GAOLER'S BAR", quiver: 'THE SATCHEL OF KEYS', bonus: 'EACH BLOW ADDS 3 FETTERS. FETTERED FOES GIVE 1 ZEAL WHEN KILLED.' },
   bell: { name: 'ARMS OF THE CRACKED BELL', bow: 'THE BELL-CLAPPER', quiver: 'THE SATCHEL OF CHIMES', bonus: 'EVERY 5TH BLOW RINGS. RINGS HEAL 1% OF YOUR HEALTH.' },
   glass: { name: 'ARMS OF THE GLASS MARTYR', bow: 'THE GLASS RELIQUARY', quiver: 'THE PHYLACTERY OF SPLINTERS', bonus: 'SHARD CRITS DEAL 50% MORE.' },
   psalter: { name: "ARMS OF THE MOTHER'S PSALTER", bow: 'THE PSALTER RELIQUARY', quiver: 'THE PHYLACTERY OF HOURS', bonus: 'EACH RITE YOU CAST GIVES 5 ZEAL.' },
   lantern: { name: 'ARMS OF THE VEILED LANTERN', bow: 'THE LANTERN RELIQUARY', quiver: 'THE PHYLACTERY OF CINDERS', bonus: 'FIRE FROM YOUR SHARDS BURNS 50% HOTTER.' },
-  thorn: { name: 'ARMS OF THE THORNED CRUCIBLE', bow: 'THE BRIAR RELIQUARY', quiver: 'THE PHYLACTERY OF THORNS', bonus: 'THE RING CUTS 50% HARDER. CUTS HEAL 0.5% OF YOUR HEALTH (AT MOST 2% A SECOND).' },
+  thorn: { name: 'ARMS OF THE THORNED CRUCIBLE', bow: 'THE BRIAR RELIQUARY', quiver: 'THE PHYLACTERY OF THORNS', bonus: 'THE RING CUTS 50% HARDER. CUTS HEAL 0.5% OF YOUR HEALTH (UP TO 2% PER SECOND).' },
   reliquary: { name: 'ARMS OF THE SHATTERED RELIQUARY', bow: 'THE FIRST RELIQUARY', quiver: 'THE PHYLACTERY OF SHARDS', bonus: '+1 RELIQUARY SHARD. SHARD BOLTS PIERCE ONE MORE FOE.' },
 };
 const armsCount = (id) => (G && G.wsets[id]) || 0;
@@ -6817,7 +6819,7 @@ const LEGENDS = [
   { id: 'zealLocket', slot: 'rosary', name: 'LOCKET OF THE LAST HYMN', key: 'longReck', text: 'RECKONING LASTS 2 S LONGER.' },
   { hero: 'saint', id: 'censerLocket', slot: 'rosary', name: "THE CENSER-BEARER'S CHAIN", key: 'censerPlus', text: 'CENSER BLAZE RETURNS 40% SOONER AND HEALS 5%.' },
   { hero: 'saint', id: 'judgeSeal', slot: 'seal', name: 'SEAL OF JUDGEMENT', key: 'fastPillars', text: "JUDGEMENT'S PILLARS FALL TWICE AS OFTEN." },
-  { id: 'knucklebone', slot: 'relic', name: "THE GAMBLER'S KNUCKLEBONE", key: 'luckyRite', text: "A RITE HAS A 25% CHANCE TO COST NO COOLDOWN." },
+  { id: 'knucklebone', slot: 'relic', name: "THE GAMBLER'S KNUCKLEBONE", key: 'luckyRite', text: "RITES HAVE A 25% CHANCE TO RESET THEIR COOLDOWN WHEN CAST." },
   { id: 'saintTooth', slot: 'relic', name: "THE SAINT'S MOLAR", key: 'killNova', text: 'EVERY 10TH KILL RELEASES A RING OF HOLY LIGHT.' },
   { hero: 'saint', id: 'pierceBow', slot: 'bow', name: 'THE LONGWAY ARBALEST', key: 'longShot', text: 'BOLTS PIERCE 2 MORE FOES AND FLY FARTHER.' },
   { id: 'heavyBow', slot: 'bow', name: "THE PENITENT'S PROD", key: 'heavyBolts', text: 'THE CROSSBOW OR MACE IS 25% SLOWER AND HITS TWICE AS HARD.' },
@@ -6889,7 +6891,7 @@ function gearInit() {
   migrateSets(); migrateTalents(); levelLooks();
   // Old saves kept a flat stash of names; turn them into real items once.
   if (SAVE.stash && SAVE.stash.length) {
-    const map = { '+DAMAGE': 'dmg', '+CRIT CHANCE': 'crit', '+MAX HP': 'hp', '+DASH RECHARGE': 'dash', '+FERVOR GAIN': 'fervor', '+GOLD FIND': 'gold', '+MOVE SPEED': 'speed', '+MIRACLE COOLDOWN': 'cdr', '+ARMOR': 'armor', '+LIFE ON KILL': 'lok' };
+    const map = { '+DAMAGE': 'dmg', '+CRIT CHANCE': 'crit', '+MAX HP': 'hp', '+DASH RECHARGE': 'dash', '+FERVOR GAIN': 'fervor', '+GOLD FIND': 'gold', '+MOVE SPEED': 'speed', '+MIRACLE COOLDOWN': 'cdr', '+ARMOR': 'armor', '+LIFE ON KILL': 'lok' }; // old save keys: leave as they are
     for (const o of SAVE.stash.slice(-BAG_SIZE)) { const ri = Math.max(0, RARITY.findIndex((r) => r.id === o.rarity)); const it = makeItem(o.slot, ri, o.name, (o.affixes || []).map((a) => map[a]).filter((x) => x && x !== SLOT_BASE[o.slot]).slice(0, 3)); it.isNew = false; SAVE.bag.push(it); }
     SAVE.bag = SAVE.bag.slice(-BAG_SIZE); delete SAVE.stash; persist();
   }
@@ -7492,7 +7494,7 @@ const RITES = {
     { id: 'pillars', name: 'JUDGEMENT', set: 'choir', icon: 'pillars', text: 'PILLARS OF LIGHT HIT THE STRONGEST FOES.' },
     { id: 'font', name: 'THE GREAT FONT', set: 'font', icon: 'font', text: 'A LARGE HOLY POOL FOLLOWS YOU.' },
     { id: 'volley', name: 'THE HUNDREDFOLD', set: 'nails', icon: 'volley', text: 'THE CROSSBOW FIRES 3X AS FAST AND EVERY SHOT SPLITS.' },
-    { id: 'pilgrim', name: 'PILGRIMAGE OF FIRE', set: 'stride', icon: 'pilgrim', text: 'DASHES RECHARGE AT ONCE, LEAVE FIRE AND RELEASE A RING OF LIGHT.' },
+    { id: 'pilgrim', name: 'PILGRIMAGE OF FIRE', set: 'stride', icon: 'pilgrim', text: 'DASHES RECHARGE INSTANTLY, LEAVE FIRE AND RELEASE A RING OF LIGHT.' },
     { id: 'greatpen', name: 'THE GREAT PENANCE', set: 'confessor', icon: 'greatpen', text: 'EVERY 1.5 S, FOES IN SIGHT ARE BOUND FOR 1 S AND TAKE 50% MORE DAMAGE.' },
   ],
 };
@@ -7516,12 +7518,12 @@ const MRITES = {
     { id: 'toll', name: 'BELL TOLL', set: 'bell', icon: 'toll', cd: 6, text: 'RING THE MACE. FOES AROUND YOU ARE STUNNED FOR 1 S. GIVES 12 ZEAL.' },
     { id: 'vow', name: "PENITENT'S VOW", set: 'road', icon: 'vow', cd: 10, text: '3 S OF 50% LESS DAMAGE. FOES THAT HIT YOU ARE STRUCK BACK.' },
     { id: 'shards', name: 'IRON SHARDS', set: 'iron', icon: 'shards', cd: 8, text: 'YOUR NEXT 6 SWINGS EACH THROW 3 NAILS.' },
-    { id: 'wellspring', name: 'WELLSPRING', set: 'alms', icon: 'wellspring', cd: 10, text: 'HEAL 10%, THEN 3% A SECOND FOR 4 S. A HOLY POOL AT YOUR FEET.' },
+    { id: 'wellspring', name: 'WELLSPRING', set: 'alms', icon: 'wellspring', cd: 10, text: 'HEAL 10%, THEN 3% PER SECOND FOR 4 S. LEAVES A HOLY POOL AT YOUR FEET.' },
   ],
   pen: [
     { id: 'tolling', name: 'THE TOLLING', set: 'bell', icon: 'tolling', text: 'EVERY 0.5 S A SHOCKWAVE HITS FOES AROUND YOU.' },
     { id: 'hammer', name: 'HAMMER OF HEAVEN', set: 'bell', icon: 'hammer', text: 'PILLARS OF LIGHT HIT THE STRONGEST FOES AND STUN THEM.' },
-    { id: 'deluge', name: 'THE DELUGE', set: 'alms', icon: 'deluge', text: 'A LARGE HOLY POOL FOLLOWS YOU. IN IT YOU HEAL 2% A SECOND.' },
+    { id: 'deluge', name: 'THE DELUGE', set: 'alms', icon: 'deluge', text: 'A LARGE HOLY POOL FOLLOWS YOU. IN IT YOU HEAL 2% PER SECOND.' },
     { id: 'hundredblows', name: 'THE HUNDRED BLOWS', set: 'iron', icon: 'hundredblows', text: 'SWING 3X AS FAST. EVERY SWING THROWS 2 NAILS.' },
     { id: 'pyre', name: 'PYRE MARCH', set: 'road', icon: 'pyre', text: 'DASHES RECHARGE AT ONCE AND LEAVE FIRE. EVERY SWING SETS FOES ALIGHT.' },
     { id: 'verdict', name: 'THE IRON VERDICT', set: 'gaol', icon: 'verdict', text: 'EVERY 1.5 S, FOES IN SIGHT ARE BOUND FOR 1 S AND TAKE 50% MORE. SWINGS REACH FARTHER.' },
@@ -7543,12 +7545,12 @@ const ARITES = {
     { id: 'votive', name: 'VOTIVE SHARDS', set: 'reliquary', icon: 'votive', cd: 10, text: 'CALL 3 MORE SHARDS FOR 8 S.' },
     { id: 'splinter', name: 'SPLINTER CROWN', set: 'glass', icon: 'splinter', cd: 9, text: 'FOR 5 S EVERY SHARD BOLT SPLITS IN TWO ON ITS FIRST HIT.' },
     { id: 'shardchain', name: 'SHARD CHAINS', set: 'thorn', icon: 'shardchain', cd: 9, text: 'EVERY SHARD CHAINS THE FOE NEAREST IT: BOUND FOR 2 S.' },
-    { id: 'shardknell', name: 'KNELL OF SHARDS', set: 'lantern', icon: 'shardknell', cd: 8, text: 'EVERY SHARD RINGS: FOES NEAR A SHARD ARE STUNNED FOR 1 S. GIVES 2 ZEAL A SHARD.' },
-    { id: 'mending', name: 'MENDING RELIC', set: 'psalter', icon: 'mending', cd: 11, text: 'HEAL 10%, THEN 0.5% A SECOND FOR EVERY SHARD FOR 4 S. A HOLY POOL AT YOUR FEET.' },
+    { id: 'shardknell', name: 'KNELL OF SHARDS', set: 'lantern', icon: 'shardknell', cd: 8, text: 'EVERY SHARD RINGS: FOES NEAR A SHARD ARE STUNNED FOR 1 S. GIVES 2 ZEAL PER SHARD.' },
+    { id: 'mending', name: 'MENDING RELIC', set: 'psalter', icon: 'mending', cd: 11, text: 'HEAL 10%, THEN 0.5% PER SHARD EACH SECOND FOR 4 S. LEAVES A HOLY POOL AT YOUR FEET.' },
   ],
   pen: [
     { id: 'shattered', name: 'THE SHATTERED HEAVEN', set: 'reliquary', icon: 'shattered', text: 'YOUR SHARDS DOUBLE AND FIRE TWICE AS FAST.' },
-    { id: 'cathedral', name: 'CATHEDRAL OF SHARDS', set: 'reliquary', icon: 'cathedral', text: 'YOUR SHARDS WHEEL WIDE ROUND YOU, CUTTING EVERY FOE THEY PASS, AND FIRE AS THEY GO.' },
+    { id: 'cathedral', name: 'CATHEDRAL OF SHARDS', set: 'reliquary', icon: 'cathedral', text: 'YOUR SHARDS WHEEL WIDE AROUND YOU, CUTTING EVERY FOE THEY PASS, AND FIRE AS THEY GO.' },
     { id: 'hundredshards', name: 'THE HUNDRED SPLINTERS', set: 'glass', icon: 'hundredshards', text: 'SHARDS FIRE 3X AS FAST. EVERY BOLT PIERCES, SPLITS AND ADDS NAIL STACKS.' },
     { id: 'relicpyre', name: 'THE RELIC PYRE', set: 'thorn', icon: 'relicpyre', text: 'DASHES RECHARGE AT ONCE AND LEAVE FIRE. SHARD BOLTS SET FOES ALIGHT.' },
     { id: 'reliquaryfont', name: 'THE BRIMMING RELIQUARY', set: 'psalter', icon: 'reliquaryfont', text: 'A LARGE HOLY POOL FOLLOWS YOU. SHARDS FIRE 50% FASTER WHILE YOU STAND IN IT.' },
@@ -7570,7 +7572,7 @@ const PASSIVES = [
   { id: 'zealfury', name: 'ZEALOUS FURY', cat: 0, text: 'UP TO +15% DAMAGE AS YOUR ZEAL FILLS.' },
   { id: 'headsman', name: "HEADSMAN'S EYE", cat: 0, text: 'CRITICAL HITS DEAL 40% MORE.' },
   { id: 'hide', name: 'PENITENT HIDE', cat: 1, text: 'TAKE 15% LESS DAMAGE.' },
-  { id: 'secondwind', name: 'SECOND WIND', cat: 1, text: 'BELOW 30% HEALTH, HEAL 30%. ONCE A MINUTE.' },
+  { id: 'secondwind', name: 'SECOND WIND', cat: 1, text: 'WHEN YOU DROP BELOW 30% HEALTH, HEAL 30%. ONCE PER MINUTE.' },
   { id: 'stillwater', name: 'STILL WATER', cat: 1, text: 'PERFECT DODGES HEAL 6% OF YOUR HEALTH.' },
   { id: 'ironvigil', name: 'IRON VIGIL', cat: 1, text: 'AFTER A HIT, TAKE 30% LESS DAMAGE FOR 2 S.' },
   { id: 'mending', name: 'MENDING', cat: 1, text: 'HEAL 1% OF YOUR HEALTH EVERY SECOND.' },
@@ -7624,18 +7626,18 @@ function bumpRite(id) {
 const TWIST = {
   water: 'THROWS A SECOND VIAL.', wave: 'A SECOND WAVE FOLLOWS.', storm: 'A SECOND FAN FIRES 0.3 S LATER.', step: 'THE LANDING BURSTS TWICE.',
   brand: 'A SECOND IRON LANDS 0.4 S LATER.', hymn: 'A SECOND FIRE ROLLS 0.3 S LATER.',
-  chain: 'A SECOND CHAIN FLIES TO ANOTHER FOE.', shackle: 'BOUND FOES ALSO BURN.', censer: 'A SECOND BLAZE 0.5 S LATER.', ward: 'ALSO HEALS 20%.',
+  chain: 'A SECOND CHAIN FLIES TO ANOTHER FOE.', shackle: 'BOUND FOES ALSO BURN.', censer: 'A SECOND BLAZE FOLLOWS 0.5 S LATER.', ward: 'ALSO HEALS 20%.',
   nailring: 'A SECOND RING FIRES 0.3 S LATER.', asperse: 'ALSO REFILLS YOUR DASHES.',
   rain: 'LASHES FALL TWICE AS OFTEN.', pillars: 'TWO PILLARS FALL AT ONCE.', font: 'THE POOL IS TWICE AS WIDE.', volley: 'LASTS 2 S LONGER.',
   pilgrim: 'LASTS 2 S LONGER.', greatpen: 'BOUND FOES ALSO BURN.',
-  smite: 'A SECOND BLOW LANDS 0.3 S LATER.', undertow: 'HEALS 5% FOR EACH FOE DRAGGED, UP TO 20%.', nailburst: 'A SECOND BURST 0.3 S LATER.',
-  charge: 'A SECOND STRIKE 0.4 S AFTER THE FIRST.', shackleblow: 'A SECOND BLOW 0.4 S LATER.', cinderslam: 'A SECOND SLAM 0.5 S LATER.',
-  hook: 'THE STRIKE HITS TWICE.', chainsweep: 'BOUND FOES ALSO BURN.', toll: 'A SECOND TOLL 0.6 S LATER.',
-  vow: 'ALSO REFILLS YOUR DASHES.', shards: 'EACH SWING THROWS 5 NAILS.', wellspring: 'HEALS 5% A SECOND INSTEAD.',
+  smite: 'A SECOND BLOW LANDS 0.3 S LATER.', undertow: 'HEALS 5% FOR EACH FOE DRAGGED, UP TO 20%.', nailburst: 'A SECOND BURST FOLLOWS 0.3 S LATER.',
+  charge: 'A SECOND STRIKE LANDS 0.4 S LATER.', shackleblow: 'A SECOND BLOW LANDS 0.4 S LATER.', cinderslam: 'A SECOND SLAM LANDS 0.5 S LATER.',
+  hook: 'THE STRIKE HITS TWICE.', chainsweep: 'BOUND FOES ALSO BURN.', toll: 'A SECOND TOLL RINGS 0.6 S LATER.',
+  vow: 'ALSO REFILLS YOUR DASHES.', shards: 'EACH SWING THROWS 5 NAILS.', wellspring: 'HEALS 5% PER SECOND INSTEAD.',
   tolling: 'SHOCKWAVES COME TWICE AS OFTEN.', hammer: 'TWO PILLARS FALL AT ONCE.', deluge: 'THE POOL IS TWICE AS WIDE.',
   hundredblows: 'LASTS 2 S LONGER.', pyre: 'LASTS 2 S LONGER.', verdict: 'BOUND FOES ALSO BURN.',
-  svolley: 'A SECOND VOLLEY 0.3 S LATER.', consecrate: 'HURLS A SECOND SHARD.', shrapnel: 'A SECOND BURST 0.3 S LATER.', flight: 'THE LANDING BURSTS TWICE.', snova: 'THE SHARDS GO OUT TWICE.', emberrelic: 'LASTS 3 S LONGER.',
-  sward: 'ALSO HEALS 15%.', votive: 'CALLS 5 SHARDS INSTEAD.', splinter: 'BOLTS SPLIT IN THREE.', shardchain: 'BOUND FOES ALSO BURN.', shardknell: 'A SECOND KNELL 0.6 S LATER.', mending: 'HEALS 1% A SECOND FOR EVERY SHARD.',
+  svolley: 'A SECOND VOLLEY FIRES 0.3 S LATER.', consecrate: 'HURLS A SECOND SHARD.', shrapnel: 'A SECOND BURST FOLLOWS 0.3 S LATER.', flight: 'THE LANDING BURSTS TWICE.', snova: 'THE SHARDS GO OUT TWICE.', emberrelic: 'LASTS 3 S LONGER.',
+  sward: 'ALSO HEALS 15%.', votive: 'CALLS 5 SHARDS INSTEAD.', splinter: 'BOLTS SPLIT IN THREE.', shardchain: 'BOUND FOES ALSO BURN.', shardknell: 'A SECOND KNELL RINGS 0.6 S LATER.', mending: 'HEALS 1% PER SHARD EACH SECOND.',
   shattered: 'YOUR SHARDS TRIPLE INSTEAD.', cathedral: 'LASTS 2 S LONGER.', hundredshards: 'LASTS 2 S LONGER.', relicpyre: 'LASTS 2 S LONGER.', reliquaryfont: 'THE POOL IS TWICE AS WIDE.', relicjudge: 'TWO PILLARS FALL AT ONCE.',
 };
 const twist = (id) => sb(RITE_BY[id].set, 6);
@@ -7651,10 +7653,10 @@ function runLater() { const L = game.later; if (!L || !L.length) return; const n
 const RUB_KINDS = {
   might: { name: 'MIGHT', v: [15, 25, 35], col: '#ff5a4a', text: (v, pen) => pen ? `+${v}% DAMAGE WHILE THIS RECKONING LASTS.` : `THIS RITE DEALS ${v}% MORE DAMAGE.` },
   swift: { name: 'SWIFTNESS', v: [10, 15, 20], col: '#8ae0ff', text: (v, pen) => pen ? `THIS RECKONING CHARGES ${v}% FASTER.` : `THIS RITE RECHARGES ${v}% FASTER.` },
-  zeal: { name: 'ZEAL', v: [6, 10, 15], col: '#ffd155', text: (v) => `CASTING IT GIVES ${v} ZEAL.` },
-  mercy: { name: 'MERCY', v: [3, 5, 7], col: '#5fdc6c', text: (v) => `CASTING IT HEALS ${v}% OF YOUR HEALTH.` },
-  echo: { name: 'ECHO', v: [10, 15, 20], col: '#d4b0ff', text: (v, pen) => pen ? `CASTING IT GIVES BACK ${v * 2}% OF ITS CHARGE.` : `${v}% CHANCE IT COMES BACK AT ONCE.` },
-  ward: { name: 'WARD', v: [20, 30, 40], col: '#eadfc4', text: (v) => `AFTER CASTING IT, TAKE ${v}% LESS DAMAGE FOR 2 S.` },
+  zeal: { name: 'ZEAL', v: [6, 10, 15], col: '#ffd155', text: (v) => `CASTING THIS RITE GIVES ${v} ZEAL.` },
+  mercy: { name: 'MERCY', v: [3, 5, 7], col: '#5fdc6c', text: (v) => `CASTING THIS RITE HEALS ${v}% OF YOUR HEALTH.` },
+  echo: { name: 'ECHO', v: [10, 15, 20], col: '#d4b0ff', text: (v, pen) => pen ? `CASTING THIS RECKONING GIVES BACK ${v * 2}% OF ITS CHARGE.` : `${v}% CHANCE ITS COOLDOWN RESETS.` },
+  ward: { name: 'WARD', v: [20, 30, 40], col: '#eadfc4', text: (v) => `AFTER CASTING THIS RITE, TAKE ${v}% LESS DAMAGE FOR 2 S.` },
 };
 const RUB_IDS = Object.keys(RUB_KINDS), RUB_SOCKETS = 3;
 // Drop chances: rare. Tier II from Station VIII, tier III from Station XV.
@@ -7732,7 +7734,7 @@ function renderRubPick() {
   layerBreak(); const P = game.rubPick, G0 = rubPickGeo(), cur = rubSocketsOf(P.rite)[P.j], small = { small: true, outline: null };
   ctx.fillStyle = 'rgba(5,8,14,0.6)'; ctx.fillRect(0, 0, W, H); panelFrame(G0.x0, G0.y0, G0.pw, G0.ph, '_silver');
   text(fitText(`RUBRICS FOR ${RITE_BY[P.rite].name}`, G0.pw - 20), G0.x0 + 10, G0.y0 + 9, PAL.gold1, { bold: true });
-  if (!G0.list.length) wrapW('NONE FOUND YET. RUBRICS DROP RARELY FROM ELITES AND WARDENS, FROM STATION II.', G0.pw - 20, true).forEach((l, i) => text(l, G0.x0 + 10, G0.y0 + 36 + i * 10, PAL.stone2, small));
+  if (!G0.list.length) wrapW('NONE FOUND YET. ELITES AND WARDENS RARELY DROP THEM, FROM STATION II ON.', G0.pw - 20, true).forEach((l, i) => text(l, G0.x0 + 10, G0.y0 + 36 + i * 10, PAL.stone2, small));
   G0.list.slice(0, G0.n).forEach((q, i) => { const r = G0.row(i), on = cur && cur.u === q.u, used = Object.entries(rsock()).some(([, S]) => (S || []).includes(q.u));
     rowPlate(r, on, hexRgb(RUB_KINDS[q.k].col), true); rubIcon(q.k, q.t, r.x + 12, r.y + r.h / 2 + 1);
     text(rubName(q), r.x + 24, r.y + 3, RUB_KINDS[q.k].col, { ...small, bold: true }); if (used) text(on ? 'IN THIS SOCKET' : 'SOCKETED', r.x + r.w - 4, r.y + 3, PAL.stone1, { ...small, align: 'right' });
@@ -9732,7 +9734,7 @@ function renderCreate() {
   const L = createLayout(), C0 = game.create || (game.create = { hero: 'saint', name: randName() }), small = { small: true, outline: null };
   frontBack(); ctx.fillStyle = 'rgba(5,8,14,0.55)'; ctx.fillRect(0, 0, W, H);
   { const g = ctx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, 'rgba(46,34,16,0.96)'); g.addColorStop(0.28, 'rgba(7,10,17,0.94)'); g.addColorStop(1, 'rgba(7,10,17,0.94)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, 26); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(0, 26, W, 1); }
-  text('NEW CHARACTER', 12 + SAFE.l, 8, PAL.gold1, { bold: true }); text('A CLASS IS KEPT FOR GOOD', W / 2, 9, PAL.stone2, { ...small, align: 'center' }); backArrow(L.back.x, L.back.y);
+  text('NEW CHARACTER', 12 + SAFE.l, 8, PAL.gold1, { bold: true }); text('YOU CAN\'T CHANGE CLASS LATER', W / 2, 9, PAL.stone2, { ...small, align: 'center' }); backArrow(L.back.x, L.back.y);
   for (const K of L.cards) {
     const on = C0.hero === K.h, rgb = CLASS_RGB[K.h], H0 = HEROES[K.h], x = K.x, y = K.y, w = K.w, h = K.h0;
     ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x + 2, y + 3, w, h);
@@ -9759,7 +9761,7 @@ function frontTap(x, y) {
   if (st === 'chars') {
     const L = charsLayout();
     if (Math.hypot(x - L.back.x, y - L.back.y) < L.back.r + 6) { game.state = 'title'; sfx('tap'); return; }
-    if (L.del && inRect({ x: L.del.x - 2, y: L.del.y - 4, w: L.del.w + 4, h: L.del.h + 8 }, x, y)) { const c = L.sel; CASE_TERMS.add(c.name); ask(`DELETE ${c.name}? EVERYTHING THIS CHARACTER OWNS IS LOST FOR GOOD.`, () => deleteChar(c.id), 'DELETE'); return; }
+    if (L.del && inRect({ x: L.del.x - 2, y: L.del.y - 4, w: L.del.w + 4, h: L.del.h + 8 }, x, y)) { const c = L.sel; CASE_TERMS.add(c.name); ask(`DELETE ${c.name}? EVERYTHING THIS CHARACTER OWNS WILL BE DELETED.`, () => deleteChar(c.id), 'DELETE'); return; }
     for (const S of L.slots) if (inRect(S, x, y)) { if (game.charSel !== S.c.id) { game.charSel = S.c.id; sfx('tap', { vol: 0.5, rate: 1.3 }); } return; }
     if (L.plus && inRect(L.plus, x, y)) { game.create = { hero: 'saint', name: randName() }; game.state = 'create'; sfx('tap'); return; }
     if (L.sel && SAVE.tutorialDone && inRect(L.tut, x, y)) { sfx('tap'); if (L.sel.id === L.R0.active) { SAVE.tutorialDone = false; SAVE.metOdile = false; persist(); Object.assign(tut, { on: true, step: 0, t: 0, flags: { moved: 0 } }); } playChar(L.sel.id); return; }
@@ -9825,7 +9827,7 @@ function renderReceipt(survived = false) {
   if (best) text(fitText(best.name, w - 16, null, false), mid, y + 138, RARITY[best.ri].color, { align: 'center', glow: best.ri >= 3 });
   goldRule(x + 10, y + 107, w - 20, '200,212,232', false);
   if (survived) { line('EVERYTHING KEPT.', 113, PAL.flame1); }
-  else { line(r.martyr ? 'VOW FAILED. ALL FINDS LOST.' : 'HALF YOUR GOLD AND FINDS LOST.', 113, PAL.blood0); }
+  else { line(r.martyr ? 'VOW BROKEN. EVERYTHING YOU FOUND IS LOST.' : 'YOU LOST HALF YOUR GOLD AND FINDS.', 113, PAL.blood0); }
   if (best) line('FINEST FIND', 126, PAL.stone2, 'center', { small: true });
   if (r.pool) text(fitText(r.pool.text, w - 16), mid, y + 154, r.pool.won ? PAL.gold1 : PAL.blood0, { align: 'center', small: true, outline: null });
   if (rc) renderRecap(r.recap, x + w + 8, y, rw, h);
@@ -9853,14 +9855,14 @@ function renderRecap(R, x, y, w, h) {
 // Wounds and you keep one for the rest of the run. Some are plain boons,
 // some wake big miracles that fight on their own.
 const WOUNDS = [
-  { id: 'wrath', name: 'NAIL OF WRATH', r: 0, max: 5, icon: 'xbow', text: (n) => `+15% DAMAGE, ${n * 15}% IN ALL.` },
+  { id: 'wrath', name: 'NAIL OF WRATH', r: 0, max: 5, icon: 'xbow', text: (n) => `+15% DAMAGE (${n * 15}% TOTAL).` },
   { id: 'quick', name: 'QUICKENED FAITH', r: 0, max: 5, icon: 'xbow', text: () => isMelee() ? 'THE MACE SWINGS 15% FASTER.' : 'THE CROSSBOW FIRES 15% FASTER.' },
   { id: 'split', name: 'SPLIT NAIL', r: 1, max: 3, icon: 'xbow', text: (n) => isMelee() ? 'THE MACE SWINGS WIDER AND HITS 10% HARDER.' : `FIRES ${n + 1} NAILS IN A SPREAD.` },
   { id: 'pierce', name: 'PIERCING FAITH', r: 0, max: 3, icon: 'xbow', text: () => 'NAILS PIERCE ONE MORE FOE.' },
   { id: 'vigil', name: "VIGIL'S BLOOD", r: 0, max: 5, icon: 'globe', text: () => '+10% MAX HP, AND HEAL IT.' },
   { id: 'swift', name: 'SWIFT SANDALS', r: 0, max: 3, icon: 'greaves', text: () => '+10% MOVE SPEED.' },
   { id: 'ember', name: 'EMBER CENSER', r: 0, max: 3, icon: 'thurible', text: () => 'THE THURIBLE HITS 50% HARDER.' },
-  { id: 'censer2', name: 'SECOND CENSER', r: 1, max: 2, icon: 'thurible', text: () => 'ONE MORE THURIBLE SWINGS ROUND YOU.' },
+  { id: 'censer2', name: 'SECOND CENSER', r: 1, max: 2, icon: 'thurible', text: () => 'ONE MORE THURIBLE SWINGS AROUND YOU.' },
   { id: 'flask', name: 'DEEP VIAL', rite: 'water', r: 0, max: 3, icon: 'flask', text: () => 'HOLY WATER POOLS 30% WIDER AND RETURNS SOONER.' },
   { id: 'chains', name: 'LONGER CHAINS', rite: 'chain', r: 0, max: 3, icon: 'link', text: () => 'THE CHAIN BINDS 2 MORE AND HITS 40% HARDER.' },
   { id: 'luck', name: "MARTYR'S LUCK", r: 0, max: 5, icon: 'seal', text: () => '+8% CRIT CHANCE.' },
@@ -9912,9 +9914,9 @@ const WOUNDS = [
   { id: 'ritePyre', name: 'LONGER MARCH', rite: 'pyre', r: 1, max: 3, icon: 'rite:pyre', text: () => 'PYRE MARCH LASTS 1 S LONGER.' },
   { id: 'riteVerdict', name: 'HEAVIER VERDICT', rite: 'verdict', r: 1, max: 3, icon: 'rite:verdict', text: () => 'THE IRON VERDICT BINDS 0.5 S LONGER.' },
   // The Anchoress's (round 71).
-  { id: 'riteSvolley', name: 'FULLER VOLLEY', rite: 'svolley', r: 0, max: 3, icon: 'rite:svolley', text: () => 'SHARD VOLLEY FIRES 1 MORE BOLT A SHARD.' },
+  { id: 'riteSvolley', name: 'FULLER VOLLEY', rite: 'svolley', r: 0, max: 3, icon: 'rite:svolley', text: () => 'SHARD VOLLEY FIRES 1 MORE BOLT PER SHARD.' },
   { id: 'riteConsecrate', name: 'DEEPER BLESSING', rite: 'consecrate', r: 0, max: 3, icon: 'rite:consecrate', text: () => 'CONSECRATED SHARD BREAKS INTO 4 MORE SPLINTERS.' },
-  { id: 'riteShrapnel', name: 'SHARPER SHRAPNEL', rite: 'shrapnel', r: 0, max: 3, icon: 'rite:shrapnel', text: () => 'SHRAPNEL THROWS 2 MORE SPLINTERS A SHARD.' },
+  { id: 'riteShrapnel', name: 'SHARPER SHRAPNEL', rite: 'shrapnel', r: 0, max: 3, icon: 'rite:shrapnel', text: () => 'SHRAPNEL THROWS 2 MORE SPLINTERS PER SHARD.' },
   { id: 'riteFlight', name: 'LONGER FLIGHT', rite: 'flight', r: 0, max: 3, icon: 'rite:flight', text: () => "THE FLIGHT'S LANDING HITS 40% HARDER." },
   { id: 'riteSnova', name: 'WIDER NOVA', rite: 'snova', r: 0, max: 3, icon: 'rite:snova', text: () => 'RELIQUARY NOVA REACHES 25% FARTHER.' },
   { id: 'riteEmberrelic', name: 'HOTTER RELIC', rite: 'emberrelic', r: 1, max: 3, icon: 'rite:emberrelic', text: () => 'EMBER RELIC LASTS 2 S LONGER.' },
@@ -9922,7 +9924,7 @@ const WOUNDS = [
   { id: 'riteVotive', name: 'MORE VOTIVES', rite: 'votive', r: 1, max: 3, icon: 'rite:votive', text: () => 'VOTIVE SHARDS CALLS 1 MORE SHARD.' },
   { id: 'riteSplinter', name: 'LONGER CROWN', rite: 'splinter', r: 0, max: 3, icon: 'rite:splinter', text: () => 'SPLINTER CROWN LASTS 2 S LONGER.' },
   { id: 'riteShardchain', name: 'HEAVIER CHAINS', rite: 'shardchain', r: 0, max: 3, icon: 'rite:shardchain', text: () => 'SHARD CHAINS BIND 0.5 S LONGER.' },
-  { id: 'riteShardknell', name: 'DEEPER KNELL', rite: 'shardknell', r: 0, max: 3, icon: 'rite:shardknell', text: () => 'KNELL OF SHARDS GIVES 1 MORE ZEAL A SHARD.' },
+  { id: 'riteShardknell', name: 'DEEPER KNELL', rite: 'shardknell', r: 0, max: 3, icon: 'rite:shardknell', text: () => 'KNELL OF SHARDS GIVES 1 MORE ZEAL PER SHARD.' },
   { id: 'riteMending', name: 'KINDER RELIC', rite: 'mending', r: 1, max: 3, icon: 'rite:mending', text: () => 'MENDING RELIC HEALS FOR 1 S LONGER.' },
   { id: 'riteShattered', name: 'WIDER HEAVEN', rite: 'shattered', r: 1, max: 3, icon: 'rite:shattered', text: () => 'THE SHATTERED HEAVEN LASTS 1 S LONGER.' },
   { id: 'riteCathedral', name: 'GREATER NAVE', rite: 'cathedral', r: 1, max: 3, icon: 'rite:cathedral', text: () => "THE CATHEDRAL'S SHARDS CUT 30% HARDER." },
@@ -9930,7 +9932,7 @@ const WOUNDS = [
   { id: 'riteRelicpyre', name: 'LONGER PYRE', rite: 'relicpyre', r: 1, max: 3, icon: 'rite:relicpyre', text: () => 'THE RELIC PYRE LASTS 1 S LONGER.' },
   { id: 'riteReliquaryfont', name: 'FULLER RELIQUARY', rite: 'reliquaryfont', r: 1, max: 3, icon: 'rite:reliquaryfont', text: () => 'THE BRIMMING RELIQUARY IS 25% WIDER.' },
   { id: 'riteRelicjudge', name: 'SWIFTER JUDGEMENT', rite: 'relicjudge', r: 1, max: 3, icon: 'rite:relicjudge', text: () => 'PILLARS FALL 20% FASTER.' },
-  { id: 'choir', name: 'WRATH OF THE CHOIR', r: 2, max: 2, icon: 'choir', text: (n) => `EVERY ${14 - n * 3} KILLS A SIGIL BURSTS AROUND YOU.` },
+  { id: 'choir', name: 'WRATH OF THE CHOIR', r: 2, max: 2, icon: 'choir', text: (n) => `EVERY ${14 - n * 3} KILLS, A SIGIL BURSTS AROUND YOU.` },
   // Round 80: six more for each class (stats are added in gearStats, the rest at their hooks).
   { id: 'sDeadeye', name: 'DEADEYE', hero: 'saint', r: 0, max: 3, icon: 'seal', text: () => 'CRITS DEAL 25% MORE.' },
   { id: 'sHunter', name: "HUNTER'S MARK", hero: 'saint', r: 0, max: 3, icon: 'xbow', text: () => '+20% DAMAGE TO ELITES AND WARDENS.' },
@@ -9952,7 +9954,7 @@ const WOUNDS = [
   { id: 'aBurst', name: 'SHATTERPOINT', hero: 'anchoress', r: 2, max: 2, icon: 'arc', text: (n) => `KILLS BURST INTO ${2 + n * 2} SPLINTERS THAT FLY AT FOES NEARBY.` },
   // Mythic Wounds (round 80): never offered on a card. Sacrifice 7 ranks on the level-up screen for one at random. One rank each.
   { id: 'xHalo', mythic: true, name: 'THE UNBROKEN HALO', r: 3, max: 1, icon: 'myth:0', text: () => '+40% DAMAGE AND +25% MAX HP.' },
-  { id: 'xFury', mythic: true, name: "MARTYR'S FURY", r: 3, max: 1, icon: 'myth:1', text: () => 'BELOW HALF HEALTH YOUR DAMAGE IS DOUBLED.' },
+  { id: 'xFury', mythic: true, name: "MARTYR'S FURY", r: 3, max: 1, icon: 'myth:1', text: () => 'BELOW HALF HEALTH, YOUR DAMAGE IS DOUBLED.' },
   { id: 'xZeal', mythic: true, name: 'ENDLESS ZEAL', r: 3, max: 1, icon: 'myth:2', text: () => `YOUR RECKONING CHARGES THREE TIMES AS FAST. RITES RECHARGE 30% FASTER. ${isMelee() ? '+45% DAMAGE.' : isAnch() ? '+20% DAMAGE AND +2 RELIQUARY SHARDS.' : '+20% DAMAGE.'}` },
   { id: 'xSplit', mythic: true, hero: 'saint', name: 'THE NAILSTORM HEART', r: 3, max: 1, icon: 'myth:3', text: () => 'THE CROSSBOW FIRES 2 MORE BOLTS IN A SPREAD.' },
   { id: 'xCrit', mythic: true, hero: 'saint', name: 'EYE OF HEAVEN', r: 3, max: 1, icon: 'myth:4', text: () => '+20% CRIT CHANCE. CRITS DEAL TRIPLE.' },
@@ -10090,7 +10092,7 @@ function rerollWounds() {
 }
 // Round 80: give up 7 ranks of the Wounds you hold, at random, for one mythic Wound. It takes this level's pick.
 function askSacrifice() {
-  ask(`GIVE UP ${SACRIFICE_N} RANKS OF YOUR WOUNDS, CHOSEN AT RANDOM, FOR A RANDOM MYTHIC WOUND? THIS USES THE LEVEL.`, sacrificeWounds, 'SACRIFICE');
+  ask(`GIVE UP ${SACRIFICE_N} RANKS OF YOUR WOUNDS, CHOSEN AT RANDOM, FOR A RANDOM MYTHIC WOUND? THIS USES YOUR LEVEL-UP CHOICE.`, sacrificeWounds, 'SACRIFICE');
 }
 function sacrificeWounds() {
   const R = game.run; if (!game.stig || !canSacrifice()) return;
@@ -10151,7 +10153,7 @@ function renderStigmata() {
   if (S.sac) { renderSacrifice(); return; }
   ctx.fillStyle = `rgba(6,10,18,${0.92 * k})`; ctx.fillRect(0, 0, W, H); // dark enough that HUD text under it cannot be read
   // Round 67: cards in the menus' style: navy glass, lit from the top in the rarity's colour, the icon in a hex.
-  if (S.reveal) { text('MYTHIC WOUND', W / 2, 16, WOUND_RARITY[3].col, { align: 'center', sc: 2, glow: true }); goldRule(W / 2 - 80, 39, 160, '255,106,138', true); text('TAP TO GO ON', W / 2, 43, PAL.cloth1, { align: 'center', small: true }); }
+  if (S.reveal) { text('MYTHIC WOUND', W / 2, 16, WOUND_RARITY[3].col, { align: 'center', sc: 2, glow: true }); goldRule(W / 2 - 80, 39, 160, '255,106,138', true); text('TAP TO CONTINUE', W / 2, 43, PAL.cloth1, { align: 'center', small: true }); }
   else {
     text(`LEVEL ${game.run.level}`, W / 2, 16, PAL.gold0, { align: 'center', sc: 2, glow: true });
     goldRule(W / 2 - 80, 39, 160, '255,209,85', true);
@@ -10580,7 +10582,7 @@ function bagItemRows(gold) {
   const C = chrisms();
   return [
     [(x, y) => sprC('loot', 'vkey', 0, x, y + 4), 'BLOODROSE KEYS', SAVE.vkeys || 0, `OPEN A VIGIL. WARDENS OF STATION ${ROMAN[VKEY_FROM - 1]}+ DROP THEM.`, PAL.rose1, 'vigil'],
-    [(x, y) => SPR.loot.anims.emberstone && sprC('loot', 'emberstone', 0, x, y), 'EMBERSTONES', embers(), 'REFORGE A STAT AT THE FORGE. WARDENS DROP THEM.', PAL.ember1, 'forge'],
+    [(x, y) => SPR.loot.anims.emberstone && sprC('loot', 'emberstone', 0, x, y), 'EMBERSTONES', embers(), 'USED TO REFORGE STATS AT THE FORGE. WARDENS DROP THEM.', PAL.ember1, 'forge'],
     ...CHRISM.map((K, i) => [(x, y) => sprC('loot', 'chrism', i, x, y), K.name, C[i], `+${Math.round(K.add * 100)}% TO A BURN AT THE ASHEN ALTAR.`, RARITY[i].color, 'altar']),
     [(x, y) => sprC('loot', 'coin', 0, x, y), 'GOLD', gold, 'BUY, TEMPER, BET AND REMOVE ENCHANTS.', PAL.gold1, 'stall'],
     [(x, y) => badge('relic', x, y), 'TALENT POINTS', talPts(), 'SPEND THEM AT THE CANONRY.', PAL.cloth0, 'canonry'],
@@ -10609,7 +10611,7 @@ function renderBagItems(L, gold) {
     text(name, x + 28, y + 4, n ? col : PAL.stone2); text(String(n), x + cw - 6, y + 4, n ? PAL.white : PAL.stone2, { align: 'right' });
     text(fitText(what, cw - 34, what.split('. ')[0] + '.'), x + 28, y + 16, PAL.stone1, small);
   });
-  text(game.scene === 'town' ? 'TAP A ROW TO GO WHERE IT IS USED.' : 'IN VAEL, TAP A ROW TO GO WHERE IT IS USED.', L.x0 + 12, L.y0 + L.ph - 18, PAL.stone2, small);
+  text(game.scene === 'town' ? 'TAP A ROW TO GO WHERE IT\'S USED.' : 'IN VAEL, TAP A ROW TO GO WHERE IT\'S USED.', L.x0 + 12, L.y0 + L.ph - 18, PAL.stone2, small);
 }
 // The INGREDIENTS tab: the three ingredients of every enchant and how many you hold.
 function renderBagIngredients(L) {
@@ -10675,15 +10677,15 @@ function renderInventory() {
     const i = r * B.cols + c, sel = game.inv.sel && game.inv.sel.from === 'bag' && game.inv.sel.i === i;
     itemSlot({ x: B.x + c * (B.cell + 3), y: B.y + r * (B.cell + 3), w: B.cell, h: B.cell }, SAVE.bag[i], { sel });
   }
-  text('TAP TWICE TO WEAR', B.x, B.y + B.rows * (B.cell + 3) + 4, PAL.stone2, { small: true, outline: null });
+  text('DOUBLE-TAP TO WEAR', B.x, B.y + B.rows * (B.cell + 3) + 4, PAL.stone2, { small: true, outline: null });
   const ups = SLOT_ORDER.filter((sl) => SAVE.bag.some((it) => it.slot === sl && itemScore(it) > itemScore(SAVE.equip[sl]) + 0.2)).length;
   invButton(L.auto, ups ? `AUTO EQUIP ${ups}` : 'AUTO EQUIP', PAL.gold3, SAVE.bag.length > 0);
-  invButton(L.sell, 'SELL MANY', PAL.crimson3, SAVE.bag.length > 0);
+  invButton(L.sell, 'BULK SELL', PAL.crimson3, SAVE.bag.length > 0);
   }
   if (game.inv.selling) {
     const C = L.card;
     inset(C.x, C.y, C.w, C.h, '232,56,63');
-    text('SELL WHICH?', C.x + 6, C.y + 8, PAL.gold1);
+    text('SELL WHICH ITEMS?', C.x + 6, C.y + 8, PAL.gold1);
     text('WORN PIECES ARE NEVER SOLD.', C.x + 6, C.y + 22, PAL.stone1, { small: true, outline: null });
     SELL_RULES.forEach((rule, i) => { const r = L.opts[i], pv = sellPreview(rule); invButton(r, rule.label, PAL.crimson3, pv.n > 0); text(`${pv.n} ITEMS  +${pv.gold} GOLD`, r.x + r.w / 2, r.y + r.h + 1, pv.n ? PAL.gold1 : PAL.stone2, { align: 'center', small: true, outline: null }); });
     text('TAP ELSEWHERE TO CANCEL', C.x + 6, C.y + C.h - 12, PAL.stone2, { small: true, outline: null });

@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 94 (build 94, on `master`). Read
+Last updated 2026-11-12, after round 95 (build 95, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-94 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-95 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -368,6 +368,20 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 95:** the owner asked for a wording pass on the whole game
+  (examples: "chance it comes back at once" should be "chance its cooldown
+  resets", "casting it" should be "casting this rite", set bonus sentences
+  started lower case, SELL MANY should be BULK SELL, the "211 ranks to pick
+  from" line should go). **Case:** `caseOf` now starts a sentence at its
+  first word and again after `. ! ? :`; a leading number counts as the
+  first word. **Text:** about 1,330 strings read; around 140 reworded
+  (enchants, talents, Rubrics, set bonuses and their rite lines, twists,
+  forge, altar, settings, Vigil and descent panels, yard, death screen);
+  A SECOND became PER SECOND throughout; gear's RITE COOLDOWN became
+  COOLDOWN REDUCTION; the talent rail's ranks line is gone (POINTS EARNED
+  stays). Character dialogue kept its voice. Watch: the old-save stash map
+  in `gearInit` uses old labels as keys (left as is).
 
 - **Round 94:** the owner asked for a balance pass on enchants, affixes and
   the forge ("+3 shards a piece?") and for rite support skills found as rare
