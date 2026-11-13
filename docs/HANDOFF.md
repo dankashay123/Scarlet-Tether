@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-13, after round 98 (build 98, on `master`). Read
+Last updated 2026-11-13, after round 99 (build 99, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-98 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-99 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -265,14 +265,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Rubrics follow-ups (round 94).** Drop rates from play (the owner wants
-  them rare). Might now raises a rite's burns (round 98); other shared
-  statuses (slows, binds that hurt) are still not counted.
-- **Stat tips (round 98).** The forge's REFORGE stat rows have none (a tap
-  picks the stat); a long press could open the tip there.
-- **Tutorial (round 98).** The second rite's step only passes when the rite
-  lands (Chain, Hook need a foe in reach), with a 12 s fallback; a short
-  "no foe in reach" toast on a failed cast would help new players.
+- **Rubrics (round 99).** Every rite's damage now carries its rite (a probe
+  that logged untagged hits while each rite of all three classes was cast
+  in a crowd came back empty). Drops: about 0.28 a run at Station VI and
+  0.33 at XII (one per 3 runs: the Warden's 20%, plus elites and rares); a
+  tier III of one chosen kind for one rite is about 550 runs. Left as is
+  (the owner wants them rare); ask whether that feels right.
+- **Hold tips (round 99).** `HOLD_TIPS` is used only by the REFORGE stat
+  rows; nothing on screen says a hold works there.
 
 - **Mythic Wounds.** All three classes are measured with full sets
   (rounds 82-84). At Station XII the Mendicant's and Anchoress's sit at
@@ -373,6 +373,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 99:** the owner picked all five. **NO FOE IN REACH:** a rite
+  whose cast left its cooldown at zero toasts once per 1.5 s (`noFoe`);
+  `round99.cjs` casts every m1 and m2 rite of each class in a crowd and
+  checks none of them toasts. **Might coverage:** a temporary probe in
+  `hurtEnemy` found untagged rite damage in step trails (Ember Step,
+  Charge, Flight: `p.trailRite`), pillars and lashes made during a
+  Reckoning (now tagged with `p.penRite`) and the vial's splash (the
+  flasks loop sets `HIT_RITE`); all fixed. **Rubric drops** measured (see
+  Next steps). **Hold tips:** `HOLD_TIPS` (cleared each frame), `game.hold`
+  from `pointerDown`, cancelled by moving 6 px or lifting; after `HOLD_T`
+  (0.45 s) the tip opens. **Codex:** monster and Warden cards list their
+  attacks (`ATK_NAME`, `atkLines`) with one tip from `HURT_TIP`
+  (`ATK_TIP`); Warden cards say how to earn the trophy halo and draw its
+  stand at the card's foot (twice the size when there is room). Test:
+  `round99.cjs`.
 
 - **Round 98:** the owner picked all five. **Stat tips:** every window
   pushes its stat lines into `TIPS` (cleared each frame; the item popup
