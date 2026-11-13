@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-13, after round 101 (build 101, on `master`). Read
+Last updated 2026-11-13, after round 102 (build 102, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-101 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-102 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -384,6 +384,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 102:** the owner asked for class enchants and a class talent tree
+  fed by rare drops. **Class enchants:** six new `ENCHANTS` entries with
+  `hero` (Saint: Twin String, Still Water; Mendicant: Weighted Head, Long
+  Haft; Anchoress: Spare Relic, Prism); `myEnch()` lists the 18 a
+  character can use (Enchanter, bag tab now 5 columns in row plates,
+  Warden ingredient drops, dev picker). Icons: six more `INGR` rows.
+  **The Calling:** `CALLING[hero]` from `mkCalling` (26 nodes: 18 rite
+  nodes `c_<rite>` with +6% damage and 3% faster recharge a rank, four
+  plain nodes, four legendary ends); shown as the fourth Canonry tab
+  (`talTrees()`, `ptsFor(ti)`). Points are Testaments (`SAVE.testaments`,
+  cap `TEST_MAX` 45 against 78 ranks; `maybeTestament` at 8% from Wardens
+  of Station V+, 20% from a Vigil's payout; ground item `testament`). The
+  general trees and their 119 points are untouched (`TALENT_TREES` still
+  holds only those three). Not measured for balance yet: a full rite lane
+  is +18% to one rite. Test: `round102.cjs`.
 
 - **Round 101:** the owner picked 3 (remove), 4, 5 and asked for every set
   to be as equal as possible. **Leftovers removed:** `execute.mp3`, its

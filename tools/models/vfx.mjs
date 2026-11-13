@@ -709,6 +709,8 @@ const INGR = [
   ['rose', 'vial', 'wax', 'thread'], ['bone', 'bone', 'stone', 'dust'], ['moss', 'bone', 'thread', 'vial'], ['crimson', 'vial', 'wax', 'bone'],
   ['wood', 'bone', 'dust', 'thread'], ['sea', 'vial', 'stone', 'dust'], ['gold', 'wax', 'stone', 'bone'], ['flame', 'wax', 'vial', 'dust'],
   ['violet', 'thread', 'dust', 'stone'], ['teal', 'thread', 'bone', 'vial'], ['sand', 'dust', 'wax', 'stone'], ['slate', 'thread', 'vial', 'bone'],
+  // Round 102, the class enchants: Twin String, Still Water (Saint), Weighted Head, Long Haft (Mendicant), Spare Relic, Prism (Anchoress).
+  ['gold', 'thread', 'bone', 'wax'], ['sea', 'dust', 'stone', 'vial'], ['iron', 'dust', 'stone', 'bone'], ['wood', 'bone', 'wax', 'thread'], ['violet', 'dust', 'bone', 'stone'], ['rose', 'stone', 'thread', 'vial'],
 ];
 
 // Round 81: the nine mythic Wounds' emblems (24 px, drawn at 2x on the level-up card), in
