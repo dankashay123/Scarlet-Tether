@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '104';
+const BUILD = '105';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '105': ['NEW BAG TAB: PETS. EQUIP, SWAP AND CHOOSE YOUR FOLLOWER WITHOUT OPENING THE SHOP.', 'PETS ARE DRAWN HALF AS BIG AGAIN.', 'SETS THAT TOOK THE MOST DAMAGE AT FOUR PIECES NOW TAKE LESS. THEIR CARDS SHOW BY HOW MUCH.'],
   '104': ['SETS WORN AS FOUR PIECES PLUS TWO OF ANOTHER SET ARE NOW CLOSE IN STRENGTH. THE SHATTERED RELIQUARY GAINS THE FOUR-PIECE DAMAGE BONUS, AND THE CRACKED BELL RINGS EVERY 4TH BLOW AT FOUR PIECES.'],
   '103': ['NEW: PETS. TEN BATTLE PETS FIGHT OR GUARD YOU, AND TEN DROP PETS EACH RAISE ONE KIND OF DROP. EQUIP TWO OF EACH; ONE FOLLOWS YOU.', 'NEW: THE SHOP, ON THE PAUSE SCREEN. PETS COST INDULGENCES, AND THE PACKS OF INDULGENCES ARE FREE FOR NOW.', 'THE TITHE CAT, A DROP PET, FINDS INDULGENCES ON FOES.'],
   '102': ['NEW: THE CALLING, A FOURTH TALENT TREE THAT BELONGS TO YOUR CLASS. ITS POINTS ARE TESTAMENTS, RARE DROPS FROM WARDENS OF STATION V AND DEEPER AND FROM VIGILS.', 'EACH CLASS HAS TWO ENCHANTS OF ITS OWN AT THE ENCHANTER.'],
@@ -1541,7 +1542,9 @@ const SETK = { choirHp: 3, choirHp6: 3, choirR: 110, fontHp: 8, fontHp6: 10, fon
   // Lantern and Nails through their own numbers, so no card shows a multiplier under 1), and the sets that
   // took the most damage given a damage-taken multiplier at six pieces (guard6), so no set is far safer or deadlier than another.
   six: { font: 1.5, choir: 1.44, iron: 2.14, road: 1.85, alms: 1.76, bell: 1.54, gaol: 1.3, glass: 1.67, thorn: 1.5, psalter: 1.79 },
-  guard6: { font: 0.75, confessor: 0.85, choir: 0.5, iron: 0.6, alms: 0.85, glass: 0.55, psalter: 0.4, lantern: 0.62 } };
+  guard6: { font: 0.75, confessor: 0.85, choir: 0.5, iron: 0.6, alms: 0.85, glass: 0.55, psalter: 0.4, lantern: 0.62 },
+  // Round 105: the same at four pieces, so 4+2 mixes take about as much damage as each other (setbal.cjs at Station XII).
+  guard4: { choir: 0.55, confessor: 0.75, font: 0.8, iron: 0.7, alms: 0.7, gaol: 0.88, bell: 0.7, reliquary: 0.72, glass: 0.6, psalter: 0.42, lantern: 0.45 } };
 const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 2 };
 // Gear per kill, before the Station's multiplier. Kept low: progress should take farming.
 const DROP = { kill: 0.003, rare: 0.1, elite: 0.5 }; // hp: the average MON Warden
@@ -3956,7 +3959,7 @@ function riteSocket(x, y, r, icon, scale, ring, alpha = 1) {
 // Round 67: the character hub. The bag's three tabs, the rites, the talents
 // and the Censer share one row of tabs in the title bar; each is its own state
 // (inv, rites, canonry, censer). game.hubBack is where the back arrow goes.
-const HUB = [['gear', 'GEAR'], ['items', 'ITEMS'], ['ingr', 'INGREDIENTS'], ['rubrics', 'RUBRICS'], ['rites', 'RITES'], ['talents', 'TALENTS'], ['censer', 'CENSER']];
+const HUB = [['gear', 'GEAR'], ['items', 'ITEMS'], ['ingr', 'INGREDIENTS'], ['rubrics', 'RUBRICS'], ['pets', 'PETS'], ['rites', 'RITES'], ['talents', 'TALENTS'], ['censer', 'CENSER']];
 const HUB_STATES = ['inv', 'rites', 'canonry', 'censer'];
 const hubOn = () => game.state === 'inv' ? HUB[(game.inv && game.inv.tab) || 0][0] : { rites: 'rites', canonry: 'talents', censer: 'censer' }[game.state];
 function hubTabs(L) { let x = L.x0 + 6; return HUB.map(([id, t]) => { const w = textW(t, 1, true) + 14, r = { id, t, x, y: L.y0 + 5, w, h: 17 }; x += w + 3; return r; }); }
@@ -3975,7 +3978,7 @@ function hubClose() {
   persist(); game.state = game.hubBack && !HUB_STATES.includes(game.hubBack) ? game.hubBack : 'play'; game.hubBack = null; game.inv = null; sfx('tap');
 }
 function hubGo(id) {
-  const i = ['gear', 'items', 'ingr', 'rubrics'].indexOf(id), from = HUB.findIndex((h) => h[0] === hubOn());
+  const i = ['gear', 'items', 'ingr', 'rubrics', 'pets'].indexOf(id), from = HUB.findIndex((h) => h[0] === hubOn());
   if (i >= 0) { if (game.state !== 'inv' || !game.inv) { game.state = 'inv'; game.inv = { sel: null, tab: i }; } else { game.inv.tab = i; game.inv.sel = null; game.inv.selling = false; } }
   else if (id === 'rites') { game.state = 'rites'; game.riteFocus = game.riteFocus || 'm1'; }
   else if (id === 'talents') { game.state = 'canonry'; game.talTab = game.talTab || 0; }
@@ -6218,7 +6221,7 @@ function setGuard() {
   if ((player.wardT || 0) > game.time) k *= 0.4;
   k *= 1 - ts('warding') / 100; if (ts('steadfast') && player.hp < player.maxHp * 0.35) k *= 1 - ts('steadfast') / 100; if ((player.aegisT || 0) > game.time) k *= 0.5;
   k *= G.lessK || 1; if (pas('hide')) k *= 0.85; if ((player.rubWardT || 0) > game.time) k *= 1 - (player.rubWardK || 0) / 100; // a Rubric of Ward
-  for (const id in SETK.guard6) if (sb(id, 6)) k *= SETK.guard6[id]; // round 101: six pieces of the sets that took the most damage take less
+  for (const id of ALL_SETS) { const g6 = SETK.guard6[id], g4 = SETK.guard4[id]; if (sb(id, 6)) k *= g6 ?? g4 ?? 1; else if (sb(id, 4)) k *= g4 ?? 1; } // rounds 101 and 105: the sets that took the most damage take less (four pieces, then six)
   if (pet('cherub')) k *= 0.92;
   if (tal('c_mbulwark')) k *= 0.88; if (tal('c_award') && player && (player.m1cd > 0 || player.m2cd > 0)) k *= 0.88; // the Callings
   if (sb('rags', 2)) k *= 0.9; if (sb('alms', 6)) k *= 1 - Math.min(SETK.almsMax, player.alms || 0) * 0.005; if (pas('laststand') && player.hp < player.maxHp * 0.3) k *= 0.7; if (pas('ironvigil') && (player.ivT || 0) > game.time) k *= 0.7;
@@ -6955,7 +6958,8 @@ const ALL_SETS = Object.values(HERO_SETS).flat();
 // Round 101: the balance numbers are part of each six-piece line, so the cards say what the pieces do.
 for (const id of ALL_SETS) { const b6 = VSETS[id].bonus.find((q) => q[0] === 6), k = SETK.six[id], g = SETK.guard6[id]; if (!b6) continue;
   if (k && k !== 1 && !b6[1].includes('ALL YOUR DAMAGE X')) b6[1] = `ALL YOUR DAMAGE X${k}. ${b6[1]}`;
-  if (g) b6[1] = `${b6[1]} TAKE ${Math.round((1 - g) * 100)}% LESS DAMAGE.`; }
+  if (g) b6[1] = `${b6[1]} TAKE ${Math.round((1 - g) * 100)}% LESS DAMAGE.`;
+  const b4 = VSETS[id].bonus.find((q) => q[0] === 4), g4 = SETK.guard4[id]; if (b4 && g4) b4[1] = `${b4[1]} TAKE ${Math.round((1 - g4) * 100)}% LESS DAMAGE.`; }
 const mySets = () => HERO_SETS[heroId()];
 const starterSet = () => STARTER[heroId()];
 const giftSets = () => mySets();
@@ -7909,10 +7913,50 @@ function updatePets(dt) {
   if (pet('bellcrow') && every('crow', 8)) { const fs = nearestFoes(p.x, p.y, 12, 100).filter((e) => !e.boss); if (fs.length) { for (const e of fs) e.bound = Math.max(e.bound || 0, 1); rings.push({ x: p.x, y: p.y - 10, t: 0, max: 0.5, r: 100, color: '255,209,85', flat: true }); } else T0.crow = 8; }
   if (pet('lamb') && every('lamb', 4)) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01);
 }
+// A pet as a list icon: its 36 px sprite at two thirds, feet a little under the ring's centre.
+function petIcon(id, x, y, fr = 0, k = 0.67) { ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(k, k); spr('pets', id, fr, 0, 0); ctx.restore(); }
 function drawPet() { const id = petShown(); if (!id || !PETF.on || !SPR.pets || !SPR.pets.anims[id]) return; spr('pets', id, PET_BY[id].fly || PETF.moving ? Math.floor(PETF.t * 6) % 4 : 0, PETF.x, PETF.y, { flip: PETF.face < 0 }); }
 // The Tithe Cat: a foe may drop an Indulgence.
 function maybeIndul(e, ch) { if (!pet('tithecat') || game.yard || e.minion || e.illusion || rng() >= ch) return; drops.push({ kind: 'indul', x: e.x, y: e.y, z: 8, vx: rand(-40, 40), vy: rand(-20, 30), vz: rand(90, 140), t: 0 }); }
 function pickIndul() { SAVE.indul = indul() + 1; persist(); toast('INDULGENCE FOUND', 2.4); game.toastColor = '#d4b0ff'; sfx('legend', { gap: 0.2, vol: 0.7 }); }
+// Round 105: the bag's PETS tab. The pets this character owns (battle first), each with EQUIP and FOLLOW, so the shop
+// is only for buying. Pages like the Rubrics tab.
+function petEquip(P) {
+  const E = petEq(), k0 = E[P.kind].indexOf(P.id);
+  if (k0 >= 0) { E[P.kind][k0] = null; if (E.show === P.id) E.show = null; }
+  else { const k = E[P.kind].indexOf(null); if (k < 0) { toast(`BOTH ${P.kind === 'battle' ? 'BATTLE' : 'DROP'} SLOTS ARE FULL. UNEQUIP ONE FIRST.`, 2.2); return false; } E[P.kind][k] = P.id; E.show = E.show || P.id; }
+  PETF.on = false; applyGear(); persist(); sfx('learn', { gap: 0.15, vol: 0.5 }); return true;
+}
+function petBagGeo(L) {
+  const x0 = L.x0 + 12, top = L.y0 + 48, w = L.pw - 24, bot = L.y0 + L.ph - 32, rh = 40, per = Math.max(1, Math.floor((bot - top) / rh)), own = petsOwned();
+  const list = [...myPets('battle'), ...myPets('drop')].filter((P) => own.includes(P.id)), pages = Math.max(1, Math.ceil(list.length / per)), I = game.inv; I.ppage = Math.max(0, Math.min(pages - 1, I.ppage || 0));
+  const cell = (j) => ({ x: x0, y: top + j * rh, w, h: rh - 3 });
+  return { list, per, pages, cell, eq: (j) => { const c = cell(j); return { x: c.x + c.w - 66, y: c.y + 3, w: 62, h: 15 }; }, fol: (j) => { const c = cell(j); return { x: c.x + c.w - 66, y: c.y + 20, w: 62, h: 15 }; },
+    shop: { x: L.x0 + L.pw - 12 - 90, y: L.y0 + L.ph - 26, w: 90, h: 18 }, prev: { x: x0, y: L.y0 + L.ph - 26, w: 26, h: 18 }, next: { x: x0 + 60, y: L.y0 + L.ph - 26, w: 26, h: 18 } };
+}
+function renderBagPets(L) {
+  const small = { small: true, outline: null }, G0 = petBagGeo(L), I = game.inv, E = petEq(), shown = petShown(), n = (k) => E[k].filter(Boolean).length;
+  text(`Battle slots in use: ${n('battle')} of ${PET_SLOTS}. Drop slots in use: ${n('drop')} of ${PET_SLOTS}.`, L.x0 + 12, L.y0 + 34, PAL.stone1, small);
+  if (!G0.list.length) wrapW('YOU OWN NO PETS YET. THE SHOP SELLS THEM FOR INDULGENCES.', L.pw - 24, true).forEach((l, i) => text(l, L.x0 + 12, L.y0 + 52 + i * 11, PAL.stone2, small));
+  G0.list.slice(I.ppage * G0.per, (I.ppage + 1) * G0.per).forEach((P, j) => {
+    const c = G0.cell(j), eq = E[P.kind].includes(P.id), tw = c.w - 34 - 74;
+    rowPlate(c, eq, STORE_RGB, eq); storeRing(c.x + 17, c.y + c.h / 2, eq ? PAL.gold1 : `rgb(${STORE_RGB})`, 12); petIcon(P.id, c.x + 17, c.y + c.h / 2 + 9, eq ? Math.floor(game.real * 5) % 4 : 0, 0.75);
+    text(`${P.name}`, c.x + 34, c.y + 3, eq ? PAL.gold1 : PAL.white, { ...small, bold: true }); text(P.kind === 'battle' ? 'BATTLE PET' : 'DROP PET', c.x + 34 + textW(P.name, 1, true) + 12, c.y + 3, PAL.stone2, small);
+    wrapW(heroText(P.text), tw, true).slice(0, 2).forEach((l, i) => text(l, c.x + 34, c.y + 14 + i * 10, PAL.cloth1, small));
+    invButton(G0.eq(j), eq ? 'UNEQUIP' : 'EQUIP', eq ? PAL.stone4 : PAL.gold3, true); invButton(G0.fol(j), shown === P.id ? 'FOLLOWS YOU' : 'FOLLOW ME', PAL.stone4, eq && shown !== P.id);
+  });
+  if (G0.pages > 1) { invButton(G0.prev, '<', PAL.stone4, I.ppage > 0); invButton(G0.next, '>', PAL.stone4, I.ppage < G0.pages - 1); text(`${I.ppage + 1}/${G0.pages}`, G0.prev.x + 43, G0.prev.y + 5, PAL.stone1, { ...small, align: 'center' }); }
+  invButton(G0.shop, 'OPEN SHOP', PAL.crimson3, true);
+}
+function bagPetsTap(L, x, y) {
+  const G0 = petBagGeo(L), I = game.inv, E = petEq();
+  if (G0.pages > 1) { if (inRect(G0.prev, x, y)) { I.ppage--; sfx('tap', { vol: 0.4 }); return; } if (inRect(G0.next, x, y)) { I.ppage++; sfx('tap', { vol: 0.4 }); return; } }
+  if (inRect(G0.shop, x, y)) { game.inv = null; return openStore(0, 'play'); }
+  G0.list.slice(I.ppage * G0.per, (I.ppage + 1) * G0.per).forEach((P, j) => {
+    if (inRect(G0.eq(j), x, y)) petEquip(P);
+    else if (inRect(G0.fol(j), x, y) && E[P.kind].includes(P.id) && petShown() !== P.id) { E.show = P.id; PETF.on = false; persist(); sfx('tap', { vol: 0.5 }); }
+  });
+}
 // ---- the shop: BATTLE PETS, DROP PETS and INDULGENCES, in the forge's layout (a scrolling list, a showcase card).
 const STORE_TABS = ['BATTLE PETS', 'DROP PETS', 'INDULGENCES'], STORE_RGB = '190,120,255';
 function openStore(tab = 0, back = 'play') { game.store = { tab, sel: 0, scroll: 0, back }; game.state = 'store'; sfx('tap'); }
@@ -7941,7 +7985,7 @@ function renderStore() {
     const T0 = (s0, x0, y0, c0, o0) => { if (y0 >= B.y - 1 && y0 + 9 <= B.y + B.h) text(s0, x0, y0, c0, o0); };
     const sel = i === S.sel, has = own.includes(P.id), eq = E[kind].includes(P.id), bw = 52, tx = r.x + 31;
     storeRowBar(r, sel, eq); storeRing(r.x + 15, r.y + r.h / 2, eq ? PAL.gold1 : has ? `rgb(${STORE_RGB})` : 'rgba(120,132,156,0.6)');
-    ctx.globalAlpha = has ? 1 : 0.6; spr('pets', P.id, 0, r.x + 15, r.y + r.h / 2 + 8); ctx.globalAlpha = 1;
+    ctx.globalAlpha = has ? 1 : 0.6; petIcon(P.id, r.x + 15, r.y + r.h / 2 + 8); ctx.globalAlpha = 1;
     T0(fitText(P.name, r.x + r.w - bw - 8 - tx - (sel ? 12 : 0)), tx, r.y + 4, has ? PAL.white : PAL.cloth1, { bold: sel });
     T0(eq ? (shown === P.id ? 'EQUIPPED, FOLLOWS YOU' : 'EQUIPPED') : P.hero ? `${heroName(P.hero)} ONLY` : 'FOR ANY CLASS', tx, r.y + 17, eq ? PAL.gold1 : PAL.stone1, small);
     const bx = r.x + r.w - bw - 3; ctx.fillStyle = 'rgba(4,7,13,0.55)'; ctx.fillRect(bx, r.y + 3, bw, r.h - 6);
@@ -7953,7 +7997,7 @@ function renderStore() {
   // The card: the pet in the frame, what it does, which slots are in use, and its buttons.
   inset(C.x, C.y, C.w, C.h); const P = list[S.sel]; if (!P) return;
   const has = own.includes(P.id), eq = E[kind].includes(P.id), sz = Math.max(44, Math.min(64, Math.round(C.h * 0.27))), S0 = { x: C.x + 8, y: C.y + 8, w: sz, h: sz }, tx = S0.x + sz + 8, tw = C.x + C.w - 8 - tx;
-  pieceFrame(S0, null, STORE_RGB, () => { const k = sz >= 56 ? 2 : 1; ctx.scale(k, k); spr('pets', P.id, Math.floor(game.real * 5) % 4, 0, 9); });
+  pieceFrame(S0, null, STORE_RGB, () => { const k = sz >= 56 ? 1.5 : 1; ctx.scale(k, k); spr('pets', P.id, Math.floor(game.real * 5) % 4, 0, P.fly ? 20 : 13); }); // fliers hover higher in their frames
   let y = S0.y + 2; for (const l of wrapW(P.name, tw).slice(0, 2)) { text(l, tx, y, PAL.white, { bold: true }); y += 12; }
   text(`${kind === 'battle' ? 'BATTLE PET' : 'DROP PET'}${P.hero ? ` FOR ${heroName(P.hero)}` : ''}`, tx, y + 1, PAL.stone1, small); y += 11;
   text(has ? (eq ? 'EQUIPPED' : 'OWNED') : `PRICE: ${P.price} ${indul() >= P.price ? '' : '(NOT ENOUGH)'}`.trim(), tx, y + 1, has ? PAL.flame1 : indul() >= P.price ? '#d4b0ff' : PAL.blood0, small);
@@ -7987,9 +8031,7 @@ function storeTap(x, y) {
   if (inRect(L.btnB, x, y)) {
     if (!has) { if (indul() < P.price) { toast('NOT ENOUGH INDULGENCES. THE INDULGENCES TAB HAS FREE PACKS FOR NOW.', 2.6); return; }
       ask(`BUY ${P.name} FOR ${P.price} INDULGENCES?`, () => { if (indul() < P.price) return; SAVE.indul = indul() - P.price; petsOwned().push(P.id); persist(); sfx('buy'); toast(`${P.name} IS YOURS. EQUIP IT TO USE IT.`, 2.4); game.toastColor = '#d4b0ff'; }, 'BUY'); return; }
-    if (eq) { E[kind][E[kind].indexOf(P.id)] = null; if (E.show === P.id) E.show = null; }
-    else { const k = E[kind].indexOf(null); if (k < 0) { toast(`BOTH ${kind === 'battle' ? 'BATTLE' : 'DROP'} SLOTS ARE FULL. UNEQUIP ONE FIRST.`, 2.2); return; } E[kind][k] = P.id; if (!petShown() || !E.show) E.show = E.show || P.id; }
-    PETF.on = false; applyGear(); persist(); sfx('learn', { gap: 0.15, vol: 0.5 });
+    petEquip(P);
   }
 }
 // Rites rank up with use: casts needed for ranks 2-5. Each rank takes 5%
@@ -10865,7 +10907,7 @@ const inRect = (r, x, y) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r
 function selItem() { const s = game.inv && game.inv.sel; if (!s) return null; return s.from === 'bag' ? SAVE.bag[s.i] : SAVE.equip[s.slot]; }
 // The bag's tabs, in the title band left of the gold: gear, the things you
 // carry (keys, stones, Chrism), and enchant ingredients.
-const invTabs = (L) => hubTabs(L).slice(0, 4); // the bag's tabs are the first three of the hub's
+const invTabs = (L) => hubTabs(L).slice(0, 5); // the bag's tabs are the first three of the hub's
 // Round 96: what each stat in the bag's summary does, in one plain sentence.
 const STAT_TIP = {
   dmg: ['DAMAGE', 'MORE DAMAGE FROM EVERYTHING YOU DO.'], crit: ['CRIT CHANCE', 'THE CHANCE A HIT CRITS FOR DOUBLE DAMAGE. GEAR GIVES UP TO 50%.'],
@@ -10896,6 +10938,7 @@ function invTap(x, y) {
   if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || x < 0 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { closeInventory(); return; }
   if (hubTap(L, x, y)) return;
   if (game.inv.tab === 3) return bagRubricsTap(L, x, y);
+  if (game.inv.tab === 4) return bagPetsTap(L, x, y);
   if (game.inv.tab === 2) { // tap an enchant's box to read its ingredients' names
     const M = myEnch(), cw = Math.floor((L.pw - 24 - 12) / 5), rh = Math.floor((L.ph - 58) / 4), c = Math.floor((x - L.x0 - 12) / (cw + 3)), r = Math.floor((y - L.y0 - 34) / rh), e = M[r * 5 + c];
     if (c >= 0 && c < 5 && r >= 0 && r < 4 && e !== undefined) enchPop(ENCHANTS[e].id, enchT(ENCHANTS[e].id) || 1);
@@ -11096,6 +11139,7 @@ function renderInventory() {
   if (game.inv.tab === 1) return renderBagItems(L, gold);
   if (game.inv.tab === 2) return renderBagIngredients(L);
   if (game.inv.tab === 3) return renderBagRubrics(L);
+  if (game.inv.tab === 4) return renderBagPets(L);
   // Paper doll.
   const D = L.doll;
   // The paper doll: the hero under a soft spotlight, standing on a gilt pedestal.
@@ -11558,7 +11602,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { get pfx() { return pfx; }, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get pfx() { return pfx; }, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

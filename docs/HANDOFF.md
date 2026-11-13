@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-13, after round 104 (build 104, on `master`). Read
+Last updated 2026-11-13, after round 105 (build 105, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-104 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-105 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -265,14 +265,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Pets (round 103).** The sprites are small first passes from one
-  builder (`tools/models/pets.mjs`); the owner has not seen them yet, so
-  expect art notes. Battle pets have no sounds and no effect of their own
-  when they act (the Bell Crow draws a ring). None is measured in
-  `setbal.cjs`. The shop has no real purchase flow: packs are free
-  (`PET_PACKS`), by the owner's word "free for now". The Calling and the
-  class enchants (round 102) are not balance-checked either.
-
+- **Pets (rounds 103 and 105).** Sprites are 36 px since round 105 (the
+  builder scales its 24 px models by 1.5); the two moths and the cherub
+  are the weakest shapes. Battle pets have no sounds and no effect of
+  their own when they act. Packs are free (`PET_PACKS`), by the owner's
+  word "free for now".
+- **Measured in round 105 (Station XII, 4 seeds, about 15% noise).** A
+  20-point Calling: Saint x1.17, Mendicant x1.14, Anchoress x1.01. Both
+  class enchants at tier II: Saint x1.01, Mendicant x1.20, Anchoress
+  x1.07. Nothing tuned. Pets are not measured yet.
 - **Rubrics (round 99).** Every rite's damage now carries its rite (a probe
   that logged untagged hits while each rite of all three classes was cast
   in a crowd came back empty). Drops: about 0.28 a run at Station VI and
@@ -290,7 +291,9 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   were 3.2-8.2). Mixes answer to damage weakly (kills grow with about the
   0.35-0.7 power of damage), so their `fourBy` numbers are large (Font
   +550%, Psalter +450%). Damage taken still differs about 3x between
-  builds (the Stride safest). At Station VI the crowd caps kills.
+  builds at six pieces; at four pieces `SETK.guard4` (round 105) brought
+  the mixes to 705-1398 a second (was 686-2283). At Station VI the crowd
+  caps kills.
 - **Mythic Wounds.** All three classes are measured with full sets
   (rounds 82-84). At Station XII the Mendicant's and Anchoress's sit at
   about x1.3-1.6; the Saint's at x1.1-1.3 (round 84), and so does the shared
@@ -390,6 +393,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 105:** the owner picked 1, 2, 3, 5. **Defence at four pieces:**
+  `SETK.guard4` (11 sets), read in `setGuard` (six pieces use `guard6`,
+  else `guard4`); the card loop writes TAKE N% LESS DAMAGE into the
+  four-piece line. **Pet art:** `pets.mjs` scales every model by `K` 1.5
+  onto a 36 px frame (`Big` scene, `eye()` of 2x2 pixels); list icons draw
+  through `petIcon` at two thirds. **Balance:** see Next steps. **Bag:** a
+  PETS tab (HUB index 4, `renderBagPets`, `bagPetsTap`, `petBagGeo`,
+  `petEquip` shared with the shop): owned pets with EQUIP and FOLLOW ME,
+  pages, OPEN SHOP. Test: `round105.cjs`.
 
 - **Round 104:** the owner picked suggestion 2 (the weak 4+2 mixes).
   Found that the Shattered Reliquary had `noFour` (no four-piece damage at

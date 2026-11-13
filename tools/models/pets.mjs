@@ -7,9 +7,17 @@ import { MATS, torus } from './base.mjs';
 
 const PM = { ...MATS, glassWing: { ramp: 'holy', spec: 0.8, bias: 0.1 }, roseWing: { ramp: 'rose', spec: 0.5, bias: 0.05 }, coal: { ramp: 'ink', bias: 0.05, min: 2 }, fur: { ramp: 'wood', bias: 0.08 }, grey: { ramp: 'slate', bias: 0.05 },
   shell: { ramp: 'sand', spec: 0.3 }, wart: { ramp: 'moss', bias: 0.05, spec: 0.2 }, page: { ramp: 'cloth', max: 6 }, wisp: { ramp: 'violet', glow: 1 }, seal: { ramp: 'blood', spec: 0.5 } };
-const A = (f) => Object.assign(f, { ax: 12, ay: 22 });
+// Round 105: every pet is modelled on the old 24 px grid (feet at 12, 22) and drawn half as big again: K scales each
+// shape about the feet onto a 36 px frame (feet at 18, 33), so ears, wings and tails get whole chunky pixels.
+const K = 1.5, FW = 36, AX = 18, AY = 33;
+const A = (f) => Object.assign(f, { ax: AX, ay: AY });
+const up = (p) => ({ ...p, bb: [(p.bb[0] - 12) * K + AX, (p.bb[1] - 22) * K + AY, p.bb[2] * K, (p.bb[3] - 12) * K + AX, (p.bb[4] - 22) * K + AY, p.bb[5] * K], f: (x, y, z) => p.f((x - AX) / K + 12, (y - AY) / K + 22, z / K) * K });
+class Big extends Scene { add(p, k = 0, op = 'add') { return super.add(up(p), k * K, op); } }
+const bx = (x) => Math.round((x - 12) * K + AX), by = (y) => Math.round((y - 22) * K + AY);
+// An eye: two chunky pixels wide so it survives the 2x2 grid.
+const eye = (f, x, y, c) => { dot(f, bx(x), by(y), c); dot(f, bx(x) + 1, by(y), c); dot(f, bx(x), by(y) + 1, c); dot(f, bx(x) + 1, by(y) + 1, c); };
 function pet(o, i) {
-  const S = new Scene(), fly = !!o.fly, bob = fly && (i === 1 || i === 2) ? 2 : 0, cy = (fly ? 12 : 22 - (o.leg ?? 3) - (o.bh ?? 3.5)) - bob, bw = o.bw ?? 4.5, bh = o.bh ?? 3.5, hx = 12 + (o.hx ?? 3.5), hy = cy - (o.hy ?? 2.5), hr = o.hr ?? 3;
+  const S = new Big(), fly = !!o.fly, bob = fly && (i === 1 || i === 2) ? 2 : 0, cy = (fly ? 12 : 22 - (o.leg ?? 3) - (o.bh ?? 3.5)) - bob, bw = o.bw ?? 4.5, bh = o.bh ?? 3.5, hx = 12 + (o.hx ?? 3.5), hy = cy - (o.hy ?? 2.5), hr = o.hr ?? 3;
   const hm = o.head || o.mat, step = i % 2;
   if (o.tail === 'long') S.add(capsule([12 - bw + 1, cy + 1, 0], [12 - bw - 4, cy - 2 + step, 0], 1, 0.6, o.tailMat || o.mat), 0);
   if (o.tail === 'up') S.add(capsule([12 - bw + 1, cy, 0], [12 - bw - 1, cy - 6 + step, 0], 1.1, 0.8, o.tailMat || o.mat), 0.6);
@@ -31,19 +39,19 @@ function pet(o, i) {
   if (o.fold) S.add(ellipsoid([10.5, cy + 0.2, 2.4], [3.4, 2.4, 1.2], o.fold), 0.5);
   if (o.halo) S.add(torus([hx, hy - hr - 1.6, 0.6], 2.2, 0.8, 1.15, 'halo'), 0);
   if (o.extra) o.extra(S, { cy, hx, hy, hr, bw, bh, step, i });
-  const f = render(S, 24, 24, PM, { contrast: 1.4 });
-  if (o.eye !== null && o.hr !== 0) dot(f, Math.round(hx + (o.ex ?? 1.2)), Math.round(hy - 0.4), o.eye || 'ink2');
+  const f = render(S, FW, FW, PM, { contrast: 1.4 });
+  if (o.eye !== null && o.hr !== 0) eye(f, hx + (o.ex ?? 1.2), hy - 0.4, o.eye || 'ink2');
   if (o.after) o.after(f, { cy, hx, hy, hr, step });
   return A(f);
 }
 const anim = (o) => () => [0, 1, 2, 3].map((i) => pet(o, i));
 // Wisp: a core of light with a trailing tail, no body parts.
-const wisp = () => [0, 1, 2, 3].map((i) => { const S = new Scene(), b = i === 1 || i === 2 ? 2 : 0; S.add(sphere([13, 11 - b, 0], 3.6, 'wisp'), 0); S.add(sphere([9.5, 13 - b + (i % 2), 0], 2.2, 'wisp'), 1.6); S.add(sphere([7, 15.5 - b, 0], 1.3, 'wisp'), 1.2);
-  const f = render(S, 24, 24, PM, { contrast: 1.3 }); dot(f, 14, 10 - b, 'white'); dot(f, 12, 10 - b, 'white'); return A(f); });
+const wisp = () => [0, 1, 2, 3].map((i) => { const S = new Big(), b = i === 1 || i === 2 ? 2 : 0; S.add(sphere([13, 11 - b, 0], 3.6, 'wisp'), 0); S.add(sphere([9.5, 13 - b + (i % 2), 0], 2.2, 'wisp'), 1.6); S.add(sphere([7, 15.5 - b, 0], 1.3, 'wisp'), 1.2);
+  const f = render(S, FW, FW, PM, { contrast: 1.3 }); eye(f, 14.4, 10 - b, 'white'); eye(f, 12, 10 - b, 'white'); return A(f); });
 // Bookworm: a fat segmented grub on an open book.
-const bookworm = () => [0, 1, 2, 3].map((i) => { const S = new Scene(), s = i % 2; S.add(box([12, 20, 0], [7, 1.2, 3], 0.4, 'violet'), 0); S.add(box([12, 18.6, 0.6], [6.2, 0.6, 2.6], 0.3, 'page'), 0);
+const bookworm = () => [0, 1, 2, 3].map((i) => { const S = new Big(), s = i % 2; S.add(box([12, 20, 0], [7, 1.2, 3], 0.4, 'violet'), 0); S.add(box([12, 18.6, 0.6], [6.2, 0.6, 2.6], 0.3, 'page'), 0);
   [[8, 16.5], [10.5, 15.6 - s], [13, 16.2 + s * 0.4]].forEach(([x, y]) => S.add(sphere([x, y, 1], 2.2, 'flame'), 1.2)); S.add(sphere([15.6, 14.6 - s, 1.2], 2.5, 'flame'), 1.2);
-  const f = render(S, 24, 24, PM, { contrast: 1.4 }); dot(f, 17, 14 - s, 'ink2'); return A(f); });
+  const f = render(S, FW, FW, PM, { contrast: 1.4 }); eye(f, 16.6, 14 - s, 'ink2'); return A(f); });
 // The Indulgence: a rolled writ with a red wax seal (16x16, the currency icon).
 const indul = () => { const S = new Scene(); S.add(box([8, 8, 0], [5, 3.6, 1.2], 0.6, 'page'), 0); S.add(capsule([3, 4.4, 0.4], [13, 4.4, 0.4], 1.3, 1.3, 'page'), 0.6); S.add(capsule([3, 11.6, 0.4], [13, 11.6, 0.4], 1.3, 1.3, 'page'), 0.6); S.add(sphere([10.5, 9.4, 1.6], 2.4, 'seal'), 0);
   const f = render(S, 16, 16, PM, { contrast: 1.4 }); dot(f, 5, 7, 'stone2'); dot(f, 6, 7, 'stone2'); dot(f, 7, 7, 'stone2'); dot(f, 5, 9, 'stone2'); dot(f, 6, 9, 'stone2'); return Object.assign(f, { ax: 8, ay: 8 }); };
@@ -64,7 +72,7 @@ export default { pets: {
   magpie: anim({ fly: 1, mat: 'coal', belly: 'cloth', bw: 4, bh: 3.2, hr: 2.8, beak: 'gold', wing: 'teal', wingW: 4.6, tail: 'fan', extra: (S, q) => S.add(sphere([q.hx + q.hr + 2.2, q.hy + 1.6, 0.8], 1.1, 'halo'), 0) }),
   relicrat: anim({ mat: 'slate', belly: 'stone', bw: 4.4, bh: 3, leg: 2, hr: 2.8, ears: 'round', tail: 'long', tailMat: 'skin', snout: 1, eye: 'blood1' }),
   emberfox: anim({ mat: 'emberLit', belly: 'cloth', bw: 4.6, bh: 3.2, leg: 3.5, legMat: 'coal', hr: 2.9, ears: 'point', tail: 'bushy', tip: 'cloth', snout: 1 }),
-  herbmole: anim({ mat: 'coal', bw: 5, bh: 3.6, leg: 1.5, legMat: 'skin', hr: 0, extra: (S, q) => { S.add(capsule([15, q.cy + 0.6, 0.8], [18.4, q.cy + 1.4, 0.8], 2, 1, 'skin'), 1); S.add(sphere([9, q.cy - 4, 0], 1.6, 'moss'), 0); S.add(sphere([11, q.cy - 4.6, 0], 1.3, 'flame'), 0.4); }, after: (f, q) => dot(f, 15, Math.round(q.cy - 1), 'cloth0') }),
+  herbmole: anim({ mat: 'coal', bw: 5, bh: 3.6, leg: 1.5, legMat: 'skin', hr: 0, extra: (S, q) => { S.add(capsule([15, q.cy + 0.6, 0.8], [18.4, q.cy + 1.4, 0.8], 2, 1, 'skin'), 1); S.add(sphere([9, q.cy - 4, 0], 1.6, 'moss'), 0); S.add(sphere([11, q.cy - 4.6, 0], 1.3, 'flame'), 0.4); }, after: (f, q) => eye(f, 15, q.cy - 1, 'cloth0') }),
   rubricowl: anim({ fly: 1, mat: 'fur', belly: 'sand', bw: 4, bh: 4, hr: 3.4, hx: 1, hy: 4.6, ears: 'point', beak: 'gold', wing: 'leather', wingW: 4.4, eye: 'gold1', ex: 1.6 }),
   rosemoth: anim({ fly: 1, mat: 'blood', bw: 2.4, bh: 3.4, hr: 2, hx: 0.5, hy: 4, wing: 'roseWing', wing2: 1, wingW: 5.4, eye: 'white', ex: 0.6 }),
   chrismsnail: anim({ mat: 'skin', bw: 5, bh: 1.8, leg: 0, hr: 2, hx: 5, hy: 2.4, shell: 1, extra: (S, q) => { for (const ex of [0, 1.6]) S.add(capsule([q.hx + ex, q.hy - 1.4, 0.4], [q.hx + ex + 0.6, q.hy - 4.4 + q.step, 0.4], 0.5, 0.7, 'skin'), 0); } }),
