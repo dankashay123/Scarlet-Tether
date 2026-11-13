@@ -1530,7 +1530,7 @@ function addToll(e) {
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
 // fourOf(id): a set's damage at 4 or 5 pieces (fourBy overrides SETK.four for one set).
 const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
-const SETK = { choirHp: 2, choirHp6: 3, choirR: 110, fontHp: 4, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 7, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 3.5, bound4: 2.8, choir4: 2.2, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 155 } , shardPer: 15, crushK: 3, momK: 12, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 35, thornK6: 150, psalK6: 3, lampK6: 150, six: { lantern: 1.3, psalter: 1.3, iron: 1.25, alms: 2, gaol: 2, thorn: 1.5, glass: 1.4 } };
+const SETK = { choirHp: 2, choirHp6: 3, choirR: 110, fontHp: 4, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 7, strideT: 7, font: 3.5, bound: 1.6, bound6: 3, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 4.5, strideT4: 4, font4: 3.5, bound4: 2.8, choir4: 2.2, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 155 } , shardPer: 15, crushK: 3, momK: 12, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 35, thornK6: 150, psalK6: 3, lampK6: 150, six: { lantern: 1.3, psalter: 1.3, iron: 1.25, alms: 2, gaol: 2, thorn: 1.5, glass: 1.4 }, guard6: {} };
 const WARDEN = { hp: 2500, hpK: 1.8, dmgK: 1.6, enrage: 100, items: 2 };
 // Gear per kill, before the Station's multiplier. Kept low: progress should take farming.
 const DROP = { kill: 0.003, rare: 0.1, elite: 0.5 }; // hp: the average MON Warden
@@ -6178,6 +6178,7 @@ function setGuard() {
   if ((player.wardT || 0) > game.time) k *= 0.4;
   k *= 1 - ts('warding') / 100; if (ts('steadfast') && player.hp < player.maxHp * 0.35) k *= 1 - ts('steadfast') / 100; if ((player.aegisT || 0) > game.time) k *= 0.5;
   k *= G.lessK || 1; if (pas('hide')) k *= 0.85; if ((player.rubWardT || 0) > game.time) k *= 1 - (player.rubWardK || 0) / 100; // a Rubric of Ward
+  for (const id in SETK.guard6) if (sb(id, 6)) k *= SETK.guard6[id]; // round 101: six pieces of the sets that took the most damage take less
   if (sb('rags', 2)) k *= 0.9; if (sb('alms', 6)) k *= 1 - Math.min(SETK.almsMax, player.alms || 0) * 0.005; if (pas('laststand') && player.hp < player.maxHp * 0.3) k *= 0.7; if (pas('ironvigil') && (player.ivT || 0) > game.time) k *= 0.7;
   return k;
 }
