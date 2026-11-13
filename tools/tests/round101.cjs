@@ -24,7 +24,7 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '932x430').split('x').
       const sl = HS.VSETS[id].slots[0]; delete HS.SAVE.equip[sl]; HS.applyGear(true); o.guard[id] = +(k6 / HS.setGuard()).toFixed(2); }
     o.four = Object.fromEntries(['stride', 'confessor', 'iron', 'alms', 'glass', 'nails'].map((id) => [id, HS.fourOf(id)])); return o; });
   // Every class's set cards at this size.
-  for (const hero of ['saint', 'mendicant', 'anchoress']) { await p.evaluate((hero) => { HS.SAVE.hero = hero; HS.game.state = 'play'; HS.openInventory(); HS.game.setPop = HS.mySets()[0]; }, hero); await p.waitForTimeout(300); await check(`setcard-${hero}`); await shot(`setcard-${hero}`); await p.evaluate(() => { HS.game.setPop = null; }); }
+  for (const hero of ['saint', 'mendicant', 'anchoress']) { await p.evaluate((hero) => { HS.SAVE.hero = hero; HS.game.state = 'play'; HS.openInventory(); const id = HS.mySets()[0], it = HS.makeItem(HS.VSETS[id].slots[0], 4, 'X', undefined, 12); it.set = id; HS.game.setPop = it; }, hero); await p.waitForTimeout(300); await check(`setcard-${hero}`); await shot(`setcard-${hero}`); await p.evaluate(() => { HS.game.setPop = null; }); }
   console.log(JSON.stringify(out, null, 1)); console.log('text problems', probs.length, probs.slice(0, 6));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();
 })();

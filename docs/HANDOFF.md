@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-13, after round 100 (build 100, on `master`). Read
+Last updated 2026-11-13, after round 101 (build 101, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-100 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-101 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -274,9 +274,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 - **Hold tips (rounds 99-100).** Used on REFORGE stat rows (with a hint),
   level-up cards and Rubric picker rows. The Canonry needs none (a tap opens
   the card). Other candidates: passive picker rows, the altar's sockets.
-- **Executions are gone (round 100).** The `execute` sound and the `dagger`
-  fx frame are unused now; the talent EXECUTIONER (`execute`, bonus damage to
-  foes below 35%) stays, as it never needed the execute.
+- **Executions are gone (rounds 100-101).** Sound, recipe and dagger art
+  removed; the talent EXECUTIONER (`execute`, bonus damage to foes below
+  35%) stays, as it never needed the execute.
+- **Set balance (round 101).** Six pieces: every set at 6.1-7.7 kills a
+  second at Station XII (6 seeds; was 4.7-11.0). 4+2 mixes run 3.2-7.2:
+  several do not answer to four-piece damage at all (Reliquary 4 + Thorn 2
+  and Psalter 4 + Reliquary 2 stay near 3.3 even at +1000%: their rites
+  kill slowly, not their numbers). Fixing those means changing rites or
+  2-piece effects, not SETK. At Station VI the crowd's ceiling hides most
+  differences (9-22).
 
 - **Mythic Wounds.** All three classes are measured with full sets
   (rounds 82-84). At Station XII the Mendicant's and Anchoress's sit at
@@ -377,6 +384,21 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 101:** the owner picked 3 (remove), 4, 5 and asked for every set
+  to be as equal as possible. **Leftovers removed:** `execute.mp3`, its
+  recipe, both dagger sprites (ui and fx) and their glyphs. **Tutorial:**
+  the rite steps start "Walk up to a foe, then tap" when no foe is within
+  150 px (`tutNear`). **Set balance:** `SETK.six` now holds a six-piece
+  damage multiplier for 11 sets, and `SETK.guard6` a damage-taken
+  multiplier for the 8 sets that took the most (read in `setGuard`); the
+  Stride (`stride` 7 to 3.6, `stride4` 4.5 to 3), the Confessor (`bound6`
+  3 to 2.75, `bound4` 2.8 to 2.6) and the Lantern (`lampK6` 150 to 120) were
+  cut through their own numbers so no card shows a multiplier under 1.
+  `fourBy` moved for stride 60, confessor 63, iron 190, alms 217, glass
+  318. A loop after `ALL_SETS` writes ALL YOUR DAMAGE X and TAKE N% LESS
+  DAMAGE into each six-piece line. Four passes of `setbal.cjs` (fit in log
+  space, 6 seeds at the end). Test: `round101.cjs`.
 
 - **Round 100:** the owner picked all five and asked for the execute to go.
   **Execute removed:** elites no longer stagger at low health; the execute
