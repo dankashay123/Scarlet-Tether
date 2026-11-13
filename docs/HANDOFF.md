@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-13, after round 99 (build 99, on `master`). Read
+Last updated 2026-11-13, after round 100 (build 100, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-99 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-100 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -271,8 +271,12 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   0.33 at XII (one per 3 runs: the Warden's 20%, plus elites and rares); a
   tier III of one chosen kind for one rite is about 550 runs. Left as is
   (the owner wants them rare); ask whether that feels right.
-- **Hold tips (round 99).** `HOLD_TIPS` is used only by the REFORGE stat
-  rows; nothing on screen says a hold works there.
+- **Hold tips (rounds 99-100).** Used on REFORGE stat rows (with a hint),
+  level-up cards and Rubric picker rows. The Canonry needs none (a tap opens
+  the card). Other candidates: passive picker rows, the altar's sockets.
+- **Executions are gone (round 100).** The `execute` sound and the `dagger`
+  fx frame are unused now; the talent EXECUTIONER (`execute`, bonus damage to
+  foes below 35%) stays, as it never needed the execute.
 
 - **Mythic Wounds.** All three classes are measured with full sets
   (rounds 82-84). At Station XII the Mendicant's and Anchoress's sit at
@@ -373,6 +377,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 100:** the owner picked all five and asked for the execute to go.
+  **Execute removed:** elites no longer stagger at low health; the execute
+  button (`HUD.exec`), `input.execute`, `game.execTarget`, `execute()`, the
+  stagger state and its gold bar and dagger, and E as execute are gone
+  (`killEnemy`'s `executed` flag stays unused). **Reckoning:** tapping it
+  before it is charged toasts "<rite> is not charged yet. Kills charge it."
+  (`noFoe(msg)`). **Hold tips:** `HOLD_TIPS` entries may carry their own
+  `title`/`text` and `defer: true`; a deferred spot's tap fires on release
+  (`pointerUp`), so a hold can show the tip without acting. Level-up cards
+  (what the top rank gives) and Rubric picker rows (every tier) use it; the
+  REFORGE tab says "Hold a stat to see what it does." when it fits.
+  **Codex:** unseen Wounds carry a `hint` (rite Wounds name their rite;
+  mythic ones point to SACRIFICE). **Balance:** `setbal.cjs` takes `RUB=might`
+  (tier III of each listed kind on all three rites); see the numbers below.
+  Test: `round100.cjs`.
 
 - **Round 99:** the owner picked all five. **NO FOE IN REACH:** a rite
   whose cast left its cooldown at zero toasts once per 1.5 s (`noFoe`);

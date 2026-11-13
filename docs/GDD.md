@@ -132,10 +132,10 @@ fire on their own, then bank loot in town or die and leave a Shade.
 - Sitting at the bottom tier too long summons an Inquisitor to "encourage" you.
 - Zeal also charges the Reckoning ultimate.
 
-### Executions
+### Executions (removed)
 
-- Elites below about 15% HP stagger and show a prompt.
-- Tap it for a dismemberment finisher that heals about 5% HP and spikes Zeal.
+- Round 100: the owner asked for the stagger and execute to go. Elites fight
+  on to the end; there is no finisher prompt.
 
 ### Death and the Shade
 

@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '99';
+const BUILD = '100';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '100': ['ELITES NO LONGER STAGGER, AND THE EXECUTE IS GONE.', 'TAPPING THE RECKONING BEFORE IT IS CHARGED NOW SAYS SO.', 'HOLD A LEVEL-UP CARD TO SEE WHAT ITS TOP RANK GIVES, OR A RUBRIC TO SEE ALL ITS TIERS. A QUICK TAP STILL CHOOSES.', 'THE CODEX SAYS HOW TO FIND WOUNDS YOU HAVE NOT SEEN.', 'THE REFORGE TAB SAYS YOU CAN HOLD A STAT FOR ITS TIP.'],
   '99': ['A RITE THAT FINDS NO FOE NOW SAYS NO FOE IN REACH.', 'MIGHT RUBRICS NOW COUNT EMBER STEP\'S TRAIL, THE LAST PILLARS AND LASHES OF A RECKONING, AND A VIAL\'S SPLASH.', 'HOLD A STAT ON THE FORGE\'S REFORGE TAB TO SEE WHAT IT DOES.', 'CODEX CARDS LIST EACH MONSTER\'S ATTACKS WITH A TIP, AND SHOW EACH WARDEN\'S HALO.'],
   '98': ['TAP A STAT LINE IN AN ITEM POPUP, THE SHOP OR THE FORGE\'S VALUES TAB TO SEE WHAT IT DOES.', 'A MIGHT RUBRIC NOW ALSO RAISES THE BURNS ITS RITE STARTS.', 'THE CODEX USES BIGGER TILES WHEN A SECTION FITS ON ONE PAGE.', 'THE FORGE\'S BUY TAB LISTS WHAT EMBERSTONES PAY FOR AND HOW MANY A WARDEN DROPS.', 'THE TUTORIAL BOX SITS LOWER, CLEAR OF THE MINIMAP, AND NAMES YOUR RITES PROPERLY.'],
   '97': ['THE ENCHANTER\'S GEAR PICKER IS NOW THE FORGE\'S SCROLLING LIST, AND EACH PIECE SHOWS THE ENCHANT IT HAS.', 'THE FORGE\'S VALUES AND BUY TABS MATCH THE REST OF THE FORGE. VALUES SHOWS THE RANGES FOR THE PIECE YOU PICK.', 'NEW CODEX SECTION: RUBRICS. SEE WHICH KINDS YOU HAVE FOUND FOR EACH RITE.', 'TAP A STAT LINE ON A PIECE IN THE BAG TO SEE WHAT IT DOES.', 'THE TUTORIAL NAMES YOUR OWN WEAPON AND RITES.'],
@@ -684,7 +685,7 @@ const sfxAt = (name, x, y, o = {}) => { if (!player) return; const d = Math.hypo
 
 // -------------------------------------------------------------- input ---
 const keys = new Set();
-const input = { mx: 0, my: 0, dash: false, execute: false, m1: false, m2: false, pen: false };
+const input = { mx: 0, my: 0, dash: false, m1: false, m2: false, pen: false };
 const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0, active: false };
 const HUD = {};
 // The phone's safe area (the notch and rounded corners) on the game's left
@@ -707,17 +708,16 @@ function layoutHud() {
   HUD.m1 = { x: W - 78 * k, y: H - 22 * k, r: 15 * k, icon: 'flask' };
   HUD.m2 = { x: W - 26 * k, y: H - 82 * k, r: 15 * k, icon: 'chain' };
   HUD.pen = { x: W - 72 * k, y: H - 68 * k, r: 17 * k, icon: 'penance' };
-  HUD.exec = { x: W - 122 * k, y: H - 80 * k, r: 15 * k, icon: 'dagger' };
   HUD.act = { x: W - 122 * k, y: H - 38 * k, r: 19 * k, icon: 'talk' };
   HUD.pause = { x: W - 15 * k, y: 15 * k, r: 11 * k, icon: 'pause' };
   HUD.mute = { x: W - 15 * k, y: 42 * k, r: 10 * k, icon: 'sound' };
   HUD.bag = { x: W - 15 * k, y: 68 * k, r: 11 * k, icon: 'bag' };
   HUD.joy = { x: 48 * k, y: H - 48 * k };
-  for (const b of ['dash', 'm1', 'm2', 'pen', 'exec', 'act', 'pause', 'mute', 'bag']) HUD[b].x -= SAFE.r;
+  for (const b of ['dash', 'm1', 'm2', 'pen', 'act', 'pause', 'mute', 'bag']) HUD[b].x -= SAFE.r;
   HUD.joy.x += SAFE.l;
   // Left-handed: the stick goes right, the action buttons left.
   let left = false; try { left = opt('hand') === 'left'; } catch { /* layout runs once before the save loads */ }
-  if (left) for (const b of ['dash', 'm1', 'm2', 'pen', 'exec', 'act', 'joy']) HUD[b].x = W - HUD[b].x;
+  if (left) for (const b of ['dash', 'm1', 'm2', 'pen', 'act', 'joy']) HUD[b].x = W - HUD[b].x;
   for (const b of Object.values(HUD)) if (b && b.x !== undefined) { b.x = Math.round(b.x); b.y = Math.round(b.y); }
 }
 function toLocal(cx, cy) {
@@ -735,7 +735,8 @@ function pointerDown(id, cx, cy) {
     if (inRect(P ? gearGeo(L, P, forgeItems().length).box : enchGeo(L).box, x, y)) N.drag = { id, y0: y, s0: (P ? P.scroll : N.scroll) || 0, pick: !!P }; }
   if (game.state === 'forge' && game.forge && game.forge.tab < 3 && !game.ask && !game.forge.list && inRect(forgeGeo(featLayout()).box, x, y)) game.forge.drag = { id, y0: y, s0: game.forge.scroll || 0 }; // round 96
   if (game.state === 'designer' && DES) { if (game.ask) onTap(x, y); else desDown(id, x, y); return; }
-  { const q = !game.ask && !game.statTip && HOLD_TIPS.find((r) => inRect(r, x, y)); game.hold = q ? { id, x, y, t: game.real, k: q.k, st: game.state } : null; } // round 99: hold for a tip
+  { const q = !game.ask && !game.statTip && HOLD_TIPS.find((r) => inRect(r, x, y)); game.hold = q ? { id, x, y, t: game.real, k: q.k, title: q.title, text: q.text, st: game.state, defer: q.defer } : null; } // round 99: hold for a tip
+  if (game.hold && game.hold.defer) return; // round 100: this tap waits for the release (pointerUp), so a hold can show the tip instead
   if (['play', 'title', 'pause'].includes(game.state) && hitBtn(HUD.mute, x, y)) { AUDIO.unlock(); AUDIO.setMuted(!AUDIO.muted); sfx('tap'); return; }
   if (onTap(x, y)) return;
   if (game.state !== 'play') return;
@@ -745,7 +746,6 @@ function pointerDown(id, cx, cy) {
   if (tutTap(x, y)) return;
   if (game.interact && hitBtn(HUD.act, x, y)) { game.interact.use(); return; }
   if (hitBtn(HUD.dash, x, y, 10)) { input.dash = true; HUD.dash.pressed = 0.12; return; }
-  if (game.execTarget && hitBtn(HUD.exec, x, y)) { input.execute = true; return; }
   if (game.scene === 'wound') for (const k of ['m1', 'm2', 'pen']) if (hitBtn(HUD[k], x, y)) {
     HUD[k].pressed = 0.12;
     // Aimable rites: hold and drag to aim, release to cast. A plain tap still auto-aims.
@@ -754,15 +754,14 @@ function pointerDown(id, cx, cy) {
     input[k] = true; return;
   }
   if ((opt('hand') === 'left' ? x > W * 0.55 : x < W * 0.45) && stick.id === null) { Object.assign(stick, { id, ox: x, oy: y, x, y, active: true }); return; }
-  // Tap an enemy to lock it (or execute it if it is staggered).
+  // Tap an enemy to lock it. (The stagger and execute were removed in round 100, at the owner's request.)
   const wx = x + cam.x, wy = y + cam.y;
   let best = null, bd = 20;
   for (const e of enemies) { if (e.dead || e.state === 'spawn') continue; const d = Math.hypot(e.x - wx, e.y - e.hy - wy); if (d < bd) { bd = d; best = e; } }
-  if (best && best.state === 'stagger') { input.execute = best; return; }
   player.lock = best && player.lock !== best ? best : null;
 }
 function pointerMove(id, cx, cy) {
-  if (game.hold && game.hold.id === id) { const [x, y] = toLocal(cx, cy); if (Math.hypot(x - game.hold.x, y - game.hold.y) > 6) game.hold = null; }
+  if (game.hold && game.hold.id === id) { const [x, y] = toLocal(cx, cy); if (Math.hypot(x - game.hold.x, y - game.hold.y) > 6) game.hold = game.hold.defer ? { ...game.hold, t: Infinity } : null; } // a deferred tap still lands on release
   if (game.state === 'forge' && game.forge && game.forge.drag && game.forge.drag.id === id) { const [, y] = toLocal(cx, cy); game.forge.scroll = game.forge.drag.s0 - (y - game.forge.drag.y0); forgeGeo(featLayout()); return; }
   if (game.state === 'enchant' && game.ench && game.ench.drag && game.ench.drag.id === id) { const [, y] = toLocal(cx, cy), D = game.ench.drag, v = D.s0 - (y - D.y0); if (D.pick) { const P = enchPick(game.ench); P.scroll = v; gearGeo(featLayout(), P, forgeItems().length); } else { game.ench.scroll = v; enchGeo(featLayout()); } return; } // the geo clamps it
   if (game.state === 'designer' && DES) { const [x, y] = toLocal(cx, cy); desMove(id, x, y); return; }
@@ -775,7 +774,7 @@ function pointerMove(id, cx, cy) {
   if (d > max) { stick.ox = x - (x - stick.ox) / d * max; stick.oy = y - (y - stick.oy) / d * max; } // the base follows the thumb
 }
 function pointerUp(id) {
-  if (game.hold && game.hold.id === id) game.hold = null;
+  if (game.hold && game.hold.id === id) { const h = game.hold; game.hold = null; if (h.defer && game.state === h.st) onTap(h.x, h.y); } // a deferred tap, released before the hold
   if (game.ench && game.ench.drag && game.ench.drag.id === id) game.ench.drag = null;
   if (game.forge && game.forge.drag && game.forge.drag.id === id) game.forge.drag = null;
   if (game.state === 'designer' && DES) { desUp(id); return; }
@@ -815,7 +814,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyT' && (game.state === 'play' || game.state === 'pause')) { openRites(game.state); return; }
   if (game.state === 'stig') { if (game.stig.peek) game.stig.peek = null; else if (game.stig.t > 0.35 && game.stig.reveal) pickStigma(0); else if (game.stig.t > 0.35 && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) pickStigma(+e.code.slice(5) - 1); else if (game.stig.t > 0.35 && e.code === 'KeyR' && canReroll()) rerollWounds(); return; }
   if (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyK') input.dash = true;
-  if (e.code === 'KeyE' || e.code === 'KeyJ') { if (game.state === 'descent') descentTap(-1, -1); else if (game.state === 'play' && game.interact && !game.execTarget) game.interact.use(); else input.execute = true; }
+  if (e.code === 'KeyE' || e.code === 'KeyJ') { if (game.state === 'descent') descentTap(-1, -1); else if (game.state === 'play' && game.interact) game.interact.use(); }
   if (e.code === 'KeyQ' || e.code === 'Digit1') input.m1 = true;
   if (e.code === 'KeyF' || e.code === 'Digit2') input.m2 = true;
   if (e.code === 'KeyR' || e.code === 'Digit3') input.pen = true;
@@ -2003,7 +2002,7 @@ function moveCircle(o, dx, dy, r) {
 }
 
 // --------------------------------------------------------------- state ---
-const game = { state: 'title', time: 0, real: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, toast: null, execTarget: null, flash: 0 };
+const game = { state: 'title', time: 0, real: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, toast: null, flash: 0 };
 let awake = []; // the monsters updated this frame (see the sleep rule in update)
 let player, enemies = [], bolts = [], parts = [], gibs = [], falls = [], nums = [], ghosts = [], rings = [], fxs = [];
 let pools = [], flasks = [], chains = [], lashes = [];
@@ -2049,7 +2048,7 @@ function newRun() {
   player = makePlayer((room.start.cx + 0.5) * TILE, (room.start.cy + 2) * TILE);
   resetWorld();
   game.scene = 'wound'; game.state = 'play'; game.cardAt = game.real; game.waystone = null; game.interact = null;
-  Object.assign(game, { time: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, execTarget: null, flash: 0,
+  Object.assign(game, { time: 0, timeScale: 1, slowmo: 0, hitstop: 0, shake: 0, kills: 0, fervor: 0, fervorT: 0, best: 0, perfects: 0, flash: 0,
     run: { gold: 0, items: [], level: 1, xp: 0, pending: 0, wounds: {}, stratum: game.buildStratum || 1, diff: game.nextDiff || 0, vigil: game.nextVigil || 0, omens: game.nextVigil ? [] : (game.nextOmens || []) }, skill: null, stig: null, curRoom: room.start, buff: null, banner: null, massacre: null, focus: null, reflect: 0 });
   applyGear(true); // after the run reset, so last run's Stigmata are gone
   // Shrines and chests are things to use.
@@ -2850,12 +2849,13 @@ function renderForgeList(L, items, tab, F = game.forge, acc = '255,128,48', sub 
   if (Gm.max > 0) { const th = Math.max(16, B.h * B.h / (items.length * FORGE_RH)), ty = B.y + (B.h - th) * (F.scroll / Gm.max); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(B.x + B.w - 3, B.y, 3, B.h); ctx.fillStyle = `rgba(${acc},0.8)`; ctx.fillRect(B.x + B.w - 3, Math.round(ty), 3, Math.round(th)); }
 }
 // The showcase and the piece's name, Station and Sanctity beside it.
-function forgeShow(L, it, full = false) {
+function forgeShow(L, it, full = false, hint = null) {
   const Gm = forgeGeo(L, full), S0 = Gm.show, C = L.card, tx = S0.x + S0.w + 8, tw = C.x + C.w - 8 - tx, small = { small: true, outline: null };
   inset(C.x, C.y, C.w, C.h); pieceFrame(S0, it, '255,128,48');
   let y = S0.y + 2; for (const l of wrapW(nm(it), tw).slice(0, 2)) { text(l, tx, y, RARITY[it.ri].color, { bold: true }); y += 12; }
   text(heroText(`${RARITY[it.ri].name} ${SLOT_NAME[it.slot] || it.slot.toUpperCase()}`), tx, y + 1, PAL.stone1, small); y += 11;
-  text(`STATION ${ROMAN[(it.il || 1) - 1]}, SANCTITY ${itemSanctity(it)}`, tx, y + 1, PAL.gold1, small);
+  text(`STATION ${ROMAN[(it.il || 1) - 1]}, SANCTITY ${itemSanctity(it)}`, tx, y + 1, PAL.gold1, small); y += 11;
+  if (hint) { const ls = wrapW(hint, tw, true); if (y + ls.length * 10 <= Gm.stat(0).y - 2) ls.forEach((l, i) => text(l, tx, y + 2 + i * 10, PAL.stone2, small)); } // round 100: whole or not at all
   return Gm;
 }
 function renderForge() {
@@ -2868,7 +2868,7 @@ function renderForge() {
   renderForgeList(L, items, 0);
   if (!it) { text('NO GEAR TO WORK ON.', L.card.x + 6, L.card.y + 8, PAL.stone1, { small: true, outline: null }); return; }
   if (F.auto) autoStep(F, items);
-  { const Gm = forgeShow(L, it), small = { small: true, outline: null };
+  { const Gm = forgeShow(L, it, false, 'HOLD A STAT TO SEE WHAT IT DOES.'), small = { small: true, outline: null };
     it.stats.forEach((st, i) => { const r = Gm.stat(i), on = i === F.stat; if (STAT_TIP[st[0]]) HOLD_TIPS.push({ k: st[0], ...r }); if (on) { ctx.fillStyle = 'rgba(255,128,48,0.2)'; ctx.fillRect(r.x, r.y - 1, r.w, r.h); ctx.fillStyle = 'rgb(255,128,48)'; ctx.fillRect(r.x, r.y - 1, 2, r.h); }
       text(statLine(st), r.x + 6, r.y + 1, statCol(st), { ...small, bold: on }); text(st[2] !== undefined ? QUALITY[st[2]].name : i === 0 ? 'MAIN STAT' : 'PLAIN', r.x + r.w - 4, r.y + 1, st[2] !== undefined ? QUALITY[st[2]].col : PAL.stone2, { ...small, align: 'right' }); }); }
   const tc = temperCost(it), canT = (it.il || 1) < bestIl(), R = autoRow(L);
@@ -4480,7 +4480,8 @@ function codexList(sec) {
       lines: [n === 1 ? 'YOU HAVE FOUND ONE RUBRIC FOR THIS RITE.' : `YOU HAVE FOUND ${n.toLocaleString('en-US')} RUBRICS FOR THIS RITE.`,
         ...RUB_IDS.map((k) => { const t = (C.rk || {})[`${r.id}:${k}`]; return t ? `${RUB_KINDS[k].name} ${ROMAN[t - 1]}: ${heroText(RUB_KINDS[k].text(RUB_KINDS[k].v[t - 1], isPenRite(r.id)))}` : null; }),
         got.length < RUB_IDS.length ? `Not found yet: ${RUB_IDS.filter((k) => !got.includes(k)).map((k) => RUB_KINDS[k].name[0] + RUB_KINDS[k].name.slice(1).toLowerCase()).join(', ')}.` : 'YOU HAVE FOUND EVERY KIND.'] }; });
-  return WOUNDS.filter((w) => (!w.hero || w.hero === hero) && (!w.rite || ['m1', 'm2', 'pen'].some((sl) => riteList(sl).some((r) => r.id === w.rite)))).map((w) => { const n = C.w[w.id] || 0; return { id: w.id, name: heroText(w.name), seen: n > 0, icon: (x, y) => { ctx.save(); ctx.translate(x, y); ctx.scale(0.36, 0.36); woundIcon(w.icon, 0, 0, game.real); ctx.restore(); }, tag: WOUND_RARITY[w.r].name, rgb: hexRgb(WOUND_RARITY[w.r].col), lines: [heroText(w.text(1)), n === 1 ? 'TAKEN ONCE.' : `TAKEN ${n.toLocaleString('en-US')} TIMES.`] }; });
+  return WOUNDS.filter((w) => (!w.hero || w.hero === hero) && (!w.rite || ['m1', 'm2', 'pen'].some((sl) => riteList(sl).some((r) => r.id === w.rite)))).map((w) => { const n = C.w[w.id] || 0; return { id: w.id, name: heroText(w.name), seen: n > 0, icon: (x, y) => { ctx.save(); ctx.translate(x, y); ctx.scale(0.36, 0.36); woundIcon(w.icon, 0, 0, game.real); ctx.restore(); }, tag: WOUND_RARITY[w.r].name, rgb: hexRgb(WOUND_RARITY[w.r].col),
+    hint: w.mythic ? 'ON A LEVEL-UP, SACRIFICE TRADES 7 WOUND RANKS FOR A MYTHIC WOUND. GET THIS ONE THAT WAY TO ADD IT.' : w.rite && RITE_BY[w.rite] ? `THIS WOUND IS OFFERED ONLY WHILE ${RITE_BY[w.rite].name} IS ONE OF YOUR RITES.` : null, lines: [heroText(w.text(1)), n === 1 ? 'TAKEN ONCE.' : `TAKEN ${n.toLocaleString('en-US')} TIMES.`] }; });
 }
 function openCodex(sec = 0, back = 'pause') { game.state = 'codex'; game.codex = { sec, sel: -1, page: 0, back }; sfx('tap'); }
 function codexLayout() {
@@ -4519,7 +4520,7 @@ function renderCodex() {
   const C = L.card, q = L.list[K.sel]; inset(C.x, C.y, C.w, C.h, q && q.seen ? q.rgb : null);
   if (!q) { wrapW('TAP AN ENTRY TO READ IT.', C.w - 16, true).forEach((l, i) => text(l, C.x + 8, C.y + 22 + i * 10, PAL.stone2, small)); return; }
   let ty = C.y + 20;
-  if (!q.seen) { text('NOT FOUND YET', C.x + 8, ty, PAL.stone1, { bold: true }); wrapW(['KILL ONE TO ADD IT TO THE CODEX.', 'KILL THIS WARDEN TO EARN ITS TROPHY.', 'FIND ANY PIECE OF THIS SET TO ADD IT.', 'FIND THIS PIECE TO ADD IT.', 'TAKE THIS WOUND ON A LEVEL-UP TO ADD IT.', 'FIND A RUBRIC FOR THIS RITE TO ADD IT. ELITES AND WARDENS RARELY DROP THEM.'][K.sec], C.w - 16, true).forEach((l, i) => text(l, C.x + 8, ty + 16 + i * 10, PAL.stone2, small)); return; }
+  if (!q.seen) { text('NOT FOUND YET', C.x + 8, ty, PAL.stone1, { bold: true }); wrapW(q.hint || ['KILL ONE TO ADD IT TO THE CODEX.', 'KILL THIS WARDEN TO EARN ITS TROPHY.', 'FIND ANY PIECE OF THIS SET TO ADD IT.', 'FIND THIS PIECE TO ADD IT.', 'TAKE THIS WOUND ON A LEVEL-UP TO ADD IT.', 'FIND A RUBRIC FOR THIS RITE TO ADD IT. ELITES AND WARDENS RARELY DROP THEM.'][K.sec], C.w - 16, true).forEach((l, i) => text(l, C.x + 8, ty + 16 + i * 10, PAL.stone2, small)); return; }
   for (const l of wrapW(q.name, C.w - 16)) { text(l, C.x + 8, ty, `rgb(${q.rgb})`, { bold: true }); ty += 12; }
   pill(q.tag, C.x + 8 + Math.round((textW(q.tag, 1, true) + 8) / 2), ty + 1, PAL.stone1); ty += 16;
   const room = q.art ? C.y + C.h - 54 : C.y + C.h - 12; // the art (a Warden's halo) keeps the card's foot when it fits
@@ -5834,7 +5835,7 @@ const ELITE_EPITHETS = ['THE UNSHRIVEN', 'THE THRICE-TOLLED', 'OF THE LAST PEW',
 function spawnMonster(id, x, y, o = {}) {
   const d = MON[id];
   const e = { type: id, def: d, x, y, hp: d.hp, maxHp: d.hp, r: d.r, hy: d.hy, state: 'spawn', t: 0, animT: rng(), face: x < player.x ? 1 : -1, flash: 0, kx: 0, ky: 0,
-    tier: o.tier || d.tier, elite: d.tier !== 'common' && d.tier !== 'imp', staggered: false, slowK: 1, bound: 0, speedK: 1, cdK: 1, dmgK: 1, scaleK: o.scaleK || 1,
+    tier: o.tier || d.tier, elite: d.tier !== 'common' && d.tier !== 'imp', slowK: 1, bound: 0, speedK: 1, cdK: 1, dmgK: 1, scaleK: o.scaleK || 1,
     cds: d.attacks.map(() => rand(0.5, 1.5)), affixes: o.affixes || [], affT: {}, room: o.room, pack: o.pack, minion: o.minion, name: o.name || d.name, illusion: o.illusion, life: o.life, spawnDelay: o.spawnDelay || 0 };
   if (o.hpK) e.maxHp = e.hp = Math.round(e.hp * o.hpK);
   if (game.scene === 'wound' && !o.illusion) { e.maxHp = e.hp = Math.round(e.hp * curDiff().hp); e.speedK *= curDiff().speed || 1; }
@@ -5941,7 +5942,6 @@ function updateEnemy(e, dt) {
       break;
     case 'act': actUpdate(e, dt); break;
     case 'recover': if (e.t > (e.boss ? [0.4, 0.26, 0.1][e.phase] * (e.enraged ? 0.5 : 1) : e.atk && e.atk.recover || 0.45)) { e.state = 'move'; e.t = 0; } break;
-    case 'stagger': if (e.t > 3) { e.state = 'move'; e.t = 0; } break;
   }
 }
 
@@ -6136,7 +6136,7 @@ function updateHazards(dt) {
       if (h.t > h.delay + h.dur + 0.15) h.dead = true;
     } else if (h.kind === 'flash') { if (h.t > h.dur) h.dead = true; }
     else if (h.kind === 'aim') { // a sighting line, then a very fast shot
-      const e = h.src; if (e.dead || e.state === 'stagger' || e.bound > 0) { h.dead = true; continue; }
+      const e = h.src; if (e.dead || e.bound > 0) { h.dead = true; continue; }
       if (h.t < h.delay * 0.7) h.ang = Math.atan2(py - 12 - (e.y - e.hy), px - e.x);
       if (h.t >= h.delay) { h.dead = true; shotAt(e, h.ang + h.off, h.a); }
     }
@@ -6409,7 +6409,7 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   if (e.room !== undefined && room.rooms && room.rooms[e.room]) room.rooms[e.room].lastHurt = game.time;
   if (e.ward > 0) { nums.push({ x: e.x, y: e.y - e.hy * 2 - 4, v: 'WARDED', t: 0, color: PAL.holy1, small: true }); return; }
   let blocked = false;
-  if (!opts.status && !(e.bound > 0) && e.def.shield && e.state !== 'stagger' && Math.sign(dirx) === -e.face && Math.abs(dirx) > Math.abs(diry) * 0.6) { dmg = Math.max(1, Math.round(dmg * 0.35)); blocked = true; crit = false; }
+  if (!opts.status && !(e.bound > 0) && e.def.shield && Math.sign(dirx) === -e.face && Math.abs(dirx) > Math.abs(diry) * 0.6) { dmg = Math.max(1, Math.round(dmg * 0.35)); blocked = true; crit = false; }
   if (!opts.share) dmg = Math.round(dmg * (1 + fervorTier() * (0.1 + ts('zeal') / 100)) * (game.buff && game.buff.kind === 'fervor' ? 2 : 1));
   const before = e.hp / e.maxHp;
   if (crit && tal('mark')) e.markT = game.time + 3;
@@ -6446,8 +6446,6 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
     m.state = 'move'; m.dmgK = 0.3; playFx('fx', 'smoke', m.x, m.y - 8, 14);
   }
   if (e.type === 'imp' && !e.alarmed) { e.alarmed = true; toast('KILL IT BEFORE IT ESCAPES!', 1.6); }
-  const st = e.tier === 'elite' ? 0.08 : 0.15;
-  if (e.elite && !e.boss && !e.illusion && !e.staggered && e.hp > 0 && e.hp <= e.maxHp * st && e.tier !== 'imp') { e.staggered = true; e.state = 'stagger'; e.t = 0; e.under = false; toast('STAGGERED: EXECUTE IT', 1.5); }
   if (e.hp <= 0) killEnemy(e, dirx, diry);
 }
 
@@ -7891,6 +7889,7 @@ function renderRubPick() {
   text(fitText(`RUBRICS FOR ${RITE_BY[P.rite].name}`, G0.pw - 20), G0.x0 + 10, G0.y0 + 9, PAL.gold1, { bold: true });
   if (!G0.list.length) wrapW('NONE FOUND YET. ELITES AND WARDENS RARELY DROP THEM, FROM STATION II ON.', G0.pw - 20, true).forEach((l, i) => text(l, G0.x0 + 10, G0.y0 + 36 + i * 10, PAL.stone2, small));
   G0.list.slice(0, G0.n).forEach((q, i) => { const r = G0.row(i), on = cur && cur.u === q.u, used = Object.entries(rsock()).some(([, S]) => (S || []).includes(q.u));
+    HOLD_TIPS.push({ ...r, defer: true, title: rubName(q), text: `${rubText(q)} BY TIER: ${RUB_KINDS[q.k].v.map((v, t) => `${ROMAN[t]} ${v}${q.k === 'zeal' ? '' : '%'}`).join(', ')}.` });
     rowPlate(r, on, hexRgb(RUB_KINDS[q.k].col), true); rubIcon(q.k, q.t, r.x + 12, r.y + r.h / 2 + 1);
     text(rubName(q), r.x + 24, r.y + 3, RUB_KINDS[q.k].col, { ...small, bold: true }); if (used) text(on ? 'IN THIS SOCKET' : 'SOCKETED', r.x + r.w - 4, r.y + 3, PAL.stone1, { ...small, align: 'right' });
     text(fitText(rubText(q), r.w - 28), r.x + 24, r.y + 13, PAL.cloth0, small); });
@@ -8331,7 +8330,7 @@ function castPenance(aim) {
 }
 
 // Round 99: a rite that found nothing to hit (its cooldown did not start) says so, at most every 1.5 s.
-function noFoe() { if ((game.noFoeT || 0) > game.real) return; game.noFoeT = game.real + 1.5; toast('NO FOE IN REACH.', 1.2); game.toastColor = PAL.stone1; sfx('tap', { vol: 0.4, rate: 0.7 }); }
+function noFoe(msg = 'NO FOE IN REACH.') { if ((game.noFoeT || 0) > game.real) return; game.noFoeT = game.real + 1.5; toast(msg, 1.4); game.toastColor = PAL.stone1; sfx('tap', { vol: 0.4, rate: 0.7 }); }
 function updateAbilities(dt) {
   const p = player;
   const hk = game.buff && game.buff.kind === 'haste' ? 1.5 : 1;
@@ -8349,7 +8348,7 @@ function updateAbilities(dt) {
   const votive6 = () => { if (isAnch() && sb('reliquary', 6)) { p.votives = (p.votives || []).filter((t) => t > game.time); for (let k = 0; k < 2 && p.votives.length < 12; k++) p.votives.push(game.time + 6); } }; // the Shattered Reliquary at 6
   if (input.m1) { input.m1 = false; if (p.m1cd <= 0) { riteCast(riteOf('m1').id, () => castM1(aim && aim.k === 'm1' ? aim : null)); if (p.m1cd > 0) { bumpRite(riteOf('m1').id); riteFlare(riteOf('m1').id); votive6(); rubricCast(riteOf('m1').id, 'm1'); } else noFoe(); tut.flags.m1 = true; lucky('m1cd'); } }
   if (input.m2) { input.m2 = false; if (p.m2cd <= 0) { riteCast(riteOf('m2').id, () => castM2(aim && aim.k === 'm2' ? aim : null)); if (p.m2cd > 0) { bumpRite(riteOf('m2').id); riteFlare(riteOf('m2').id); votive6(); rubricCast(riteOf('m2').id, 'm2'); } else noFoe(); if (p.m2cd > 0) tut.flags.m2 = true; lucky('m2cd'); } }
-  if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) { riteCast(riteOf('pen').id, () => castPenance(aim && aim.k === 'pen' ? aim : null)); rubricCast(riteOf('pen').id, 'pen'); tut.flags.pen = true; if (tal('choir')) { p.m1cd = 0; p.m2cd = 0; } } }
+  if (input.pen) { input.pen = false; if (p.penance >= T.penance.charge && p.rainT <= 0) { riteCast(riteOf('pen').id, () => castPenance(aim && aim.k === 'pen' ? aim : null)); rubricCast(riteOf('pen').id, 'pen'); tut.flags.pen = true; if (tal('choir')) { p.m1cd = 0; p.m2cd = 0; } } else if (p.rainT <= 0) noFoe(`${titleWords(riteOf('pen').name, true)} is not charged yet. Kills charge it.`); } // round 100
   enchAuras(dt);
   updateThurible(dt);
 
@@ -8544,12 +8543,6 @@ function updatePlayer(dt) {
     input.dash = false;
     if (p.charges > 0 && p.dashT <= 0) { p.charges--; startDash(p); }
   }
-  game.execTarget = enemies.find((e) => !e.dead && e.state === 'stagger' && Math.hypot(e.x - p.x, e.y - p.y) < 90) || null;
-  if (input.execute) {
-    const t = input.execute === true ? game.execTarget : input.execute;
-    input.execute = false;
-    if (t && !t.dead && t.state === 'stagger') execute(t);
-  }
   let vx, vy;
   if (p.dashT > 0) {
     p.dashT -= dt; vx = p.dashDx * T.dash.speed; vy = p.dashDy * T.dash.speed;
@@ -8572,20 +8565,6 @@ function updatePlayer(dt) {
   // A puff of dust at each footfall while running (round 62).
   if (p.anim === 'run') { const si = Math.floor(p.animT * 16) % 8; if (si !== p.stepI && (si === 0 || si === 4) && !LOWFX && game.scene === 'wound') vemit(p.x - p.face * 3, p.y - 1, { n: 3, ramp: 'bone', sp: 18, up: 14, life: 0.3, grav: 50, size: 2, glow: 0 }); p.stepI = si; }
   if (p.dashT <= 0 && game.time - p.dashStart > 0.3) { p.dashX = undefined; p.dashY = undefined; }
-}
-
-function execute(e) { sfx('execute');
-  const p = player, side = p.x < e.x ? -1 : 1;
-  // Land beside the foe on whichever side is clear (open maps have thick walls).
-  const sd = !boxSolid(e.x + side * 16, e.y, p.r) ? side : !boxSolid(e.x - side * 16, e.y, p.r) ? -side : 0;
-  if (sd) { p.x = e.x + sd * 16; p.y = e.y; }
-  p.face = e.x < p.x ? -1 : 1; p.iframes = Math.max(p.iframes, 0.5);
-  game.hitstop = 0.18; game.shake = 8; game.flash = 0.08;
-  p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.05));
-  addFervor(20);
-  rings.push({ x: e.x, y: e.y - 16, t: 0, max: 0.4, r: 40, color: '255,90,74' });
-  nums.push({ x: e.x, y: e.y - 48, v: 'EXECUTED', t: 0, color: PAL.blood0, crit: true });
-  killEnemy(e, -side, 0, true);
 }
 
 function die() {
@@ -8946,7 +8925,7 @@ function render() {
   if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; }
   if (game.setPop && (game.state === 'inv' || game.state === 'gift')) { layerBreak(); renderSetPop(); } else game.setPop = null;
   if (game.itemPop && HUB_STATES.concat(['board', 'shop', 'gift']).includes(game.state)) { layerBreak(); TIPS.length = 0; renderItemPop(); } else game.itemPop = null; // the popup covers the window's own lines
-  { const h = game.hold; if (h && h.st === game.state && game.real - h.t > HOLD_T) { game.statTip = { k: h.k, x: h.x, y: h.y - 4, st: h.st }; game.hold = null; sfx('tap', { vol: 0.4, rate: 1.3 }); } }
+  { const h = game.hold; if (h && h.st === game.state && game.real - h.t > HOLD_T) { game.statTip = { k: h.k, title: h.title, text: h.text, x: h.x, y: h.y - 4, st: h.st }; game.hold = null; sfx('tap', { vol: 0.4, rate: 1.3 }); } }
   if (game.statTip && game.statTip.st === game.state) renderStatTip(); else game.statTip = null;
   if (game.enchPop && game.state === 'inv') { layerBreak(); renderEnchPop(); if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; } } else game.enchPop = null;
   if (game.ask) { layerBreak(); renderAsk(); if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; } }
@@ -9078,10 +9057,9 @@ function drawEnemy(e) {
   if (e.hitT > 0 && d.hit && SPR[d.sheet].anims[d.hit] && (e.state === 'move' || e.state === 'recover' || e.state === 'idle')) { anim = d.hit; i = e.hitT > HIT_T / 2 ? 0 : 1; }
   if (e.state === 'windup') { anim = d.attack; i = nAtk > 2 ? (e.t < e.atk.windup / 2 ? 0 : 1) : 0; }
   else if (e.state === 'act' || (e.state === 'recover' && e.t < 0.2)) { anim = d.attack; i = nAtk > 2 ? 2 : 1; }
-  else if (e.state === 'stagger') { anim = d.attack; i = 0; }
   if (e.bound > 0) { anim = d.walk; i = 0; }
   const tele = e.state === 'windup' && e.t > e.atk.windup - 0.18 && Math.floor(game.real * 24) % 2 === 0;
-  const shake = e.state === 'stagger' || e.bound > 0 ? Math.round(Math.sin(game.real * 60)) : 0;
+  const shake = e.bound > 0 ? Math.round(Math.sin(game.real * 60)) : 0;
   const lift = d.fly ? -6 + Math.round(Math.sin(game.real * 3 + e.x) * 2) : 0;
   const x = Math.round(e.x + shake), y = Math.round(e.y + lift), k = e.scaleK;
   const draw = (o, ox = 0, oy = 0) => {
@@ -9101,10 +9079,9 @@ function drawEnemy(e) {
     const ramp = e.tier === 'elite' ? 'gold' : e.tier === 'rare' ? 'holy' : 'blood';
     ctx.fillStyle = PAL.outline; ctx.fillRect(bx - 1, by - 1, w + 2, 5);
     ctx.fillStyle = PAL.blood4; ctx.fillRect(bx, by, w, 3);
-    ctx.fillStyle = e.state === 'stagger' ? PAL.gold1 : PAL[ramp + '2']; ctx.fillRect(bx, by, fw, 3);
-    ctx.fillStyle = e.state === 'stagger' ? PAL.gold0 : PAL[ramp + '1']; ctx.fillRect(bx, by, fw, 1);
+    ctx.fillStyle = PAL[ramp + '2']; ctx.fillRect(bx, by, fw, 3);
+    ctx.fillStyle = PAL[ramp + '1']; ctx.fillRect(bx, by, fw, 1);
   }
-  if (e.state === 'stagger') spr('fx', 'dagger', 0, e.x, e.y - spriteTop(e) - 10 + Math.round(Math.sin(game.real * 8) * 2));
 }
 
 // The name, health and curses of the Rare or Elite you are fighting.
@@ -9668,7 +9645,6 @@ function renderHud() {
   button(HUD.pen, { active: penReady, ring: penReady ? 1 : p.penance / T.penance.charge, ringColor: penReady ? PAL.blood0 : PAL.blood2 });
   }
   if (game.scene === 'wound') renderXpBar();
-  if (game.execTarget) button(HUD.exec);
   if (game.interact) { HUD.act.icon = game.interact.icon; button(HUD.act); text(game.interact.label, HUD.act.x, HUD.act.y + HUD.act.r + 4, PAL.cloth0, { align: 'center' }); }
   // Bottom-left: joystick.
   const jx = stick.active ? stick.ox : HUD.joy.x, jy = stick.active ? stick.oy : HUD.joy.y;
@@ -10329,6 +10305,7 @@ function renderStigmata() {
   stigLayout().forEach((r, i) => {
     const c = S.cards[i], R0 = WOUND_RARITY[c.r], rank = wound(c.id), lift = Math.round((1 - Math.min(1, S.t * 3 - i * 0.25)) * 30), rgb = hexRgb(R0.col);
     if (lift >= 30) return;
+    if (!S.reveal && !S.peek) { const mx = c.max || 1; HOLD_TIPS.push({ ...r, defer: true, title: heroText(c.name), text: mx > 1 ? `TAKING IT MAKES RANK ${rank + 1} OF ${mx}. AT RANK ${mx}: ${heroText(c.text(mx))}` : 'THIS WOUND HAS ONE RANK.' }); } // round 100: hold a card
     const y = r.y + Math.max(0, lift);
     ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(r.x + 2, y + 3, r.w, r.h);
     const g = ctx.createLinearGradient(0, y, 0, y + r.h); g.addColorStop(0, `rgb(${shade(rgb, 0.32)})`); g.addColorStop(0.42, '#121a2c'); g.addColorStop(1, '#0a0f1b'); ctx.fillStyle = g; ctx.fillRect(r.x, y, r.w, r.h);
@@ -10655,10 +10632,12 @@ const STAT_TIP = {
 // Round 98: every window pushes its tappable stat lines here ({ k, x, y, w, h }); cleared each frame.
 const TIPS = [];
 // Round 99: lines where a tap does something else (the forge's REFORGE stat rows pick a stat), so their tip opens on a hold.
+// Round 100: an entry may carry its own { title, text } in place of a stat key k, and defer: true where the tap acts at once
+// (a level-up card, a Rubric row): that tap then lands on release, and a hold shows the tip without acting.
 const HOLD_TIPS = [], HOLD_T = 0.45;
 function tipAt(x, y) { const q = TIPS.find((r) => inRect(r, x, y) && STAT_TIP[r.k]); if (!q) return false; game.statTip = { k: q.k, x: q.x + q.w / 2, y: q.y, st: game.state }; sfx('tap', { vol: 0.4 }); return true; }
 function renderStatTip() {
-  const P = game.statTip, T0 = STAT_TIP[P.k], small = { small: true, outline: null }, w = Math.min(190, W - 20), ls = wrapW(T0[1], w - 16, true), h = 26 + ls.length * 10;
+  const P = game.statTip, T0 = P.title ? [P.title, P.text] : STAT_TIP[P.k], small = { small: true, outline: null }, w = Math.min(190, W - 20), ls = wrapW(T0[1], w - 16, true), h = 26 + ls.length * 10;
   const x = Math.max(6, Math.min(W - w - 6, Math.round(P.x - w / 2))), y = Math.max(6, Math.min(H - h - 6, Math.round(P.y - h - 6)));
   layerBreak(); ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x + 2, y + 3, w, h); ctx.fillStyle = '#121a2c'; ctx.fillRect(x, y, w, h); ctx.fillStyle = PAL.gold1; ctx.fillRect(x, y, w, 2);
   ctx.fillStyle = 'rgba(170,190,225,0.25)'; ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x, y, 1, h); ctx.fillRect(x + w - 1, y, 1, h);
