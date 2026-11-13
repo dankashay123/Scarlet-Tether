@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '102';
+const BUILD = '103';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '103': ['NEW: PETS. TEN BATTLE PETS FIGHT OR GUARD YOU, AND TEN DROP PETS EACH RAISE ONE KIND OF DROP. EQUIP TWO OF EACH; ONE FOLLOWS YOU.', 'NEW: THE SHOP, ON THE PAUSE SCREEN. PETS COST INDULGENCES, AND THE PACKS OF INDULGENCES ARE FREE FOR NOW.', 'THE TITHE CAT, A DROP PET, FINDS INDULGENCES ON FOES.'],
   '102': ['NEW: THE CALLING, A FOURTH TALENT TREE THAT BELONGS TO YOUR CLASS. ITS POINTS ARE TESTAMENTS, RARE DROPS FROM WARDENS OF STATION V AND DEEPER AND FROM VIGILS.', 'EACH CLASS HAS TWO ENCHANTS OF ITS OWN AT THE ENCHANTER.'],
   '101': ['EVERY SET WAS REBALANCED SO ALL FIFTEEN KILL AT ABOUT THE SAME RATE WITH SIX PIECES. WEAK SETS HIT HARDER; THE PENITENT\'S STRIDE HITS LESS HARD. SET CARDS SHOW THE NEW NUMBERS.', 'SETS THAT TOOK THE MOST DAMAGE NOW TAKE LESS WITH SIX PIECES.', 'THE TUTORIAL ASKS YOU TO WALK UP TO A FOE BEFORE A RITE WHEN NONE IS NEAR.'],
   '100': ['ELITES NO LONGER STAGGER, AND THE EXECUTE IS GONE.', 'TAPPING THE RECKONING BEFORE IT IS CHARGED NOW SAYS SO.', 'HOLD A LEVEL-UP CARD TO SEE WHAT ITS TOP RANK GIVES, OR A RUBRIC TO SEE ALL ITS TIERS. A QUICK TAP STILL CHOOSES.', 'THE CODEX SAYS HOW TO FIND WOUNDS YOU HAVE NOT SEEN.', 'THE REFORGE TAB SAYS YOU CAN HOLD A STAT FOR ITS TIP.'],
@@ -452,7 +453,7 @@ const isBold = (o) => o.bold ?? !!(o.glow || (o.sc || 1) >= 1.5); // titles and 
 // turns a short label into Title Case and anything longer into a sentence, and
 // keeps game names (sets, rites, Wardens, sites, terms) and Roman numerals capitalised.
 // A string that already has a lower-case letter is left as it is.
-const CASE_TERMS = new Set('RUBRIC RUBRICS ZEAL TOLL WARDEN WARDENS SAINT SAINTS STATION STATIONS VIGIL VIGILS HALLOWED RECKONING RECKONINGS EMBERSTONE EMBERSTONES CHRISM CHRISMS MENDICANT SANCTITY VAEL ODILE PELL CINDER VANE HOLLIS BARNABY ULM CANONRY CENSER ENCHANTER UNDERCROFT NAVE OSSUARY STRATUM STRATA CARNAGE'.split(' '));
+const CASE_TERMS = new Set('INDULGENCE INDULGENCES TESTAMENT TESTAMENTS RUBRIC RUBRICS ZEAL TOLL WARDEN WARDENS SAINT SAINTS STATION STATIONS VIGIL VIGILS HALLOWED RECKONING RECKONINGS EMBERSTONE EMBERSTONES CHRISM CHRISMS MENDICANT SANCTITY VAEL ODILE PELL CINDER VANE HOLLIS BARNABY ULM CANONRY CENSER ENCHANTER UNDERCROFT NAVE OSSUARY STRATUM STRATA CARNAGE'.split(' '));
 const CASE_SMALL = new Set('A AN THE OF TO IN ON AT FOR AND OR BY WITH FROM PER VS AS'.split(' '));
 const CASE_KEEP = /^(?:HP|XP|DPS|FX|OK|UI|PNG|(?=[IVXL])L?X{0,3}(?:IX|IV|V?I{0,3})\+?|[A-Z]\d+)$/; // HP, XP, Roman numerals, F1
 const CASE_VERBS = new Set('TAP HOLD DRAG WEAR BUY GO FINISH KILL PICK CHOOSE SPEND TALK OPEN PRESS MOVE REACH FIND CLEAR NO GET WALK FALL BEAT SELL BURN USE CLAIM DIES COMES'.split(' '));
@@ -460,7 +461,7 @@ let CASE_RX = null; const CASE_NAMES = new Map(), CASE_MEMO = new Map();
 function caseNames() {
   const add = (s) => { if (typeof s !== 'string' || !/^[A-Z][A-Z'\- ]+[A-Z]$/.test(s)) return; s = s.replace(/^THE /, ''); if (s.includes(' ')) CASE_NAMES.set(s, titleWords(s, true)); };
   const walk = (o, d) => { if (!o || d > 4) return; if (Array.isArray(o)) { for (const v of o) walk(v, d + 1); return; } if (typeof o !== 'object') return; for (const [k, v] of Object.entries(o)) { if (k === 'name' || k === 'short') add(v); else if (typeof v === 'object') walk(v, d + 1); } };
-  try { walk([LEGENDS, RITES, MRITES, ARITES, VSETS, TALENT_TREES, SITES, STRATA, CHRISM, CENSER_UP, HALOS, OMENS, ENCHANTS, PASSIVES, WOUNDS, MON], 0); Object.values(LEGENDARIES).forEach(add); } catch { /* data not ready yet */ }
+  try { walk([PETS, LEGENDS, RITES, MRITES, ARITES, VSETS, TALENT_TREES, SITES, STRATA, CHRISM, CENSER_UP, HALOS, OMENS, ENCHANTS, PASSIVES, WOUNDS, MON], 0); Object.values(LEGENDARIES).forEach(add); } catch { /* data not ready yet */ }
   for (const s of ['ARCHDEACON VANE', 'BROTHER CINDER', 'BROTHER PELL', 'BROTHER ULM', 'SISTER ODILE', 'OLD BARNABY', 'BLOODROSE KEY', 'BLOODROSE KEYS', 'EMBER FORGE', 'ASHEN ALTAR', 'TRAINING YARD', 'BLEEDING VIGIL', 'WEEPING RELIQUARY', 'QUIET ACRE', 'PILGRIMS\' GATE', 'VIGIL ROLL', 'SCRYING POOL', 'BOUNTY BOARD', 'PENITENT CELLS', 'SAINT LEVEL', 'DROWNED NAVE', 'OSSUARY SPIRE', 'GREAT FONT']) add(s);
   const list = [...CASE_NAMES.keys()].sort((a, b) => b.length - a.length).map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   CASE_RX = list.length ? new RegExp(`(?<![A-Z'])(?:${list.join('|')})(?![A-Z])`, 'g') : /$^/g;
@@ -736,6 +737,7 @@ function pointerDown(id, cx, cy) {
   if (game.state === 'enchant' && game.ench && !game.ask) { const N = game.ench, L = featLayout(), P = N.pick && enchPick(N); // round 93: drag the list (round 97: or the gear picker)
     if (inRect(P ? gearGeo(L, P, forgeItems().length).box : enchGeo(L).box, x, y)) N.drag = { id, y0: y, s0: (P ? P.scroll : N.scroll) || 0, pick: !!P }; }
   if (game.state === 'forge' && game.forge && game.forge.tab < 3 && !game.ask && !game.forge.list && inRect(forgeGeo(featLayout()).box, x, y)) game.forge.drag = { id, y0: y, s0: game.forge.scroll || 0 }; // round 96
+  if (game.state === 'store' && game.store && game.store.tab < 2 && !game.ask && inRect(gearGeo(featLayout(), game.store, storeList().length).box, x, y)) game.store.drag = { id, y0: y, s0: game.store.scroll || 0 };
   if (game.state === 'designer' && DES) { if (game.ask) onTap(x, y); else desDown(id, x, y); return; }
   { const q = !game.ask && !game.statTip && HOLD_TIPS.find((r) => inRect(r, x, y)); game.hold = q ? { id, x, y, t: game.real, k: q.k, title: q.title, text: q.text, st: game.state, defer: q.defer } : null; } // round 99: hold for a tip
   if (game.hold && game.hold.defer) return; // round 100: this tap waits for the release (pointerUp), so a hold can show the tip instead
@@ -763,6 +765,7 @@ function pointerDown(id, cx, cy) {
   player.lock = best && player.lock !== best ? best : null;
 }
 function pointerMove(id, cx, cy) {
+  if (game.state === 'store' && game.store && game.store.drag && game.store.drag.id === id) { const [, y] = toLocal(cx, cy), D = game.store.drag; game.store.scroll = D.s0 - (y - D.y0); gearGeo(featLayout(), game.store, storeList().length); return; }
   if (game.hold && game.hold.id === id) { const [x, y] = toLocal(cx, cy); if (Math.hypot(x - game.hold.x, y - game.hold.y) > 6) game.hold = game.hold.defer ? { ...game.hold, t: Infinity } : null; } // a deferred tap still lands on release
   if (game.state === 'forge' && game.forge && game.forge.drag && game.forge.drag.id === id) { const [, y] = toLocal(cx, cy); game.forge.scroll = game.forge.drag.s0 - (y - game.forge.drag.y0); forgeGeo(featLayout()); return; }
   if (game.state === 'enchant' && game.ench && game.ench.drag && game.ench.drag.id === id) { const [, y] = toLocal(cx, cy), D = game.ench.drag, v = D.s0 - (y - D.y0); if (D.pick) { const P = enchPick(game.ench); P.scroll = v; gearGeo(featLayout(), P, forgeItems().length); } else { game.ench.scroll = v; enchGeo(featLayout()); } return; } // the geo clamps it
@@ -776,6 +779,7 @@ function pointerMove(id, cx, cy) {
   if (d > max) { stick.ox = x - (x - stick.ox) / d * max; stick.oy = y - (y - stick.oy) / d * max; } // the base follows the thumb
 }
 function pointerUp(id) {
+  if (game.store && game.store.drag && game.store.drag.id === id) game.store.drag = null;
   if (game.hold && game.hold.id === id) { const h = game.hold; game.hold = null; if (h.defer && game.state === h.st) onTap(h.x, h.y); } // a deferred tap, released before the hold
   if (game.ench && game.ench.drag && game.ench.drag.id === id) game.ench.drag = null;
   if (game.forge && game.forge.drag && game.forge.drag.id === id) game.forge.drag = null;
@@ -799,7 +803,7 @@ screen.addEventListener('touchend', (e) => { e.preventDefault(); for (const t of
 screen.addEventListener('touchcancel', (e) => { for (const t of e.changedTouches) pointerUp(t.identifier); });
 screen.addEventListener('mousedown', (e) => pointerDown('m', e.clientX, e.clientY));
 addEventListener('mousemove', (e) => { if (stick.id === 'm' || (game.aim && game.aim.id === 'm') || game.state === 'designer') pointerMove('m', e.clientX, e.clientY); });
-screen.addEventListener('wheel', (e) => { if (game.state === 'forge' && game.forge) { game.forge.scroll = (game.forge.scroll || 0) + e.deltaY * 0.5; forgeGeo(featLayout()); e.preventDefault(); return; } if (game.state === 'enchant' && game.ench) { const N = game.ench; if (N.pick) { const P = enchPick(N); P.scroll = (P.scroll || 0) + e.deltaY * 0.5; gearGeo(featLayout(), P, forgeItems().length); } else { N.scroll = (N.scroll || 0) + e.deltaY * 0.5; enchGeo(featLayout()); } e.preventDefault(); return; } if (game.state !== 'designer' || !DES) return; e.preventDefault(); const [x, y] = toLocal(e.clientX, e.clientY); desZoom(e.deltaY < 0 ? 1.25 : 0.8, x, y); }, { passive: false });
+screen.addEventListener('wheel', (e) => { if (game.state === 'store' && game.store) { game.store.scroll = (game.store.scroll || 0) + e.deltaY * 0.5; e.preventDefault(); return; } if (game.state === 'forge' && game.forge) { game.forge.scroll = (game.forge.scroll || 0) + e.deltaY * 0.5; forgeGeo(featLayout()); e.preventDefault(); return; } if (game.state === 'enchant' && game.ench) { const N = game.ench; if (N.pick) { const P = enchPick(N); P.scroll = (P.scroll || 0) + e.deltaY * 0.5; gearGeo(featLayout(), P, forgeItems().length); } else { N.scroll = (N.scroll || 0) + e.deltaY * 0.5; enchGeo(featLayout()); } e.preventDefault(); return; } if (game.state !== 'designer' || !DES) return; e.preventDefault(); const [x, y] = toLocal(e.clientX, e.clientY); desZoom(e.deltaY < 0 ? 1.25 : 0.8, x, y); }, { passive: false });
 addEventListener('mouseup', () => pointerUp('m'));
 addEventListener('keydown', (e) => {
   keys.add(e.code);
@@ -1613,7 +1617,7 @@ function deepPayout(e, df) {
   if (df.n >= DEEP.set2) pop({ kind: 'item', item: makeSetPiece(df.n) });
   if (df.n >= DEEP.chrism) pop({ kind: 'chrism', tier: 3 });
 }
-function dropVkey(e) { if (curDiff().n >= VKEY_FROM && (curDiff().n >= DEEP.from || Math.random() < VKEY_CHANCE)) drops.push({ kind: 'vkey', x: e.x + 14, y: e.y + 6, z: 10, vx: rand(-30, 30), vy: rand(10, 30), vz: 140, t: 0 }); }
+function dropVkey(e) { if (curDiff().n >= VKEY_FROM && (curDiff().n >= DEEP.from || Math.random() < VKEY_CHANCE * (pet('rosemoth') ? 1.25 : 1))) drops.push({ kind: 'vkey', x: e.x + 14, y: e.y + 6, z: 10, vx: rand(-30, 30), vy: rand(10, 30), vz: 140, t: 0 }); }
 // Each monster's voice when it dies (a family of two takes). Common foes voice
 // about one death in four, spaced out, so a crowd never drones; others always do.
 const VOICE = {};
@@ -1650,7 +1654,7 @@ function wardenSlain(e) {
     else if (first && df.n <= TAL_STATIONS) { toast('STATION CLEARED: +1 TALENT POINT', 3); game.toastColor = PAL.holy0; }
     persist();
     game.banner = { text: 'THE WARDEN FALLS', sub: first && df.n < MAX_STATION ? `STATION ${ROMAN[df.n]} UNLOCKED` : 'USE THE WAYSTONE TO RETURN', t: 0, color: PAL.gold0 };
-    dropLoot(e.x, e.y, { gold: 25, item: WARDEN.items, itemBoost: 2, globe: 2, warden: true }); maybeChrism(e.x, e.y, 0.4); maybeRubric(e.x, e.y, RUB_DROP.warden); if (df.n >= TEST_DROP.from) maybeTestament(e.x, e.y, TEST_DROP.warden); dropVkey(e); wardenMats(e, df); deepPayout(e, df);
+    dropLoot(e.x, e.y, { gold: 25, item: WARDEN.items, itemBoost: 2, globe: 2, warden: true }); maybeChrism(e.x, e.y, 0.4); maybeRubric(e.x, e.y, RUB_DROP.warden); maybeIndul(e, INDUL_DROP.warden); if (df.n >= TEST_DROP.from) maybeTestament(e.x, e.y, TEST_DROP.warden); dropVkey(e); wardenMats(e, df); deepPayout(e, df);
   }
   for (const d of drops) if (d.kind !== 'globe') d.vac = true;
   addFervor(25);
@@ -2117,7 +2121,7 @@ function persist() { try { localStorage.setItem('hollow-saint', JSON.stringify(S
 // shows. Settings and the tutorial carry across characters. Choosing another
 // character or making one writes the saves and reloads straight into Vael.
 const CHAR_KEY = 'hollow-saint-chars', charKey = (id) => `hollow-saint-char-${id}`, MAX_CHARS = 4;
-const CHAR_GLOBAL = ['opts', 'muted', 'dev', 'seenBuild', 'tutorialDone'];
+const CHAR_GLOBAL = ['opts', 'muted', 'dev', 'seenBuild', 'tutorialDone', 'indul', 'pets']; // round 103: Indulgences and pets are the account's
 const CHAR_NAMES = ['ALDRIC', 'BRANNOCH', 'CASSIA', 'DAGNY', 'EDRIC', 'FENNA', 'GISELA', 'HALE', 'ISOLDE', 'JORY', 'KESTREL', 'LUCAN', 'MAREN', 'NELL', 'OSRIC', 'PERRIN', 'QUILL', 'ROWAN', 'SABINE', 'TAMSIN', 'ULRIC', 'VESNA', 'WYNN', 'YSEULT', 'ANSEL', 'BRIDE', 'CORVIN', 'ELSPETH'];
 const randName = (not) => { const l = CHAR_NAMES.filter((n) => n !== not); return l[Math.floor(Math.random() * l.length)]; };
 const lsGet = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
@@ -3201,12 +3205,12 @@ function enchantTap(x, y) {
 // What a Warden drops for the forge and the Enchanter: Emberstones always
 // (more at deeper Stations and Vigils), ingredients at Station X and deeper.
 function wardenMats(e, df) {
-  const n = 2 + Math.floor(df.vigil ? Math.min(df.vigil, 60) / 3 : (df.n - 1) / 2);
+  const n = 2 + Math.floor(df.vigil ? Math.min(df.vigil, 60) / 3 : (df.n - 1) / 2) + (pet('emberfox') ? 2 : 0);
   const pop = (o) => drops.push({ x: e.x + rand(-24, 24), y: e.y + rand(4, 18), z: 10, vx: rand(-70, 70), vy: rand(-30, 40), vz: rand(110, 170), t: 0, ...o });
   for (let k = 0; k < n; k++) pop({ kind: 'ember' });
   if (df.n >= ENCH_FROM || (df.vigil || 0) >= 30) maybeTear(e.x, e.y, TEAR.warden);
   if (df.n >= ENCH_FROM) {
-    let got = 0; const ch = ingrChance() * (df.vigil ? 1 : deepIngrK(df.n));
+    let got = 0; const ch = ingrChance() * (df.vigil ? 1 : deepIngrK(df.n)) * (pet('herbmole') ? 1.5 : 1);
     for (const en of myEnch()) for (let k = 0; k < 3; k++) if (Math.random() < ch) { pop({ kind: 'ingr', i: en * 3 + k }); got++; }
     SAVE.ingrDry = got ? 0 : (SAVE.ingrDry || 0) + 1; persist();
   }
@@ -4626,7 +4630,7 @@ const burnChance = (ci) => Math.min(1, ALTAR_WIN + (ci >= 0 ? CHRISM[ci].add : 0
 const GRIND_N = 3, GRIND_W = [60, 28, 10, 2]; // three Hallowed pieces ground into one Chrism, by kind
 // A Chrism drop: very rare, better kinds rarer still.
 function maybeChrism(x, y, chance) {
-  if (rng() >= chance) return;
+  if (rng() >= chance * (pet('chrismsnail') ? 1.5 : 1)) return;
   const n = curDiff().n, v = 1 + (curDiff().vigil || 0) * VIGIL_PAY.tierK, w = [70, 22 * (1 + n * 0.05) * v, 7 * (1 + n * 0.08) * v, 1 * (1 + n * 0.12) * v];
   let r = rng() * w.reduce((a, b) => a + b, 0), tier = 0; for (; tier < 3 && r > w[tier]; tier++) r -= w[tier];
   drops.push({ kind: 'chrism', tier, x, y, z: 6, vx: rand(-50, 50), vy: rand(-30, 30), vz: rand(70, 120), t: 0 });
@@ -4951,8 +4955,8 @@ function settingsTap(x, y) {
 // Grey "< X >" buttons are pickers (left half steps back, right half
 // forward), green or dark buttons are toggles, red buttons do something.
 const DEV = { cell: 0, tab: 0, il: 6, ri: 4, slot: 0, warden: 0, mon: 0, wound: 0, stn: 0, strat: 1, vigil: 1, set: 0, q: -1, ench: 0, god: false, nocd: false, boxes: false, fps: false, speed: 1, confirm: 0, taps: 0, tapT: 0 };
-const DEV_TABS = ['HERO', 'GEAR', 'FORGE', 'WORLD', 'TOWN', 'DEBUG'];
-const DEV_HELP = ['GOD MODE, LEVELS, WOUNDS, SAINT LEVEL AND RITE RANKS.', 'MAKE GEAR AT ANY STATION AND RARITY, WHOLE SETS, THE BAG.', 'EMBERSTONES, REFORGE QUALITY, ENCHANTS AND INGREDIENTS, THE ALTAR.', 'DESCEND ANYWHERE ON EITHER MAP KIND, SUMMON WARDENS AND FOES.', 'UNLOCKS, CURRENCIES, LOOKS, CELLS, BOUNTIES AND THE YARD.', 'FPS, PROFILE, HITBOXES, GAME SPEED, ERRORS AND THE SAVE.'];
+const DEV_TABS = ['HERO', 'GEAR', 'FORGE', 'WORLD', 'TOWN', 'PETS', 'DEBUG'];
+const DEV_HELP = ['GOD MODE, LEVELS, WOUNDS, SAINT LEVEL AND RITE RANKS.', 'MAKE GEAR AT ANY STATION AND RARITY, WHOLE SETS, THE BAG.', 'EMBERSTONES, REFORGE QUALITY, ENCHANTS AND INGREDIENTS, THE ALTAR.', 'DESCEND ANYWHERE ON EITHER MAP KIND, SUMMON WARDENS AND FOES.', 'UNLOCKS, CURRENCIES, LOOKS, CELLS, BOUNTIES AND THE YARD.', 'INDULGENCES, PETS (OWN, EQUIP, CLEAR), AN INDULGENCE DROP, THE SHOP.', 'FPS, PROFILE, HITBOXES, GAME SPEED, ERRORS AND THE SAVE.'];
 const devOn = () => !!SAVE.dev;
 const showFps = () => DEV.fps || location.search.includes('fps');
 function openDev() { SAVE.dev = true; persist(); game.devBack = game.state === 'dev' ? 'play' : game.state; game.state = 'dev'; sfx('tap'); }
@@ -5059,6 +5063,15 @@ function devRows() {
       R('BOUNTIES', B('OPEN BOUNTIES', () => openBoard()), B('FILL BOUNTIES', () => { for (const b of bounties().list) b.have = b.need; persist(); }), B('RESET YARD BESTS', () => { SAVE.yardBest = {}; for (const len of YARD_TESTS) SAVE[yardTestKey(len)] = {}; persist(); toast('YARD RECORDS CLEARED', 1.2); })),
       R('CELL', B(`< ${mySets()[DEV.cell].toUpperCase()} >`, (d) => { DEV.cell = cyc(DEV.cell, mySets().length, d); }), B('ENTER CELL', () => { tut.on = false; game.nextCell = mySets()[DEV.cell]; game.nextDiff = Math.max(0, SAVE.cleared ?? 0); game.nextStratum = 1; game.nextOmens = []; game.nextVigil = 0; game.state = 'loading'; game.loadT = 0; game.loadOdds = ODDS[0]; }), B('ABSOLVE ALL', () => { SAVE.cells = Object.fromEntries(mySets().map((id) => [id, true])); persist(); toast('EVERY BANNER HANGS', 1.2); })),
       { info: `CLEARED ${(SAVE.cleared ?? -1) + 1} STATIONS   DESCENTS ${SAVE.descents || 0}   GIFTS ${SAVE.gifts || 0}   KEYS ${SAVE.vkeys || 0}` },
+    ];
+    case 'PETS': return [
+      R('INDULGENCES', B('+500', () => { SAVE.indul = indul() + 500; persist(); }), B('+5000', () => { SAVE.indul = indul() + 5000; persist(); }), B('CLEAR', () => { SAVE.indul = 0; persist(); }, { danger: true })),
+      R('OWN', B('EVERY PET', () => { SAVE.pets = PETS.map((P) => P.id); persist(); toast('EVERY PET OWNED', 1.2); }), B('NO PETS', () => { SAVE.pets = []; SAVE.petEq = null; PETF.on = false; applyGear(); persist(); toast('PETS CLEARED', 1.2); }, { danger: true })),
+      R('EQUIP', B('FIRST TWO OF EACH', () => { SAVE.pets = PETS.map((P) => P.id); const E = petEq(); E.battle = myPets('battle').slice(0, 2).map((P) => P.id); E.drop = myPets('drop').slice(0, 2).map((P) => P.id); E.show = E.battle[0]; applyGear(); persist(); }), B('TITHE CAT', () => { if (!petsOwned().includes('tithecat')) petsOwned().push('tithecat'); petEq().drop[1] = 'tithecat'; applyGear(); persist(); }), B('UNEQUIP ALL', () => { SAVE.petEq = null; PETF.on = false; applyGear(); persist(); })),
+      R('FOLLOWER', B('< NEXT PET >', (d) => { const E = petEq(), all = [...E.battle, ...E.drop].filter(Boolean); if (all.length) { E.show = all[cyc(Math.max(0, all.indexOf(petShown())), all.length, d)]; PETF.on = false; persist(); } }, { w: 2 })),
+      R('DROP', B('INDULGENCE HERE', run(() => { drops.push({ kind: 'indul', x: player.x + 24, y: player.y, z: 8, vx: 0, vy: 0, vz: 100, t: 0 }); }))),
+      R('OPEN', B('THE SHOP', () => openStore(0, 'play'))),
+      { info: `INDULGENCES ${indul()}   PETS OWNED ${petsOwned().length}/${PETS.length}   FOLLOWER ${petShown() ? PET_BY[petShown()].name : 'NONE'}` },
     ];
     case 'DEBUG': return [
       R('SHOW', tog('FPS', DEV.fps, () => { DEV.fps = !DEV.fps; }), tog('PROFILE', PROFON, () => { PROFON = !PROFON; }), tog('HITBOXES', DEV.boxes, () => { DEV.boxes = !DEV.boxes; })),
@@ -5254,7 +5267,7 @@ function makeSky(townW) {
 }
 
 function updateTown(dt) {
-  const R = room;
+  const R = room; updatePets(dt);
   for (const n of R.npcs) {
     n.moving = false;
     const near = Math.hypot(n.x - player.x, n.y - player.y) < 22;
@@ -6205,6 +6218,7 @@ function setGuard() {
   k *= 1 - ts('warding') / 100; if (ts('steadfast') && player.hp < player.maxHp * 0.35) k *= 1 - ts('steadfast') / 100; if ((player.aegisT || 0) > game.time) k *= 0.5;
   k *= G.lessK || 1; if (pas('hide')) k *= 0.85; if ((player.rubWardT || 0) > game.time) k *= 1 - (player.rubWardK || 0) / 100; // a Rubric of Ward
   for (const id in SETK.guard6) if (sb(id, 6)) k *= SETK.guard6[id]; // round 101: six pieces of the sets that took the most damage take less
+  if (pet('cherub')) k *= 0.92;
   if (tal('c_mbulwark')) k *= 0.88; if (tal('c_award') && player && (player.m1cd > 0 || player.m2cd > 0)) k *= 0.88; // the Callings
   if (sb('rags', 2)) k *= 0.9; if (sb('alms', 6)) k *= 1 - Math.min(SETK.almsMax, player.alms || 0) * 0.005; if (pas('laststand') && player.hp < player.maxHp * 0.3) k *= 0.7; if (pas('ironvigil') && (player.ivT || 0) > game.time) k *= 0.7;
   return k;
@@ -6532,7 +6546,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   if (player.lock === e) player.lock = null;
   if (e.illusion) { playFx('fx', 'smoke', e.x, e.y - 8, 14); return; }
   if (game.yard) { // the yard: the kill shows, but nothing is gained
-    game.kills++; addFervor(e.def.fervor + 1 + 2 * tal('c_mzeal')); massacre(); game.shake = Math.max(game.shake, e.tier === 'elite' ? 7 : 1.5);
+    game.kills++; addFervor(e.def.fervor + 1 + 2 * tal('c_mzeal')); if (!e.boss) maybeIndul(e, e.tier === 'elite' ? INDUL_DROP.elite : INDUL_DROP.other); massacre(); game.shake = Math.max(game.shake, e.tier === 'elite' ? 7 : 1.5);
     if (!executed && e.def.die && SPR[e.def.sheet].anims[e.def.die]) falls.push({ e, dirx, diry, t: 0, y: e.y }); else dismember(e, dirx, diry, executed);
     if (e.boss) { game.warden = null; game.banner = { text: 'WARDEN KILLED', sub: 'PRACTICE ONLY', t: 0, color: PAL.gold0 }; }
     enchKill(e);
@@ -7137,6 +7151,7 @@ function gearStats() {
   // Counted once, for the best set: two sets at 4 pieces do not stack it.
   g.dmg += Math.max(0, ...ALL_SETS.filter((id) => !VSETS[id].noFour).map((id) => (g.sets[id] || 0) >= 6 ? SETK.four6 : (g.sets[id] || 0) >= 4 ? fourOf(id) : 0));
   if (pas('pace')) g.speed += 12; if (pas('devout')) g.cdr += 15; if (pas('coin')) g.gold += 25;
+  if (pet('emberimp')) g.dmg += 8; if (pet('hare')) { g.speed += 10; g.dash += 10; } if (pet('magpie')) g.gold += 25; // pets (round 103)
   g.dmgMul = (1 + g.dmg / 100) * g.power * g.moreK; g.armorK = 1 - Math.min(60, g.armor) / 100; g.cdrK = 1 - Math.min(50, g.cdr) / 100; g.dashK = 1 - Math.min(50, g.dash) / 100;
   g.charges = T.dash.charges + (g.powers.has('dashCharge') ? 1 : 0) + (g.powers.has('pilgrim') ? 1 : 0) + (has('habit', 4) ? 1 : 0) + (has('shroud', 4) ? 1 : 0) + (has('stride', 2) ? 1 : 0) + g.xcharges;
   if ((g.wsets.road || 0) >= 2) g.dashK *= 0.75;
@@ -7192,7 +7207,7 @@ function dropLoot(x, y, { gold = 0, item = 0, itemBoost = 0, globe = 0, warden =
   if (df.vigil && !warden) item = 0; // in the Vigil only the Warden pays in gear
   const pop = (o) => drops.push({ x, y, z: 6, vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(60, 120), t: 0, ...o });
   for (let k = 0; k < gold; k++) pop({ kind: 'gold', amount: Math.round(rand(3, 9) * df.gold * (game.buff && game.buff.kind === 'plenty' ? 2 : 1)) });
-  if (pas('gravesense')) globe *= 1.5;
+  if (pas('gravesense')) globe *= 1.5; if (pet('orbtoad')) globe *= 1.3; if (pet('relicrat')) item *= 1.2;
   for (let k = 0; k < Math.floor(globe) + (rng() < globe % 1 ? 1 : 0); k++) pop({ kind: 'globe' });
   for (let k = 0; k < Math.floor(item) + (rng() < item % 1 ? 1 : 0); k++) { const it = rollItem(itemBoost); pop({ kind: 'item', item: it }); if (it.ri >= 3) sfx('legend', { gap: 0.3 }); }
 }
@@ -7201,7 +7216,7 @@ function updateDrops(dt) {
     d.t += dt;
     if (d.z > 0 || d.vz > 0) { d.vz -= 300 * dt; d.z += d.vz * dt; moveCircle(d, d.vx * dt, d.vy * dt, 2); if (d.z <= 0) { d.z = 0; if (Math.abs(d.vz) > 40) { d.vz = -d.vz * 0.35; d.vx *= 0.5; d.vy *= 0.5; } else { d.vz = 0; d.vx = d.vy = 0; } } }
     const dist = Math.hypot(d.x - player.x, d.y - player.y);
-    const magnet = d.kind === 'gold' ? 60 : d.kind === 'knell' ? 80 : d.kind === 'globe' || d.kind === 'chrism' || d.kind === 'vkey' || d.kind === 'ember' || d.kind === 'ingr' || d.kind === 'rtear' || d.kind === 'rubric' || d.kind === 'testament' ? 40 : 0;
+    const magnet = d.kind === 'gold' ? 60 : d.kind === 'knell' ? 80 : d.kind === 'globe' || d.kind === 'chrism' || d.kind === 'vkey' || d.kind === 'ember' || d.kind === 'ingr' || d.kind === 'rtear' || d.kind === 'rubric' || d.kind === 'testament' || d.kind === 'indul' ? 40 : 0;
     const full = d.kind === 'item' && SAVE.bag.length >= BAG_SIZE && SAVE.equip[d.item.slot];
     if (d.t > 0.4 && dist > 0.5 && (dist < magnet || (d.vac && !full))) { const s = (d.vac ? 330 : 210) * dt; d.x += (player.x - d.x) / dist * Math.min(dist, s); d.y += (player.y - d.y) / dist * Math.min(dist, s); }
     if (full && d.t > 0.4 && dist < 14 && !(game.toast && game.toast.msg === 'YOUR BAG IS FULL')) toast('YOUR BAG IS FULL', 1.5);
@@ -7214,6 +7229,7 @@ function updateDrops(dt) {
       if (d.kind === 'ingr') { ingrs()[d.i]++; persist(); const E = ENCHANTS[Math.floor(d.i / 3)]; toast(`${ingName(d.i)} FOUND`, 3); game.toastColor = E.col; game.flash = 0.1; sfx('legend', { gap: 0.2 }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.6, r: 50, color: E.rgb }); }
       if (d.kind === 'rubric') pickRubric(d.rub);
       if (d.kind === 'testament') pickTestament();
+      if (d.kind === 'indul') pickIndul();
       if (d.kind === 'chrism') { chrisms()[d.tier]++; persist(); toast(`${CHRISM[d.tier].name} FOUND`, 2.6); game.toastColor = RARITY[d.tier].color; game.flash = 0.08; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: RARITY[d.tier].rgb }); }
       if (d.kind === 'gold') { d.amount = Math.round(d.amount * (1 + G.gold / 100) * (game.run.martyr ? 2 : 1)); game.run.gold += d.amount; nums.push({ x: player.x + rand(-6, 6), y: player.y - 39, v: `+${d.amount}`, t: 0, color: PAL.gold0, small: true }); }
       if (d.kind === 'globe') { if (G.powers.has('tithe')) addFervor(10); const h = Math.round(player.maxHp * 0.15 * (G.powers.has('globe') ? 2 : 1) * (1 + ts('orbs') / 100)); if (tal('bloodrush')) player.rushT = game.time + 6; player.hp = Math.min(player.maxHp, player.hp + h); nums.push({ x: player.x, y: player.y - 55, v: `+${h}`, t: 0, color: PAL.flame1, small: false }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.3, r: 20, color: '224,32,46' }); }
@@ -7228,6 +7244,7 @@ function drawDrops() {
     if (d.kind === 'gold') spr('loot', 'gold', d.amount > 7 ? 2 : d.amount > 4 ? 1 : 0, d.x, y + 4);
     if (d.kind === 'globe') sprC('loot', 'globe', Math.floor(game.real * 3) % 2, d.x, y - 4);
     if (d.kind === 'chrism') sprC('loot', 'chrism', d.tier, d.x, y - 5);
+    if (d.kind === 'indul') { sprC('pets', 'indul', 0, d.x, y - 7); if (!LOWFX) twinkles(d.x, y - 7, 10, d.x * 0.23, 3); }
     if (d.kind === 'testament') { testIcon(d.x, y - 7); if (!LOWFX) twinkles(d.x, y - 7, 10, d.x * 0.27, 3); }
     if (d.kind === 'rubric') { rubIcon(d.rub.k, d.rub.t, d.x, y - 6); if (!LOWFX) twinkles(d.x, y - 6, 10, d.x * 0.31, 3); }
     if (d.kind === 'vkey') sprC('loot', 'vkey', 0, d.x, y - 9);
@@ -7300,6 +7317,7 @@ function drawDropGlow() {
     if (d.kind === 'vkey') glow(d.x, d.y - d.z - 9, 20 + Math.sin(game.real * 5) * 3, `rgba(${VKEY_RGB},0.7)`);
     if (d.kind === 'ember') glow(d.x, d.y - d.z - 5, 12 + Math.sin(game.real * 6 + d.x) * 2, 'rgba(255,122,31,0.55)');
     if (d.kind === 'ingr') glow(d.x, d.y - d.z - 7, 18 + Math.sin(game.real * 5) * 3, `rgba(${ENCHANTS[Math.floor(d.i / 3)].rgb},0.7)`);
+    if (d.kind === 'indul') glow(d.x, d.y - d.z - 7, 16 + Math.sin(game.real * 5) * 2, 'rgba(212,176,255,0.6)');
     if (d.kind === 'testament') glow(d.x, d.y - d.z - 7, 16 + Math.sin(game.real * 5) * 2, 'rgba(212,176,255,0.6)');
     if (d.kind === 'rubric') glow(d.x, d.y - d.z - 6, 16 + Math.sin(game.real * 5) * 2, `rgba(${hexRgb(RUB_KINDS[d.rub.k].col)},0.6)`);
     if (d.kind === 'chrism') glow(d.x, d.y - d.z - 5, 16 + Math.sin(game.real * 5) * 2, `rgba(${RARITY[d.tier].rgb},0.6)`);
@@ -7830,13 +7848,148 @@ function testIcon(x, y, s = 1) {
   R(-6, -6, 12, 12, '#0d1220'); R(-5, -5, 10, 10, '#6a4a8a'); R(-5, -5, 2, 10, '#3a2752'); R(-2, -3, 6, 1, '#ffd155'); R(-2, 0, 6, 1, '#ffd155'); R(1, -5, 2, 12, '#d4b0ff'); R(-5, 4, 10, 1, '#eadfc4');
 }
 function maybeTestament(x, y, ch) {
-  if (game.yard || testaments() >= TEST_MAX || rng() >= ch) return;
+  if (game.yard || testaments() >= TEST_MAX || rng() >= ch * (pet('bookworm') ? 1.5 : 1)) return;
   drops.push({ kind: 'testament', x, y, z: 8, vx: rand(-40, 40), vy: rand(-20, 30), vz: rand(90, 140), t: 0 });
 }
 function pickTestament() {
   SAVE.testaments = Math.min(TEST_MAX, testaments() + 1); persist();
   toast('TESTAMENT FOUND: ONE POINT FOR YOUR CALLING', 3.2); game.toastColor = '#d4b0ff'; game.flash = 0.1; sfx('legend', { gap: 0.2 });
   rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.6, r: 50, color: '212,176,255' });
+}
+// ------------------------------------------------------ pets (round 103) ---
+// Twenty pets: ten battle pets (two a class, four for anyone) and ten drop pets (each raises one kind of drop).
+// A character equips two of each kind (SAVE.petEq); one of them follows it on screen (petEq().show). Pets and
+// Indulgences, the premium currency that buys them, belong to the whole account (CHAR_GLOBAL). Read a pet with pet(id).
+const PETS = [
+  { id: 'nailfinch', kind: 'battle', hero: 'saint', fly: true, name: 'NAIL FINCH', price: 400, text: 'FIRES A BOLT AT YOUR TARGET EVERY 1.5 S.' },
+  { id: 'censermouse', kind: 'battle', hero: 'saint', name: 'CENSER MOUSE', price: 400, text: 'SETS FOES NEAR IT ALIGHT EVERY SECOND.' },
+  { id: 'almshound', kind: 'battle', hero: 'mendicant', name: 'ALMS HOUND', price: 400, text: 'EVERY 2 S IT BITES A FOE NEAR YOU AS HARD AS A MACE BLOW AND STUNS THAT FOE FOR 0.5 S.' },
+  { id: 'bellcrow', kind: 'battle', hero: 'mendicant', fly: true, name: 'BELL CROW', price: 400, text: 'EVERY 8 S ITS BELL BINDS THE FOES AROUND YOU FOR 1 S.' },
+  { id: 'glassmoth', kind: 'battle', hero: 'anchoress', fly: true, name: 'GLASS MOTH', price: 400, text: '+1 RELIQUARY SHARD.' },
+  { id: 'votivewisp', kind: 'battle', hero: 'anchoress', fly: true, name: 'VOTIVE WISP', price: 400, text: 'EVERY 5 S IT FIRES 3 BOLTS AT YOUR TARGET.' },
+  { id: 'lamb', kind: 'battle', name: 'WHITE LAMB', price: 400, text: 'HEALS 1% OF YOUR HEALTH EVERY 4 S.' },
+  { id: 'cherub', kind: 'battle', fly: true, name: 'STONE CHERUB', price: 400, text: 'YOU TAKE 8% LESS DAMAGE.' },
+  { id: 'emberimp', kind: 'battle', name: 'EMBER IMP', price: 400, text: '+8% DAMAGE.' },
+  { id: 'hare', kind: 'battle', name: 'PILGRIM HARE', price: 400, text: '+10% MOVE SPEED. DASHES RECHARGE 10% FASTER.' },
+  { id: 'magpie', kind: 'drop', fly: true, name: 'GILT MAGPIE', price: 300, text: '+25% GOLD.' },
+  { id: 'relicrat', kind: 'drop', name: 'RELIC RAT', price: 300, text: 'FOES DROP GEAR 20% MORE OFTEN.' },
+  { id: 'emberfox', kind: 'drop', name: 'EMBER FOX', price: 300, text: 'WARDENS DROP 2 MORE EMBERSTONES.' },
+  { id: 'herbmole', kind: 'drop', name: 'HERB MOLE', price: 300, text: 'WARDENS DROP ENCHANT INGREDIENTS 50% MORE OFTEN.' },
+  { id: 'rubricowl', kind: 'drop', fly: true, name: 'RUBRIC OWL', price: 300, text: 'RUBRICS DROP 50% MORE OFTEN.' },
+  { id: 'rosemoth', kind: 'drop', fly: true, name: 'ROSE MOTH', price: 300, text: 'BLOODROSE KEYS DROP 25% MORE OFTEN.' },
+  { id: 'chrismsnail', kind: 'drop', name: 'CHRISM SNAIL', price: 300, text: 'CHRISM DROPS 50% MORE OFTEN.' },
+  { id: 'orbtoad', kind: 'drop', name: 'ORB TOAD', price: 300, text: 'HEALTH ORBS DROP 30% MORE OFTEN.' },
+  { id: 'bookworm', kind: 'drop', name: 'BOOKWORM', price: 300, text: 'TESTAMENTS DROP 50% MORE OFTEN.' },
+  { id: 'tithecat', kind: 'drop', name: 'TITHE CAT', price: 600, text: 'FOES MAY DROP AN INDULGENCE: 4% FROM WARDENS, 1% FROM ELITES, 0.5% FROM OTHER FOES.' },
+];
+const PET_BY = Object.fromEntries(PETS.map((P) => [P.id, P])), PET_SLOTS = 2, PET_PACKS = [500, 1500, 5000], INDUL_DROP = { warden: 0.04, elite: 0.01, other: 0.005 };
+const indul = () => SAVE.indul || 0;
+const petsOwned = () => (SAVE.pets ||= []);
+const petEq = () => (SAVE.petEq ||= { battle: [null, null], drop: [null, null], show: null });
+const pet = (id) => { const E = SAVE.petEq; return !!E && (E.battle.includes(id) || E.drop.includes(id)); };
+const myPets = (kind) => PETS.filter((P) => P.kind === kind && (!P.hero || P.hero === heroId()));
+const petShown = () => { const E = petEq(), all = [...E.battle, ...E.drop].filter(Boolean); return all.includes(E.show) ? E.show : all[0] || null; };
+// The pet that follows the hero, and what the battle pets do in a fight.
+const PETF = { x: 0, y: 0, face: 1, t: 0, on: false, moving: false };
+function updatePets(dt) {
+  const id = petShown(), p = player; if (!p) return;
+  if (id) {
+    const tx = p.x - p.face * 20, ty = p.y + 5; if (!PETF.on || Math.hypot(tx - PETF.x, ty - PETF.y) > 160) { PETF.x = tx; PETF.y = ty; PETF.on = true; }
+    const d = Math.hypot(tx - PETF.x, ty - PETF.y); PETF.moving = d > 3; PETF.t += dt;
+    if (d > 3) { const v = Math.min(d, (50 + d * 3) * dt); PETF.x += (tx - PETF.x) / d * v; PETF.y += (ty - PETF.y) / d * v; PETF.face = tx > PETF.x ? 1 : -1; } else PETF.face = p.face;
+  } else PETF.on = false;
+  if (game.scene !== 'wound' || p.hp <= 0) return;
+  const T0 = (p.petT ||= {}), every = (k, s0) => { T0[k] = (T0[k] || 0) + dt; if (T0[k] >= s0) { T0[k] = 0; return true; } return false; }, from = PETF.on ? PETF : p, t = p.target && !p.target.dead ? p.target : null;
+  const aim = () => Math.atan2(t.y - (t.hy || 10) - (from.y - 12), t.x - from.x);
+  if (pet('nailfinch') && every('finch', 1.5)) { if (t) spawnBolt(from.x, from.y - 12, aim(), false); else T0.finch = 1.5; }
+  if (pet('votivewisp') && every('wisp', 5)) { if (t) for (const k of [-1, 0, 1]) spawnBolt(from.x, from.y - 12, aim() + k * 0.18, false); else T0.wisp = 5; }
+  if (pet('censermouse') && every('mouse', 1)) for (const e of nearestFoes(from.x, from.y, 6, 75)) e.burn = Math.max(e.burn || 0, T.thurible.burn.time);
+  if (pet('almshound') && every('hound', 2)) { const e = nearestFoes(p.x, p.y, 1, 80)[0]; if (e) { const [lo, hi] = T.crossbow.dmg; hurtEnemy(e, rand(lo, hi) * MELEE.k, false, 0, 0, 40, { color: PAL.cloth0 }); if (!e.boss) e.bound = Math.max(e.bound || 0, 0.5); pfxHit(e.x, e.y - (e.hy || 10), false, 'holy', true); } else T0.hound = 2; }
+  if (pet('bellcrow') && every('crow', 8)) { const fs = nearestFoes(p.x, p.y, 12, 100).filter((e) => !e.boss); if (fs.length) { for (const e of fs) e.bound = Math.max(e.bound || 0, 1); rings.push({ x: p.x, y: p.y - 10, t: 0, max: 0.5, r: 100, color: '255,209,85', flat: true }); } else T0.crow = 8; }
+  if (pet('lamb') && every('lamb', 4)) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01);
+}
+function drawPet() { const id = petShown(); if (!id || !PETF.on || !SPR.pets || !SPR.pets.anims[id]) return; spr('pets', id, PET_BY[id].fly || PETF.moving ? Math.floor(PETF.t * 6) % 4 : 0, PETF.x, PETF.y, { flip: PETF.face < 0 }); }
+// The Tithe Cat: a foe may drop an Indulgence.
+function maybeIndul(e, ch) { if (!pet('tithecat') || game.yard || e.minion || e.illusion || rng() >= ch) return; drops.push({ kind: 'indul', x: e.x, y: e.y, z: 8, vx: rand(-40, 40), vy: rand(-20, 30), vz: rand(90, 140), t: 0 }); }
+function pickIndul() { SAVE.indul = indul() + 1; persist(); toast('INDULGENCE FOUND', 2.4); game.toastColor = '#d4b0ff'; sfx('legend', { gap: 0.2, vol: 0.7 }); }
+// ---- the shop: BATTLE PETS, DROP PETS and INDULGENCES, in the forge's layout (a scrolling list, a showcase card).
+const STORE_TABS = ['BATTLE PETS', 'DROP PETS', 'INDULGENCES'], STORE_RGB = '190,120,255';
+function openStore(tab = 0, back = 'play') { game.store = { tab, sel: 0, scroll: 0, back }; game.state = 'store'; sfx('tap'); }
+const storeTabs = (L) => { const ws = STORE_TABS.map((t) => Math.ceil(textW(t, 1, true)) + 12); let x = L.close.x - 84 - ws.reduce((a, b) => a + b + 3, 0); return STORE_TABS.map((t, i) => { const b = { t, x, y: L.y0 + 5, w: ws[i], h: 17 }; x += ws[i] + 3; return b; }); };
+const storeList = () => (game.store.tab === 2 ? [] : myPets(game.store.tab ? 'drop' : 'battle'));
+const storePackRow = (L, i) => ({ x: L.list.x, y: L.list.y + 16 + i * 40, w: L.list.w - 6, h: 36 });
+const heroName = (h) => (HEROES[h] && HEROES[h].name) || h.toUpperCase();
+function storeRowBar(r, sel, edge) {
+  const g = ctx.createLinearGradient(r.x, 0, r.x + r.w, 0); g.addColorStop(0, sel ? `rgba(${STORE_RGB},0.32)` : 'rgba(22,30,48,0.92)'); g.addColorStop(1, sel ? 'rgba(22,30,48,0.95)' : 'rgba(14,20,34,0.92)'); ctx.fillStyle = g; ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.fillStyle = sel ? `rgb(${STORE_RGB})` : 'rgba(170,190,225,0.16)'; ctx.fillRect(r.x, r.y, r.w, 1); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(r.x, r.y + r.h - 1, r.w, 1);
+  if (edge) { ctx.fillStyle = PAL.gold1; ctx.fillRect(r.x, r.y, 2, r.h); }
+}
+function storeRing(x, y, col, r0 = 10) { ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.beginPath(); ctx.arc(x, y + 1, r0 + 1, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#0d1220'; ctx.beginPath(); ctx.arc(x, y, r0 - 1.5, 0, Math.PI * 2); ctx.fill(); }
+function renderStore() {
+  const L = featLayout(), S = game.store, small = { small: true, outline: null }, C = L.card;
+  ctx.fillStyle = 'rgba(11,7,16,0.74)'; ctx.fillRect(0, 0, W, H); panelFrame(L.x0, L.y0, L.pw, L.ph, '_silver'); headerBar(L.x0, L.y0, L.pw, 26);
+  text('SHOP', L.x0 + 12, L.y0 + 9, '#d4b0ff'); sprC('pets', 'indul', 0, L.close.x - 70, L.y0 + 13); text(String(indul()), L.close.x - 60, L.y0 + 9, '#d4b0ff'); sprC('ui', 'close', 0, L.close.x, L.close.y);
+  tabButtons(storeTabs(L), S.tab);
+  if (S.tab === 2) return renderStorePacks(L);
+  const list = storeList(), Gm = gearGeo(L, S, list.length), B = Gm.box, E = petEq(), kind = S.tab ? 'drop' : 'battle', own = petsOwned(), shown = petShown();
+  S.sel = Math.max(0, Math.min(S.sel, list.length - 1));
+  listPanel(L, STORE_RGB, STORE_TABS[S.tab], `${list.filter((P) => own.includes(P.id)).length} OF ${list.length} OWNED`);
+  ctx.save(); ctx.beginPath(); ctx.rect(B.x - 2, B.y - 1, B.w + 4, B.h + 2); ctx.clip();
+  list.forEach((P, i) => {
+    const r = Gm.row(i); if (r.y + r.h < B.y || r.y > B.y + B.h) return;
+    const T0 = (s0, x0, y0, c0, o0) => { if (y0 >= B.y - 1 && y0 + 9 <= B.y + B.h) text(s0, x0, y0, c0, o0); };
+    const sel = i === S.sel, has = own.includes(P.id), eq = E[kind].includes(P.id), bw = 52, tx = r.x + 31;
+    storeRowBar(r, sel, eq); storeRing(r.x + 15, r.y + r.h / 2, eq ? PAL.gold1 : has ? `rgb(${STORE_RGB})` : 'rgba(120,132,156,0.6)');
+    ctx.globalAlpha = has ? 1 : 0.6; spr('pets', P.id, 0, r.x + 15, r.y + r.h / 2 + 8); ctx.globalAlpha = 1;
+    T0(fitText(P.name, r.x + r.w - bw - 8 - tx - (sel ? 12 : 0)), tx, r.y + 4, has ? PAL.white : PAL.cloth1, { bold: sel });
+    T0(eq ? (shown === P.id ? 'EQUIPPED, FOLLOWS YOU' : 'EQUIPPED') : P.hero ? `${heroName(P.hero)} ONLY` : 'FOR ANY CLASS', tx, r.y + 17, eq ? PAL.gold1 : PAL.stone1, small);
+    const bx = r.x + r.w - bw - 3; ctx.fillStyle = 'rgba(4,7,13,0.55)'; ctx.fillRect(bx, r.y + 3, bw, r.h - 6);
+    if (has) T0('OWNED', bx + bw / 2, r.y + 9, PAL.flame1, { ...small, align: 'center' });
+    else { T0('PRICE', bx + bw / 2, r.y + 2, PAL.stone1, { ...small, align: 'center' }); sprC('pets', 'indul', 0, bx + 11, r.y + r.h - 10); T0(String(P.price), bx + bw - 6, r.y + r.h - 15, indul() >= P.price ? '#d4b0ff' : PAL.blood0, { ...small, align: 'right' }); }
+  });
+  ctx.restore();
+  if (Gm.max > 0) { const th = Math.max(16, B.h * B.h / (list.length * FORGE_RH)), ty = B.y + (B.h - th) * (S.scroll / Gm.max); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(B.x + B.w - 3, B.y, 3, B.h); ctx.fillStyle = `rgba(${STORE_RGB},0.8)`; ctx.fillRect(B.x + B.w - 3, Math.round(ty), 3, Math.round(th)); }
+  // The card: the pet in the frame, what it does, which slots are in use, and its buttons.
+  inset(C.x, C.y, C.w, C.h); const P = list[S.sel]; if (!P) return;
+  const has = own.includes(P.id), eq = E[kind].includes(P.id), sz = Math.max(44, Math.min(64, Math.round(C.h * 0.27))), S0 = { x: C.x + 8, y: C.y + 8, w: sz, h: sz }, tx = S0.x + sz + 8, tw = C.x + C.w - 8 - tx;
+  pieceFrame(S0, null, STORE_RGB, () => { const k = sz >= 56 ? 2 : 1; ctx.scale(k, k); spr('pets', P.id, Math.floor(game.real * 5) % 4, 0, 9); });
+  let y = S0.y + 2; for (const l of wrapW(P.name, tw).slice(0, 2)) { text(l, tx, y, PAL.white, { bold: true }); y += 12; }
+  text(`${kind === 'battle' ? 'BATTLE PET' : 'DROP PET'}${P.hero ? ` FOR ${heroName(P.hero)}` : ''}`, tx, y + 1, PAL.stone1, small); y += 11;
+  text(has ? (eq ? 'EQUIPPED' : 'OWNED') : `PRICE: ${P.price} ${indul() >= P.price ? '' : '(NOT ENOUGH)'}`.trim(), tx, y + 1, has ? PAL.flame1 : indul() >= P.price ? '#d4b0ff' : PAL.blood0, small);
+  y = S0.y + Math.max(sz, Math.ceil(40 * TEXT_K)) + 8;
+  for (const l of wrapW(heroText(P.text), C.w - 16, true)) { text(l, C.x + 8, y, PAL.cloth0, small); y += 10; }
+  const inUse = E[kind].filter(Boolean).map((id) => PET_BY[id].name), uy = L.btnA.y - 14;
+  if (y + 4 < uy) text(fitText(`${kind === 'battle' ? 'Battle' : 'Drop'} slots in use: ${inUse.length} of ${PET_SLOTS}${inUse.length ? ` (${inUse.map((n) => titleWords(n, true)).join(', ')})` : ''}`, C.w - 16, `${kind === 'battle' ? 'Battle' : 'Drop'} slots in use: ${inUse.length} of ${PET_SLOTS}`), C.x + 8, uy, PAL.stone1, small);
+  if (!has) { invButton(L.btnA, 'GET MORE', PAL.stone4, true); invButton(L.btnB, `BUY: ${P.price}`, PAL.gold3, indul() >= P.price); }
+  else { invButton(L.btnA, shown === P.id && eq ? 'FOLLOWS YOU' : 'FOLLOW ME', PAL.stone4, eq && shown !== P.id); invButton(L.btnB, eq ? 'UNEQUIP' : 'EQUIP', eq ? PAL.stone4 : PAL.gold3, true); }
+}
+function renderStorePacks(L) {
+  const small = { small: true, outline: null }, C = L.card;
+  listPanel(L, STORE_RGB, 'INDULGENCES', 'FREE FOR NOW');
+  PET_PACKS.forEach((n, i) => { const r = storePackRow(L, i); storeRowBar(r, false, false); storeRing(r.x + 17, r.y + r.h / 2, '#d4b0ff', 11); sprC('pets', 'indul', 0, r.x + 17, r.y + r.h / 2);
+    text(`${n.toLocaleString('en-US')} INDULGENCES`, r.x + 35, r.y + 6, '#d4b0ff', { bold: true }); text('TAP TO TAKE THEM', r.x + 35, r.y + 20, PAL.stone1, small);
+    invButton({ x: r.x + r.w - 62, y: r.y + 8, w: 58, h: 20 }, 'FREE', PAL.gold3, true); });
+  inset(C.x, C.y, C.w, C.h); const S0 = { x: C.x + 8, y: C.y + 8, w: 64, h: 64 }, tx = S0.x + 72;
+  pieceFrame(S0, null, STORE_RGB, () => { ctx.scale(3, 3); sprC('pets', 'indul', 0, 0, 0); });
+  text('INDULGENCES', tx, S0.y + 4, '#d4b0ff', { bold: true }); text(`OWNED: ${indul().toLocaleString('en-US')}`, tx, S0.y + 18, PAL.gold1, small);
+  let y = S0.y + 76; for (const l of wrapW('INDULGENCES BUY PETS, AND EVERY CHARACTER OF YOURS SHARES THEM. THE PACKS ARE FREE FOR NOW. THE TITHE CAT, A DROP PET, ALSO FINDS THEM ON FOES.', C.w - 16, true)) { text(l, C.x + 8, y, PAL.cloth0, small); y += 10; }
+}
+function storeTap(x, y) {
+  const L = featLayout(), S = game.store;
+  if (featOut(L, x, y)) { game.state = S.back; sfx('tap'); return; }
+  const tb = storeTabs(L).findIndex((b) => inRect(b, x, y)); if (tb >= 0) { S.tab = tb; S.sel = 0; S.scroll = 0; sfx('tap', { vol: 0.5 }); return; }
+  if (S.tab === 2) { PET_PACKS.forEach((n, i) => { if (inRect(storePackRow(L, i), x, y)) { SAVE.indul = indul() + n; persist(); toast(`+${n.toLocaleString('en-US')} INDULGENCES`, 1.8); game.toastColor = '#d4b0ff'; sfx('gold'); } }); return; }
+  const list = storeList(), Gm = gearGeo(L, S, list.length), E = petEq(), kind = S.tab ? 'drop' : 'battle';
+  if (inRect(Gm.box, x, y)) { for (let i = 0; i < list.length; i++) if (inRect(Gm.row(i), x, y)) { if (S.sel !== i) sfx('tap', { vol: 0.5 }); S.sel = i; } return; }
+  const P = list[S.sel]; if (!P) return; const has = petsOwned().includes(P.id), eq = E[kind].includes(P.id);
+  if (inRect(L.btnA, x, y)) { if (!has) { S.tab = 2; sfx('tap', { vol: 0.5 }); } else if (eq && petShown() !== P.id) { E.show = P.id; PETF.on = false; persist(); sfx('tap', { vol: 0.5 }); } return; }
+  if (inRect(L.btnB, x, y)) {
+    if (!has) { if (indul() < P.price) { toast('NOT ENOUGH INDULGENCES. THE INDULGENCES TAB HAS FREE PACKS FOR NOW.', 2.6); return; }
+      ask(`BUY ${P.name} FOR ${P.price} INDULGENCES?`, () => { if (indul() < P.price) return; SAVE.indul = indul() - P.price; petsOwned().push(P.id); persist(); sfx('buy'); toast(`${P.name} IS YOURS. EQUIP IT TO USE IT.`, 2.4); game.toastColor = '#d4b0ff'; }, 'BUY'); return; }
+    if (eq) { E[kind][E[kind].indexOf(P.id)] = null; if (E.show === P.id) E.show = null; }
+    else { const k = E[kind].indexOf(null); if (k < 0) { toast(`BOTH ${kind === 'battle' ? 'BATTLE' : 'DROP'} SLOTS ARE FULL. UNEQUIP ONE FIRST.`, 2.2); return; } E[kind][k] = P.id; if (!petShown() || !E.show) E.show = E.show || P.id; }
+    PETF.on = false; applyGear(); persist(); sfx('learn', { gap: 0.15, vol: 0.5 });
+  }
 }
 // Rites rank up with use: casts needed for ranks 2-5. Each rank takes 5%
 // off the cooldown (a Reckoning lasts 0.4 S longer instead).
@@ -7926,6 +8079,7 @@ function rubricCast(id, slot) {
 }
 // A Rubric drop: for a rite of this hero (half the time one of the three chosen), its kind and tier.
 function maybeRubric(x, y, ch) {
+  if (pet('rubricowl')) ch *= 1.5;
   const df = curDiff(); if (game.yard || df.n < RUB_DROP.fromStation || rng() >= ch) return;
   const mine = RITE_SLOTS.flatMap(([sl]) => riteList(sl)).filter((r) => riteOpen(r.id)), worn = RITE_SLOTS.map(([sl]) => riteOf(sl).id);
   const r = rng() < 0.5 ? worn[Math.floor(rng() * worn.length)] : mine[Math.floor(rng() * mine.length)].id;
@@ -8110,7 +8264,7 @@ const shatterOn = () => player && player.rainT > 0 && player.penKind === 'shatte
 const cathedralOn = () => player && player.rainT > 0 && player.penKind === 'cathedral';
 function shardCount() {
   const p = player; if (!p) return 0;
-  let n = SHARD.base + (G.shards || 0) + (sb('reliquary', 2) ? 2 : 0) + (sbw('reliquary') ? 1 : 0) + (G.powers.has('crownShards') ? 2 : 0) + (G.powers.has('sealShard') ? 1 : 0) + (G.powers.has('anchorhold') ? 3 : 0) + wound('ashard') + (ench('sparerelic') ? E2('sparerelic', 1, 2) : 0) + tal('c_ashard');
+  let n = SHARD.base + (G.shards || 0) + (sb('reliquary', 2) ? 2 : 0) + (sbw('reliquary') ? 1 : 0) + (G.powers.has('crownShards') ? 2 : 0) + (G.powers.has('sealShard') ? 1 : 0) + (G.powers.has('anchorhold') ? 3 : 0) + wound('ashard') + (ench('sparerelic') ? E2('sparerelic', 1, 2) : 0) + tal('c_ashard') + (pet('glassmoth') ? 1 : 0);
   p.votives = (p.votives || []).filter((t) => t > game.time); n += p.votives.length;
   n = Math.min(SHARD.cap, n);
   if (shatterOn()) n *= twist('shattered') ? 3 : 2;
@@ -8727,6 +8881,7 @@ function update(realDt) {
     }
     enemies = enemies.filter((e) => !e.dead);
     safe('abilities', () => updateAbilities(dt)); HIT_RITE = null;
+    safe('pets', () => updatePets(dt));
     safe('hazards', () => updateHazards(dt));
     safe('walls', () => updateWalls(dt));
     safe('drops', () => updateDrops(dt));
@@ -8828,6 +8983,7 @@ function render() {
   const SHADOW = { pillar: 10, torch: 6, statue_saint: 12, statue_angel: 12, statue_knight: 12, crate: 13, gallows: 22, cart: 20, well: 15, tomb: 6, tree: 10, stocks: 14, board: 8, brazier: 6, sarcophagus: 18, candelabra: 6, column: 11, statue: 11, lamp: 5, barrel: 6, crate: 7, anvil: 8, waystone: 10, pew: 15, coffin: 7, cage: 7, maiden: 8, altar: 17, shrine: 10, chest: 10, urn: 5 };
   for (const p of room.props) if (SHADOW[p.kind] && onScreen(p.x, p.y, cx, cy, 40)) shadow(p.x, p.y - 2, SHADOW[p.kind]);
   for (const n of room.npcs) shadow(n.x, n.y, 6);
+  if (PETF.on && petShown() && player.hp > 0) shadow(PETF.x, PETF.y, 5);
   const D0 = DASHES.find((q) => q.id === looks().dash), dk = D0 && D0.rgb ? tintKey(saintSheet(), D0.rgb) : null;
   for (const g of ghosts) spr(saintSheet(), 'dash', g.i, g.x, g.y, dk ? { flip: g.face < 0, tint: dk, alpha: 0.5 * (1 - g.t / 0.2) } : { flip: g.face < 0, white: true, alpha: 0.45 * (1 - g.t / 0.2) });
   mark('shadows');
@@ -8835,12 +8991,14 @@ function render() {
   const th = thuriblePos();
   const actors = [player, ...(isAnch() && player.hp > 0 && player.shards ? player.shards.map((sh, i) => ({ shardA: sh, si: i, y: sh.y })) : []), ...(player.xb && player.hp > 0 ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 90)), ...falls.map((f) => ({ fall: f, y: f.y })), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, p.big || 90))];
   for (const w of room.walls || []) for (const [tx, ty] of w.tiles) actors.push({ wall: w, tx, ty, y: ty * TILE + 15 });
+  if (PETF.on && petShown() && player.hp > 0) actors.push({ petA: true, y: PETF.y });
   actors.sort((a, b) => a.y - b.y);
   for (const a of actors) {
     // One actor that fails to draw is skipped; the canvas state is put back.
     ctx.save();
     try {
       if (a === player) drawPlayer();
+      else if (a.petA) drawPet();
       else if (a.bow) drawFloatBow();
       else if (a.shardA) drawShard(a.shardA, a.si);
       else if (a.th) drawThurible(thuriblePos(a.ci));
@@ -8986,6 +9144,7 @@ function render() {
   if (game.state === 'vigil') renderVigil();
   if (game.state === 'shop') renderShop();
   if (game.state === 'forge') renderForge();
+  if (game.state === 'store') renderStore();
   if (game.state === 'enchant') renderEnchant();
   if (game.state === 'canonry') renderCanonry();
   if (game.state === 'gift') renderGift();
@@ -9754,13 +9913,14 @@ function renderHud() {
 // Bag, Rites, Map, Settings, Sound, Switch Saint, and Dev and Layout when the
 // dev menu is on. The game stays in view on the left with the Stigmata of the run.
 function pauseLayout() {
-  const tiles = [['bag', 'BAG'], ...(game.scene === 'wound' || game.scene === 'town' ? [['rites', 'RITES'], ['map', 'MAP']] : []), ['codex', 'CODEX'], ['settings', 'SETTINGS'], ['sound', AUDIO.muted ? 'SOUND OFF' : 'SOUND ON'], ...(devOn() ? [['dev', 'DEV'], ['layout', 'LAYOUT']] : []), ['resume', 'RESUME']];
+  const tiles = [['bag', 'BAG'], ...(game.scene === 'wound' || game.scene === 'town' ? [['rites', 'RITES'], ['map', 'MAP']] : []), ['codex', 'CODEX'], ['shop', 'SHOP'], ['settings', 'SETTINGS'], ['sound', AUDIO.muted ? 'SOUND OFF' : 'SOUND ON'], ...(devOn() ? [['dev', 'DEV'], ['layout', 'LAYOUT']] : []), ['resume', 'RESUME']];
   const pw = Math.max(168, Math.min(232, Math.round(W * 0.4))), px = W - pw - SAFE.r, cols = 3, gap = 4, tw = Math.floor((pw - 16 - gap * (cols - 1)) / cols);
   const top = 46, rows = Math.ceil(tiles.length / cols), th = Math.max(36, Math.min(54, Math.floor((H - top - 10 - gap * (rows - 1)) / rows)));
   return { px, pw, tiles: tiles.map(([id, label], i) => ({ id, label, x: px + 8 + (i % cols) * (tw + gap), y: top + Math.floor(i / cols) * (th + gap), w: tw, h: th })), back: { x: W - SAFE.r - 18, y: 17, r: 12 } };
 }
 function pauseIcon(id, x, y) {
   const ic = { bag: ['ui', 'bag'], rites: ['ui', isMelee() ? 'smite' : isAnch() ? 'svolley' : 'storm'], map: ['ui', 'map'], sound: ['ui', AUDIO.muted ? 'muted' : 'sound'], hero: ['ui', 'portrait'], dev: ['ui', 'use'], layout: ['ui', 'badge'] }[id];
+  if (id === 'shop') { ctx.save(); ctx.translate(x, y); ctx.scale(1.5, 1.5); sprC('pets', 'indul', 0, 0, 0); ctx.restore(); return; }
   if (id === 'codex') { // a book
     ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(x - 8, y - 8, 18, 20); ctx.fillStyle = '#b51d36'; ctx.fillRect(x - 9, y - 10, 18, 20); ctx.fillStyle = '#7d1233'; ctx.fillRect(x - 9, y - 10, 3, 20);
     ctx.fillStyle = '#eadfc4'; ctx.fillRect(x - 6, y + 7, 15, 3); ctx.fillStyle = '#ffd155'; ctx.fillRect(x - 2, y - 5, 8, 2); ctx.fillRect(x + 1, y - 8, 2, 9); return;
@@ -9829,6 +9989,7 @@ function pauseTap(x, y) {
     if (t.id === 'map') { game.state = 'map'; return; }
     if (t.id === 'codex') { const nw = CODEX_SECS.findIndex((_, i) => codexNewIn(i)); return openCodex(nw >= 0 ? nw : game.codex ? game.codex.sec : 0, 'pause'); }
     if (t.id === 'settings') { game.state = 'settings'; return; }
+    if (t.id === 'shop') return openStore(0, 'pause');
     if (t.id === 'sound') { AUDIO.setMuted(!AUDIO.muted); return; }
     if (t.id === 'dev') return openDev();
     if (t.id === 'layout') return openDesigner();
@@ -10834,6 +10995,7 @@ function bagItemRows(gold) {
     ...CHRISM.map((K, i) => [(x, y) => sprC('loot', 'chrism', i, x, y), K.name, C[i], `+${Math.round(K.add * 100)}% TO A BURN AT THE ASHEN ALTAR.`, RARITY[i].color, 'altar']),
     [(x, y) => sprC('loot', 'coin', 0, x, y), 'GOLD', gold, 'BUY, TEMPER, BET AND REMOVE ENCHANTS.', PAL.gold1, 'stall'],
     [(x, y) => badge('relic', x, y), 'TALENT POINTS', talPts(), 'SPEND THEM AT THE CANONRY.', PAL.cloth0, 'canonry'],
+    [(x, y) => sprC('pets', 'indul', 0, x, y), 'INDULGENCES', indul(), 'BUY PETS IN THE SHOP.', '#d4b0ff', 'store'],
     [(x, y) => testIcon(x, y), 'TESTAMENTS', `${testaments()}/${TEST_MAX}`, 'POINTS FOR YOUR CALLING. WARDENS AND VIGILS RARELY DROP THEM.', '#d4b0ff', 'canonry'],
     [(x, y) => badge('npc', x, y), "ODILE'S GIFTS", SAVE.gifts || 0, 'TALK TO SISTER ODILE IN VAEL.', PAL.cloth0, 'gift'],
   ];
@@ -10841,6 +11003,7 @@ function bagItemRows(gold) {
 const bagItemRect = (L, i, n) => { const cw = Math.floor((L.pw - 30) / 2), rh = Math.max(26, Math.min(34, Math.floor((L.ph - 58) / Math.ceil(n / 2)))); return { x: L.x0 + 12 + (i % 2) * (cw + 6), y: L.y0 + 34 + Math.floor(i / 2) * rh, w: cw, h: rh - 3 }; };
 // Open a site from the bag: only in Vael, and only once the site is open.
 function openFromBag(id) {
+  if (id === 'store') { game.inv = null; return openStore(0, 'play'); }
   if (game.scene !== 'town') { toast('GO BACK TO VAEL FIRST.', 1.8); return; }
   if (id === 'gift') { if (!(SAVE.gifts > 0)) { toast('NO GIFT WAITING.', 1.6); return; } game.inv = null; return openGift(); }
   if (id === 'vigil') { if (!strataOpen(1) || (SAVE.cleared ?? -1) < 0) { toast('FINISH A DESCENT FIRST.', 1.6); return; } game.inv = null; return openVigil(); }
@@ -11289,6 +11452,7 @@ function onTap(x, y) {
     case 'vigil': vigilTap(x, y); return true;
     case 'shop': shopTap(x, y); return true;
     case 'forge': forgeTap(x, y); return true;
+    case 'store': storeTap(x, y); return true;
     case 'enchant': enchantTap(x, y); return true;
     case 'canonry': canonryTap(x, y); return true;
     case 'gift': giftTap(x, y); return true;
@@ -11393,7 +11557,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { get pfx() { return pfx; }, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get pfx() { return pfx; }, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

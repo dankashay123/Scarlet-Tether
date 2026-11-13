@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-13, after round 102 (build 102, on `master`). Read
+Last updated 2026-11-13, after round 103 (build 103, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-102 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-103 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -265,6 +265,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **Pets (round 103).** The sprites are small first passes from one
+  builder (`tools/models/pets.mjs`); the owner has not seen them yet, so
+  expect art notes. Battle pets have no sounds and no effect of their own
+  when they act (the Bell Crow draws a ring). None is measured in
+  `setbal.cjs`. The shop has no real purchase flow: packs are free
+  (`PET_PACKS`), by the owner's word "free for now". The Calling and the
+  class enchants (round 102) are not balance-checked either.
+
 - **Rubrics (round 99).** Every rite's damage now carries its rite (a probe
   that logged untagged hits while each rite of all three classes was cast
   in a crowd came back empty). Drops: about 0.28 a run at Station VI and
@@ -384,6 +392,20 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 103:** the owner asked for pets, a premium currency and a shop.
+  **Pets:** `PETS` (10 battle: 2 a class and 4 for anyone; 10 drop, each on
+  one drop rate), two slots a kind per character (`SAVE.petEq`), one
+  follower on screen (`petEq().show`, `PETF`, `updatePets`, `drawPet` in the
+  actor pass). Owned pets and the currency are the account's
+  (`CHAR_GLOBAL` now carries `indul` and `pets`). **Indulgences:** the
+  currency (`SAVE.indul`); the Tithe Cat drops them (`INDUL_DROP`: Warden
+  4%, elite 1%, others 0.5%; ground kind `indul`). **Shop:** a pause tile
+  opens state `store` (`renderStore`, `storeTap`): BATTLE PETS, DROP PETS,
+  INDULGENCES, in the forge's layout (`gearGeo` list with drag, a
+  `pieceFrame` card); packs are free for now. **Dev:** a PETS tab.
+  Sprites: sheet `pets` from `tools/models/pets.mjs` (four frames each,
+  plus `indul`). Test: `round103.cjs`.
 
 - **Round 102:** the owner asked for class enchants and a class talent tree
   fed by rare drops. **Class enchants:** six new `ENCHANTS` entries with
