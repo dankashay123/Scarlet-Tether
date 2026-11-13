@@ -12,11 +12,11 @@ OpenGameArt.org unless marked.
 
 | Pack | Author | Used for |
 |---|---|---|
-| [Medieval Sound Effects: Weapon Textures](https://opengameart.org/content/medieval-sound-effects-weapon-textures) | medicinestorm | the crossbow shot (a real crossbow), the execute swing |
+| [Medieval Sound Effects: Weapon Textures](https://opengameart.org/content/medieval-sound-effects-weapon-textures) | medicinestorm | the crossbow shot (a real crossbow) |
 | [Medieval Sound Effects: Weapon Impacts](https://opengameart.org/content/medieval-sound-effects-weapon-impacts) | medicinestorm | block clang |
 | [37 hits/punches](https://opengameart.org/content/37-hitspunches) | qubodup (Independent.nu) | hits, kills, hurt |
-| [8 wet squish slurp impacts](https://opengameart.org/content/8-wet-squish-slurp-impacts) | qubodup (Independent.nu) | the wet layer of hits, kills, the execute |
-| [Deep bone crack/break SFX](https://opengameart.org/content/deep-bone-crackbreak-sfx) | Zane Little Music | bone cracks in kills, the execute and ash, the Ossuarch's roar and collapse |
+| [8 wet squish slurp impacts](https://opengameart.org/content/8-wet-squish-slurp-impacts) | qubodup (Independent.nu) | the wet layer of hits and kills |
+| [Deep bone crack/break SFX](https://opengameart.org/content/deep-bone-crackbreak-sfx) | Zane Little Music | bone cracks in kills and ash, the Ossuarch's roar and collapse |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) | rubberduck | the mace's edge, monster swings and casts, the stones in a slam (round 77), chains, thurible, coins, gems, the enemy shot, fire, stones, roar, the Ash Widow's censer chains, the Ossuarch's grinding stone |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) | rubberduck | the mace blow, monster slams, the glass of a shard crit (round 77), gongs and bells (Reckoning, elite, death, knells), gate slam |
 | [75 CC0 breaking/falling/hit SFX](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | rubberduck | breakables, the flask glass, ash, the grind, the Ossuarch's collapse, the Ash Widow's falling censers |

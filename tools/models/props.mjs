@@ -562,7 +562,6 @@ const GLYPH = {
   flask: (u, v) => Math.hypot(u, v - 0.18) < 0.42 || (Math.abs(u) < 0.14 && v > -0.48 && v < 0) || (Math.abs(u) < 0.22 && v > -0.6 && v < -0.46),
   chain: (u, v) => [[-0.38, 0.32], [0, 0], [0.38, -0.32]].some(([x, y]) => { const d = Math.hypot(u - x, v - y); return d < 0.24 && d > 0.1; }) || seg(u, v, -0.38, 0.32, 0.38, -0.32, 0.07),
   penance: (u, v) => Math.hypot(u, v) < 0.24 || [0, 1, 2, 3, 4, 5, 6, 7].some((k) => { const a = k * Math.PI / 4; return seg(u, v, Math.cos(a) * 0.36, Math.sin(a) * 0.36, Math.cos(a) * 0.6, Math.sin(a) * 0.6, k % 2 ? 0.06 : 0.1); }),
-  dagger: (u, v) => (Math.abs(u) < 0.12 && v > -0.62 && v < 0.2 && Math.abs(u) < 0.12 + (v + 0.62) * 0.02) || (Math.abs(v - 0.22) < 0.08 && Math.abs(u) < 0.4) || (Math.abs(u) < 0.08 && v > 0.2 && v < 0.55) || Math.hypot(u, v - 0.6) < 0.1,
   pause: (u, v) => (Math.abs(Math.abs(u) - 0.22) < 0.1) && Math.abs(v) < 0.4,
   talk: (u, v) => (Math.hypot(u / 1.25, v + 0.06) < 0.5 && !([-0.26, 0, 0.26].some((x) => Math.hypot(u - x, v + 0.06) < 0.09))) || seg(u, v, -0.3, 0.3, -0.48, 0.6, 0.09),
   // Use: an open archway with a lit doorway (the town's LOOK button).
@@ -852,7 +851,7 @@ export default {
     ...Object.fromEntries(['tolling', 'hammer', 'deluge', 'hundredblows', 'pyre', 'verdict'].map((k) => [k, () => [button(44, GLYPH[k])]])),
     ...Object.fromEntries(['svolley', 'consecrate', 'shrapnel', 'flight', 'snova', 'emberrelic', 'sward', 'votive', 'shardchain', 'splinter', 'mending', 'shardknell'].map((k) => [k, () => [button(40, GLYPH[k])]])),
     ...Object.fromEntries(['shattered', 'cathedral', 'hundredshards', 'relicpyre', 'reliquaryfont', 'relicjudge'].map((k) => [k, () => [button(44, GLYPH[k])]])),
-    dagger: () => [button(40, GLYPH.dagger)], pause: () => [button(28, GLYPH.pause)], talk: () => [button(50, GLYPH.talk)], descend: () => [button(50, GLYPH.descend)],
+    pause: () => [button(28, GLYPH.pause)], talk: () => [button(50, GLYPH.talk)], descend: () => [button(50, GLYPH.descend)],
     lock: () => [button(50, BADGE_GLYPH.lock)], use: () => [button(50, GLYPH.use)], map: () => [button(26, BADGE_GLYPH.board)],
     badge: () => MAP_BADGES.map(([g, ramp]) => badge(15, ramp, g)), badgeBig: () => MAP_BADGES.map(([g, ramp]) => badge(21, ramp, g)),
     ...Object.fromEntries(SET_BADGES.map(([g, ramp]) => [`set_${g}`, () => [badge(21, ramp, g)]])),

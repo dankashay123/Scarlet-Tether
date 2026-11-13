@@ -131,7 +131,6 @@ SFX = {
     'kill0': lambda: build('kill0', [L(WET, 'impactsplat01.mp3.flac', dur=0.45), L(BONE, 'Deep Break 10.wav', db=-5, dur=0.25), L(HITS, 'hit02.mp3.flac', db=-6, dur=0.2)], fade=0.15, lu=-11),
     'kill1': lambda: build('kill1', [L(WET, 'impactsplat06.mp3.flac', dur=0.45), L(BONE, 'Deep Break 7.wav', db=-5, dur=0.25), L(HITS, 'hit06.mp3.flac', db=-6, dur=0.2)], fade=0.15, lu=-11),
     'hurt': lambda: build('hurt', [L(HITS, 'hit01.mp3.flac', rate=0.82, dur=0.35), L(KI, 'impactPunch_heavy_003.ogg', rate=0.8, db=-4)], fade=0.15, lu=-10.5),
-    'execute': lambda: build('execute', [L(MED, 'Sabre Swing.wav', dur=0.3), L(WET, 'impactsplat05.mp3.flac', at=0.12, dur=0.6), L(BONE, 'Deep Break 1.wav', at=0.12, db=-3, dur=0.35), L(KI, 'impactPunch_heavy_004.ogg', at=0.12, db=-6)], fade=0.3, rev=(0.18, 1.2), lu=-12),
     'break': lambda: build('break', [L(KI, 'impactWood_heavy_001.ogg'), L(BFH, 'bfh1_breaking_01.ogg', db=-3, dur=0.6), L(BFH, 'bfh1_rock_breaking_01.ogg', db=-9, dur=0.4)], fade=0.2, lu=-15.5),
     'perfect': lambda: build('perfect', [L(BELL, 'bell_ding2.wav', rate=1.25), L(SWISH, 'swish-3.wav', db=-6)], fade=0.4, rev=(0.35, 1.6), lu=-14),
     # --- rites ---

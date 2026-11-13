@@ -754,17 +754,6 @@ function gib(kind, warden = false) {
   return f.outline();
 }
 
-function dagger() {
-  const f = new Frame(9, 15);
-  f.paint(M.rect(4, 1, 1, 7), 'iron', vgrad(1, 8, 1, 0.5), { dither: 0 });
-  f.paint(M.rect(3, 2, 1, 6), 'iron', flat(0.4), { dither: 0 });
-  P(f, 4, 0, 'white');
-  f.paint(M.rect(1, 8, 7, 1), 'gold', (x) => 1 - x / 8);
-  f.paint(M.rect(3, 9, 3, 3), 'wood', flat(0.5));
-  P(f, 4, 12, 'gold0');
-  return f.outline();
-}
-
 function thurible(i) {
   const f = new Frame(14, 17);
   for (let y = 0; y < 4; y++) P(f, 7 + (i && y < 2 ? 1 : 0), y, y % 2 ? 'iron2' : 'iron1');
@@ -818,7 +807,7 @@ function fxSheet() {
     splat: [0, 1, 2].map(splat), smoke: [0, 1, 2, 3].map(smoke), mound: [0, 1, 2].map(mound),
     candle: [candleSprite(0), candleSprite(1), candleSprite(0), candleSprite(-1)],
     gib: [0, 1, 2, 3].map((k) => gib(k)), wardenGib: [0, 1, 2, 3].map((k) => gib(k, true)),
-    dagger: [dagger()], thurible: [thurible(0), thurible(1)], flask: [flask()],
+    thurible: [thurible(0), thurible(1)], flask: [flask()],
     link: [chainLink(0), chainLink(1)], hook: [hook()], scourge: [scourge(0), scourge(2)],
   });
 }
@@ -840,7 +829,6 @@ const G = {
   flask: (s, c) => { const u = s / 32; return M.minus(M.union(M.rect(Math.round(c - 2 * u), Math.round(c - 9 * u), Math.round(5 * u), Math.round(5 * u)), M.ellipse(c, c + 3 * u, 7 * u, 6.5 * u)), M.ellipse(c - 2 * u, c + 1 * u, 1.5 * u, 2 * u)); },
   chain: (s, c) => { const u = s / 32; const m = []; for (const d of [-6, 0, 6]) m.push(M.minus(M.ellipse(c + d * u, c + d * u, 4 * u, 4 * u), M.ellipse(c + d * u, c + d * u, 1.8 * u, 1.8 * u))); return M.union(...m); },
   penance: (s, c) => { const u = s / 32; const m = [M.minus(M.ellipse(c, c, 5 * u, 5 * u), M.ellipse(c, c + 0.5, 2 * u, 1.2 * u))]; for (let a = 0; a < 8; a++) { const ang = a * Math.PI / 4; m.push(M.line(c + Math.cos(ang) * 7 * u, c + Math.sin(ang) * 7 * u, c + Math.cos(ang) * 10 * u, c + Math.sin(ang) * 10 * u, Math.max(2, Math.round(2 * u)))); } m.push(M.line(c, c + 5 * u, c, c + 8 * u, 1)); return M.union(...m); },
-  dagger: (s, c) => { const u = s / 32; return M.union(M.poly([[c, c - 11 * u], [c + 3 * u, c - 7 * u], [c + 3 * u, c + 2 * u], [c - 3 * u, c + 2 * u], [c - 3 * u, c - 7 * u]]), M.rect(Math.round(c - 6 * u), Math.round(c + 2 * u), Math.round(12 * u), Math.round(2.5 * u)), M.rect(Math.round(c - 1.5 * u), Math.round(c + 4 * u), Math.round(3 * u), Math.round(6 * u))); },
   talk: (s, c) => { const u = s / 32; return M.minus(M.union(M.ellipse(c, c - 1 * u, 9 * u, 6.5 * u), M.poly([[c - 5 * u, c + 3 * u], [c - 1 * u, c + 4 * u], [c - 7 * u, c + 9 * u]])), M.ellipse(c - 4 * u, c - 1 * u, 1.2 * u, 1.2 * u), M.ellipse(c, c - 1 * u, 1.2 * u, 1.2 * u), M.ellipse(c + 4 * u, c - 1 * u, 1.2 * u, 1.2 * u)); },
   descend: (s, c) => { const u = s / 32; return M.union(M.rect(Math.round(c - 2 * u), Math.round(c - 9 * u), Math.round(4 * u), Math.round(9 * u)), M.poly([[c - 7 * u, c], [c + 7 * u, c], [c, c + 7 * u]]), M.rect(Math.round(c - 9 * u), Math.round(c + 8 * u), Math.round(18 * u), Math.round(2 * u))); },
   pause: (s, c) => { const u = s / 32; return M.union(M.rect(Math.round(c - 6 * u), Math.round(c - 7 * u), Math.round(4 * u), Math.round(14 * u)), M.rect(Math.round(c + 2 * u), Math.round(c - 7 * u), Math.round(4 * u), Math.round(14 * u))); },
@@ -870,7 +858,7 @@ function uiSheet() {
   const big = 50, small = 40;
   return sheet('ui', {
     dash: [button(big, G.dash)], flask: [button(small, G.flask)], chain: [button(small, G.chain)], penance: [button(44, G.penance)],
-    dagger: [button(small, G.dagger)], pause: [button(28, G.pause)], talk: [button(big, G.talk)], descend: [button(big, G.descend)], ring: [joyRing()], knob: [joyKnob()], portrait: [portrait()],
+    pause: [button(28, G.pause)], talk: [button(big, G.talk)], descend: [button(big, G.descend)], ring: [joyRing()], knob: [joyKnob()], portrait: [portrait()],
   });
 }
 

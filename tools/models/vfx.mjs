@@ -1,5 +1,5 @@
 // Effects and small objects in the sculpted style, at the v5 size.
-// Solid things (bolt, thurible, flask, chain, hook, dagger) are SDF models.
+// Solid things (bolt, thurible, flask, chain, hook) are SDF models.
 // Soft things (impacts, blood bursts, smoke, orbs) are 2D metaball forms lit
 // from the top-left and banded onto palette ramps, with no dithering.
 import { Scene, sphere, ellipsoid, capsule, box, rotZ, render, bumpy, clip, dot, pline, LIGHT } from '../sdf.mjs';
@@ -190,18 +190,6 @@ function hook() {
   const f = render(S, 16, 14, MATS, { contrast: 1.5, rich: IRICH });
   put(f, 14, 3, 'white');
   return f;
-}
-// The execution dagger that hovers over a staggered foe, point down.
-function dagger() {
-  const S = new Scene();
-  S.add(box([6, 15, 2], [1.4, 5, 0.6], 0.2, 'iron'), 0);
-  S.add(capsule([6, 19.5, 2], [6, 22, 2], 1.4, 0.1, 'iron'), 0.6);
-  S.add(box([6, 9, 2.5], [4, 0.9, 1], 0.5, 'gold'), 0);
-  S.add(capsule([6, 8, 2], [6, 3.5, 2], 1.1, 1.1, 'leather'), 0);
-  S.add(sphere([6, 2.4, 2.2], 1.6, 'gold'), 0);
-  const f = render(S, 12, 24, MATS, { contrast: 1.4, rich: IRICH });
-  pline(f, 5, 11, 5, 19, 'iron0');
-  return A(f, 6, 23);
 }
 // Penance lash: a falling crimson scourge of light.
 function scourge(i) {
@@ -764,7 +752,6 @@ export default {
     flask: () => [flask()],
     link: () => [0, 1].map(link),
     hook: () => [hook()],
-    dagger: () => [dagger()],
     scourge: () => [0, 1].map(scourge),
   },
   loot: {
