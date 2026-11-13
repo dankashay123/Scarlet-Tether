@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-13, after round 97 (build 97, on `master`). Read
+Last updated 2026-11-13, after round 98 (build 98, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-97 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-98 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -265,11 +265,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Rubrics follow-ups (round 94).** Might on the burns a rite starts, and
-  drop rates from play (the owner wants them rare). The Codex section is in
-  (round 97).
-- **Stat tips (round 97).** Only the bag's card and summary have them; the
-  shop, the forge's showcase and the item popup could use them too.
+- **Rubrics follow-ups (round 94).** Drop rates from play (the owner wants
+  them rare). Might now raises a rite's burns (round 98); other shared
+  statuses (slows, binds that hurt) are still not counted.
+- **Stat tips (round 98).** The forge's REFORGE stat rows have none (a tap
+  picks the stat); a long press could open the tip there.
+- **Tutorial (round 98).** The second rite's step only passes when the rite
+  lands (Chain, Hook need a foe in reach), with a 12 s fallback; a short
+  "no foe in reach" toast on a failed cast would help new players.
 
 - **Mythic Wounds.** All three classes are measured with full sets
   (rounds 82-84). At Station XII the Mendicant's and Anchoress's sit at
@@ -370,6 +373,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 98:** the owner picked all five. **Stat tips:** every window
+  pushes its stat lines into `TIPS` (cleared each frame; the item popup
+  clears it again so only its own lines count); `onTap` opens the tip
+  (`tipAt`) in any state, and it closes on the next tap. `drawItemCard`
+  (shop, popup, bag) and the forge's VALUES rows push theirs. **Might on
+  burns:** each foe's `burn` is an accessor (`burnHook` in `spawnMonster`)
+  that credits a longer burn to the rite in play (`riteNow()`, stored in
+  `e.burnRite`); the burn tick sets `HIT_RITE` to it, so Might applies.
+  Censer Blaze's burn with Might III: x1.5 (whole-number ticks round up);
+  Holy Water's Might now x1.29. **Codex:** tiles grow to 34 px when a
+  section fits on one page. **Buy tab:** a table of costs (reforge 1, Graven
+  8, Beatified 40), what a Warden at your deepest Station drops, and Rubric
+  salvage. **Tutorial:** played step by step for all three classes in
+  `round98.cjs`; rite names in title case (`tutName`), the box lifted clear
+  of the level bar. Test: `round98.cjs`.
 
 - **Round 97:** the owner picked all five. **Enchanter:** the gear picker
   (tap the frame or CHOOSE PIECE) is the forge's list (`renderForgeList`
