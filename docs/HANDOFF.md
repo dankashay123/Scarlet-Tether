@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-12, after round 96 (build 96, on `master`). Read
+Last updated 2026-11-13, after round 97 (build 97, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-96 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-97 on `claude/laughing-babbage-0cov0r`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -265,8 +265,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Rubrics follow-ups (round 94).** A Codex section, Might on the burns a
-  rite starts, and drop rates from play (the owner wants them rare).
+- **Rubrics follow-ups (round 94).** Might on the burns a rite starts, and
+  drop rates from play (the owner wants them rare). The Codex section is in
+  (round 97).
+- **Stat tips (round 97).** Only the bag's card and summary have them; the
+  shop, the forge's showcase and the item popup could use them too.
 
 - **Mythic Wounds.** All three classes are measured with full sets
   (rounds 82-84). At Station XII the Mendicant's and Anchoress's sit at
@@ -367,6 +370,24 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 97:** the owner picked all five. **Enchanter:** the gear picker
+  (tap the frame or CHOOSE PIECE) is the forge's list (`renderForgeList`
+  with a state, accent and badge mode `'ench'`: the badge shows the tier
+  and a gem of the enchant, the second line the enchant's name); its own
+  scroll in `game.ench.gl` (`enchPick`), drag and wheel; opening scrolls to
+  the chosen piece (`enchPickToggle`). The list's box and rows moved into
+  `gearGeo(L, S, n)`. **Forge:** VALUES is the gear list plus the chosen
+  piece's stats, each with its range at every quality (its own quality
+  boxed) under a key of quality odds; BUY is three pack rows (tap to buy,
+  the price on a gold plate) and an Emberstone showcase. **Codex:** a
+  RUBRICS section, one entry per rite of the hero (`SAVE.codex.r` counts,
+  `.rk` the best tier per `rite:kind`, `codexRubric` on pickup; an older
+  codex fills both from the Rubrics held, quietly). **Bag:** tapping a
+  stat line on the item card opens its tip. **Tutorial:** steps name the
+  hero's weapon and chosen rites (`text` may be a function, `tutText`),
+  wording made plain, and the box moved to the bottom centre between the
+  stick and the rite buttons. Test: `round97.cjs`.
 
 - **Round 96:** the owner picked 3, 4, 5 and asked for the forge to match
   the Enchanter. **Forge:** REFORGE and AFFIXES share a scrolling list of
