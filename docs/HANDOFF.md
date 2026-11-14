@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-14, after round 111 (build 111, on `master`). Read
+Last updated 2026-11-14, after round 112 (build 112, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-111 on
+   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-112 on
    `claude/brave-brown-mytba1`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
@@ -429,6 +429,21 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 112:** the owner sent a screenshot of auto play stuck in a
+  corridor mouth, strafing at a pack round the corner, and asked for
+  dashes while travelling and for gold to be absorbed as it drops.
+  **Corners:** the pilot stands and fights only with a clear line to the
+  nearest foe (`autoSees`: three rays 5 px apart over the tiles);
+  otherwise it keeps to the path, and the stuck check counts that as
+  wanting to move. **Travel dash:** on the path with no foe within 200
+  px and health over half, it dashes along the way when the dash's line
+  is clear (one charge kept while a foe is within 500 px). **Drops:** in
+  an auto run every drop but health orbs is drawn in as it falls
+  (`d.vac` set in `updateDrops`). Measured (`autobench.cjs`): bare at
+  Station I, kills in a minute went from about 90 to about 165; gear of
+  XII on Station X, 360 to 710 kills in about 130 s, 4 of 5 runs
+  survived (it takes more damage than before: 1 to 1.9 health bars
+  against 0.2 to 0.7, since it no longer waits behind corners).
 - **Round 111:** the owner asked that auto play not go out of its way for
   gold or loot; what is left should be absorbed when the Warden dies. The
   pilot's loot goal is now health orbs only (when under 60% health). The
