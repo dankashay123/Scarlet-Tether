@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '108';
+const BUILD = '109';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '109': ['NEW PAUSE TILE DURING A DESCENT: WOUNDS. IT LISTS EVERY WOUND YOU HOLD, AND YOU CAN SACRIFICE THERE AT ANY TIME: 8 RANDOM RANKS FOR A RANDOM MYTHIC WOUND. (ON THE LEVEL-UP SCREEN IT IS STILL 7 RANKS AND THAT LEVEL\'S CHOICE.)'],
   '108': ['NEW: AUTO WOUNDS. THE GAME PICKS YOUR WOUND AT EACH LEVEL. TURN IT ON FROM THE LEVEL-UP SCREEN (AUTO PICK) OR THE PAUSE SCREEN (AUTO), WHERE YOU ALSO SET HOW MUCH YOU WANT DAMAGE, DEFENCE AND UTILITY.', 'NEW: AUTO PLAY ON THE DESCENT PANEL, FOR STATIONS YOU HAVE CLEARED. THE GAME PLAYS THE RUN FOR YOU, FOR 75% LESS GOLD AND DROPS AND 50% LESS XP. MOVE THE STICK TO STEER; PAUSE IT FROM THE PAUSE SCREEN.'],
   '107': ['THE LEVEL-UP SCREEN NO LONGER SHOWS THE WARDEN\'S NAME AND BARS THROUGH ITS TITLE.', 'PAUSE SCREEN: EVERY TILE\'S ICON NOW HAS THE SAME LOOK.', 'BATTLE PETS SHOW WHEN THEY ACT: YOUR FOLLOWER HOPS, WITH A SMALL BURST AND A QUIET SOUND.', 'BAG: ON NARROW PHONES THE EMPTY STRIP BESIDE THE BAG LISTS THE SETS YOU WEAR.'],
   '106': ['NEW TRAINING YARD TAB: SETS. YOUR BEST DAMAGE PER SECOND AND TESTS FOR EACH OF YOUR SETS.', 'PENITENT\'S STRIDE: A PERFECT DODGE NOW GIVES 30% LESS DAMAGE TAKEN FOR 2 S (WAS 50%).', 'SETS THAT WERE SLOW AGAINST WARDENS NOW DEAL MORE DAMAGE TO THEM. THEIR CARDS SHOW BY HOW MUCH.'],
@@ -818,7 +819,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Backquote') { if (game.state === 'dev') closeDev(); else if (game.state === 'play' || game.state === 'pause') openDev(); return; }
   if (game.state === 'dev') { if (e.code === 'Escape') closeDev(); return; }
   if (game.state === 'yard') { if (e.code === 'Escape') game.state = 'play'; return; }
-  if (game.state === 'settings' || game.state === 'autow') { if (e.code === 'Escape') game.state = 'pause'; return; }
+  if (game.state === 'settings' || game.state === 'autow' || game.state === 'wounds') { if (e.code === 'Escape') game.state = 'pause'; return; }
   if (game.state === 'codex') { if (e.code === 'Escape') game.state = game.codex.back; return; }
   if (game.state === 'rites' || game.state === 'censer' || game.state === 'canonry') { if (e.code === 'Escape') hubClose(); return; }
   if (game.state === 'resume') { if (e.code === 'Escape') { SAVE.suspend = null; persist(); game.state = 'play'; } return; }
@@ -9233,6 +9234,7 @@ function render() {
   if (game.state === 'dev') renderDev();
   if (game.state === 'settings') renderSettings();
   if (game.state === 'autow') renderAutoWin();
+  if (game.state === 'wounds') renderWounds();
   if (game.state === 'cells') renderCells();
   if (game.state === 'yard') renderYardPanel();
   if (game.state === 'rites') renderRites();
@@ -10108,6 +10110,43 @@ function autoPilot(dt) {
   const m = Math.hypot(mx, my); if (m > 1) { mx /= m; my /= m; }
   input.mx = mx; input.my = my;
 }
+// Round 109: the Wounds page, from a pause tile during a descent: every Wound held, its text, and SACRIFICE, so a
+// player with Auto Wounds on (who never sees the level-up screen) can still trade ranks for a mythic Wound. Here it
+// takes one rank more than on the level-up screen, where it also uses up that level's choice.
+function woundsHeld() { const R = game.run; return R ? Object.entries(R.wounds).map(([id, n]) => ({ w: WOUNDS.find((q) => q.id === id), n })).filter((q) => q.w && q.n > 0).sort((a, b) => b.w.r - a.w.r || b.n - a.n) : []; }
+function woundsLayout() {
+  const pw = Math.min(540, W - 16), ph = Math.min(300, H - 12), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2), list = woundsHeld(), rh = 19;
+  const top = y0 + 34, room = y0 + ph - 62 - top, perCol = Math.max(1, Math.floor(room / rh)), cols = list.length > perCol * 2 ? 3 : 2, cw = Math.floor((pw - 20 - (cols - 1) * 4) / cols);
+  const cell = (i) => ({ x: x0 + 10 + Math.floor(i / perCol) * (cw + 4), y: top + (i % perCol) * rh, w: cw, h: rh - 2 });
+  return { pw, ph, x0, y0, list: list.slice(0, perCol * cols), cell, textY: y0 + ph - 58, sac: { x: x0 + pw - 10 - 150, y: y0 + ph - 30, w: 150, h: 20 }, back: { x: x0 + 10, y: y0 + ph - 30, w: 80, h: 20 }, close: { x: x0 + pw - 14, y: y0 + 14, r: 10 } };
+}
+function renderWounds() {
+  renderPause(); layerBreak();
+  const L = woundsLayout(), V = game.woundWin, sm = { small: true, outline: null };
+  ctx.fillStyle = 'rgba(6,9,16,0.7)'; ctx.fillRect(0, 0, W, H);
+  panelFrame(L.x0, L.y0, L.pw, L.ph); headerBar(L.x0, L.y0, L.pw, 26); text('WOUNDS', L.x0 + 12, L.y0 + 9, PAL.gold1); backArrow(L.close.x, L.close.y);
+  text(`${woundRanks()} RANKS HELD`, L.close.x - 16, L.y0 + 10, PAL.stone1, { ...sm, align: 'right' });
+  if (!L.list.length) text('NO WOUNDS YET. EACH LEVEL GIVES ONE.', L.x0 + 12, L.y0 + 38, PAL.stone1, sm);
+  V.sel = Math.max(0, Math.min(L.list.length - 1, V.sel || 0));
+  L.list.forEach((q, i) => { const b = L.cell(i), R0 = WOUND_RARITY[q.w.r]; rowPlate(b, i === V.sel, hexRgb(R0.col));
+    heldTile(q.w, q.n, b.x + 1, b.y, 17);
+    const rank = q.w.mythic ? 'MYTHIC' : `${q.n} / ${q.w.max || 1}`, rw = textW(rank, 1, true);
+    text(fitText(heroText(q.w.name), b.w - 26 - rw - 6), b.x + 22, b.y + 4, R0.col, sm); text(rank, b.x + b.w - 4, b.y + 4, q.w.mythic ? R0.col : PAL.white, { ...sm, align: 'right' }); });
+  const q = L.list[V.sel]; if (q) wrapW(heroText(q.w.text(q.n)), L.pw - 24, true).slice(0, 2).forEach((l, i) => text(l, L.x0 + 12, L.textY + i * 10, PAL.cloth0, sm));
+  goldRule(L.x0 + 10, L.textY + 22, L.pw - 20);
+  invButton(L.back, 'BACK', PAL.stone4);
+  invButton(L.sac, mythicPool().length ? `SACRIFICE ${SAC_PAGE_N} RANKS` : 'NO MYTHIC LEFT', PAL.crimson3, canSacrifice(SAC_PAGE_N));
+  if (L.sac.x - (L.back.x + L.back.w) > 150) text(fitText(`${SAC_PAGE_N} RANDOM RANKS FOR A RANDOM MYTHIC WOUND.`, L.sac.x - (L.back.x + L.back.w) - 16, 'FOR A MYTHIC WOUND.'), L.sac.x - 8, L.sac.y + 6, PAL.stone1, { ...sm, align: 'right' });
+}
+function woundsTap(x, y) {
+  const L = woundsLayout();
+  if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || inRect(L.back, x, y) || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { sfx('tap'); game.state = 'pause'; return; }
+  const i = L.list.findIndex((_, k) => inRect(L.cell(k), x, y)); if (i >= 0) { game.woundWin.sel = i; sfx('tap', { vol: 0.5 }); return; }
+  if (inRect(L.sac, x, y)) {
+    if (!canSacrifice(SAC_PAGE_N)) { sfx('tap', { rate: 0.6 }); toast(mythicPool().length ? `YOU NEED ${SAC_PAGE_N} RANKS OF WOUNDS.` : 'YOU HOLD EVERY MYTHIC WOUND.', 2); return; }
+    ask(`GIVE UP ${SAC_PAGE_N} RANKS OF YOUR WOUNDS, CHOSEN AT RANDOM, FOR A RANDOM MYTHIC WOUND?`, () => { game.stig = { cards: [], t: 1 }; game.state = 'stig'; sacrificeWounds(SAC_PAGE_N, false); }, 'SACRIFICE');
+  }
+}
 // The auto window: opened from the pause screen. Auto Wounds on or off, its three weights, and the pilot of an auto run.
 function autoWinLayout() {
   const rows = 4 + (autoRun() ? 1 : 0), pw = Math.min(250, W - 24), ph = 30 + rows * 22 + 16 + 30, x0 = Math.round(W / 2 - pw / 2), y0 = Math.max(4, Math.round((H - ph) / 2));
@@ -10134,7 +10173,7 @@ function autoWinTap(x, y) {
   if (autoRun() && inRect(L.row(4), x, y)) { game.run.autoOff = !game.run.autoOff; sfx('tap'); }
 }
 function pauseLayout() {
-  const tiles = [['bag', 'BAG'], ...(game.scene === 'wound' || game.scene === 'town' ? [['rites', 'RITES'], ['map', 'MAP']] : []), ['codex', 'CODEX'], ['shop', 'SHOP'], ['settings', 'SETTINGS'], ['auto', 'AUTO'], ['sound', AUDIO.muted ? 'SOUND OFF' : 'SOUND ON'], ...(devOn() ? [['dev', 'DEV'], ['layout', 'LAYOUT']] : []), ['resume', 'RESUME']];
+  const tiles = [['bag', 'BAG'], ...(game.scene === 'wound' || game.scene === 'town' ? [['rites', 'RITES'], ['map', 'MAP']] : []), ...(game.scene === 'wound' && game.run && !game.run.yard ? [['wounds', 'WOUNDS']] : []), ['codex', 'CODEX'], ['shop', 'SHOP'], ['settings', 'SETTINGS'], ['auto', 'AUTO'], ['sound', AUDIO.muted ? 'SOUND OFF' : 'SOUND ON'], ...(devOn() ? [['dev', 'DEV'], ['layout', 'LAYOUT']] : []), ['resume', 'RESUME']];
   const pw = Math.max(168, Math.min(232, Math.round(W * 0.4))), px = W - pw - SAFE.r, cols = 3, gap = 4, tw = Math.floor((pw - 16 - gap * (cols - 1)) / cols);
   const top = 46, rows = Math.ceil(tiles.length / cols), th = Math.max(36, Math.min(54, Math.floor((H - top - 10 - gap * (rows - 1)) / rows)));
   return { px, pw, tiles: tiles.map(([id, label], i) => ({ id, label, x: px + 8 + (i % cols) * (tw + gap), y: top + Math.floor(i / cols) * (th + gap), w: tw, h: th })), back: { x: W - SAFE.r - 18, y: 17, r: 12 } };
@@ -10156,6 +10195,7 @@ function pauseIcon(id, x, y) {
     ctx.beginPath(); ctx.arc(0, 0, 5.5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = N; ctx.beginPath(); ctx.arc(0, 0, 2.2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   } else if (id === 'resume') { ctx.fillStyle = PAL.gold1; ctx.beginPath(); ctx.moveTo(x - 4, y - 6); ctx.lineTo(x + 6, y); ctx.lineTo(x - 4, y + 6); ctx.fill(); }
   else if (id === 'auto') { ctx.fillStyle = autoW().on || autoRun() ? PAL.gold1 : C; ctx.fillRect(x - 6, y - 5, 2, 10); ctx.fillRect(x + 4, y - 5, 2, 10); ctx.fillRect(x - 4, y - 5, 8, 2); ctx.fillRect(x - 4, y, 8, 2); } // an A
+  else if (id === 'wounds') { ctx.fillStyle = '#e8383f'; for (const [dy, hw] of [[-7, 1], [-5, 2], [-3, 3], [-1, 4], [1, 5], [3, 5], [5, 4], [7, 2]]) ctx.fillRect(x - hw, y + dy, hw * 2, 2); ctx.fillStyle = '#ffb3a8'; ctx.fillRect(x - 3, y + 1, 2, 3); } // a drop of blood
   else if (id === 'dev') { ctx.fillStyle = C; for (const [dy, kx] of [[-5, 2], [-1, -4], [3, 0]]) { ctx.fillRect(x - 7, y + dy, 14, 1); ctx.fillRect(x + kx, y + dy - 1, 3, 3); } } // sliders
   else if (id === 'layout') { ctx.fillStyle = C; ctx.fillRect(x - 6, y - 6, 5, 5); ctx.fillRect(x + 1, y - 6, 5, 5); ctx.fillRect(x - 6, y + 1, 5, 5); ctx.fillRect(x + 1, y + 1, 5, 5); }
 }
@@ -10215,6 +10255,7 @@ function pauseTap(x, y) {
     if (t.id === 'codex') { const nw = CODEX_SECS.findIndex((_, i) => codexNewIn(i)); return openCodex(nw >= 0 ? nw : game.codex ? game.codex.sec : 0, 'pause'); }
     if (t.id === 'settings') { game.state = 'settings'; return; }
     if (t.id === 'auto') { game.state = 'autow'; return; }
+    if (t.id === 'wounds') { game.woundWin = { sel: 0 }; game.state = 'wounds'; return; }
     if (t.id === 'shop') return openStore(0, 'pause');
     if (t.id === 'sound') { AUDIO.setMuted(!AUDIO.muted); return; }
     if (t.id === 'dev') return openDev();
@@ -10574,7 +10615,7 @@ const WOUNDS = [
 const WOUND_RARITY = [{ name: 'WOUND', col: '#c2b6aa', w: 10 }, { name: 'DEEP WOUND', col: '#8ae0ff', w: 5 }, { name: 'STIGMA', col: '#ffd155', w: 2.2 }, { name: 'MYTHIC', col: '#ff6a8a', w: 0 }];
 // Round 80: the sacrifice and the reroll on the level-up screen.
 // A reroll costs about a quarter of a full clear's gold: 500 at Station I, scaled by the Station's gold (round 81, measured).
-const SACRIFICE_N = 7, REROLL_BASE = 500;
+const SACRIFICE_N = 7, SAC_PAGE_N = SACRIFICE_N + 1, REROLL_BASE = 500;
 const woundRanks = () => Object.entries((game.run && game.run.wounds) || {}).reduce((t, [id, n]) => t + (WOUNDS.find((q) => q.id === id && !q.mythic) ? n : 0), 0);
 const mythicPool = () => WOUNDS.filter((w) => w.mythic && !wound(w.id) && (!w.hero || w.hero === heroId()));
 // Round 82: each reroll within one level costs half as much again as the last (REROLL_UP).
@@ -10635,7 +10676,7 @@ function stigButtons() {
   return { reroll: { x: x0, y, w: bw, h: 22 }, sac: { x: x0 + bw + gap, y, w: bw, h: 22 }, auto: { x: x0 + (bw + gap) * 2, y, w: aw, h: 22 } }; // round 108: AUTO picks from here on
 }
 const canReroll = () => !!game.run && (game.run.gold || 0) >= rerollCost();
-const canSacrifice = () => woundRanks() >= SACRIFICE_N && mythicPool().length > 0;
+const canSacrifice = (n = SACRIFICE_N) => woundRanks() >= n && mythicPool().length > 0;
 function stigTap(x, y) {
   const S = game.stig; if (S.sac) return; // the sacrifice is playing
   if (S.t < 0.35) return;
@@ -10704,15 +10745,15 @@ function rerollWounds() {
 function askSacrifice() {
   ask(`GIVE UP ${SACRIFICE_N} RANKS OF YOUR WOUNDS, CHOSEN AT RANDOM, FOR A RANDOM MYTHIC WOUND? THIS USES YOUR LEVEL-UP CHOICE.`, sacrificeWounds, 'SACRIFICE');
 }
-function sacrificeWounds() {
-  const R = game.run; if (!game.stig || !canSacrifice()) return;
+function sacrificeWounds(N = SACRIFICE_N, pick = true) { // round 109: from the Wounds page it takes N ranks and no level-up choice
+  const R = game.run; if (!game.stig || !canSacrifice(N)) return;
   const lost = {};
-  for (let k = 0; k < SACRIFICE_N; k++) {
+  for (let k = 0; k < N; k++) {
     const ranks = []; for (const [id, n] of Object.entries(R.wounds)) { const w = WOUNDS.find((q) => q.id === id); if (w && !w.mythic) for (let j = 0; j < n; j++) ranks.push(id); }
     const id = ranks[Math.floor(rng() * ranks.length)]; R.wounds[id]--; if (R.wounds[id] <= 0) delete R.wounds[id]; lost[id] = (lost[id] || 0) + 1;
   }
   const pool = mythicPool(), m = pool[Math.floor(rng() * pool.length)];
-  R.wounds[m.id] = 1; R.pending--; codexSee('w', m.id); applyGear(); player.hp = Math.min(player.hp, player.maxHp);
+  R.wounds[m.id] = 1; if (pick) R.pending--; codexSee('w', m.id); applyGear(); player.hp = Math.min(player.hp, player.maxHp);
   // Round 82: the seven ranks fly to the middle and break one by one (SAC_T seconds), then the mythic card comes up.
   const tiles = []; for (const [id, n] of Object.entries(lost)) for (let j = 0; j < n; j++) tiles.push(WOUNDS.find((q) => q.id === id));
   game.stig = { cards: [m], t: 0, reveal: true, sac: window.HS_AUTOSTIG ? null : { t: 0, tiles, broke: 0, bits: [] }, lost: Object.entries(lost).map(([id, n]) => `${WOUNDS.find((q) => q.id === id).name}${n > 1 ? ' X' + n : ''}`) };
@@ -11683,6 +11724,7 @@ function onTap(x, y) {
     case 'title': case 'chars': case 'create': frontTap(x, y); return true;
     case 'pause': pauseTap(x, y); return true;
     case 'autow': autoWinTap(x, y); return true;
+    case 'wounds': woundsTap(x, y); return true;
     case 'inv': invTap(x, y); return true;
     case 'stig': stigTap(x, y); return true;
     case 'loading': return true;
@@ -11796,7 +11838,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { get pfx() { return pfx; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get pfx() { return pfx; }, woundsLayout, woundsTap, woundsHeld, get SAC_PAGE_N() { return SAC_PAGE_N; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

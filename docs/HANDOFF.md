@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-14, after round 108 (build 108, on `master`). Read
+Last updated 2026-11-14, after round 109 (build 109, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-108 on
+   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-109 on
    `claude/brave-brown-mytba1`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
@@ -285,6 +285,9 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   the run) should be cut too: only Saint XP is. Not available in the
   Vigil, cells or the yard. The tally screen does not say the run was
   auto.
+- **Wounds page (round 109).** Ask the owner whether 8 ranks is the right
+  price there. REROLL is still only on the level-up screen, so an Auto
+  Wounds player never rerolls.
 - **Warden times per set (rounds 106-107).** Remeasured in round 107 after
   the `SETK.boss` nudge (the Bellwright, Station XII, 3 seeds, 120 s cap):
   every six-piece set killed it every time. Seconds: Saint nails 53, stride
@@ -424,6 +427,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 109:** the owner asked for a button to a screen of all held
+  Wounds, so a sacrifice is still possible with Auto Wounds on. A WOUNDS
+  pause tile (descents only, not the yard) opens the Wounds page (state
+  `wounds`, `renderWounds`, `woundsTap`, `woundsLayout`, `woundsHeld`):
+  every held Wound in two or three columns with its rank, the chosen
+  row's text, and SACRIFICE. Here it takes `SAC_PAGE_N` (8) ranks and no
+  level-up choice (`sacrificeWounds(N, pick)`); on the level-up screen it
+  is still 7 ranks plus that level's choice, so the two cost the same.
+  The same animation and mythic reveal play. Test: `round109.cjs` at
+  844x390 and 667x375.
 - **Round 108:** the owner asked for an auto-select button for Wounds
   (with player-set preferences, toggled in game) and auto play for cleared
   Stations (75% less gold and drops, 50% less XP, chosen on the Descent
