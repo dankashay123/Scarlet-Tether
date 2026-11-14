@@ -267,11 +267,13 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Warden times per set (round 106).** `SETK.boss` was nudged after its
-  last measurement: rerun `WARDEN=bellwright ... setbal.cjs 120 12 1,2,3`
-  per class, and try the other four Wardens (only the Bellwright was
-  measured). The 4+2 mixes have no Warden bonus and were not measured on
-  Wardens.
+- **Warden times per set (rounds 106-107).** Remeasured in round 107 after
+  the `SETK.boss` nudge (the Bellwright, Station XII, 3 seeds, 120 s cap):
+  every six-piece set killed it every time. Seconds: Saint nails 53, stride
+  48, font 53, confessor 52, choir 64; Mendicant iron 43, road 60, alms 68,
+  gaol 38, bell 51; Anchoress reliquary 41, glass 68, thorn 45, psalter 41,
+  lantern 66. Left as is (38 to 68 s). Not measured: the other Wardens and
+  the 4+2 mixes (which have no Warden bonus).
 - **Station VI spread (round 106):** 8.3 (the Gaol) to 20.5 (the Font)
   kills a second. XII is even; if VI should be even too it needs a
   Station-scaled term, not new set numbers.
@@ -417,7 +419,8 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   lit something. **Bag:** on narrow phones (no room for a card beside the
   bag) the spare strip lists the sets worn (`invLayout().side`). WOUND keeps
   its capital (`CASE_TERMS`). Handoff facts corrected (Saint level 100, four
-  passive slots, no executions). Test: `round107.cjs`; menus at three
+  passive slots, no executions). Warden times remeasured (see Next steps),
+  nothing tuned. Test: `round107.cjs`; menus at three
   sizes, round80, round82, round100, round103, round105 and a soak clean.
 - **Round 106:** the owner said "All" to the five suggestions.
   **Fresh measurement (setbal.cjs, 6 seeds, 120 s, kills a second / damage
