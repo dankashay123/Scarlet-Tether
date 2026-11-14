@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-14, after round 112 (build 112, on `master`). Read
+Last updated 2026-11-14, after round 114 (build 114, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-112 on
+   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-114 on
    `claude/brave-brown-mytba1`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
@@ -276,18 +276,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Auto play (rounds 108 and 110).** Measured with `autobench.cjs`
-  (Saint, six Nails pieces and arms, Saint level 60, no passives,
-  talents, enchants or pets; `NOREFILL=1`, so it can die). Gear of
-  Station XII on Station XII: died in 3 of 4 runs (15 to 30 s). The same
-  gear on Station X: survived all 3 runs of 140 s (283 to 451 kills); on
-  VIII: all 3 (583 to 704 kills). So auto play is safe about two Stations
-  under the gear and risky at the gear's own Station. Wardens summoned
-  into the full crowd at X: killed in 27 to 65 s in 4 of 6 tries
-  (Bellwright, Cardinal, Lady of Nails). What still hurts it most: pools
-  that open under it, homing shots, aimed shots. Not measured: the
-  Mendicant and Anchoress at depth, Strata II and III. Ask the owner how
-  the 75% / 50% cuts feel and whether run XP should be cut too.
+- **Auto play (rounds 108-113).** Measured with `autobench.cjs` (six
+  pieces of one set and its arms at Station XII gear, Saint level 60, no
+  passives, talents, enchants or pets, `NOREFILL=1`) on Station X, 150 s:
+  Saint (Nails) 4 of 4 survived, 531-746 kills; Mendicant (Iron) 4 of 4,
+  610-802; Anchoress (Reliquary) 4 of 4, 796-963, every run finishing the
+  descent. On the gear's own Station (XII) the Saint died in 3 of 4
+  (round 110, before the corner and dash changes). What hurts it most:
+  shots and homing shots (cherubs, acolytes), pools. Strata II and III not
+  measured. Ask the owner how the 75% / 50% cuts feel and whether run XP
+  should be cut too.
 - **Wounds page (round 109).** Ask the owner whether 8 ranks is the right
   price there.
 - **Warden times per set (rounds 106-107).** Remeasured in round 107 after
@@ -429,6 +427,33 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 114:** the owner asked to move the sound switch off the play
+  screen (the pause panel's SOUND tile already toggles it) and to make the
+  pause and bag buttons the same, smaller size. `HUD.pause` and `HUD.bag`
+  take `sz` (diameter, 18 x `WS`), drawn by `button()` with a smoothed
+  downscale of the navy sprite; the bag sits under the pause button.
+  `HUD.mute` is drawn and tapped on the title screen only. Tests: round34
+  (with a fake notch), round30, round98 (tutorial targets), menus, e2e.
+- **Round 113:** the owner picked 1, 2, 3, 5 and the bolt flag audit, and
+  asked for the auto buttons on the play screen. **On screen:** one
+  button above the level bar (`autoHudBtn`, `autoHudShown`): in an auto
+  run it pauses and resumes the pilot; in any other descent it switches
+  Auto Wounds on and off. **Auto Sell** (`autoW().sell`: OFF, COMMON,
+  BLESSED AND BELOW, CONSECRATED AND BELOW; a picker in the AUTO window
+  with a hold tip): in an auto run, gear of that rarity is sold as it is
+  picked up (`autoSellPick`) unless its slot is empty or it beats the worn
+  piece; with a full bag the weakest such piece is sold for a better one
+  on the floor (`autoSellFor`). Hallowed, set pieces and arms are never
+  sold. **Risky:** the Descent panel's line under the Station turns red
+  when Sanctity is under the Station two deeper. **Caution:** under 40%
+  health the pilot goes back for any health orb on the map. **Bolt flag
+  audit:** every field read off a bolt (`crit`, `dmgK`, `ember`, `fire`,
+  `bind`, `great`, `melee`, `shard`, `split`, `splitDone`, `nailSplit`,
+  `splint`, `splinter`, `proc`, `rite`, `pierce`, `hit`, `life`, `z`) has
+  one meaning. One gap closed: the Splinter enchant's bolts and
+  Shatterpoint's splinters each guarded only against themselves, so each
+  could set off the other; both now skip bolts of either kind. Test:
+  `round113.cjs`; measurements above.
 - **Round 112:** the owner sent a screenshot of auto play stuck in a
   corridor mouth, strafing at a pack round the corner, and asked for
   dashes while travelling and for gold to be absorbed as it drops.

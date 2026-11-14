@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '113';
+const BUILD = '114';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '114': ['THE SOUND SWITCH LEFT THE PLAY SCREEN. TURN SOUND ON OR OFF FROM THE PAUSE SCREEN.', 'THE PAUSE AND BAG BUTTONS ARE NOW THE SAME SIZE, AND A LITTLE SMALLER.'],
   '113': ['ON THE PLAY SCREEN, ABOVE THE LEVEL BAR: A SWITCH FOR AUTO WOUNDS, AND IN AN AUTO PLAY RUN A BUTTON THAT PAUSES AND RESUMES THE PILOT.', 'AUTO PLAY: NEW SETTING, AUTO SELL (OFF, COMMON, BLESSED AND BELOW, CONSECRATED AND BELOW). GEAR OF THAT RARITY IS SOLD AS IT IS PICKED UP UNLESS IT BEATS WHAT YOU WEAR, AND MAKES ROOM IN A FULL BAG. HALLOWED AND SET PIECES ARE NEVER SOLD.', 'AUTO PLAY: THE DESCENT PANEL WARNS IN RED WHEN YOUR GEAR IS TOO CLOSE TO THE STATION FOR THE PILOT. IT IS SAFE ABOUT TWO STATIONS BELOW YOUR GEAR.', 'AUTO PLAY: WHEN BADLY HURT, THE PILOT GOES BACK FOR ANY HEALTH ORB LEFT ON THE MAP.'],
   '112': ['AUTO PLAY: NO LONGER GETS STUCK AT A CORNER SHOOTING AT FOES IT CANNOT HIT. IT WALKS ROUND UNTIL IT HAS A CLEAR SHOT.', 'AUTO PLAY: DASHES ALONG THE WAY WHEN NO FOE IS NEAR, SO RUNS ARE FASTER.', 'AUTO PLAY: GOLD AND EVERY OTHER DROP FLY TO YOU AS THEY FALL. HEALTH ORBS STAY ON THE FLOOR UNTIL NEEDED.'],
   '111': ['AUTO PLAY NO LONGER GOES OUT OF ITS WAY FOR GOLD OR GEAR. EVERYTHING LEFT ON THE FLOOR FLIES TO YOU WHEN THE WARDEN FALLS, AND THE RUN WAITS FOR IT BEFORE RETURNING.'],
@@ -722,9 +723,10 @@ function layoutHud() {
   HUD.m2 = { x: W - 26 * k, y: H - 82 * k, r: 15 * k, icon: 'chain' };
   HUD.pen = { x: W - 72 * k, y: H - 68 * k, r: 17 * k, icon: 'penance' };
   HUD.act = { x: W - 122 * k, y: H - 38 * k, r: 19 * k, icon: 'talk' };
-  HUD.pause = { x: W - 15 * k, y: 15 * k, r: 11 * k, icon: 'pause' };
-  HUD.mute = { x: W - 15 * k, y: 42 * k, r: 10 * k, icon: 'sound' };
-  HUD.bag = { x: W - 15 * k, y: 68 * k, r: 11 * k, icon: 'bag' };
+  // Round 114: pause and bag are the same size, a little smaller; the sound switch left the play screen for the pause panel.
+  const sr = 9 * k; HUD.pause = { x: W - 13 * k, y: 13 * k, r: sr, icon: 'pause', sz: sr * 2 };
+  HUD.mute = { x: W - 15 * k, y: 15 * k, r: 10 * k, icon: 'sound' }; // the title screen's sound switch
+  HUD.bag = { x: W - 13 * k, y: 36 * k, r: sr, icon: 'bag', sz: sr * 2 };
   HUD.joy = { x: 48 * k, y: H - 48 * k };
   for (const b of ['dash', 'm1', 'm2', 'pen', 'act', 'pause', 'mute', 'bag']) HUD[b].x -= SAFE.r;
   HUD.joy.x += SAFE.l;
@@ -751,7 +753,7 @@ function pointerDown(id, cx, cy) {
   if (game.state === 'designer' && DES) { if (game.ask) onTap(x, y); else desDown(id, x, y); return; }
   { const q = !game.ask && !game.statTip && HOLD_TIPS.find((r) => inRect(r, x, y)); game.hold = q ? { id, x, y, t: game.real, k: q.k, title: q.title, text: q.text, st: game.state, defer: q.defer } : null; } // round 99: hold for a tip
   if (game.hold && game.hold.defer) return; // round 100: this tap waits for the release (pointerUp), so a hold can show the tip instead
-  if (['play', 'title', 'pause'].includes(game.state) && hitBtn(HUD.mute, x, y)) { AUDIO.unlock(); AUDIO.setMuted(!AUDIO.muted); sfx('tap'); return; }
+  if (game.state === 'title' && hitBtn(HUD.mute, x, y)) { AUDIO.unlock(); AUDIO.setMuted(!AUDIO.muted); sfx('tap'); return; }
   if (onTap(x, y)) return;
   if (game.state !== 'play') return;
   if (HUD.minimap && inRect(HUD.minimap, x, y)) { sfx('tap'); game.state = 'map'; return; }
@@ -9762,7 +9764,10 @@ function button(b, { active = true, cd = 0, cdText = '', ring = 0, ringColor = P
     ctx.strokeStyle = ringColor; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 2, -Math.PI / 2, -Math.PI / 2 + ring * Math.PI * 2); ctx.stroke();
   }
   if (nb) {
-    ctx.globalAlpha = active ? 1 : 0.6; ctx.drawImage(nb.c, Math.round(b.x - nb.ax), Math.round(b.y + pr - nb.ay)); ctx.globalAlpha = 1;
+    ctx.globalAlpha = active ? 1 : 0.6;
+    if (b.sz) { const q = b.sz / nb.c.width, w = nb.c.width * q, h = nb.c.height * q; ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(nb.c, b.x - w / 2, b.y + pr - h / 2, w, h); ctx.restore(); }
+    else ctx.drawImage(nb.c, Math.round(b.x - nb.ax), Math.round(b.y + pr - nb.ay));
+    ctx.globalAlpha = 1;
     ctx.strokeStyle = active ? 'rgba(255,209,85,0.85)' : 'rgba(150,120,70,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(b.x, b.y + pr, b.r - 1.5, 0, Math.PI * 2); ctx.stroke();
   } else sprC('ui', b.icon, 0, b.x, b.y + pr, { alpha: active ? 1 : 0.55 });
   if (cd > 0) { // dark sweep for the remaining cooldown, plus seconds left
@@ -9944,10 +9949,9 @@ function renderHud() {
   // Top-right: minimap and pause.
   const { mx, my, mw, mh } = renderMinimap();
   button(HUD.pause);
-  HUD.mute.icon = AUDIO.muted ? 'muted' : 'sound'; button(HUD.mute);
   button(HUD.bag);
   const fresh = SAVE.bag.filter((it) => it.isNew).length;
-  if (fresh) { ctx.fillStyle = PAL.outline; ctx.fillRect(HUD.bag.x + 4, HUD.bag.y - 13, 11, 10); ctx.fillStyle = PAL.blood1; ctx.fillRect(HUD.bag.x + 5, HUD.bag.y - 12, 9, 8); text(String(Math.min(9, fresh)), HUD.bag.x + 10, HUD.bag.y - 11, PAL.white, { align: 'center', outline: null, small: true }); }
+  if (fresh) { ctx.fillStyle = PAL.outline; ctx.fillRect(HUD.bag.x + 3, HUD.bag.y - 12, 11, 10); ctx.fillStyle = PAL.blood1; ctx.fillRect(HUD.bag.x + 4, HUD.bag.y - 11, 9, 8); text(String(Math.min(9, fresh)), HUD.bag.x + 9, HUD.bag.y - 10, PAL.white, { align: 'center', outline: null, small: true }); }
   // Gold, kills, active shrine buff, massacre streak.
   const gold = game.scene === 'wound' ? game.run.gold : SAVE.gold || 0;
   sprC('loot', 'coin', 0, mx + 5, my + mh + 11);
