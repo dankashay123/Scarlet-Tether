@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-14, after round 107 (build 107, on `master`). Read
+Last updated 2026-11-14, after round 108 (build 108, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-106 on `claude/laughing-babbage-0cov0r`; round 107 on
+   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-108 on
    `claude/brave-brown-mytba1`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
@@ -163,6 +163,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
     1.15 s, sound `sacrifice`), then the mythic card.
   - **Held Wounds:** small rarity-framed tiles with ranks in the top
     corners (`heldStrip`). Tapping one shows its card (round 82).
+- **Auto Wounds and auto play (round 108):** AUTO WOUNDS picks the Wound at
+  each level by the player's weights for damage, defence and utility (LOW,
+  MEDIUM, HIGH; `SAVE.autoW`, kept until changed). It is turned on by AUTO
+  PICK on the level-up screen or in the AUTO window (a pause tile), which
+  also sets the weights. AUTO PLAY is a button on the Descent panel, only
+  for Stations already cleared (`SAVE.autoPlay`, `run.auto`): a pilot
+  (`autoPilot`) plays the run, which pays 25% of the gold, gear and other
+  drops and 50% of the Saint XP (`AUTO_PAY`). The stick steers by hand at
+  any time; the AUTO window pauses the pilot (the lower pay stays).
 - **Gear:** 10 slots (8 vestments plus two arms slots: crossbow and quiver,
   a mace and satchel for him, a reliquary and phylactery for her), 5
   rarities, item level = Station (Sanctity). Drops are rare on purpose
@@ -267,6 +276,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **Auto play (round 108).** The pilot plays worse than a person: with no
+  gear at Station I it loses about 0.8 of its health bar a minute
+  (`autobench.cjs`; pools, shots and aimed lines hurt most). Not measured:
+  how it fares at deep Stations with matching gear, or against each
+  Warden. It ignores cone and ring telegraphs and does not aim rites. Ask
+  the owner how the 75% / 50% cuts feel, and whether run XP (levels within
+  the run) should be cut too: only Saint XP is. Not available in the
+  Vigil, cells or the yard. The tally screen does not say the run was
+  auto.
 - **Warden times per set (rounds 106-107).** Remeasured in round 107 after
   the `SETK.boss` nudge (the Bellwright, Station XII, 3 seeds, 120 s cap):
   every six-piece set killed it every time. Seconds: Saint nails 53, stride
@@ -406,6 +424,33 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 108:** the owner asked for an auto-select button for Wounds
+  (with player-set preferences, toggled in game) and auto play for cleared
+  Stations (75% less gold and drops, 50% less XP, chosen on the Descent
+  panel). **Auto Wounds:** `WOUND_KIND` sorts every Wound into damage
+  (the default), defence or utility; `autoWoundScore` = weight first, then
+  rarity, then ranks already held; `openStigmata` takes the card without
+  opening the screen and toasts its name. The level-up screen has a third
+  button, AUTO PICK (`stigButtons().auto`); the pause screen an AUTO tile
+  that opens the AUTO window (state `autow`, `renderAutoWin`,
+  `autoWinTap`). **Auto play:** `SAVE.autoPlay` + `autoCan(i)` (Station
+  cleared) set `run.auto` (kept in a suspended run). `autoPilot` runs
+  after `readMove`: a breadth-first field over the map's tiles
+  (`autoField`, pools block it) toward loot, the Waystone, the Warden or
+  the nearest foe; ranged classes keep range and circle, pushed away from
+  crowds; it dashes out when hemmed in, for the Sentence and from circles
+  about to land; steps off shots and aimed lines; leaves pools; fetches
+  health orbs when hurt; casts rites as they come up and the Reckoning
+  into a crowd or a Warden; uses shrines, chests and the Waystone. Auto
+  Wounds are always on in an auto run. Pay: `autoK()` on gold, gear and
+  Emberstones, `autoSkip()` on every other drop roll (no pity builds on a
+  skipped roll), half Saint XP in `gainSaintXp`. The Descent panel's
+  bottom row is now omen, auto, cancel, descend (short omen labels when
+  narrow) and the line under the Station shows the price while auto is
+  on. Tests: `round108.cjs` (a whole auto descent to the tally in god
+  mode at 3x speed: 348 kills, the Warden, the Waystone) and
+  `autobench.cjs`; menus at three sizes, round80, 82, 86, 100, 107, 15,
+  73, descent, dev and a soak per class clean.
 - **Round 107:** the owner asked for polish of what is there, from our own
   suggestions. Found by looking at fresh screenshots. **Level-up screen:**
   the HUD is not drawn while it is open (`render` skips `renderHud` in state

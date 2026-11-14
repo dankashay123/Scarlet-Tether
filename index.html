@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '107';
+const BUILD = '108';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '108': ['NEW: AUTO WOUNDS. THE GAME PICKS YOUR WOUND AT EACH LEVEL. TURN IT ON FROM THE LEVEL-UP SCREEN (AUTO PICK) OR THE PAUSE SCREEN (AUTO), WHERE YOU ALSO SET HOW MUCH YOU WANT DAMAGE, DEFENCE AND UTILITY.', 'NEW: AUTO PLAY ON THE DESCENT PANEL, FOR STATIONS YOU HAVE CLEARED. THE GAME PLAYS THE RUN FOR YOU, FOR 75% LESS GOLD AND DROPS AND 50% LESS XP. MOVE THE STICK TO STEER; PAUSE IT FROM THE PAUSE SCREEN.'],
   '107': ['THE LEVEL-UP SCREEN NO LONGER SHOWS THE WARDEN\'S NAME AND BARS THROUGH ITS TITLE.', 'PAUSE SCREEN: EVERY TILE\'S ICON NOW HAS THE SAME LOOK.', 'BATTLE PETS SHOW WHEN THEY ACT: YOUR FOLLOWER HOPS, WITH A SMALL BURST AND A QUIET SOUND.', 'BAG: ON NARROW PHONES THE EMPTY STRIP BESIDE THE BAG LISTS THE SETS YOU WEAR.'],
   '106': ['NEW TRAINING YARD TAB: SETS. YOUR BEST DAMAGE PER SECOND AND TESTS FOR EACH OF YOUR SETS.', 'PENITENT\'S STRIDE: A PERFECT DODGE NOW GIVES 30% LESS DAMAGE TAKEN FOR 2 S (WAS 50%).', 'SETS THAT WERE SLOW AGAINST WARDENS NOW DEAL MORE DAMAGE TO THEM. THEIR CARDS SHOW BY HOW MUCH.'],
   '105': ['NEW BAG TAB: PETS. EQUIP, SWAP AND CHOOSE YOUR FOLLOWER WITHOUT OPENING THE SHOP.', 'PETS ARE DRAWN HALF AS BIG AGAIN.', 'SETS THAT TOOK THE MOST DAMAGE AT FOUR PIECES NOW TAKE LESS. THEIR CARDS SHOW BY HOW MUCH.'],
@@ -5571,7 +5572,7 @@ function renderDescent() {
   if (!open) badge('lock', L.x0 + L.pw / 2 - textW(df.name, 2) / 2 - 14, L.y0 + 53);
   const dstep = Math.min(10, Math.floor(220 / (DIFF.length - 1))); DIFF.forEach((q, k) => { const px = L.x0 + L.pw / 2 - Math.round((DIFF.length - 1) * dstep / 2) + k * dstep; ctx.fillStyle = k === D.i ? '#ffd155' : 'rgba(0,0,0,0.6)'; ctx.fillRect(px - 3, L.y0 + 66, 6, 6); ctx.fillStyle = k === D.i ? PAL.white : diffOpen(k) ? q.col : '#2a3346'; ctx.fillRect(px - 2, L.y0 + 67, 4, 4); });
   const autoOn = !!SAVE.autoPlay && autoCan(D.i); // round 108: the price of auto play, where every phone shows it
-  text(autoOn ? `AUTO PLAY: ${Math.round((1 - AUTO_PAY.drop) * 100)}% LESS GOLD AND DROPS, ${Math.round((1 - AUTO_PAY.xp) * 100)}% LESS XP.` : open ? df.text : `LOCKED. ${diffNeed(D.i)} TO OPEN IT.`, L.x0 + L.pw / 2, L.y0 + 77, autoOn ? PAL.flame1 : open ? PAL.cloth1 : PAL.blood0, { align: 'center', small: true, outline: null });
+  text(autoOn ? `Auto Play: ${Math.round((1 - AUTO_PAY.drop) * 100)}% less gold and drops, ${Math.round((1 - AUTO_PAY.xp) * 100)}% less XP.` : open ? df.text : `LOCKED. ${diffNeed(D.i)} TO OPEN IT.`, L.x0 + L.pw / 2, L.y0 + 77, autoOn ? PAL.flame1 : open ? PAL.cloth1 : PAL.blood0, { align: 'center', small: true, outline: null });
   // Three columns of numbers.
   // Short screens drop the footer notes and the least useful rows.
   const cw = Math.floor((L.pw - 32) / 3), top = L.y0 + 88, cx = (c) => L.x0 + 12 + c * (cw + 4), om = D.omens || [];
@@ -5628,7 +5629,7 @@ function renderDescent() {
   if (om.length) text(`EACH OMEN: +${Math.round((OMEN_PAY.gold - 1) * 100)}% GOLD, +${Math.round((OMEN_PAY.drop - 1) * 100)}% GEAR, BETTER RARITY.`, L.x0 + 12, oy + 10, PAL.flame1, { small: true, outline: null });
   { const wide = L.omen.w >= 140, auto = !!SAVE.autoPlay && autoCan(D.i);
     invButton(L.omen, wide ? (om.length === 2 ? 'TWO OMENS (TAP TO CLEAR)' : om.length ? 'ONE OMEN (TAP FOR TWO)' : 'TAKE AN OMEN') : ['NO OMEN', 'ONE OMEN', 'TWO OMENS'][om.length], PAL.violet3 || PAL.ink3, true);
-    invButton(L.auto, L.auto.w >= 96 ? `AUTO PLAY ${auto ? 'ON' : 'OFF'}` : `AUTO ${auto ? 'ON' : 'OFF'}`, auto ? PAL.gold3 : PAL.stone4, autoCan(D.i)); }
+    invButton(L.auto, L.auto.w >= 96 ? `Auto Play: ${auto ? 'On' : 'Off'}` : `Auto: ${auto ? 'On' : 'Off'}`, auto ? PAL.gold3 : PAL.stone4, autoCan(D.i)); }
   invButton(L.back, 'CANCEL', PAL.stone4);
   invButton(L.go, open ? 'DESCEND' : 'LOCKED', PAL.crimson3, open);
 }
