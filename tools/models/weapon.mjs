@@ -3,7 +3,7 @@
 // it stays crisp pixel art at every heading; frames aiming left are modelled
 // mirrored so the stock never hangs upside down.
 import { Scene, sphere, ellipsoid, capsule, box, rotZ, render, dot } from '../sdf.mjs';
-import { MATS, torus, SKINS } from './base.mjs';
+import { MATS, torus, SKINS, PSY } from './base.mjs';
 
 const S0 = 48, C = S0 / 2, K = 1.3; // frame size, pivot at the centre, model scale
 const M = {
@@ -24,7 +24,17 @@ const XSKIN = {
   confessor: { mats: { stock: 'slateDark', limb: 'steel', gem: 'bone', rune: 'violetGlow', runeHot: 'violetGlow' }, extra: 'chain' },
   choir: { mats: { stock: 'cream', limb: 'limb', gem: 'emberLit', rune: 'ember', runeHot: 'emberHot' }, extra: 'candles' },
 };
-Object.assign(M, { charred: { ramp: 'shroud', bias: -0.15, spec: 0.15 }, emberHot: { ramp: 'ember', glow: 0 }, violetGlow: { ramp: 'violet', glow: 1 } });
+// Round 117: the premium skins' crossbows. `orb` puts a glowing bead on each limb tip; `rainbow` bands the whole bow.
+Object.assign(XSKIN, {
+  enlightened: { mats: { stock: 'void', limb: 'wing', gem: 'shardGlow', rune: 'violetGlow', runeHot: 'violetGlow', steel: 'wingDark' }, orb: 'shardGlow' },
+  void: { mats: { stock: 'void', limb: 'limb', gem: 'roseGlow', rune: 'roseGlow', runeHot: 'roseGlow', steel: 'void' }, orb: 'roseGlow' },
+  psychedelic: { mats: { stock: 'psyViolet', limb: 'psyGold', gem: 'psyBlue', rune: 'roseGlow', runeHot: 'roseGlow', steel: 'psyRose' }, rainbow: true },
+  dread: { mats: { stock: 'void', limb: 'silver', gem: 'vial', rune: 'vial', runeHot: 'vial', steel: 'steel' }, orb: 'vial' },
+  radiant: { mats: { stock: 'violetRobe', limb: 'limb', gem: 'roseGlow', rune: 'tealGlow', runeHot: 'gem', steel: 'limb' }, orb: 'roseGlow' },
+  divine: { mats: { stock: 'white', limb: 'limb', gem: 'tealGlow', rune: 'tealGlow', runeHot: 'gem', steel: 'silver' }, orb: 'tealGlow' },
+  demonic: { mats: { stock: 'charredBow', limb: 'crimsonDark', gem: 'emberHot', rune: 'ember', runeHot: 'emberHot', steel: 'horn' }, extra: 'flames' },
+});
+Object.assign(M, { charredBow: { ramp: 'shroud', bias: -0.3, spec: 0.12, min: 3 }, charred: { ramp: 'shroud', bias: -0.15, spec: 0.15 }, emberHot: { ramp: 'ember', glow: 0 }, violetGlow: { ramp: 'violet', glow: 1 } });
 
 // Build the crossbow pointing right, centred on (C, C); my = 1 or -1 mirrors it.
 function crossbow(ang, my, skin = null) {
@@ -58,6 +68,8 @@ function crossbow(ang, my, skin = null) {
   if (X && X.extra === 'vial') { add(sphere(P(-8, -1.6, 1.4), 1.9 * K, 'vial'), 0); add(capsule(P(-8, -3.4, 1.4), P(-8, -4.6, 1.4), 0.7 * K, 0.7 * K, 'silver'), 0); }
   if (X && X.extra === 'chain') for (let i = 0; i < 4; i++) add(torus(P(-10 + i * 2.8, 3 + (i % 2) * 1.2, 2), 1.5 * K, 0.7 * K, i % 2 ? 1.5 : 0.2, 'iron'), 0);
   if (X && X.extra === 'candles') for (const s of [-1, 1]) { add(capsule(P(4, s * 11.4, 1), P(0.6, s * 11.4, 1), 1.1 * K, 1.1 * K, 'wax'), 0); add(ellipsoid(P(-1.2, s * 11.4, 1), [1.6 * K, 1.2 * K, 1.2 * K], 'emberHot'), 0); }
+  if (X && X.orb) for (const s of [-1, 1]) add(sphere(P(2.4, s * 12.4, 0.6), 1.7 * K, X.orb), 0);
+  if (X && X.rainbow) { const c = Math.cos(ang), sn = Math.sin(ang); PSY.forEach((m, i) => S.paint({ f: (x, y) => { const u = (x - C) * c + (y - C) * sn, v = (((u / (2.6 * K)) % 7) + 7) % 7; return Math.abs(v - i - 0.5) - 0.5; }, mat: m })); }
   const f = render(S, S0, S0, M, { contrast: 1.35 });
   const rot = ([x, y]) => { const dx = x - C, dy = y - C, c = Math.cos(ang), sn = Math.sin(ang); return [C + dx * c - dy * sn, C + dx * sn + dy * c]; };
   // The string, from each limb tip back to the nock.

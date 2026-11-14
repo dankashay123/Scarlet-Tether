@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '116';
+const BUILD = '117';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '117': ['NEW IN THE SHOP: SKINS. SEVEN PREMIUM SKINS FOR EVERY CLASS: ENLIGHTENED, THE VOID, PSYCHEDELIC, THE DREAD, THE RADIANT, THE DIVINE AND DEMONIC.', 'EACH SKIN CHANGES THE HERO, THE CROSSBOW OR SHARDS, THE BOLTS AND THEIR TRAILS, AND ADDS AN AURA AT YOUR FEET. LOOKS ONLY.'],
   '116': ['AUTO PLAY AND AUTO WOUNDS ARE NOW TWO ICONS LEFT OF THE MAP: GREY WHEN OFF, GREEN WHEN ON.', 'AUTO PLAY CAN BE TURNED ON DURING ANY DESCENT OF A STATION YOU HAVE CLEARED. FROM THEN ON THE WHOLE DESCENT PAYS AS AUTO PLAY, EVEN IF YOU TURN IT OFF AGAIN.'],
   '115': ['NEW LOOK FOR THE BUTTONS ON THE PLAY SCREEN: RAISED ICONS IN A GOLD RING. THE PAUSE SCREEN\'S TILES MATCH.', 'AFTER A DEATH YOU ARE BACK IN VAEL AT ONCE, BY THE CATHEDRAL. NO MORE DARK SCREEN.', 'AUTO PLAY: THE PILOT NO LONGER GOES BACK FOR HEALTH ORBS. IT KEEPS FIGHTING AND MOVING.', 'AUTO PLAY: THE END SCREEN SAYS HOW MANY PIECES AUTO SELL SOLD AND FOR HOW MUCH.'],
   '114': ['THE SOUND SWITCH LEFT THE PLAY SCREEN. TURN SOUND ON OR OFF FROM THE PAUSE SCREEN.', 'THE PAUSE AND BAG BUTTONS ARE NOW THE SAME SIZE, AND A LITTLE SMALLER.'],
@@ -304,7 +305,8 @@ const BOLT_FX = {
   psalter: { trail: '255,122,102', crit: '255,209,85', spark: 'crimson0' }, lantern: { trail: '255,192,74', crit: '255,122,31', spark: 'ember0' },
   thorn: { trail: '196,220,158', crit: '255,209,85', spark: 'rot0' },
 };
-const boltFx = () => { const T0 = TRAILS.find((q) => q.id === looks().bolt), B = BOLT_FX[(G && G.xskin) || (isAnch() ? 'reliquary' : null)]; return T0 && T0.rgb ? { trail: T0.rgb, crit: T0.crit, spark: B.spark } : B; };
+const boltFx = () => { const ps = pskin(); if (ps) { const P = PSKIN_BY[ps]; return P.ramp === 'psy' ? { trail: pskinRamp(P)[2], crit: pskinRamp(P, 3)[1], spark: P.spark } : P; }
+  const T0 = TRAILS.find((q) => q.id === looks().bolt), B = BOLT_FX[(G && G.xskin) || (isAnch() ? 'reliquary' : null)]; return T0 && T0.rgb ? { trail: T0.rgb, crit: T0.crit, spark: B.spark } : B; };
 // The two playable saints (round 49). The Mendicant fights up close with a
 // mace (updateMelee) instead of the floating crossbow; gear, levels, rites,
 // talents and sets are shared; each set dresses him too (mendicant_<set>).
@@ -349,8 +351,25 @@ const HERO_TEXT_A = [
 const heroText = (s) => { if (typeof s !== 'string' || heroId() === 'saint') return s; for (const [a, b] of (isAnch() ? HERO_TEXT_A : HERO_TEXT)) s = typeof a === 'string' ? (s === a ? b : s.split(a).join(b)) : s.replace(a, b); return s; };
 // An item's name as this hero says it (the Mendicant's arms are maces, not crossbows).
 const nm = (it) => heroText(it.name);
-const saintBase = () => { const h = HEROES[heroId()].sheet; return G && G.skin && SPR[`${h}_${G.skin}`] ? `${h}_${G.skin}` : h; };
-const saintSheet = () => lookSheet(saintBase());
+// Round 117: premium skins from the shop. One look for the hero, the crossbow (or shards) and the bolts, with an aura
+// at the feet. Owned skins are the account's (`SAVE.pskins`, in CHAR_GLOBAL); each character wears one (`SAVE.pskin`).
+// Art: `<hero>_<id>` sheets (PREMIUM in base.mjs), weapon `xbow_<id>`, fx `bolt_<id>`, `crystal_<id>`, `crystalbolt_<id>`.
+const PSKINS = [
+  { id: 'enlightened', name: 'ENLIGHTENED', price: 1500, ramp: 'violet', trail: '190,130,255', crit: '236,214,255', spark: 'violet0', text: 'NIGHT-BLACK ROBES UNDER LILAC WINGS AND A VIOLET HALO.' },
+  { id: 'void', name: 'THE VOID', price: 1500, ramp: 'rose', trail: '232,90,166', crit: '255,209,85', spark: 'rose0', text: 'BLACK ROBES LATTICED IN GOLD, A SMALL CROWN, ROSE RINGS ADRIFT.' },
+  { id: 'psychedelic', name: 'PSYCHEDELIC', price: 1500, ramp: 'psy', trail: '255,156,207', crit: '255,244,176', spark: 'gold0', text: 'ROBES IN RUNNING BANDS OF EVERY COLOUR. BOLTS AND AURA CHANGE COLOUR AS THEY GO.' },
+  { id: 'dread', name: 'THE DREAD', price: 1500, ramp: 'life', trail: '95,220,108', crit: '184,255,143', spark: 'flame0', text: 'A BLACK COWL AND SHROUD, GREEN LIGHTS, A SCYTHE ACROSS THE BACK.' },
+  { id: 'radiant', name: 'THE RADIANT', price: 1500, ramp: 'gold', trail: '255,209,85', crit: '255,156,207', spark: 'gold0', text: 'VIOLET AND TEAL UNDER GOLD, A SUNBURST BEHIND THE HEAD.' },
+  { id: 'divine', name: 'THE DIVINE', price: 1500, ramp: 'frost', trail: '111,224,208', crit: '255,244,176', spark: 'teal0', text: 'WHITE AND GOLD OVER CRIMSON, A GREAT GOLD RING WITH TEAL STONES.' },
+  { id: 'demonic', name: 'DEMONIC', price: 1500, ramp: 'fire', trail: '255,122,31', crit: '255,70,50', spark: 'ember0', text: 'CHARRED ROBES WITH A MOLTEN HEM, HORNS, WINGS OF BONE AND EMBER.' },
+];
+const PSKIN_BY = Object.fromEntries(PSKINS.map((P) => [P.id, P])), PSY_RAMPS = ['blood', 'fire', 'gold', 'life', 'holy', 'violet', 'rose'];
+const pskinsOwned = () => (SAVE.pskins ||= []);
+const pskin = () => { const id = SAVE.pskin; return id && PSKIN_BY[id] && pskinsOwned().includes(id) && SPR[`${HEROES[heroId()].sheet}_${id}`] ? id : null; };
+const wskin = () => pskin() || (G && G.xskin) || null; // the look of the weapon and its bolts
+const pskinRamp = (P, k = 0) => FXR[P.ramp === 'psy' ? PSY_RAMPS[(Math.floor(game.real * 3) + k) % 7] : P.ramp];
+const saintBase = () => { const h = HEROES[heroId()].sheet, ps = pskin(); if (ps) return `${h}_${ps}`; return G && G.skin && SPR[`${h}_${G.skin}`] ? `${h}_${G.skin}` : h; };
+const saintSheet = () => (pskin() ? saintBase() : lookSheet(saintBase())); // a premium skin is worn as drawn: dyes and halos do not apply
 // ------------------------------------------------- the Plush stall's looks ---
 // Robe dyes swap the crimson of the Saint's robes for another ramp; halos
 // swap the gold of the halo (the gold in the top rows of each frame). Each
@@ -397,7 +416,7 @@ function tintKey(sheet, rgb) {
   return TINT[k][sheet] ? k : null;
 }
 // Round 83: each class has its own bust (ui portrait, portrait_m, portrait_a).
-const bustAnim = () => isMelee() && SPR.ui.anims.portrait_m ? 'portrait_m' : isAnch() && SPR.ui.anims.portrait_a ? 'portrait_a' : 'portrait';
+const bustAnim = () => heroId() === 'saint' && pskin() && SPR.ui.anims[`portrait_${pskin()}`] ? `portrait_${pskin()}` : isMelee() && SPR.ui.anims.portrait_m ? 'portrait_m' : isAnch() && SPR.ui.anims.portrait_a ? 'portrait_a' : 'portrait';
 const CROWNED = ['saint_nails', 'saint_choir', 'portrait_nails', 'portrait_choir']; // crowns, not halos
 const looks = () => { const K = (SAVE.looks = SAVE.looks || { dye: 'crimson', halo: 'gold', own: ['d:crimson', 'h:gold'] }); if (!K.bolt) { K.bolt = 'set'; K.dash = 'white'; K.own.push('b:set', 's:white'); } return K; };
 const rampOf = (name) => Object.keys(PAL).filter((k) => new RegExp(`^${name}\\d+h?$`).test(k)).sort((a, b) => parseFloat(a.replace(name, '').replace('h', '.5')) - parseFloat(b.replace(name, '').replace('h', '.5')));
@@ -2141,7 +2160,7 @@ function persist() { try { localStorage.setItem('hollow-saint', JSON.stringify(S
 // shows. Settings and the tutorial carry across characters. Choosing another
 // character or making one writes the saves and reloads straight into Vael.
 const CHAR_KEY = 'hollow-saint-chars', charKey = (id) => `hollow-saint-char-${id}`, MAX_CHARS = 4;
-const CHAR_GLOBAL = ['opts', 'muted', 'dev', 'seenBuild', 'tutorialDone', 'indul', 'pets']; // round 103: Indulgences and pets are the account's
+const CHAR_GLOBAL = ['opts', 'muted', 'dev', 'seenBuild', 'tutorialDone', 'indul', 'pets', 'pskins']; // round 103: Indulgences and pets are the account's
 const CHAR_NAMES = ['ALDRIC', 'BRANNOCH', 'CASSIA', 'DAGNY', 'EDRIC', 'FENNA', 'GISELA', 'HALE', 'ISOLDE', 'JORY', 'KESTREL', 'LUCAN', 'MAREN', 'NELL', 'OSRIC', 'PERRIN', 'QUILL', 'ROWAN', 'SABINE', 'TAMSIN', 'ULRIC', 'VESNA', 'WYNN', 'YSEULT', 'ANSEL', 'BRIDE', 'CORVIN', 'ELSPETH'];
 const randName = (not) => { const l = CHAR_NAMES.filter((n) => n !== not); return l[Math.floor(Math.random() * l.length)]; };
 const lsGet = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
@@ -6684,6 +6703,7 @@ function splat(x, y, big = false) {
 // flameTongue draws a flickering three-layer flame.
 const FXR = {
   fire: ['255,255,240', '255,236,150', '255,192,74', '255,122,31', '214,64,26', '122,30,24'],
+  rose: ['255,255,255', '255,214,236', '255,156,207', '232,90,166', '160,50,110', '80,24,60'],
   holy: ['255,255,255', '244,255,255', '216,247,255', '138,224,255', '63,164,240', '40,80,160'],
   gold: ['255,255,255', '255,244,176', '255,209,85', '255,192,74', '214,149,90', '122,80,40'],
   water: ['255,255,255', '216,247,255', '138,224,255', '63,164,240', '40,110,180', '20,60,110'],
@@ -6711,7 +6731,7 @@ function addPfx(o) { if (pfx.length < PFX_CAP()) pfx.push({ t: 0, ...o }); }
 // The shot colour of this hero's set (or the Plush stall's trail).
 const SHOT_RAMP = { nails: 'gold', stride: 'fire', font: 'holy', confessor: 'violet', choir: 'blood' };
 const TRAIL_RAMP = { ember: 'fire', holy: 'holy', blood: 'blood', violet: 'violet', verdant: 'life', rose: 'blood', silver: 'iron' };
-const shotRamp = () => TRAIL_RAMP[looks().bolt] || (G && SHOT_RAMP[G.xskin]) || 'gold';
+const shotRamp = () => { const ps = pskin(); if (ps) { const P = PSKIN_BY[ps]; return P.ramp === 'psy' ? PSY_RAMPS[Math.floor(game.real * 3) % 7] : P.ramp; } return TRAIL_RAMP[looks().bolt] || (G && SHOT_RAMP[G.xskin]) || 'gold'; };
 // One art pixel (2x2 world pixels) snapped to the grid.
 function px2(x, y, rgb, a = 1) { ctx.fillStyle = a >= 1 ? `rgb(${rgb})` : `rgba(${rgb},${a})`; ctx.fillRect(Math.floor(x / 2) * 2, Math.floor(y / 2) * 2, 2, 2); }
 // A ray of pixels from (x, y): hot at the root, cooling to the tip.
@@ -7473,7 +7493,7 @@ function drawFloatBow() {
   const x = xb.x - Math.cos(xb.ang) * xb.recoil * 5, y = xb.y - Math.sin(xb.ang) * xb.recoil * 5;
   // A soft shadow on the floor far below.
   ctx.fillStyle = 'rgba(11,7,16,0.25)'; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(player.y + 4), 7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-  sprC('weapon', G && G.xskin ? `xbow_${G.xskin}` : 'xbow', i, x, y, { white: xb.flash > 0.75 });
+  sprC('weapon', wskin() && SPR.weapon.anims[`xbow_${wskin()}`] ? `xbow_${wskin()}` : 'xbow', i, x, y, { white: xb.flash > 0.75 });
 }
 function drawFloatBowGlow() {
   const xb = player.xb; if (!xb || player.hp <= 0) return;
@@ -7601,7 +7621,7 @@ function boltStrike(b, e) {
   if (b.crit && ench('stormlink')) for (const o of nearestFoes(e.x, e.y, 4, 90).filter((q) => q !== e && !q.dead).slice(0, E2('stormlink', 1, 2))) { hurtEnemy(o, raw * E2('stormlink', 0.5, 0.75), false, 0, 0, 20, { status: true, color: PAL.holy0 }); (game.zaps = game.zaps || []).push({ x0: e.x, y0: e.y - e.hy, x1: o.x, y1: o.y - o.hy, t: 0 }); }
   if (pas('kindling') && rng() < 0.1) e.burn = Math.max(e.burn || 0, T.thurible.burn.time);
   boltArms(b, e);
-  if (G.xskin) sparks(b.x, b.y, PAL[boltFx().spark], 2);
+  if (wskin()) sparks(b.x, b.y, PAL[boltFx().spark], 2);
   if (sb('nails', 4)) { player.nails = Math.min(50, (player.nails || 0) + 1); player.nailT = game.time; }
   if (b.crit) { onWoundCrit(e); if (sb('choir', 2)) addFervor(1.5); }
   // The Anchoress (round 71): Ember Relic's bolts give Zeal; Splinter Crown's split on their first hit.
@@ -7950,6 +7970,8 @@ const petShown = () => { const E = petEq(), all = [...E.battle, ...E.drop].filte
 const PETF = { x: 0, y: 0, face: 1, t: 0, on: false, moving: false };
 function updatePets(dt) {
   const id = petShown(), p = player; if (!p) return;
+  { const ps = pskin(); if (ps && p.hp > 0 && (p.auraT = (p.auraT || 0) - dt) <= 0) { p.auraT = LOWFX ? 0.5 : 0.16; const P = PSKIN_BY[ps]; // round 117: motes rise through a premium skin's aura
+      vemit(p.x + rand(-13, 13), p.y - rand(0, 8), { n: 1, ramp: P.ramp === 'psy' ? PSY_RAMPS[Math.floor(Math.random() * 7)] : P.ramp, sp: 6, up: rand(24, 44), life: 0.8, size: 2, glow: 4 }); } }
   if (id) {
     const tx = p.x - p.face * 20, ty = p.y + 5; if (!PETF.on || Math.hypot(tx - PETF.x, ty - PETF.y) > 160) { PETF.x = tx; PETF.y = ty; PETF.on = true; }
     const d = Math.hypot(tx - PETF.x, ty - PETF.y); PETF.moving = d > 3; PETF.t += dt; if (PETF.hop > 0) PETF.hop -= dt;
@@ -8012,10 +8034,10 @@ function bagPetsTap(L, x, y) {
   });
 }
 // ---- the shop: BATTLE PETS, DROP PETS and INDULGENCES, in the forge's layout (a scrolling list, a showcase card).
-const STORE_TABS = ['BATTLE PETS', 'DROP PETS', 'INDULGENCES'], STORE_RGB = '190,120,255';
+const STORE_TABS = ['BATTLE PETS', 'DROP PETS', 'INDULGENCES', 'SKINS'], STORE_RGB = '190,120,255';
 function openStore(tab = 0, back = 'play') { game.store = { tab, sel: 0, scroll: 0, back }; game.state = 'store'; sfx('tap'); }
 const storeTabs = (L) => { const ws = STORE_TABS.map((t) => Math.ceil(textW(t, 1, true)) + 12); let x = L.close.x - 84 - ws.reduce((a, b) => a + b + 3, 0); return STORE_TABS.map((t, i) => { const b = { t, x, y: L.y0 + 5, w: ws[i], h: 17 }; x += ws[i] + 3; return b; }); };
-const storeList = () => (game.store.tab === 2 ? [] : myPets(game.store.tab ? 'drop' : 'battle'));
+const storeList = () => (game.store.tab === 2 ? [] : game.store.tab === 3 ? PSKINS : myPets(game.store.tab ? 'drop' : 'battle'));
 const storePackRow = (L, i) => ({ x: L.list.x, y: L.list.y + 16 + i * 40, w: L.list.w - 6, h: 36 });
 const heroName = (h) => (HEROES[h] && HEROES[h].name) || h.toUpperCase();
 function storeRowBar(r, sel, edge) {
@@ -8030,6 +8052,7 @@ function renderStore() {
   text('SHOP', L.x0 + 12, L.y0 + 9, '#d4b0ff'); sprC('pets', 'indul', 0, L.close.x - 70, L.y0 + 13); text(String(indul()), L.close.x - 60, L.y0 + 9, '#d4b0ff'); sprC('ui', 'close', 0, L.close.x, L.close.y);
   tabButtons(storeTabs(L), S.tab);
   if (S.tab === 2) return renderStorePacks(L);
+  if (S.tab === 3) return renderStoreSkins(L);
   const list = storeList(), Gm = gearGeo(L, S, list.length), B = Gm.box, E = petEq(), kind = S.tab ? 'drop' : 'battle', own = petsOwned(), shown = petShown();
   S.sel = Math.max(0, Math.min(S.sel, list.length - 1));
   listPanel(L, STORE_RGB, STORE_TABS[S.tab], `${list.filter((P) => own.includes(P.id)).length} OF ${list.length} OWNED`);
@@ -8062,6 +8085,59 @@ function renderStore() {
   if (!has) { invButton(L.btnA, 'GET MORE', PAL.stone4, true); invButton(L.btnB, `BUY: ${P.price}`, PAL.gold3, indul() >= P.price); }
   else { invButton(L.btnA, shown === P.id && eq ? 'FOLLOWS YOU' : 'FOLLOW ME', PAL.stone4, eq && shown !== P.id); invButton(L.btnB, eq ? 'UNEQUIP' : 'EQUIP', eq ? PAL.stone4 : PAL.gold3, true); }
 }
+// Round 117: the SKINS tab. A premium skin dresses the hero, the weapon and its bolts; every class has each one.
+function skinPreview(id, x, y, k, t) {
+  const h = HEROES[heroId()].sheet, sh = `${h}_${id}`, P = PSKIN_BY[id]; if (!SPR[sh]) return;
+  ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(k, k);
+  pxRing(0, 1, 15 + Math.sin(t * 2.2) * 1.5, pskinRamp(P), 3, 0.42, 3, 1); pxRing(0, 1, 9 + Math.sin(t * 2.2 + 1.5) * 1.5, pskinRamp(P, 2), 2, 0.42, 2, 1);
+  spr(sh, 'idle', Math.floor(t * 6), 0, 0);
+  if (isAnch()) { for (let i = 0; i < 3; i++) { const a = t * 1.2 + i * 2.1; if (SPR.fx.anims[`crystal_${id}`]) sprC('fx', `crystal_${id}`, 12, Math.round(Math.cos(a) * 13), Math.round(-52 + Math.sin(a) * 4)); } }
+  else if (!isMelee() && SPR.weapon.anims[`xbow_${id}`]) sprC('weapon', `xbow_${id}`, 0, 22, -26 + Math.round(Math.sin(t * 2) * 1.5));
+  ctx.restore();
+}
+function renderStoreSkins(L) {
+  const S = game.store, small = { small: true, outline: null }, C = L.card, list = PSKINS, Gm = gearGeo(L, S, list.length), B = Gm.box, own = pskinsOwned(), worn = pskin();
+  S.sel = Math.max(0, Math.min(S.sel, list.length - 1));
+  listPanel(L, STORE_RGB, 'SKINS', `${list.filter((P) => own.includes(P.id)).length} OF ${list.length} OWNED`);
+  ctx.save(); ctx.beginPath(); ctx.rect(B.x - 2, B.y - 1, B.w + 4, B.h + 2); ctx.clip();
+  list.forEach((P, i) => {
+    const r = Gm.row(i); if (r.y + r.h < B.y || r.y > B.y + B.h) return;
+    const T0 = (s0, x0, y0, c0, o0) => { if (y0 >= B.y - 1 && y0 + 9 <= B.y + B.h) text(s0, x0, y0, c0, o0); };
+    const sel = i === S.sel, has = own.includes(P.id), eq = worn === P.id, bw = 52, tx = r.x + 31, col = `rgb(${FXR[P.ramp === 'psy' ? 'rose' : P.ramp][3]})`;
+    storeRowBar(r, sel, eq); storeRing(r.x + 15, r.y + r.h / 2, eq ? PAL.gold1 : col);
+    ctx.save(); ctx.beginPath(); ctx.arc(r.x + 15, r.y + r.h / 2, 8.5, 0, Math.PI * 2); ctx.clip(); ctx.globalAlpha = has ? 1 : 0.75; const sh = `${HEROES[heroId()].sheet}_${P.id}`; if (SPR[sh]) spr(sh, 'idle', 0, r.x + 14, r.y + r.h / 2 + 44); ctx.restore(); ctx.globalAlpha = 1;
+    T0(fitText(P.name, r.x + r.w - bw - 8 - tx - (sel ? 12 : 0)), tx, r.y + 4, has ? PAL.white : PAL.cloth1, { bold: sel });
+    T0(eq ? 'WORN' : 'HERO, WEAPON AND BOLTS', tx, r.y + 17, eq ? PAL.gold1 : PAL.stone1, small);
+    const bx = r.x + r.w - bw - 3; ctx.fillStyle = 'rgba(4,7,13,0.55)'; ctx.fillRect(bx, r.y + 3, bw, r.h - 6);
+    if (has) T0('OWNED', bx + bw / 2, r.y + 9, PAL.flame1, { ...small, align: 'center' });
+    else { T0('PRICE', bx + bw / 2, r.y + 2, PAL.stone1, { ...small, align: 'center' }); sprC('pets', 'indul', 0, bx + 11, r.y + r.h - 10); T0(String(P.price), bx + bw - 6, r.y + r.h - 15, indul() >= P.price ? '#d4b0ff' : PAL.blood0, { ...small, align: 'right' }); }
+  });
+  ctx.restore();
+  if (Gm.max > 0) { const th = Math.max(16, B.h * B.h / (list.length * FORGE_RH)), ty = B.y + (B.h - th) * (S.scroll / Gm.max); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(B.x + B.w - 3, B.y, 3, B.h); ctx.fillStyle = `rgba(${STORE_RGB},0.8)`; ctx.fillRect(B.x + B.w - 3, Math.round(ty), 3, Math.round(th)); }
+  inset(C.x, C.y, C.w, C.h); const P = list[S.sel]; if (!P) return;
+  const has = own.includes(P.id), eq = worn === P.id, sh = Math.max(70, Math.min(104, L.btnA.y - 14 - (C.y + 8) - 46)), S0 = { x: C.x + 8, y: C.y + 8, w: Math.min(C.w - 16, 120), h: sh };
+  { const g = ctx.createLinearGradient(0, S0.y, 0, S0.y + S0.h); g.addColorStop(0, '#0a0f1c'); g.addColorStop(1, '#1a2238'); ctx.fillStyle = g; ctx.fillRect(S0.x, S0.y, S0.w, S0.h); ctx.fillStyle = `rgba(${STORE_RGB},0.7)`; ctx.fillRect(S0.x, S0.y, S0.w, 1); ctx.fillRect(S0.x, S0.y + S0.h - 1, S0.w, 1); ctx.fillRect(S0.x, S0.y, 1, S0.h); ctx.fillRect(S0.x + S0.w - 1, S0.y, 1, S0.h); }
+  ctx.save(); ctx.beginPath(); ctx.rect(S0.x + 1, S0.y + 1, S0.w - 2, S0.h - 2); ctx.clip(); skinPreview(P.id, S0.x + S0.w / 2 - 6, S0.y + S0.h - 12, sh >= 96 ? 1.25 : 1, game.real); ctx.restore();
+  const tx = S0.x + S0.w + 8, tw = C.x + C.w - 8 - tx; let y = S0.y + 2;
+  if (tw >= 60) { for (const l of wrapW(P.name, tw).slice(0, 2)) { text(l, tx, y, PAL.white, { bold: true }); y += 12; } text('PREMIUM SKIN', tx, y + 1, PAL.stone1, small); y += 11;
+    text(has ? (eq ? 'WORN' : 'OWNED') : `PRICE: ${P.price}`, tx, y + 1, has ? PAL.flame1 : indul() >= P.price ? '#d4b0ff' : PAL.blood0, small); y += 13;
+    for (const l of wrapW(P.text, tw, true)) { if (y > S0.y + S0.h - 8) break; text(l, tx, y, PAL.cloth0, small); y += 10; } }
+  y = S0.y + S0.h + 6;
+  for (const l of wrapW(tw >= 60 ? 'EVERY CLASS OF YOURS CAN WEAR IT. IT CHANGES LOOKS ONLY.' : `${P.name}. ${P.text}`, C.w - 16, true)) { if (y > L.btnA.y - 12) break; text(l, C.x + 8, y, PAL.stone1, small); y += 10; }
+  if (!has) { invButton(L.btnA, 'GET MORE', PAL.stone4, true); invButton(L.btnB, `BUY: ${P.price}`, PAL.gold3, indul() >= P.price); }
+  else { invButton(L.btnA, 'TAKE OFF', PAL.stone4, eq); invButton(L.btnB, eq ? 'WORN' : 'WEAR', PAL.gold3, !eq); }
+}
+function storeSkinsTap(L, x, y) {
+  const S = game.store, list = PSKINS, Gm = gearGeo(L, S, list.length);
+  if (inRect(Gm.box, x, y)) { for (let i = 0; i < list.length; i++) if (inRect(Gm.row(i), x, y)) { if (S.sel !== i) sfx('tap', { vol: 0.5 }); S.sel = i; } return; }
+  const P = list[S.sel]; if (!P) return; const has = pskinsOwned().includes(P.id), eq = pskin() === P.id;
+  if (inRect(L.btnA, x, y)) { if (!has) { S.tab = 2; sfx('tap', { vol: 0.5 }); } else if (eq) { SAVE.pskin = null; persist(); sfx('tap', { vol: 0.5 }); } return; }
+  if (inRect(L.btnB, x, y)) {
+    if (!has) { if (indul() < P.price) { toast('NOT ENOUGH INDULGENCES. THE INDULGENCES TAB HAS FREE PACKS FOR NOW.', 2.6); return; }
+      ask(`BUY ${P.name} FOR ${P.price} INDULGENCES?`, () => { if (indul() < P.price) return; SAVE.indul = indul() - P.price; pskinsOwned().push(P.id); SAVE.pskin = P.id; persist(); sfx('buy'); toast(`${P.name} IS YOURS, AND WORN.`, 2.4); game.toastColor = '#d4b0ff'; }, 'BUY'); return; }
+    if (!eq) { SAVE.pskin = P.id; persist(); sfx('learn', { gap: 0.15, vol: 0.5 }); }
+  }
+}
 function renderStorePacks(L) {
   const small = { small: true, outline: null }, C = L.card;
   listPanel(L, STORE_RGB, 'INDULGENCES', 'FREE FOR NOW');
@@ -8071,12 +8147,13 @@ function renderStorePacks(L) {
   inset(C.x, C.y, C.w, C.h); const S0 = { x: C.x + 8, y: C.y + 8, w: 64, h: 64 }, tx = S0.x + 72;
   pieceFrame(S0, null, STORE_RGB, () => { ctx.scale(3, 3); sprC('pets', 'indul', 0, 0, 0); });
   text('INDULGENCES', tx, S0.y + 4, '#d4b0ff', { bold: true }); text(`OWNED: ${indul().toLocaleString('en-US')}`, tx, S0.y + 18, PAL.gold1, small);
-  let y = S0.y + 76; for (const l of wrapW('INDULGENCES BUY PETS, AND EVERY CHARACTER OF YOURS SHARES THEM. THE PACKS ARE FREE FOR NOW. THE TITHE CAT, A DROP PET, ALSO FINDS THEM ON FOES.', C.w - 16, true)) { text(l, C.x + 8, y, PAL.cloth0, small); y += 10; }
+  let y = S0.y + 76; for (const l of wrapW('INDULGENCES BUY PETS AND SKINS, AND EVERY CHARACTER OF YOURS SHARES THEM. THE PACKS ARE FREE FOR NOW. THE TITHE CAT, A DROP PET, ALSO FINDS THEM ON FOES.', C.w - 16, true)) { text(l, C.x + 8, y, PAL.cloth0, small); y += 10; }
 }
 function storeTap(x, y) {
   const L = featLayout(), S = game.store;
   if (featOut(L, x, y)) { game.state = S.back; sfx('tap'); return; }
   const tb = storeTabs(L).findIndex((b) => inRect(b, x, y)); if (tb >= 0) { S.tab = tb; S.sel = 0; S.scroll = 0; sfx('tap', { vol: 0.5 }); return; }
+  if (S.tab === 3) return storeSkinsTap(L, x, y);
   if (S.tab === 2) { PET_PACKS.forEach((n, i) => { if (inRect(storePackRow(L, i), x, y)) { SAVE.indul = indul() + n; persist(); toast(`+${n.toLocaleString('en-US')} INDULGENCES`, 1.8); game.toastColor = '#d4b0ff'; sfx('gold'); } }); return; }
   const list = storeList(), Gm = gearGeo(L, S, list.length), E = petEq(), kind = S.tab ? 'drop' : 'battle';
   if (inRect(Gm.box, x, y)) { for (let i = 0; i < list.length; i++) if (inRect(Gm.row(i), x, y)) { if (S.sel !== i) sfx('tap', { vol: 0.5 }); S.sel = i; } return; }
@@ -9133,10 +9210,10 @@ function render() {
   if (game.scene === 'town') drawTownWorld();
   for (const g of gibs) spr('fx', g.anim, g.i, g.x, g.y - g.z, { ax: 5, ay: 5 });
   for (const p of parts) { ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x), Math.round(p.y - p.z), p.s || 1, p.s || 1); }
-  const boltAnim = G && G.xskin ? `bolt_${G.xskin}` : 'bolt';
+  const boltAnim = wskin() && SPR.fx.anims[`bolt_${wskin()}`] ? `bolt_${wskin()}` : 'bolt', psk = pskin();
   for (const b of bolts) {
     // Round 75: a fired shard is the same crystal that hovers over her head, turned to its heading (16 frames, no rotation so pixels stay square).
-    if (b.shard && SPR.fx.anims.crystal) { const CB = SPR.fx.anims.crystalbolt ? 'crystalbolt' : 'crystal'; const a = Math.atan2(b.vy / 0.55, b.vx), fr = ((Math.round(a / (Math.PI * 2) * 16) % 16) + 16) % 16, c = frameOf('fx', CB, fr), k = b.great ? 2 : 1;
+    if (b.shard && SPR.fx.anims.crystal) { const CB = psk && SPR.fx.anims[`crystalbolt_${psk}`] ? `crystalbolt_${psk}` : SPR.fx.anims.crystalbolt ? 'crystalbolt' : 'crystal'; const a = Math.atan2(b.vy / 0.55, b.vx), fr = ((Math.round(a / (Math.PI * 2) * 16) % 16) + 16) % 16, c = frameOf('fx', CB, fr), k = b.great ? 2 : 1;
       ctx.drawImage(IMG.fx, c.x, c.y, c.w, c.h, Math.round(b.x) - (c.w >> 1) * k, Math.round(b.y) - (c.h >> 1) * k, c.w * k, c.h * k); continue; }
     const f = frameOf('fx', b.shard ? 'shardbolt' : boltAnim, 0);
     ctx.save(); ctx.translate(Math.round(b.x), Math.round(b.y)); ctx.rotate(Math.atan2(b.vy, b.vx)); if (b.great) ctx.scale(2, 2);
@@ -9357,12 +9434,19 @@ function drawShard(s, i) {
   if (s.z < 40) { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(s.x, s.y, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill(); }
   // Round 73: an ice-blue crystal pointing out from the ring (16 headings).
   const fr = ((Math.round((s.a || 0) / (Math.PI * 2) * 16) % 16) + 16) % 16;
-  if (SPR.fx.anims.crystal) sprC('fx', 'crystal', fr, Math.round(s.x), Math.round(s.y - s.z)); else sprC('fx', 'shard', 0, s.x, s.y - s.z);
+  if (SPR.fx.anims.crystal) sprC('fx', pskin() && SPR.fx.anims[`crystal_${pskin()}`] ? `crystal_${pskin()}` : 'crystal', fr, Math.round(s.x), Math.round(s.y - s.z)); else sprC('fx', 'shard', 0, s.x, s.y - s.z);
   if (!LOWFX && rng() < 0.012) vemit(s.x, s.y - s.z, { n: 1, ramp: 'holy', sp: 6, up: 6, life: 0.4, glow: 3, size: 1 });
   if ((player.emberRelicT || 0) > game.time && !LOWFX && rng() < 0.3) vemit(s.x, s.y - s.z - 4, { n: 1, ramp: 'fire', sp: 8, up: 20, life: 0.35, glow: 3, size: 1 });
 }
+// Round 117: a premium skin's aura: two pixel rings turning at the feet, in its colours.
+function drawSkinAura(p) {
+  const ps = pskin(); if (!ps || p.hp <= 0) return; const P = PSKIN_BY[ps], t = game.real;
+  ctx.fillStyle = `rgba(${pskinRamp(P)[3]},0.16)`; ctx.beginPath(); ctx.ellipse(Math.round(p.x), Math.round(p.y + 1), 16, 7, 0, 0, Math.PI * 2); ctx.fill();
+  pxRing(p.x, p.y + 1, 16 + Math.sin(t * 2.2) * 1.5, pskinRamp(P), 3, 0.42, 2, 1);
+  if (!LOWFX) pxRing(p.x, p.y + 1, 10 + Math.sin(t * 2.2 + 1.5) * 1.5, pskinRamp(P, 2), 2, 0.42, 2, 1);
+}
 function drawPlayer() {
-  const p = player;
+  const p = player; drawSkinAura(p);
   const fps = p.anim === 'dash' ? 18 : p.anim === 'run' ? 16 : 6;
   let i = Math.floor(p.animT * fps);
   if (p.anim === 'dash') i = Math.min(2, Math.floor((T.dash.time - p.dashT) / T.dash.time * 3));
@@ -11949,7 +12033,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { get pfx() { return pfx; }, autoIcons, autoPlayTap, playerSanctity, stationSanctity, autoHudBtn, autoSellFor, autoSellPick, AUTO_SELL, woundsLayout, woundsTap, woundsHeld, get SAC_PAGE_N() { return SAC_PAGE_N; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get pfx() { return pfx; }, PSKINS, pskin, pskinsOwned, openStore, storeTap, autoIcons, autoPlayTap, playerSanctity, stationSanctity, autoHudBtn, autoSellFor, autoSellPick, AUTO_SELL, woundsLayout, woundsTap, woundsHeld, get SAC_PAGE_N() { return SAC_PAGE_N; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

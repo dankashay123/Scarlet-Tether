@@ -3,7 +3,7 @@
 // Soft things (impacts, blood bursts, smoke, orbs) are 2D metaball forms lit
 // from the top-left and banded onto palette ramps, with no dithering.
 import { Scene, sphere, ellipsoid, capsule, box, rotZ, render, bumpy, clip, dot, pline, LIGHT } from '../sdf.mjs';
-import { MATS, torus } from './base.mjs';
+import { MATS, torus, PSY } from './base.mjs';
 import { IDX, FINE } from '../palette.mjs';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -98,6 +98,9 @@ const A = (f, ax, ay) => Object.assign(f, { ax, ay });
 const BOLTS = {
   nails: ['gold', 'crimson', 'gold0'], stride: ['emberLit', 'ember', 'ember0'], font: ['holy', 'iron', 'holy0'],
   confessor: ['slate', 'iron', 'violet0'], choir: ['gold', 'cloth', 'ember0'],
+  // Round 117: the premium skins' bolts.
+  enlightened: ['wing', 'shardGlow', 'violet0'], void: ['void', 'gold', 'rose0'], psychedelic: ['psyRose', 'lime', 'holy0'], dread: ['slate', 'vial', 'flame0'],
+  radiant: ['gold', 'roseGlow', 'gold0'], divine: ['white', 'gold', 'teal0'], demonic: ['molten', 'crimson', 'ember0'],
 };
 function bolt(skin = null) {
   const [shaft, collar, tip] = skin ? BOLTS[skin] : ['iron', 'gold', 'gold0'];
@@ -126,14 +129,19 @@ function shard(i) {
 // upper one pale and lit, the lower one deep blue.
 const CM = { ...MATS, ice: { ramp: 'holy', spec: 0.9, bias: 0.12, max: 4 }, iceDark: { ramp: 'holy', bias: -0.18, min: 2, max: 6 } };
 // Round 76: `slim` is the same blade thinner and a little shorter, for shards in flight (`crystalbolt`).
-function crystal(i, slim = false) {
+// Round 117: the premium skins' shards: [lit facet ramp, dark facet ramp] (psychedelic bands the blade instead).
+export const CRYSTALS = { enlightened: ['violet', 'violet'], void: ['rose', 'ink'], psychedelic: null, dread: ['flame', 'ink'], radiant: ['gold', 'rose'], divine: ['cloth', 'gold'], demonic: ['ember', 'crimson'] };
+for (const [k, v] of Object.entries(CRYSTALS)) if (v) { CM[`ice_${k}`] = { ramp: v[0], spec: 0.9, bias: 0.12, max: 4 }; CM[`iceDark_${k}`] = { ramp: v[1], bias: -0.18, min: 2, max: 6 }; }
+function crystal(i, slim = false, skin = null) {
   const a = i / 16 * Math.PI * 2, dx0 = Math.cos(a), dy0 = Math.sin(a) * 0.55, dl = Math.hypot(dx0, dy0), dx = dx0 / dl, dy = dy0 / dl;
   const L = (15 + 9 * Math.abs(Math.cos(a))) * (slim ? 0.95 : 1), c = [17, 17], S = new Scene(), R0 = slim ? 3.9 : 4.8;
   const at = (t) => [c[0] + dx * t, c[1] + dy * t, 3];
-  S.add(capsule(at(-L * 0.18), at(L * 0.6), R0, 0.35, 'ice'), 0);
-  S.add(capsule(at(-L * 0.18), at(-L * 0.34), R0, slim ? 1.2 : 1.6, 'ice'), 0.4);
+  const ice = skin && CRYSTALS[skin] ? `ice_${skin}` : 'ice', iceDark = skin && CRYSTALS[skin] ? `iceDark_${skin}` : 'iceDark';
+  S.add(capsule(at(-L * 0.18), at(L * 0.6), R0, 0.35, ice), 0);
+  S.add(capsule(at(-L * 0.18), at(-L * 0.34), R0, slim ? 1.2 : 1.6, ice), 0.4);
   const nx = -dy, ny = dx, down = ny > 0 || (ny === 0 && nx < 0) ? 1 : -1;
-  S.paint({ f: (x, y) => -((x - c[0]) * nx + (y - c[1]) * ny) * down, mat: 'iceDark' });
+  S.paint({ f: (x, y) => -((x - c[0]) * nx + (y - c[1]) * ny) * down, mat: iceDark });
+  if (skin === 'psychedelic') PSY.forEach((m, k) => S.paint({ f: (x, y) => { const u = (x - c[0]) * dx + (y - c[1]) * dy, v = (((u / 3) % 7) + 7) % 7; return Math.abs(v - k - 0.5) - 0.5; }, mat: m }));
   const f = render(S, 34, 34, CM, { contrast: 1.2 });
   put(f, c[0] - nx * down * (slim ? 1 : 1.5) + dx * 1, c[1] - ny * down * (slim ? 1 : 1.5) + dy * 1, 'white');
   return f;
@@ -750,7 +758,7 @@ export default {
     burst: () => [0, 1, 2, 3].map(burst),
     smoke: () => [0, 1, 2, 3].map(smoke),
     thurible: () => [0, 1].map(thurible),
-    shard: () => [0, 1, 2, 3].map(shard), shardbolt: () => [shardBolt()], crystal: () => Array.from({ length: 16 }, (_, i) => crystal(i)), crystalbolt: () => Array.from({ length: 16 }, (_, i) => crystal(i, true)),
+    shard: () => [0, 1, 2, 3].map(shard), shardbolt: () => [shardBolt()], crystal: () => Array.from({ length: 16 }, (_, i) => crystal(i)), ...Object.fromEntries(Object.keys(CRYSTALS).flatMap((k) => [[`crystal_${k}`, () => Array.from({ length: 16 }, (_, i) => crystal(i, false, k))], [`crystalbolt_${k}`, () => Array.from({ length: 16 }, (_, i) => crystal(i, true, k))]])), crystalbolt: () => Array.from({ length: 16 }, (_, i) => crystal(i, true)),
     flask: () => [flask()],
     link: () => [0, 1].map(link),
     hook: () => [hook()],

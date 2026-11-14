@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-14, after round 116 (build 116, on `master`). Read
+Last updated 2026-11-14, after round 117 (build 117, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-116 on
+   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
@@ -276,6 +276,12 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **Premium skins (round 117).** Not done: skinned maces for the
+  Mendicant, busts for the Mendicant and Anchoress, skinned rite and
+  Reckoning effects (they still use the set's colours), a showcase on the
+  character select. The owner's references have larger ground discs and
+  orbiting attendants; ours is a small ring aura. Prices (1,500) are a
+  guess; packs are still free.
 - **Auto play (rounds 108-113).** Measured with `autobench.cjs` (six
   pieces of one set and its arms at Station XII gear, Saint level 60, no
   passives, talents, enchants or pets, `NOREFILL=1`) on Station X, 150 s:
@@ -430,6 +436,32 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 117:** the owner asked for premium skins in the shop for the
+  crossbow, the shards and the player, with bolts to match, and sent
+  seven reference screens from their golf game: Enlightened (its
+  reference was named Ascended), the Void, Psychedelic, the Dread, the
+  Radiant, the Divine, Demonic. **Art:** `PREMIUM` in `base.mjs` (merged
+  into `SKINS`, no `hero`, so `saint_<id>`, `mendicant_<id>` and
+  `anchoress_<id>` are all built; 21 new sheets, 73 in all): materials
+  plus one sculpted detail each (lilac wings and a violet halo; a gold
+  lattice, crown and rose rings; bands of every colour and a petal ring;
+  a scythe and green lights; a sunburst; a great gold ring with teal
+  stones; horns and ember wings), eyes recoloured through `dots`.
+  Crossbows in `XSKIN` (`orb`, `rainbow`), bolts in `BOLTS`, shards in
+  `CRYSTALS` (`crystal_<id>`, `crystalbolt_<id>`). The Mendicant's mace is
+  part of his sprite and keeps its iron. **Game:** `PSKINS` (name, price
+  1,500 Indulgences, effect ramp, trail colours), owned skins in
+  `SAVE.pskins` (account-wide, `CHAR_GLOBAL`), worn in `SAVE.pskin` per
+  character, read with `pskin()`; `wskin()` picks the weapon and bolt
+  look; `saintBase`, `boltFx`, `shotRamp`, the crossbow, bolt and crystal
+  draws and the Saint's bust use them. Dyes and halos do not apply over a
+  premium skin. An aura (`drawSkinAura`: a faint disc and two pixel rings)
+  and rising motes (in `updatePets`) follow the hero; Psychedelic cycles
+  ramps (`PSY_RAMPS`). **Shop:** a fourth tab, SKINS (`renderStoreSkins`,
+  `storeSkinsTap`, `skinPreview`): the list, an animated preview with the
+  class's weapon, BUY (asks, then wears it), WEAR, TAKE OFF. Test:
+  `round117.cjs` (every sheet and anim for three classes, the shop flow,
+  a photo of each skin on each class).
 - **Round 116:** the owner asked for the auto buttons as icons left of the
   minimap (grey off, green on), and for rewards to stay reduced for the
   whole descent once auto play was used. `autoIcons()` places two discs

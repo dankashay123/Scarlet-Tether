@@ -232,6 +232,79 @@ HEROES.anchoress = {
   },
   dots: (f, { hand }) => { dot(f, hand[0] + 1.6, hand[1] - 3.4, 'violet0'); dot(f, hand[0] + 2.6, hand[1] - 7.4, 'violet1'); dot(f, hand[0] + 0.4, hand[1] - 8.6, 'violet0'); },
 };
+// Round 117: materials for the premium skins sold in the shop.
+Object.assign(MATS, {
+  wing: { ramp: 'violet', bias: 0.28, spec: 0.25 }, wingDark: { ramp: 'violet', bias: -0.1, spec: 0.1 }, roseGlow: { ramp: 'rose', glow: 1 }, tealGlow: { ramp: 'teal', glow: 1 },
+  lime: { ramp: 'flame', bias: 0.1, spec: 0.1 }, charred: { ramp: 'shroud', bias: -0.3, spec: 0.12, min: 3 }, molten: { ramp: 'ember', bias: -0.1, spec: 0.3 },
+  psyRed: { ramp: 'crimson', bias: 0.2 }, psyOrange: { ramp: 'ember', bias: 0.1 }, psyGold: { ramp: 'gold', bias: 0.1 }, psyBlue: { ramp: 'holy', bias: 0.05 }, psyViolet: { ramp: 'violet', bias: 0.15 }, psyRose: { ramp: 'rose', bias: 0.15 },
+  white: { ramp: 'cloth', bias: 0.15, spec: 0.1 }, horn: { ramp: 'bone', bias: -0.25, spec: 0.3 },
+});
+export const PSY = ['psyRed', 'psyOrange', 'psyGold', 'lime', 'psyBlue', 'psyViolet', 'psyRose'];
+const eyes = (a, b) => (f, { fc }) => { for (const ex of [fc[0] - 1.3, fc[0] + 1]) { dot(f, ex, fc[1] - 0.6, a); dot(f, ex, fc[1] + 0.4, b); } };
+// A fan of feathers (or wing bones) rising from the back: root, angles in degrees up from straight back, lengths.
+const fan = (S, root, list, r0, r1, mat, k = 0.5) => { for (const [deg, len] of list) { const a = deg * Math.PI / 180; S.add(capsule(root, [root[0] - Math.cos(a) * len, root[1] - Math.sin(a) * len, root[2]], r0, r1, mat), k); } };
+// The premium skins (`premium: true`, no `hero`: every class has each). They never come from gear: the shop sells them.
+export const PREMIUM = {
+  // Enlightened: night-black robes, lilac wings, a violet halo.
+  enlightened: { premium: true, crown: true, noLight: true,
+    mats: { robe: 'void', robeDark: 'void', hood: 'inkRobe', cowl: 'violetDark', cape: 'void', capeHem: 'shardGlow', trim: 'violet', tabard: 'violetDark', cross: 'shardGlow', hose: 'ink', boot: 'ink' },
+    add: (S, { cx, B, X, hx, hy }) => {
+      fan(S, [cx - 4 + X, 31 + B, -5], [[38, 15], [58, 19], [76, 20], [92, 17]], 2.1, 0.5, 'wingDark');
+      fan(S, [cx - 3 + X, 30 + B, -3.4], [[30, 14], [50, 19], [68, 22], [86, 19], [102, 14]], 2.3, 0.5, 'wing');
+      S.add(torus([hx - 1, hy - 12, 0], 4.8, 1.05, 0.55, 'shardGlow'), 0);
+    }, dots: eyes('violet0', 'violet1') },
+  // The Void: black robes latticed in gold, a small gold crown, rose rings adrift.
+  void: { premium: true, crown: true, noLight: true,
+    mats: { robe: 'void', robeDark: 'void', hood: 'void', cowl: 'void', cape: 'void', capeHem: 'gold', trim: 'gold', tabard: 'inkRobe', cross: 'roseGlow', hose: 'ink', boot: 'ink' },
+    add: (S, { cx, B, X, hx, hy }) => {
+      S.paint({ f: (x, y, z) => Math.max(Math.abs(((x + y) % 6 + 6) % 6 - 3) - 0.5, 30 + B - y, y - 53, -z + 0.5), mat: 'bronze' });
+      S.add(torus([hx, hy - 4.4, 0.5], 4.2, 1.2, 0.3, 'gold'), 0.5);
+      for (const [dx, h] of [[-3, 3.4], [0, 5], [3, 3.4]]) S.add(capsule([hx + dx, hy - 5.2, 2.2], [hx + dx * 1.1, hy - 5.2 - h, 2.2], 1.4, 0.6, 'gold'), 0.4);
+      for (const [dx, dy, r] of [[-11, 24, 2.2], [9, 17, 1.8], [-8, 11, 1.6]]) S.add(torus([cx + dx + X, dy + B, 3], r, 0.75, Math.PI / 2, 'roseGlow'), 0);
+    }, dots: eyes('rose0', 'rose1') },
+  // Psychedelic: robes in running bands of every colour, a ring of bright petals round the head.
+  psychedelic: { premium: true, crown: true, noLight: true,
+    mats: { hood: 'psyViolet', cowl: 'psyRose', cape: 'psyViolet', capeHem: 'roseGlow', trim: 'psyGold', cross: 'psyBlue', tabard: 'white', hose: 'psyBlue', boot: 'psyViolet' },
+    add: (S, { cx, B, X, hx, hy }) => {
+      PSY.forEach((m, i) => S.paint({ f: (x, y) => { const v = (((y + Math.sin(x * 0.55) * 1.6 - B) / 3.3 % 7) + 7) % 7; return Math.max(Math.abs(v - i - 0.5) - 0.5, 27 + B - y, y - 57); }, mat: m }));
+      for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2 - 0.3; S.add(sphere([hx - 0.5 + Math.cos(a) * 7.2, hy - 2.5 + Math.sin(a) * 7.2, -2.6], 2, PSY[k % 7]), 0.3); }
+    }, dots: eyes('gold0', 'rose0') },
+  // The Dread: a black cowl and shroud, green lights, a scythe across the back.
+  dread: { premium: true, crown: true, noLight: true,
+    mats: { robe: 'inkRobe', robeDark: 'void', hood: 'void', cowl: 'void', cape: 'void', capeHem: 'vial', trim: 'slateDark', tabard: 'inkRobe', cross: 'vial', hose: 'ink', boot: 'ink' },
+    add: (S, { cx, B, X }) => {
+      const top = [cx - 4 + X, 9 + B, -4.6];
+      S.add(capsule([cx - 10 + X, 52 + B, -4.6], top, 0.95, 0.95, 'steel'), 0.2);
+      const pts = [top, [top[0] - 5, top[1] - 2.6, -4.6], [top[0] - 10, top[1] - 1.6, -4.6], [top[0] - 13.5, top[1] + 2.4, -4.6]];
+      for (let i = 0; i < 3; i++) S.add(capsule(pts[i], pts[i + 1], 1.7 - i * 0.45, 1.25 - i * 0.45, 'silver'), 0.5);
+      for (const [dx, dy] of [[-12, 30], [10, 22], [7, 46]]) S.add(sphere([cx + dx + X, dy + B, 3], 1.15, 'vial'), 0);
+    }, dots: eyes('flame0', 'flame1') },
+  // The Radiant: violet and teal under gold, a sunburst behind the head.
+  radiant: { premium: true, crown: true, noLight: true,
+    mats: { robe: 'violetRobe', robeDark: 'violetDark', hood: 'rose', cowl: 'gold', cape: 'tealRobe', capeHem: 'gold', trim: 'gold', tabard: 'cream', cross: 'rose', hose: 'slateDark' },
+    add: (S, { hx, hy }) => {
+      const c = [hx - 0.5, hy - 2, -3.2];
+      for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, r1 = k % 2 ? 9.5 : 12.5; S.add(capsule([c[0] + Math.cos(a) * 5.5, c[1] + Math.sin(a) * 5.5, c[2]], [c[0] + Math.cos(a) * r1, c[1] + Math.sin(a) * r1, c[2]], 1.15, 0.35, 'halo'), 0.2); }
+      S.add(torus(c, 6, 1, Math.PI / 2, 'gold'), 0.2);
+    }, dots: eyes('holy0', 'holy1') },
+  // The Divine: white and gold over a crimson skirt, a great gold ring behind with teal stones.
+  divine: { premium: true, crown: true, noLight: true,
+    mats: { robe: 'white', robeDark: 'creamDark', hood: 'white', cowl: 'gold', cape: 'cream', capeHem: 'gold', trim: 'gold', tabard: 'crimson', cross: 'gold', hose: 'cream', boot: 'bronze' },
+    add: (S, { hx, hy }) => {
+      const c = [hx - 1.5, hy + 4, -4];
+      S.add(torus(c, 11, 1.15, Math.PI / 2, 'halo'), 0);
+      for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 - Math.PI / 4; S.add(sphere([c[0] + Math.cos(a) * 11, c[1] + Math.sin(a) * 11, c[2] + 0.4], 1.5, 'tealGlow'), 0); }
+    }, dots: eyes('teal0', 'teal1') },
+  // Demonic: charred robes with a molten hem, horns, wings of bone and ember.
+  demonic: { premium: true, crown: true, noLight: true, soles: 'smoulder',
+    mats: { robe: 'charred', robeDark: 'void', hood: 'void', cowl: 'crimsonDark', cape: 'void', capeHem: 'smoulder', trim: 'molten', tabard: 'crimsonDark', cross: 'smoulder', hose: 'ink', boot: 'ink' },
+    add: (S, { cx, B, X, hx, hy }) => {
+      const root = [cx - 4 + X, 31 + B, -4.4];
+      fan(S, root, [[24, 17], [52, 19], [82, 16]], 1.5, 0.5, 'charred', 0.3);
+      for (const [deg, len] of [[38, 15], [67, 15]]) { const a = deg * Math.PI / 180; S.add(capsule(root, [root[0] - Math.cos(a) * len, root[1] - Math.sin(a) * len, root[2] - 0.4], 2.4, 1.2, 'molten'), 1.2); }
+      for (const s of [-1, 1]) { const b = [hx - 0.5 + s * 3, hy - 6.5, s * 1.6], m = [hx - 0.5 + s * 5.6, hy - 10.5, s * 2]; S.add(capsule(b, m, 1.5, 1.1, 'horn'), 0.4); S.add(capsule(m, [m[0] - s * 1.2, m[1] - 4, m[2]], 1.1, 0.35, 'horn'), 0.3); }
+    }, dots: eyes('ember0', 'ember2') },
+};
 export const SKINS = {
   // ---- The Mendicant's own (round 72) ----
   // The Mendicant's Rags, his starter set: patched brown, a rope belt.
@@ -332,3 +405,4 @@ export const SKINS = {
     dots: (f, { hx, hy }) => { for (const dx of [-4, 0, 4]) { dot(f, hx + dx, hy - 11, 'ember2'); dot(f, hx + dx, hy - 13, 'ember0'); } },
   },
 };
+Object.assign(SKINS, PREMIUM);
