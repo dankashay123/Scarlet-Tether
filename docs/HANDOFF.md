@@ -265,6 +265,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **Warden times per set (round 106).** `SETK.boss` was nudged after its
+  last measurement: rerun `WARDEN=bellwright ... setbal.cjs 120 12 1,2,3`
+  per class, and try the other four Wardens (only the Bellwright was
+  measured). The 4+2 mixes have no Warden bonus and were not measured on
+  Wardens.
+- **Station VI spread (round 106):** 8.3 (the Gaol) to 20.5 (the Font)
+  kills a second. XII is even; if VI should be even too it needs a
+  Station-scaled term, not new set numbers.
 - **Pets (rounds 103 and 105).** Sprites are 36 px since round 105 (the
   builder scales its 24 px models by 1.5); the two moths and the cherub
   are the weakest shapes. Battle pets have no sounds and no effect of
@@ -394,6 +402,36 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 106:** the owner said "All" to the five suggestions.
+  **Fresh measurement (setbal.cjs, 6 seeds, 120 s, kills a second / damage
+  taken a second).** Station XII, six pieces: Saint nails 7.75/843, stride
+  6.97/585, font 7.37/1277, confessor 7.9/938, choir 7.34/749; Mendicant
+  iron 6.96/942, road 7.31/533, alms 7.64/842, gaol 7.71/547, bell
+  6.97/608; Anchoress reliquary 7.46/780, glass 8.26/734, thorn 7.13/686,
+  psalter 7.7/653, lantern 7.67/923. Mixes at XII 5.43 (bell4+road2) to 7.9
+  (font4+choir2). The Almsgiver's Bowl and the Thorned Crucible are no
+  longer on top, so they were left alone. Station VI is wide (8.3 gaol to
+  20.5 font) but not tuned: VI is near the crowd's kill ceiling, and tuning
+  it would undo XII. **The Penitent's Stride:** a perfect dodge's guard
+  went from 50% to 30% (`SETK.strideGuard`); measured 7.57 kills and 509
+  taken a second, in line with the Road (533) and the Gaol (547).
+  **Warden times:** `setbal.cjs` has a `WARDEN=<id>` mode (one Warden,
+  reports `ttk`, `killed` and `est`, seconds estimated from the share of
+  health removed). Against the Bellwright at XII (3 seeds, 120 s cap) six
+  crowd sets never killed it (estimates 147 to 292 s: font, confessor,
+  iron, alms, gaol, bell). New `SETK.boss`: a damage multiplier against
+  Wardens at four pieces or more, read in `setFoeK` when `e.boss`, written
+  into the card's four-piece line (WARDENS TAKE N% MORE DAMAGE FROM YOU).
+  With the first values every set killed it in 41-82 s; then nudged to
+  font 6, alms 4.1, bell 5, gaol 4.8, iron 4.6, confessor 2.7, nails 1.4,
+  glass 1.6, lantern 1.3 (not remeasured after the nudge). **Training
+  Yard SETS tab** (`YARD_SETS`, `yardSets`, `renderYardSets`): one row per
+  set of this class (and the starter) with its best 5 s damage a second
+  and best 30 s and 60 s tests, a bar against the best set, the worn set
+  lit; another class's records are skipped. Tests: `round106.cjs`
+  (the tab for two classes, the Stride guard and card line); menus,
+  round105, round101, round48, round49, round31, sets, round72, round92,
+  wardens and a 150 s soak all clean.
 - **Round 105:** the owner picked 1, 2, 3, 5. **Defence at four pieces:**
   `SETK.guard4` (11 sets), read in `setGuard` (six pieces use `guard6`,
   else `guard4`); the card loop writes TAKE N% LESS DAMAGE into the

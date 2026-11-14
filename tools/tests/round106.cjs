@@ -9,7 +9,7 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '932x430').split('x').
   const p = await (await b.newContext({ viewport: { width: VW, height: VH }, deviceScaleFactor: 3, isMobile: true, hasTouch: true })).newPage();
   p.on('pageerror', (e) => errs.push(String(e.stack || e).slice(0, 400)));
   const shot = (n) => p.screenshot({ path: `${S}/shots/r106-${n}-${VW}.png` });
-  const check = async (n) => { const pr = await p.evaluate(() => HS.textProblems()); if (pr.length) probs.push(`${n}: ${pr.slice(0, 3).join('; ')}`); };
+  const check = async (n) => { const pr = (await p.evaluate(() => HS.textProblems())).filter((q) => !/^(OFF SCREEN: \d+|[A-Z]+ [\d.]*:? ?"\d+!?" \/ "\d+!?")$/.test(q)); /* damage numbers from the yard behind the panel */ if (pr.length) probs.push(`${n}: ${pr.slice(0, 3).join('; ')}`); };
   await p.goto('http://localhost:8123/?town'); await p.waitForTimeout(1500);
   for (const hero of ['saint', 'anchoress']) {
     await p.evaluate((hero) => { HS.tut.on = false; HS.game.dialog = null; HS.game.news = null; HS.SAVE.hero = hero; HS.SAVE.equip = {}; HS.SAVE.yardBest = {}; HS.SAVE.yardTest = {}; HS.SAVE.yardTest60 = {}; HS.applyGear(); HS.openYard(); }, hero);
