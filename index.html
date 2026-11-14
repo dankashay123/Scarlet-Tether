@@ -10022,12 +10022,16 @@ const AP = { t: 0, field: null, w: 0, goal: '', strafe: 1, flipT: 0, lastX: 0, l
 function autoField(src) {
   const w = room.w, h = room.h; if (!AP.field || AP.field.length !== w * h) AP.field = new Int16Array(w * h);
   const F = AP.field; F.fill(-1); AP.w = w; const q = [];
+  // Pools on the floor block the way (they dry up in a few seconds); -2 marks their tiles.
+  for (const hz of hazards) { if (hz.kind !== 'pool') continue; const r = hz.r + 6, x0 = Math.max(0, Math.floor((hz.x - r) / TILE)), x1 = Math.min(w - 1, Math.floor((hz.x + r) / TILE)), y0 = Math.max(0, Math.floor((hz.y - r * 0.6) / TILE)), y1 = Math.min(h - 1, Math.floor((hz.y + r * 0.6) / TILE));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (Math.hypot((x + 0.5) * TILE - hz.x, ((y + 0.5) * TILE - hz.y) / 0.6) < r) F[y * w + x] = -2; }
   for (const o of src) { const x = Math.floor(o.x / TILE), y = Math.floor((o.y - 2) / TILE); if (x < 0 || y < 0 || x >= w || y >= h) continue; const i = y * w + x; if (F[i] < 0) { F[i] = 0; q.push(i); } }
+  const free = (i, x, y) => F[i] === -1 && !room.isSolid(x, y);
   for (let k = 0; k < q.length; k++) { const i = q[k], x = i % w, y = (i / w) | 0, d = F[i] + 1;
-    if (x > 0 && F[i - 1] < 0 && !room.isSolid(x - 1, y)) { F[i - 1] = d; q.push(i - 1); }
-    if (x < w - 1 && F[i + 1] < 0 && !room.isSolid(x + 1, y)) { F[i + 1] = d; q.push(i + 1); }
-    if (y > 0 && F[i - w] < 0 && !room.isSolid(x, y - 1)) { F[i - w] = d; q.push(i - w); }
-    if (y < h - 1 && F[i + w] < 0 && !room.isSolid(x, y + 1)) { F[i + w] = d; q.push(i + w); } }
+    if (x > 0 && free(i - 1, x - 1, y)) { F[i - 1] = d; q.push(i - 1); }
+    if (x < w - 1 && free(i + 1, x + 1, y)) { F[i + 1] = d; q.push(i + 1); }
+    if (y > 0 && free(i - w, x, y - 1)) { F[i - w] = d; q.push(i - w); }
+    if (y < h - 1 && free(i + w, x, y + 1)) { F[i + w] = d; q.push(i + w); } }
 }
 // The way down the field from the Saint's tile: [dx, dy] of unit length, or null where no path is known.
 function autoStep(p) {
@@ -10047,8 +10051,10 @@ function autoPilot(dt) {
   if (!autoRun() || R.autoOff || !p || p.hp <= 0) return;
   // A hand on the stick or the keys steers; rites still cast themselves.
   const hand = Math.hypot(input.mx, input.my) > 0.15; AP.hand = hand;
-  let near = null, nd = 1e9, crowd = 0, boss = null;
-  for (const e of enemies) { if (e.dead || e.state === 'spawn' || e.under || e.type === 'dummy') continue; const d = Math.hypot(e.x - p.x, e.y - p.y); if (d < nd) { nd = d; near = e; } if (d < 150) crowd++; if (e.boss) boss = e; }
+  // The foes about: the nearest, how many, and the way out of them (those winding up push harder).
+  let near = null, nd = 1e9, crowd = 0, close = 0, boss = null, rx = 0, ry = 0;
+  for (const e of enemies) { if (e.dead || e.state === 'spawn' || e.under || e.type === 'dummy') continue; const d = Math.hypot(e.x - p.x, e.y - p.y); if (d < nd) { nd = d; near = e; } if (d < 150) crowd++; if (e.boss) boss = e;
+    if (d < 110 && d > 0.5) { const k = (1 - d / 110) * (e.state === 'windup' ? 2.5 : 1) * (e.boss ? 2 : 1); rx += (p.x - e.x) / d * k; ry += (p.y - e.y) / d * k; if (d < 46 + (e.r || 0)) close++; } }
   // Rites as they come up, the Reckoning into a crowd or a Warden.
   if ((AP.castT -= dt) <= 0) { AP.castT = 0.2;
     if (near && nd < 140) { if (p.m1cd <= 0) input.m1 = true; if (p.m2cd <= 0) input.m2 = true; }
@@ -10058,7 +10064,7 @@ function autoPilot(dt) {
   if (hand) return;
   // Where to: loot once the foes near are dead, then the Waystone, the Warden, the nearest foe.
   if ((AP.t -= dt) <= 0) { AP.t = 0.35;
-    const full = SAVE.bag.length >= BAG_SIZE, loot = nd > 140 ? drops.filter((d) => !d.taken && d.z <= 0 && d.kind !== 'knell' && !(d.kind === 'item' && full) && Math.hypot(d.x - p.x, d.y - p.y) < 240) : [];
+    const full = SAVE.bag.length >= BAG_SIZE, orbs = p.hp < p.maxHp * 0.6 ? drops.filter((d) => !d.taken && d.z <= 0 && d.kind === 'globe' && Math.hypot(d.x - p.x, d.y - p.y) < 200) : [], loot = orbs.length ? orbs : nd > 140 ? drops.filter((d) => !d.taken && d.z <= 0 && d.kind !== 'knell' && !(d.kind === 'item' && full) && Math.hypot(d.x - p.x, d.y - p.y) < 240) : [];
     const foes = enemies.filter((e) => !e.dead && !e.illusion && e.type !== 'dummy');
     if (loot.length) { AP.goal = 'loot'; autoField(loot); } else if (game.waystone) { AP.goal = 'stone'; autoField([game.waystone]); }
     else if (boss) { AP.goal = 'foe'; autoField([boss]); } else if (foes.length) { AP.goal = 'foe'; autoField(foes); } else { AP.goal = ''; AP.field = null; }
@@ -10070,17 +10076,33 @@ function autoPilot(dt) {
   if (AP.goal === 'stone' && game.interact && game.interact.label === 'RETURN') { game.interact.use(); return; }
   let mx = 0, my = 0;
   const step = autoStep(p), reach = isMelee() ? 20 + (near ? near.r : 0) : p.hp < p.maxHp * 0.4 ? 120 : 84;
+  const hurt = p.hp < p.maxHp * 0.35, rm = Math.hypot(rx, ry);
   if (AP.goal === 'foe' && near && nd < reach) {
     const ux = (near.x - p.x) / (nd || 1), uy = (near.y - p.y) / (nd || 1);
-    if (isMelee()) { if (nd > 14 + near.r) { mx = ux; my = uy; } }
+    if (isMelee()) { if (hurt && rm > 0.3) { mx = rx / rm; my = ry / rm; } else if (nd > 14 + near.r) { mx = ux; my = uy; } }
     else { // keep the range and circle: back off when close, never stand still
       if ((AP.flipT -= dt) <= 0) { AP.flipT = 2 + Math.random() * 3; if (Math.random() < 0.5) AP.strafe = -AP.strafe; }
-      const back = nd < reach * 0.6 ? -1 : nd > reach * 0.9 ? 0.3 : -0.15; mx = -uy * AP.strafe * 0.8 + ux * back; my = ux * AP.strafe * 0.8 + uy * back; }
+      const back = nd < reach * 0.6 ? -1 : nd > reach * 0.9 ? 0.3 : -0.15; mx = -uy * AP.strafe * 0.8 + ux * back + rx * 0.9; my = ux * AP.strafe * 0.8 + uy * back + ry * 0.9; }
   } else if (step) { mx = step[0]; my = step[1]; }
-  // Telegraphed circles and pools under the Saint: walk out, and dash if one is about to land.
-  for (const hz of hazards) { if (hz.kind !== 'circle' && hz.kind !== 'pool') continue; const dx = p.x - hz.x, dy = p.y - hz.y, d = Math.hypot(dx, dy); if (d > (hz.r || 20) + 12) continue;
-    const a = d > 1 ? Math.atan2(dy, dx) : AP.ja; mx = Math.cos(a); my = Math.sin(a);
-    if (hz.kind === 'circle' && (hz.delay || 0) - (hz.t || 0) < 0.3 && p.charges > 0 && p.dashT <= 0) input.dash = true; break; }
+  // Hemmed in (or badly hurt with foes at hand): dash out along the way with the fewest foes.
+  if ((AP.dashT = (AP.dashT || 0) - dt) <= 0 && rm > 0.3 && p.charges > 0 && p.dashT <= 0 && (close >= (isMelee() ? 5 : 3) || (hurt && close >= 1))) { mx = rx / rm; my = ry / rm; input.mx = mx; input.my = my; input.dash = true; AP.dashT = 0.9; }
+  // Shots flying at the Saint: step across their line.
+  for (const sh of shots) { const dx = p.x - sh.x, dy = p.y - 10 - sh.y, d = Math.hypot(dx, dy), v = Math.hypot(sh.vx, sh.vy); if (d > 110 || d < 1 || v < 1) continue;
+    const ax = sh.vx / v, ay = sh.vy / v, along = dx * ax + dy * ay, off = dx * -ay + dy * ax; if (along < 0 || Math.abs(off) > 16) continue;
+    const sd = off >= 0 ? 1 : -1; mx += -ay * sd * 1.2; my += ax * sd * 1.2; }
+  // Aimed lines and beams: step off the line.
+  for (const hz of hazards) { if (hz.kind !== 'line' && hz.kind !== 'aim') continue; const ox = hz.kind === 'aim' ? hz.src.x : hz.x, oy = hz.kind === 'aim' ? hz.src.y - 10 : hz.y, ax = Math.cos(hz.ang), ay = Math.sin(hz.ang);
+    const dx = p.x - ox, dy = p.y - 10 - oy, along = dx * ax + dy * ay, off = dx * -ay + dy * ax; if (along < 0 || along > (hz.len || 280) + 10 || Math.abs(off) > (hz.w || 10) + 14) continue;
+    const sd = Math.abs(off) > 2 ? Math.sign(off) : AP.strafe; mx += -ay * sd * 1.6; my += ax * sd * 1.6; }
+  // Telegraphed circles and pools: never walk into one, walk out of one, and dash if a circle is about to land.
+  for (const hz of hazards) { if (hz.kind !== 'circle' && hz.kind !== 'pool') continue; const cx = hz.x - p.x, cy = (hz.y - p.y) / (hz.kind === 'pool' ? 0.6 : 1), d = Math.hypot(cx, cy), r = (hz.r || 20) + 10; if (d > r + 18) continue;
+    const ux = d > 1 ? cx / d : Math.cos(AP.ja), uy = d > 1 ? cy / d : Math.sin(AP.ja), dot = mx * ux + my * uy;
+    if (dot > 0) { mx -= ux * dot; my -= uy * dot; } // slide round its edge
+    if (d < r) { mx -= ux * 1.5; my -= uy * 1.5; if (hz.kind === 'circle' && (hz.delay || 0) - (hz.t || 0) < 0.3 && p.charges > 0 && p.dashT <= 0) { input.mx = -ux; input.my = -uy; input.dash = true; } } }
+  // Standing in a pool (several can overlap): make for the nearest clear ground, with a dash if it is far.
+  { const wet = (x, y) => hazards.some((hz) => hz.kind === 'pool' && Math.hypot(x - hz.x, (y - hz.y) / 0.6) < hz.r + 4);
+    if (wet(p.x, p.y)) { let found = null; for (const R1 of [18, 34, 52, 76]) { for (let k = 0; k < 12 && !found; k++) { const a = AP.ja + k * Math.PI / 6, x = p.x + Math.cos(a) * R1, y = p.y + Math.sin(a) * R1 * 0.7; if (!boxSolid(x, y, p.r) && !wet(x, y)) found = [Math.cos(a), Math.sin(a) * 0.7, R1]; } if (found) break; }
+      if (found) { const m0 = Math.hypot(found[0], found[1]); mx = found[0] / m0; my = found[1] / m0; if (found[2] > 30 && p.charges > 0 && p.dashT <= 0 && (AP.dashT || 0) <= 0) { input.mx = mx; input.my = my; input.dash = true; AP.dashT = 0.6; } } } }
   if (AP.jit > 0) { AP.jit -= dt; mx = Math.cos(AP.ja); my = Math.sin(AP.ja); }
   const m = Math.hypot(mx, my); if (m > 1) { mx /= m; my /= m; }
   input.mx = mx; input.my = my;

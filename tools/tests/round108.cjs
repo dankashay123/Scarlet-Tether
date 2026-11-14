@@ -33,14 +33,14 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
   await p.evaluate(() => HS.beginDescent(0)); await p.waitForFunction(() => HS.game.scene === 'wound' && HS.game.state === 'play', null, { timeout: 20000 }); await p.waitForTimeout(500);
   out.pay = await p.evaluate(() => { const R = HS.game.run, mean = () => { const n0 = HS.drops.length; HS.dropLoot(HS.player.x, HS.player.y, { gold: 300 }); const d = HS.drops.splice(n0); return d.reduce((a, q) => a + q.amount, 0) / d.length; };
     const a = mean(); R.auto = false; const m = mean(); R.auto = true; HS.SAVE.lvl = 50; HS.SAVE.lxp = 0; HS.gainSaintXp(100); return { auto: R.auto, goldK: +(a / m).toFixed(2), xp: HS.SAVE.lxp }; });
-  out.pilot = await p.evaluate(async () => { const x0 = HS.player.x, y0 = HS.player.y; let far = 0; const t0 = performance.now(); HS.player.god = true;
-    while (performance.now() - t0 < 20000) { await new Promise((r) => setTimeout(r, 200)); far = Math.max(far, Math.hypot(HS.player.x - x0, HS.player.y - y0)); if (HS.game.state !== 'play' && HS.game.state !== 'pause') break; }
-    return { far: Math.round(far), kills: HS.game.kills, state: HS.game.state, wounds: Object.values(HS.game.run.wounds).reduce((a, n) => a + n, 0) }; });
+  out.pilot = await p.evaluate(async () => { const x0 = HS.player.x, y0 = HS.player.y; let far = 0; const t0 = performance.now(), hp0 = HS.player.hp; let lost = 0, was = hp0;
+    while (performance.now() - t0 < 30000) { await new Promise((r) => setTimeout(r, 200)); far = Math.max(far, Math.hypot(HS.player.x - x0, HS.player.y - y0)); lost += Math.max(0, was - HS.player.hp); was = HS.player.hp; if (HS.player.hp < HS.player.maxHp * 0.3) was = HS.player.hp = HS.player.maxHp; if (HS.game.state !== 'play' && HS.game.state !== 'pause') break; }
+    return { far: Math.round(far), hpLost: Math.round(lost), maxHp: HS.player.maxHp, kills: HS.game.kills, state: HS.game.state, wounds: Object.values(HS.game.run.wounds).reduce((a, n) => a + n, 0) }; });
   await shot('autorun'); // no text check: damage numbers overlap in a fight
   if (process.env.FULL !== '0') { // the whole descent at three times the speed (god mode: this checks the pilot finds its way, not survival)
-    out.full = await p.evaluate(async () => { HS.DEV.speed = 3; const t0 = performance.now(); let warden = false;
+    out.full = await p.evaluate(async () => { HS.DEV.speed = 3; HS.DEV.god = true; const t0 = performance.now(); let warden = false;
       while (performance.now() - t0 < 420000) { await new Promise((r) => setTimeout(r, 500)); HS.player.hp = HS.player.maxHp; if (HS.game.warden) warden = true; if (HS.game.state === 'tally' || HS.game.scene === 'town') break; }
-      HS.DEV.speed = 1; return { secs: Math.round((performance.now() - t0) / 1000), state: HS.game.state, scene: HS.game.scene, kills: HS.game.kills, warden, toll: HS.game.toll && Math.round(100 * HS.game.toll.v / HS.game.toll.max), left: HS.enemies.filter((e) => !e.dead).length, goal: HS.AP.goal, at: [Math.round(HS.player.x), Math.round(HS.player.y)] }; });
+      HS.DEV.speed = 1; HS.DEV.god = false; return { secs: Math.round((performance.now() - t0) / 1000), state: HS.game.state, scene: HS.game.scene, kills: HS.game.kills, warden, toll: HS.game.toll && Math.round(100 * HS.game.toll.v / HS.game.toll.max), left: HS.enemies.filter((e) => !e.dead).length, goal: HS.AP.goal, at: [Math.round(HS.player.x), Math.round(HS.player.y)] }; });
     await shot('end');
   }
   console.log(JSON.stringify(out, null, 1)); console.log('text problems', probs.length, probs.slice(0, 6));
