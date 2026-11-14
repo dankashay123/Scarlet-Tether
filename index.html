@@ -1538,7 +1538,7 @@ function addToll(e) {
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
 // fourOf(id): a set's damage at 4 or 5 pieces (fourBy overrides SETK.four for one set).
 const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
-const SETK = { choirHp: 3, choirHp6: 3, choirR: 110, fontHp: 8, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 3.6, strideT: 7, font: 3.5, bound: 1.6, bound6: 2.75, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3, strideT4: 4, font4: 3.5, bound4: 2.6, choir4: 3, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 63, stride: 60, iron: 300, alms: 320, glass: 400, font: 550, choir: 233, road: 300, bell: 330, reliquary: 318, psalter: 450, lantern: 200, gaol: 140 } , /* rounds 101 and 104: 4+2 mixes toward about 6 kills a second at XII */ shardPer: 15, crushK: 3, momK: 22, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ring4: 4, strideGuard: 30, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 35, thornK6: 150, psalK6: 3, lampK6: 120, // Round 101: every set's six pieces tuned to about 7 kills a second at Station XII (setbal.cjs, 6 seeds; the Stride, Confessor,
+const SETK = { choirHp: 3, choirHp6: 3, choirR: 110, fontHp: 8, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 3.6, strideT: 7, font: 3.5, bound: 1.6, bound6: 2.75, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3, strideT4: 4, font4: 3.5, bound4: 2.6, choir4: 3, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 63, stride: 60, iron: 300, alms: 320, glass: 400, font: 550, choir: 233, road: 300, bell: 330, reliquary: 318, psalter: 450, lantern: 200, gaol: 140 } , /* rounds 101 and 104: 4+2 mixes toward about 6 kills a second at XII */ shardPer: 15, crushK: 3, momK: 22, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ring4: 4, strideGuard: 30, boss: {}, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 35, thornK6: 150, psalK6: 3, lampK6: 120, // Round 101: every set's six pieces tuned to about 7 kills a second at Station XII (setbal.cjs, 6 seeds; the Stride, Confessor,
   // Lantern and Nails through their own numbers, so no card shows a multiplier under 1), and the sets that
   // took the most damage given a damage-taken multiplier at six pieces (guard6), so no set is far safer or deadlier than another.
   six: { font: 1.5, choir: 1.44, iron: 2.14, road: 1.85, alms: 1.76, bell: 1.54, gaol: 1.3, glass: 1.67, thorn: 1.5, psalter: 1.79 },
@@ -6533,6 +6533,7 @@ function boltArms(b, e) {
 function setFoeK(e, kind) {
   let k = 1;
   if (wound('xFury') && player && player.hp < player.maxHp * 0.5) k *= 2; // round 80, Martyr's Fury
+  if (e.boss) for (const id in SETK.boss) if (sb(id, 4)) k *= SETK.boss[id]; // round 106: crowd sets that were slow on Wardens hit them harder
   // Four pieces give a smaller form of each set's six-piece damage; six pieces replace it.
   const s6 = (id) => sb(id, 6), s4 = (id) => sb(id, 4) && !sb(id, 6);
   const stride = (player.strideT || 0) > game.time && (s6('stride') ? SETK.stride : s4('stride') ? SETK.stride4 : 1);
@@ -6981,7 +6982,8 @@ const ALL_SETS = Object.values(HERO_SETS).flat();
 for (const id of ALL_SETS) { const b6 = VSETS[id].bonus.find((q) => q[0] === 6), k = SETK.six[id], g = SETK.guard6[id]; if (!b6) continue;
   if (k && k !== 1 && !b6[1].includes('ALL YOUR DAMAGE X')) b6[1] = `ALL YOUR DAMAGE X${k}. ${b6[1]}`;
   if (g) b6[1] = `${b6[1]} TAKE ${Math.round((1 - g) * 100)}% LESS DAMAGE.`;
-  const b4 = VSETS[id].bonus.find((q) => q[0] === 4), g4 = SETK.guard4[id]; if (b4 && g4) b4[1] = `${b4[1]} TAKE ${Math.round((1 - g4) * 100)}% LESS DAMAGE.`; }
+  const b4 = VSETS[id].bonus.find((q) => q[0] === 4), g4 = SETK.guard4[id], bk = SETK.boss[id]; if (b4 && g4) b4[1] = `${b4[1]} TAKE ${Math.round((1 - g4) * 100)}% LESS DAMAGE.`;
+  if (b4 && bk && bk > 1) b4[1] = `${b4[1]} WARDENS TAKE ${Math.round((bk - 1) * 100)}% MORE DAMAGE FROM YOU.`; }
 const mySets = () => HERO_SETS[heroId()];
 const starterSet = () => STARTER[heroId()];
 const giftSets = () => mySets();

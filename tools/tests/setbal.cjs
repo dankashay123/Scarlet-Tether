@@ -68,11 +68,11 @@ const BUILDS = [['none', null, null], ...SETS.map((k) => [k, k, null]), ...SETS.
       }, 50);
     }, [station, main, second, RITES, seed, ENCH, ENCHT, HERO, WOUNDS, HPK, WARDEN]);
     if (WARDEN) { for (let t = 0; t < secs * 2; t++) { await p.waitForTimeout(500); if (await p.evaluate(() => window.__S.ttk !== null)) break; } } else await p.waitForTimeout(secs * 1000);
-    const m = await p.evaluate(() => { clearInterval(window.__iv); const S = window.__S, dt = HS.game.time - S.t0; return { kps: +((HS.game.kills - S.kills0) / dt).toFixed(2), takenPerS: Math.round(S.taken / dt), maxHp: HS.player.maxHp, secs: Math.round(dt), reck: +(S.rk / Math.max(1, S.n)).toFixed(2), ttk: S.ttk === null ? null : +S.ttk.toFixed(1) }; });
+    const m = await p.evaluate(() => { clearInterval(window.__iv); const S = window.__S, dt = HS.game.time - S.t0; return { kps: +((HS.game.kills - S.kills0) / dt).toFixed(2), takenPerS: Math.round(S.taken / dt), maxHp: HS.player.maxHp, secs: Math.round(dt), reck: +(S.rk / Math.max(1, S.n)).toFixed(2), ttk: S.ttk === null ? null : +S.ttk.toFixed(1), wpart: window.__W ? +(1 - Math.max(0, window.__W.hp) / window.__W.maxHp).toFixed(3) : 0 }; });
     rows.push({ build: name, ...m });
   }
   // Average the seeds of each build.
-  const avg = BUILDS.filter(([n]) => !ONLY.length || ONLY.includes(n)).map(([name]) => { const r = rows.filter((q) => q.build === name), n = r.length; return { build: name, kps: +(r.reduce((a, q) => a + q.kps, 0) / n).toFixed(2), reck: +(r.reduce((a, q) => a + q.reck, 0) / n).toFixed(2), takenPerS: Math.round(r.reduce((a, q) => a + q.takenPerS, 0) / n), maxHp: Math.round(r.reduce((a, q) => a + q.maxHp, 0) / n), ...(WARDEN ? { ttk: +(r.reduce((a, q) => a + (q.ttk ?? secs), 0) / n).toFixed(1), killed: r.filter((q) => q.ttk !== null).length } : {}) }; });
+  const avg = BUILDS.filter(([n]) => !ONLY.length || ONLY.includes(n)).map(([name]) => { const r = rows.filter((q) => q.build === name), n = r.length; return { build: name, kps: +(r.reduce((a, q) => a + q.kps, 0) / n).toFixed(2), reck: +(r.reduce((a, q) => a + q.reck, 0) / n).toFixed(2), takenPerS: Math.round(r.reduce((a, q) => a + q.takenPerS, 0) / n), maxHp: Math.round(r.reduce((a, q) => a + q.maxHp, 0) / n), ...(WARDEN ? { ttk: +(r.reduce((a, q) => a + (q.ttk ?? secs), 0) / n).toFixed(1), killed: r.filter((q) => q.ttk !== null).length, est: +(r.reduce((a, q) => a + (q.ttk ?? secs / Math.max(0.01, q.wpart)), 0) / n).toFixed(1) } : {}) /* est: the seconds it would take, from the share of health removed */ }; });
   console.table(avg);
   console.log(JSON.stringify(avg));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();
