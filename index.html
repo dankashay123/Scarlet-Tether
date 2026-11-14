@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '106';
+const BUILD = '107';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '107': ['THE LEVEL-UP SCREEN NO LONGER SHOWS THE WARDEN\'S NAME AND BARS THROUGH ITS TITLE.', 'PAUSE SCREEN: EVERY TILE\'S ICON NOW HAS THE SAME LOOK.', 'BATTLE PETS SHOW WHEN THEY ACT: YOUR FOLLOWER HOPS, WITH A SMALL BURST AND A QUIET SOUND.', 'BAG: ON NARROW PHONES THE EMPTY STRIP BESIDE THE BAG LISTS THE SETS YOU WEAR.'],
   '106': ['NEW TRAINING YARD TAB: SETS. YOUR BEST DAMAGE PER SECOND AND TESTS FOR EACH OF YOUR SETS.', 'PENITENT\'S STRIDE: A PERFECT DODGE NOW GIVES 30% LESS DAMAGE TAKEN FOR 2 S (WAS 50%).', 'SETS THAT WERE SLOW AGAINST WARDENS NOW DEAL MORE DAMAGE TO THEM. THEIR CARDS SHOW BY HOW MUCH.'],
   '105': ['NEW BAG TAB: PETS. EQUIP, SWAP AND CHOOSE YOUR FOLLOWER WITHOUT OPENING THE SHOP.', 'PETS ARE DRAWN HALF AS BIG AGAIN.', 'SETS THAT TOOK THE MOST DAMAGE AT FOUR PIECES NOW TAKE LESS. THEIR CARDS SHOW BY HOW MUCH.'],
   '104': ['SETS WORN AS FOUR PIECES PLUS TWO OF ANOTHER SET ARE NOW CLOSE IN STRENGTH. THE SHATTERED RELIQUARY GAINS THE FOUR-PIECE DAMAGE BONUS, AND THE CRACKED BELL RINGS EVERY 4TH BLOW AT FOUR PIECES.'],
@@ -456,7 +457,7 @@ const isBold = (o) => o.bold ?? !!(o.glow || (o.sc || 1) >= 1.5); // titles and 
 // turns a short label into Title Case and anything longer into a sentence, and
 // keeps game names (sets, rites, Wardens, sites, terms) and Roman numerals capitalised.
 // A string that already has a lower-case letter is left as it is.
-const CASE_TERMS = new Set('INDULGENCE INDULGENCES TESTAMENT TESTAMENTS RUBRIC RUBRICS ZEAL TOLL WARDEN WARDENS SAINT SAINTS STATION STATIONS VIGIL VIGILS HALLOWED RECKONING RECKONINGS EMBERSTONE EMBERSTONES CHRISM CHRISMS MENDICANT SANCTITY VAEL ODILE PELL CINDER VANE HOLLIS BARNABY ULM CANONRY CENSER ENCHANTER UNDERCROFT NAVE OSSUARY STRATUM STRATA CARNAGE'.split(' '));
+const CASE_TERMS = new Set('INDULGENCE INDULGENCES TESTAMENT TESTAMENTS RUBRIC RUBRICS ZEAL TOLL WARDEN WARDENS SAINT SAINTS STATION STATIONS VIGIL VIGILS HALLOWED RECKONING RECKONINGS EMBERSTONE EMBERSTONES CHRISM CHRISMS MENDICANT SANCTITY VAEL ODILE PELL CINDER VANE HOLLIS BARNABY ULM CANONRY CENSER ENCHANTER UNDERCROFT NAVE OSSUARY STRATUM STRATA CARNAGE WOUND WOUNDS'.split(' '));
 const CASE_SMALL = new Set('A AN THE OF TO IN ON AT FOR AND OR BY WITH FROM PER VS AS'.split(' '));
 const CASE_KEEP = /^(?:HP|XP|DPS|FX|OK|UI|PNG|(?=[IVXL])L?X{0,3}(?:IX|IV|V?I{0,3})\+?|[A-Z]\d+)$/; // HP, XP, Roman numerals, F1
 const CASE_VERBS = new Set('TAP HOLD DRAG WEAR BUY GO FINISH KILL PICK CHOOSE SPEND TALK OPEN PRESS MOVE REACH FIND CLEAR NO GET WALK FALL BEAT SELL BURN USE CLAIM DIES COMES'.split(' '));
@@ -7925,22 +7926,24 @@ function updatePets(dt) {
   const id = petShown(), p = player; if (!p) return;
   if (id) {
     const tx = p.x - p.face * 20, ty = p.y + 5; if (!PETF.on || Math.hypot(tx - PETF.x, ty - PETF.y) > 160) { PETF.x = tx; PETF.y = ty; PETF.on = true; }
-    const d = Math.hypot(tx - PETF.x, ty - PETF.y); PETF.moving = d > 3; PETF.t += dt;
+    const d = Math.hypot(tx - PETF.x, ty - PETF.y); PETF.moving = d > 3; PETF.t += dt; if (PETF.hop > 0) PETF.hop -= dt;
     if (d > 3) { const v = Math.min(d, (50 + d * 3) * dt); PETF.x += (tx - PETF.x) / d * v; PETF.y += (ty - PETF.y) / d * v; PETF.face = tx > PETF.x ? 1 : -1; } else PETF.face = p.face;
   } else PETF.on = false;
   if (game.scene !== 'wound' || p.hp <= 0) return;
   const T0 = (p.petT ||= {}), every = (k, s0) => { T0[k] = (T0[k] || 0) + dt; if (T0[k] >= s0) { T0[k] = 0; return true; } return false; }, from = PETF.on ? PETF : p, t = p.target && !p.target.dead ? p.target : null;
   const aim = () => Math.atan2(t.y - (t.hy || 10) - (from.y - 12), t.x - from.x);
-  if (pet('nailfinch') && every('finch', 1.5)) { if (t) spawnBolt(from.x, from.y - 12, aim(), false); else T0.finch = 1.5; }
-  if (pet('votivewisp') && every('wisp', 5)) { if (t) for (const k of [-1, 0, 1]) spawnBolt(from.x, from.y - 12, aim() + k * 0.18, false); else T0.wisp = 5; }
-  if (pet('censermouse') && every('mouse', 1)) for (const e of nearestFoes(from.x, from.y, 6, 75)) e.burn = Math.max(e.burn || 0, T.thurible.burn.time);
-  if (pet('almshound') && every('hound', 2)) { const e = nearestFoes(p.x, p.y, 1, 80)[0]; if (e) { const [lo, hi] = T.crossbow.dmg; hurtEnemy(e, rand(lo, hi) * MELEE.k, false, 0, 0, 40, { color: PAL.cloth0 }); if (!e.boss) e.bound = Math.max(e.bound || 0, 0.5); pfxHit(e.x, e.y - (e.hy || 10), false, 'holy', true); } else T0.hound = 2; }
-  if (pet('bellcrow') && every('crow', 8)) { const fs = nearestFoes(p.x, p.y, 12, 100).filter((e) => !e.boss); if (fs.length) { for (const e of fs) e.bound = Math.max(e.bound || 0, 1); rings.push({ x: p.x, y: p.y - 10, t: 0, max: 0.5, r: 100, color: '255,209,85', flat: true }); } else T0.crow = 8; }
-  if (pet('lamb') && every('lamb', 4)) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01);
+  // Round 107: a pet that acts shows it: the follower hops, with a small burst in its own colour and a quiet sound.
+  const act = (id, ramp, snd, o) => { if (PETF.on && petShown() === id) PETF.hop = 0.24; if (ramp) vemit(from.x, from.y - 10, { n: 5, ramp, sp: 30, up: 30, life: 0.4, size: 2, glow: 4 }); if (snd) sfx(snd, { gap: 0.3, bus: 'sfx', ...o }); };
+  if (pet('nailfinch') && every('finch', 1.5)) { if (t) { spawnBolt(from.x, from.y - 12, aim(), false); act('nailfinch', 'iron'); } else T0.finch = 1.5; }
+  if (pet('votivewisp') && every('wisp', 5)) { if (t) { for (const k of [-1, 0, 1]) spawnBolt(from.x, from.y - 12, aim() + k * 0.18, false); act('votivewisp', 'holy', 'cast', { vol: 0.2, rate: 1.5 }); } else T0.wisp = 5; }
+  if (pet('censermouse') && every('mouse', 1)) { const fs = nearestFoes(from.x, from.y, 6, 75); for (const e of fs) e.burn = Math.max(e.burn || 0, T.thurible.burn.time); if (fs.length) act('censermouse', 'fire'); }
+  if (pet('almshound') && every('hound', 2)) { const e = nearestFoes(p.x, p.y, 1, 80)[0]; if (e) { const [lo, hi] = T.crossbow.dmg; hurtEnemy(e, rand(lo, hi) * MELEE.k, false, 0, 0, 40, { color: PAL.cloth0 }); if (!e.boss) e.bound = Math.max(e.bound || 0, 0.5); pfxHit(e.x, e.y - (e.hy || 10), false, 'holy', true); act('almshound', null, 'mswing', { vol: 0.2, rate: 1.3 }); } else T0.hound = 2; }
+  if (pet('bellcrow') && every('crow', 8)) { const fs = nearestFoes(p.x, p.y, 12, 100).filter((e) => !e.boss); if (fs.length) { for (const e of fs) e.bound = Math.max(e.bound || 0, 1); rings.push({ x: p.x, y: p.y - 10, t: 0, max: 0.5, r: 100, color: '255,209,85', flat: true }); act('bellcrow', 'gold', 'knell', { vol: 0.3, rate: 0.8 }); } else T0.crow = 8; }
+  if (pet('lamb') && every('lamb', 4) && p.hp < p.maxHp) { p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01); act('lamb', null); vemit(p.x, p.y - 12, { n: 4, ramp: 'life', sp: 14, up: 40, life: 0.6, size: 2, glow: 4, spread: 6 }); }
 }
 // A pet as a list icon: its 36 px sprite at two thirds, feet a little under the ring's centre.
 function petIcon(id, x, y, fr = 0, k = 0.67) { ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(k, k); spr('pets', id, fr, 0, 0); ctx.restore(); }
-function drawPet() { const id = petShown(); if (!id || !PETF.on || !SPR.pets || !SPR.pets.anims[id]) return; spr('pets', id, PET_BY[id].fly || PETF.moving ? Math.floor(PETF.t * 6) % 4 : 0, PETF.x, PETF.y, { flip: PETF.face < 0 }); }
+function drawPet() { const id = petShown(); if (!id || !PETF.on || !SPR.pets || !SPR.pets.anims[id]) return; spr('pets', id, PET_BY[id].fly || PETF.moving ? Math.floor(PETF.t * 6) % 4 : 0, PETF.x, PETF.y - (PETF.hop > 0 ? Math.round(Math.sin((1 - PETF.hop / 0.24) * Math.PI) * 3) * 2 : 0), { flip: PETF.face < 0 }); }
 // The Tithe Cat: a foe may drop an Indulgence.
 function maybeIndul(e, ch) { if (!pet('tithecat') || game.yard || e.minion || e.illusion || rng() >= ch) return; drops.push({ kind: 'indul', x: e.x, y: e.y, z: 8, vx: rand(-40, 40), vy: rand(-20, 30), vz: rand(90, 140), t: 0 }); }
 function pickIndul() { SAVE.indul = indul() + 1; persist(); toast('INDULGENCE FOUND', 2.4); game.toastColor = '#d4b0ff'; sfx('legend', { gap: 0.2, vol: 0.7 }); }
@@ -9193,7 +9196,7 @@ function render() {
   }
   mark('nums');
   renderScreenFx();
-  renderHud();
+  if (game.state !== 'stig') renderHud(); // round 107: the level-up screen hides the HUD (the Warden's name showed through its title)
   mark('hud');
   UI_SOFT = game.state !== 'play';
   if (game.state === 'pause') { layerBreak(); renderPause(); }
@@ -9987,20 +9990,23 @@ function pauseLayout() {
   return { px, pw, tiles: tiles.map(([id, label], i) => ({ id, label, x: px + 8 + (i % cols) * (tw + gap), y: top + Math.floor(i / cols) * (th + gap), w: tw, h: th })), back: { x: W - SAFE.r - 18, y: 17, r: 12 } };
 }
 function pauseIcon(id, x, y) {
-  const ic = { bag: ['ui', 'bag'], rites: ['ui', isMelee() ? 'smite' : isAnch() ? 'svolley' : 'storm'], map: ['ui', 'map'], sound: ['ui', AUDIO.muted ? 'muted' : 'sound'], hero: ['ui', 'portrait'], dev: ['ui', 'use'], layout: ['ui', 'badge'] }[id];
-  if (id === 'shop') { ctx.save(); ctx.translate(x, y); ctx.scale(1.5, 1.5); sprC('pets', 'indul', 0, 0, 0); ctx.restore(); return; }
-  if (id === 'codex') { // a book
-    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(x - 8, y - 8, 18, 20); ctx.fillStyle = '#b51d36'; ctx.fillRect(x - 9, y - 10, 18, 20); ctx.fillStyle = '#7d1233'; ctx.fillRect(x - 9, y - 10, 3, 20);
-    ctx.fillStyle = '#eadfc4'; ctx.fillRect(x - 6, y + 7, 15, 3); ctx.fillStyle = '#ffd155'; ctx.fillRect(x - 2, y - 5, 8, 2); ctx.fillRect(x + 1, y - 8, 2, 9); return;
-  }
-  if (id === 'settings') { // a cog
-    ctx.save(); ctx.translate(x, y); ctx.fillStyle = '#d8dde6';
-    for (let k = 0; k < 8; k++) { ctx.rotate(Math.PI / 4); ctx.fillRect(-2, -10, 4, 5); }
-    ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#1a2233'; ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill(); ctx.restore(); return;
-  }
-  if (id === 'resume') { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.moveTo(x - 5, y - 8); ctx.lineTo(x + 9, y + 1); ctx.lineTo(x - 5, y + 10); ctx.fill(); ctx.fillStyle = PAL.gold1; ctx.beginPath(); ctx.moveTo(x - 6, y - 9); ctx.lineTo(x + 8, y); ctx.lineTo(x - 6, y + 9); ctx.fill(); return; }
-  if (id === 'hero') { const f = frameOf('ui', 'portrait', 0); if (f) { const k = Math.min(1, 24 / f.h); ctx.save(); ctx.translate(x, y); ctx.scale(k, k); sprC('ui', bustAnim(), 0, 0, 0); ctx.restore(); } return; }
-  if (ic && SPR.ui.anims[ic[1]]) { const f = frameOf(ic[0], ic[1], 0), k = Math.min(1, 26 / Math.max(f.w, f.h)); ctx.save(); ctx.translate(x, y); ctx.scale(k, k); sprC(ic[0], ic[1], 0, 0, 0); ctx.restore(); }
+  // Round 107: every tile's icon sits on the same navy disc with a cream rim, like the HUD's buttons.
+  const nav = { bag: 'bag', map: 'map', sound: AUDIO.muted ? 'muted' : 'sound' }[id], C = '#ece4ce', N = '#141e34';
+  if (nav) { const nb = navyBtn(nav); if (nb) { ctx.drawImage(nb.c, Math.round(x - nb.ax), Math.round(y - nb.ay)); return; } }
+  if (id === 'rites') { const ic = isMelee() ? 'smite' : isAnch() ? 'svolley' : 'storm', f = frameOf('ui', ic, 0); if (f) { const k = 26 / Math.max(f.w, f.h); ctx.save(); ctx.translate(x, y); ctx.scale(k, k); sprC('ui', ic, 0, 0, 0); ctx.restore(); } return; }
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.arc(x + 1, y + 2, 13, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = id === 'resume' ? PAL.gold1 : C; ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = N; ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill();
+  if (id === 'shop') sprC('pets', 'indul', 0, x, y);
+  else if (id === 'codex') { // a book
+    ctx.fillStyle = '#b51d36'; ctx.fillRect(x - 6, y - 7, 12, 14); ctx.fillStyle = '#7d1233'; ctx.fillRect(x - 6, y - 7, 2, 14);
+    ctx.fillStyle = C; ctx.fillRect(x - 4, y + 5, 10, 2); ctx.fillStyle = '#ffd155'; ctx.fillRect(x - 2, y - 3, 6, 2); ctx.fillRect(x, y - 5, 2, 6);
+  } else if (id === 'settings') { // a cog
+    ctx.save(); ctx.translate(x, y); ctx.fillStyle = C;
+    for (let k = 0; k < 8; k++) { ctx.rotate(Math.PI / 4); ctx.fillRect(-1.5, -8, 3, 4); }
+    ctx.beginPath(); ctx.arc(0, 0, 5.5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = N; ctx.beginPath(); ctx.arc(0, 0, 2.2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  } else if (id === 'resume') { ctx.fillStyle = PAL.gold1; ctx.beginPath(); ctx.moveTo(x - 4, y - 6); ctx.lineTo(x + 6, y); ctx.lineTo(x - 4, y + 6); ctx.fill(); }
+  else if (id === 'dev') { ctx.fillStyle = C; for (const [dy, kx] of [[-5, 2], [-1, -4], [3, 0]]) { ctx.fillRect(x - 7, y + dy, 14, 1); ctx.fillRect(x + kx, y + dy - 1, 3, 3); } } // sliders
+  else if (id === 'layout') { ctx.fillStyle = C; ctx.fillRect(x - 6, y - 6, 5, 5); ctx.fillRect(x + 1, y - 6, 5, 5); ctx.fillRect(x - 6, y + 1, 5, 5); ctx.fillRect(x + 1, y + 1, 5, 5); }
 }
 function renderPause() {
   const P = pauseLayout(), lw = P.px;
@@ -10886,7 +10892,7 @@ function invLayout() {
   let card = { x: bag.x + cols * (cell + 3) + 10, y: y0 + 34 }; card.w = x0 + pw - 12 - card.x; card.h = ph - 46;
   // Narrow phones: no room for the card beside the bag, so it covers the bag
   // while a piece is open (tap the card to go back).
-  const narrow = card.w < 150;
+  const narrow = card.w < 150, side = narrow && card.w >= 84 ? { x: card.x, y: card.y, w: card.w, h: card.h } : null; // round 107: the spare strip beside the bag
   if (narrow) card = { x: bag.x, y: y0 + 34, w: x0 + pw - 12 - bag.x, h: ph - 46 };
   const close = { x: x0 + pw - 14, y: y0 + 14, r: 10 };
   const btnA = { x: card.x + 6, y: card.y + card.h - 26, w: Math.floor(card.w / 2) - 9, h: 20 }, btnB = { x: btnA.x + btnA.w + 6, y: btnA.y, w: btnA.w, h: 20 };
@@ -10896,7 +10902,7 @@ function invLayout() {
   const opts = [0, 1, 2, 3].map((i) => ({ x: card.x + 6, y: card.y + 40 + i * 36, w: card.w - 12, h: 22 }));
   const rites = { x: doll.x, y: y0 + ph - 28, w: 72, h: 20 };
   const censer = { x: doll.x + 52, y: doll.y + 16, r: 13 };
-  return { pw, ph, x0, y0, doll, slots, bag, card, close, btnA, btnB, auto, sell, opts, rites, censer, narrow };
+  return { pw, ph, x0, y0, doll, slots, bag, card, close, btnA, btnB, auto, sell, opts, rites, censer, narrow, side };
 }
 // Auto equip: for each slot, wear the best piece from the bag if it beats
 // what is worn. Pieces are compared by itemScore (every stat against its
@@ -11223,7 +11229,14 @@ function renderInventory() {
   }
   // The card.
   const C = L.card; game.inv.setTap = null;
-  if (L.narrow && !it) return;
+  if (L.narrow && !it) { // round 107: nothing chosen on a narrow phone: the strip beside the bag lists the sets worn
+    const D = L.side; if (!D) return; const sm = { small: true, outline: null }, worn = [...mySets(), starterSet()].filter((id) => setCount(id) > 0);
+    inset(D.x, D.y, D.w, D.h, '255,209,85'); text('SETS WORN', D.x + 5, D.y + 2, PAL.gold1, sm); let y = D.y + 18;
+    for (const id of worn) { const rgb = SET_RGB[id] || '127,214,106'; ctx.fillStyle = `rgb(${rgb})`; ctx.fillRect(D.x + 5, y + 2, 2, 7); text(SET_SHORT[id], D.x + 11, y, `rgb(${rgb})`, sm); text(`${setCount(id)}/${VSETS[id].slots.length}`, D.x + D.w - 5, y, PAL.white, { ...sm, align: 'right' }); y += 12; }
+    if (!worn.length) { for (const l of wrapW('NO SET PIECES WORN.', D.w - 10, true)) { text(l, D.x + 5, y, PAL.stone2, sm); y += 10; } }
+    y += 4; goldRule(D.x + 5, y, D.w - 10); y += 6;
+    for (const l of wrapW('TAP A PIECE TO READ IT. WORN GEAR IS SAFE IF YOU DIE.', D.w - 10, true)) { if (y > D.y + D.h - 12) break; text(l, D.x + 5, y, PAL.stone1, sm); y += 10; }
+    return; }
   cardPlate(it, C);
   if (L.narrow) text('TAP THE CARD TO GO BACK', C.x + C.w - 6, L.btnA.y - 12, PAL.stone2, { small: true, outline: null, align: 'right' }); // right: the worn verdict sits on the left
   if (!it) { if (C.w < 100) return; goldRule(C.x + 10, C.y + C.h / 2 - 16, C.w - 20); wrap('TAP A PIECE TO READ IT. WORN GEAR IS SAFE IF YOU DIE.', Math.floor((C.w - 12) / 6)).forEach((l, i) => text(l, C.x + C.w / 2, C.y + C.h / 2 - 8 + i * 10, PAL.stone1, { small: true, outline: null, align: 'center' })); return; }

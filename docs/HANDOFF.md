@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-13, after round 105 (build 105, on `master`). Read
+Last updated 2026-11-14, after round 107 (build 107, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,8 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-105 on `claude/laughing-babbage-0cov0r`.
+   rounds 86-106 on `claude/laughing-babbage-0cov0r`; round 107 on
+   `claude/brave-brown-mytba1`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
@@ -141,9 +142,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 - **Combat:** each class's basic attack (above), dash with a perfect dodge,
   the Censer, two rites and a Reckoning chosen from the class's 18 (6 per slot, one per
   set; `RITES`, `MRITES`, `ARITES`; 15 of them open by Saint level, `RITE_LV`, and each slot lists them lowest level first), with ranks from use (`RANK_AT`), 6-piece twists
-  (`TWIST`), and drag-to-aim (`AIMABLE`). Passives: three slots opened by
-  Saint level (1, 10, 25), 24 in all, 8 earned by deeds (`PASSIVES`). Zeal steps give
-  +10% damage each. Executions, kill streaks and the Carnage bonus.
+  (`TWIST`), and drag-to-aim (`AIMABLE`). Passives: four slots opened by
+  Saint level (1, 10, 25, 50), 24 in all, 8 earned by deeds (`PASSIVES`). Zeal steps give
+  +10% damage each. Kill streaks and the Carnage bonus (no executions since
+  round 100).
   Monsters are punishing: telegraphed snipes, blight pools, novas,
   barrages, homing shots, the Sentence. A death recap names what hurt most.
 - **Run levels and Wounds (rounds 73, 80-81):** up to 15 levels
@@ -218,7 +220,7 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   and the three class busts on the pause panel use the `rich` shading. HUD
   buttons that are not rites (dash, pause, talk, bag) are still flat glyphs
   that `navyBtn` recolours.
-- **Account systems:** the Saint level (1-60) and its talent trees (Canonry), the Ember Forge
+- **Account systems:** the Saint level (1-100) and its talent webs (Canonry), the Calling, the Ember Forge
   (reforge, temper), the Ashen Altar (burn a Hallowed piece to learn its
   power; three sockets; Chrism and pity raise the odds), the Censer's 12
   deed upgrades, the Bounty Board, Penitent Cells, Odile's Gift, the
@@ -402,6 +404,21 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 107:** the owner asked for polish of what is there, from our own
+  suggestions. Found by looking at fresh screenshots. **Level-up screen:**
+  the HUD is not drawn while it is open (`render` skips `renderHud` in state
+  `stig`); the Warden's name and bar showed through the title. **Pause
+  tiles:** every icon is on the same navy disc with a cream rim
+  (`pauseIcon`: bag, map and sound through `navyBtn`; codex, shop, settings,
+  dev, layout and resume drawn on a shared disc). **Battle pets:** `act(id,
+  ramp, sound)` in `updatePets`: the follower hops (`PETF.hop`) with a small
+  burst in its colour and a quiet sound when it acts; the Lamb heals only
+  below full health, with green motes; the Censer Mouse only cues when it
+  lit something. **Bag:** on narrow phones (no room for a card beside the
+  bag) the spare strip lists the sets worn (`invLayout().side`). WOUND keeps
+  its capital (`CASE_TERMS`). Handoff facts corrected (Saint level 100, four
+  passive slots, no executions). Test: `round107.cjs`; menus at three
+  sizes, round80, round82, round100, round103, round105 and a soak clean.
 - **Round 106:** the owner said "All" to the five suggestions.
   **Fresh measurement (setbal.cjs, 6 seeds, 120 s, kills a second / damage
   taken a second).** Station XII, six pieces: Saint nails 7.75/843, stride
