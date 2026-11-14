@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '114';
+const BUILD = '115';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '115': ['NEW LOOK FOR THE BUTTONS ON THE PLAY SCREEN: RAISED ICONS IN A GOLD RING. THE PAUSE SCREEN\'S TILES MATCH.', 'AFTER A DEATH YOU ARE BACK IN VAEL AT ONCE, BY THE CATHEDRAL. NO MORE DARK SCREEN.', 'AUTO PLAY: THE PILOT NO LONGER GOES BACK FOR HEALTH ORBS. IT KEEPS FIGHTING AND MOVING.', 'AUTO PLAY: THE END SCREEN SAYS HOW MANY PIECES AUTO SELL SOLD AND FOR HOW MUCH.'],
   '114': ['THE SOUND SWITCH LEFT THE PLAY SCREEN. TURN SOUND ON OR OFF FROM THE PAUSE SCREEN.', 'THE PAUSE AND BAG BUTTONS ARE NOW THE SAME SIZE, AND A LITTLE SMALLER.'],
   '113': ['ON THE PLAY SCREEN, ABOVE THE LEVEL BAR: A SWITCH FOR AUTO WOUNDS, AND IN AN AUTO PLAY RUN A BUTTON THAT PAUSES AND RESUMES THE PILOT.', 'AUTO PLAY: NEW SETTING, AUTO SELL (OFF, COMMON, BLESSED AND BELOW, CONSECRATED AND BELOW). GEAR OF THAT RARITY IS SOLD AS IT IS PICKED UP UNLESS IT BEATS WHAT YOU WEAR, AND MAKES ROOM IN A FULL BAG. HALLOWED AND SET PIECES ARE NEVER SOLD.', 'AUTO PLAY: THE DESCENT PANEL WARNS IN RED WHEN YOUR GEAR IS TOO CLOSE TO THE STATION FOR THE PILOT. IT IS SAFE ABOUT TWO STATIONS BELOW YOUR GEAR.', 'AUTO PLAY: WHEN BADLY HURT, THE PILOT GOES BACK FOR ANY HEALTH ORB LEFT ON THE MAP.'],
   '112': ['AUTO PLAY: NO LONGER GETS STUCK AT A CORNER SHOOTING AT FOES IT CANNOT HIT. IT WALKS ROUND UNTIL IT HAS A CLEAR SHOT.', 'AUTO PLAY: DASHES ALONG THE WAY WHEN NO FOE IS NEAR, SO RUNS ARE FASTER.', 'AUTO PLAY: GOLD AND EVERY OTHER DROP FLY TO YOU AS THEY FALL. HEALTH ORBS STAY ON THE FLOOR UNTIL NEEDED.'],
@@ -5415,6 +5416,7 @@ function enterTown(wake = true) {
   resetWorld();
   game.buff = null; game.banner = null; game.focus = null;
   game.scene = 'town'; game.state = 'play'; game.cardAt = game.real; game.time = 0; game.fervor = 0; game.kills = 0; game.waystone = null;
+  camFollow(); // round 116: the view starts on the Saint (a window opened at once used to show an empty dark town)
   if (wake && !SAVE.metOdile) { SAVE.metOdile = true; persist(); talk('odile'); }
   if (SAVE.suspend && !askedResume && game.state === 'play') game.state = 'resume';
   else if (askedResume && SAVE.suspend) { SAVE.suspend = null; persist(); }
@@ -8998,6 +9000,9 @@ function update(realDt) {
 
   // Follow the Saint's rounded position in whole pixels, so it never wobbles a
   // pixel against the floor when W or H is odd.
+  camFollow();
+}
+function camFollow() {
   const tx = Math.round(player.x) - Math.floor(W / 2), ty = Math.round(player.y) - (game.scene === 'town' ? Math.round(H * 0.26) : 20) - Math.floor(H / 2);
   cam.x = room.pw <= W ? (room.pw - W) / 2 : Math.max(0, Math.min(room.pw - W, tx));
   cam.y = room.ph <= H ? (room.ph - H) / 2 : Math.max(0, Math.min(room.ph - H, ty));
@@ -11848,7 +11853,7 @@ function onTap(x, y) {
       else game.state = 'play';
       return true;
     }
-    case 'dead': if (game.deathT > 2.1) { enterTown(false); talk('odile'); } return true;
+    case 'dead': if (game.deathT > 2.1) enterTown(false); return true; // round 116: straight back into Vael, no talk
     case 'tally': if (game.deathT > 1.4) { enterTown(false); toast('BACK IN VAEL', 2.5); } return true;
   }
   return false;

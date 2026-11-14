@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-14, after round 114 (build 114, on `master`). Read
+Last updated 2026-11-14, after round 115 (build 115, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-114 on
+   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-115 on
    `claude/brave-brown-mytba1`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
@@ -427,6 +427,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 115:** the owner picked 1 (with a visual update for the HUD
+  buttons), 3, 4, 5, asked to undo the pilot's walk back to far health
+  orbs, and to drop the dark screen after a death. **Buttons:**
+  `hudButton(size, glyph)` in `props.mjs` is a relief (cream `hud` ink in
+  `RITE_INK`) inside a gold SDF bezel (`bezel(size)`); dash, pause, bag,
+  talk, descend, use and lock use it (`HUD_OWN` in index.html). Rite icons
+  in the HUD get `bezel40`/`bezel44` laid over them by `button()`; the old
+  thin vector ring is gone for both. The pause tiles are all drawn the same
+  way (navy disc, gold rim, a drawn glyph; `pauseIcon`). **Death:** the
+  dark screen came from `talk('odile')` opening a dialog before the first
+  camera update, so the town was never framed; the receipt's tap now goes
+  straight to `enterTown(false)`, and `enterTown` snaps the camera
+  (`camFollow`). **Pilot:** no orb goal at all (`loot` is empty).
+  **Tally:** an auto run that sold anything adds AUTO SELL SOLD N PIECES
+  FOR G GOLD (the card grows 13 px). `autobench.cjs` takes `STRATUM_K`.
+  Test: `round115.cjs`.
 - **Round 114:** the owner asked to move the sound switch off the play
   screen (the pause panel's SOUND tile already toggles it) and to make the
   pause and bag buttons the same, smaller size. `HUD.pause` and `HUD.bag`
