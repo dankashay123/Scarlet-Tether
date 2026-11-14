@@ -542,7 +542,9 @@ const RITE_INK = { font: ['holy2', 'holy3', 'holy4'], nails: ['crimson0', 'crims
   iron: ['iron0', 'iron1', 'iron3'], road: ['sand0', 'sand1', 'sand3'], alms: ['moss0', 'moss1', 'moss3'], gaol: ['brick0', 'brick1', 'brick3'], bell: ['sea0', 'sea1', 'sea3'],
   reliquary: ['violet0', 'violet1', 'violet3'], glass: ['holy1', 'holy2', 'holy4'], psalter: ['crimson0', 'crimson1', 'crimson3'], lantern: ['ember1', 'ember2', 'ember4'], thorn: ['rot0', 'rot1', 'rot3'],
   // Passive icons by their badge's ramp (round 85).
-  crimson: ['crimson0', 'crimson1', 'crimson3'], holy: ['holy1', 'holy2', 'holy4'], gold: ['gold0', 'gold1', 'gold3'] };
+  crimson: ['crimson0', 'crimson1', 'crimson3'], holy: ['holy1', 'holy2', 'holy4'], gold: ['gold0', 'gold1', 'gold3'],
+  // Round 115: the HUD's own buttons (dash, pause, bag, talk...): a cream glyph.
+  hud: ['bone0', 'bone1', 'bone3'] };
 function riteButton(size, glyph, set, small = 0) {
   const f = { w: size, h: size, px: new Int16Array(size * size).fill(-1) }, r = size / 2 - (small ? 1.2 : 1.6), c = size / 2, [hi, mid, lo] = RITE_INK[set];
   const G = (x, y) => glyph((x + 0.5 - c) / (r - small), (y + 0.5 - c) / (r - small)) && Math.hypot(x + 0.5 - c, y + 0.5 - c) < r - 1.5;
@@ -554,6 +556,18 @@ function riteButton(size, glyph, set, small = 0) {
   }
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!G(x, y) && (G(x - 1, y - 1) || G(x - 2, y - 2)) && f.px[y * size + x] >= 0 && Math.hypot(x + 0.5 - c, y + 0.5 - c) < r - 0.6) put(f, x, y, 'ink0');
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (G(x, y)) put(f, x, y, !G(x - 1, y - 1) || !G(x, y - 1) && !G(x - 1, y) ? hi : !G(x + 1, y + 1) ? lo : mid);
+  return f;
+}
+// Round 115: a gold bezel, lit from the top-left, laid over every HUD button (the game draws `bezel<size>` on top of a
+// rite icon; HUD buttons of their own are built with it, `hudButton`).
+function bezel(size) {
+  const S = new Scene(), c = size / 2, r = size / 2 - 1.2;
+  S.add(torus([c, c, 0], r - 1.9, 1.5, Math.PI / 2, 'gold'), 0);
+  return R(S, size, size, FRAME_M, { contrast: 1.35 });
+}
+function hudButton(size, glyph) {
+  const f = riteButton(size, glyph, 'hud', size * 0.06), b = bezel(size);
+  for (let i = 0; i < f.px.length; i++) if (b.px[i] >= 0) f.px[i] = b.px[i];
   return f;
 }
 const seg = (u, v, ax, ay, bx, by, w) => { const dx = bx - ax, dy = by - ay, t = clamp(((u - ax) * dx + (v - ay) * dy) / (dx * dx + dy * dy), 0, 1); return Math.hypot(u - ax - dx * t, v - ay - dy * t) < w; };
@@ -863,6 +877,9 @@ export default {
     passive: () => PASS_ICONS.map(([, ramp, g]) => riteButton(19, g, RITE_INK[ramp] ? ramp : 'gold', 0.6)),
     talent: () => TAL_ICONS.map(([, ramp, g]) => riteButton(21, g, ramp, 0.6)),
     talnode: () => TAL_NODE_ICONS.map(([, ramp, g]) => riteButton(19, g, ramp, 0.6)),
-    ring: () => [ring()], knob: () => [button(32, GLYPH.knob)], bag: () => [button(26, GLYPH.bag)], close: () => [button(22, GLYPH.close)],
+    ring: () => [ring()], knob: () => [button(32, GLYPH.knob)], bag: () => [hudButton(32, GLYPH.bag)], close: () => [button(22, GLYPH.close)],
+    // Round 115: HUD buttons as reliefs in a gold bezel (override the flat ones above), and bezels for the rite icons.
+    dash: () => [hudButton(50, GLYPH.dash)], pause: () => [hudButton(32, GLYPH.pause)], talk: () => [hudButton(50, GLYPH.talk)], descend: () => [hudButton(50, GLYPH.descend)], use: () => [hudButton(50, GLYPH.use)], lock: () => [hudButton(50, BADGE_GLYPH.lock)],
+    bezel40: () => [bezel(40)], bezel44: () => [bezel(44)],
   },
 };

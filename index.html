@@ -1784,7 +1784,7 @@ function bankRun(died) {
   for (const it of SAVE.bag) it.run = false;
   R.lostItems = lost.length;
   SAVE.bestLevel = Math.max(SAVE.bestLevel || 1, R.level);
-  game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time, gold: R.gold, tithe: R.tithe, items: R.items, lostItems: R.lostItems, rooms: room.rooms.filter((q) => q.state === 'clear').length, total: room.rooms.length, vigil: !!R.vigil, pool, martyr: !!R.martyr, auto: R.auto ? { gold: Math.round(R.autoGold || 0), gear: Math.round(R.autoGear || 0) } : null, recap: died && !R.cell ? deathRecap(R) : null, where: R.vigil ? (R.vigilResult ? (R.vigilResult.up ? `${R.vigil} KEPT, +${R.vigilResult.up}` : `${R.vigil}, CANDLE OUT`) : `${R.vigil}, FALLEN`) : `${DIFF[R.diff].rn}${R.martyr ? ', VOW' : ''}${R.omens && R.omens.length ? ` +${R.omens.length} OMEN${R.omens.length > 1 ? 'S' : ''}` : ''}` };
+  game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time, gold: R.gold, tithe: R.tithe, items: R.items, lostItems: R.lostItems, rooms: room.rooms.filter((q) => q.state === 'clear').length, total: room.rooms.length, vigil: !!R.vigil, pool, martyr: !!R.martyr, auto: R.auto ? { gold: Math.round(R.autoGold || 0), gear: Math.round(R.autoGear || 0), sold: R.autoSold || 0, soldGold: R.autoSoldGold || 0 } : null, recap: died && !R.cell ? deathRecap(R) : null, where: R.vigil ? (R.vigilResult ? (R.vigilResult.up ? `${R.vigil} KEPT, +${R.vigilResult.up}` : `${R.vigil}, CANDLE OUT`) : `${R.vigil}, FALLEN`) : `${DIFF[R.diff].rn}${R.martyr ? ', VOW' : ''}${R.omens && R.omens.length ? ` +${R.omens.length} OMEN${R.omens.length > 1 ? 'S' : ''}` : ''}` };
   persist();
 }
 function renderRoomStatus() {
@@ -9744,7 +9744,8 @@ function renderAim() {
 // pale, and saturated colours stay as they are; a gold ring goes round it.
 const BTN_NAVY = {};
 // Round 84: rite icons drawn as coloured reliefs on their own navy disc (props.mjs riteButton): no recolour.
-const RICH_BTN = new Set(['smite', 'undertow', 'nailburst', 'charge', 'shackleblow', 'cinderslam', 'hook', 'chainsweep', 'toll', 'vow', 'shards', 'wellspring', 'tolling', 'hammer', 'deluge', 'hundredblows', 'pyre', 'verdict', 'svolley', 'consecrate', 'shrapnel', 'flight', 'snova', 'emberrelic', 'sward', 'votive', 'splinter', 'shardchain', 'shardknell', 'mending', 'shattered', 'cathedral', 'hundredshards', 'relicpyre', 'reliquaryfont', 'relicjudge', 'flask', 'wave', 'storm', 'step', 'brand', 'hymn', 'chain', 'shackle', 'censer', 'ward', 'nailring', 'asperse', 'penance', 'pillars', 'font', 'volley', 'pilgrim', 'greatpen']);
+const HUD_OWN = new Set(['dash', 'pause', 'bag', 'talk', 'descend', 'use', 'lock']); // round 115: reliefs with their own gold bezel
+const RICH_BTN = new Set([...HUD_OWN, 'smite', 'undertow', 'nailburst', 'charge', 'shackleblow', 'cinderslam', 'hook', 'chainsweep', 'toll', 'vow', 'shards', 'wellspring', 'tolling', 'hammer', 'deluge', 'hundredblows', 'pyre', 'verdict', 'svolley', 'consecrate', 'shrapnel', 'flight', 'snova', 'emberrelic', 'sward', 'votive', 'splinter', 'shardchain', 'shardknell', 'mending', 'shattered', 'cathedral', 'hundredshards', 'relicpyre', 'reliquaryfont', 'relicjudge', 'flask', 'wave', 'storm', 'step', 'brand', 'hymn', 'chain', 'shackle', 'censer', 'ward', 'nailring', 'asperse', 'penance', 'pillars', 'font', 'volley', 'pilgrim', 'greatpen']);
 function navyBtn(icon) {
   if (BTN_NAVY[icon] !== undefined) return BTN_NAVY[icon];
   const f = frameOf('ui', icon, 0); if (!f || !IMG.ui || !IMG.ui.complete) return null;
@@ -9767,8 +9768,11 @@ function button(b, { active = true, cd = 0, cdText = '', ring = 0, ringColor = P
     ctx.globalAlpha = active ? 1 : 0.6;
     if (b.sz) { const q = b.sz / nb.c.width, w = nb.c.width * q, h = nb.c.height * q; ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(nb.c, b.x - w / 2, b.y + pr - h / 2, w, h); ctx.restore(); }
     else ctx.drawImage(nb.c, Math.round(b.x - nb.ax), Math.round(b.y + pr - nb.ay));
+    // Round 115: a rite icon gets the gold bezel laid over it; the HUD's own buttons have it built in.
+    const bz = !HUD_OWN.has(b.icon) && RICH_BTN.has(b.icon) && SPR.ui && SPR.ui.anims[`bezel${nb.c.width}`] ? `bezel${nb.c.width}` : null;
+    if (bz) sprC('ui', bz, 0, b.x, b.y + pr, { alpha: active ? 1 : 0.6 });
     ctx.globalAlpha = 1;
-    ctx.strokeStyle = active ? 'rgba(255,209,85,0.85)' : 'rgba(150,120,70,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(b.x, b.y + pr, b.r - 1.5, 0, Math.PI * 2); ctx.stroke();
+    if (!bz && !HUD_OWN.has(b.icon)) { ctx.strokeStyle = active ? 'rgba(255,209,85,0.85)' : 'rgba(150,120,70,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(b.x, b.y + pr, b.r - 1.5, 0, Math.PI * 2); ctx.stroke(); }
   } else sprC('ui', b.icon, 0, b.x, b.y + pr, { alpha: active ? 1 : 0.55 });
   if (cd > 0) { // dark sweep for the remaining cooldown, plus seconds left
     ctx.fillStyle = 'rgba(11,7,16,0.62)'; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.arc(b.x, b.y, b.r - 1, -Math.PI / 2, -Math.PI / 2 + cd * Math.PI * 2); ctx.closePath(); ctx.fill();
@@ -10089,9 +10093,9 @@ function autoPilot(dt) {
   if (game.interact && game.interact.label !== 'RETURN') game.interact.use(); // shrines and chests on the way
   if (hand) return;
   AP.on = true;
-  // Where to: a health orb when hurt, then the Waystone, the Warden, the nearest foe.
+  // Where to: the Waystone, the Warden, the nearest foe.
   if ((AP.t -= dt) <= 0) { AP.t = 0.35;
-    const full = SAVE.bag.length >= BAG_SIZE, orbs = p.hp < p.maxHp * 0.6 ? drops.filter((d) => !d.taken && d.z <= 0 && d.kind === 'globe' && (p.hp < p.maxHp * 0.4 || Math.hypot(d.x - p.x, d.y - p.y) < 200)) : [], /* round 113: badly hurt, it goes back for any orb on the map */ loot = orbs; /* round 111: only health orbs when hurt; gold and gear left behind fly in when the Warden falls */
+    const loot = []; // round 115: the pilot does not go after health orbs either; it keeps fighting and moving /* round 111: only health orbs when hurt; gold and gear left behind fly in when the Warden falls */
     const foes = enemies.filter((e) => !e.dead && !e.illusion && e.type !== 'dummy');
     if (loot.length) { AP.goal = 'loot'; autoField(loot); } else if (game.waystone) { AP.goal = 'stone'; autoField([game.waystone]); }
     else if (boss) { AP.goal = 'foe'; autoField([boss]); } else if (foes.length) { AP.goal = 'foe'; autoField(foes); } else { AP.goal = ''; AP.field = null; }
@@ -10246,13 +10250,16 @@ function pauseLayout() {
   return { px, pw, tiles: tiles.map(([id, label], i) => ({ id, label, x: px + 8 + (i % cols) * (tw + gap), y: top + Math.floor(i / cols) * (th + gap), w: tw, h: th })), back: { x: W - SAFE.r - 18, y: 17, r: 12 } };
 }
 function pauseIcon(id, x, y) {
-  // Round 107: every tile's icon sits on the same navy disc with a cream rim, like the HUD's buttons.
-  const nav = { bag: 'bag', map: 'map', sound: AUDIO.muted ? 'muted' : 'sound' }[id], C = '#ece4ce', N = '#141e34';
-  if (nav) { const nb = navyBtn(nav); if (nb) { ctx.drawImage(nb.c, Math.round(x - nb.ax), Math.round(y - nb.ay)); return; } }
-  if (id === 'rites') { const ic = isMelee() ? 'smite' : isAnch() ? 'svolley' : 'storm', f = frameOf('ui', ic, 0); if (f) { const k = 26 / Math.max(f.w, f.h); ctx.save(); ctx.translate(x, y); ctx.scale(k, k); sprC('ui', ic, 0, 0, 0); ctx.restore(); } return; }
+  // Round 107: every tile's icon sits on the same navy disc; round 115: with a gold rim, like the HUD's buttons.
+  const C = '#ece4ce', N = '#141e34', GOLD = '#e8b44a';
   ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.arc(x + 1, y + 2, 13, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = id === 'resume' ? PAL.gold1 : C; ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = N; ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill();
-  if (id === 'shop') sprC('pets', 'indul', 0, x, y);
+  ctx.fillStyle = id === 'resume' ? PAL.gold1 : GOLD; ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = N; ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill();
+  if (id === 'rites') { const nb = navyBtn(isMelee() ? 'smite' : isAnch() ? 'svolley' : 'storm'); if (nb) { ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(nb.c, x - 11, y - 11, 22, 22); ctx.restore(); } }
+  else if (id === 'bag') { ctx.fillStyle = C; ctx.beginPath(); ctx.arc(x, y + 2, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(x - 3, y - 6, 6, 4); ctx.fillRect(x - 5, y - 7, 10, 2); }
+  else if (id === 'map') { ctx.fillStyle = C; ctx.fillRect(x - 6, y - 7, 12, 14); ctx.fillStyle = N; ctx.fillRect(x - 4, y - 4, 8, 2); ctx.fillRect(x - 4, y, 8, 2); ctx.fillRect(x - 4, y + 4, 5, 1); }
+  else if (id === 'sound') { ctx.fillStyle = C; ctx.fillRect(x - 7, y - 3, 4, 6); ctx.beginPath(); ctx.moveTo(x - 4, y - 3); ctx.lineTo(x + 1, y - 7); ctx.lineTo(x + 1, y + 7); ctx.lineTo(x - 4, y + 3); ctx.fill();
+    ctx.strokeStyle = C; ctx.lineWidth = 1.5; if (AUDIO.muted) { ctx.beginPath(); ctx.moveTo(x + 3, y - 3); ctx.lineTo(x + 8, y + 3); ctx.moveTo(x + 8, y - 3); ctx.lineTo(x + 3, y + 3); ctx.stroke(); } else for (const r of [4, 7]) { ctx.beginPath(); ctx.arc(x + 1, y, r, -0.8, 0.8); ctx.stroke(); } }
+  else if (id === 'shop') sprC('pets', 'indul', 0, x, y);
   else if (id === 'codex') { // a book
     ctx.fillStyle = '#b51d36'; ctx.fillRect(x - 6, y - 7, 12, 14); ctx.fillStyle = '#7d1233'; ctx.fillRect(x - 6, y - 7, 2, 14);
     ctx.fillStyle = C; ctx.fillRect(x - 4, y + 5, 10, 2); ctx.fillStyle = '#ffd155'; ctx.fillRect(x - 2, y - 3, 6, 2); ctx.fillRect(x, y - 5, 2, 6);
@@ -10527,7 +10534,7 @@ function renderReceipt(survived = false) {
   const k = Math.min(1, Math.max(0, game.deathT - (survived ? 0 : 0.7)) * 1.5);
   ctx.fillStyle = `rgba(11,7,16,${0.8 * k})`; ctx.fillRect(0, 0, W, H);
   if (k < 1) return;
-  const r = game.receipt, w = 260, h = r.pool ? 190 : 176, rc = !survived && r.recap, rw = rc ? Math.min(200, W - w - 26) : 0;
+  const r = game.receipt, sold = !!(r.auto && r.auto.sold), dy = sold ? 13 : 0, w = 260, h = (r.pool ? 190 : 176) + dy, rc = !survived && r.recap, rw = rc ? Math.min(200, W - w - 26) : 0;
   const x = Math.round(W / 2 - (w + (rc ? rw + 8 : 0)) / 2), y = Math.round(H / 2 - h / 2), mid = x + w / 2;
   // Round 67: a navy card, lit crimson after a death and gold after a full descent.
   const acc = survived ? '255,209,85' : '232,64,80';
@@ -10543,12 +10550,13 @@ function renderReceipt(survived = false) {
   row('TIME', `${m}:${s}`, 44); row(r.vigil ? 'VIGIL' : 'STATION', r.where, 57); row('KILLS', String(r.kills), 70); row('GOLD FOUND', String(r.gold), 83);
   row(survived ? 'GEAR FOUND' : 'YOU LOST', survived ? String(r.items.length) : `${r.tithe} GOLD, ${r.lostItems} GEAR`, 96);
   const best = [...r.items].sort((a, b) => b.ri - a.ri)[0];
-  if (best) text(fitText(best.name, w - 16, null, false), mid, y + 138, RARITY[best.ri].color, { align: 'center', glow: best.ri >= 3 });
+  if (best) text(fitText(best.name, w - 16, null, false), mid, y + 138 + dy, RARITY[best.ri].color, { align: 'center', glow: best.ri >= 3 });
   goldRule(x + 10, y + 107, w - 20, '200,212,232', false);
   if (survived) { line(r.auto ? fitText(`Auto Play cost about ${r.auto.gold.toLocaleString('en-US')} gold and ${r.auto.gear} gear.`, w - 16, `Auto Play cost ${r.auto.gold.toLocaleString('en-US')} gold.`, false) : 'YOU KEPT EVERYTHING YOU FOUND.', 113, PAL.flame1); }
   else { line(r.martyr ? 'VOW BROKEN. EVERYTHING YOU FOUND IS LOST.' : 'YOU LOST HALF YOUR GOLD AND FINDS.', 113, PAL.blood0); }
-  if (best) line('BEST FIND', 126, PAL.stone2, 'center', { small: true });
-  if (r.pool) text(fitText(r.pool.text, w - 16), mid, y + 154, r.pool.won ? PAL.gold1 : PAL.blood0, { align: 'center', small: true, outline: null });
+  if (best) line('BEST FIND', 126 + dy, PAL.stone2, 'center', { small: true });
+  if (sold) text(fitText(`Auto Sell sold ${r.auto.sold} pieces for ${r.auto.soldGold.toLocaleString('en-US')} gold.`, w - 16, `Auto Sell: ${r.auto.sold} for ${r.auto.soldGold.toLocaleString('en-US')} gold.`), mid, y + 125, PAL.gold1, { align: 'center', small: true, outline: null }); // round 115
+  if (r.pool) text(fitText(r.pool.text, w - 16), mid, y + 154 + dy, r.pool.won ? PAL.gold1 : PAL.blood0, { align: 'center', small: true, outline: null });
   if (rc) renderRecap(r.recap, x + w + 8, y, rw, h);
   if (game.deathT > 1.4 && Math.floor(game.real * 2) % 2 === 0) line('TAP TO RETURN TO VAEL', h - 18, PAL.cloth1, 'center', { small: true });
 }
