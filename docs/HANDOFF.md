@@ -281,10 +281,13 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   passives, talents, enchants or pets, `NOREFILL=1`) on Station X, 150 s:
   Saint (Nails) 4 of 4 survived, 531-746 kills; Mendicant (Iron) 4 of 4,
   610-802; Anchoress (Reliquary) 4 of 4, 796-963, every run finishing the
+  descent. Round 115, Strata II and III (same setup, 3 runs each per
+  class): all 18 survived, 627-958 kills; the Anchoress finished the
+  descent in 2 of 3 Nave runs and all 3 Ossuary runs. Homing shots from
+  cherubs hurt it most in the Nave, acolyte shots in the Ossuary.
   descent. On the gear's own Station (XII) the Saint died in 3 of 4
   (round 110, before the corner and dash changes). What hurts it most:
-  shots and homing shots (cherubs, acolytes), pools. Strata II and III not
-  measured. Ask the owner how the 75% / 50% cuts feel and whether run XP
+  shots and homing shots (cherubs, acolytes), pools. Ask the owner how the 75% / 50% cuts feel and whether run XP
   should be cut too.
 - **Wounds page (round 109).** Ask the owner whether 8 ranks is the right
   price there.
