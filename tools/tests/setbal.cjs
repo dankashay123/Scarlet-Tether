@@ -14,6 +14,9 @@ const ENCH = (process.env.ENCH || '').split(',').filter(Boolean), ENCHT = +(proc
 const HERO = process.env.HERO || 'saint';
 // Round 81: WOUNDS='{"xHalo":1}' runs every build with those Wounds; HPK=0.4 holds health at 40% (for Martyr's Fury).
 const WOUNDS = JSON.parse(process.env.WOUNDS || '{}'), HPK = +(process.env.HPK || 1);
+// Round 106: WARDEN=bellwright fights that Warden alone instead of the crowd and reports ttk, the seconds to kill it
+// (null when it lives past the time given; the average then counts it at that time). Each try ends once the Warden falls.
+const WARDEN = process.env.WARDEN || '';
 // Each class's own sets (round 72) and the rites of each set.
 const RITES = HERO === 'anchoress'
   ? { none: ['svolley', 'sward', 'shattered'], reliquary: ['svolley', 'sward', 'shattered'], glass: ['shrapnel', 'splinter', 'hundredshards'], thorn: ['flight', 'shardchain', 'relicpyre'], psalter: ['consecrate', 'mending', 'reliquaryfont'], lantern: ['emberrelic', 'shardknell', 'relicjudge'] }
@@ -31,7 +34,7 @@ const BUILDS = [['none', null, null], ...SETS.map((k) => [k, k, null]), ...SETS.
   await p.evaluate(([P, T, L, RB]) => { window.__PAS = P; window.__TAL = T; window.__LVL = L; window.__RUB = RB; }, [(process.env.PASSIVES || '').split(',').filter(Boolean), JSON.parse(process.env.TALENTS || '{}'), +(process.env.LVL || 60), (process.env.RUB || '').split(',').filter(Boolean)]);
   const rows = [];
   for (const [name, main, second] of BUILDS.filter(([n]) => !ONLY.length || ONLY.includes(n))) for (const seed of seeds) {
-    await p.evaluate(([st, main, second, R, seed, ENCH, ENCHT, HERO, WOUNDS, HPK]) => {
+    await p.evaluate(([st, main, second, R, seed, ENCH, ENCHT, HERO, WOUNDS, HPK, WARDEN]) => {
       // The same dice for every build: items, map and crowd come from one seed.
       let x = seed * 2654435761 >>> 0; Math.random = () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; };
       window.HS_AUTOSTIG = true; HS.tut.on = false; HS.DEV.god = false; HS.SAVE.virtues = {}; HS.SAVE.altar = { known: [], sockets: {} }; HS.SAVE.passives = window.__PAS || []; HS.SAVE.talents = window.__TAL || {}; HS.SAVE.riteXp = {};
@@ -51,23 +54,25 @@ const BUILDS = [['none', null, null], ...SETS.map((k) => [k, k, null]), ...SETS.
       for (const e of HS.enemies) e.dead = true;
       // The crowd: kept at 30 around the Saint. Damage taken is counted and healed back.
       const P = HS.player, home = { x: P.x, y: P.y }, mix = ['risen', 'crawler', 'acolyte', 'flagellant', 'risen'];
-      window.__S = { taken: 0, kills0: HS.game.kills, t0: HS.game.time, hp: P.maxHp, dashT: 0, rk: 0, n: 0 };
+      window.__S = { taken: 0, kills0: HS.game.kills, t0: HS.game.time, hp: P.maxHp, dashT: 0, rk: 0, n: 0, ttk: null };
+      if (WARDEN) { HS.spawnWarden(WARDEN); window.__W = HS.game.warden; }
       clearInterval(window.__iv);
       window.__iv = setInterval(() => {
         const S = window.__S; if (HS.game.state !== 'play') { HS.game.state = 'play'; HS.game.stig = null; }
         if (P.hp < S.hp) S.taken += S.hp - P.hp; P.hp = P.maxHp * HPK; S.hp = P.hp; S.n++; if (P.rainT > 0) S.rk++; // share of the time in Reckoning
-        const alive = HS.enemies.filter((e) => !e.dead).length;
+        if (WARDEN && window.__W && window.__W.dead && S.ttk === null) S.ttk = HS.game.time - S.t0;
+        const alive = WARDEN ? 30 : HS.enemies.filter((e) => !e.dead).length;
         for (let k = alive; k < 30; k++) { const a = Math.random() * Math.PI * 2, d = 90 + Math.random() * 60, m = HS.spawnMonster(mix[k % mix.length], home.x + Math.cos(a) * d, home.y + Math.sin(a) * d * 0.7, { room: HS.game.curRoom.id }); if (k % 10 === 0) m.tier = 'rare'; }
         HS.input.m1 = true; HS.input.m2 = true; HS.input.pen = true;
         if ((S.dashT -= 0.05) <= 0) { S.dashT = 1.4; const a = Math.random() * Math.PI * 2; HS.input.mx = Math.cos(a); HS.input.my = Math.sin(a); HS.input.dash = true; setTimeout(() => { HS.input.mx = (home.x - P.x) / 80; HS.input.my = (home.y - P.y) / 80; }, 150); setTimeout(() => { HS.input.mx = 0; HS.input.my = 0; }, 450); }
       }, 50);
-    }, [station, main, second, RITES, seed, ENCH, ENCHT, HERO, WOUNDS, HPK]);
-    await p.waitForTimeout(secs * 1000);
-    const m = await p.evaluate(() => { clearInterval(window.__iv); const S = window.__S, dt = HS.game.time - S.t0; return { kps: +((HS.game.kills - S.kills0) / dt).toFixed(2), takenPerS: Math.round(S.taken / dt), maxHp: HS.player.maxHp, secs: Math.round(dt), reck: +(S.rk / Math.max(1, S.n)).toFixed(2) }; });
+    }, [station, main, second, RITES, seed, ENCH, ENCHT, HERO, WOUNDS, HPK, WARDEN]);
+    if (WARDEN) { for (let t = 0; t < secs * 2; t++) { await p.waitForTimeout(500); if (await p.evaluate(() => window.__S.ttk !== null)) break; } } else await p.waitForTimeout(secs * 1000);
+    const m = await p.evaluate(() => { clearInterval(window.__iv); const S = window.__S, dt = HS.game.time - S.t0; return { kps: +((HS.game.kills - S.kills0) / dt).toFixed(2), takenPerS: Math.round(S.taken / dt), maxHp: HS.player.maxHp, secs: Math.round(dt), reck: +(S.rk / Math.max(1, S.n)).toFixed(2), ttk: S.ttk === null ? null : +S.ttk.toFixed(1) }; });
     rows.push({ build: name, ...m });
   }
   // Average the seeds of each build.
-  const avg = BUILDS.filter(([n]) => !ONLY.length || ONLY.includes(n)).map(([name]) => { const r = rows.filter((q) => q.build === name), n = r.length; return { build: name, kps: +(r.reduce((a, q) => a + q.kps, 0) / n).toFixed(2), reck: +(r.reduce((a, q) => a + q.reck, 0) / n).toFixed(2), takenPerS: Math.round(r.reduce((a, q) => a + q.takenPerS, 0) / n), maxHp: Math.round(r.reduce((a, q) => a + q.maxHp, 0) / n) }; });
+  const avg = BUILDS.filter(([n]) => !ONLY.length || ONLY.includes(n)).map(([name]) => { const r = rows.filter((q) => q.build === name), n = r.length; return { build: name, kps: +(r.reduce((a, q) => a + q.kps, 0) / n).toFixed(2), reck: +(r.reduce((a, q) => a + q.reck, 0) / n).toFixed(2), takenPerS: Math.round(r.reduce((a, q) => a + q.takenPerS, 0) / n), maxHp: Math.round(r.reduce((a, q) => a + q.maxHp, 0) / n), ...(WARDEN ? { ttk: +(r.reduce((a, q) => a + (q.ttk ?? secs), 0) / n).toFixed(1), killed: r.filter((q) => q.ttk !== null).length } : {}) }; });
   console.table(avg);
   console.log(JSON.stringify(avg));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();
