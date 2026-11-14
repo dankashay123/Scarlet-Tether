@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '117';
+const BUILD = '118';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '118': ['LOADING IS STURDIER ON A WEAK CONNECTION: ART THAT FAILS TO LOAD IS ASKED FOR AGAIN.'],
   '117': ['NEW IN THE SHOP: SKINS. SEVEN PREMIUM SKINS FOR EVERY CLASS: ENLIGHTENED, THE VOID, PSYCHEDELIC, THE DREAD, THE RADIANT, THE DIVINE AND DEMONIC.', 'EACH SKIN CHANGES THE HERO, THE CROSSBOW OR SHARDS, THE BOLTS AND THEIR TRAILS, AND ADDS AN AURA AT YOUR FEET. LOOKS ONLY.'],
   '116': ['AUTO PLAY AND AUTO WOUNDS ARE NOW TWO ICONS LEFT OF THE MAP: GREY WHEN OFF, GREEN WHEN ON.', 'AUTO PLAY CAN BE TURNED ON DURING ANY DESCENT OF A STATION YOU HAVE CLEARED. FROM THEN ON THE WHOLE DESCENT PAYS AS AUTO PLAY, EVEN IF YOU TURN IT OFF AGAIN.'],
   '115': ['NEW LOOK FOR THE BUTTONS ON THE PLAY SCREEN: RAISED ICONS IN A GOLD RING. THE PAUSE SCREEN\'S TILES MATCH.', 'AFTER A DEATH YOU ARE BACK IN VAEL AT ONCE, BY THE CATHEDRAL. NO MORE DARK SCREEN.', 'AUTO PLAY: THE PILOT NO LONGER GOES BACK FOR HEALTH ORBS. IT KEEPS FIGHTING AND MOVING.', 'AUTO PLAY: THE END SCREEN SAYS HOW MANY PIECES AUTO SELL SOLD AND FOR HOW MUCH.'],
@@ -285,7 +286,11 @@ async function loadAssets() {
       }
       ok();
     };
-    im.onerror = fail; im.src = `assets/sprites/${SPR[name].image}?v=${BUILD}`;
+    // Round 117: a sheet that fails to load is asked for again (four tries) before the load gives up; with 73 sheets
+    // one dropped request on a weak connection used to leave the game without art.
+    let tries = 0; const src = () => `assets/sprites/${SPR[name].image}?v=${BUILD}${tries ? `&r=${tries}` : ''}`;
+    im.onerror = () => { if (++tries > 4) fail(new Error(`sheet ${name} did not load`)); else setTimeout(() => { im.src = src(); }, 300 * tries); };
+    im.src = src();
   })));
 }
 

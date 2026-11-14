@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-14, after round 117 (build 117, on `master`). Read
+Last updated 2026-11-14, after round 117 (build 118, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -462,6 +462,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   class's weapon, BUY (asks, then wears it), WEAR, TAKE OFF. Test:
   `round117.cjs` (every sheet and anim for three classes, the shop flow,
   a photo of each skin on each class).
+  **Loader (build 118):** with 73 sheets, three soaks at once made the
+  local server drop a request and the game started without the floor
+  sheet (`drawImage` errors in `makeTown`). `loadAssets` now asks again
+  for a sheet that fails (four tries, 300 ms apart and longer). Build 117
+  went to master before that soak was read; 118 followed at once.
 - **Round 116:** the owner asked for the auto buttons as icons left of the
   minimap (grey off, green on), and for rewards to stay reduced for the
   whole descent once auto play was used. `autoIcons()` places two discs
