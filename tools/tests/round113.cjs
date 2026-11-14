@@ -40,7 +40,7 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
   // A normal descent: the HUD switch turns Auto Wounds on and off.
   await p.goto('http://localhost:8123/?run&dev'); await p.waitForTimeout(1800);
   await p.evaluate(() => { HS.tut.on = false; HS.game.dialog = null; HS.game.news = null; HS.autoW().on = false; }); await p.waitForTimeout(300);
-  const b2 = await p.evaluate(() => { const r = document.getElementById('screen').getBoundingClientRect(), B = HS.autoHudBtn(); return { x: r.left + (B.x + B.w / 2) * r.width / HS.W, y: r.top + (B.y + B.h / 2) * r.height / HS.H }; });
+  const b2 = await p.evaluate(() => { const r = document.getElementById('screen').getBoundingClientRect(), c = HS.autoIcons().wounds; return { x: r.left + c.x * r.width / HS.W, y: r.top + c.y * r.height / HS.H }; }); // round 116: the Auto Wounds icon left of the minimap
   await check('hud-wounds-off'); await shot('hud-wounds-off'); await p.touchscreen.tap(b2.x, b2.y); await p.waitForTimeout(300); const on1 = await p.evaluate(() => HS.autoW().on); await check('hud-wounds-on'); await shot('hud-wounds-on');
   await p.touchscreen.tap(b2.x, b2.y); await p.waitForTimeout(300); out.hudWounds = { on: on1, offAgain: await p.evaluate(() => !HS.autoW().on) };
   console.log(JSON.stringify(out)); console.log('text problems', probs.length, probs.slice(0, 6));

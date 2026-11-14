@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-14, after round 115 (build 115, on `master`). Read
+Last updated 2026-11-14, after round 116 (build 116, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-115 on
+   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-116 on
    `claude/brave-brown-mytba1`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
@@ -427,6 +427,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 116:** the owner asked for the auto buttons as icons left of the
+  minimap (grey off, green on), and for rewards to stay reduced for the
+  whole descent once auto play was used. `autoIcons()` places two discs
+  (`AUTO_ICON_R`) in a column left of the minimap: Auto Play (a play arrow
+  in a loop) and Auto Wounds (a drop of blood); `topBand()` ends left of
+  them. The old button above the level bar is gone. Tapping Auto Play in a
+  descent of a cleared Station (not the Vigil, a cell or the yard) asks
+  first, then sets `run.auto` for the rest of the descent; tapping again
+  only pauses the pilot (`run.autoOff`), and the pay stays reduced since
+  `autoK()`, `autoSkip()` and the XP cut read `run.auto`. In an auto run
+  the Auto Wounds icon stays green (always on there). Test:
+  `round116.cjs`.
 - **Round 115:** the owner picked 1 (with a visual update for the HUD
   buttons), 3, 4, 5, asked to undo the pilot's walk back to far health
   orbs, and to drop the dark screen after a death. **Buttons:**
