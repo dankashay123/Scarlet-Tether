@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-14, after round 110 (build 110, on `master`). Read
+Last updated 2026-11-14, after round 111 (build 111, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-110 on
+   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-111 on
    `claude/brave-brown-mytba1`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
@@ -429,6 +429,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 111:** the owner asked that auto play not go out of its way for
+  gold or loot; what is left should be absorbed when the Warden dies. The
+  pilot's loot goal is now health orbs only (when under 60% health). The
+  Warden's fall already drew every drop to the player (`d.vac` in
+  `wardenSlain`); in an auto run they now fly faster (twice the distance
+  per second, at least 330) and the pilot stands at the Waystone until
+  none is still coming (8 s at most; gear that cannot fit a full bag is
+  not waited for). Checked with `round108.cjs` (`dropsLeft` at the tally).
 - **Round 110:** the owner said "1,2,3,4,5". **A freeze fixed (old bug):**
   the Hundred Nails' two-piece split marked its halves `split: true`, but
   since round 75 `split` is the Anchoress's count of shards a bolt breaks

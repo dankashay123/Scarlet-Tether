@@ -40,7 +40,7 @@ const S = process.argv[2], [VW, VH] = (process.argv[3] || '844x390').split('x').
   if (process.env.FULL !== '0') { // the whole descent at three times the speed (god mode: this checks the pilot finds its way, not survival)
     out.full = await p.evaluate(async () => { HS.DEV.speed = 3; HS.DEV.god = true; const t0 = performance.now(); let warden = false;
       while (performance.now() - t0 < 420000) { await new Promise((r) => setTimeout(r, 500)); HS.player.hp = HS.player.maxHp; if (HS.game.warden) warden = true; if (HS.game.state === 'tally' || HS.game.scene === 'town') break; }
-      HS.DEV.speed = 1; HS.DEV.god = false; return { secs: Math.round((performance.now() - t0) / 1000), state: HS.game.state, scene: HS.game.scene, kills: HS.game.kills, warden, toll: HS.game.toll && Math.round(100 * HS.game.toll.v / HS.game.toll.max), left: HS.enemies.filter((e) => !e.dead).length, goal: HS.AP.goal, at: [Math.round(HS.player.x), Math.round(HS.player.y)] }; });
+      HS.DEV.speed = 1; HS.DEV.god = false; return { secs: Math.round((performance.now() - t0) / 1000), state: HS.game.state, scene: HS.game.scene, kills: HS.game.kills, warden, toll: HS.game.toll && Math.round(100 * HS.game.toll.v / HS.game.toll.max), left: HS.enemies.filter((e) => !e.dead).length, dropsLeft: HS.drops.filter((d) => !d.taken && d.kind !== 'globe').length, runGold: HS.game.run.gold, goal: HS.AP.goal, at: [Math.round(HS.player.x), Math.round(HS.player.y)] }; });
     await shot('end');
   }
   console.log(JSON.stringify(out, null, 1)); console.log('text problems', probs.length, probs.slice(0, 6));

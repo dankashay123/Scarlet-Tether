@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '110';
+const BUILD = '111';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '111': ['AUTO PLAY NO LONGER GOES OUT OF ITS WAY FOR GOLD OR GEAR. EVERYTHING LEFT ON THE FLOOR FLIES TO YOU WHEN THE WARDEN FALLS, AND THE RUN WAITS FOR IT BEFORE RETURNING.'],
   '110': ['FIXED: WITH TWO OR MORE HUNDRED NAILS PIECES, SPLIT BOLTS COULD MULTIPLY WITHOUT END IN A BIG CROWD AND FREEZE THE GAME.', 'AUTO WOUNDS: TWO NEW SWITCHES IN THE AUTO WINDOW. STOP FOR A STIGMA OPENS THE LEVEL-UP SCREEN WHEN ONE IS OFFERED. REROLL A WEAK DRAW PAYS FOR ONE REROLL WHEN NO CARD IS OF A KIND YOU RATE HIGHEST.', 'AUTO PLAY: THE PILOT DODGES SWINGS, CONES, CHARGES AND RINGS, AIMS RITES AT THE BIGGEST CROWD AND NO LONGER DASHES INTO POOLS. THE END SCREEN SHOWS WHAT AUTO PLAY COST.', 'PAUSE SCREEN: THE HUD IS HIDDEN BEHIND IT, AND YOUR WOUNDS SHOW AS TILES. TAP ONE TO OPEN THE WOUNDS PAGE.'],
   '109': ['NEW PAUSE TILE DURING A DESCENT: WOUNDS. IT LISTS EVERY WOUND YOU HOLD, AND YOU CAN SACRIFICE THERE AT ANY TIME: 8 RANDOM RANKS FOR A RANDOM MYTHIC WOUND. (ON THE LEVEL-UP SCREEN IT IS STILL 7 RANKS AND THAT LEVEL\'S CHOICE.)'],
   '108': ['NEW: AUTO WOUNDS. THE GAME PICKS YOUR WOUND AT EACH LEVEL. TURN IT ON FROM THE LEVEL-UP SCREEN (AUTO PICK) OR THE PAUSE SCREEN (AUTO), WHERE YOU ALSO SET HOW MUCH YOU WANT DAMAGE, DEFENCE AND UTILITY.', 'NEW: AUTO PLAY ON THE DESCENT PANEL, FOR STATIONS YOU HAVE CLEARED. THE GAME PLAYS THE RUN FOR YOU, FOR 75% LESS GOLD AND DROPS AND 50% LESS XP. MOVE THE STICK TO STEER; PAUSE IT FROM THE PAUSE SCREEN.'],
@@ -7260,7 +7261,7 @@ function updateDrops(dt) {
     const dist = Math.hypot(d.x - player.x, d.y - player.y);
     const magnet = d.kind === 'gold' ? 60 : d.kind === 'knell' ? 80 : d.kind === 'globe' || d.kind === 'chrism' || d.kind === 'vkey' || d.kind === 'ember' || d.kind === 'ingr' || d.kind === 'rtear' || d.kind === 'rubric' || d.kind === 'testament' || d.kind === 'indul' ? 40 : 0;
     const full = d.kind === 'item' && SAVE.bag.length >= BAG_SIZE && SAVE.equip[d.item.slot];
-    if (d.t > 0.4 && dist > 0.5 && (dist < magnet || (d.vac && !full))) { const s = (d.vac ? 330 : 210) * dt; d.x += (player.x - d.x) / dist * Math.min(dist, s); d.y += (player.y - d.y) / dist * Math.min(dist, s); }
+    if (d.t > 0.4 && dist > 0.5 && (dist < magnet || (d.vac && !full))) { const s = (d.vac ? (autoRun() ? Math.max(330, dist * 2) : 330) : 210) * dt; /* an auto run draws them in within a second or two */ d.x += (player.x - d.x) / dist * Math.min(dist, s); d.y += (player.y - d.y) / dist * Math.min(dist, s); }
     if (full && d.t > 0.4 && dist < 14 && !(game.toast && game.toast.msg === 'YOUR BAG IS FULL')) toast('YOUR BAG IS FULL', 1.5);
     if (!full && d.t > 0.4 && dist < (d.kind === 'item' ? 14 : 10)) {
       d.taken = true; sfx(d.kind === 'gold' ? 'gold' : d.kind === 'globe' ? 'heal' : d.kind === 'knell' ? 'knell' : 'pickup', { gap: d.kind === 'knell' ? 0.07 : 0.045, rate: d.kind === 'item' && d.item.ri >= 3 ? 0.8 : 1 });
@@ -10067,9 +10068,9 @@ function autoPilot(dt) {
   if (game.interact && game.interact.label !== 'RETURN') game.interact.use(); // shrines and chests on the way
   if (hand) return;
   AP.on = true;
-  // Where to: loot once the foes near are dead, then the Waystone, the Warden, the nearest foe.
+  // Where to: a health orb when hurt, then the Waystone, the Warden, the nearest foe.
   if ((AP.t -= dt) <= 0) { AP.t = 0.35;
-    const full = SAVE.bag.length >= BAG_SIZE, orbs = p.hp < p.maxHp * 0.6 ? drops.filter((d) => !d.taken && d.z <= 0 && d.kind === 'globe' && Math.hypot(d.x - p.x, d.y - p.y) < 200) : [], loot = orbs.length ? orbs : nd > 140 ? drops.filter((d) => !d.taken && d.z <= 0 && d.kind !== 'knell' && !(d.kind === 'item' && full) && Math.hypot(d.x - p.x, d.y - p.y) < 240) : [];
+    const full = SAVE.bag.length >= BAG_SIZE, orbs = p.hp < p.maxHp * 0.6 ? drops.filter((d) => !d.taken && d.z <= 0 && d.kind === 'globe' && Math.hypot(d.x - p.x, d.y - p.y) < 200) : [], loot = orbs; /* round 111: only health orbs when hurt; gold and gear left behind fly in when the Warden falls */
     const foes = enemies.filter((e) => !e.dead && !e.illusion && e.type !== 'dummy');
     if (loot.length) { AP.goal = 'loot'; autoField(loot); } else if (game.waystone) { AP.goal = 'stone'; autoField([game.waystone]); }
     else if (boss) { AP.goal = 'foe'; autoField([boss]); } else if (foes.length) { AP.goal = 'foe'; autoField(foes); } else { AP.goal = ''; AP.field = null; }
@@ -10078,7 +10079,10 @@ function autoPilot(dt) {
     if (want && Math.hypot(p.x - AP.lastX, p.y - AP.lastY) < 3) { if ((AP.stuckT += 0.35) > 1) { AP.stuckT = 0; AP.jit = 0.5; AP.ja = Math.random() * Math.PI * 2; AP.strafe = -AP.strafe; } } else AP.stuckT = 0;
     AP.lastX = p.x; AP.lastY = p.y;
   }
-  if (AP.goal === 'stone' && game.interact && game.interact.label === 'RETURN') { game.interact.use(); return; }
+  if (AP.goal === 'stone' && game.interact && game.interact.label === 'RETURN') { // wait for the drops flying in (8 s at most), then return
+    const full = SAVE.bag.length >= BAG_SIZE, coming = drops.some((d) => d.vac && !d.taken && !(d.kind === 'item' && full && SAVE.equip[d.item.slot]));
+    AP.waitT = (AP.waitT || 0) + dt; if (!coming || AP.waitT > 8) { AP.waitT = 0; game.interact.use(); } input.mx = 0; input.my = 0; return; }
+  AP.waitT = 0;
   let mx = 0, my = 0;
   const step = autoStep(p), reach = isMelee() ? 20 + (near ? near.r : 0) : p.hp < p.maxHp * 0.4 ? 120 : 84;
   const hurt = p.hp < p.maxHp * 0.35, rm = Math.hypot(rx, ry);
