@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-14, after round 109 (build 109, on `master`). Read
+Last updated 2026-11-14, after round 110 (build 110, on `master`). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -38,7 +38,7 @@ see "The owner's preferences".) When the owner answers with numbers
    minutes per build; three classes in parallel is fine.
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
-   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-109 on
+   rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-110 on
    `claude/brave-brown-mytba1`.
 8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
@@ -276,18 +276,20 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Auto play (round 108).** The pilot plays worse than a person: with no
-  gear at Station I it loses about 0.8 of its health bar a minute
-  (`autobench.cjs`; pools, shots and aimed lines hurt most). Not measured:
-  how it fares at deep Stations with matching gear, or against each
-  Warden. It ignores cone and ring telegraphs and does not aim rites. Ask
-  the owner how the 75% / 50% cuts feel, and whether run XP (levels within
-  the run) should be cut too: only Saint XP is. Not available in the
-  Vigil, cells or the yard. The tally screen does not say the run was
-  auto.
+- **Auto play (rounds 108 and 110).** Measured with `autobench.cjs`
+  (Saint, six Nails pieces and arms, Saint level 60, no passives,
+  talents, enchants or pets; `NOREFILL=1`, so it can die). Gear of
+  Station XII on Station XII: died in 3 of 4 runs (15 to 30 s). The same
+  gear on Station X: survived all 3 runs of 140 s (283 to 451 kills); on
+  VIII: all 3 (583 to 704 kills). So auto play is safe about two Stations
+  under the gear and risky at the gear's own Station. Wardens summoned
+  into the full crowd at X: killed in 27 to 65 s in 4 of 6 tries
+  (Bellwright, Cardinal, Lady of Nails). What still hurts it most: pools
+  that open under it, homing shots, aimed shots. Not measured: the
+  Mendicant and Anchoress at depth, Strata II and III. Ask the owner how
+  the 75% / 50% cuts feel and whether run XP should be cut too.
 - **Wounds page (round 109).** Ask the owner whether 8 ranks is the right
-  price there. REROLL is still only on the level-up screen, so an Auto
-  Wounds player never rerolls.
+  price there.
 - **Warden times per set (rounds 106-107).** Remeasured in round 107 after
   the `SETK.boss` nudge (the Bellwright, Station XII, 3 seeds, 120 s cap):
   every six-piece set killed it every time. Seconds: Saint nails 53, stride
@@ -427,6 +429,29 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 110:** the owner said "1,2,3,4,5". **A freeze fixed (old bug):**
+  the Hundred Nails' two-piece split marked its halves `split: true`, but
+  since round 75 `split` is the Anchoress's count of shards a bolt breaks
+  into, so each half broke into a shard, which split again: in a dense
+  crowd bolts doubled without end (37,000 in 6 s at Station XII) and the
+  game froze. The halves now carry `nailSplit`. Nails measured after the
+  fix: 9.5 kills a second against the Stride's 9.7 in the same run (4
+  seeds, 90 s), so nothing retuned. **Auto Wounds:** two switches in the
+  AUTO window. STOP FOR A STIGMA (`autoW().stop`) opens the level-up
+  screen when a Stigma card is offered (never in an auto play run).
+  REROLL A WEAK DRAW (`autoW().reroll`) pays for one reroll when no card
+  is of a kind rated highest. Both have hold tips. **Pilot:** steps
+  across and back from a foe winding up a swing, cone, charge or beam
+  (dashes at the last moment from charges, Wardens, or when hurt), dashes
+  through spreading rings, never dashes into a pool, and rites aim at
+  the densest crowd while it steers (`AP.on`). `autobench.cjs` takes
+  `SET`, `GEAR`, `GEARST`, `WARDEN`, `NOREFILL`. **Tally:** an auto run's
+  receipt is headed AUTO PLAY RUN and says what the cut cost
+  (`run.autoGold`, `run.autoGear`, kept in a suspended run). **Pause
+  screen:** the HUD is not drawn behind it (nor behind the AUTO window and
+  the Wounds page); held Wounds are tiles (`game.pauseWounds`), and a tap
+  on one opens the Wounds page at that row. Test: `round110.cjs`; a whole
+  auto descent, menus at three sizes and a soak per class clean.
 - **Round 109:** the owner asked for a button to a screen of all held
   Wounds, so a sacrifice is still possible with Auto Wounds on. A WOUNDS
   pause tile (descents only, not the yard) opens the Wounds page (state

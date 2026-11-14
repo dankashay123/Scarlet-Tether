@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '109';
+const BUILD = '110';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '110': ['FIXED: WITH TWO OR MORE HUNDRED NAILS PIECES, SPLIT BOLTS COULD MULTIPLY WITHOUT END IN A BIG CROWD AND FREEZE THE GAME.', 'AUTO WOUNDS: TWO NEW SWITCHES IN THE AUTO WINDOW. STOP FOR A STIGMA OPENS THE LEVEL-UP SCREEN WHEN ONE IS OFFERED. REROLL A WEAK DRAW PAYS FOR ONE REROLL WHEN NO CARD IS OF A KIND YOU RATE HIGHEST.', 'AUTO PLAY: THE PILOT DODGES SWINGS, CONES, CHARGES AND RINGS, AIMS RITES AT THE BIGGEST CROWD AND NO LONGER DASHES INTO POOLS. THE END SCREEN SHOWS WHAT AUTO PLAY COST.', 'PAUSE SCREEN: THE HUD IS HIDDEN BEHIND IT, AND YOUR WOUNDS SHOW AS TILES. TAP ONE TO OPEN THE WOUNDS PAGE.'],
   '109': ['NEW PAUSE TILE DURING A DESCENT: WOUNDS. IT LISTS EVERY WOUND YOU HOLD, AND YOU CAN SACRIFICE THERE AT ANY TIME: 8 RANDOM RANKS FOR A RANDOM MYTHIC WOUND. (ON THE LEVEL-UP SCREEN IT IS STILL 7 RANKS AND THAT LEVEL\'S CHOICE.)'],
   '108': ['NEW: AUTO WOUNDS. THE GAME PICKS YOUR WOUND AT EACH LEVEL. TURN IT ON FROM THE LEVEL-UP SCREEN (AUTO PICK) OR THE PAUSE SCREEN (AUTO), WHERE YOU ALSO SET HOW MUCH YOU WANT DAMAGE, DEFENCE AND UTILITY.', 'NEW: AUTO PLAY ON THE DESCENT PANEL, FOR STATIONS YOU HAVE CLEARED. THE GAME PLAYS THE RUN FOR YOU, FOR 75% LESS GOLD AND DROPS AND 50% LESS XP. MOVE THE STICK TO STEER; PAUSE IT FROM THE PAUSE SCREEN.'],
   '107': ['THE LEVEL-UP SCREEN NO LONGER SHOWS THE WARDEN\'S NAME AND BARS THROUGH ITS TITLE.', 'PAUSE SCREEN: EVERY TILE\'S ICON NOW HAS THE SAME LOOK.', 'BATTLE PETS SHOW WHEN THEY ACT: YOUR FOLLOWER HOPS, WITH A SMALL BURST AND A QUIET SOUND.', 'BAG: ON NARROW PHONES THE EMPTY STRIP BESIDE THE BAG LISTS THE SETS YOU WEAR.'],
@@ -1777,7 +1778,7 @@ function bankRun(died) {
   for (const it of SAVE.bag) it.run = false;
   R.lostItems = lost.length;
   SAVE.bestLevel = Math.max(SAVE.bestLevel || 1, R.level);
-  game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time, gold: R.gold, tithe: R.tithe, items: R.items, lostItems: R.lostItems, rooms: room.rooms.filter((q) => q.state === 'clear').length, total: room.rooms.length, vigil: !!R.vigil, pool, martyr: !!R.martyr, recap: died && !R.cell ? deathRecap(R) : null, where: R.vigil ? (R.vigilResult ? (R.vigilResult.up ? `${R.vigil} KEPT, +${R.vigilResult.up}` : `${R.vigil}, CANDLE OUT`) : `${R.vigil}, FALLEN`) : `${DIFF[R.diff].rn}${R.martyr ? ', VOW' : ''}${R.omens && R.omens.length ? ` +${R.omens.length} OMEN${R.omens.length > 1 ? 'S' : ''}` : ''}` };
+  game.receipt = { kills: game.kills, fervor: Math.round(game.best), perfects: game.perfects, time: game.time, gold: R.gold, tithe: R.tithe, items: R.items, lostItems: R.lostItems, rooms: room.rooms.filter((q) => q.state === 'clear').length, total: room.rooms.length, vigil: !!R.vigil, pool, martyr: !!R.martyr, auto: R.auto ? { gold: Math.round(R.autoGold || 0), gear: Math.round(R.autoGear || 0) } : null, recap: died && !R.cell ? deathRecap(R) : null, where: R.vigil ? (R.vigilResult ? (R.vigilResult.up ? `${R.vigil} KEPT, +${R.vigilResult.up}` : `${R.vigil}, CANDLE OUT`) : `${R.vigil}, FALLEN`) : `${DIFF[R.diff].rn}${R.martyr ? ', VOW' : ''}${R.omens && R.omens.length ? ` +${R.omens.length} OMEN${R.omens.length > 1 ? 'S' : ''}` : ''}` };
   persist();
 }
 function renderRoomStatus() {
@@ -4606,14 +4607,14 @@ function snapRun() {
   const R = game.run;
   if (game.scene !== 'wound' || !R || R.vigil || R.cell || R.yard || tut.on || game.state === 'dead' || game.state === 'tally' || !player || player.hp <= 0) return;
   SAVE.suspend = { seed: R.seed, map: room.open ? 'open' : 'rooms', diff: R.diff, stratum: R.stratum, omens: R.omens, gold: R.gold, level: R.level, xp: R.xp, pending: R.pending, wounds: R.wounds, kills: game.kills,
-    martyr: !!R.martyr, auto: !!R.auto, toll: game.toll ? { v: game.toll.v, done: game.toll.done } : null, warden: !!(game.warden && !game.warden.dead), stone: !!game.waystone,
+    martyr: !!R.martyr, auto: !!R.auto, autoGold: R.autoGold || 0, autoGear: R.autoGear || 0, toll: game.toll ? { v: game.toll.v, done: game.toll.done } : null, warden: !!(game.warden && !game.warden.dead), stone: !!game.waystone,
     px: Math.round(player.x), py: Math.round(player.y), hpK: player.hp / player.maxHp, dead: R.dead, seen: room.seen ? rle(room.seen) : '', items: SAVE.bag.filter((it) => it.run).map((it) => it.id), at: Date.now() };
   persist();
 }
 function resumeRun(S) {
   const R = game.run, dead = new Set(S.dead || []);
   enemies = enemies.filter((e) => !dead.has(e.sid)); R.dead = [...dead];
-  Object.assign(R, { gold: S.gold, level: S.level, xp: S.xp, pending: 0, wounds: S.wounds || {} });
+  Object.assign(R, { gold: S.gold, level: S.level, xp: S.xp, pending: 0, wounds: S.wounds || {}, autoGold: S.autoGold || 0, autoGear: S.autoGear || 0 });
   game.kills = S.kills || 0; applyGear(true);
   player.x = S.px; player.y = S.py; player.hp = Math.max(1, Math.round(player.maxHp * (S.hpK || 1)));
   if (boxSolid(player.x, player.y, player.r) && !unstick(player, player.r)) { player.x = (room.start.cx + 0.5) * TILE; player.y = (room.start.cy + 2) * TILE; } // an older save on a changed map
@@ -7244,10 +7245,10 @@ function salvage(it) {
 
 let drops = [];
 function dropLoot(x, y, { gold = 0, item = 0, itemBoost = 0, globe = 0, warden = false } = {}) {
-  const df = curDiff(); item *= df.drop * (game.run && game.run.martyr ? 2 : 1) * autoK(); itemBoost += df.boost + (pas('sense') ? 0.5 : 0);
+  const df = curDiff(); item *= df.drop * (game.run && game.run.martyr ? 2 : 1); if (autoRun()) { game.run.autoGear = (game.run.autoGear || 0) + item * (1 - autoK()); item *= autoK(); } itemBoost += df.boost + (pas('sense') ? 0.5 : 0);
   if (df.vigil && !warden) item = 0; // in the Vigil only the Warden pays in gear
   const pop = (o) => drops.push({ x, y, z: 6, vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(60, 120), t: 0, ...o });
-  for (let k = 0; k < gold; k++) pop({ kind: 'gold', amount: Math.max(1, Math.round(rand(3, 9) * df.gold * (game.buff && game.buff.kind === 'plenty' ? 2 : 1) * autoK())) });
+  for (let k = 0; k < gold; k++) { const full = rand(3, 9) * df.gold * (game.buff && game.buff.kind === 'plenty' ? 2 : 1), amt = Math.max(1, Math.round(full * autoK())); if (autoRun()) game.run.autoGold = (game.run.autoGold || 0) + Math.max(0, full - amt); pop({ kind: 'gold', amount: amt }); }
   if (pas('gravesense')) globe *= 1.5; if (pet('orbtoad')) globe *= 1.3; if (pet('relicrat')) item *= 1.2;
   for (let k = 0; k < Math.floor(globe) + (rng() < globe % 1 ? 1 : 0); k++) pop({ kind: 'globe' });
   for (let k = 0; k < Math.floor(item) + (rng() < item % 1 ? 1 : 0); k++) { const it = rollItem(itemBoost); pop({ kind: 'item', item: it }); if (it.ri >= 3) sfx('legend', { gap: 0.3 }); }
@@ -7613,7 +7614,7 @@ function updateBolts(dt) {
           if (b.pierce-- <= 0) {
             b.life = 0;
             // The Hundred Nails: the last foe splits the bolt in two.
-            if (sb('nails', 2) && !b.split) for (const da of [-0.5, 0.5]) { const a = Math.atan2(b.vy, b.vx) + da; bolts.push({ ...b, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.35, pierce: 0, split: true, hit: new Set(b.hit), trail: [] }); }
+            if (sb('nails', 2) && !b.nailSplit && !b.shard) for (const da of [-0.5, 0.5]) { const a = Math.atan2(b.vy, b.vx) + da; bolts.push({ ...b, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.35, pierce: 0, nailSplit: true, hit: new Set(b.hit), trail: [] }); } // round 110: its own flag; `split` is the Anchoress's shard count, and sharing it made these halves split without end in a crowd
             break;
           }
         }
@@ -8511,7 +8512,7 @@ function castAM1(aim) {
   }
   else if (id === 'shrapnel') { shrap(); if (tw) later(0.3, shrap); }
   else if (id === 'flight') {
-    const near = !aim && Math.hypot(input.mx, input.my) < 0.2 ? bestCluster(T.dash.speed * T.dash.time * 1.9 + 40) : null;
+    const near = !aim && (AP.on || Math.hypot(input.mx, input.my) < 0.2) ? bestCluster(T.dash.speed * T.dash.time * 1.9 + 40) : null;
     startDash(p, { len: 1.9, step: true, dir: aim ? aim.a : near ? Math.atan2(near.y - p.y, near.x - p.x) : null });
     const land = () => { if (!player) return; skillFx.push({ kind: 'nova', ramp: 'violet', x: p.x, y: p.y, t: 0, max: 0.35, r: 62 * WS, dmg: 26 * (1 + wound('riteFlight') * 0.4), hits: new Set() });
       for (const e of nearestFoes(p.x, p.y, 99, 62 * WS)) if (aSyn('flight')) e.burn = T.thurible.burn.time;
@@ -8563,7 +8564,7 @@ function castM1(aim) {
   else if (r === 'storm') { castStorm(aim); if (twist('storm')) later(0.3, () => castStorm(aim)); }
   else if (r === 'step') { // the landing burst is nova damage, so the Penitent's Stride multiplies it
     // Aimed, it leaps that way; steering, it follows the stick; standing still, it leaps at the thickest crowd in reach.
-    const near = !aim && Math.hypot(input.mx, input.my) < 0.2 ? bestCluster(T.dash.speed * T.dash.time * 1.9 + 40) : null;
+    const near = !aim && (AP.on || Math.hypot(input.mx, input.my) < 0.2) ? bestCluster(T.dash.speed * T.dash.time * 1.9 + 40) : null;
     startDash(player, { len: 1.9, step: true, dir: aim ? aim.a : near ? Math.atan2(near.y - player.y, near.x - player.x) : null });
     const burst = () => { if (!player) return; skillFx.push({ kind: 'nova', ramp: 'fire', x: player.x, y: player.y, t: 0, max: 0.35, r: 62 * WS, dmg: 30 * (1 + wound('riteStep') * 0.5), hits: new Set() }); for (const [r0, c] of [[62 * WS, '255,122,31'], [40 * WS, '255,192,74']]) rings.push({ x: player.x, y: player.y - 4, t: 0, max: 0.4, r: r0, color: c, flat: true }); sfx('thurible', { rate: 0.7, vol: 1.1, gap: 0.1 }); game.shake = Math.max(game.shake, 2); };
     later(T.dash.time * 1.9, burst); if (twist('step')) later(T.dash.time * 1.9 + 0.35, burst);
@@ -9208,7 +9209,7 @@ function render() {
   }
   mark('nums');
   renderScreenFx();
-  if (game.state !== 'stig') renderHud(); // round 107: the level-up screen hides the HUD (the Warden's name showed through its title)
+  if (!['stig', 'pause', 'autow', 'wounds'].includes(game.state)) renderHud(); // round 110: the pause screen hides it too // round 107: the level-up screen hides the HUD (the Warden's name showed through its title)
   mark('hud');
   UI_SOFT = game.state !== 'play';
   if (game.state === 'pause') { layerBreak(); renderPause(); }
@@ -10011,8 +10012,8 @@ const autoWoundsOn = () => !tut.on && (autoW().on || !!(game.run && game.run.aut
 const autoWoundScore = (c) => (autoW()[woundKind(c)] + 1) * 10 + c.r * 4 + Math.min(2, wound(c.id));
 function autoWoundPick(cards) { let bi = 0; cards.forEach((c, i) => { if (autoWoundScore(c) > autoWoundScore(cards[bi])) bi = i; }); return bi; }
 function autoWoundTake() {
-  const S = game.stig, i = autoWoundPick(S.cards), c = S.cards[i]; S.t = 1; pickStigma(i);
-  toast(`AUTO WOUND: ${heroText(c.name)}`, 2); game.toastColor = WOUND_RARITY[c.r].col;
+  const S = game.stig, i = autoWoundPick(S.cards), c = S.cards[i], S0rolled = !!S.autoRolled; S.t = 1; pickStigma(i);
+  toast(`${S0rolled ? 'REROLLED. ' : ''}AUTO WOUND: ${heroText(c.name)}`, 2.2); game.toastColor = WOUND_RARITY[c.r].col;
 }
 // Auto play: only on a Station already cleared, chosen on the Descent panel. The Saint fights alone (autoPilot) and
 // the run pays less: AUTO_PAY.drop of the gold, gear and other drops, AUTO_PAY.xp of the Saint XP.
@@ -10050,7 +10051,7 @@ function autoStep(p) {
   const gx = (tx + bx + 0.5) * TILE - p.x, gy = (ty + by + 0.5) * TILE - p.y, d = Math.hypot(gx, gy) || 1; return [gx / d, gy / d];
 }
 function autoPilot(dt) {
-  const p = player, R = game.run; AP.hand = false;
+  const p = player, R = game.run; AP.hand = false; AP.on = false;
   if (!autoRun() || R.autoOff || !p || p.hp <= 0) return;
   // A hand on the stick or the keys steers; rites still cast themselves.
   const hand = Math.hypot(input.mx, input.my) > 0.15; AP.hand = hand;
@@ -10065,6 +10066,7 @@ function autoPilot(dt) {
   if (p.sentence && p.charges > 0 && p.dashT <= 0 && p.sentence.t < 0.6) input.dash = true; // the Sentence needs a dash
   if (game.interact && game.interact.label !== 'RETURN') game.interact.use(); // shrines and chests on the way
   if (hand) return;
+  AP.on = true;
   // Where to: loot once the foes near are dead, then the Waystone, the Warden, the nearest foe.
   if ((AP.t -= dt) <= 0) { AP.t = 0.35;
     const full = SAVE.bag.length >= BAG_SIZE, orbs = p.hp < p.maxHp * 0.6 ? drops.filter((d) => !d.taken && d.z <= 0 && d.kind === 'globe' && Math.hypot(d.x - p.x, d.y - p.y) < 200) : [], loot = orbs.length ? orbs : nd > 140 ? drops.filter((d) => !d.taken && d.z <= 0 && d.kind !== 'knell' && !(d.kind === 'item' && full) && Math.hypot(d.x - p.x, d.y - p.y) < 240) : [];
@@ -10093,6 +10095,15 @@ function autoPilot(dt) {
   for (const sh of shots) { const dx = p.x - sh.x, dy = p.y - 10 - sh.y, d = Math.hypot(dx, dy), v = Math.hypot(sh.vx, sh.vy); if (d > 110 || d < 1 || v < 1) continue;
     const ax = sh.vx / v, ay = sh.vy / v, along = dx * ax + dy * ay, off = dx * -ay + dy * ax; if (along < 0 || Math.abs(off) > 16) continue;
     const sd = off >= 0 ? 1 : -1; mx += -ay * sd * 1.2; my += ax * sd * 1.2; }
+  // A foe winding up an aimed blow (swing, cone, charge, beam): step across its line and back; dash at the last moment when hurt or facing a Warden.
+  for (const e of enemies) { if (e.dead || e.state !== 'windup' || !e.atk || !['swipe', 'cone', 'lunge', 'multidash', 'beam', 'pull'].includes(e.atk.type)) continue;
+    const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy); if (d > (e.atk.range || 60) + 40 || d < 1) continue;
+    const ax = Math.cos(e.ang), ay = Math.sin(e.ang), off = dx * -ay + dy * ax, sd = Math.abs(off) > 3 ? Math.sign(off) : AP.strafe, k = e.boss ? 2 : 1.3;
+    mx += (-ay * sd * 1.2 + dx / d * 0.6) * k; my += (ax * sd * 1.2 + dy / d * 0.6) * k;
+    if ((e.boss || hurt || e.atk.type === 'lunge' || e.atk.type === 'multidash') && e.atk.windup - e.t < 0.22 && Math.abs(off) < 26 && p.charges > 0 && p.dashT <= 0 && (AP.dashT || 0) <= 0) { input.mx = -ay * sd; input.my = ax * sd; input.dash = true; AP.dashT = 0.7; } }
+  // A ring spreading across the floor: dash through it as it arrives.
+  for (const hz of hazards) { if (hz.kind !== 'ring' || (hz.wait || 0) > 0) continue; const dx = hz.x - p.x, dy = hz.y - p.y, d = Math.hypot(dx, dy), gap = d - hz.R;
+    if (gap > 0 && gap < 30 && d < (hz.max || 200) + 10 && p.charges > 0 && p.dashT <= 0 && d > 1) { input.mx = dx / d; input.my = dy / d; input.dash = true; AP.dashT = 0.5; } }
   // Aimed lines and beams: step off the line.
   for (const hz of hazards) { if (hz.kind !== 'line' && hz.kind !== 'aim') continue; const ox = hz.kind === 'aim' ? hz.src.x : hz.x, oy = hz.kind === 'aim' ? hz.src.y - 10 : hz.y, ax = Math.cos(hz.ang), ay = Math.sin(hz.ang);
     const dx = p.x - ox, dy = p.y - 10 - oy, along = dx * ax + dy * ay, off = dx * -ay + dy * ax; if (along < 0 || along > (hz.len || 280) + 10 || Math.abs(off) > (hz.w || 10) + 14) continue;
@@ -10103,11 +10114,13 @@ function autoPilot(dt) {
     if (dot > 0) { mx -= ux * dot; my -= uy * dot; } // slide round its edge
     if (d < r) { mx -= ux * 1.5; my -= uy * 1.5; if (hz.kind === 'circle' && (hz.delay || 0) - (hz.t || 0) < 0.3 && p.charges > 0 && p.dashT <= 0) { input.mx = -ux; input.my = -uy; input.dash = true; } } }
   // Standing in a pool (several can overlap): make for the nearest clear ground, with a dash if it is far.
-  { const wet = (x, y) => hazards.some((hz) => hz.kind === 'pool' && Math.hypot(x - hz.x, (y - hz.y) / 0.6) < hz.r + 4);
-    if (wet(p.x, p.y)) { let found = null; for (const R1 of [18, 34, 52, 76]) { for (let k = 0; k < 12 && !found; k++) { const a = AP.ja + k * Math.PI / 6, x = p.x + Math.cos(a) * R1, y = p.y + Math.sin(a) * R1 * 0.7; if (!boxSolid(x, y, p.r) && !wet(x, y)) found = [Math.cos(a), Math.sin(a) * 0.7, R1]; } if (found) break; }
+  const wet = (x, y) => hazards.some((hz) => hz.kind === 'pool' && Math.hypot(x - hz.x, (y - hz.y) / 0.6) < hz.r + 4);
+  { if (wet(p.x, p.y)) { let found = null; for (const R1 of [18, 34, 52, 76]) { for (let k = 0; k < 12 && !found; k++) { const a = AP.ja + k * Math.PI / 6, x = p.x + Math.cos(a) * R1, y = p.y + Math.sin(a) * R1 * 0.7; if (!boxSolid(x, y, p.r) && !wet(x, y)) found = [Math.cos(a), Math.sin(a) * 0.7, R1]; } if (found) break; }
       if (found) { const m0 = Math.hypot(found[0], found[1]); mx = found[0] / m0; my = found[1] / m0; if (found[2] > 30 && p.charges > 0 && p.dashT <= 0 && (AP.dashT || 0) <= 0) { input.mx = mx; input.my = my; input.dash = true; AP.dashT = 0.6; } } } }
   if (AP.jit > 0) { AP.jit -= dt; mx = Math.cos(AP.ja); my = Math.sin(AP.ja); }
   const m = Math.hypot(mx, my); if (m > 1) { mx /= m; my /= m; }
+  // No dash that would end in a pool (unless the Saint stands in one already).
+  if (input.dash && !wet(p.x, p.y)) { const dm = Math.hypot(input.mx, input.my) || 1, L0 = T.dash.speed * T.dash.time; if (wet(p.x + input.mx / dm * L0, p.y + input.my / dm * L0) || wet(p.x + input.mx / dm * L0 * 0.6, p.y + input.my / dm * L0 * 0.6)) input.dash = false; else return; }
   input.mx = mx; input.my = my;
 }
 // Round 109: the Wounds page, from a pause tile during a descent: every Wound held, its text, and SACRIFICE, so a
@@ -10149,7 +10162,7 @@ function woundsTap(x, y) {
 }
 // The auto window: opened from the pause screen. Auto Wounds on or off, its three weights, and the pilot of an auto run.
 function autoWinLayout() {
-  const rows = 4 + (autoRun() ? 1 : 0), pw = Math.min(250, W - 24), ph = 30 + rows * 22 + 16 + 30, x0 = Math.round(W / 2 - pw / 2), y0 = Math.max(4, Math.round((H - ph) / 2));
+  const rows = 6 + (autoRun() ? 1 : 0), pw = Math.min(270, W - 24), ph = 30 + rows * 22 + 16 + 30, x0 = Math.round(W / 2 - pw / 2), y0 = Math.max(4, Math.round((H - ph) / 2));
   const row = (i) => ({ x: x0 + pw - 10 - 104, y: y0 + 32 + i * 22 + (i > 0 ? 14 : 0), w: 104, h: 18 });
   return { pw, ph, x0, y0, rows, row, done: { x: Math.round(W / 2 - 50), y: y0 + ph - 28, w: 100, h: 20 } };
 }
@@ -10162,7 +10175,11 @@ function renderAutoWin() {
   lab(0, 'AUTO WOUNDS'); invButton(L.row(0), A.on || autoRun() ? 'ON' : 'OFF', A.on || autoRun() ? PAL.gold3 : PAL.stone4, !autoRun());
   text(autoRun() ? 'ALWAYS ON IN AN AUTO PLAY RUN. PICKS BY THESE WEIGHTS:' : 'PICKS A WOUND AT EACH LEVEL BY THESE WEIGHTS:', L.x0 + 12, L.row(0).y + 22, PAL.stone1, sm);
   AUTO_KINDS.forEach(([k, name], j) => { lab(j + 1, name); invButton(L.row(j + 1), `< ${AUTO_LV[A[k]]} >`, PAL.stone4); });
-  if (autoRun()) { lab(4, 'AUTO PLAY'); invButton(L.row(4), game.run.autoOff ? 'PAUSED' : 'ON', game.run.autoOff ? PAL.stone4 : PAL.gold3); }
+  lab(4, 'STOP FOR A STIGMA'); invButton(L.row(4), A.stop ? 'ON' : 'OFF', A.stop ? PAL.gold3 : PAL.stone4, !autoRun());
+  lab(5, 'REROLL A WEAK DRAW'); invButton(L.row(5), A.reroll ? 'ON' : 'OFF', A.reroll ? PAL.gold3 : PAL.stone4);
+  HOLD_TIPS.push({ ...L.row(4), x: L.x0 + 10, w: L.pw - 20, title: 'STOP FOR A STIGMA', text: 'WHEN A STIGMA CARD IS OFFERED, THE LEVEL-UP SCREEN OPENS SO YOU CHOOSE. NOT IN AN AUTO PLAY RUN.' });
+  HOLD_TIPS.push({ ...L.row(5), x: L.x0 + 10, w: L.pw - 20, title: 'REROLL A WEAK DRAW', text: 'WHEN NO CARD IS OF A KIND YOU RATE HIGHEST, AUTO WOUNDS PAYS FOR ONE REROLL FROM THE RUN\'S GOLD.' });
+  if (autoRun()) { lab(6, 'AUTO PLAY'); invButton(L.row(6), game.run.autoOff ? 'PAUSED' : 'ON', game.run.autoOff ? PAL.stone4 : PAL.gold3); }
   invButton(L.done, 'DONE', PAL.stone4);
 }
 function autoWinTap(x, y) {
@@ -10170,7 +10187,9 @@ function autoWinTap(x, y) {
   if (inRect(L.done, x, y) || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { sfx('tap'); game.state = 'pause'; return; }
   if (inRect(L.row(0), x, y) && !autoRun()) { A.on = !A.on; persist(); sfx('tap'); return; }
   AUTO_KINDS.forEach(([k], j) => { const r = L.row(j + 1); if (inRect(r, x, y)) { A[k] = (A[k] + (x < r.x + r.w / 2 ? 2 : 1)) % 3; persist(); sfx('tap', { vol: 0.6 }); } });
-  if (autoRun() && inRect(L.row(4), x, y)) { game.run.autoOff = !game.run.autoOff; sfx('tap'); }
+  if (inRect(L.row(4), x, y) && !autoRun()) { A.stop = !A.stop; persist(); sfx('tap'); }
+  if (inRect(L.row(5), x, y)) { A.reroll = !A.reroll; persist(); sfx('tap'); }
+  if (autoRun() && inRect(L.row(6), x, y)) { game.run.autoOff = !game.run.autoOff; sfx('tap'); }
 }
 function pauseLayout() {
   const tiles = [['bag', 'BAG'], ...(game.scene === 'wound' || game.scene === 'town' ? [['rites', 'RITES'], ['map', 'MAP']] : []), ...(game.scene === 'wound' && game.run && !game.run.yard ? [['wounds', 'WOUNDS']] : []), ['codex', 'CODEX'], ['shop', 'SHOP'], ['settings', 'SETTINGS'], ['auto', 'AUTO'], ['sound', AUDIO.muted ? 'SOUND OFF' : 'SOUND ON'], ...(devOn() ? [['dev', 'DEV'], ['layout', 'LAYOUT']] : []), ['resume', 'RESUME']];
@@ -10231,15 +10250,17 @@ function renderPause() {
   // The left: Paused, and the Stigmata of this run.
   const ws = game.scene === 'wound' && game.run && game.run.wounds ? Object.entries(game.run.wounds).map(([id, n]) => [WOUNDS.find((q) => q.id === id), n]).filter(([w]) => w) : [];
   const errY = H - 16, small = { small: true }, cx = Math.round(lw / 2);
-  const names = ws.map(([w, n]) => `${heroText(w.name)} ${'I'.repeat(n)}`), nw = Math.max(0, ...names.map((t) => textW(t, 1, true))) + 14;
-  const cols = Math.max(1, Math.min(2, Math.floor((lw - 20) / Math.max(1, nw)))), rows = Math.ceil(ws.length / cols), rh = 10;
-  const listH = ws.length ? 14 + rows * rh : 0, blockH = 34 + (ws.length ? 10 + listH : 0), top = Math.max(8, Math.round((errY - 6 - blockH) / 2));
+  // Round 110: held Wounds as the same tiles the Wounds page uses (tap one to open that page).
+  const cs = 19, gp = 3, per = Math.max(1, Math.min(8, Math.floor((lw - 24) / (cs + gp)))), rows = Math.ceil(ws.length / per);
+  const listH = ws.length ? 16 + rows * (cs + gp) : 0, blockH = 34 + (ws.length ? 10 + listH : 0), top = Math.max(8, Math.round((errY - 6 - blockH) / 2));
   text('PAUSED', cx, top, PAL.gold1, { sc: 2.4, align: 'center', glow: true }); goldRule(cx - 70, top + 22, 140, '255,209,85', false);
   text('TAP HERE TO RESUME', cx, top + 26, PAL.cloth1, { align: 'center', small: true });
+  game.pauseWounds = [];
   if (ws.length) {
-    const ly = top + 44, x0 = Math.round(cx - (cols * nw) / 2);
-    text(`LEVEL ${game.run.level}  STIGMATA`, cx, ly, PAL.gold0, { align: 'center' });
-    ws.forEach(([w], i) => { const c = Math.floor(i / rows), r = i % rows; text(names[i], x0 + c * nw + 7, ly + 14 + r * rh, WOUND_RARITY[w.r].col, small); });
+    const ly = top + 44; text(`LEVEL ${game.run.level}  WOUNDS`, cx, ly, PAL.gold0, { align: 'center' });
+    const held = woundsHeld();
+    held.forEach((q, i) => { const r = Math.floor(i / per), n = Math.min(per, held.length - r * per), x = Math.round(cx - (n * (cs + gp) - gp) / 2) + (i % per) * (cs + gp), y = ly + 16 + r * (cs + gp); if (y + cs > errY - 4) return;
+      heldTile(q.w, q.n, x, y, cs); if (!q.w.mythic) text(String(q.n), x + cs - 2, y + cs - 8, WOUND_RARITY[q.w.r].col, { align: 'right', small: true, sc: 0.85 }); game.pauseWounds.push({ x, y, w: cs, h: cs, i }); });
   }
   // The latest caught error, so a player can send it to us.
   if (ERRS.length) { const e = ERRS[ERRS.length - 1]; text(fitText(`BUG LOGGED: ${e.msg}`.toUpperCase(), lw - 16), cx, errY, PAL.iron1, { align: 'center', small: true }); }
@@ -10263,6 +10284,7 @@ function pauseTap(x, y) {
     game.state = 'play'; return;
   }
   if (x >= P.px) return; // the panel itself
+  { const hit = (game.pauseWounds || []).find((q) => inRect({ x: q.x - 1, y: q.y - 1, w: q.w + 2, h: q.h + 2 }, x, y)); if (hit && game.scene === 'wound') { sfx('tap'); game.woundWin = { sel: hit.i }; game.state = 'wounds'; return; } }
   // Five quick taps in the bottom-left corner turn the dev menu on.
   if (!devOn() && x < 70 && y > H - 40) { DEV.taps = game.real - DEV.tapT < 0.8 ? DEV.taps + 1 : 1; DEV.tapT = game.real; if (DEV.taps >= 5) { DEV.taps = 0; openDev(); } return; }
   sfx('tap'); game.state = 'play';
@@ -10465,7 +10487,7 @@ function renderReceipt(survived = false) {
   { const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, `rgb(${shade(acc, 0.28)})`); g.addColorStop(0.3, '#121a2c'); g.addColorStop(1, '#0a0f1b'); ctx.fillStyle = g; ctx.fillRect(x, y, w, h); }
   ctx.fillStyle = `rgb(${acc})`; ctx.fillRect(x, y, w, 2); ctx.fillStyle = 'rgba(170,190,225,0.22)'; ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x, y, 1, h); ctx.fillRect(x + w - 1, y, 1, h);
   const line = (s, yy, c = PAL.cloth0, al = 'center', o = {}) => text(s, al === 'center' ? mid : x + 10, y + yy, c, { align: al, ...o });
-  line('HOLLOW SAINT', 8, PAL.stone1, 'center', { small: true });
+  line(r.auto ? 'AUTO PLAY RUN' : 'HOLLOW SAINT', 8, r.auto ? PAL.gold1 : PAL.stone1, 'center', { small: true });
   line(survived ? 'DESCENT COMPLETE' : 'YOU DIED', 18, survived ? PAL.gold1 : PAL.blood0, 'center', { bold: true, glow: true });
   goldRule(x + 10, y + 36, w - 20, acc, false);
   const m = Math.floor(r.time / 60), s = String(Math.floor(r.time % 60)).padStart(2, '0');
@@ -10475,7 +10497,7 @@ function renderReceipt(survived = false) {
   const best = [...r.items].sort((a, b) => b.ri - a.ri)[0];
   if (best) text(fitText(best.name, w - 16, null, false), mid, y + 138, RARITY[best.ri].color, { align: 'center', glow: best.ri >= 3 });
   goldRule(x + 10, y + 107, w - 20, '200,212,232', false);
-  if (survived) { line('YOU KEPT EVERYTHING YOU FOUND.', 113, PAL.flame1); }
+  if (survived) { line(r.auto ? fitText(`Auto Play cost about ${r.auto.gold.toLocaleString('en-US')} gold and ${r.auto.gear} gear.`, w - 16, `Auto Play cost ${r.auto.gold.toLocaleString('en-US')} gold.`, false) : 'YOU KEPT EVERYTHING YOU FOUND.', 113, PAL.flame1); }
   else { line(r.martyr ? 'VOW BROKEN. EVERYTHING YOU FOUND IS LOST.' : 'YOU LOST HALF YOUR GOLD AND FINDS.', 113, PAL.blood0); }
   if (best) line('BEST FIND', 126, PAL.stone2, 'center', { small: true });
   if (r.pool) text(fitText(r.pool.text, w - 16), mid, y + 154, r.pool.won ? PAL.gold1 : PAL.blood0, { align: 'center', small: true, outline: null });
@@ -10652,7 +10674,15 @@ function rollStigmata() {
 }
 function openStigmata() {
   if (window.HS_AUTOSTIG) { game.stig = { cards: rollStigmata(), t: 1 }; pickStigma(0); return; } // tests
-  if (autoWoundsOn()) { game.stig = { cards: rollStigmata(), t: 1 }; if (game.stig.cards.length) autoWoundTake(); else { game.stig = null; game.run.pending = 0; } return; } // round 108
+  if (autoWoundsOn()) { // round 108; round 110: it may stop for a Stigma card, or pay for one reroll when no card is of a kind the player rates highest
+    const A = autoW(), cards = rollStigmata(), top = Math.max(A.off, A.def, A.util);
+    if (!cards.length) { game.stig = null; game.run.pending = 0; return; }
+    if (!(A.stop && !autoRun() && cards.some((c) => c.r >= 2))) {
+      game.stig = { cards, t: 1 };
+      if (A.reroll && !cards.some((c) => A[woundKind(c)] === top) && canReroll()) { rerollWounds(); game.stig.autoRolled = true; }
+      autoWoundTake(); return; }
+    game.state = 'stig'; game.stig = { cards, t: 0 }; sfx('levelup'); return;
+  }
   game.state = 'stig'; game.stig = { cards: rollStigmata(), t: 0 }; sfx('levelup'); }
 function pickStigma(i) {
   if (game.stig.reveal) { game.stig = null; game.state = 'play'; sfx('tap'); return; } // the mythic card was only shown
@@ -10737,9 +10767,10 @@ function renderPeek() {
   text(c.mythic ? 'ONE RANK ONLY' : `HELD: RANK ${P.n} OF ${c.max}`, W / 2, y + ch - 16, PAL.stone2, { align: 'center', small: true, outline: null });
 }
 // Round 80: a new set of three cards, paid from the gold found this run (the run's gold, not the account's).
+let REROLL_PAID = 0; const rerollCostPaid = () => REROLL_PAID;
 function rerollWounds() {
   const R = game.run, c = rerollCost(); if ((R.gold || 0) < c) return;
-  R.gold -= c; game.stig.cards = rollStigmata(); game.stig.t = 0.35; game.stig.rolls = (game.stig.rolls || 0) + 1; sfx('buy');
+  R.gold -= c; REROLL_PAID = c; game.stig.cards = rollStigmata(); game.stig.t = 0.35; game.stig.rolls = (game.stig.rolls || 0) + 1; sfx('buy');
 }
 // Round 80: give up 7 ranks of the Wounds you hold, at random, for one mythic Wound. It takes this level's pick.
 function askSacrifice() {
