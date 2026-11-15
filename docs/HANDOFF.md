@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-14, after round 117 (build 118, on `master`). Read
+Last updated 2026-11-15, after round 117 (build 118, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,12 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`.
-8. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
+8. Start the server with `nohup python3 -m http.server 8123 &` and check it
+   (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
+   sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73 sheets
+   a test run alongside three soaks can drop a request; `loadAssets` retries
+   (build 118), but read every soak result before pushing.
+9. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
 
 ## Where the game stands
@@ -163,15 +168,41 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
     1.15 s, sound `sacrifice`), then the mythic card.
   - **Held Wounds:** small rarity-framed tiles with ranks in the top
     corners (`heldStrip`). Tapping one shows its card (round 82).
-- **Auto Wounds and auto play (round 108):** AUTO WOUNDS picks the Wound at
-  each level by the player's weights for damage, defence and utility (LOW,
-  MEDIUM, HIGH; `SAVE.autoW`, kept until changed). It is turned on by AUTO
-  PICK on the level-up screen or in the AUTO window (a pause tile), which
-  also sets the weights. AUTO PLAY is a button on the Descent panel, only
-  for Stations already cleared (`SAVE.autoPlay`, `run.auto`): a pilot
-  (`autoPilot`) plays the run, which pays 25% of the gold, gear and other
-  drops and 50% of the Saint XP (`AUTO_PAY`). The stick steers by hand at
-  any time; the AUTO window pauses the pilot (the lower pay stays).
+- **Auto Wounds and auto play (rounds 108-116):**
+  - **Auto Wounds** picks the Wound at each level by the player's weights
+    for damage, defence and utility (LOW, MEDIUM, HIGH; `SAVE.autoW`, kept
+    until changed). Extra switches: STOP FOR A STIGMA (opens the screen
+    for a gold card) and REROLL A WEAK DRAW. Turn it on with the icon left
+    of the minimap, AUTO PICK on the level-up screen, or the AUTO window
+    (a pause tile), which holds the weights and the other settings.
+  - **Auto Play** is a button on the Descent panel for Stations already
+    cleared (`SAVE.autoPlay`, `run.auto`), and an icon left of the minimap
+    that turns it on during a descent after an ask. A pilot (`autoPilot`)
+    plays the run: it follows a path to foes and the Waystone, keeps range
+    with a clear line (`autoSees`), dodges pools, shots, aimed lines,
+    wind-ups and rings, dashes along the way and out of crowds, casts
+    rites at the biggest crowd, and ignores loot (drops fly to it as they
+    fall; health orbs are left). The stick steers by hand at any time.
+  - **Pay:** the whole descent pays 25% of the gold, gear and other drops
+    and 50% of the Saint XP (`AUTO_PAY`), even if the pilot is turned off
+    again. AUTO SELL (OFF, COMMON, BLESSED AND BELOW, CONSECRATED AND
+    BELOW) sells gear as it is picked up and makes room in a full bag;
+    never Hallowed or set pieces. The tally says what the cut cost and
+    what Auto Sell sold.
+  - **Descent panel:** it turns red when Sanctity is under the Station
+    two deeper (the pilot is safe about two Stations below the gear).
+  - **Wounds page:** a pause tile in any descent lists held Wounds and
+    sacrifices 8 ranks for a mythic Wound without a level-up choice.
+- **Premium skins (round 117):** the shop's SKINS tab sells seven skins
+  (Enlightened, the Void, Psychedelic, the Dread, the Radiant, the Divine,
+  Demonic) for 1,500 Indulgences each. A skin dresses the hero, the
+  crossbow or the Anchoress's shards, the bolts and their trails, and adds
+  an aura; looks only. Owned account-wide, worn per character.
+- **HUD (rounds 107-116):** the play screen's buttons are raised icons in
+  a gold bezel; pause and bag are one smaller size; the sound switch is on
+  the pause screen only; two auto icons sit left of the minimap. The pause
+  screen hides the HUD and shows held Wounds as tiles. A death returns
+  straight to Vael.
 - **Gear:** 10 slots (8 vestments plus two arms slots: crossbow and quiver,
   a mace and satchel for him, a reliquary and phylactery for her), 5
   rarities, item level = Station (Sanctity). Drops are rare on purpose
@@ -270,31 +301,47 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   own names (never borrow names or terms from other games).
 - They want the game hard: monsters punish mistakes, drops are rare,
   progress needs farming. Every hit must still be telegraphed.
+- Auto play (rounds 108-116): they want it fast and hands-off, never
+  walking about for loot or orbs, and always paying less (the cut must hold
+  for the whole descent). Controls belong on the play screen as small
+  icons, grey off and green on.
+- Screens that "look bad" are cut, not polished: the dark screen after a
+  death was removed (round 115). Prefer going straight on.
+- Skins and looks: they supply reference screenshots from their other
+  game (a golf game; ignore the club) and want "super cool" looks. Bolts,
+  weapon and hero should all match.
 - Ship each finished round to `master`. Raise `BUILD` and add its lines
   to `CHANGES` every round (the owner sees them on their phone). Keep updates short, lead with the
   outcome, attach screenshots.
 
 ## Next steps (ideas, building on what is there)
 
+- **Parked by the owner (round 116, "come back to those later").** Suggestions
+  they did not pick yet: a short label or hold tip under the two auto icons;
+  a size setting (small, normal, large) for the right-hand button cluster;
+  skipping the death summary too, with a toast of what was lost; drawing
+  health orbs in when the pilot is under half health; Sister Odile's "Back
+  again" moved to when the player talks to her after a death.
 - **Premium skins (round 117).** Not done: skinned maces for the
-  Mendicant, busts for the Mendicant and Anchoress, skinned rite and
+  Mendicant (his mace is part of his sprite), busts for the Mendicant and Anchoress, skinned rite and
   Reckoning effects (they still use the set's colours), a showcase on the
   character select. The owner's references have larger ground discs and
   orbiting attendants; ours is a small ring aura. Prices (1,500) are a
   guess; packs are still free.
-- **Auto play (rounds 108-113).** Measured with `autobench.cjs` (six
+- **Auto play (rounds 108-116).** Measured with `autobench.cjs` (six
   pieces of one set and its arms at Station XII gear, Saint level 60, no
-  passives, talents, enchants or pets, `NOREFILL=1`) on Station X, 150 s:
-  Saint (Nails) 4 of 4 survived, 531-746 kills; Mendicant (Iron) 4 of 4,
-  610-802; Anchoress (Reliquary) 4 of 4, 796-963, every run finishing the
-  descent. Round 115, Strata II and III (same setup, 3 runs each per
-  class): all 18 survived, 627-958 kills; the Anchoress finished the
-  descent in 2 of 3 Nave runs and all 3 Ossuary runs. Homing shots from
-  cherubs hurt it most in the Nave, acolyte shots in the Ossuary.
-  descent. On the gear's own Station (XII) the Saint died in 3 of 4
-  (round 110, before the corner and dash changes). What hurts it most:
-  shots and homing shots (cherubs, acolytes), pools. Ask the owner how the 75% / 50% cuts feel and whether run XP
-  should be cut too.
+  passives, talents, enchants or pets, `NOREFILL=1`, so it can die):
+  - Station X, 150 s: Saint (Nails) 4 of 4 survived, 531-746 kills;
+    Mendicant (Iron) 4 of 4, 610-802; Anchoress (Reliquary) 4 of 4,
+    796-963, every run finishing the descent.
+  - Strata II and III (3 runs a class): all 18 survived, 627-958 kills.
+  - On the gear's own Station (XII) the Saint died in 3 of 4 runs (round
+    110, before the corner and travel-dash changes; not remeasured).
+  - What hurts it most: homing shots (cherubs), acolyte shots, pools.
+  - Ask the owner how the 75% / 50% cuts feel, and whether run XP (levels
+    within a run) should be cut too: only Saint XP is.
+  - Ideas: a retreat when low (it ignores orbs on purpose), warning more
+    clearly on the Descent panel, measuring the Warden fights per class.
 - **Wounds page (round 109).** Ask the owner whether 8 ranks is the right
   price there.
 - **Warden times per set (rounds 106-107).** Remeasured in round 107 after
