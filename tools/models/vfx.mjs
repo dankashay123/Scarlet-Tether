@@ -294,14 +294,16 @@ const PTHUR = {
     for (const s of [-1, 1]) S.add(rotZ(ellipsoid([10 + s * 4, 19.5, 2], [3.6, 1.4, 1.4], 'pw_violet'), [10 + s * 4, 19.5], s * 0.5), 0.4); S.add(capsule([10, 7.5, 2], [10, 5, 2], 1.2, 0.8, 'pw_gold'), 0.6); S.add(torus([10, 2.6, 2], 2, 0.6, 0, 'pw_gold'), 0); } },
   // The Void: a black orb latticed in gold under a crown of spikes, a rose ring round its middle.
   void: { glow: 'rose', holes: [[7, 15], [10, 16], [13, 15]], body: (S) => { S.add(sphere([10, 14, 2], 5.8, 'pw_ink'), 0); for (const a of [-0.6, 0.6]) S.add(rotZ(torus([10, 14, 2], 5.6, 0.45, Math.PI / 2, 'pw_gold'), [10, 14], a), 0);
-    for (const x of [6, 8, 10, 12, 14]) S.add(capsule([x, 9.5, 2], [x + (x - 10) * 0.25, x === 10 ? 5 : 6.5, 2], 0.9, 0.3, 'pw_gold'), 0.3); S.add(torus([10, 15, 3.5], 7, 0.6, Math.PI / 2.4, 'pw_rose'), 0); S.add(torus([10, 2.6, 2], 1.6, 0.55, 0, 'pw_gold'), 0); } },
+    for (const x of [6, 8, 10, 12, 14]) S.add(capsule([x, 9.5, 2], [x + (x - 10) * 0.25, x === 10 ? 5 : 6.5, 2], 0.9, 0.3, 'pw_gold'), 0.3); S.add(torus([10, 15, 3.5], 7, 0.6, Math.PI / 2.4, 'pw_rose'), 0); S.add(torus([10, 2.6, 2], 1.6, 0.55, 0, 'pw_gold'), 0);
+    S.add(torus([10, 14, 3.2], 6.1, 0.8, Math.PI / 2, 'pw_gold'), 0); } }, // round 128: a gold rim, so the orb shows on dark floors
   // Psychedelic: a bowl in running bands of colour, a star on the lid.
   psychedelic: { glow: 'gold', holes: [[7, 14], [10, 13], [13, 14], [8.5, 16.5], [11.5, 16.5]], body: (S) => { S.add(sphere([10, 14, 2], 6, 'psyGold'), 0); S.add(ellipsoid([10, 9, 2], [4.6, 2.6, 4], 'psyGold'), 1.2);
     PSY.forEach((m, k) => S.paint({ f: (x, y) => { const w = (((y / 1.6) % PSY.length) + PSY.length) % PSY.length; return Math.abs(w - k - 0.5) - 0.5 + (y < 7 ? 9 : 0); }, mat: m }));
     for (const [x, y] of [[10, 5.2], [8.2, 5.2], [11.8, 5.2], [10, 3.6], [10, 6.8]]) S.add(sphere([x, y, 3], 1, 'psyRose'), 0.6); S.add(torus([10, 1.6, 2], 1.4, 0.5, 0, 'pw_gold'), 0); } },
   // The Dread: a skull hung by its crown, green fire in its eyes and teeth.
   dread: { glow: 'flame', holes: [[7, 13], [12, 13], [10, 17]], body: (S) => { S.add(sphere([10, 12.5, 2], 5.6, 'pw_bone'), 0); S.add(ellipsoid([10, 17, 2], [3.6, 2.6, 3.4], 'pw_bone'), 1);
-    for (const x of [7.5, 12.5]) S.add(sphere([x, 13, 6.5], 2, 'pw_char'), 0); S.add(capsule([10, 7, 2], [10, 4.5, 2], 1, 0.8, 'pw_horn'), 0.5); S.add(torus([10, 2.6, 2], 1.6, 0.55, 0, 'pw_horn'), 0); } },
+    for (const x of [7.5, 12.5]) S.add(sphere([x, 13, 6.5], 2, 'pw_char'), 0); S.add(capsule([10, 7, 2], [10, 4.5, 2], 1, 0.8, 'pw_horn'), 0.5); S.add(torus([10, 2.6, 2], 1.6, 0.55, 0, 'pw_horn'), 0);
+    for (const [x, y, r] of [[6.5, 8, 1.5], [13.5, 8, 1.5], [10, 6.8, 1.3]]) S.add(sphere([x, y, 3], r, 'pw_lime'), 0.4); } }, // round 128: green flames over the crown
   // The Radiant: a gold orb that is a small sun, its rays all round.
   radiant: { glow: 'gold', holes: [[8, 13], [12, 13], [10, 16]], body: (S) => { S.add(sphere([10, 14, 2], 5, 'pw_gold'), 0); for (let k = 0; k < 10; k++) { const t = k / 10 * Math.PI * 2; S.add(capsule([10, 14, 3], [10 + Math.cos(t) * 8.5, 14 + Math.sin(t) * 7, 3], 0.8, 0.3, 'pw_sun'), 0.3); }
     S.add(capsule([10, 9, 2], [10, 4.5, 2], 1, 0.8, 'pw_gold'), 0.5); S.add(torus([10, 2.6, 2], 1.6, 0.55, 0, 'pw_gold'), 0); } },

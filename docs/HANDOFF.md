@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 127 (build 127, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 128 (build 128, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -39,7 +39,7 @@ see "The owner's preferences".) When the owner answers with numbers
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
-   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-127 on
+   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-128 on
    `claude/brave-fermi-kw8he3`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
@@ -366,13 +366,26 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Offered after round 127, not picked yet:** (1) Font 4 + Choir 2 kills the
-  Bellwright in 27 s against 32-60 for every other build: a mix-only Warden
-  number would fix it (`SETK.boss` counts at 4 and 6 pieces alike); (2) the
-  same Warden pass on the other four Wardens and at Station VI; (3) ask the
-  owner how the Vesper feels with 25% less damage and 15% more health;
-  (4) the Dread and Void censers read dark on dark floors; (5) a short
-  streak counter in the Carnage plate's place while a streak is running.
+- **Offered after round 128, not picked yet:** (1) Warden times in Strata II
+  and III (the Tide-Bishop, the Organist, the Ossuarch, the Ash Widow) were
+  never measured per build; (2) Station VI still spreads 9-22 kills a second
+  (crowd-capped; would need a Station-scaled set term); (3) the last nudges
+  (`boss.choir` 2.3, `boss6.alms` 4.2, `boss6.reliquary` 1.2) were not
+  remeasured; (4) a streak sound at 10 kills as the plate turns red;
+  (5) ask the owner how the Vesper's defence feels.
+- **Wardens across Stratum I (round 128).** setbal WARDEN= for Mother
+  Candlemass, the Hollow Cardinal, the Charnel King and Our Lady of Nails
+  (Station XII, 2 seeds, 120 s cap; every try killed it), on top of round
+  127's Bellwright. Before tuning, averages over the four ran 36-75 s (the
+  Saint's Confessor 4 + Nails 2 at 75, the Anchoress's Reliquary 4 + Thorn 2
+  and Thorn 4 + Lantern 2 at 64). `SETK.boss6` now replaces `SETK.boss` at
+  six pieces, so mixes and full sets tune apart: boss font 3.3 (six 6.5),
+  confessor 5 (six 3.4), choir 2.3 (six 1.6), stride 1.1, iron 2.05 (six
+  1.7), alms 3.4 (six 4.2), lantern 1.8, psalter 1.65 (six 1.3), thorn 1.55
+  (six 1.05), reliquary 1.35 (six 1.2). Rechecked on Candlemass and Our
+  Lady (2 seeds): every changed build 38-63 s (Choir 4 + Stride 2 the slow
+  end, nudged after). Station VI (4 seeds): sets 12-22, mixes 9-15 for all
+  three classes (the crowd caps near 20).
 - **Balance across the board (round 127).** Station XII, 4 seeds, 20 s,
   kills a second: Saint sets 6.8-8.0, mixes 5.9-7.3 (Stride 4 + Confessor 2
   6.9 after `fourBy.stride` 140); Vesper sets 6.6-7.9, mixes 6.1-6.9;
@@ -585,6 +598,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 128:** the owner picked 1, 2, 4 and 5 from round 127's list.
+  **Warden mix number:** `SETK.boss6` (six pieces; `boss` keeps 4-5), its
+  own card line ("... INSTEAD."); Font 4 + Choir 2 went from 27 s to about
+  40. **Wardens:** see Next steps. **Streak:** the live kill streak moved
+  into the plate under the Zeal bar (STREAK with n/10, CARNAGE n with its
+  gold at 10, time left draining along the foot); the bar under the gold is
+  gone. **Censers:** the Void has a gold rim round its orb, the Dread green
+  flames over the skull; both glow brighter (`thGlow` alpha 0.6).
+  Test: `round128.cjs`.
 
 - **Round 127:** the owner asked for a full balance pass "as close as
   possible across the board", more base defence for the Vesper ("dies very
