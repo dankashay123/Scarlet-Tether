@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 124 (build 124, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 125 (build 125, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -39,7 +39,8 @@ see "The owner's preferences".) When the owner answers with numbers
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
-   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`.
+   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; round 125 on
+   `claude/brave-fermi-kw8he3`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -365,20 +366,24 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Offered after round 124, not picked yet:** (1) rebalance the Vesper
-  (below); (2) a note on Hallowed cards for pieces already learned at the
-  altar; (3) Codex hints for the 15 new Hallowed pieces; (4) the old
-  overlapping lines in a list at 667x375 (`round72.cjs` reports "20-40%"
-  over "Max 100%" and "Lightning Every 12th Hit" over "300-500%"; there
-  since before round 118); (5) bolt shapes for the premium skins to match
-  their crossbows.
-- **Vesper balance (rounds 123-124).** At Station XII his sets make 7.4-9.8
-  kills a second against about 7 for the other classes (VI: 12.9-17.8);
-  round 124's 3 s storm, its hops and his four new Hallowed pieces push him
-  higher and were not measured. Kill rates hardly answer to `MELEE.cut`:
-  his set effects (`maceHit`/`maceRing` with `MELEE.k`) and the storm
-  (`VDAG.k`) carry the crowd numbers. Trim those or `MELEE.k` itself, then
-  rerun setbal for all three classes (4 seeds; runs move about 20%).
+- **Offered after round 125, not picked yet:** (1) remeasure the Vesper's
+  Warden times and Station VI after the round 125 cuts; (2) measure the 15
+  round 124 Hallowed pieces in setbal (zealCrit, dashCrit, ricochet, the
+  Pulsing Heart); (3) Steel Chime's old stun rings redrawn as blades;
+  (4) busts for the Vesper and the Anchoress in each premium skin;
+  (5) skinned rite and Reckoning effects for the premium skins.
+- **Vesper balance (round 125, Station XII, 4 seeds, 20 s).** Shipped: storm
+  hits `VDAG.k` 0.1 (was 0.14), `fourBy` iron 150, road 190, alms 170, bell
+  180, gaol 35 (were 300, 300, 320, 330, 140), `SETK.six.alms` 1.05 (was
+  1.25), `fetK6` 10 (was 35), the Bloodletter's vein burst x`SETK.veinK` 2
+  in 50 px (was x3 in 60). Result: sets 6.5-8.2 (Nightblade 7.6, Dusk 6.5,
+  Viper 8.2, Bloodletter 8.2, Veil 7.5), mixes 5.6-6.8, no gear 2.45 (was
+  3.06; the Saint's is 0.53). Saint for reference on the same machine:
+  6.8-8.6. He still takes about half the damage the Saint does. Not
+  remeasured: Station VI, Warden times (the mixes' four-piece cut makes
+  them slower against Wardens), the 15 round 124 Hallowed pieces.
+  Lesson: `fourOf` counts only at 4-5 pieces; at six it is `SETK.four6`
+  (+25%), so raising `SETK.six` to make up for a `fourBy` cut is a pure buff.
 - **The Vesper (rounds 118-124).** Still open: Steel Chime uses the old
   stun rings; Rubric and Codex art for his rites; his class pets' battle
   cues; Warden photos with his new poses. The 15 new Hallowed pieces were
@@ -551,6 +556,23 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 125:** the owner said "let's continue", so round 124's five
+  suggestions were done. **Vesper balance:** see Next steps (storm hits
+  0.1, his four-piece numbers cut, the Viper's Fang and Bloodletter
+  trimmed; three setbal passes). **Learned note:** a Hallowed card (bag and
+  `drawItemCard`) says ALREADY LEARNED AT THE ALTAR when this class's altar
+  knows the power. **Codex:** an unseen Hallowed piece shows its power, its
+  slot and where Hallowed pieces drop (`hint` in `codexList` section 3).
+  **Overlap at 667x375:** the forge's ALL LINES window measures its range
+  and max columns and puts MAX in a column header (no chopped names); the
+  hub tabs close up on narrow phones so CENSER clears the gold count
+  (`hubTabs`). **Bolts:** each premium skin's crossbow bolt has its own
+  shape (`PBOLT` in `vfx.mjs`, 37x18, built 1.35x so it survives the 2x2
+  grid): feathered violet light, a barbed gold spearhead with a rose ring,
+  a rainbow lightning bolt with a star, a bone shaft with ribs and a small
+  scythe, a sun on a gold shaft, a white shaft through a gold ring with a
+  teal point, a charred shaft with horn fletching and a molten point.
 
 - **Round 124:** the owner asked for the Vesper's storm to move on when its
   pack is dead and last 3 s, a fix for him not attacking after a dash,

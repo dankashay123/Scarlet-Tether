@@ -103,6 +103,7 @@ const BOLTS = {
   radiant: ['gold', 'roseGlow', 'gold0'], divine: ['white', 'gold', 'teal0'], demonic: ['molten', 'crimson', 'ember0'],
 };
 function bolt(skin = null) {
+  if (skin && PBOLT[skin]) return pbolt(skin);
   const [shaft, collar, tip] = skin ? BOLTS[skin] : ['iron', 'gold', 'gold0'];
   const S = new Scene();
   S.add(capsule([4, 4.5, 2], [17, 4.5, 2], 1.1, 1.1, shaft), 0);
@@ -223,6 +224,41 @@ function pweapon(kind, i, skin, size, len) {
   const F = axisF(i, size, len), S = new Scene(); (kind === 'dag' ? PDAG : PCRY)[skin](S, F);
   const f = render(S, size, size, PM, { contrast: 1.25 });
   put(f, F.at(F.L * (kind === 'dag' ? 0.62 : 0.2))[0] - F.nx * F.down, F.at(F.L * (kind === 'dag' ? 0.62 : 0.2))[1] - F.ny * F.down, 'white');
+  return f;
+}
+// Round 125: each premium skin's crossbow bolt has its own shape to match its crossbow (PXBOW in weapon.mjs),
+// flying right like the plain bolt: the point near x = 25, the tail near x = 3, the axis at y = 6.5.
+const PK = 1.35, R = (r) => r * PK, PB = (u, v = 0, z = 3) => [2 + u * PK, 8.5 + v * PK, z];
+const PBOLT = {
+  // Enlightened: a shaft of violet light, a gold point and three feathers for fletching.
+  enlightened: (S) => { S.add(capsule(PB(5), PB(21), R(1.1), R(1.1), 'pw_violetGlow'), 0); S.add(capsule(PB(20), PB(25.5), R(1.6), R(0.25), 'pw_gold'), 0.4);
+    for (const v of [-1, 1]) S.add(rotZ(ellipsoid(PB(5, v * 3), [R(3.6), R(1.5), R(1.2)], 'pw_violet'), PB(5, v * 3), v * 0.45), 0.15); S.add(torus(PB(10, 0, 3), R(1.6), R(0.6), Math.PI / 2, 'pw_gold'), 0); },
+  // The Void: a black shaft, a gold spearhead with two barbs and a rose ring behind it.
+  void: (S) => { S.add(capsule(PB(4), PB(19), R(1), R(1), 'pw_ink'), 0); S.add(capsule(PB(18), PB(25.5), R(2), R(0.25), 'pw_gold'), 0.4);
+    for (const s of [-1, 1]) S.add(capsule(PB(19, s * 1.2), PB(16.5, s * 3.3), R(0.8), R(0.3), 'pw_gold'), 0.3); S.add(torus(PB(14, 0, 3), R(1.9), R(0.7), Math.PI / 2, 'pw_rose'), 0); S.add(sphere(PB(4), R(1.5), 'pw_gold'), 0.4); },
+  // Psychedelic: a bolt of lightning in every colour with a star at the tail.
+  psychedelic: (S) => { const pts = [PB(7, 0), PB(12, 2), PB(16, -1.6), PB(25, 0.6)]; for (let k = 0; k < 3; k++) S.add(capsule(pts[k], pts[k + 1], R(1.5 - k * 0.25), R(1.3 - k * 0.45), 'psyGold'), 0.5);
+    PSY.forEach((m, k) => S.paint({ f: (x) => { const w = ((((x - 2) / PK / 2.2) % PSY.length) + PSY.length) % PSY.length; return Math.abs(w - k - 0.5) - 0.5 + (x < 2 + 8 * PK ? 9 : 0); }, mat: m }));
+    for (const [u, v] of [[4.5, 0], [6.4, 0], [3, 0], [4.5, 1.9], [4.5, -1.9]]) S.add(sphere(PB(u, v), R(1.1), 'psyRose'), 0.7); },
+  // The Dread: a bone shaft with rib barbs and a little scythe for a head, its edge burning green.
+  dread: (S) => { S.add(capsule(PB(4), PB(19), R(1), R(1), 'pw_bone'), 0); for (const u of [7, 10.5, 14]) S.add(capsule(PB(u, -2.4), PB(u - 1.2, 2.4), R(0.85), R(0.85), 'pw_bone'), 0.3);
+    const pts = [0, 1, 2, 3, 4].map((k) => { const t = k / 4; return PB(18 + t * 7, -t * t * 3.6); }); for (let k = 0; k < 4; k++) S.add(capsule(pts[k], pts[k + 1], R(1.9 - k * 0.35), R(1.55 - k * 0.35), 'pw_steel'), 0.5);
+    for (let k = 1; k < 5; k++) S.add(sphere([pts[k][0], pts[k][1] + R(0.7), 4], R(0.8), 'pw_lime'), 0); },
+  // The Radiant: a gold shaft carrying a small sun at its point.
+  radiant: (S) => { S.add(capsule(PB(4), PB(20), R(1), R(0.9), 'pw_gold'), 0); S.add(sphere(PB(21.5, 0, 4), R(2.2), 'pw_sun'), 0.3);
+    for (let k = 0; k < 8; k++) { const t = k / 8 * Math.PI * 2; S.add(capsule(PB(21.5, 0, 4), PB(21.5 + Math.cos(t) * 4, Math.sin(t) * 4, 4), R(0.7), R(0.45), 'pw_sun'), 0.2); } S.add(capsule(PB(4, -1.5), PB(6.5, 0), R(0.6), R(0.5), 'pw_gold'), 0.3); S.add(capsule(PB(4, 1.5), PB(6.5, 0), R(0.6), R(0.5), 'pw_gold'), 0.3); },
+  // The Divine: a white shaft through a gold ring, a teal stone for a point.
+  divine: (S) => { S.add(capsule(PB(4), PB(20), R(1), R(1), 'pw_white'), 0); S.add(torus(PB(11, 0, 3), R(2.6), R(0.75), Math.PI / 2, 'pw_gold'), 0);
+    S.add(capsule(PB(19), PB(25.5), R(2), R(0.3), 'pw_teal'), 0.3); S.add(capsule(PB(18.6, -2.2), PB(18.6, 2.2), R(0.7), R(0.7), 'pw_gold'), 0.2); S.add(sphere(PB(4), R(1.4), 'pw_gold'), 0.4); },
+  // Demonic: a charred shaft with curled horns for fletching and a molten point.
+  demonic: (S) => { S.add(capsule(PB(5), PB(20), R(1.1), R(1), 'pw_char'), 0); S.add(capsule(PB(19), PB(25.5), R(2), R(0.3), 'pw_ember'), 0.4);
+    for (const s of [-1, 1]) { S.add(capsule(PB(8, s * 0.8), PB(5, s * 3), R(0.9), R(0.7), 'pw_horn'), 0.3); S.add(capsule(PB(5, s * 3), PB(2.6, s * 2), R(0.7), R(0.3), 'pw_horn'), 0.3); }
+    for (const u of [11, 15]) S.add(capsule(PB(u, -1), PB(u - 2, -2.8), R(0.8), R(0.3), 'pw_char'), 0.3); },
+};
+function pbolt(skin) {
+  const S = new Scene(); PBOLT[skin](S);
+  const f = render(S, 37, 18, PM, { contrast: 1.25 });
+  put(f, 33, 8, 'white');
   return f;
 }
 function shardBolt() {
