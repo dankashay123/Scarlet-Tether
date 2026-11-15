@@ -560,6 +560,36 @@ const LEGEND_ICONS = [
   () => legendIcon('reliquary', { gold: 'iron', shardGlow: 'eyeHoly' }, (S) => S.add(sphere([12, 14.5, 5.5], 1.4, 'cloth'), 0)),
   // The Votive Phylactery: a gilt-caged vial of candles' light.
   () => legendIcon('phylactery', { silver: 'gold', shardGlow: 'ember' }),
+  // Round 124, fifteen more (LEGENDS order). The Feasting Cord: a crimson belt hung with red drops.
+  () => legendIcon('girdle', { leather: 'crimsonDark', gold: 'gold' }, (S) => { for (const [x, y] of [[8, 20], [12, 22], [16, 20]]) S.add(ellipsoid([x, y, 3], [1.2, 1.8, 1.1], 'blood'), 0); }),
+  // The Still Cloak: a pale blue mantle with a ring of light at its clasp.
+  () => legendIcon('mantle', { violet: 'blueRobe', crimson: 'blueRobe', gold: 'silver' }, (S) => S.add(torus([12, 9, 5], 3.2, 0.9, Math.PI / 2, 'holy'), 0)),
+  // Beads of Fervour: ember beads with a flame rising from the cross.
+  () => legendIcon('rosary', { blood: 'ember', gold: 'gold' }, (S) => flames(S, [[12, 4], [10, 6], [14, 6]], 1.3)),
+  // The Ricochet Arbalest: a dark crossbow with a gold zigzag across it.
+  () => legendIcon('bow', { wood: 'slateDark', gold: 'iron' }, (S) => { const z = [[4, 6], [9, 11], [13, 5], [18, 11], [21, 6]]; for (let k = 0; k < 4; k++) S.add(capsule([...z[k], 4], [...z[k + 1], 4], 0.7, 0.7, 'gold'), 0); }),
+  // The Quiver of the Long Hunt: a green quiver, its bolts fletched green.
+  () => legendIcon('quiver', { leather: 'mossDark', gold: 'gold' }, (S) => { for (const dx of [-1.8, 0.4, 2.4]) S.add(sphere([13.8 + dx, 2.6, 3], 1.1, 'vial'), 0); }),
+  // The Baptist's Hood: a blue hood with a drop of holy water.
+  () => legendIcon('hood', { crimson: 'blueRobe', gold: 'silver' }, (S) => S.add(sphere([18, 18, 5], 2.2, 'holy'), 0)),
+  // The Mantle of Answers: a cream mantle with nails flying out from it.
+  () => legendIcon('mantle', { violet: 'cream', crimson: 'cream' }, (S) => { for (let k = 0; k < 4; k++) { const a = -0.4 + k * 0.6; S.add(capsule([12 + Math.cos(a) * 6, 6 + Math.sin(a) * 3, 5], [12 + Math.cos(a) * 10, 4 + Math.sin(a) * 4, 5], 0.6, 0.4, 'iron'), 0); } }),
+  // The Third Hand: dark gloves and three small blades fanned above.
+  () => legendIcon('gloves', { leather: 'inkRobe', iron: 'silver' }, (S) => { for (const a of [-0.5, 0, 0.5]) S.add(capsule([17, 12, 5], [17 + Math.sin(a) * 6, 12 - Math.cos(a) * 9, 5], 1, 0.3, 'silver'), 0); }),
+  // Boots of the Long Leap: black greaves with speed lines behind.
+  () => legendIcon('greaves', { iron: 'inkRobe', gold: 'crimson' }, (S) => { for (const y of [10, 14, 18]) S.add(capsule([1, y, 2], [5, y, 2], 0.6, 0.6, 'slate'), 0); }),
+  // The Storm-Glass: a relic holding a little glass of whirling blades.
+  () => legendIcon('relic', { gold: 'iron' }, (S) => { S.add(sphere([12, 12, 5], 3.6, 'holy'), 0); for (const a of [0, 2.1, 4.2]) S.add(capsule([12, 12, 7], [12 + Math.cos(a) * 3, 12 + Math.sin(a) * 3, 7], 0.6, 0.3, 'silver'), 0); }),
+  // Beads of the Vesper Hour: crimson beads hung with a small dagger.
+  () => legendIcon('rosary', { blood: 'crimson', gold: 'slate' }, (S) => { S.add(capsule([12, 16, 4], [12, 23, 4], 1, 0.3, 'silver'), 0); S.add(capsule([10, 16, 4], [14, 16, 4], 0.6, 0.6, 'gold'), 0); }),
+  // The Echoing Hands: violet gloves with a shard leaving them.
+  () => legendIcon('gloves', { leather: 'violetDark', iron: 'silver' }, (S) => { S.add(ellipsoid([19, 6, 5], [1.4, 3, 1.2], 'shardGlow'), 0); S.add(ellipsoid([14, 4, 5], [0.9, 2, 0.8], 'shardGlow'), 0); }),
+  // The Glass Steps: glassy greaves with shards at the heel.
+  () => legendIcon('greaves', { iron: 'glassRobe', gold: 'silver' }, (S) => { for (const [x, y] of [[5, 20], [8, 22]]) S.add(ellipsoid([x, y, 3], [1, 2.2, 0.9], 'shardGlow'), 0); }),
+  // The Reliquary Girdle: a violet belt with a shard set in its buckle.
+  () => legendIcon('girdle', { leather: 'violetDark', gold: 'silver' }, (S) => S.add(ellipsoid([12, 13, 5], [1.6, 2.8, 1.2], 'shardGlow'), 0)),
+  // The Pulsing Heart: a silver relic round a glowing violet heart.
+  () => legendIcon('relic', { gold: 'silver' }, (S) => { S.add(sphere([10.6, 11, 5], 2.4, 'shardGlow'), 0); S.add(sphere([13.4, 11, 5], 2.4, 'shardGlow'), 0); S.add(capsule([12, 15.5, 5], [12, 12, 5], 0.5, 2.4, 'shardGlow'), 0); }),
 ];
 
 // Set pieces: every slot in a set's own colours (taken from its Saint skin)

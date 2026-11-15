@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 123 (build 123, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 124 (build 124, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -498,6 +498,26 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 124:** the owner asked for the Vesper's storm to move on when its
+  pack is dead and last 3 s, a fix for him not attacking after a dash,
+  duplicate Hallowed powers replaced, the altar to show only the class's
+  pieces, and at least 15 new Hallowed pieces. **Storm:** 3 s (`vdTime`);
+  an empty circle sends the daggers to `vdaggerNext` (an elite or Warden
+  first, else the biggest pack within reach) with the time left. **Dash
+  bug:** `chooseTarget` puts any elite in crossbow range first; when that
+  one is out of his reach he now takes the nearest foe he can reach (he
+  cut one 16 ms after a dash in the test). **Duplicates replaced:** the
+  Long Descent (was +1 dash charge, as the Pilgrim's Sandals) now crits the
+  3 hits after a dash; the Hood of Ash-Choir (was +1 pierce, as the Longway
+  Arbalest) gives +20% to foes above 80% health; the Crown of Splinters
+  (was +2 shards, beside two other shard pieces) gives shard bolts 15% crit.
+  **Altar:** `legendMine`, `altarPickLegends` filter by class; sockets apply
+  only this class's powers; the LEARNED count is per class. **New pieces
+  (15):** see CLAUDE.md; icons appended to `LEGEND_ICONS`. A comment written
+  after the hood in `POWERS` swallowed the mantle and rosary entries on the
+  same line and shifted every icon by one; caught in the altar photo and
+  fixed. Test: `round124.cjs`. Not rebalanced: the 3 s storm and the new
+  pieces push the Vesper further above the others.
 - **Round 123:** the owner picked 1-4 from round 122's list and asked for
   each premium skin's crossbow, daggers and shards to be its own shape,
   not a recolour. **Weapons:** `PXBOW` (`weapon.mjs`): Enlightened wings of
