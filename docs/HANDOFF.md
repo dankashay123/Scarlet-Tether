@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 118 (build 119, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 119 (build 120, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -320,10 +320,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **The Vesper (round 118).** Not done: renaming his five sets and 18
-  rites to fit an assassin (they still read as a beggar friar's: the
-  Beggar King's Iron, Alms, the Cracked Bell, Smite, Bell Toll), new
-  rite effects (his rites still land as heavy blows with quakes, `maceHit`),
+- **The Vesper (rounds 118-119).** His sets are an assassin's since round
+  119. Not done: his 18 rites (still a friar's: Smite, Bell Toll, Hammer of
+  Heaven, holy pools; icons show bells and hammers), their effects (heavy
+  blows with quakes, `maceHit`), his class pets (Alms Hound, Bell Crow) and
+  three Hallowed pieces named for bells,
   a proper blade sound (we speed up `swing`), poses for the Wardens'
   photos. Ask the owner how the speed and reach feel on the phone.
 - **Parked by the owner (round 116, "come back to those later").** Suggestions
@@ -493,6 +494,38 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 119:** the owner asked for two floating daggers that fly into
+  the nearest pack every 10 attacks (elites and Wardens first) and make a
+  blade storm hitting 10 times a second for 2 s; skins working for the
+  Vesper; and his sets made for an assassin. **Daggers:** `player.vd`
+  (`updateVDaggers`, `VDAG`): rest beside his head pointing at his target,
+  `vdaggerCount` after each attack, `vdaggerLaunch` picks the nearest elite
+  or Warden in `VDAG.range` (280), else `bestCluster`; fly at 560 px/s, then
+  the storm follows its target: `vdaggerTick` 10 times a second, each foe
+  within 54 takes `MELEE.k * VDAG.k` through `boltStrike` (`b.storm`, no
+  knockback, never a blow for set counters), a smear each beat, faint copies
+  whirling (`drawVDagger`), glow brighter as the next storm nears and
+  trails (`drawVDaggerGlow`). Art: fx `vdagger` plus one per premium skin and
+  per set of his (`DAGGERS` in `vfx.mjs`, `vdAnim()`). **Sets:** ids kept;
+  the Nightblade (`iron`, black and silver, sheathed blades crossed on the
+  back), the Dusk Walker (`road`, sand with a crimson scarf), the Viper's
+  Fang (`alms`, Venom stacks, green vials, green wave), the Bloodletter
+  (`gaol`, Bleeds, a bandolier of hooked knives, red), the Whirling Veil
+  (`bell`, whirls: a spin of blades, a teal veil), the Vesper's Wraps
+  (starter). New card text, arms names, set item marks, badges,
+  `SET_SHORT`, his cuts take the set's colour at 4 pieces (`SHOT_RAMP`,
+  `shotRamp` reads `G.skin` for him). Saved pieces keep their names in the
+  save; `HERO_TEXT` says them as the new ones. Also Killer's Fervour (the
+  Calling) and Cutpurse's Luck (a Wound). **Skins:** every premium skin's
+  sheet and daggers checked on him (`round119.cjs`). **Balance**
+  (setbal, Station XII, 4 seeds, kills a second): with the storm at 0.2 of
+  a blow, sets rose to 7.0-9.5 and no gear to 2.85 (was 1.96); at 0.14
+  (shipped) and Nightblade six x2.3 (was 2.6): no gear 2.27, Nightblade
+  8.1, Dusk 6.9, Viper 8.6, Bloodletter 8.4, Veil 6.6; then Viper six x1.5
+  (was 1.65), not remeasured. The 4+2 mixes were 6.8-7.4 at 0.2. Known:
+  `round72.cjs` at 667x375 reports two overlapping lines in a list ("20-40%"
+  over "Max 100%"); it was there before this round.
+  Test: `round119.cjs`.
 - **Round 118:** the owner asked to turn the melee class into an assassin
   with two blades: lower damage, fast attacks. **The Vesper** (shown name;
   id, saves, sets and rites unchanged). **Art:** `HEROES.mendicant` in

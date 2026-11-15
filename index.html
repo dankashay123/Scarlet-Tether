@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '119';
+const BUILD = '120';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '120': ['THE VESPER HAS TWO FLOATING DAGGERS. EVERY 10TH ATTACK THEY FLY INTO THE NEAREST PACK (ELITES AND WARDENS FIRST) AND SPIN THERE AS A BLADE STORM: 10 HITS PER SECOND FOR 2 S.', 'THE DAGGERS TAKE THE LOOK OF YOUR PREMIUM SKIN OR SET.', "HIS SETS ARE NOW AN ASSASSIN'S: THE NIGHTBLADE, THE DUSK WALKER, THE VIPER'S FANG (VENOM), THE BLOODLETTER (BLEEDS) AND THE WHIRLING VEIL (WHIRLS). NEW LOOKS AND ICONS; PIECES YOU OWN TAKE THE NEW NAMES."],
   '119': ['THE MENDICANT IS NOW THE VESPER, AN ASSASSIN WITH TWO BLADES. EACH ATTACK IS TWO QUICK CUTS IN A NARROW ARC: LESS DAMAGE PER HIT, MORE HITS.', 'NEW LOOK, BUST, ARMS ICONS AND TEXT. HIS SETS, RITES, GEAR AND SAVES CARRY OVER.'],
   '118': ['LOADING IS STURDIER ON A WEAK CONNECTION: ART THAT FAILS TO LOAD IS ASKED FOR AGAIN.'],
   '117': ['NEW IN THE SHOP: SKINS. SEVEN PREMIUM SKINS FOR EVERY CLASS: ENLIGHTENED, THE VOID, PSYCHEDELIC, THE DREAD, THE RADIANT, THE DIVINE AND DEMONIC.', 'EACH SKIN CHANGES THE HERO, THE CROSSBOW OR SHARDS, THE BOLTS AND THEIR TRAILS, AND ADDS AN AURA AT YOUR FEET. LOOKS ONLY.'],
@@ -339,7 +340,10 @@ const HERO_TEXT = [
   // Arms for the Vesper (round 118; maces until then): blades and satchels, not crossbows and quivers.
   [/EMBER-BOW/g, 'EMBER-BLADES'], [/CANTICLE BOW/g, 'CANTICLE BLADES'], [/\bCROSSBOW\b/g, 'BLADES'], [/\bARBALEST\b/g, 'SABRES'], [/\bREPEATER\b/g, 'STILETTOS'],
   // Pieces found before round 118 keep their mace names in the save: say them as blades.
-  [/WAYFARER'S CUDGEL/g, "WAYFARER'S DIRKS"], [/GAOLER'S BAR\b/g, "GAOLER'S SHIVS"], [/THE BELL-CLAPPER/g, 'THE CLAPPER KNIVES'], [/\bMAUL\b/g, 'SABRES'], [/MORNING STAR/g, 'STILETTOS'], [/\bMACE\b/g, 'BLADES'],
+  [/BEGGAR KING'S (MACE|KNIVES)/g, "NIGHTBLADE'S EDGES"], [/WAYFARER'S (CUDGEL|DIRKS)/g, 'DUSK DIRKS'], [/ALMONER'S (MACE|BLADES)/g, 'FANG KNIVES'], [/GAOLER'S (BAR|SHIVS)\b/g, 'LANCETS'], [/THE (BELL-CLAPPER|CLAPPER KNIVES)/g, 'THE WHIRLING KNIVES'],
+  ['THE SATCHEL OF RIVETS', 'THE SHEATH OF SHADOWS'], ['THE SATCHEL OF MILESTONES', 'THE SAND-WORN SHEATH'], ['THE BEGGING SATCHEL', 'THE VENOM BANDOLIER'], ['THE SATCHEL OF KEYS', 'THE BANDOLIER OF HOOKS'], ['THE SATCHEL OF CHIMES', 'THE VEILED SHEATH'],
+  // Round 119: his sets' old piece names (saved items keep them).
+  [/^BEGGAR KING'S /, "NIGHTBLADE'S "], [/^WANDERER'S /, "DUSK WALKER'S "], [/^ALMSGIVER'S /, "VIPER'S "], [/^GAOLER'S /, "BLOODLETTER'S "], [/^BELL-RINGER'S /, 'WHIRLING '], [/^RAGGED /, 'WRAPPED '], [/\bMAUL\b/g, 'SABRES'], [/MORNING STAR/g, 'STILETTOS'], [/\bMACE\b/g, 'BLADES'],
   [/\bQUIVER\b/g, 'SATCHEL'], [/\bBOLT-CASE\b/g, 'NAIL-POUCH'],
   // Names of Wounds and talents (round 55).
   ['PIERCING FAITH', 'LONG REACH'], [/^PIERCING$/, 'LONG REACH'], ['NAIL OF WRATH', 'BLADE OF WRATH'], ['SPLIT NAIL', 'WIDE ARC'], ['HEAVY NAILS', 'HEAVY BLOWS'], ['HEAVY BOLTS', 'HEAVY BLOWS'], ['GREAT BOLT', 'GREAT BLOW'],
@@ -1583,7 +1587,7 @@ const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
 const SETK = { choirHp: 3, choirHp6: 3, choirR: 110, fontHp: 8, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 3.6, strideT: 7, font: 3.5, bound: 1.6, bound6: 2.75, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3, strideT4: 4, font4: 3.5, bound4: 2.6, choir4: 3, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 63, stride: 60, iron: 300, alms: 320, glass: 400, font: 550, choir: 233, road: 300, bell: 330, reliquary: 318, psalter: 450, lantern: 200, gaol: 140 } , /* rounds 101 and 104: 4+2 mixes toward about 6 kills a second at XII */ shardPer: 15, crushK: 3, momK: 22, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ring4: 4, strideGuard: 30, boss: { font: 6, alms: 4.1, bell: 5, gaol: 4.8, iron: 4.6, confessor: 2.7, nails: 1.4, glass: 1.6, lantern: 1.3 }, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 35, thornK6: 150, psalK6: 3, lampK6: 120, // Round 101: every set's six pieces tuned to about 7 kills a second at Station XII (setbal.cjs, 6 seeds; the Stride, Confessor,
   // Lantern and Nails through their own numbers, so no card shows a multiplier under 1), and the sets that
   // took the most damage given a damage-taken multiplier at six pieces (guard6), so no set is far safer or deadlier than another.
-  six: { font: 1.5, choir: 1.44, iron: 2.6, road: 1.85, alms: 1.65, bell: 1.5, gaol: 1.05, glass: 1.67, thorn: 1.5, psalter: 1.79 },
+  six: { font: 1.5, choir: 1.44, iron: 2.3, road: 1.85, alms: 1.5, bell: 1.5, gaol: 1.05, glass: 1.67, thorn: 1.5, psalter: 1.79 },
   guard6: { font: 0.75, confessor: 0.85, choir: 0.5, iron: 0.6, alms: 0.85, glass: 0.55, psalter: 0.4, lantern: 0.62 },
   // Round 105: the same at four pieces, so 4+2 mixes take about as much damage as each other (setbal.cjs at Station XII).
   guard4: { choir: 0.55, confessor: 0.75, font: 0.8, iron: 0.7, alms: 0.7, gaol: 0.88, bell: 0.7, reliquary: 0.72, glass: 0.6, psalter: 0.42, lantern: 0.45 } };
@@ -3889,7 +3893,7 @@ const CELLS = {
   lantern: { goal: 150, mix: ['rat', 'crawler', 'risen'], per: 9, every: 2.2, line: 'SWARMS OF WEAK FOES.' },
   thorn: { goal: 100, mix: ['flagellant', 'crawler', 'acolyte'], per: 7, every: 2.4, line: 'CHARGING FOES.' },
 };
-const SET_RGB = { nails: '232,56,63', stride: '255,122,31', font: '63,164,240', confessor: '154,106,230', choir: '255,209,85', reliquary: '190,130,255', iron: '178,188,203', road: '207,174,134', alms: '127,165,72', gaol: '191,112,86', bell: '103,184,170', glass: '138,224,255', psalter: '232,56,63', lantern: '255,160,60', thorn: '148,179,122' };
+const SET_RGB = { nails: '232,56,63', stride: '255,122,31', font: '63,164,240', confessor: '154,106,230', choir: '255,209,85', reliquary: '190,130,255', iron: '178,188,203', road: '207,174,134', alms: '127,165,72', gaol: '220,70,72', bell: '103,184,170', glass: '138,224,255', psalter: '232,56,63', lantern: '255,160,60', thorn: '148,179,122' };
 const cellDone = (id) => !!(SAVE.cells && SAVE.cells[id]);
 const cellRow = (L, i) => ({ x: L.x0 + 14, y: L.y0 + 34 + i * 32, w: L.pw - 28, h: 28 });
 function openCells() { game.state = 'cells'; sfx('tap'); }
@@ -4007,7 +4011,7 @@ const RITE_MORE = {
 function openRites(back) { hubEnter(back); game.state = 'rites'; game.riteFocus = game.riteFocus || 'm1'; sfx('tap'); }
 // Small text that must fit a width: drop a leading THE, try a short form,
 // then trim letters.
-const SET_SHORT = { nails: 'NAILS', stride: 'STRIDE', font: 'FONT', confessor: 'CONFESSOR', choir: 'CHOIR', habit: 'HABIT', reliquary: 'RELIQUARY', rags: 'RAGS', iron: 'IRON', road: 'ROAD', alms: 'ALMS', gaol: 'GAOL', bell: 'BELL', shroud: 'SHROUD', glass: 'GLASS', psalter: 'PSALTER', lantern: 'LANTERN', thorn: 'THORN' };
+const SET_SHORT = { nails: 'NAILS', stride: 'STRIDE', font: 'FONT', confessor: 'CONFESSOR', choir: 'CHOIR', habit: 'HABIT', reliquary: 'RELIQUARY', rags: 'WRAPS', iron: 'NIGHTBLADE', road: 'DUSK', alms: 'VIPER', gaol: 'BLOOD', bell: 'VEIL', shroud: 'SHROUD', glass: 'GLASS', psalter: 'PSALTER', lantern: 'LANTERN', thorn: 'THORN' };
 function fitText(s, w, short, small = true) {
   const fits = (t) => textW(t, 1, small) <= w;
   if (fits(s)) return s;
@@ -6737,9 +6741,9 @@ const dimR = (name) => DIMR[name] || (DIMR[name] = (() => { const a = FXR[name] 
 const PFX_CAP = () => (LOWFX ? 40 : 160);
 function addPfx(o) { if (pfx.length < PFX_CAP()) pfx.push({ t: 0, ...o }); }
 // The shot colour of this hero's set (or the Plush stall's trail).
-const SHOT_RAMP = { nails: 'gold', stride: 'fire', font: 'holy', confessor: 'violet', choir: 'blood' };
+const SHOT_RAMP = { nails: 'gold', stride: 'fire', font: 'holy', confessor: 'violet', choir: 'blood', iron: 'iron', road: 'bone', alms: 'life', gaol: 'blood', bell: 'frost' }; // round 119: the Vesper's sets colour his cuts at 4 pieces
 const TRAIL_RAMP = { ember: 'fire', holy: 'holy', blood: 'blood', violet: 'violet', verdant: 'life', rose: 'blood', silver: 'iron' };
-const shotRamp = () => { const ps = pskin(); if (ps) { const P = PSKIN_BY[ps]; return P.ramp === 'psy' ? PSY_RAMPS[Math.floor(game.real * 3) % 7] : P.ramp; } return TRAIL_RAMP[looks().bolt] || (G && SHOT_RAMP[G.xskin]) || 'gold'; };
+const shotRamp = () => { const ps = pskin(); if (ps) { const P = PSKIN_BY[ps]; return P.ramp === 'psy' ? PSY_RAMPS[Math.floor(game.real * 3) % 7] : P.ramp; } return TRAIL_RAMP[looks().bolt] || (G && (SHOT_RAMP[G.xskin] || (isMelee() && SHOT_RAMP[G.skin]))) || 'gold'; };
 // One art pixel (2x2 world pixels) snapped to the grid.
 function px2(x, y, rgb, a = 1) { ctx.fillStyle = a >= 1 ? `rgb(${rgb})` : `rgba(${rgb},${a})`; ctx.fillRect(Math.floor(x / 2) * 2, Math.floor(y / 2) * 2, 2, 2); }
 // A ray of pixels from (x, y): hot at the root, cooling to the tip.
@@ -7014,11 +7018,11 @@ const VSETS = {
   // Round 72: each class has its own five sets and its own starter set; a set drops only for its class.
   // The Mendicant's.
   rags: { name: "THE VESPER'S WRAPS", piece: 'WRAPPED', hero: 'mendicant', starter: true, slots: GEAR_SLOTS, bonus: [[2, '10% LESS DAMAGE TAKEN.'], [4, '+15% DAMAGE, +15% MAX HEALTH.']] },
-  iron: { name: "THE BEGGAR KING'S IRON", piece: "BEGGAR KING'S", hero: 'mendicant', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BLOWS REACH 20% FARTHER.'], [4, `+${fourOf('iron')}% DAMAGE (+${SETK.four6}% AT 6). EVERY 4TH BLOW CRUSHES: X${SETK.crushK} DAMAGE, STUNS FOR 0.5 S.`], [6, `ALL YOUR DAMAGE X${SETK.six.iron}. EVERY 3RD BLOW CRUSHES FOR X${SETK.crushK6} AND SENDS A SHOCKWAVE THROUGH FOES AROUND YOU.`]] },
-  road: { name: "THE WANDERER'S ROAD", piece: "WANDERER'S", hero: 'mendicant', slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+15% MOVE SPEED.'], [4, `+${fourOf('road')}% DAMAGE (+${SETK.four6}% AT 6). MOVING BUILDS MOMENTUM (UP TO 10). YOUR NEXT BLOW SPENDS IT: +${SETK.momK}% DAMAGE PER STACK.`], [6, `MOMENTUM BUILDS TWICE AS FAST AND GIVES +${SETK.momK6}% PER STACK. DASHES GIVE 5. A BLOW THAT SPENDS 5 OR MORE RELEASES A NOVA.`]] },
-  alms: { name: "THE ALMSGIVER'S BOWL", piece: "ALMSGIVER'S", hero: 'mendicant', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'BLOWS SWEEP 25% WIDER. KILLS HEAL 1% OF YOUR HEALTH.'], [4, `+${fourOf('alms')}% DAMAGE (+${SETK.four6}% AT 6). KILLS GIVE 2 ALMS (UP TO ${SETK.almsMax}): +${SETK.almsK}% DAMAGE EACH. THEY FADE 3 S AFTER YOUR LAST KILL. AT 20 OR MORE, EVERY 5TH BLOW SENDS A WAVE THROUGH FOES AROUND YOU.`], [6, `ALL YOUR DAMAGE X${SETK.six.alms}. EACH ALMS GIVES +${SETK.almsK6}% DAMAGE AND 0.5% LESS DAMAGE TAKEN. THE WAVE IS WIDER AND COMES EVERY 3RD BLOW. AT ${SETK.almsMax} YOUR BLOWS SET FOES ALIGHT.`]] },
-  gaol: { name: "THE GAOLER'S KEYS", piece: "GAOLER'S", hero: 'mendicant', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, 'BLOWS PUT 2 FETTERS ON FOES (UP TO 5). EACH SLOWS THEM 5%.'], [4, `+${fourOf('gaol')}% DAMAGE (+${SETK.four6}% AT 6). EVERY 4TH BLOW THROWS CHAINS: 2 FETTERS ON FOES NEARBY. FETTERED FOES ARE DRAGGED TOWARD YOU AND TAKE ${SETK.fetK}% MORE DAMAGE PER FETTER.`], [6, `ALL YOUR DAMAGE X${SETK.six.gaol}. FOES TAKE ${SETK.fetK6}% MORE PER FETTER. THE 5TH FETTER LOCKS: THE FOE IS STUNNED FOR 2 S AND THE BLOW CRASHES THROUGH FOES AROUND IT FOR X3.`]] },
-  bell: { name: 'THE CRACKED BELL', piece: "BELL-RINGER'S", hero: 'mendicant', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'EVERY 6TH BLOW RINGS: A WAVE HITS EVERY FOE AROUND YOU.'], [4, `+${fourOf('bell')}% DAMAGE (+${SETK.four6}% AT 6). EVERY ${SETK.ring4}TH BLOW RINGS. RINGS STUN FOR 0.6 S. STUNNED FOES TAKE ${SETK.stunK}% MORE DAMAGE.`], [6, `EVERY 3RD BLOW RINGS, TWICE AS WIDE AND X${SETK.ringK6} AS HARD. EACH RING GIVES 3 ZEAL.`]] },
+  iron: { name: 'THE NIGHTBLADE', piece: "NIGHTBLADE'S", hero: 'mendicant', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, 'BLADES REACH 20% FARTHER.'], [4, `+${fourOf('iron')}% DAMAGE (+${SETK.four6}% AT 6). EVERY 4TH BLOW CUTS DEEP: X${SETK.crushK} DAMAGE, STUNS FOR 0.5 S.`], [6, `ALL YOUR DAMAGE X${SETK.six.iron}. EVERY 3RD BLOW CUTS DEEP FOR X${SETK.crushK6} AND SENDS A RING OF BLADES THROUGH FOES AROUND YOU.`]] },
+  road: { name: 'THE DUSK WALKER', piece: "DUSK WALKER'S", hero: 'mendicant', slots: ['mantle', 'gloves', 'girdle', 'relic', 'seal', 'greaves'], skin: true, bonus: [[2, '+15% MOVE SPEED.'], [4, `+${fourOf('road')}% DAMAGE (+${SETK.four6}% AT 6). MOVING BUILDS MOMENTUM (UP TO 10). YOUR NEXT BLOW SPENDS IT: +${SETK.momK}% DAMAGE PER STACK.`], [6, `MOMENTUM BUILDS TWICE AS FAST AND GIVES +${SETK.momK6}% PER STACK. DASHES GIVE 5. A BLOW THAT SPENDS 5 OR MORE RELEASES A BURST OF BLADES.`]] },
+  alms: { name: "THE VIPER'S FANG", piece: "VIPER'S", hero: 'mendicant', slots: ['hood', 'mantle', 'girdle', 'rosary', 'relic', 'greaves'], skin: true, bonus: [[2, 'BLADES CUT 25% WIDER. KILLS HEAL 1% OF YOUR HEALTH.'], [4, `+${fourOf('alms')}% DAMAGE (+${SETK.four6}% AT 6). KILLS COAT YOUR BLADES IN 2 VENOM (UP TO ${SETK.almsMax}): +${SETK.almsK}% DAMAGE EACH. VENOM FADES 3 S AFTER YOUR LAST KILL. AT 20 OR MORE, EVERY 5TH BLOW SENDS A WAVE OF VENOM THROUGH FOES AROUND YOU.`], [6, `ALL YOUR DAMAGE X${SETK.six.alms}. EACH VENOM GIVES +${SETK.almsK6}% DAMAGE AND 0.5% LESS DAMAGE TAKEN. THE WAVE IS WIDER AND COMES EVERY 3RD BLOW. AT ${SETK.almsMax} YOUR BLOWS SET FOES ALIGHT.`]] },
+  gaol: { name: 'THE BLOODLETTER', piece: "BLOODLETTER'S", hero: 'mendicant', slots: ['hood', 'mantle', 'gloves', 'rosary', 'seal', 'relic'], skin: true, bonus: [[2, 'BLOWS PUT 2 BLEEDS ON FOES (UP TO 5). EACH SLOWS THEM 5%.'], [4, `+${fourOf('gaol')}% DAMAGE (+${SETK.four6}% AT 6). EVERY 4TH BLOW THROWS HOOKED KNIVES: 2 BLEEDS ON FOES NEARBY. BLEEDING FOES ARE DRAGGED TOWARD YOU AND TAKE ${SETK.fetK}% MORE DAMAGE PER BLEED.`], [6, `ALL YOUR DAMAGE X${SETK.six.gaol}. FOES TAKE ${SETK.fetK6}% MORE PER BLEED. THE 5TH BLEED OPENS A VEIN: THE FOE IS STUNNED FOR 2 S AND THE BLOW BURSTS THROUGH FOES AROUND IT FOR X3.`]] },
+  bell: { name: 'THE WHIRLING VEIL', piece: 'WHIRLING', hero: 'mendicant', slots: ['hood', 'mantle', 'gloves', 'girdle', 'rosary', 'greaves'], skin: true, bonus: [[2, 'EVERY 6TH BLOW WHIRLS: A SPIN OF BLADES HITS EVERY FOE AROUND YOU.'], [4, `+${fourOf('bell')}% DAMAGE (+${SETK.four6}% AT 6). EVERY ${SETK.ring4}TH BLOW WHIRLS. WHIRLS STUN FOR 0.6 S. STUNNED FOES TAKE ${SETK.stunK}% MORE DAMAGE.`], [6, `EVERY 3RD BLOW WHIRLS, TWICE AS WIDE AND X${SETK.ringK6} AS HARD. EACH WHIRL GIVES 3 ZEAL.`]] },
   // The Anchoress's.
   shroud: { name: "THE ANCHORITE'S SHROUD", piece: "ANCHORITE'S", hero: 'anchoress', starter: true, slots: GEAR_SLOTS, bonus: [[2, '+1 RELIQUARY SHARD.'], [4, '+15% DAMAGE, +1 DASH CHARGE.']] },
   glass: { name: 'THE GLASS MARTYR', piece: 'GLASS', hero: 'anchoress', slots: ['hood', 'gloves', 'girdle', 'rosary', 'seal', 'greaves'], skin: true, bonus: [[2, '+10% CRIT CHANCE FOR SHARD BOLTS.'], [4, `+${fourOf('glass')}% DAMAGE (+${SETK.four6}% AT 6). SHARD CRITS SPLIT INTO 2 SPLINTERS.`], [6, `ALL YOUR DAMAGE X${SETK.six.glass}. SHARD CRITS DEAL X3 AND CALL A GLASS SHARD FOR 4 S (UP TO 4).`]] },
@@ -7053,11 +7057,11 @@ const ARMS = {
   font: { name: 'ARMS OF THE DROWNED FONT', bow: 'THE ASPERGILL ARBALEST', quiver: 'THE BRIMMING CASE', bonus: 'BOLTS SLOW FOES 30%. FOES THEY KILL LEAVE A SMALL POOL.' },
   confessor: { name: 'ARMS OF THE LAST CONFESSOR', bow: 'THE PENANCE ENGINE', quiver: 'THE QUIVER OF LINKS', bonus: 'EVERY 8TH BOLT CHAINS ITS FOE AND 2 NEAR IT FOR 1.5 S.' },
   choir: { name: 'ARMS OF THE BURNING CHOIR', bow: 'THE CANTICLE BOW', quiver: 'THE QUIVER OF CANDLES', bonus: 'CRITS CHARGE RECKONING TWICE AS FAST. IN RECKONING, BOLTS BURST INTO FLAME.' },
-  iron: { name: "ARMS OF THE BEGGAR KING'S IRON", bow: "THE BEGGAR KING'S KNIVES", quiver: 'THE SATCHEL OF RIVETS', bonus: 'BLOWS DEAL X2 TO STUNNED FOES.' },
-  road: { name: "ARMS OF THE WANDERER'S ROAD", bow: "THE WAYFARER'S DIRKS", quiver: 'THE SATCHEL OF MILESTONES', bonus: 'DASHES RECHARGE 25% FASTER. THE FIRST BLOW AFTER A DASH DEALS X2.' },
-  alms: { name: "ARMS OF THE ALMSGIVER'S BOWL", bow: "THE ALMONER'S BLADES", quiver: 'THE BEGGING SATCHEL', bonus: 'KILLS HAVE A 4% CHANCE TO DROP A HEALTH ORB.' },
-  gaol: { name: "ARMS OF THE GAOLER'S KEYS", bow: "THE GAOLER'S SHIVS", quiver: 'THE SATCHEL OF KEYS', bonus: 'EACH BLOW ADDS 3 FETTERS. FETTERED FOES GIVE 1 ZEAL WHEN KILLED.' },
-  bell: { name: 'ARMS OF THE CRACKED BELL', bow: 'THE CLAPPER KNIVES', quiver: 'THE SATCHEL OF CHIMES', bonus: 'EVERY 5TH BLOW RINGS. RINGS HEAL 1% OF YOUR HEALTH.' },
+  iron: { name: 'ARMS OF THE NIGHTBLADE', bow: "THE NIGHTBLADE'S EDGES", quiver: 'THE SHEATH OF SHADOWS', bonus: 'BLOWS DEAL X2 TO STUNNED FOES.' },
+  road: { name: 'ARMS OF THE DUSK WALKER', bow: 'THE DUSK DIRKS', quiver: 'THE SAND-WORN SHEATH', bonus: 'DASHES RECHARGE 25% FASTER. THE FIRST BLOW AFTER A DASH DEALS X2.' },
+  alms: { name: "ARMS OF THE VIPER'S FANG", bow: 'THE FANG KNIVES', quiver: 'THE VENOM BANDOLIER', bonus: 'KILLS HAVE A 4% CHANCE TO DROP A HEALTH ORB.' },
+  gaol: { name: 'ARMS OF THE BLOODLETTER', bow: 'THE LANCETS', quiver: 'THE BANDOLIER OF HOOKS', bonus: 'EACH BLOW ADDS 3 BLEEDS. BLEEDING FOES GIVE 1 ZEAL WHEN KILLED.' },
+  bell: { name: 'ARMS OF THE WHIRLING VEIL', bow: 'THE WHIRLING KNIVES', quiver: 'THE VEILED SHEATH', bonus: 'EVERY 5TH BLOW WHIRLS. WHIRLS HEAL 1% OF YOUR HEALTH.' },
   glass: { name: 'ARMS OF THE GLASS MARTYR', bow: 'THE GLASS RELIQUARY', quiver: 'THE PHYLACTERY OF SPLINTERS', bonus: 'SHARD CRITS DEAL 50% MORE.' },
   psalter: { name: "ARMS OF THE MOTHER'S PSALTER", bow: 'THE PSALTER RELIQUARY', quiver: 'THE PHYLACTERY OF HOURS', bonus: 'EACH RITE YOU CAST GIVES 5 ZEAL.' },
   lantern: { name: 'ARMS OF THE VEILED LANTERN', bow: 'THE LANTERN RELIQUARY', quiver: 'THE PHYLACTERY OF CINDERS', bonus: 'FIRE FROM YOUR SHARDS BURNS 50% HOTTER.' },
@@ -7528,6 +7532,7 @@ function fireCdOf(base) {
 const MELEE = { reach: 44, arc: 0.8, cd: 0.36, k: 1.75, cut: 0.5, guard: 0.9, swing: 0.3, strike: 0.05, strike2: 0.14 };
 function updateMelee(dt) {
   player.xb = null;
+  updateVDaggers(dt);
   player.fireCd -= dt; if (player.swingT > 0) player.swingT -= dt;
   meleeSets(dt);
   player.target = chooseTarget();
@@ -7572,6 +7577,81 @@ function updateMelee(dt) {
   };
   later(MELEE.strike, () => cut(1, true));
   later(MELEE.strike2, () => cut(-1, false));
+  vdaggerCount();
+}
+// Round 119: the Vesper's two floating daggers. They hover at his shoulders;
+// every VDAG.every attacks they fly at the nearest pack (an elite or Warden in
+// reach first) and spin there as a blade storm: VDAG.rate hits a second on every
+// foe within VDAG.r for VDAG.time seconds, then fly home. Each hit goes through
+// boltStrike (b.storm: no knockback, never counts as a blow for set procs).
+const VDAG = { every: 10, range: 280, speed: 560, time: 2, rate: 10, r: 54, k: 0.14 };
+const vdRest = (i) => { const p = player, s = i ? 1 : -1, bob = Math.sin(game.time * 2.4 + i * 1.7) * 1.5; return { x: p.x + s * 21 - p.face * 2, y: p.y + 1 + (i ? 1 : -1), z: 46 + bob }; };
+function vdaggerCount() {
+  const V = player.vd; if (!V) return;
+  V.n = Math.min(VDAG.every, V.n + 1);
+  if (V.n >= VDAG.every && V.st === 'rest') vdaggerLaunch();
+}
+function vdaggerLaunch() {
+  const V = player.vd; let t = null, bd = 1e9;
+  for (const e of enemies) { if (!(e.boss || e.tier === 'elite') || e.under || (e.spawnDelay > 0) || !inRange(e, VDAG.range)) continue; const d = Math.hypot(e.x - player.x, e.y - player.y); if (d < bd) { bd = d; t = e; } }
+  t = t || bestCluster(VDAG.range);
+  if (!t) return;
+  V.n = 0; V.st = 'fly'; V.t = 0; V.tgt = t; V.cx = t.x; V.cy = t.y; V.tick = 0;
+  sfx('swing', { vol: 0.7, rate: 0.7, gap: 0.1 }); sfx('glass', { vol: 0.35, rate: 1.6, gap: 0.1 });
+}
+function updateVDaggers(dt) {
+  const p = player; if (!p) return;
+  const V = p.vd ||= { n: 0, st: 'rest', t: 0, d: [0, 1].map((i) => ({ ...vdRest(i), a: -Math.PI / 2, trail: [] })) };
+  V.t += dt;
+  if (V.tgt && !V.tgt.dead) { V.cx = V.tgt.x; V.cy = V.tgt.y; }
+  const toward = (d, x, y, z, sp) => { const dx = x - d.x, dy = y - d.y, dz = z - d.z, L = Math.hypot(dx, dy, dz); if (L < 1e-3) return 0; const m = Math.min(L, sp * dt); d.x += dx / L * m; d.y += dy / L * m; d.z += dz / L * m; if (Math.hypot(dx, dy) > 2) d.a = Math.atan2(dy - dz * 0.5, dx); return L - m; };
+  if (V.st === 'rest') {
+    V.d.forEach((d, i) => { const r = vdRest(i), aim = p.target && !p.target.dead ? Math.atan2(p.target.y - d.y, p.target.x - d.x) : -Math.PI / 2 + (i ? 0.35 : -0.35); d.x += (r.x - d.x) * Math.min(1, dt * 12); d.y += (r.y - d.y) * Math.min(1, dt * 12); d.z += (r.z - d.z) * Math.min(1, dt * 12); d.a = aim; d.trail.length = 0; });
+    if (V.n >= VDAG.every && p.target) vdaggerLaunch();
+  } else if (V.st === 'fly') {
+    let left = 0; V.d.forEach((d, i) => { left = Math.max(left, toward(d, V.cx + (i ? 10 : -10), V.cy, 14, VDAG.speed)); d.trail.unshift([d.x, d.y - d.z]); if (d.trail.length > 7) d.trail.pop(); });
+    if (left < 6 || V.t > 1.2) { V.st = 'storm'; V.t = 0; V.tick = 0; game.shake = Math.max(game.shake, 1.5); addPfx({ kind: 'quake', x: V.cx, y: V.cy, r: VDAG.r, max: 0.3, ramp: shotRamp(), ground: true }); }
+  } else if (V.st === 'storm') {
+    V.d.forEach((d, i) => { const a = V.t * 15 + i * Math.PI, R = 16 + Math.sin(V.t * 9 + i) * 6; d.x = V.cx + Math.cos(a) * R; d.y = V.cy + Math.sin(a) * R * 0.55 + 1; d.z = 14 + Math.sin(V.t * 11 + i * 2) * 3; d.a = a + Math.PI / 2; d.trail.unshift([d.x, d.y - d.z]); if (d.trail.length > 5) d.trail.pop(); });
+    while (V.tick < Math.min(VDAG.time, V.t) * VDAG.rate) { V.tick++; vdaggerTick(V); }
+    if (V.t >= VDAG.time) { V.st = 'back'; V.t = 0; V.tgt = null; }
+  } else if (V.st === 'back') {
+    let left = 0; V.d.forEach((d, i) => { const r = vdRest(i); left = Math.max(left, toward(d, r.x, r.y, r.z, VDAG.speed)); d.trail.unshift([d.x, d.y - d.z]); if (d.trail.length > 7) d.trail.pop(); });
+    if (left < 4 || V.t > 1.5) V.st = 'rest';
+  }
+}
+// One beat of the storm: every foe in the circle takes a dagger hit.
+function vdaggerTick(V) {
+  let n = 0;
+  for (const e of enemies) {
+    if (e.dead || e.state === 'spawn' || e.under || (e.spawnDelay > 0)) continue;
+    if (Math.hypot(e.x - V.cx, (e.y - V.cy) / 0.8) > VDAG.r + e.hr) continue;
+    const a = rng() * Math.PI * 2;
+    boltStrike({ x: e.x, y: e.y - e.hy, vx: Math.cos(a), vy: Math.sin(a), crit: rng() < T.crossbow.crit + G.crit / 100, dmgK: MELEE.k * VDAG.k, melee: true, cut: true, second: true, storm: true, hit: new Set() }, e); n++;
+  }
+  addPfx({ kind: 'smear', x: V.cx, y: V.cy - 12, a: rng() * Math.PI * 2, arc: 0.9, r: VDAG.r * 0.6 + rng() * 10, max: 0.14, ramp: shotRamp(), dir: rng() < 0.5 ? 1 : -1, th: 3 });
+  if (V.tick % 2) sfx('swing', { vol: 0.32, rate: 1.5 + Math.random() * 0.3, gap: 0.05 });
+  if (n) sfx('hit1', { vol: 0.25, rate: 1.4 + Math.random() * 0.2, gap: 0.06 });
+}
+// The daggers' look: a premium skin's, else the 4-piece set's, else plain.
+const vdAnim = () => { const k = pskin() || (G && G.skin); return k && SPR.fx.anims[`vdagger_${k}`] ? `vdagger_${k}` : 'vdagger'; };
+function drawVDagger(d, i) {
+  const V = player.vd;
+  if (d.z < 44) { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(d.x, d.y, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill(); }
+  const A = vdAnim(), fr = (a) => ((Math.round(a / (Math.PI * 2) * 16) % 16) + 16) % 16;
+  // In the storm, faint copies whirl round the circle the other way: the blade storm.
+  if (V.st === 'storm' && i === 0 && !LOWFX) { ctx.globalAlpha = 0.5; for (let k = 0; k < 4; k++) { const a = -V.t * 11 + k * Math.PI / 2, R = 30 + (k % 2) * 8; sprC('fx', A, fr(a - Math.PI / 2), Math.round(V.cx + Math.cos(a) * R), Math.round(V.cy + Math.sin(a) * R * 0.55 - 12)); } ctx.globalAlpha = 1; }
+  sprC('fx', A, fr(d.a), Math.round(d.x), Math.round(d.y - d.z));
+}
+// Glow pass: a soft light on each dagger (brighter as the next storm nears) and trails in flight.
+function drawVDaggerGlow() {
+  const V = player.vd; if (!isMelee() || !V || player.hp <= 0) return;
+  const F = boltFx(), ready = V.st === 'rest' ? V.n / VDAG.every : 1;
+  for (const d of V.d) {
+    glow(d.x, d.y - d.z, 7 + ready * 5, `rgba(${F.trail},${0.15 + ready * 0.3 + (ready >= 1 ? Math.sin(game.time * 10) * 0.1 : 0)})`);
+    if (d.trail.length > 1) { ctx.strokeStyle = `rgba(${F.trail},0.55)`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(d.trail[0][0], d.trail[0][1]); for (const [x, y] of d.trail) ctx.lineTo(x, y); ctx.stroke(); }
+  }
+  if (V.st === 'storm') glow(V.cx, V.cy - 10, VDAG.r * 0.9, `rgba(${F.trail},0.18)`);
 }
 // The blades' light as they cut (glow pass): a thin quick arc per cut, the
 // front blade sweeping down and the back blade back up.
@@ -7621,7 +7701,7 @@ function boltStrike(b, e) {
   if (sb('confessor', 2) && !e.boss && (player.confN = (player.confN || 0) + 1) % (sb('confessor', 4) ? SETK.bindEvery : SETK.bindEvery2) === 0) { e.bound = Math.max(e.bound || 0, 1); sparks(e.x, e.y - (e.hy || 10), PAL.iron0, 4); }
   const sp = Math.hypot(b.vx, b.vy) || 1, [lo, hi] = T.crossbow.dmg;
   const raw = Math.round(rand(lo, hi + 1) * (b.crit ? (G.powers.has('critX') ? 3 : 2) * (1 + (G.critD || 0) / 100) * (b.shard ? (sb('glass', 6) ? 1.5 : 1) * (sbw('glass') ? 1.5 : 1) : 1) * (1 + wound('heavy') * 0.5) * (1 + ts('heavy') / 100) : 1) * (b.great ? 3 : 1) * (b.dmgK || 1));
-  HIT_BOLT = b; HIT_RITE = b.rite || null; hurtEnemy(e, raw, b.crit, b.vx / sp, b.vy / sp, b.cut ? 34 : b.melee ? 110 : 60, { kind: 'bolt' }); // round 118: a blade's cut barely pushes, so foes stay in reach HIT_BOLT = null; HIT_RITE = null;
+  HIT_BOLT = b; HIT_RITE = b.rite || null; hurtEnemy(e, raw, b.crit, b.vx / sp, b.vy / sp, b.storm ? 0 : b.cut ? 34 : b.melee ? 110 : 60, { kind: 'bolt' }); // round 118: a blade's cut barely pushes, so foes stay in reach HIT_BOLT = null; HIT_RITE = null;
   // Round 80, Groundbreaker: a mace crit cracks the floor round the target (capped, and never from its own shockwave).
   if (b.melee && b.crit && wound('mQuake') && !QUAKING && game.time - (player.quakeT || 0) > 0.35) { player.quakeT = game.time; QUAKING = true; maceHit(e.x, e.y, 46, MELEE.k * (0.6 + 0.4 * wound('mQuake'))); QUAKING = false; }
   if (b.melee && !b.second && ench('weighted') && !e.boss && (player.wtN = (player.wtN || 0) + 1) % E2('weighted', 5, 4) === 0) { e.bound = Math.max(e.bound || 0, E2('weighted', 1, 1.5)); sparks(e.x, e.y - (e.hy || 10), PAL.iron0, 4); }
@@ -7922,7 +8002,7 @@ const CALLING = {
   saint: mkCalling('saint', RITES, [['c_sdraw', 'STEADY DRAW', { quick: 2 }], ['c_sfletch', 'TRUE FLETCHING', { heavy: 6 }], ['c_svigil', 'LONG VIGIL', { vigour: 3 }], ['c_spsalm', 'PSALMIST', { piety: 4 }]],
     [['c_sbrand', 'BLESSED BOLTS', 'BOLTS DEAL 30% MORE TO BURNING FOES.'], ['c_scenser', 'SECOND CENSER', 'ONE MORE CENSER CIRCLES YOU.'], ['c_slong', 'LONG RECKONING', 'YOUR RECKONINGS LAST 25% LONGER.'], ['c_szeal', 'UNDYING ZEAL', 'ZEAL NEVER FALLS BELOW 25.']]),
   mendicant: mkCalling('mendicant', MRITES, [['c_marm', 'STRONG ARM', { dmg: 3 }], ['c_mheft', 'HEFT', { heavy: 6 }], ['c_mgrit', 'ROAD GRIT', { vigour: 3 }], ['c_mtread', 'LONG TREAD', { feet: 3 }]],
-    [['c_mcrush', 'HAMSTRING', 'BLADE CRITS STUN THEIR FOE FOR 0.5 S.'], ['c_mbulwark', 'BULWARK', 'TAKE 12% LESS DAMAGE.'], ['c_mready', 'EVER READY', 'EACH DESCENT STARTS WITH YOUR RECKONING HALF CHARGED.'], ['c_mzeal', "BEGGAR'S FERVOUR", 'EVERY KILL GIVES 2 MORE ZEAL.']]),
+    [['c_mcrush', 'HAMSTRING', 'BLADE CRITS STUN THEIR FOE FOR 0.5 S.'], ['c_mbulwark', 'BULWARK', 'TAKE 12% LESS DAMAGE.'], ['c_mready', 'EVER READY', 'EACH DESCENT STARTS WITH YOUR RECKONING HALF CHARGED.'], ['c_mzeal', "KILLER'S FERVOUR", 'EVERY KILL GIVES 2 MORE ZEAL.']]),
   anchoress: mkCalling('anchoress', ARITES, [['c_afacet', 'CUT FACETS', { crit: 1 }], ['c_ahone', 'HONED GLASS', { heavy: 6 }], ['c_aveil', 'THICK VEIL', { vigour: 3 }], ['c_alitany', 'LITANY', { devout: 1.5 }]],
     [['c_ashard', 'SEVENTH SHARD', '+1 RELIQUARY SHARD.'], ['c_aquick', 'QUICK GLASS', 'SHARDS FIRE 12% FASTER.'], ['c_award', 'CLOISTERED', 'TAKE 12% LESS DAMAGE WHILE A RITE IS RECHARGING.'], ['c_apierce', 'NEEDLE GLASS', 'SHARD BOLTS PIERCE ONE MORE FOE.']]),
 };
@@ -8504,7 +8584,8 @@ function setsOnKill(e) {
     vemit(e.x, e.y - 8, { n: LOWFX ? 4 : 12, ramp: 'fire', sp: 90, up: 40, life: 0.4, glow: 5, size: 2 }); rings.push({ x: e.x, y: e.y, t: 0, max: 0.35, r: 60, color: '255,122,31', flat: true });
   }
 }
-// The Mendicant's sets on each swing (round 72): counts, crushes, momentum, rings.
+// The Vesper's sets on each attack (round 72; re-themed in round 119): counts, deep cuts (crush),
+// momentum, venom (alms), bleeds (fetters, gaol) and whirls (rings, bell).
 function meleeSets(dt) {
   const p = player;
   if (sb('road', 4) && !(p.dashT > 0) && Math.hypot(input.mx, input.my) > 0.3) p.mom = Math.min(10, (p.mom || 0) + dt * (sb('road', 6) ? 5 : 2.5));
@@ -8527,7 +8608,7 @@ function strikeSets(o, e) {
   if (o.crush && !e.boss) e.bound = Math.max(e.bound || 0, 0.5);
   if (sb('gaol', 2) || sbw('gaol')) {
     e.fet = Math.min(5, ((e.fetT || 0) > game.time ? e.fet || 0 : 0) + (sbw('gaol') ? 3 : 2)); e.fetT = game.time + 4;
-    if (sb('gaol', 6) && e.fet >= 5 && !e.dead) { e.fet = 0; if (!e.boss) e.bound = Math.max(e.bound || 0, 2); maceHit(e.x, e.y, 60, MELEE.k * 3, { rgb: '191,112,86', ramp: 'blood', quiet: true, each: (f) => { if (!f.boss) f.bound = Math.max(f.bound || 0, 1); } }); rings.push({ x: e.x, y: e.y, t: 0, max: 0.35, r: 60, color: '191,112,86', flat: true }); }
+    if (sb('gaol', 6) && e.fet >= 5 && !e.dead) { e.fet = 0; if (!e.boss) e.bound = Math.max(e.bound || 0, 2); maceHit(e.x, e.y, 60, MELEE.k * 3, { rgb: '232,56,63', ramp: 'blood', quiet: true, each: (f) => { if (!f.boss) f.bound = Math.max(f.bound || 0, 1); } }); rings.push({ x: e.x, y: e.y, t: 0, max: 0.35, r: 60, color: '232,56,63', flat: true }); }
   }
 }
 function afterSwingSets(o, a) {
@@ -8536,12 +8617,12 @@ function afterSwingSets(o, a) {
   if (o.nova) maceRing(80, MELEE.k, { rgb: '242,220,182', ramp: 'gold' });
   if (wound('xQuake') && p.blowN % 3 === 0) maceRing(110, MELEE.k * 4, { rgb: '255,170,90', ramp: 'fire' }); // round 80, Earthbreaker (round 82: 400%, wider)
   if (wound('aftershock') && p.blowN % 5 === 0) maceRing(70, MELEE.k * (0.4 + 0.3 * wound('aftershock')), { rgb: '255,244,176', ramp: 'bone' });
-  if (o.chains) { for (const f of nearestFoes(p.x, p.y, 30, SETK.gaolR)) { f.fet = Math.min(5, ((f.fetT || 0) > game.time ? f.fet || 0 : 0) + 2); f.fetT = game.time + 4; } rings.push({ x: p.x, y: p.y, t: 0, max: 0.4, r: SETK.gaolR, color: '191,112,86', flat: true }); } // round 74: chains reach foes the mace cannot
-  if (o.alms) { maceRing(sb('alms', 6) ? SETK.almsR6 : SETK.almsR, MELEE.k * 1.5, { rgb: '255,209,85', ramp: 'gold' }); vemit(p.x, p.y - 10, { n: LOWFX ? 4 : 12, ramp: 'gold', sp: 90, up: 50, life: 0.5, grav: 120, size: 2, glow: 4 }); }
+  if (o.chains) { for (const f of nearestFoes(p.x, p.y, 30, SETK.gaolR)) { f.fet = Math.min(5, ((f.fetT || 0) > game.time ? f.fet || 0 : 0) + 2); f.fetT = game.time + 4; } rings.push({ x: p.x, y: p.y, t: 0, max: 0.4, r: SETK.gaolR, color: '232,56,63', flat: true }); } // round 74: hooked knives reach foes the blades cannot
+  if (o.alms) { maceRing(sb('alms', 6) ? SETK.almsR6 : SETK.almsR, MELEE.k * 1.5, { rgb: '95,220,108', ramp: 'life' }); vemit(p.x, p.y - 10, { n: LOWFX ? 4 : 12, ramp: 'life', sp: 90, up: 50, life: 0.5, grav: 120, size: 2, glow: 4 }); }
   if (o.ring) {
     maceRing(o.ring, MELEE.k * 0.8 * (sb('bell', 6) ? SETK.ringK6 : 1), { rgb: '142,174,171', ramp: 'teal', each: (e) => { if (sb('bell', 4) && !e.boss) e.bound = Math.max(e.bound || 0, 0.6); } });
     for (const r of [o.ring * 0.6, o.ring]) rings.push({ x: p.x, y: p.y, t: 0, max: 0.5, r, color: '255,209,85', flat: true });
-    sfx('chain', { rate: 1.8, vol: 0.5, gap: 0.15 });
+    sfx('swing', { rate: 0.8, vol: 0.7, gap: 0.15 }); addPfx({ kind: 'smear', x: p.x, y: p.y - 12, a: rng() * Math.PI * 2, arc: Math.PI, r: o.ring * 0.7, max: 0.3, ramp: 'frost', th: 4 }); // round 119: the whirl, a full spin of blades
     if (sb('bell', 6)) addFervor(3);
     if (sbw('bell')) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01);
   }
@@ -9179,7 +9260,7 @@ function render() {
   mark('shadows');
   // Y-sorted actors and props.
   const th = thuriblePos();
-  const actors = [player, ...(isAnch() && player.hp > 0 && player.shards ? player.shards.map((sh, i) => ({ shardA: sh, si: i, y: sh.y })) : []), ...(player.xb && player.hp > 0 ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 90)), ...falls.map((f) => ({ fall: f, y: f.y })), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, p.big || 90))];
+  const actors = [player, ...(isAnch() && player.hp > 0 && player.shards ? player.shards.map((sh, i) => ({ shardA: sh, si: i, y: sh.y })) : []), ...(isMelee() && player.hp > 0 && player.vd ? player.vd.d.map((d, i) => ({ vdA: d, si: i, y: d.y })) : []), ...(player.xb && player.hp > 0 ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 90)), ...falls.map((f) => ({ fall: f, y: f.y })), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, p.big || 90))];
   for (const w of room.walls || []) for (const [tx, ty] of w.tiles) actors.push({ wall: w, tx, ty, y: ty * TILE + 15 });
   if (PETF.on && petShown() && player.hp > 0) actors.push({ petA: true, y: PETF.y });
   actors.sort((a, b) => a.y - b.y);
@@ -9191,6 +9272,7 @@ function render() {
       else if (a.petA) drawPet();
       else if (a.bow) drawFloatBow();
       else if (a.shardA) drawShard(a.shardA, a.si);
+      else if (a.vdA) drawVDagger(a.vdA, a.si);
       else if (a.th) drawThurible(thuriblePos(a.ci));
       else if (a.wall) drawWallSeg(a);
       else if (a.kind) drawProp(a);
@@ -9268,7 +9350,7 @@ function render() {
     for (const r of room.rooms) if (r.shrine && !r.shrine.used) glow(r.shrine.x, r.shrine.y - 26, 26, `rgba(${SHRINES[r.shrine.shrineKind].rgb},0.4)`);
   }
   drawAbilitiesGlow();
-  drawFloatBowGlow(); drawSwingGlow(); drawPfxGlow();
+  drawFloatBowGlow(); drawSwingGlow(); drawVDaggerGlow(); drawPfxGlow();
   if (game.scene === 'wound') drawSkillsGlow();
   glowVparts();
   const BF = boltFx();
@@ -10789,7 +10871,7 @@ const WOUNDS = [
   { id: 'sGreat', name: 'GREAT NAILS', hero: 'saint', r: 2, max: 2, icon: 'xbow', text: (n) => `EVERY ${n > 1 ? 6 : 9}TH BOLT IS A GREAT NAIL THAT PIERCES EVERY FOE.` },
   { id: 'mIron', name: 'IRON HIDE', hero: 'mendicant', r: 0, max: 3, icon: 'mantle', text: () => '+6% ARMOR.' },
   { id: 'mPound', name: 'POUNDING', hero: 'mendicant', r: 0, max: 3, icon: 'seal', text: () => 'CRITS DEAL 30% MORE.' },
-  { id: 'mBeggar', name: "BEGGAR'S LUCK", hero: 'mendicant', r: 0, max: 3, icon: 'relic', text: () => '+15% GOLD, AND 1 MORE HEALTH ON EVERY KILL.' },
+  { id: 'mBeggar', name: "CUTPURSE'S LUCK", hero: 'mendicant', r: 0, max: 3, icon: 'relic', text: () => '+15% GOLD, AND 1 MORE HEALTH ON EVERY KILL.' },
   { id: 'mUnbowed', name: 'UNBOWED', hero: 'mendicant', r: 1, max: 3, icon: 'hood', text: () => '+12% MAX HP. TAKE 6% LESS DAMAGE.' },
   { id: 'mBrawler', name: 'BRAWLER', hero: 'mendicant', r: 1, max: 3, icon: 'gloves', text: () => 'THE BLADES STRIKE 20% FASTER AND HIT ELITES 20% HARDER.' },
   { id: 'mQuake', name: 'GROUNDBREAKER', hero: 'mendicant', r: 2, max: 2, icon: 'nova', text: (n) => `CRITS CRACK THE FLOOR: A SHOCKWAVE HITS FOES AROUND THE TARGET (${60 + n * 40}% DAMAGE).` },
@@ -12045,7 +12127,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { get pfx() { return pfx; }, get cam() { return cam; }, nm, PSKINS, pskin, pskinsOwned, openStore, storeTap, autoIcons, autoPlayTap, playerSanctity, stationSanctity, autoHudBtn, autoSellFor, autoSellPick, AUTO_SELL, woundsLayout, woundsTap, woundsHeld, get SAC_PAGE_N() { return SAC_PAGE_N; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get pfx() { return pfx; }, get cam() { return cam; }, nm, vdAnim, VDAG, PSKINS, pskin, pskinsOwned, openStore, storeTap, autoIcons, autoPlayTap, playerSanctity, stationSanctity, autoHudBtn, autoSellFor, autoSellPick, AUTO_SELL, woundsLayout, woundsTap, woundsHeld, get SAC_PAGE_N() { return SAC_PAGE_N; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

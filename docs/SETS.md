@@ -25,14 +25,16 @@ blows), `setsOnKill`, `psalterCast`, `setFoeK`, `setGuard`, `shardPos`,
 (`migrateSets`, `SET_MIGRATE`). Skins carry `hero` in `SKINS`; each hero
 module builds only its own. Test: `tools/tests/round72.cjs`.
 
+Round 119: the Vesper (the melee class, id `mendicant`) keeps his five sets' ids, numbers and code but wears them as an assassin's: the names below, Venom for Alms, Bleeds for Fetters, whirls for rings, new looks (`SKINS` in `base.mjs`), icons (`SET_LOOK`) and badges. `HERO_TEXT` gives pieces saved under the old names the new ones.
+
 | Class | Set | 2 | 4 | 6 |
 |---|---|---|---|---|
-| Mendicant | The Mendicant's Rags (starter) | 10% less damage taken | +15% damage, +15% health | |
-| Mendicant | The Beggar King's Iron | reach +20% | every 4th blow crushes (x3, stun) | every 3rd, x5, shockwave; all damage x1.25 |
-| Mendicant | The Wanderer's Road | +15% move speed | moving builds Momentum, spent on the next blow | builds twice as fast, +25% a stack, dashes give 5, novas |
-| Mendicant | The Almsgiver's Bowl | blows sweep wider, kills heal 1% | kills give Alms (+1.5% each); at 20+ every 5th blow sends a wave | x2, +3.5% each, wider wave every 3rd blow, fire at 40 |
-| Mendicant | The Gaoler's Keys | blows put Fetters on (slow) | every 4th blow chains foes nearby (2 Fetters); fettered foes are dragged in, +15% a Fetter | x2, +35% a Fetter, the 5th locks and crashes round |
-| Mendicant | The Cracked Bell | every 6th blow rings | rings stun, stunned foes +40% | every 3rd, wider, x3, Zeal |
+| Vesper | The Vesper's Wraps (starter) | 10% less damage taken | +15% damage, +15% health | |
+| Vesper | The Nightblade (`iron`) | reach +20% | every 4th blow cuts deep (x3, stun) | every 3rd, x5, a ring of blades; all damage x1.25 |
+| Vesper | The Dusk Walker (`road`) | +15% move speed | moving builds Momentum, spent on the next blow | builds twice as fast, +25% a stack, dashes give 5, novas |
+| Vesper | The Viper's Fang (`alms`) | blades cut wider, kills heal 1% | kills give Venom (+1.5% each); at 20+ every 5th blow sends a wave of venom | x2, +3.5% each, wider wave every 3rd blow, fire at 40 |
+| Vesper | The Bloodletter (`gaol`) | blows put Bleeds on (slow) | every 4th blow throws hooked knives (2 Bleeds nearby); bleeding foes are dragged in, +15% a Bleed | x2, +35% a Fetter, the 5th locks and crashes round |
+| Vesper | The Whirling Veil (`bell`) | every 6th blow whirls | whirls stun, stunned foes +40% | every 3rd, wider, x3, Zeal |
 | Anchoress | The Anchorite's Shroud (starter) | +1 shard | +15% damage, +1 dash | |
 | Anchoress | The Shattered Reliquary | +2 shards | +15% a shard above 4 | votive shards on each rite |
 | Anchoress | The Glass Martyr | +10% shard crit | crits split | x1.4, crits x3, call glass shards |

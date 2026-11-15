@@ -146,6 +146,28 @@ function crystal(i, slim = false, skin = null) {
   put(f, c[0] - nx * down * (slim ? 1 : 1.5) + dx * 1, c[1] - ny * down * (slim ? 1 : 1.5) + dy * 1, 'white');
   return f;
 }
+// Round 119: the Vesper's two floating daggers, 16 headings (frame i points at
+// angle i / 16 of a turn, seen from above at a slant like the crystals). Each
+// look is [blade ramp, guard ramp, grip ramp]: plain, each premium skin, each of
+// his sets. The blade has a lit and a dark facet and a glint by the point.
+export const DAGGERS = { plain: ['iron', 'gold', 'crimson'], enlightened: ['violet', 'violet', 'ink'], void: ['rose', 'gold', 'ink'], psychedelic: ['iron', 'gold', 'violet'], dread: ['flame', 'ink', 'ink'], radiant: ['gold', 'rose', 'gold'], divine: ['cloth', 'gold', 'gold'], demonic: ['ember', 'crimson', 'ink'],
+  rags: ['iron', 'wood', 'wood'], iron: ['iron', 'iron', 'ink'], road: ['iron', 'sand', 'wood'], alms: ['moss', 'gold', 'moss'], gaol: ['blood', 'iron', 'brick'], bell: ['teal', 'gold', 'teal'] };
+const DM = { ...MATS };
+for (const [k, [b, g, h]] of Object.entries(DAGGERS)) { DM[`db_${k}`] = { ramp: b, spec: 0.9, bias: 0.15, max: 4 }; DM[`dd_${k}`] = { ramp: b, bias: -0.15, min: 2, max: 6 }; DM[`dg_${k}`] = { ramp: g, spec: 0.6, max: 5 }; DM[`dh_${k}`] = { ramp: h, bias: -0.1, min: 2 }; }
+function vdagger(i, k = 'plain') {
+  const a = i / 16 * Math.PI * 2, dx0 = Math.cos(a), dy0 = Math.sin(a) * 0.55, dl = Math.hypot(dx0, dy0), dx = dx0 / dl, dy = dy0 / dl;
+  const L = 11 + 6 * Math.abs(Math.cos(a)), c = [16, 16], S = new Scene(), at = (t, z = 3) => [c[0] + dx * t, c[1] + dy * t, z], nx = -dy, ny = dx;
+  S.add(capsule(at(-1), at(L), 2.6, 0.45, `db_${k}`), 0);                                                      // the blade
+  S.add(capsule([c[0] - dx + nx * 3.4, c[1] - dy + ny * 3.4, 3], [c[0] - dx - nx * 3.4, c[1] - dy - ny * 3.4, 3], 1.1, 1.1, `dg_${k}`), 0.3); // the guard
+  S.add(capsule(at(-2), at(-5.6), 1.3, 1.2, `dh_${k}`), 0.3);                                                  // the grip
+  S.add(sphere(at(-6.8), 1.5, `dg_${k}`), 0.3);                                                                // the pommel
+  const down = ny > 0 || (ny === 0 && nx < 0) ? 1 : -1;
+  S.paint({ f: (x, y) => Math.max(-((x - c[0]) * nx + (y - c[1]) * ny) * down, -((x - c[0]) * dx + (y - c[1]) * dy) - 0.5), mat: `dd_${k}` });
+  if (k === 'psychedelic') PSY.forEach((m, j) => S.paint({ f: (x, y) => { const u = (x - c[0]) * dx + (y - c[1]) * dy, v = (((u / 2.5) % 7) + 7) % 7; return Math.max(Math.abs(v - j - 0.5) - 0.5, -u); }, mat: m }));
+  const f = render(S, 32, 32, DM, { contrast: 1.25 });
+  put(f, c[0] + dx * L * 0.6 - nx * down, c[1] + dy * L * 0.6 - ny * down, 'white');
+  return f;
+}
 function shardBolt() {
   const S = new Scene();
   S.add(capsule([4, 4.5, 2], [20, 4.5, 2], 2.4, 0.4, 'ice'), 0);
@@ -517,16 +539,17 @@ const ring = (S, x, y, r, mat) => S.add(torus([x, y, 7], r, 1, Math.PI / 2, mat)
 Object.assign(SET_LOOK, {
   rags: { map: { crimson: 'flag', violet: 'flag', leather: 'stone', iron: 'stone', gold: 'wood', blood: 'wood', wood: 'wood', bone: 'flag' },
     mark: (S) => { S.add(box([18.5, 18.5, 7], [3.6, 3.6, 1], 0.5, 'leather'), 0); S.paint({ f: (x, y) => Math.abs(x - y) - 0.6, mat: 'wood' }); } },
-  iron: { map: { crimson: 'slateRobe', violet: 'slateRobe', leather: 'slateDark', gold: 'gold', blood: 'crimson', wood: 'slateDark', bone: 'steel' },
-    mark: (S) => { for (const dx of [-3, 0, 3]) S.add(capsule([18.5 + dx, 21, 7], [18.5 + dx, 15.5 - (dx ? 0 : 1.5), 7], 1.3, 0.5, 'steel'), 0.3); S.add(box([18.5, 21.5, 7], [4.4, 1.2, 1], 0.3, 'gold'), 0.3); } },
-  road: { map: { crimson: 'sandRobe', violet: 'sandRobe', leather: 'leather', iron: 'leather', gold: 'wood', blood: 'leather', wood: 'leather', bone: 'cream' },
-    mark: (S) => { S.add(torus([18.5, 18.5, 7], 3.4, 1, 0.2, 'cream'), 0); S.add(capsule([18.5, 15, 7], [18.5, 22, 7], 0.8, 0.8, 'leather'), 0); } },
-  alms: { map: { crimson: 'mossRobe', violet: 'mossRobe', leather: 'mossDark', iron: 'gold', blood: 'gold', wood: 'wood', bone: 'cream' },
-    mark: (S) => { S.add(ellipsoid([18.5, 19.5, 7], [4.4, 2.4, 2], 'wood'), 0); S.add(sphere([18.5, 17, 8], 1.4, 'gold'), 0); } },
+  // Round 119: the Vesper's sets as an assassin's (ids kept): crossed blades, a dusk moon, a vial of venom, a hooked knife, a whirl.
+  iron: { map: { crimson: 'inkRobe', violet: 'inkRobe', leather: 'slateDark', gold: 'silver', blood: 'slateDark', wood: 'slateDark', bone: 'steel' },
+    mark: (S) => { for (const k of [1, -1]) S.add(capsule([18.5 - k * 3.4, 22, 7], [18.5 + k * 3.4, 15, 7], 1.1, 0.4, 'silver'), 0.2); S.add(box([18.5, 20.4, 7.5], [3.2, 0.7, 0.8], 0.2, 'leather'), 0.2); } },
+  road: { map: { crimson: 'sandRobe', violet: 'sandRobe', leather: 'leather', iron: 'leather', gold: 'wood', blood: 'crimson', wood: 'leather', bone: 'cream' },
+    mark: (S) => { S.add(sphere([18.5, 18.5, 7], 3.6, 'gold'), 0); S.sub(sphere([20.3, 17.4, 8], 3.2), 0.2); } },
+  alms: { map: { crimson: 'mossRobe', violet: 'mossRobe', leather: 'mossDark', iron: 'leather', gold: 'leather', blood: 'mossDark', wood: 'wood', bone: 'cream' },
+    mark: (S) => { S.add(ellipsoid([18.5, 19.6, 7], [2.6, 2.8, 2], 'vial'), 0.4); S.add(capsule([18.5, 16.6, 7], [18.5, 15, 7], 1, 1, 'wood'), 0.2); } },
   gaol: { map: { crimson: 'brickRobe', violet: 'brickRobe', leather: 'roofDark', gold: 'iron', blood: 'roofDark', wood: 'roofDark', bone: 'steel' },
-    mark: (S) => { ring(S, 16.5, 16.5, 2.4, 'iron'); S.add(capsule([18, 18, 7], [22, 22, 7], 0.9, 0.9, 'iron'), 0.2); S.add(box([21.5, 22.5, 7], [1, 1.6, 1], 0.2, 'iron'), 0.2); } },
+    mark: (S) => { S.add(capsule([16.5, 22.5, 7], [19.5, 16, 7], 1, 0.6, 'steel'), 0.2); S.add(torus([20.8, 15.6, 7], 1.6, 0.6, 0.2, 'steel'), 0.2); S.add(capsule([15.5, 23.5, 7], [16.6, 21.6, 7], 1, 1, 'crimson'), 0.2); } },
   bell: { map: { crimson: 'tealRobe', violet: 'tealRobe', leather: 'tealDark', iron: 'bronze', gold: 'bronze', blood: 'bronze', wood: 'tealDark', bone: 'cream' },
-    mark: (S) => { S.add(ellipsoid([18.5, 18.5, 7], [3.2, 3.8, 2], 'bronze'), 0.6); S.add(box([18.5, 21.8, 7], [4.2, 0.9, 1.4], 0.3, 'bronze'), 0.5); S.add(sphere([18.5, 23, 7.5], 0.9, 'iron'), 0); } },
+    mark: (S) => { S.add(torus([18.5, 18.5, 7], 3.2, 0.9, 0.25, 'bronze'), 0); for (let k = 0; k < 3; k++) { const a = k * 2.1; S.add(capsule([18.5 + Math.cos(a) * 3.2, 18.5 + Math.sin(a) * 3.2, 7.5], [18.5 + Math.cos(a + 0.9) * 4.8, 18.5 + Math.sin(a + 0.9) * 4.8, 7.5], 0.8, 0.4, 'silver'), 0.2); } } },
   shroud: { map: { crimson: 'cream', violet: 'cream', leather: 'creamDark', iron: 'creamDark', gold: 'wood', blood: 'wood', wood: 'wood', bone: 'cream' },
     mark: (S) => { S.add(box([18.5, 18.5, 7], [1.1, 4.2, 1], 0.3, 'wood'), 0); S.add(box([18.5, 17, 7], [3, 1.1, 1], 0.3, 'wood'), 0); } },
   glass: { map: { crimson: 'glassRobe', violet: 'glassRobe', leather: 'blueDark', iron: 'silver', gold: 'silver', blood: 'glassGlow', wood: 'blueDark', bone: 'silver' },
@@ -760,7 +783,7 @@ export default {
     burst: () => [0, 1, 2, 3].map(burst),
     smoke: () => [0, 1, 2, 3].map(smoke),
     thurible: () => [0, 1].map(thurible),
-    shard: () => [0, 1, 2, 3].map(shard), shardbolt: () => [shardBolt()], crystal: () => Array.from({ length: 16 }, (_, i) => crystal(i)), ...Object.fromEntries(Object.keys(CRYSTALS).flatMap((k) => [[`crystal_${k}`, () => Array.from({ length: 16 }, (_, i) => crystal(i, false, k))], [`crystalbolt_${k}`, () => Array.from({ length: 16 }, (_, i) => crystal(i, true, k))]])), crystalbolt: () => Array.from({ length: 16 }, (_, i) => crystal(i, true)),
+    shard: () => [0, 1, 2, 3].map(shard), shardbolt: () => [shardBolt()], crystal: () => Array.from({ length: 16 }, (_, i) => crystal(i)), ...Object.fromEntries(Object.keys(CRYSTALS).flatMap((k) => [[`crystal_${k}`, () => Array.from({ length: 16 }, (_, i) => crystal(i, false, k))], [`crystalbolt_${k}`, () => Array.from({ length: 16 }, (_, i) => crystal(i, true, k))]])), crystalbolt: () => Array.from({ length: 16 }, (_, i) => crystal(i, true)), vdagger: () => Array.from({ length: 16 }, (_, i) => vdagger(i)), ...Object.fromEntries(Object.keys(DAGGERS).filter((k) => k !== 'plain').map((k) => [`vdagger_${k}`, () => Array.from({ length: 16 }, (_, i) => vdagger(i, k))])),
     flask: () => [flask()],
     link: () => [0, 1].map(link),
     hook: () => [hook()],

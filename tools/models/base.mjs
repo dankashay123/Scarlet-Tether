@@ -315,24 +315,24 @@ export const PREMIUM = {
     }, dots: eyes('ember0', 'ember2') },
 };
 export const SKINS = {
-  // ---- The Mendicant's own (round 72) ----
-  // The Mendicant's Rags, his starter set: patched brown, a rope belt.
-  rags: { hero: 'mendicant', mats: { robe: 'flag', robeDark: 'stone', hood: 'stone', cowl: 'flag', cape: 'stone', capeHem: 'wood', tabard: 'shroud', trim: 'wood', cross: 'wood' } },
-  // The Beggar King's Iron: dark iron robes, gilt trim, a crown of iron spikes.
-  iron: { hero: 'mendicant', crown: true, mats: { robe: 'slateRobe', robeDark: 'slateDark', hood: 'steel', cowl: 'steel', cape: 'slateDark', trim: 'gold', capeHem: 'gold', tabard: 'crimsonDark', cross: 'gold' },
-    add: (S, { hx, hy }) => { S.add(torus([hx, hy - 4.2, 0.5], 4.6, 1.4, 0.3, 'iron'), 0.6); for (const [dx, h] of [[-3.6, 4.5], [-1.2, 6], [1.2, 6], [3.6, 4.5]]) S.add(capsule([hx + dx, hy - 5.2, 2.2], [hx + dx * 1.2, hy - 5.2 - h, 2.2], 1.5, 0.6, 'steel'), 0.4); } },
-  // The Wanderer's Road: sand and leather, a bedroll across the back.
-  road: { hero: 'mendicant', mats: { robe: 'sandRobe', robeDark: 'leather', hood: 'leather', cowl: 'sandRobe', cape: 'leather', trim: 'wood', capeHem: 'wood', tabard: 'creamDark', cross: 'wood', boot: 'leather' },
-    add: (S, { cx, B, X }) => { S.add(capsule([cx - 9 + X, 27 + B, -4.6], [cx + 1 + X, 25 + B, -4.6], 2.6, 2.6, 'cream'), 0.6); S.paint({ f: (x) => Math.abs(x - (cx - 4 + X)) - 0.7, mat: 'leather' }); } },
-  // The Almsgiver's Bowl: moss green and gold, a wooden bowl at the belt.
-  alms: { hero: 'mendicant', mats: { robe: 'mossRobe', robeDark: 'mossDark', hood: 'mossDark', cowl: 'cream', cape: 'mossDark', trim: 'gold', capeHem: 'gold', tabard: 'cream', cross: 'gold' },
-    add: (S, { cx, B, X }) => { S.add(ellipsoid([cx - 1 + X, 46 + B, 4.4], [3.4, 1.8, 2.4], 'wood'), 0.6); S.paint({ f: (x, y) => Math.abs(y - (45 + B)) - 0.5, mat: 'gold' }); } },
-  // The Gaoler's Keys: rust red and iron, a ring of keys at the hip.
-  gaol: { hero: 'mendicant', mats: { robe: 'brickRobe', robeDark: 'roofDark', hood: 'roofDark', cowl: 'steel', cape: 'roofDark', trim: 'iron', capeHem: 'iron', tabard: 'slateDark', cross: 'iron' },
-    add: (S, { cx, B, X }) => { S.add(torus([cx + 1 + X, 47 + B, 4.6], 2.2, 0.7, Math.PI / 2, 'iron'), 0.2); for (const dx of [-1.2, 1.4]) S.add(capsule([cx + 1 + dx + X, 48 + B, 4.8], [cx + 1 + dx + X, 53 + B, 4.8], 0.8, 0.8, 'iron'), 0.2); } },
-  // The Cracked Bell: teal and bronze, a small bell at the belt.
+  // ---- The Vesper's own (round 72; assassin looks since round 119; ids kept) ----
+  // The Vesper's Wraps, his starter set: grey wraps, leather straps.
+  rags: { hero: 'mendicant', mats: { robe: 'slateDark', robeDark: 'stone', hood: 'stone', cowl: 'flag', cape: 'stone', capeHem: 'leather', tabard: 'shroud', trim: 'leather', cross: 'wood' } },
+  // The Nightblade: black and silver, two sheathed blades crossed on the back.
+  iron: { hero: 'mendicant', mats: { robe: 'inkRobe', robeDark: 'void', hood: 'inkRobe', cowl: 'slateDark', cape: 'inkRobe', trim: 'silver', capeHem: 'silver', tabard: 'slateDark', cross: 'silver' },
+    add: (S, { cx, B, X }) => { for (const k of [-1, 1]) { S.add(capsule([cx - 3 + X - k * 4, 23 + B, -4.4], [cx - 3 + X + k * 5, 41 + B, -4.4], 1.1, 0.8, 'leather'), 0.3); S.add(capsule([cx - 3 + X - k * 4, 23 + B, -4.4], [cx - 3 + X - k * 5.4, 19.5 + B, -4.4], 1, 1, 'silver'), 0.2); } } },
+  // The Dusk Walker: sand and leather, a long scarf streaming behind.
+  road: { hero: 'mendicant', mats: { robe: 'sandRobe', robeDark: 'leather', hood: 'leather', cowl: 'sandRobe', cape: 'leather', trim: 'wood', capeHem: 'wood', tabard: 'creamDark', cross: 'crimson', boot: 'leather' },
+    add: (S, { cx, B, X, hx, hy }) => { S.add(capsule([hx - 2, hy + 6, -2], [cx - 9 + X, 30 + B, -4.5], 1.8, 1.5, 'crimson'), 0.8); S.add(capsule([cx - 9 + X, 30 + B, -4.5], [cx - 13 + X, 37 + B, -4.5], 1.5, 1, 'crimsonDark'), 0.6); } },
+  // The Viper's Fang: moss green and dark leather, vials of venom at the belt.
+  alms: { hero: 'mendicant', mats: { robe: 'mossRobe', robeDark: 'mossDark', hood: 'mossDark', cowl: 'slateDark', cape: 'mossDark', trim: 'leather', capeHem: 'leather', tabard: 'slateDark', cross: 'gold' },
+    add: (S, { cx, B, X }) => { for (const dx of [-3.2, 0, 3.2]) S.add(capsule([cx + dx + X, 43.6 + B, 4.6], [cx + dx + X, 46.4 + B, 4.6], 1.2, 1, 'vial'), 0.2); } },
+  // The Bloodletter: rust red and steel, a bandolier of hooked knives.
+  gaol: { hero: 'mendicant', mats: { robe: 'brickRobe', robeDark: 'roofDark', hood: 'roofDark', cowl: 'steel', cape: 'roofDark', trim: 'iron', capeHem: 'iron', tabard: 'slateDark', cross: 'leather' },
+    add: (S, { cx, B, X }) => { for (const t of [0.25, 0.5, 0.75]) { const x = cx - 4 + X + t * 9, y = 31 + B + t * 9; S.add(capsule([x, y, 4.4], [x + 1.2, y - 2.6, 4.8], 0.7, 0.5, 'steel'), 0.2); } } },
+  // The Whirling Veil: teal and bronze, a long veil falling from the hood.
   bell: { hero: 'mendicant', mats: { robe: 'tealRobe', robeDark: 'tealDark', hood: 'tealDark', cowl: 'bronze', cape: 'tealDark', trim: 'bronze', capeHem: 'bronze', tabard: 'cream', cross: 'bronze' },
-    add: (S, { cx, B, X }) => { S.add(ellipsoid([cx - 1 + X, 49 + B, 4.6], [2.4, 3, 2.2], 'bronze'), 0.4); S.add(sphere([cx - 1 + X, 52.6 + B, 4.8], 1, 'iron'), 0.2); } },
+    add: (S, { cx, B, X, hx, hy }) => { S.add(capsule([hx - 3.4, hy - 3.4, -2.2], [cx - 7 + X, 34 + B, -4], 2.4, 1.8, 'tealRobe'), 1.2); S.add(capsule([cx - 7 + X, 34 + B, -4], [cx - 8.4 + X, 44 + B, -4.2], 1.8, 1.2, 'tealDark'), 0.8); } },
   // ---- The Anchoress's own (round 72) ----
   // The Anchorite's Shroud, her starter set: plain cream, a wooden cross.
   shroud: { hero: 'anchoress', mats: { robe: 'cream', robeDark: 'creamDark', hood: 'creamDark', cowl: 'cream', cape: 'creamDark', capeHem: 'wood', tabard: 'shroud', trim: 'wood', cross: 'wood' } },
