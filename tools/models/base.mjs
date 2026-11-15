@@ -87,12 +87,21 @@ export const MATS = {
   violetRobe: { ramp: 'violet', bias: -0.25, spec: 0.06 }, violetDark: { ramp: 'violet', bias: -0.45, min: 4 }, shardGlow: { ramp: 'violet', glow: 1 },
 };
 
+// Round 122: two-bone reach. The elbow of an arm from shoulder s to hand h (upper arm a, forearm b), bent
+// down (+y) and a little out of the screen; a hand out of reach is pulled in along the line.
+const sub3 = (p, q) => [p[0] - q[0], p[1] - q[1], p[2] - q[2]], norm3 = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+function ik(s, h, a, b) {
+  const d = sub3(h, s), L0 = Math.hypot(d[0], d[1], d[2]) || 1e-3, L = Math.min(L0, a + b - 0.05), u = [d[0] / L0, d[1] / L0, d[2] / L0];
+  const t = (a * a - b * b + L * L) / (2 * L), k = Math.sqrt(Math.max(0, a * a - t * t));
+  let n = [-u[1], u[0], 0]; if (n[1] < 0) n = [-n[0], -n[1], 0]; const nl = Math.hypot(n[0], n[1]) || 1; n = [n[0] / nl, n[1] / nl, 0.35];
+  return [s[0] + u[0] * t + n[0] * k, s[1] + u[1] * t + n[1] * k, s[2] + u[2] * t + n[2] * k * 0.6];
+}
 // ---------------------------------------------------------- the Saint ---
 // 48x68 frame, feet at y 62, facing right.
 export function saintModel(pose = {}) {
   // reach: the front arm thrust forward (cast); haloAt: [dx, dy] knocks the halo loose.
   // hero: 'mendicant' builds the second playable saint on the same body (HEROES below).
-  const { bob = 0, legs = 0, lift = [0, 0], bend = [0, 0], cape = 0, lean = 0, aim = 0, blink = false, halo = 0, skin = null, reach = 0, haloAt = null, hero = null, swing = 0, swing2 = 2.2, back = null } = pose;
+  const { bob = 0, legs = 0, lift = [0, 0], bend = [0, 0], cape = 0, lean = 0, aim = 0, blink = false, halo = 0, skin = null, reach = 0, haloAt = null, hero = null, swing = 0, swing2 = 2.2, back = null, fh = null, bh: bhT = null } = pose;
   const HR = hero ? HEROES[hero] : null;
   const K = { robe: 'crimson', robeDark: 'crimsonDark', tabard: 'cloth', hose: 'shroud', boot: 'leather', trim: 'gold', hood: 'crimson', cowl: 'crimson', cape: 'crimsonDark', capeHem: 'gold', cross: 'crimson', ...(HR ? HR.mats : {}), ...(skin ? SKINS[skin].mats : {}) };
   // legs: one number (mirrored swing) or [back leg, front leg] foot offsets.
@@ -125,18 +134,33 @@ export function saintModel(pose = {}) {
   S.add(ellipsoid([cx + X, 28.4 + B, 0], HR && HR.broad ? [7.8, 3.8, 4.8] : [6.6, 3.2, 4.2], K.cowl), 1.8);
   // Back arm, half hidden.
   // back: [dx, dy, dz] moves the back hand (the Vesper's second blade, round 118).
-  const bh = [cx - 4.6 + X + (back ? back[0] : 0), 40 + B + (back ? back[1] : 0), -2 + (back ? back[2] || 0 : 0)];
-  const be = back ? [(cx - 4 + X + bh[0]) / 2 - 1.6, (29.5 + B + bh[1]) / 2 + 2, (bh[2] - 2.6) / 2 - 0.4] : [cx - 5.6 + X, 35 + B, -2.8];
-  S.add(capsule([cx - 4 + X, 29.5 + B, -2.6], be, 2.1, 1.8, K.robeDark), 1);
+  // Round 122: fh / bh place a hand relative to its shoulder ([forward, down, toward the camera]); the elbow is
+  // solved so the arm bends down and out (ik). The Vesper's poses use them for real cuts and spins.
+  const bs = [cx - 4 + X, 29.5 + B, -2.6];
+  const bh = bhT ? [bs[0] + bhT[0], bs[1] + bhT[1], bs[2] + bhT[2]] : [cx - 4.6 + X + (back ? back[0] : 0), 40 + B + (back ? back[1] : 0), -2 + (back ? back[2] || 0 : 0)];
+  const be = bhT ? ik(bs, bh, 7.2, 7) : back ? [(cx - 4 + X + bh[0]) / 2 - 1.6, (29.5 + B + bh[1]) / 2 + 2, (bh[2] - 2.6) / 2 - 0.4] : [cx - 5.6 + X, 35 + B, -2.8];
+  S.add(capsule(bs, be, 2.1, 1.8, K.robeDark), 1);
   S.add(capsule(be, [bh[0], bh[1] - 0.6, bh[2]], 1.8, 1.6, K.robeDark), 0.6);
   S.add(sphere(bh, 1.55, K.boot), 0.5);
   // Front arm raised in a casting gesture: the crossbow floats, guided by this hand.
+  const fs = [cx + 4.4 + X, 29.6 + B, 2.4];
+  if (fh) { // round 122: the hand at a target, the elbow solved; the cuff sits just above the wrist
+    const hand = [fs[0] + fh[0], fs[1] + fh[1], fs[2] + fh[2]], elbow = ik(fs, hand, 7.6, 7.2), u = norm3(sub3(hand, elbow)), wr = [hand[0] - u[0] * 1.6, hand[1] - u[1] * 1.6, hand[2] - u[2] * 1.6];
+    S.add(capsule(fs, elbow, 2.5, 2.1, K.robe), 1.3);
+    S.add(capsule(elbow, wr, 2.1, 2.2, K.robe), 0.7);
+    S.paint({ f: (x, y, z) => Math.hypot(x - wr[0], y - wr[1], z - wr[2]) - 2.35, mat: K.trim });
+    S.add(sphere(hand, 1.7, K.boot), 0.6);
+    pose.handAt = hand;
+  } else {
   const hand = [cx + 8.4 + X + reach * 4, 31.6 + B + aim - reach * 1.6, 5.8], elbow = [cx + 6.6 + X + reach * 2.6, 37 + B - reach * 1.8, 4.6];
-  S.add(capsule([cx + 4.4 + X, 29.6 + B, 2.4], elbow, 2.5, 2.1, K.robe), 1.3);
+  S.add(capsule(fs, elbow, 2.5, 2.1, K.robe), 1.3);
   S.add(capsule(elbow, [hand[0] - 0.4, hand[1] + 1.8, hand[2] - 0.3], 2.1, 2.3, K.robe), 0.7);
   S.paint({ f: (x, y, z) => Math.hypot(x - (hand[0] - 0.4), y - (hand[1] + 2.2), z - (hand[2] - 0.3)) - 2.45, mat: K.trim });
   S.add(ellipsoid(hand, [1.5, 2, 1.6], K.boot), 0.6);
   S.add(capsule([hand[0] + 0.6, hand[1] - 1, hand[2]], [hand[0] + 1.4, hand[1] - 3, hand[2]], 0.6, 0.5, K.boot), 0.4);
+  pose.handAt = hand;
+  }
+  const hand = pose.handAt; delete pose.handAt;
   S.paint({ f: (x, y, z) => Math.hypot(x - (cx + 4.2 + X), y - (29.2 + B), z - 3.4) - 1.4, mat: K.trim });
   // Neck, the hood and its point.
   const hx = cx + 1.2 + X, hy = 19.4 + B;

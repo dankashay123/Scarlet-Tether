@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 121 (build 121, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 122 (build 122, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -320,11 +320,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **The Vesper (rounds 118-121).** Sets, rites, pets and Hallowed are an
-  assassin's since round 121. Not done: rites that still make a friar's
-  effects under a new name (Antidote and Venom Flood leave pools drawn like
-  holy water in the set's green; the Whirlwind and Steel Chime still use
-  the old shockwave and stun rings), Rubric and Codex art for his rites,
+- **The Vesper (rounds 118-122).** Sets, rites, pets, Hallowed, poses
+  (round 122) and mobility are an assassin's. Not done: Steel Chime still
+  uses the old stun rings, the Thousand Cuts and the Red Hour have no pose
+  of their own, the auto pilot does not know about the lunge or the faster
+  run (it should close in on packs sooner), Rubric and Codex art for his rites,
   a proper blade sound (we speed up `swing`), poses for the Wardens'
   photos. Ask the owner how the speed and reach feel on the phone.
 - **Parked by the owner (round 116, "come back to those later").** Suggestions
@@ -494,6 +494,30 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 122:** the owner asked for better Vesper attack animations
+  (real arm and hand movement), better skills (the Whirlwind as a spin),
+  faster movement, and the class improved overall. **Arms:** `fh`/`bh`
+  hand targets with a two-bone `ik()` in `saintModel`; every pose of his
+  rebuilt on them: a combat stance (front blade low, back blade reverse-grip
+  across the chest), a run with the arms pumping, eight-frame cuts (cocked
+  behind the head, across, low follow-through, backhand across the chest,
+  high follow-through), `spin`, `throw`, `clash`, a cross-cut `cast`, flinch,
+  death, dash. **Skills:** `vSpin`/`vPose`/`whirlFx`; the Whirlwind spins
+  him the whole time with blades and wind round him; Cinder Whirl, Serpent's
+  Coil, Wire Sweep, Shadow Rush's end, Blood Hook's cut and the Whirling
+  Veil's whirls spin him; Fan of Knives and Blood Hook throw; Steel Chime
+  clashes overhead; his pools are venom green with bubbles. **Mobility:**
+  runs x1.25 (`MELEE.move`), dashes recharge in 75% of the time
+  (`MELEE.dashK`), and a lunge carries him onto a foe up to 46 px past his
+  reach. **Sound:** `tools/build-blades.py` makes `slash`, `shing`, `stab`,
+  `whirl` (no samples). **Balance** (setbal Station XII, 4 seeds, kills per
+  second): with the lunge the sets rose (Nightblade 9.0, Dusk 7.0, Viper
+  10.9, Bloodletter 9.1, Veil 10.3; mixes 6.8-7.9). Shipped: each cut 0.42
+  of a blow (was 0.5), `SETK.six` Nightblade 2.0, Dusk Walker 2.0, Viper
+  1.25, Veil 1.2 (Bloodletter 1.05): no gear 2.7, Nightblade 8.1, Dusk 8.2,
+  Viper 9.5, Bloodletter 8.8, Veil 7.9. A little above the other classes'
+  6-8 (runs move about 20%); mixes and Station VI not remeasured. Test:
+  `round122.cjs`.
 - **Round 121:** the owner picked 1, 2, 3 and 5 from round 119's list.
   **Rites:** names and texts as an assassin's (ids kept): Venom Strike,
   Serpent's Coil, Fan of Knives, Shadow Rush, Crippling Cut, Cinder Whirl,

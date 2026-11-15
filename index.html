@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '121';
+const BUILD = '122';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '122': ['THE VESPER MOVES HIS WHOLE ARMS NOW: EACH ATTACK IS A CUT FROM BEHIND THE HEAD, THEN A BACKHAND WITH THE OTHER BLADE. NEW STANCE, RUN, THROW AND CLASH POSES.', 'HE SPINS: THE WHIRLWIND TURNS HIM ROUND THE WHOLE TIME INSIDE A RING OF BLADES, AND CINDER WHIRL, WIRE SWEEP, SHADOW RUSH, BLOOD HOOK AND HIS WHIRLS SPIN HIM TOO.', 'HE RUNS 25% FASTER, HIS DASHES RECHARGE 25% FASTER, AND HE LUNGES ONTO A FOE JUST OUT OF REACH.', 'NEW BLADE SOUNDS. HIS POOLS ARE VENOM: GREEN AND BUBBLING.'],
   '121': ["THE VESPER'S RITES ARE NOW AN ASSASSIN'S: VENOM STRIKE, FAN OF KNIVES, SHADOW RUSH, BLOOD HOOK, KNIFE BELT, THE WHIRLWIND, BLADES FROM ABOVE, THE RED HOUR AND MORE. NEW ICONS; THEY LAND AS QUICK CUTS, AND HIS THROWN KNIVES FLY AS KNIVES.", 'TEN PIPS UNDER HIS ZEAL BAR COUNT ATTACKS TO THE NEXT BLADE STORM. THEY FLASH WHEN IT IS READY.', 'HIS PETS ARE THE SHADOW HOUND AND THE NIGHT RAVEN. HIS SEVEN HALLOWED PIECES HAVE NEW NAMES AND ICONS.'],
   '120': ['THE VESPER HAS TWO FLOATING DAGGERS. EVERY 10TH ATTACK THEY FLY INTO THE NEAREST PACK (ELITES AND WARDENS FIRST) AND SPIN THERE AS A BLADE STORM: 10 HITS PER SECOND FOR 2 S.', 'THE DAGGERS TAKE THE LOOK OF YOUR PREMIUM SKIN OR SET.', "HIS SETS ARE NOW AN ASSASSIN'S: THE NIGHTBLADE, THE DUSK WALKER, THE VIPER'S FANG (VENOM), THE BLOODLETTER (BLEEDS) AND THE WHIRLING VEIL (WHIRLS). NEW LOOKS AND ICONS; PIECES YOU OWN TAKE THE NEW NAMES."],
   '119': ['THE MENDICANT IS NOW THE VESPER, AN ASSASSIN WITH TWO BLADES. EACH ATTACK IS TWO QUICK CUTS IN A NARROW ARC: LESS DAMAGE PER HIT, MORE HITS.', 'NEW LOOK, BUST, ARMS ICONS AND TEXT. HIS SETS, RITES, GEAR AND SAVES CARRY OVER.'],
@@ -320,7 +321,7 @@ const boltFx = () => { const ps = pskin(); if (ps) { const P = PSKIN_BY[ps]; ret
 // talents and sets are shared; each set dresses him too (mendicant_<set>).
 const HEROES = {
   saint: { name: 'THE SAINT', sheet: 'saint', role: 'RANGED, CROSSBOW', text: 'FIGHTS FROM RANGE WITH A FLOATING CROSSBOW.' },
-  mendicant: { name: 'THE VESPER', sheet: 'mendicant', role: 'MELEE, TWIN BLADES', text: 'AN ASSASSIN. FAST, LIGHT CUTS WITH TWO BLADES. TAKES 10% LESS DAMAGE.' },
+  mendicant: { name: 'THE VESPER', sheet: 'mendicant', role: 'MELEE, TWIN BLADES', text: 'FAST, LIGHT CUTS WITH TWO BLADES. RUNS 25% FASTER AND TAKES 10% LESS DAMAGE.' },
   // Round 71: the third class. Her reliquary's shards orbit her and fire on their own.
   anchoress: { name: 'THE ANCHORESS', sheet: 'anchoress', role: 'SUMMONER, RELIQUARY SHARDS', text: 'SHARDS CIRCLE HER AND FIRE ON THEIR OWN. MORE SHARDS, MORE DAMAGE.' },
 };
@@ -624,8 +625,8 @@ if (document.fonts) Promise.all([document.fonts.load(fontOf(22, false)), documen
 // <audio> elements routed through the same context, so memory stays low.
 // iOS 17+: audioSession 'ambient' makes the game follow the silent switch.
 const AUDIO = (() => {
-  const SFX = ['swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'sacrifice', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_ashWidow', 'fall_ashWidow'];
-  const VOL = { swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, sacrifice: 0.55, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
+  const SFX = ['slash', 'shing', 'stab', 'whirl', 'swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'sacrifice', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_ashWidow', 'fall_ashWidow'];
+  const VOL = { slash: 0.45, shing: 0.35, stab: 0.5, whirl: 0.45, swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, sacrifice: 0.55, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
   const A = { ctx: null, buf: {}, last: {}, muted: false, master: null, sfxBus: null, voiceBus: null, musicBus: null, tracks: {}, want: [] };
   try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch { /* not supported */ }
   try { A.muted = !!JSON.parse(localStorage.getItem('hollow-saint') || '{}').muted; } catch { /* private mode */ }
@@ -1590,7 +1591,7 @@ const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
 const SETK = { choirHp: 3, choirHp6: 3, choirR: 110, fontHp: 8, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 3.6, strideT: 7, font: 3.5, bound: 1.6, bound6: 2.75, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3, strideT4: 4, font4: 3.5, bound4: 2.6, choir4: 3, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 63, stride: 60, iron: 300, alms: 320, glass: 400, font: 550, choir: 233, road: 300, bell: 330, reliquary: 318, psalter: 450, lantern: 200, gaol: 140 } , /* rounds 101 and 104: 4+2 mixes toward about 6 kills a second at XII */ shardPer: 15, crushK: 3, momK: 22, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ring4: 4, strideGuard: 30, boss: { font: 6, alms: 4.1, bell: 5, gaol: 4.8, iron: 4.6, confessor: 2.7, nails: 1.4, glass: 1.6, lantern: 1.3 }, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 35, thornK6: 150, psalK6: 3, lampK6: 120, // Round 101: every set's six pieces tuned to about 7 kills a second at Station XII (setbal.cjs, 6 seeds; the Stride, Confessor,
   // Lantern and Nails through their own numbers, so no card shows a multiplier under 1), and the sets that
   // took the most damage given a damage-taken multiplier at six pieces (guard6), so no set is far safer or deadlier than another.
-  six: { font: 1.5, choir: 1.44, iron: 2.3, road: 1.85, alms: 1.5, bell: 1.5, gaol: 1.05, glass: 1.67, thorn: 1.5, psalter: 1.79 },
+  six: { font: 1.5, choir: 1.44, iron: 2, road: 2, alms: 1.25, bell: 1.2, gaol: 1.05, glass: 1.67, thorn: 1.5, psalter: 1.79 },
   guard6: { font: 0.75, confessor: 0.85, choir: 0.5, iron: 0.6, alms: 0.85, glass: 0.55, psalter: 0.4, lantern: 0.62 },
   // Round 105: the same at four pieces, so 4+2 mixes take about as much damage as each other (setbal.cjs at Station XII).
   guard4: { choir: 0.55, confessor: 0.75, font: 0.8, iron: 0.7, alms: 0.7, gaol: 0.88, bell: 0.7, reliquary: 0.72, glass: 0.6, psalter: 0.42, lantern: 0.45 } };
@@ -7532,7 +7533,8 @@ function fireCdOf(base) {
 // quick cuts, front blade then back blade, at the nearest foe in reach; each cut
 // hits every foe in its narrow arc. MELEE.k is the reference blow that set and
 // Wound effects scale from; a cut deals MELEE.k * MELEE.cut.
-const MELEE = { reach: 44, arc: 0.8, cd: 0.36, k: 1.75, cut: 0.5, guard: 0.9, swing: 0.3, strike: 0.05, strike2: 0.14 };
+// Round 122: move (run speed, x the base), dashK (dash recharge time), lunge (how far past his reach he leaps onto a foe).
+const MELEE = { reach: 44, arc: 0.8, cd: 0.36, k: 1.75, cut: 0.42, guard: 0.9, swing: 0.3, strike: 0.05, strike2: 0.14, move: 1.25, dashK: 0.75, lunge: 46 };
 function updateMelee(dt) {
   player.xb = null;
   updateVDaggers(dt);
@@ -7542,7 +7544,13 @@ function updateMelee(dt) {
   const t = player.target;
   // Reach: the Iron Verdict, and what piercing gives the blades (the talent, the power, the Hundred Nails at 2).
   const reach = MELEE.reach * (wound('xGiant') ? 1.4 : 1) * (player.rainT > 0 && player.penRite === 'verdict' ? 1.3 : 1) * (1 + 0.08 * (tal('pierce') + wound('pierce') + (G.powers.has('pierce') ? 1 : 0))) * (sb('nails', 2) ? 1.15 : 1) * (sb('iron', 2) ? 1.2 : 1) * (ench('longhaft') ? E2('longhaft', 1.15, 1.3) : 1);
-  if (!t || player.fireCd > 0 || Math.hypot(t.x - player.x, t.y - player.y) > reach + t.hr) return;
+  const td = t ? Math.hypot(t.x - player.x, t.y - player.y) : 1e9;
+  // Round 122: a foe a little out of reach: lunge onto it, unless the stick points away from it.
+  if (t && player.fireCd <= 0 && td > reach + t.hr && td < reach + t.hr + MELEE.lunge && !(player.dashT > 0) && !(player.lungeT > 0) && (input.mx * (t.x - player.x) + input.my * (t.y - player.y)) >= 0) {
+    const go = td - reach - t.hr + 10, L = 0.13; player.lungeT = L; player.lungeVx = (t.x - player.x) / td * go / L; player.lungeVy = (t.y - player.y) / td * go / L;
+    player.face = t.x < player.x ? -1 : 1; if (!LOWFX) vemit(player.x, player.y, { n: 4, ramp: 'bone', sp: 40, up: 10, life: 0.3, size: 2, glow: 0 }); sfx('dash', { vol: 0.25, rate: 1.5, gap: 0.2 });
+  }
+  if (!t || player.fireCd > 0 || td > reach + t.hr + (player.lungeT > 0 ? 14 : 0)) return;
   player.fireCd = fireCdOf(MELEE.cd);
   player.face = t.x < player.x ? -1 : 1;
   const a = Math.atan2(t.y - player.y, t.x - player.x), extra = wound('split') + (G.powers.has('twin') ? 1 : 0) + (sb('alms', 2) ? 1.25 : 0);
@@ -7563,7 +7571,7 @@ function updateMelee(dt) {
     const crit = rng() < T.crossbow.crit + G.crit / 100;
     player.cutAt.push({ t: game.time, dir, crit }); if (crit) player.swingCrit = true;
     addPfx({ kind: 'smear', x: player.x, y: player.y - 16, a, arc, r: reach * 0.9, max: 0.14, ramp: shotRamp(), dir, th: crit ? 5 : 3 });
-    sfx('swing', { vol: 0.45, rate: 1.25 + Math.random() * 0.2, gap: 0.05 });
+    sfx('slash', { vol: 0.8, rate: 0.92 + Math.random() * 0.18, gap: 0.05 });
     let n = 0;
     for (const e of enemies) {
       if (e.dead || e.state === 'spawn' || e.under || (e.spawnDelay > 0)) continue;
@@ -7575,7 +7583,7 @@ function updateMelee(dt) {
       if (first) strikeSets(SW, e);
     }
     hitBreakables(player.x + Math.cos(a) * 26, player.y + Math.sin(a) * 26, 16);
-    if (n) { sfx('hit1', { vol: 0.35, rate: 1.3 + Math.random() * 0.2, gap: 0.05 }); if (crit) { game.shake = Math.max(game.shake, 1.2); sfx('glass', { vol: 0.25, rate: 1.4, gap: 0.1 }); } }
+    if (n) { sfx('stab', { vol: 0.7, rate: 0.9 + Math.random() * 0.25, gap: 0.05 }); if (crit) { game.shake = Math.max(game.shake, 1.2); sfx('shing', { vol: 0.6, rate: 0.95 + Math.random() * 0.15, gap: 0.1 }); } }
     if (!first) afterSwingSets(SW, a);
   };
   later(MELEE.strike, () => cut(1, true));
@@ -7600,7 +7608,7 @@ function vdaggerLaunch() {
   t = t || bestCluster(VDAG.range);
   if (!t) return;
   V.n = 0; V.st = 'fly'; V.t = 0; V.tgt = t; V.cx = t.x; V.cy = t.y; V.tick = 0;
-  sfx('swing', { vol: 0.7, rate: 0.7, gap: 0.1 }); sfx('glass', { vol: 0.35, rate: 1.6, gap: 0.1 });
+  sfx('shing', { vol: 0.7, rate: 1.1, gap: 0.1 }); sfx('whirl', { vol: 0.5, rate: 1.3, gap: 0.1 });
 }
 function updateVDaggers(dt) {
   const p = player; if (!p) return;
@@ -7633,8 +7641,8 @@ function vdaggerTick(V) {
     boltStrike({ x: e.x, y: e.y - e.hy, vx: Math.cos(a), vy: Math.sin(a), crit: rng() < T.crossbow.crit + G.crit / 100, dmgK: MELEE.k * VDAG.k, melee: true, cut: true, second: true, storm: true, hit: new Set() }, e); n++;
   }
   addPfx({ kind: 'smear', x: V.cx, y: V.cy - 12, a: rng() * Math.PI * 2, arc: 0.9, r: VDAG.r * 0.6 + rng() * 10, max: 0.14, ramp: shotRamp(), dir: rng() < 0.5 ? 1 : -1, th: 3 });
-  if (V.tick % 2) sfx('swing', { vol: 0.32, rate: 1.5 + Math.random() * 0.3, gap: 0.05 });
-  if (n) sfx('hit1', { vol: 0.25, rate: 1.4 + Math.random() * 0.2, gap: 0.06 });
+  if (V.tick % 2) sfx('slash', { vol: 0.45, rate: 1.2 + Math.random() * 0.3, gap: 0.05 });
+  if (n) sfx('stab', { vol: 0.4, rate: 1.2 + Math.random() * 0.2, gap: 0.06 });
 }
 // The daggers' look: a premium skin's, else the 4-piece set's, else plain.
 const vdAnim = () => { const k = pskin() || (G && G.skin); return k && SPR.fx.anims[`vdagger_${k}`] ? `vdagger_${k}` : 'vdagger'; };
@@ -8469,25 +8477,35 @@ function maceHit(x, y, r, dmgK, o = {}) {
     if (o.each) o.each(e); out.push(e);
   }
   hitBreakables(x, y, Math.min(r, 30));
-  if (!o.quiet) { rings.push({ x, y, t: 0, max: 0.3, r: r * 1.05, color: o.rgb || '255,244,176', flat: true }); vemit(x, y - 8, { n: 10, ramp: o.ramp || SR, sp: 130, up: 30, life: 0.3, grav: 160, size: 2, glow: 4 }); game.shake = Math.max(game.shake, out.length ? 1.8 : 0.8); sfx('swing', { vol: 0.7, rate: 1.05 + Math.random() * 0.2, gap: 0.06 }); if (out.length) sfx('hit1', { vol: 0.5, rate: 1.2, gap: 0.06 }); }
+  if (!o.quiet) { rings.push({ x, y, t: 0, max: 0.3, r: r * 1.05, color: o.rgb || '255,244,176', flat: true }); vemit(x, y - 8, { n: 10, ramp: o.ramp || SR, sp: 130, up: 30, life: 0.3, grav: 160, size: 2, glow: 4 }); game.shake = Math.max(game.shake, out.length ? 1.8 : 0.8); sfx('slash', { vol: 0.9, rate: 0.85 + Math.random() * 0.15, gap: 0.06 }); if (out.length) sfx('stab', { vol: 0.8, rate: 0.85, gap: 0.06 }); }
   return out;
 }
 const maceRing = (r, dmgK, o = {}) => maceHit(player.x, player.y, r, dmgK, o);
+// Round 122: the Vesper's whirls and poses. vSpin turns him round for a while (the spin anim), vPose plays a
+// four-frame pose (throw, clash); whirlFx draws a whirl of blades round (x, y): n cuts sweeping one way
+// round the circle, and dust caught in the wind.
+const vSpin = (dur) => { if (player) player.spinUntil = Math.max(player.spinUntil || 0, game.time + dur); };
+const vPose = (anim, dur) => { if (player) player.poseA = { anim, t: game.time, dur }; };
+function whirlFx(x, y, r, ramp, n = 4) {
+  const a0 = rng() * Math.PI * 2; sfx('whirl', { vol: 0.8, rate: 0.9 + rng() * 0.2, gap: 0.12 });
+  for (let k = 0; k < n; k++) addPfx({ kind: 'smear', x, y: y - 12, a: a0 + k * Math.PI * 2 / n, arc: 0.9, r: r * (0.75 + (k % 2) * 0.2), max: 0.22, ramp, dir: 1, th: 4 });
+  if (!LOWFX) for (let k = 0; k < 8; k++) { const a = a0 + k * Math.PI / 4; vemit(x + Math.cos(a) * r * 0.8, y + Math.sin(a) * r * 0.5, { n: 1, ramp: 'bone', sp: 70, ang: a + Math.PI / 2, arc: 0.3, up: 25, life: 0.4, drag: 2, size: 2, glow: 0 }); }
+}
 function castMM1(aim) {
   const id = riteOf('m1').id, a = maceDir(aim), tw = twist(id);
   const ahead = (d) => ({ x: player.x + Math.cos(a) * d, y: player.y + Math.sin(a) * d });
   player.face = Math.cos(a) < 0 ? -1 : 1; player.swingT = MELEE.swing; player.swingA = a; player.swingArc = 1; player.swingCrit = false;
   const wide = G.powers.has('bigBlow') ? 1.5 : 1;
   const smite = () => { const q = ahead(34); maceHit(q.x, q.y, 46 * wide, 8 * (1 + wound('riteSmite') * 0.4)); pools.push({ x: q.x, y: q.y, r: T.flask.radius * 1.4 * (mSyn('smite') ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1), t: 0 }); sfx('flask', { rate: 0.8 }); };
-  const burst = () => { const q = ahead(30), n = (9 + (mSyn('nailburst') ? 4 : 0) + wound('riteNailburst') * 3) * (G.powers.has('moreShards') ? 2 : 1); maceHit(q.x, q.y, 40, 3); for (let k = 0; k < n; k++) spawnBolt(q.x, q.y - 14, a + (k - (n - 1) / 2) * 0.12, rng() < T.crossbow.crit + G.crit / 100); sfx('shoot', { rate: 0.8, vol: 1.2 }); };
+  const burst = () => { vPose('throw', 0.24); const q = ahead(30), n = (9 + (mSyn('nailburst') ? 4 : 0) + wound('riteNailburst') * 3) * (G.powers.has('moreShards') ? 2 : 1); maceHit(q.x, q.y, 40, 3); for (let k = 0; k < n; k++) spawnBolt(q.x, q.y - 14, a + (k - (n - 1) / 2) * 0.12, rng() < T.crossbow.crit + G.crit / 100); sfx('shoot', { rate: 0.8, vol: 1.2 }); };
   const blow = () => { const q = ahead(30); maceHit(q.x, q.y, 64 * wide, 8 * (mSyn('shackleblow') ? 1.3 : 1), { rgb: riteFx().chain, each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 2 + wound('riteShackleblow') * 0.5); } }); sfx('chain'); };
-  const slam = () => { const r = 80 * (mSyn('cinderslam') ? 1.3 : 1); skillFx.push({ kind: 'blaze', x: player.x, y: player.y, r, t: 0, max: 0.6 }); maceRing(r, 2.5 * (1 + wound('riteCinderslam') * 0.4), { ramp: 'ember', rgb: '255,122,31', each: (e) => { e.burn = T.thurible.burn.time * 1.5; addFervor(G.powers.has('loudToll') ? 4 : 2); } }); sfx('thurible', { rate: 0.6, vol: 1.3 }); };
+  const slam = () => { const r = 80 * (mSyn('cinderslam') ? 1.3 : 1); vSpin(0.45); whirlFx(player.x, player.y, r, 'fire', 5); skillFx.push({ kind: 'blaze', x: player.x, y: player.y, r, t: 0, max: 0.6 }); maceRing(r, 2.5 * (1 + wound('riteCinderslam') * 0.4), { ramp: 'ember', rgb: '255,122,31', each: (e) => { e.burn = T.thurible.burn.time * 1.5; addFervor(G.powers.has('loudToll') ? 4 : 2); } }); sfx('thurible', { rate: 0.6, vol: 1.3 }); };
   if (id === 'smite') { smite(); if (tw) later(0.3, smite); }
   else if (id === 'nailburst') { burst(); if (tw) later(0.3, burst); }
-  else if (id === 'charge') { const len = 1.7; startDash(player, { len, step: true, dir: a }); const lc = G.powers.has('longCharge'), end = () => maceRing(70, 5 * (1 + wound('riteCharge') * 0.4) * (lc ? 1.5 : 1), { each: (e) => { if (mSyn('charge')) e.burn = T.thurible.burn.time; if (lc && !e.boss) e.bound = Math.max(e.bound || 0, 1); } }); later(T.dash.time * len, end); if (tw) later(T.dash.time * len + 0.4, end); }
+  else if (id === 'charge') { const len = 1.7; startDash(player, { len, step: true, dir: a }); const lc = G.powers.has('longCharge'), end = () => { vSpin(0.3); whirlFx(player.x, player.y, 70, shotRamp(), 4); return maceRing(70, 5 * (1 + wound('riteCharge') * 0.4) * (lc ? 1.5 : 1), { each: (e) => { if (mSyn('charge')) e.burn = T.thurible.burn.time; if (lc && !e.boss) e.bound = Math.max(e.bound || 0, 1); } }); }; later(T.dash.time * len, end); if (tw) later(T.dash.time * len + 0.4, end); }
   else if (id === 'cinderslam') { slam(); if (tw) later(0.5, slam); }
   else if (id === 'undertow') {
-    const r = 120 * (1 + wound('riteUndertow') * 0.3) * (G.powers.has('deepTide') ? 1.4 : 1), hit = maceRing(r, 2, { pull: true, rgb: '111,224,208', ramp: 'frost' });
+    const r = 120 * (1 + wound('riteUndertow') * 0.3) * (G.powers.has('deepTide') ? 1.4 : 1), hit = maceRing(r, 2, { pull: true, rgb: '95,220,108', ramp: 'life' }); vSpin(0.35); whirlFx(player.x, player.y, r * 0.8, 'life', 5);
     for (let k = 0; k < 3; k++) { const b = a + (k - 1) * 0.9; pools.push({ x: player.x + Math.cos(b) * 34, y: player.y + Math.sin(b) * 24, r: T.flask.radius * 0.7 * (mSyn('undertow') ? 1.3 : 1) * (G.powers.has('bigPools') ? 2 : 1), t: 0 }); }
     if (tw) player.hp = Math.min(player.maxHp, player.hp + player.maxHp * Math.min(0.2, hit.length * 0.05)); sfx('flask', { rate: 0.6 });
   }
@@ -8503,13 +8521,13 @@ function castMM2(aim) {
     const a = Math.atan2(t.y - player.y, t.x - player.x), d = Math.hypot(t.x - player.x, t.y - player.y), len = Math.max(0.6, Math.min(2.4, (d - 24) / (T.dash.speed * T.dash.time)));
     for (let k = 1; k < 10; k++) { const f = k / 10; parts.push({ kind: 'spark', x: player.x + (t.x - player.x) * f, y: player.y - 20 + (t.y - t.hy - player.y + 20) * f, z: 0, vx: 0, vy: -10, vz: 0, c: pick([PAL.iron0, PAL.iron1]), life: 0.3 }); }
     rings.push({ x: t.x, y: t.y, t: 0, max: 0.35, r: 20, color: riteFx().chain, flat: true }); sfx('chain');
-    startDash(player, { len, dir: a });
-    const lc = G.powers.has('longCharge'), strike = () => maceRing(52, 6 * (1 + wound('riteHook') * 0.4) * (lc ? 1.5 : 1), { rgb: riteFx().chain, each: (e) => { if ((mSyn('hook') || lc) && !e.boss) e.bound = Math.max(e.bound || 0, 1); } });
+    vPose('throw', 0.14); startDash(player, { len, dir: a });
+    const lc = G.powers.has('longCharge'), strike = () => (vSpin(0.25), maceRing(52, 6 * (1 + wound('riteHook') * 0.4) * (lc ? 1.5 : 1), { rgb: riteFx().chain, each: (e) => { if ((mSyn('hook') || lc) && !e.boss) e.bound = Math.max(e.bound || 0, 1); } }));
     later(T.dash.time * len, strike); if (tw) later(T.dash.time * len + 0.25, strike);
   }
-  else if (id === 'chainsweep') { const sweep = () => maceRing(85 * (1 + wound('riteChainsweep') * 0.2) * (G.powers.has('deepTide') ? 1.4 : 1), 2, { rgb: riteFx().chain, each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 1.5 + (mSyn('chainsweep') ? 0.5 : 0)); if (tw) e.burn = T.thurible.burn.time * 1.5; } }); sweep(); sfx('chain', { rate: 0.8 }); }
+  else if (id === 'chainsweep') { const sweep = () => { vSpin(0.45); whirlFx(player.x, player.y, 85, 'iron', 6); return maceRing(85 * (1 + wound('riteChainsweep') * 0.2) * (G.powers.has('deepTide') ? 1.4 : 1), 2, { rgb: riteFx().chain, each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 1.5 + (mSyn('chainsweep') ? 0.5 : 0)); if (tw) e.burn = T.thurible.burn.time * 1.5; } }); }; sweep(); sfx('swing', { rate: 0.7, vol: 0.8 }); sfx('chain', { rate: 1.3, vol: 0.5 }); }
   else if (id === 'toll') {
-    const ring = () => { maceRing(95, 1, { rgb: '255,209,85', ramp: 'gold', each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 1); if (e.state === 'windup') { e.state = 'move'; e.t = 0; } } }); for (const r of [60, 95, 130]) rings.push({ x: player.x, y: player.y - 18, t: 0, max: 0.5, r, color: '255,209,85' }); addFervor((12 + (mSyn('toll') ? 6 : 0) + wound('riteToll') * 5) * (G.powers.has('loudToll') ? 2 : 1)); sfx('knell', { vol: 0.9 }); };
+    const ring = () => { vPose('clash', 0.3); sparks(player.x + player.face * 4, player.y - 44, PAL.gold0, 12); maceRing(95, 1, { rgb: '255,209,85', ramp: 'gold', each: (e) => { if (!e.boss) e.bound = Math.max(e.bound || 0, 1); if (e.state === 'windup') { e.state = 'move'; e.t = 0; } } }); for (const r of [60, 95, 130]) rings.push({ x: player.x, y: player.y - 18, t: 0, max: 0.5, r, color: '255,209,85' }); addFervor((12 + (mSyn('toll') ? 6 : 0) + wound('riteToll') * 5) * (G.powers.has('loudToll') ? 2 : 1)); sfx('knell', { vol: 0.9 }); };
     ring(); if (tw) later(0.6, ring);
   }
   else if (id === 'vow') { player.vowT = game.time + (3 + (mSyn('vow') ? 1 : 0) + wound('riteVow')) * (G.powers.has('longVow') ? 2 : 1); if (tw) player.charges = G.charges; rings.push({ x: player.x, y: player.y, t: 0, max: 0.5, r: 50, color: '255,122,31', flat: true }); sfx('shrine', { vol: 0.6 }); }
@@ -8627,7 +8645,7 @@ function afterSwingSets(o, a) {
   if (o.ring) {
     maceRing(o.ring, MELEE.k * 0.8 * (sb('bell', 6) ? SETK.ringK6 : 1), { rgb: '142,174,171', ramp: 'teal', each: (e) => { if (sb('bell', 4) && !e.boss) e.bound = Math.max(e.bound || 0, 0.6); } });
     for (const r of [o.ring * 0.6, o.ring]) rings.push({ x: p.x, y: p.y, t: 0, max: 0.5, r, color: '255,209,85', flat: true });
-    sfx('swing', { rate: 0.8, vol: 0.7, gap: 0.15 }); addPfx({ kind: 'smear', x: p.x, y: p.y - 12, a: rng() * Math.PI * 2, arc: Math.PI, r: o.ring * 0.7, max: 0.3, ramp: 'frost', th: 4 }); // round 119: the whirl, a full spin of blades
+    vSpin(0.25); whirlFx(p.x, p.y, o.ring * 0.75, 'frost', 4); // round 119: the whirl, a full spin of blades (round 122: he spins)
     if (sb('bell', 6)) addFervor(3);
     if (sbw('bell')) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01);
   }
@@ -8888,7 +8906,7 @@ function updateAbilities(dt) {
     if (!pl.follow) { if (pl.r0 === undefined) pl.r0 = pl.r; const m = isMelee() ? 'M' : '', g = sb('font', 6) ? SETK['fontGrow6' + m] : sb('font', 4) ? SETK['fontGrow' + m] : 1; pl.r = pl.r0 * (1 + (g - 1) * Math.min(1, pl.t / 1.5)); }
     if (pl.t < T.flask.time - 0.4 && rng() < dt * pl.r * 0.18) { const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * pl.r; vemit(pl.x + Math.cos(a) * d, pl.y + Math.sin(a) * d * 0.6, { n: 1, ramp: fxRamp(riteFx().pool), sp: 3, up: 30, life: 0.8, grav: -10, drag: 1, glow: 5 }); }
     if (!pl.fx) { pl.fx = 1; vemit(pl.x, pl.y, { n: 16, ramp: fxRamp(riteFx().pool), sp: pl.r * 4, up: 70, life: 0.45, grav: 260, drag: 1, glow: 4 }); }
-    if (!LOWFX && rng() < dt * pl.r * 0.12) { const a = rng() * Math.PI * 2, d = rng() * pl.r; parts.push({ kind: 'spark', x: pl.x + Math.cos(a) * d, y: pl.y + Math.sin(a) * d * 0.6, z: 0, vx: 0, vy: 0, vz: rand(30, 70), c: rng() < 0.5 ? PAL.holy1 : PAL.white, life: 0.6 }); }
+    if (!LOWFX && rng() < dt * pl.r * 0.12) { const a = rng() * Math.PI * 2, d = rng() * pl.r; parts.push({ kind: 'spark', x: pl.x + Math.cos(a) * d, y: pl.y + Math.sin(a) * d * 0.6, z: 0, vx: 0, vy: 0, vz: rand(30, 70), c: isMelee() ? PAL[riteFx().pool + (rng() < 0.5 ? '0' : '1')] || PAL.holy1 : rng() < 0.5 ? PAL.holy1 : PAL.white, life: 0.6 }); } // round 122: his pools spark in their own colour
   }
   if ((player.wardT || 0) > game.time && (player.wardRing = (player.wardRing || 0) - dt) <= 0) { player.wardRing = 0.35; rings.push({ x: player.x, y: player.y - 22, t: 0, max: 0.35, r: 26, color: '255,209,85' }); }
   if (player.rainT > 0 && (player.penRing = (player.penRing || 0) - dt) <= 0) { player.penRing = 0.3; rings.push({ x: player.x, y: player.y, t: 0, max: 0.5, r: 60, color: SET_RGB[(RITE_BY[player.penKind] || {}).set] || '224,32,46', flat: true }); }
@@ -8958,11 +8976,13 @@ function updateAbilities(dt) {
       if (!pl) pools.push(pl = { x: p.x, y: p.y, r: fontR(), t: 0, follow: true });
       if (p.penAim) { pl.x = p.penAim.x; pl.y = p.penAim.y; } else { pl.x = p.x; pl.y = p.y; } pl.t = Math.min(pl.t, 0.5);
     }
-    if (kind === 'tolling' && (p.tollT -= dt) <= 0) { // the Tolling: shockwaves around the Mendicant
+    // Round 122: the Whirlwind spins him the whole time inside a ring of blades and wind.
+    if (kind === 'tolling') { p.spinUntil = game.time + 0.12; if (game.time - (p.windT || 0) > 0.07) { p.windT = game.time; const r = 110 * (mSyn('tolling') ? 1.3 : 1) * (G.powers.has('loudToll') ? 1.3 : 1), a = game.time * 9; addPfx({ kind: 'smear', x: p.x, y: p.y - 12, a, arc: 0.8, r: r * (0.45 + rng() * 0.45), max: 0.2, ramp: shotRamp(), dir: 1, th: 3 }); if (!LOWFX) vemit(p.x + Math.cos(a) * r * 0.7, p.y + Math.sin(a) * r * 0.45, { n: 2, ramp: 'bone', sp: 90, ang: a + Math.PI / 2, arc: 0.25, up: 30, life: 0.45, drag: 1.5, size: 2, glow: 0 }); } }
+    if (kind === 'tolling' && (p.tollT -= dt) <= 0) { // the Tolling: a whirl of blades around the Vesper
       p.tollT = twist('tolling') ? 0.25 : 0.5; const r = 110 * (mSyn('tolling') ? 1.3 : 1) * (G.powers.has('loudToll') ? 1.3 : 1);
-      for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - p.x, (e.y - p.y) / 0.8) < r + e.hr) { const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, T.penance.dmg * 0.7 * (1 + wound('riteTolling') * 0.4), rng() < 0.2, dx / d, dy / d, 50, { status: true, color: PAL.gold0 }); }
-      rings.push({ x: p.x, y: p.y, t: 0, max: 0.4, r, color: '255,209,85', flat: true }, { x: p.x, y: p.y - 18, t: 0, max: 0.3, r: r * 0.6, color: '255,244,176' });
-      sfx('knell', { vol: 0.5, rate: 1.2, gap: 0.2 }); game.shake = Math.max(game.shake, 2);
+      for (const e of enemies) if (!e.dead && e.state !== 'spawn' && Math.hypot(e.x - p.x, (e.y - p.y) / 0.8) < r + e.hr) { const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1; hurtEnemy(e, T.penance.dmg * 0.7 * (1 + wound('riteTolling') * 0.4), rng() < 0.2, dx / d, dy / d, 50, { status: true, color: PAL.cloth0 }); }
+      rings.push({ x: p.x, y: p.y, t: 0, max: 0.35, r, color: '238,242,247', flat: true }); whirlFx(p.x, p.y, r, shotRamp(), 5);
+      game.shake = Math.max(game.shake, 1.5);
     }
     if (p.penRite === 'deluge' && pools.some((q) => q.follow && Math.hypot((p.x - q.x) / q.r, (p.y - q.y) / (q.r * 0.6)) <= 1)) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.02 * dt);
     if (kind === 'pilgrim') p.charges = G.charges; // dashes recharge at once (the fire and ring come from startDash)
@@ -9048,7 +9068,7 @@ function updatePlayer(dt) {
     moveCircle(p, (p.pull.x - p.x) * k, (p.pull.y - p.y) * k, p.r);
     p.pull.t -= dt; if (p.pull.t <= 0) p.pull = null;
   }
-  if (p.charges < G.charges) { p.recharge += dt; if (p.recharge >= T.dash.recharge * G.dashK) { p.recharge = 0; p.charges++; } }
+  if (p.charges < G.charges) { p.recharge += dt; if (p.recharge >= T.dash.recharge * G.dashK * (isMelee() ? MELEE.dashK : 1)) { p.recharge = 0; p.charges++; } }
   if (input.dash) {
     input.dash = false;
     if (p.charges > 0 && p.dashT <= 0) { p.charges--; startDash(p); }
@@ -9064,8 +9084,11 @@ function updatePlayer(dt) {
     p.anim = 'dash';
   } else {
     const k = (p.slowT > 0 ? 0.55 : 1) * (game.buff && game.buff.kind === 'haste' ? 1.5 : 1) * (p.rootT > 0 ? 0 : 1);
-    vx = input.mx * T.moveSpeed * (1 + G.speed / 100) * k; vy = input.my * T.moveSpeed * (1 + G.speed / 100) * k;
+    const mk = isMelee() ? MELEE.move : 1; // round 122: the Vesper runs faster than the ranged classes
+    vx = input.mx * T.moveSpeed * (1 + G.speed / 100) * k * mk; vy = input.my * T.moveSpeed * (1 + G.speed / 100) * k * mk;
     p.anim = Math.hypot(vx, vy) > 5 ? 'run' : 'idle';
+    // Round 122: his lunge carries him the last steps onto a foe just out of reach (a few frames, no damage taken off).
+    if (p.lungeT > 0 && p.rootT <= 0) { p.lungeT -= dt; vx += p.lungeVx; vy += p.lungeVy; if (Math.hypot(vx, vy) > 5) p.anim = 'run'; }
     if (!p.target && Math.abs(input.mx) > 0.15) p.face = Math.sign(input.mx);
   }
   const ox = p.x, oy = p.y;
@@ -9556,12 +9579,17 @@ function drawPlayer() {
   // Hand-posed reactions over the move cycle: death, a rite cast, a flinch.
   let anim = p.anim;
   if (game.state === 'dead' || p.hp <= 0) { anim = 'die'; i = Math.min(3, Math.floor((game.deathT || 0) / 0.13)); }
+  // Round 122: the Vesper's own poses: a whirl (spinning round, turned to the other side each half turn), a
+  // throw, a clash, each over the move cycle; then his casts, flinches and eight-frame cuts.
+  else if (isMelee() && (p.spinUntil || 0) > game.time) { anim = 'spin'; const k = Math.floor(game.time * 26) % 8; i = k; p.spinFlip = k >= 4; }
+  else if (isMelee() && p.poseA && game.time - p.poseA.t < p.poseA.dur && p.anim !== 'dash') { anim = p.poseA.anim; i = Math.min(3, Math.floor((game.time - p.poseA.t) / p.poseA.dur * 4)); }
   else if (p.anim !== 'dash' && (p.castT || 0) > 0) { anim = 'cast'; i = Math.min(3, Math.floor((1 - p.castT / (p.castMax || 0.3)) * 4)); }
   else if (p.anim !== 'dash' && p.hurt > 0.1) { anim = 'hit'; i = p.hurt > 0.24 ? 0 : p.hurt > 0.17 ? 1 : 2; }
   else if (isAnch() && p.anim === 'idle' && (p.raiseT || 0) > game.time && SPR[saintBase()] && SPR[saintBase()].anims.raise) { anim = 'raise'; const t = game.time - (p.raise0 || 0); i = t < 0.08 ? 0 : (p.raiseT - game.time) < 0.1 ? 2 : 1; }
-  else if (p.anim !== 'dash' && p.swingT > 0 && isMelee()) { anim = 'swing'; const t = MELEE.swing - p.swingT; i = t < MELEE.strike * 0.7 ? 0 : t < MELEE.strike + 0.04 ? 1 : t < MELEE.strike2 - 0.01 ? 2 : t < MELEE.strike2 + 0.05 ? 3 : t < MELEE.strike2 + 0.1 ? 4 : 5; }
+  else if (p.anim !== 'dash' && p.swingT > 0 && isMelee()) { anim = 'swing'; const t = MELEE.swing - p.swingT; i = t < 0.025 ? 0 : t < 0.07 ? 1 : t < 0.11 ? 2 : t < 0.135 ? 3 : t < 0.18 ? 4 : t < 0.22 ? 5 : t < 0.26 ? 6 : 7; }
   if (G.quiver && anim !== 'die' && !noBow()) spr('weapon', G.quiver, 0, p.x - p.face * 10, p.y - 23 + (anim === 'run' && i % 4 < 2 ? 2 : 0), { flip: p.face < 0 });
-  spr(saintSheet(), anim, i, p.x, p.y, { flip: p.face < 0, white: anim !== 'die' && (p.hurt > 0.25 || blink) });
+  const flip = anim === 'spin' ? (p.face < 0) !== !!p.spinFlip : p.face < 0;
+  spr(saintSheet(), anim, i, p.x, p.y, { flip, white: anim !== 'die' && (p.hurt > 0.25 || blink) });
   p.shownAnim = anim; p.shownFrame = i; // for tests
   const H0 = HALOS.find((q) => q.id === looks().halo); if (H0 && H0.earn && anim !== 'die' && !LOWFX && !CROWNED.includes(saintBase())) { const f = frameOf(saintSheet(), anim, i); twinkles(p.x - p.face, p.y - (f.ay ?? f.h) + 5, 6, 0.4, 4, 1); }
 }
@@ -9672,7 +9700,8 @@ const RITE_FX = {
   lantern: { pool: 'ember', glow: '255,192,74', chain: '255,122,31', rain: '255,122,31', edge: '138,31,26' },
   thorn: { pool: 'rot', glow: '196,220,158', chain: '148,179,122', rain: '107,140,96', edge: '44,72,64' },
 };
-const riteFx = () => RITE_FX[(G && G.skin) || null] || RITE_FX.null;
+const RITE_FX_V = {}; // round 122: the Vesper's pools are always venom green, whatever set he wears
+const riteFx = () => { const k = (G && G.skin) || null, F = RITE_FX[k] || RITE_FX.null; return isMelee() ? (RITE_FX_V[k] ||= { ...F, pool: 'moss', glow: '182,211,106' }) : F; };
 function drawChainLine(x0, y0, x1, y1) {
   const d = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.floor(d / 7)), a = Math.atan2(y1 - y0, x1 - x0);
   for (let i = 0; i <= n; i++) {
@@ -9693,6 +9722,8 @@ function drawAbilitiesGround() {
     ctx.beginPath(); ctx.ellipse(Math.round(pl.x), Math.round(pl.y), Math.max(0.5, r - 1), Math.max(0.5, r * 0.6 - 1), 0, 0, Math.PI * 2); ctx.stroke();
     ctx.globalAlpha = fade; ctx.fillStyle = PAL[R + '0'];
     for (let i = 0; i < 6; i++) { const a = game.real * 1.3 + i * 1.7 + pl.x, k = (Math.sin(game.real * 3 + i) + 1) / 2 * 0.8; ctx.fillRect(Math.round(pl.x + Math.cos(a) * r * k), Math.round(pl.y + Math.sin(a) * r * 0.6 * k), 1, 1); }
+    // Round 122: the Vesper's pools are venom: bubbles swell and pop across them.
+    if (isMelee()) { ctx.strokeStyle = PAL[R + '0']; ctx.lineWidth = 1.5; for (let i = 0; i < 5; i++) { const ph = (game.real * 1.6 + i * 0.37 + (pl.x % 7) * 0.13) % 1, a = i * 2.4 + pl.y, k = 0.25 + ((i * 0.31) % 0.6); ctx.globalAlpha = fade * (1 - ph); ctx.beginPath(); ctx.arc(Math.round(pl.x + Math.cos(a) * r * k), Math.round(pl.y + Math.sin(a) * r * 0.6 * k) - ph * 3, 1 + ph * 2.5, 0, Math.PI * 2); ctx.stroke(); } }
     ctx.globalAlpha = 1;
   }
 }
@@ -10189,7 +10220,7 @@ function renderHud() {
   { const st = sb('nails', 4) && player.nails ? `NAILS ${player.nails}` : (player.strideT || 0) > game.time ? `STRIDE ${Math.ceil(player.strideT - game.time)}` : player.inPool ? 'IN THE FONT' : '';
     if (st) text(st, HUD_X(), hudY + (showFps() ? 10 : 0) + (game.buff ? 11 : 0), RARITY[4].color, { small: true }); }
   // Bottom-right: dash, Miracles, Penance.
-  const dashK = p.charges >= G.charges ? 0 : 1 - p.recharge / (T.dash.recharge * G.dashK);
+  const dashK = p.charges >= G.charges ? 0 : 1 - p.recharge / (T.dash.recharge * G.dashK * (isMelee() ? MELEE.dashK : 1));
   button(HUD.dash, { active: p.charges > 0, cd: p.charges === 0 ? dashK : 0 });
   for (let i = 0; i < G.charges; i++) { const x = HUD.dash.x - (G.charges - 1) * 4.5 - 2.5 + i * 9, y = HUD.dash.y + HUD.dash.r + 3; ctx.fillStyle = PAL.outline; ctx.fillRect(x - 1, y - 1, 7, 4); ctx.fillStyle = i < p.charges ? PAL.gold1 : PAL.ink3; ctx.fillRect(x, y, 5, 2); }
   if (game.scene === 'wound') {
