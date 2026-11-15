@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 129 (build 129, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 130 (build 130, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -39,7 +39,7 @@ see "The owner's preferences".) When the owner answers with numbers
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
-   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-129 on
+   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-130 on
    `claude/brave-fermi-kw8he3`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
@@ -366,14 +366,21 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Offered after round 129, not picked yet:** (1) the Penitent's Stride is the
-  slowest build at Station VI (12 kills a second) because setbal's bot
-  rarely dashes; check it with the autobench pilot, which dashes;
-  (2) the last Warden nudges (`boss.nails` 2.4, `boss6.nails` 2.2, `boss.glass` 2.4,
-  `boss6.glass` 2.7, `boss.reliquary` 1.55) were checked on the Organist
-  only; (3) Station III and IX were never measured with the low-Station
-  factor; (4) a streak sound at 10 kills; (5) ask the owner how the
-  Vesper's defence feels.
+- **Offered after round 130, not picked yet:** (1) the Hundred Nails clears
+  a Station VI descent slowest with the pilot (about 107 s against 53-95 for
+  the other Saint sets) though it is mid-pack in setbal's crowd; (2) Glass 4
+  + Psalter 2 on Candlemass was 71 s before its `boss.glass` 2.8 nudge (not
+  rechecked); (3) hold a buff icon to read what it is; (4) a streak sound at
+  10 kills; (5) ask the owner how the Vesper's defence feels.
+- **Measured in round 130.** Pilot (autobench, Saint, Station VI gear and
+  Station, 3 runs): seconds to clear and kills a second: Choir 53 s / 11.2,
+  Stride 72 / 8.4, Confessor 83 / 8.2, Font 95 / 6.6, Nails 107 / 5.6. The
+  Stride is strong once it dashes (setbal's bot rarely does), so its
+  `SETK.low`/`low6` entries were taken out. setbal at Station IX (half the
+  low factor): sets 10.3-14.7, mixes 8.3-11.2 for all three classes; at III
+  (crowd-capped): sets 13-22, mixes 10.5-21. Candlemass recheck: Nails 4 +
+  Font 2 45 s, Glass 50, Reliquary 4 + Thorn 2 37; Glass 4 + Psalter 2 71
+  (nudged).
 - **Low Stations and Strata II-III Wardens (round 129).** Station VI (4
   seeds, 20 s) before: 9-22 kills a second. `SETK.low`/`low6`: full at VI
   and below, fading to nothing by XII. After: Saint sets 12-17, mixes
@@ -613,6 +620,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 130:** the owner picked 1, 2, 3 and 5 from round 129's list and asked
+  for buff icons in play with a clock-like countdown from colour to grey.
+  **Buffs:** `BUFFS`/`drawBuffs` (see CLAUDE.md): the shrine, the
+  Reckoning, Martyr's Ward, Shadow Cloak, Antidote, Mending, the shard ward,
+  Splinter, the ember relic, the Stride's window and dodge guard, the
+  Psalter's window, Blood Rush, Blood Frenzy and Cadence (with stacks),
+  Aegis and Iron Vigil. **Cards:** the low-Station factor is written on the
+  set cards ("At Station VI or lower: +60% damage, fading out by Station
+  XII."). **Balance:** see Next steps. Test: `round130.cjs`.
 
 - **Round 129:** the owner picked 1, 2 and 5 from round 128's list.
   **Station VI:** `SETK.low` and `SETK.low6`, a per-set damage factor at
