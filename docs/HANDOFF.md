@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 126 (build 126, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 127 (build 127, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -39,7 +39,7 @@ see "The owner's preferences".) When the owner answers with numbers
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
-   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-126 on
+   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-127 on
    `claude/brave-fermi-kw8he3`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
@@ -366,13 +366,30 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Offered after round 126, not picked yet:** (1) the Saint's premium busts
-  are the new head pieces on his old hood: a full bust per skin (wings,
-  robes) would match the hero sprites better; (2) the Dread censer's skull
-  and the Void censer read dark on dark floors: a lighter rim or glow;
-  (3) a censer swing trail in the skin's colour; (4) measure the Saint's and
-  the Anchoress's Warden times after rounds 124-126 (only the Vesper's were
-  rerun); (5) skin-coloured hit bursts for the censer itself.
+- **Offered after round 127, not picked yet:** (1) Font 4 + Choir 2 kills the
+  Bellwright in 27 s against 32-60 for every other build: a mix-only Warden
+  number would fix it (`SETK.boss` counts at 4 and 6 pieces alike); (2) the
+  same Warden pass on the other four Wardens and at Station VI; (3) ask the
+  owner how the Vesper feels with 25% less damage and 15% more health;
+  (4) the Dread and Void censers read dark on dark floors; (5) a short
+  streak counter in the Carnage plate's place while a streak is running.
+- **Balance across the board (round 127).** Station XII, 4 seeds, 20 s,
+  kills a second: Saint sets 6.8-8.0, mixes 5.9-7.3 (Stride 4 + Confessor 2
+  6.9 after `fourBy.stride` 140); Vesper sets 6.6-7.9, mixes 6.1-6.9;
+  Anchoress sets 6.7-7.6, mixes 6.1-7.1 (Reliquary 4 + Thorn 2 after
+  `fourBy.reliquary` 270). The Veiled Lantern was 11.2: its six-piece death
+  burst handed the whole burn on to 8 foes, so the fire ran through the
+  crowd; now `SETK.lampHop` 0.35 to at most 5 foes and `lampK6` 80 (7.7).
+  Psalter `psalK6` 2.4 (was 3); Saint Font `six` 1.7 (was 1.5); `fourBy`
+  font 450, alms 140, road 230, bell 230, thorn 160. Wardens (the
+  Bellwright, Station XII, 3 seeds, every try killed it) after the new
+  `SETK.boss` (font 5.5, alms 3.4, bell 3.4, gaol 3.2, confessor 3.2,
+  nails 2, stride 1.35, choir 1.6, glass 2, lantern 1.6, psalter 1.4,
+  thorn 1.15): Saint 36-60 s (Font 4 + Choir 2 27), Vesper 32-47, Anchoress
+  38-56 (they were 12-86). **Vesper defence:** `MELEE.guard` 0.75 (was
+  0.9) and `MELEE.hpK` 1.15; autobench (Nightblade gear, Station XII, 4 x
+  120 s) health lost 0.5-1.6 max health a run (was 2.2-2.6); the Saint
+  2.4-6.4 and the Anchoress 0.7-3.9 in the same test.
 - **Measured in round 126.** Vesper Station VI: sets 12.3-18.9, mixes
   13.3-17.8 kills a second (the others' range there; the crowd caps near
   20). Vesper Warden (the Bellwright, Station XII, 3 seeds, 120 s cap; every
@@ -568,6 +585,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 127:** the owner asked for a full balance pass "as close as
+  possible across the board", more base defence for the Vesper ("dies very
+  easily"), and the kill-count banner (they called it RAMPAGE: it is the
+  CARNAGE banner) moved under the Zeal bar as a small plate. **Carnage:**
+  `game.carnageNote`, a plate as wide as the Zeal bar under it (and under the
+  Vesper's pips) for 2.4 s; `game.banner` is no longer used for it.
+  **Vesper:** 25% less damage taken, 15% more health; his class card says
+  so (shortened to fit at 667x375). **Balance:** see Next steps. Also:
+  `round70.cjs` waits for the old-save migration instead of 1.2 s (it
+  failed on a busy machine). Test: `round127.cjs`.
 
 - **Round 126:** the owner asked for premium skins to change the censer, and
   picked all five of round 125's suggestions. **Censers:** `PTHUR` in

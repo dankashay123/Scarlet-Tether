@@ -40,7 +40,7 @@ const S = process.argv[2], [w, h] = (process.argv[3] || '844x390').split('x').ma
   // An old save (no roster) becomes the first character.
   const p2 = await (await b.newContext({ viewport: { width: w, height: h } })).newPage(); p2.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
   await p2.goto('http://localhost:8123/'); await p2.evaluate(() => { localStorage.clear(); localStorage.setItem('hollow-saint', JSON.stringify({ descents: 5, lvl: 9, gold: 1234, hero: 'mendicant', tutorialDone: true, stations: 1 })); });
-  await p2.reload(); await p2.waitForTimeout(1200);
+  await p2.reload(); await p2.waitForFunction(() => { try { return JSON.parse(localStorage.getItem('hollow-saint-chars')).list.length > 0; } catch { return false; } }, null, { timeout: 30000 }); // round 127: wait for the migration, not a fixed time (it ran late on a busy machine)
   out.migrated = await p2.evaluate(() => { const R = JSON.parse(localStorage.getItem('hollow-saint-chars')); return { n: R.list.length, hero: R.list[0].hero, name: !!R.list[0].name, gold: HS.SAVE.gold }; });
   console.log(JSON.stringify(out));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();

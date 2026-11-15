@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '126';
+const BUILD = '127';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '127': ['THE VESPER IS TOUGHER: 25% LESS DAMAGE TAKEN (WAS 10%) AND 15% MORE HEALTH.', 'THE CARNAGE BONUS SHOWS AS A SMALL PLATE UNDER THE ZEAL BAR, NOT A BANNER ACROSS THE SCREEN.', 'SET BALANCE ACROSS ALL CLASSES: THE VEILED LANTERN\'S FIRE SPREADS LESS FROM FOE TO FOE, THE MOTHER\'S PSALTER IS A LITTLE WEAKER, THE DROWNED FONT A LITTLE STRONGER, AND SEVERAL 4+2 MIXES MOVE CLOSER TOGETHER.'],
   '126': ['A PREMIUM SKIN NOW CHANGES YOUR CENSER TOO: EACH ONE HAS ITS OWN SHAPE, CHAIN AND GLOW.', 'RITES AND RECKONINGS TAKE YOUR PREMIUM SKIN\'S COLOURS, WITH A SIGIL OF ITS OWN.', 'THE VESPER AND THE ANCHORESS HAVE THEIR OWN PORTRAIT IN EACH PREMIUM SKIN.', 'STEEL CHIME THROWS A RING OF BLADES, AND STUNNED FOES SHOW GLINTS OVER THEIR HEADS.'],
   '125': ['EACH PREMIUM SKIN FIRES BOLTS OF ITS OWN SHAPE TO MATCH ITS CROSSBOW: FEATHERED, BARBED, LIGHTNING, BONE AND SCYTHE, A SUN, A RINGED GEM, HORNED.', 'A HALLOWED CARD SAYS WHEN YOU HAVE ALREADY LEARNED ITS POWER AT THE ALTAR.', 'THE CODEX TELLS YOU WHAT A HALLOWED PIECE DOES AND WHERE IT DROPS BEFORE YOU FIND IT.', 'THE FORGE\'S LIST OF AFFIX LINES NO LONGER OVERLAPS ON SMALL PHONES, AND THE BAG\'S TABS STAY CLEAR OF THE GOLD.'],
   '124': ["THE VESPER'S BLADE STORM LASTS 3 S, AND WHEN ITS PACK IS DEAD THE DAGGERS FLY ON TO THE NEXT ONE.", 'THE VESPER NO LONGER STANDS IDLE AFTER A DASH WHEN AN ELITE IS FAR OFF: HE CUTS THE FOE BESIDE HIM.', 'THE ALTAR SHOWS ONLY PIECES FOR YOUR CLASS.', 'THREE HALLOWED POWERS THAT REPEATED OTHERS ARE NEW: THE LONG DESCENT (3 CRITS AFTER A DASH), THE HOOD OF ASH-CHOIR (+20% DAMAGE TO FOES ABOVE 80% HEALTH), THE CROWN OF SPLINTERS (SHARD CRITS).', 'FIFTEEN NEW HALLOWED PIECES: 4 FOR EACH CLASS AND 3 FOR ANY CLASS.'],
@@ -325,7 +326,7 @@ const boltFx = () => { const ps = pskin(); if (ps) { const P = PSKIN_BY[ps]; ret
 // talents and sets are shared; each set dresses him too (mendicant_<set>).
 const HEROES = {
   saint: { name: 'THE SAINT', sheet: 'saint', role: 'RANGED, CROSSBOW', text: 'FIGHTS FROM RANGE WITH A FLOATING CROSSBOW.' },
-  mendicant: { name: 'THE VESPER', sheet: 'mendicant', role: 'MELEE, TWIN BLADES', text: 'FAST, LIGHT CUTS WITH TWO BLADES. RUNS 25% FASTER AND TAKES 10% LESS DAMAGE.' },
+  mendicant: { name: 'THE VESPER', sheet: 'mendicant', role: 'MELEE, TWIN BLADES', text: 'RUNS 25% FASTER. HAS 15% MORE HEALTH AND TAKES 25% LESS DAMAGE.' },
   // Round 71: the third class. Her reliquary's shards orbit her and fire on their own.
   anchoress: { name: 'THE ANCHORESS', sheet: 'anchoress', role: 'SUMMONER, RELIQUARY SHARDS', text: 'SHARDS CIRCLE HER AND FIRE ON THEIR OWN. MORE SHARDS, MORE DAMAGE.' },
 };
@@ -1594,10 +1595,10 @@ function addToll(e) {
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
 // fourOf(id): a set's damage at 4 or 5 pieces (fourBy overrides SETK.four for one set).
 const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
-const SETK = { choirHp: 3, choirHp6: 3, choirR: 110, fontHp: 8, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 3.6, strideT: 7, font: 3.5, bound: 1.6, bound6: 2.75, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3, strideT4: 4, font4: 3.5, bound4: 2.6, choir4: 3, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 63, stride: 60, iron: 150, alms: 170, glass: 400, font: 550, choir: 233, road: 190, bell: 180, reliquary: 318, psalter: 450, lantern: 200, gaol: 35 } , /* rounds 101 and 104: 4+2 mixes toward about 6 kills a second at XII */ shardPer: 15, crushK: 3, momK: 22, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ring4: 4, strideGuard: 30, boss: { font: 6, alms: 4.1, bell: 5, gaol: 4.8, iron: 1.7, road: 1.6, confessor: 2.7, nails: 1.4, glass: 1.6, lantern: 1.3 }, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 10, veinK: 2, thornK6: 150, psalK6: 3, lampK6: 120, // Round 101: every set's six pieces tuned to about 7 kills a second at Station XII (setbal.cjs, 6 seeds; the Stride, Confessor,
+const SETK = { choirHp: 3, choirHp6: 3, choirR: 110, fontHp: 8, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 3.6, strideT: 7, font: 3.5, bound: 1.6, bound6: 2.75, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3, strideT4: 4, font4: 3.5, bound4: 2.6, choir4: 3, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 63, stride: 140, iron: 150, alms: 140, glass: 400, font: 450, choir: 233, road: 230, bell: 230, reliquary: 270, psalter: 450, lantern: 200, gaol: 35, thorn: 160 } , /* rounds 101 and 104: 4+2 mixes toward about 6 kills a second at XII */ shardPer: 15, crushK: 3, momK: 22, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ring4: 4, strideGuard: 30, boss: { font: 5.5, alms: 3.4, bell: 3.4, gaol: 3.2, iron: 1.7, road: 1.6, confessor: 3.2, nails: 2, stride: 1.35, choir: 1.6, glass: 2, lantern: 1.6, psalter: 1.4, thorn: 1.15 }, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 10, veinK: 2, thornK6: 150, psalK6: 2.4, lampK6: 80, lampHop: 0.35, // Round 101: every set's six pieces tuned to about 7 kills a second at Station XII (setbal.cjs, 6 seeds; the Stride, Confessor,
   // Lantern and Nails through their own numbers, so no card shows a multiplier under 1), and the sets that
   // took the most damage given a damage-taken multiplier at six pieces (guard6), so no set is far safer or deadlier than another.
-  six: { font: 1.5, choir: 1.44, iron: 1.75, road: 1.8, alms: 1.05, bell: 1.2, gaol: 1.05, glass: 1.67, thorn: 1.5, psalter: 1.79 },
+  six: { font: 1.7, choir: 1.44, iron: 1.75, road: 1.8, alms: 1.05, bell: 1.2, gaol: 1.05, glass: 1.67, thorn: 1.5, psalter: 1.79 },
   guard6: { font: 0.75, confessor: 0.85, choir: 0.5, iron: 0.6, alms: 0.85, glass: 0.55, psalter: 0.4, lantern: 0.62 },
   // Round 105: the same at four pieces, so 4+2 mixes take about as much damage as each other (setbal.cjs at Station XII).
   guard4: { choir: 0.55, confessor: 0.75, font: 0.8, iron: 0.7, alms: 0.7, gaol: 0.88, bell: 0.7, reliquary: 0.72, glass: 0.6, psalter: 0.42, lantern: 0.45 } };
@@ -7307,7 +7308,8 @@ function applyGear(fill = false) {
   G = gearStats();
   if (!player) return;
   const share = player.maxHp ? player.hp / player.maxHp : 1;
-  player.maxHp = Math.round((100 + G.hp) * Math.pow(G.power, 0.85) * (1 + (G.hpPct || 0) / 100)); player.hp = fill ? player.maxHp : Math.max(1, Math.round(player.maxHp * share));
+  // Round 127: the Vesper has 15% more health (MELEE.hpK) and takes 25% less damage (MELEE.guard).
+  player.maxHp = Math.round((100 + G.hp) * Math.pow(G.power, 0.85) * (1 + (G.hpPct || 0) / 100) * (isMelee() ? MELEE.hpK : 1)); player.hp = fill ? player.maxHp : Math.max(1, Math.round(player.maxHp * share));
   player.charges = fill ? G.charges : Math.min(player.charges, G.charges);
 }
 function bagAdd(it) {
@@ -7482,7 +7484,7 @@ function updateMassacre() {
   if (m.n >= 10) {
     const bonus = Math.ceil(m.n * 3 * autoK());
     game.run.gold += bonus; addFervor(m.n + (sb('choir', 6) ? 20 : 0));
-    game.banner = { text: `CARNAGE!  ${m.n} KILLS`, sub: `+${bonus} GOLD`, t: 0, color: PAL.blood0 }; bumpBounty('carnage');
+    game.carnageNote = { n: m.n, bonus, t: game.real }; bumpBounty('carnage'); // round 127: a small plate under the Zeal bar, not a banner
   }
   m.n = 0;
 }
@@ -7579,7 +7581,7 @@ function fireCdOf(base) {
 // hits every foe in its narrow arc. MELEE.k is the reference blow that set and
 // Wound effects scale from; a cut deals MELEE.k * MELEE.cut.
 // Round 122: move (run speed, x the base), dashK (dash recharge time), lunge (how far past his reach he leaps onto a foe).
-const MELEE = { reach: 44, arc: 0.8, cd: 0.36, k: 1.75, cut: 0.33, guard: 0.9, swing: 0.3, strike: 0.05, strike2: 0.14, move: 1.25, dashK: 0.75, lunge: 46 };
+const MELEE = { reach: 44, arc: 0.8, cd: 0.36, k: 1.75, cut: 0.33, guard: 0.75, hpK: 1.15, swing: 0.3, strike: 0.05, strike2: 0.14, move: 1.25, dashK: 0.75, lunge: 46 };
 function updateMelee(dt) {
   player.xb = null;
   updateVDaggers(dt);
@@ -8701,7 +8703,8 @@ function setsOnKill(e) {
   if (sbw('alms') && !game.yard && rng() < 0.04) drops.push({ kind: 'globe', x: e.x, y: e.y, z: 8, vx: rand(-30, 30), vy: rand(-10, 20), vz: 120, t: 0 });
   if (sbw('gaol') && (e.fetT || 0) > game.time && e.fet > 0) addFervor(1);
   if (sb('lantern', 6) && e.burn > 0) {
-    for (const f of nearestFoes(e.x, e.y, 8, 60)) if (f !== e) { f.burn = Math.max(f.burn || 0, T.thurible.burn.time); f.lampDps = Math.max(f.lampDps || 0, e.lampDps || 0); if (sbw('lantern')) f.hotBurn = true; }
+    // Round 127: each hop passes on 35% of the burn to at most 5 foes, so the fire no longer runs through a whole crowd (it made 11 kills a second against about 7).
+    for (const f of nearestFoes(e.x, e.y, 6, 60)) if (f !== e) { f.burn = Math.max(f.burn || 0, T.thurible.burn.time); f.lampDps = Math.max(f.lampDps || 0, (e.lampDps || 0) * SETK.lampHop); if (sbw('lantern')) f.hotBurn = true; }
     vemit(e.x, e.y - 8, { n: LOWFX ? 4 : 12, ramp: 'fire', sp: 90, up: 40, life: 0.4, glow: 5, size: 2 }); rings.push({ x: e.x, y: e.y, t: 0, max: 0.35, r: 60, color: '255,122,31', flat: true });
   }
 }
@@ -10309,6 +10312,12 @@ function renderHud() {
         ctx.fillStyle = PAL.outline; ctx.fillRect(x, 46, Math.round(pw), 4);
         ctx.fillStyle = on ? `rgba(${F.trail},${out ? 0.55 : fl})` : PAL.ink2; ctx.fillRect(x + 1, 47, Math.round(pw) - 2, 2); }
       hudY = 54; }
+    // Round 127: the Carnage bonus shows as a plate as wide as the Zeal bar, under it, for 2.4 s (fading at the end).
+    const C = game.carnageNote, ca = C ? game.real - C.t : 9;
+    if (ca < 2.4) { const a = Math.min(1, (2.4 - ca) / 0.4, ca / 0.12), y = hudY;
+      ctx.globalAlpha = a; ctx.fillStyle = PAL.outline; ctx.fillRect(X, y, zw, 13); ctx.fillStyle = 'rgba(70,10,20,0.92)'; ctx.fillRect(X + 1, y + 1, zw - 2, 11); ctx.fillStyle = PAL.blood0; ctx.fillRect(X + 1, y + 1, 2, 11); ctx.globalAlpha = 1;
+      if (a > 0.3) { text(`CARNAGE ${C.n}`, X + 6, y + 2, PAL.white, { small: true }); text(`+${C.bonus} GOLD`, X + zw - 4, y + 2, PAL.gold1, { small: true, align: 'right' }); }
+      hudY = y + 16; }
   }
   // Top-right: minimap and pause.
   const { mx, my, mw, mh } = renderMinimap();
