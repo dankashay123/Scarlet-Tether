@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 125 (build 125, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 126 (build 126, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -39,7 +39,7 @@ see "The owner's preferences".) When the owner answers with numbers
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
-   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; round 125 on
+   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-126 on
    `claude/brave-fermi-kw8he3`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
@@ -366,12 +366,24 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Offered after round 125, not picked yet:** (1) remeasure the Vesper's
-  Warden times and Station VI after the round 125 cuts; (2) measure the 15
-  round 124 Hallowed pieces in setbal (zealCrit, dashCrit, ricochet, the
-  Pulsing Heart); (3) Steel Chime's old stun rings redrawn as blades;
-  (4) busts for the Vesper and the Anchoress in each premium skin;
-  (5) skinned rite and Reckoning effects for the premium skins.
+- **Offered after round 126, not picked yet:** (1) the Saint's premium busts
+  are the new head pieces on his old hood: a full bust per skin (wings,
+  robes) would match the hero sprites better; (2) the Dread censer's skull
+  and the Void censer read dark on dark floors: a lighter rim or glow;
+  (3) a censer swing trail in the skin's colour; (4) measure the Saint's and
+  the Anchoress's Warden times after rounds 124-126 (only the Vesper's were
+  rerun); (5) skin-coloured hit bursts for the censer itself.
+- **Measured in round 126.** Vesper Station VI: sets 12.3-18.9, mixes
+  13.3-17.8 kills a second (the others' range there; the crowd caps near
+  20). Vesper Warden (the Bellwright, Station XII, 3 seeds, 120 s cap; every
+  try killed it): the Nightblade took 11.9 s, so `SETK.boss.iron` 4.6 -> 1.7
+  (now 32 s); the Dusk Walker took 69 s, so `SETK.boss.road` 1.6 is new (now
+  45 s); Viper 40, Bloodletter 26, Veil 29; mixes 27-51. The 15 round 124
+  Hallowed pieces, one at a time on each class's base set (Station XII, 4
+  seeds, `ALTAR=` in setbal): all inside the noise except the Ricochet
+  Arbalest (+34% alone over 8 seeds), whose bounce now deals half damage
+  (+12%). Defensive ones barely show in crowd damage taken (the Still Cloak
+  about -24% for the Saint).
 - **Vesper balance (round 125, Station XII, 4 seeds, 20 s).** Shipped: storm
   hits `VDAG.k` 0.1 (was 0.14), `fourBy` iron 150, road 190, alms 170, bell
   180, gaol 35 (were 300, 300, 320, 330, 140), `SETK.six.alms` 1.05 (was
@@ -556,6 +568,27 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 126:** the owner asked for premium skins to change the censer, and
+  picked all five of round 125's suggestions. **Censers:** `PTHUR` in
+  `vfx.mjs` (fx `thurible_<id>`): a violet glass orb in a gold cage with
+  folded feathers and a halo, a black orb latticed in gold under a spiked
+  crown with a rose ring, a bowl in running colour bands with a star, a
+  skull with green eyes, a small sun with rays, a white bowl in a gold ring
+  with teal stones, a charred bowl with molten cracks and horns; holes glow
+  in 2x2 dots. Chain colours `TH_CHAIN`, glow `thGlow()`, the Censer panel
+  and the shop's skin preview show it too. **Rites:** `RITE_FX_P` and
+  `riteRamp` colour pools, glows, chains, rune circles, Reckoning rain and
+  edge and `pfxSkill` effects in the skin's colours, with a `sigil_<id>`
+  per skin (the Vesper's pools stay venom green; blazes stay fire).
+  **Busts:** `PBUST` in `townfolk.mjs` (halo and wing tips, crown and rose
+  rings, petals, a scythe, a sunburst, a face-on gold ring, horns; skin eye
+  colours) for all three classes. **Steel Chime:** `chimeFx` (two blades
+  crossing overhead, a ring of eight of his daggers flying out); the
+  Vesper's stunned foes show three steel glints over the head, not the
+  shackle ring. **Balance:** see Next steps. setbal takes `ALTAR=id,id`.
+  A `//` comment mid-line cut off code again (caught by the parse check).
+  Test: `round126.cjs`.
 
 - **Round 125:** the owner said "let's continue", so round 124's five
   suggestions were done. **Vesper balance:** see Next steps (storm hits

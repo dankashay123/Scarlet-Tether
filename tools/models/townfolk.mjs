@@ -3,7 +3,7 @@
 // { sheetName: { animName: () => frames } }. Characters face right; each
 // frame carries ax/ay at the feet.
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, dot, pline, under } from '../sdf.mjs';
-import { MATS, torus, SKINS, HEROES } from './base.mjs';
+import { MATS, torus, SKINS, HEROES, PSY } from './base.mjs';
 
 const M = {
   ...MATS,
@@ -324,6 +324,20 @@ function crow(i) {
 // ------------------------------------------------------ the portrait ---
 // A bust of the Saint for the dialog box: hood, gilt-rimmed void, eyes. 34x34.
 // The HUD portrait; a vestment set skin recolours it and swaps the halo for its crown.
+// Round 126: each premium skin's bust has its own head piece and eye colours (all three classes), not the set crown.
+const PBUST = {
+  enlightened: { eyes: ['violet0', 'violet1', 'violet3'], add: (S, cx, hy) => { S.add(torus([cx - 0.6, hy - 11.6, 0], 7.6, 1.2, 0.42, 'shardGlow'), 0);
+    for (const s of [-1, 1]) for (const [dx, dy, r] of [[12, -2, 2.4], [14.5, -5.5, 2], [16, -9, 1.5]]) S.add(sphere([cx + s * dx, hy + 14 + dy, -4], r, 'wing'), 0.6); } },
+  void: { eyes: ['rose0', 'rose1', 'rose3'], add: (S, cx, hy) => { S.add(torus([cx, hy - 7.5, 0.5], 6.4, 1.4, 0.3, 'gold'), 0.6);
+    for (const [dx, h] of [[-4.5, 4], [0, 6.5], [4.5, 4]]) S.add(capsule([cx + dx, hy - 8.6, 3], [cx + dx * 1.1, hy - 8.6 - h, 3], 1.7, 0.6, 'gold'), 0.4);
+    S.add(torus([cx + 11, hy + 12, 3], 3, 0.8, 1.2, 'roseGlow'), 0); S.add(torus([cx - 11, hy + 6, 2], 2.4, 0.7, 1.4, 'roseGlow'), 0); } },
+  psychedelic: { eyes: ['gold0', 'rose0', 'rose2'], add: (S, cx, hy) => { for (let k = 0; k < 11; k++) { const a = k / 11 * Math.PI * 2 - 0.3; S.add(sphere([cx - 0.5 + Math.cos(a) * 11.5, hy - 0.5 + Math.sin(a) * 11.5, -5], 2.2, PSY[k % 7]), 0.3); } } },
+  dread: { eyes: ['flame0', 'flame1', 'flame3'], add: (S, cx, hy) => { S.add(capsule([cx - 13, hy + 18, -6], [cx - 9, hy - 12, -6], 1.2, 1.2, 'wood'), 0);
+    const pts = [0, 1, 2, 3, 4].map((k) => { const t = k / 4; return [cx - 9 + t * 15, hy - 12 - Math.sin(t * Math.PI) * 4 + t * 5, -6]; }); for (let k = 0; k < 4; k++) S.add(capsule(pts[k], pts[k + 1], 2 - k * 0.4, 1.6 - k * 0.4, 'iron'), 0.4); } },
+  radiant: { eyes: ['holy0', 'holy1', 'holy3'], add: (S, cx, hy) => { const c = [cx - 0.5, hy - 1, -6]; for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; S.add(capsule(c, [c[0] + Math.cos(a) * 14.5, c[1] + Math.sin(a) * 13.5, -6], 1.5, 0.5, 'gold'), 0.3); } } },
+  divine: { eyes: ['teal0', 'teal1', 'teal3'], add: (S, cx, hy) => { S.add(torus([cx - 0.5, hy - 1, -6], 12.5, 1.6, Math.PI / 2, 'gold'), 0); for (const [x, y] of [[-13, -1], [12, -1], [-0.5, -13.5]]) S.add(sphere([cx + x, hy + y, -3], 2, 'teal'), 0); } },
+  demonic: { eyes: ['ember0', 'ember2', 'ember4'], add: (S, cx, hy) => { for (const s of [-1, 1]) { const b = [cx - 0.5 + s * 5, hy - 7, s * 2], m = [cx - 0.5 + s * 10, hy - 11, s * 2.5]; S.add(capsule(b, m, 2.4, 1.8, 'horn'), 0.5); S.add(capsule(m, [m[0] - s * 1.5, m[1] - 4.5, m[2]], 1.8, 0.5, 'horn'), 0.4); } } },
+};
 function portrait(skin = null, hero = null) {
   // hero (round 83): the Vesper's (the Mendicant's until round 118) and the Anchoress's own busts, in their models' materials.
   const HR = hero ? HEROES[hero] : null, hm = HR ? HR.mats : {};
@@ -348,12 +362,13 @@ function portrait(skin = null, hero = null) {
   const cut = ellipsoid(fc, [5, 6, 4.8], 'void');
   S.sub(cut, 1);
   S.paint({ f: (x, y, z) => Math.max(cut.f(x, y, z) - 1.4, -hood.f(x, y, z) - 1.2), mat: K.trim });
-  if (skin && SKINS[skin].crown) {
+  if (skin && PBUST[skin]) PBUST[skin].add(S, cx, hy);
+  else if (skin && SKINS[skin].crown) {
     S.add(torus([cx, hy - 7, 0], 7, 1.6, 0.3, 'gold'), 0.8);
     for (const dx of [-5, 0, 5]) S.add(capsule([cx + dx, hy - 8.5, 4], [cx + dx * 1.1, hy - (skin === 'choir' ? 11.5 : dx ? 13 : 15), 4], skin === 'choir' ? 1.6 : 1.9, skin === 'choir' ? 1.6 : 0.9, skin === 'choir' ? 'wax' : 'gold'), 0.6);
   } else { S.add(torus([cx - 0.6, hy - 11.6, 0], 7.4, 1.1, 0.42, 'halo'), 0); S.sub(sphere([cx + 5.4, hy - 11.4, 3.4], 1.6), 0); }
   const fr = render(S, 34, 34, MATS, { ground: 99, rich: process.env.NORICH ? false : { melt: 1.15, meltAdd: 0.15, detail: 0.6, fall: 0.07, reach: 10 } }); // round 82: shaded like the hero models
-  const E = HR ? HR.eyes : ['flame0', 'flame1', 'flame3'];
+  const E = skin && PBUST[skin] ? PBUST[skin].eyes : HR ? HR.eyes : ['flame0', 'flame1', 'flame3'];
   for (const ex of [fc[0] - 2.1, fc[0] + 1.9]) { dot(fr, ex, fc[1] - 1.2, E[0]); dot(fr, ex, fc[1] - 0.2, E[1]); dot(fr, ex, fc[1] + 0.8, E[2]); }
   if (skin === 'choir') for (const dx of [-5, 0, 5]) { for (const [yy, c] of [[-13.5, 'ember2'], [-14.5, 'ember1'], [-15.5, 'ember0']]) { dot(fr, cx + dx * 1.1, hy + yy, c); dot(fr, cx + dx * 1.1 + 1, hy + yy, c); } }
   return fr;
@@ -367,5 +382,6 @@ export default {
     kid: () => [0, 1, 2, 3].map((t) => child(t, 0)), kid2: () => [0, 1, 2, 3].map((t) => child(t, 1)),
     crow: () => [0, 1, 2, 3].map(crow),
   },
-  ui: { portrait: () => [portrait()], portrait_m: () => [portrait(null, 'mendicant')], portrait_a: () => [portrait(null, 'anchoress')], ...Object.fromEntries(Object.keys(SKINS).filter((k) => !SKINS[k].hero || SKINS[k].hero === 'saint').map((k) => [`portrait_${k}`, () => [portrait(k)]])) },
+  ui: { portrait: () => [portrait()], portrait_m: () => [portrait(null, 'mendicant')], portrait_a: () => [portrait(null, 'anchoress')], ...Object.fromEntries(Object.keys(SKINS).filter((k) => !SKINS[k].hero || SKINS[k].hero === 'saint').map((k) => [`portrait_${k}`, () => [portrait(k)]])),
+    ...Object.fromEntries(Object.keys(PBUST).flatMap((k) => [[`portrait_m_${k}`, () => [portrait(k, 'mendicant')]], [`portrait_a_${k}`, () => [portrait(k, 'anchoress')]]])) },
 };

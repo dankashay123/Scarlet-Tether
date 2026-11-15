@@ -31,13 +31,15 @@ const BUILDS = [['none', null, null], ...SETS.map((k) => [k, k, null]), ...SETS.
   await p.goto('http://localhost:8123/?run'); await p.waitForTimeout(1500); if (process.env.SETK) await p.evaluate((o) => Object.assign(HS.SETK, o), JSON.parse(process.env.SETK)); // SETK='{"choir":1.5}' tries other set numbers
   // PASSIVES=a,b,c,d wears passives, TALENTS='{"might":5}' learns talents, LVL sets the Saint level (round 89).
   // RUB=might (or might,swift) sockets a tier III Rubric of each kind on all three rites of every build (round 100).
+  // Round 126: ALTAR=id,id sockets those Hallowed powers (LEGENDS ids) on every build, as if learned at the altar.
+  await p.evaluate((A) => { window.__ALT = A; }, (process.env.ALTAR || '').split(',').filter(Boolean));
   await p.evaluate(([P, T, L, RB]) => { window.__PAS = P; window.__TAL = T; window.__LVL = L; window.__RUB = RB; }, [(process.env.PASSIVES || '').split(',').filter(Boolean), JSON.parse(process.env.TALENTS || '{}'), +(process.env.LVL || 60), (process.env.RUB || '').split(',').filter(Boolean)]);
   const rows = [];
   for (const [name, main, second] of BUILDS.filter(([n]) => !ONLY.length || ONLY.includes(n))) for (const seed of seeds) {
     await p.evaluate(([st, main, second, R, seed, ENCH, ENCHT, HERO, WOUNDS, HPK, WARDEN]) => {
       // The same dice for every build: items, map and crowd come from one seed.
       let x = seed * 2654435761 >>> 0; Math.random = () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; };
-      window.HS_AUTOSTIG = true; HS.tut.on = false; HS.DEV.god = false; HS.SAVE.virtues = {}; HS.SAVE.altar = { known: [], sockets: {} }; HS.SAVE.passives = window.__PAS || []; HS.SAVE.talents = window.__TAL || {}; HS.SAVE.riteXp = {};
+      window.HS_AUTOSTIG = true; HS.tut.on = false; HS.DEV.god = false; HS.SAVE.virtues = {}; HS.SAVE.altar = { known: window.__ALT || [], sockets: Object.fromEntries((window.__ALT || []).map((id, i) => [`s${i}`, id])) }; HS.SAVE.passives = window.__PAS || []; HS.SAVE.talents = window.__TAL || {}; HS.SAVE.riteXp = {};
       const il = st, slots = ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic', 'bow', 'quiver'];
       HS.SAVE.equip = {}; for (const sl of slots) HS.SAVE.equip[sl] = HS.makeItem(sl, 2, 'X', undefined, il);
       if (main) {
