@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '130';
+const BUILD = '131';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '131': ['HOLD A BUFF ICON TO SEE WHAT IT IS AND WHAT IT DOES.', 'A KILL STREAK RINGS OUT AS IT REACHES 10 AND TURNS INTO CARNAGE.', 'THE HUNDRED NAILS DEALS MORE DAMAGE AT STATION VI AND LOWER, AT 6 PIECES TOO. SET CARDS SAY IT MORE SHORTLY.'],
   '130': ['ACTIVE BUFFS SHOW AS SMALL ICONS UNDER THE ZEAL BAR: SHRINES, RITES LIKE MARTYR\'S WARD, YOUR RECKONING, SET WINDOWS AND TALENTS. THE RIM TURNS GREY LIKE A CLOCK AS THE TIME RUNS OUT, AND STACKS SHOW AS A NUMBER.', 'SET CARDS NOW SAY HOW MUCH THE SET GAINS OR LOSES AT STATION VI AND LOWER.'],
   '129': ['SETS ARE CLOSER TOGETHER AT LOWER STATIONS: AT STATION VI AND BELOW THE WEAKER SETS AND MIXES DEAL MORE DAMAGE AND THE STRONGEST A LITTLE LESS, FADING OUT BY STATION XII.', 'SET BONUSES AGAINST WARDENS WERE CHECKED ON THE DROWNED NAVE AND OSSUARY SPIRE WARDENS TOO.'],
   '128': ['A RUNNING KILL STREAK NOW SHOWS IN THE PLATE UNDER THE ZEAL BAR, WITH ITS TIME LEFT, AND TURNS INTO CARNAGE AT 10.', 'THE VOID AND DREAD CENSERS STAND OUT MORE: A GOLD RIM, GREEN FLAMES AND A BRIGHTER GLOW.', 'THE DROWNED FONT HITS WARDENS LESS AT 4 PIECES AND MORE AT 6, SO MIXES AND FULL SETS KILL THEM IN SIMILAR TIMES.'],
@@ -798,7 +799,7 @@ function pointerDown(id, cx, cy) {
   if (game.state === 'forge' && game.forge && game.forge.tab < 3 && !game.ask && !game.forge.list && inRect(forgeGeo(featLayout()).box, x, y)) game.forge.drag = { id, y0: y, s0: game.forge.scroll || 0 }; // round 96
   if (game.state === 'store' && game.store && game.store.tab < 2 && !game.ask && inRect(gearGeo(featLayout(), game.store, storeList().length).box, x, y)) game.store.drag = { id, y0: y, s0: game.store.scroll || 0 };
   if (game.state === 'designer' && DES) { if (game.ask) onTap(x, y); else desDown(id, x, y); return; }
-  { const q = !game.ask && !game.statTip && HOLD_TIPS.find((r) => inRect(r, x, y)); game.hold = q ? { id, x, y, t: game.real, k: q.k, title: q.title, text: q.text, st: game.state, defer: q.defer } : null; } // round 99: hold for a tip
+  { const q = !game.ask && !game.statTip && HOLD_TIPS.find((r) => inRect(r, x, y)); game.hold = q ? { id, x, y, t: game.real, k: q.k, title: q.title, text: q.text, st: game.state, defer: q.defer, below: q.below ? q.y + q.h : 0 } : null; } // round 99: hold for a tip
   if (game.hold && game.hold.defer) return; // round 100: this tap waits for the release (pointerUp), so a hold can show the tip instead
   if (game.state === 'title' && hitBtn(HUD.mute, x, y)) { AUDIO.unlock(); AUDIO.setMuted(!AUDIO.muted); sfx('tap'); return; }
   if (onTap(x, y)) return;
@@ -1598,7 +1599,7 @@ function addToll(e) {
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
 // fourOf(id): a set's damage at 4 or 5 pieces (fourBy overrides SETK.four for one set).
 const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
-const SETK = { choirHp: 3, choirHp6: 3, choirR: 110, fontHp: 8, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 3.6, strideT: 7, font: 3.5, bound: 1.6, bound6: 2.75, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3, strideT4: 4, font4: 3.5, bound4: 2.6, choir4: 3, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 63, stride: 140, iron: 150, alms: 140, glass: 400, font: 450, choir: 233, road: 230, bell: 230, reliquary: 270, psalter: 450, lantern: 200, gaol: 35, thorn: 160 } , /* rounds 101 and 104: 4+2 mixes toward about 6 kills a second at XII */ shardPer: 15, crushK: 3, momK: 22, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ring4: 4, strideGuard: 30, low: { gaol: 1.4, lantern: 2.5, confessor: 1.8, font: 1.6, nails: 1.4, choir: 1.4, thorn: 1.4, psalter: 1.3, glass: 1.2 }, low6: { font: 0.7, choir: 0.75, glass: 0.7, gaol: 1.9, thorn: 1.8, confessor: 1.25, lantern: 1.25 }, boss6: { nails: 2.2, glass: 2.7, font: 6.5, confessor: 3.4, choir: 1.6, iron: 1.7, alms: 4.2, reliquary: 1.2, thorn: 1.05, psalter: 1.3 }, boss: { font: 3.3, alms: 3.4, bell: 3.4, gaol: 3.2, iron: 2.05, road: 1.6, confessor: 5, nails: 2.4, stride: 1.1, choir: 2.3, glass: 2.8, lantern: 1.8, psalter: 1.65, thorn: 1.55, reliquary: 1.55 }, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 10, veinK: 2, thornK6: 150, psalK6: 2.4, lampK6: 80, lampHop: 0.35, // Round 101: every set's six pieces tuned to about 7 kills a second at Station XII (setbal.cjs, 6 seeds; the Stride, Confessor,
+const SETK = { choirHp: 3, choirHp6: 3, choirR: 110, fontHp: 8, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 3.6, strideT: 7, font: 3.5, bound: 1.6, bound6: 2.75, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3, strideT4: 4, font4: 3.5, bound4: 2.6, choir4: 3, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 63, stride: 140, iron: 150, alms: 140, glass: 400, font: 450, choir: 233, road: 230, bell: 230, reliquary: 270, psalter: 450, lantern: 200, gaol: 35, thorn: 160 } , /* rounds 101 and 104: 4+2 mixes toward about 6 kills a second at XII */ shardPer: 15, crushK: 3, momK: 22, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ring4: 4, strideGuard: 30, low: { gaol: 1.4, lantern: 2.5, confessor: 1.8, font: 1.6, nails: 1.4, choir: 1.4, thorn: 1.4, psalter: 1.3, glass: 1.2 }, low6: { nails: 1.4, font: 0.7, choir: 0.75, glass: 0.7, gaol: 1.9, thorn: 1.8, confessor: 1.25, lantern: 1.25 }, boss6: { nails: 2.2, glass: 2.7, font: 6.5, confessor: 3.4, choir: 1.6, iron: 1.7, alms: 4.2, reliquary: 1.2, thorn: 1.05, psalter: 1.3 }, boss: { font: 3.3, alms: 3.4, bell: 3.4, gaol: 3.2, iron: 2.05, road: 1.6, confessor: 5, nails: 2.4, stride: 1.1, choir: 2.3, glass: 2.8, lantern: 1.8, psalter: 1.65, thorn: 1.55, reliquary: 1.55 }, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 10, veinK: 2, thornK6: 150, psalK6: 2.4, lampK6: 80, lampHop: 0.35, // Round 101: every set's six pieces tuned to about 7 kills a second at Station XII (setbal.cjs, 6 seeds; the Stride, Confessor,
   // Lantern and Nails through their own numbers, so no card shows a multiplier under 1), and the sets that
   // took the most damage given a damage-taken multiplier at six pieces (guard6), so no set is far safer or deadlier than another.
   six: { font: 1.7, choir: 1.44, iron: 1.75, road: 1.8, alms: 1.05, bell: 1.2, gaol: 1.05, glass: 1.67, thorn: 1.5, psalter: 1.79 },
@@ -7086,7 +7087,7 @@ for (const id of ALL_SETS) { const b6 = VSETS[id].bonus.find((q) => q[0] === 6),
   if (b4 && bk && bk > 1) b4[1] = `${b4[1]} WARDENS TAKE ${Math.round((bk - 1) * 100)}% MORE DAMAGE FROM YOU.`;
   const b6w = VSETS[id].bonus.find((q) => q[0] === 6), bk6 = SETK.boss6[id]; if (b6w && bk6 && bk6 !== bk) b6w[1] = `${b6w[1]} WARDENS TAKE ${Math.round((bk6 - 1) * 100)}% MORE DAMAGE FROM YOU INSTEAD.`;
   // Round 130: the low-Station factor (SETK.low, low6) is written on the cards too.
-  const lowTxt = (m, inst) => `AT STATION VI OR LOWER: ${m > 1 ? '+' : '-'}${Math.round(Math.abs(m - 1) * 100)}% DAMAGE${inst ? ' INSTEAD' : ''}, FADING OUT BY STATION XII.`;
+  const lowTxt = (m, inst) => `STATION VI OR LOWER: ${m > 1 ? '+' : '-'}${Math.round(Math.abs(m - 1) * 100)}% DAMAGE${inst ? ' INSTEAD' : ''} (FADES BY XII).`; // round 131: shorter
   const l4 = SETK.low[id], l6 = SETK.low6[id]; if (b4 && l4) b4[1] = `${b4[1]} ${lowTxt(l4)}`; if (b6w && l6 && l6 !== l4) b6w[1] = `${b6w[1]} ${lowTxt(l6, !!l4)}`; }
 const mySets = () => HERO_SETS[heroId()];
 const starterSet = () => STARTER[heroId()];
@@ -7489,6 +7490,7 @@ function massacre() {
   const m = game.massacre || (game.massacre = { n: 0, last: -9 });
   if (game.time - m.last < 1.2) m.n++; else m.n = 1;
   m.last = game.time;
+  if (m.n === 10 && !game.yard) { sfx('knell', { vol: 0.7, rate: 1.35, gap: 0.3 }); sfx('kill1', { vol: 0.5, rate: 0.8 }); } // round 131: the plate turns red as CARNAGE
 }
 function updateMassacre() {
   const m = game.massacre;
@@ -9557,7 +9559,7 @@ function render() {
   UI_SOFT = game.state !== 'play';
   if (game.state === 'pause') { layerBreak(); renderPause(); }
   layerBreak(); // menu windows cover the HUD and its text
-  TIPS.length = 0; HOLD_TIPS.length = 0; // round 98: stat lines a window draws this frame (tap one for its tip; HOLD_TIPS: hold one, round 99)
+  TIPS.length = 0; HOLD_TIPS.length = 0; if (game.state === 'play') HOLD_TIPS.push(...BUFF_TIPS); // round 98: stat lines a window draws this frame (tap one for its tip; HOLD_TIPS: hold one, round 99)
   // Round 68: switching hub tabs slides the new page in from the side it lies on, and fades it up.
   const hubK = HUB_STATES.includes(game.state) && game.hubT ? Math.min(1, (game.real - game.hubT) / 0.18) : 1, hubDx = hubK < 1 ? Math.round((1 - hubK) * (1 - hubK) * 14 * (game.hubDir || 1)) : 0;
   if (hubDx) { ctx.fillStyle = '#0a101c'; ctx.fillRect(0, 0, W, H); ctx.save(); ctx.translate(hubDx, 0); UI_FADES.push({ x: 0, y: 32, w: W, h: H - 32, a: 0.6 * (1 - hubK) }); }
@@ -9598,7 +9600,7 @@ function render() {
   if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; }
   if (game.setPop && (game.state === 'inv' || game.state === 'gift')) { layerBreak(); renderSetPop(); } else game.setPop = null;
   if (game.itemPop && HUB_STATES.concat(['board', 'shop', 'gift']).includes(game.state)) { layerBreak(); TIPS.length = 0; renderItemPop(); } else game.itemPop = null; // the popup covers the window's own lines
-  { const h = game.hold; if (h && h.st === game.state && game.real - h.t > HOLD_T) { game.statTip = { k: h.k, title: h.title, text: h.text, x: h.x, y: h.y - 4, st: h.st }; game.hold = null; sfx('tap', { vol: 0.4, rate: 1.3 }); } }
+  { const h = game.hold; if (h && h.st === game.state && game.real - h.t > HOLD_T) { game.statTip = { k: h.k, title: h.title, text: h.text, x: h.x, y: h.y - 4, st: h.st, t0: game.real, below: h.below }; game.hold = null; sfx('tap', { vol: 0.4, rate: 1.3 }); } }
   if (game.statTip && game.statTip.st === game.state) renderStatTip(); else game.statTip = null;
   if (game.enchPop && game.state === 'inv') { layerBreak(); renderEnchPop(); if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; } } else game.enchPop = null;
   if (game.ask) { layerBreak(); renderAsk(); if (FRAME) { frameOrnaments(FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.style); FRAME = null; } }
@@ -10295,26 +10297,26 @@ const riteBuff = (id) => (x, y, s) => { const R = RITE_BY[id]; if (R) fitIcon('u
 const setBuff = (id) => (x, y, s) => fitIcon('loot', 'setitem', SET_ICONS.indexOf(id) * 10, x, y, s);
 const talBuff = (id) => (x, y, s) => talIcon(id, x, y, s / 2);
 const BUFFS = [
-  { id: 'shrine', end: () => (game.buff ? game.time + game.buff.t : 0), rgb: () => (game.buff && SHRINES[game.buff.kind] ? SHRINES[game.buff.kind].rgb : '255,209,85'),
+  { id: 'shrine', name: "SHRINE BLESSING", text: () => (game.buff && SHRINES[game.buff.kind] ? `${SHRINES[game.buff.kind].name.replace('SHRINE OF ', '')}: ${SHRINES[game.buff.kind].sub}.` : ''), end: () => (game.buff ? game.time + game.buff.t : 0), rgb: () => (game.buff && SHRINES[game.buff.kind] ? SHRINES[game.buff.kind].rgb : '255,209,85'),
     icon: (x, y, s) => { const c = game.buff && SHRINES[game.buff.kind] ? SHRINES[game.buff.kind].rgb : '255,209,85', h = Math.round(s / 2) - 1; ctx.fillStyle = `rgb(${c})`; ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x + h * 0.7, y); ctx.lineTo(x, y + h); ctx.lineTo(x - h * 0.7, y); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(Math.round(x - 1), Math.round(y - h + 2), 2, 2); } },
-  { id: 'reck', end: () => ((player.rainT || 0) > 0 ? game.time + player.rainT : 0), rgb: () => riteFx().glow, icon: (x, y, s) => riteBuff(riteOf('pen').id)(x, y, s) },
-  { id: 'ward', end: () => player.wardT, rgb: '255,244,176', icon: riteBuff('ward') },
-  { id: 'vow', end: () => player.vowT, rgb: '178,188,203', icon: riteBuff('vow') },
-  { id: 'well', end: () => player.wellT, rgb: '182,211,106', icon: riteBuff('wellspring') },
-  { id: 'mend', end: () => player.mendT, rgb: '255,122,102', icon: riteBuff('mending') },
-  { id: 'sward', end: () => player.swardT, rgb: '212,176,255', icon: riteBuff('sward') },
-  { id: 'splinter', end: () => player.splinterT, rgb: '216,247,255', icon: riteBuff('splinter') },
-  { id: 'ember', end: () => player.emberRelicT, rgb: '255,122,31', icon: riteBuff('emberrelic') },
-  { id: 'stride', end: () => player.strideT, rgb: () => SET_RGB.stride || '255,122,31', icon: setBuff('stride') },
-  { id: 'guard', end: () => player.guardT, rgb: '255,244,176', icon: setBuff('stride') },
-  { id: 'psalter', end: () => player.psalT, rgb: () => SET_RGB.psalter || '255,122,102', icon: setBuff('psalter') },
-  { id: 'rush', end: () => player.rushT, rgb: '255,90,74', icon: talBuff('bloodrush') },
-  { id: 'frenzy', end: () => player.frenzyT, n: () => player.frenzyN, rgb: '232,56,63', icon: talBuff('frenzy') },
-  { id: 'cadence', end: () => player.cadT, n: () => player.cadN, rgb: '255,209,85', icon: talBuff('cadence') },
-  { id: 'aegis', end: () => player.aegisT, rgb: '138,224,255', icon: talBuff('aegis') },
-  { id: 'vigil', end: () => player.ivT, rgb: '178,188,203', icon: (x, y, s) => fitIcon('ui', 'passive', PASSIVES.findIndex((q) => q.id === 'ironvigil'), x, y, s) },
+  { id: 'reck', name: "RECKONING", text: () => `${riteOf('pen').name} IS ACTIVE.`, end: () => ((player.rainT || 0) > 0 ? game.time + player.rainT : 0), rgb: () => riteFx().glow, icon: (x, y, s) => riteBuff(riteOf('pen').id)(x, y, s) },
+  { id: 'ward', name: () => (RITE_BY.ward ? RITE_BY.ward.name : ''), text: () => (RITE_BY.ward ? heroText(RITE_BY.ward.text) : ''), end: () => player.wardT, rgb: '255,244,176', icon: riteBuff('ward') },
+  { id: 'vow', name: () => (RITE_BY.vow ? RITE_BY.vow.name : ''), text: () => (RITE_BY.vow ? heroText(RITE_BY.vow.text) : ''), end: () => player.vowT, rgb: '178,188,203', icon: riteBuff('vow') },
+  { id: 'well', name: () => (RITE_BY.wellspring ? RITE_BY.wellspring.name : ''), text: () => (RITE_BY.wellspring ? heroText(RITE_BY.wellspring.text) : ''), end: () => player.wellT, rgb: '182,211,106', icon: riteBuff('wellspring') },
+  { id: 'mend', name: () => (RITE_BY.mending ? RITE_BY.mending.name : ''), text: () => (RITE_BY.mending ? heroText(RITE_BY.mending.text) : ''), end: () => player.mendT, rgb: '255,122,102', icon: riteBuff('mending') },
+  { id: 'sward', name: () => (RITE_BY.sward ? RITE_BY.sward.name : ''), text: () => (RITE_BY.sward ? heroText(RITE_BY.sward.text) : ''), end: () => player.swardT, rgb: '212,176,255', icon: riteBuff('sward') },
+  { id: 'splinter', name: () => (RITE_BY.splinter ? RITE_BY.splinter.name : ''), text: () => (RITE_BY.splinter ? heroText(RITE_BY.splinter.text) : ''), end: () => player.splinterT, rgb: '216,247,255', icon: riteBuff('splinter') },
+  { id: 'ember', name: () => (RITE_BY.emberrelic ? RITE_BY.emberrelic.name : ''), text: () => (RITE_BY.emberrelic ? heroText(RITE_BY.emberrelic.text) : ''), end: () => player.emberRelicT, rgb: '255,122,31', icon: riteBuff('emberrelic') },
+  { id: 'stride', name: "THE PENITENT'S STRIDE", text: 'YOUR DAMAGE IS MULTIPLIED FOR A SHORT TIME AFTER A DASH.', end: () => player.strideT, rgb: () => SET_RGB.stride || '255,122,31', icon: setBuff('stride') },
+  { id: 'guard', name: "PERFECT DODGE", text: () => `YOU TAKE ${SETK.strideGuard}% LESS DAMAGE AFTER A PERFECT DODGE.`, end: () => player.guardT, rgb: '255,244,176', icon: setBuff('stride') },
+  { id: 'psalter', name: "THE MOTHER'S PSALTER", text: 'YOUR SHARDS HIT HARDER WHILE THIS LASTS.', end: () => player.psalT, rgb: () => SET_RGB.psalter || '255,122,102', icon: setBuff('psalter') },
+  { id: 'rush', name: "BLOOD RUSH", text: () => heroText(TAL_BY.bloodrush ? TAL_BY.bloodrush.text() : ''), end: () => player.rushT, rgb: '255,90,74', icon: talBuff('bloodrush') },
+  { id: 'frenzy', name: "BLOOD FRENZY", text: () => `+${player.frenzyN || 0}% DAMAGE. EACH KILL ADDS 1% (UP TO 25%) AND KEEPS IT GOING FOR 4 S.`, end: () => player.frenzyT, n: () => player.frenzyN, rgb: '232,56,63', icon: talBuff('frenzy') },
+  { id: 'cadence', name: "CADENCE", text: () => heroText(TAL_BY.cadence ? TAL_BY.cadence.text() : ''), end: () => player.cadT, n: () => player.cadN, rgb: '255,209,85', icon: talBuff('cadence') },
+  { id: 'aegis', name: "AEGIS", text: () => heroText(TAL_BY.aegis ? TAL_BY.aegis.text() : ''), end: () => player.aegisT, rgb: '138,224,255', icon: talBuff('aegis') },
+  { id: 'vigil', name: "IRON VIGIL", text: () => { const q = PASSIVES.find((r) => r.id === 'ironvigil'); return q ? heroText(q.text) : ''; }, end: () => player.ivT, rgb: '178,188,203', icon: (x, y, s) => fitIcon('ui', 'passive', PASSIVES.findIndex((q) => q.id === 'ironvigil'), x, y, s) },
 ];
-const BUFF_DUR = {}, BUFF_R = 9;
+const BUFF_DUR = {}, BUFF_R = 9, BUFF_TIPS = []; // BUFF_TIPS: this frame's icon rects, added to HOLD_TIPS after render() clears it
 function activeBuffs() {
   const now = game.time, out = [];
   for (const B of BUFFS) {
@@ -10339,10 +10341,13 @@ function drawBuffs(x, y, w) {
     ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(120,128,140,0.9)'; ctx.beginPath(); ctx.arc(cx, cy, r - 0.5, a0, a1); ctx.stroke();
     ctx.strokeStyle = blink ? PAL.white : `rgb(${rgb})`; ctx.beginPath(); ctx.arc(cx, cy, r - 0.5, a1, a0 + Math.PI * 2); ctx.stroke();
     const n = B.n && B.n(); if (n > 1) text(String(n), cx + r + 1, cy + 1, PAL.white, { small: true, align: 'right' });
+    // Round 131: hold an icon for its name and what it does (deferred, so the touch does not start the stick).
+    const tx = typeof B.text === 'function' ? B.text() : B.text, nm0 = typeof B.name === 'function' ? B.name() : B.name; if (nm0 && tx) BUFF_TIPS.push({ x: cx - r - 1, y: cy - r - 1, w: r * 2 + 2, h: r * 2 + 2, defer: true, below: true, title: nm0, text: tx });
   });
   return Math.ceil(L.length / per) * step;
 }
 function renderHud() {
+  BUFF_TIPS.length = 0;
   const p = player;
   // Top-left: health, then Zeal with what its fill is worth.
   const X = HUD_X(), hw = hudW(), hk = Math.max(0, p.hp / p.maxHp);
@@ -11705,8 +11710,9 @@ const TIPS = [];
 const HOLD_TIPS = [], HOLD_T = 0.45;
 function tipAt(x, y) { const q = TIPS.find((r) => inRect(r, x, y) && STAT_TIP[r.k]); if (!q) return false; game.statTip = { k: q.k, x: q.x + q.w / 2, y: q.y, st: game.state }; sfx('tap', { vol: 0.4 }); return true; }
 function renderStatTip() {
+  if (game.statTip.st === 'play' && game.real - (game.statTip.t0 || game.real) > 3) { game.statTip = null; return; } // round 131: a buff's tip in play closes by itself
   const P = game.statTip, T0 = P.title ? [P.title, P.text] : STAT_TIP[P.k], small = { small: true, outline: null }, w = Math.min(190, W - 20), ls = wrapW(T0[1], w - 16, true), h = 26 + ls.length * 10;
-  const x = Math.max(6, Math.min(W - w - 6, Math.round(P.x - w / 2))), y = Math.max(6, Math.min(H - h - 6, Math.round(P.y - h - 6)));
+  const x = Math.max(6, Math.min(W - w - 6, Math.round(P.x - w / 2))), y = Math.max(6, Math.min(H - h - 6, Math.round(P.below ? P.below + 4 : P.y - h - 6))); // round 131: a buff's tip opens under its icon
   layerBreak(); ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x + 2, y + 3, w, h); ctx.fillStyle = '#121a2c'; ctx.fillRect(x, y, w, h); ctx.fillStyle = PAL.gold1; ctx.fillRect(x, y, w, 2);
   ctx.fillStyle = 'rgba(170,190,225,0.25)'; ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x, y, 1, h); ctx.fillRect(x + w - 1, y, 1, h);
   text(T0[0], x + 8, y + 6, PAL.gold1, { ...small, bold: true }); ls.forEach((l, i) => text(l, x + 8, y + 18 + i * 10, PAL.cloth0, small));

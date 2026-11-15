@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 130 (build 130, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 131 (build 131, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -39,7 +39,7 @@ see "The owner's preferences".) When the owner answers with numbers
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
-   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-130 on
+   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-131 on
    `claude/brave-fermi-kw8he3`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
@@ -366,12 +366,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Offered after round 130, not picked yet:** (1) the Hundred Nails clears
-  a Station VI descent slowest with the pilot (about 107 s against 53-95 for
-  the other Saint sets) though it is mid-pack in setbal's crowd; (2) Glass 4
-  + Psalter 2 on Candlemass was 71 s before its `boss.glass` 2.8 nudge (not
-  rechecked); (3) hold a buff icon to read what it is; (4) a streak sound at
-  10 kills; (5) ask the owner how the Vesper's defence feels.
+- **Offered after round 131, not picked yet:** (1) buff icons for enchant
+  procs and Hallowed powers with timers (Hunger stacks, the Still Cloak's
+  ward); (2) the pilot test for the Vesper's and the Anchoress's sets at
+  Station VI, as done for the Saint; (3) a hold tip on the Carnage plate;
+  (4) a small fade-in when a buff icon appears; (5) ask the owner how the
+  Vesper's defence feels.
+- **Measured in round 131.** `SETK.low6.nails` 1.4: the pilot at Station VI
+  clears in 71-95 s (was 100-111), 6.3-7.9 kills a second, level with the
+  Confessor; setbal VI Nails 16.3, Nails 4 + Font 2 15.7. Glass 4 + Psalter
+  2 on Candlemass after `boss.glass` 2.8: 57 s (3 of 3 killed; was 71).
 - **Measured in round 130.** Pilot (autobench, Saint, Station VI gear and
   Station, 3 runs): seconds to clear and kills a second: Choir 53 s / 11.2,
   Stride 72 / 8.4, Confessor 83 / 8.2, Font 95 / 6.6, Nails 107 / 5.6. The
@@ -620,6 +624,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 131:** the owner said "All" to round 130's list. Nails low-Station
+  factor at six pieces; the Glass mix on Candlemass rechecked; a shorter
+  card line ("Station VI or lower: +60% damage (fades by XII)."); hold a buff
+  icon for its name and text (tip under the icon, closes after 3 s in play);
+  a knell and kill sound as a streak reaches 10. A script edit first matched
+  `{ id: 'ward', ...}` in the rite tables instead of `BUFFS` and wrote into
+  seven wrong objects; caught in the diff and redone inside the `BUFFS`
+  block only. Test: `round131.cjs`.
 
 - **Round 130:** the owner picked 1, 2, 3 and 5 from round 129's list and asked
   for buff icons in play with a clock-like countdown from colour to grey.
