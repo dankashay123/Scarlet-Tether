@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 128 (build 128, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 129 (build 129, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -39,7 +39,7 @@ see "The owner's preferences".) When the owner answers with numbers
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
-   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-128 on
+   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-129 on
    `claude/brave-fermi-kw8he3`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
@@ -366,13 +366,28 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Offered after round 128, not picked yet:** (1) Warden times in Strata II
-  and III (the Tide-Bishop, the Organist, the Ossuarch, the Ash Widow) were
-  never measured per build; (2) Station VI still spreads 9-22 kills a second
-  (crowd-capped; would need a Station-scaled set term); (3) the last nudges
-  (`boss.choir` 2.3, `boss6.alms` 4.2, `boss6.reliquary` 1.2) were not
-  remeasured; (4) a streak sound at 10 kills as the plate turns red;
-  (5) ask the owner how the Vesper's defence feels.
+- **Offered after round 129, not picked yet:** (1) the Penitent's Stride is the
+  slowest build at Station VI (12 kills a second) because setbal's bot
+  rarely dashes; check it with the autobench pilot, which dashes;
+  (2) the last Warden nudges (`boss.nails` 2.4, `boss6.nails` 2.2, `boss.glass` 2.4,
+  `boss6.glass` 2.7, `boss.reliquary` 1.55) were checked on the Organist
+  only; (3) Station III and IX were never measured with the low-Station
+  factor; (4) a streak sound at 10 kills; (5) ask the owner how the
+  Vesper's defence feels.
+- **Low Stations and Strata II-III Wardens (round 129).** Station VI (4
+  seeds, 20 s) before: 9-22 kills a second. `SETK.low`/`low6`: full at VI
+  and below, fading to nothing by XII. After: Saint sets 12-17, mixes
+  11-16; Vesper sets 14-17, mixes 14-17; Anchoress sets 14-17.5, mixes
+  13-17.5. The Stride stays near 12 (it hits hard after a dash and the
+  setbal bot rarely dashes; ×2.5 barely moved it, so it was put back to
+  ×1.7). Wardens of Strata II and III (`STRATUM=` in setbal; the
+  Tide-Bishop, the Organist, the Ossuarch, the Ash Widow; Station XII, 2
+  seeds): averages 36-61 s per build (overall about 46, like Stratum I);
+  Nails 4 + Font 2 (91 s on the Organist, one kill in two), Glass 4 +
+  Psalter 2 (78 s) and Reliquary 4 + Thorn 2 were the slow ones; after the
+  nudges, on the Organist: 56, 46 and 34 s. Round 128's last three nudges
+  rechecked on Candlemass and Our Lady: Choir 4 + Stride 2 about 50 s,
+  Viper's Fang 42-54, the Shattered Reliquary 41-49.
 - **Wardens across Stratum I (round 128).** setbal WARDEN= for Mother
   Candlemass, the Hollow Cardinal, the Charnel King and Our Lady of Nails
   (Station XII, 2 seeds, 120 s cap; every try killed it), on top of round
@@ -598,6 +613,13 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 129:** the owner picked 1, 2 and 5 from round 128's list.
+  **Station VI:** `SETK.low` and `SETK.low6`, a per-set damage factor at
+  Station VI and below that fades out by XII (`setFoeK`); see Next steps.
+  **Wardens of Strata II and III** measured for every build (setbal now
+  takes `STRATUM=`), with small `SETK.boss`/`boss6` nudges for the slow
+  mixes. **Nudges from round 128** rechecked and kept. Test: `round129.cjs`.
 
 - **Round 128:** the owner picked 1, 2, 4 and 5 from round 127's list.
   **Warden mix number:** `SETK.boss6` (six pieces; `boss` keeps 4-5), its

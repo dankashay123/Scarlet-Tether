@@ -32,6 +32,8 @@ const BUILDS = [['none', null, null], ...SETS.map((k) => [k, k, null]), ...SETS.
   // PASSIVES=a,b,c,d wears passives, TALENTS='{"might":5}' learns talents, LVL sets the Saint level (round 89).
   // RUB=might (or might,swift) sockets a tier III Rubric of each kind on all three rites of every build (round 100).
   // Round 126: ALTAR=id,id sockets those Hallowed powers (LEGENDS ids) on every build, as if learned at the altar.
+  // Round 129: STRATUM=2|3 runs the descent in that stratum (for its Wardens and foes).
+  await p.evaluate((k) => { window.__STR = k; }, +(process.env.STRATUM || 1));
   await p.evaluate((A) => { window.__ALT = A; }, (process.env.ALTAR || '').split(',').filter(Boolean));
   await p.evaluate(([P, T, L, RB]) => { window.__PAS = P; window.__TAL = T; window.__LVL = L; window.__RUB = RB; }, [(process.env.PASSIVES || '').split(',').filter(Boolean), JSON.parse(process.env.TALENTS || '{}'), +(process.env.LVL || 60), (process.env.RUB || '').split(',').filter(Boolean)]);
   const rows = [];
@@ -52,7 +54,7 @@ const BUILDS = [['none', null, null], ...SETS.map((k) => [k, k, null]), ...SETS.
       const r = R[main || 'none']; HS.SAVE.lvl = window.__LVL || 60; HS.SAVE.hero = HERO; HS.SAVE[HERO === 'mendicant' ? 'mrites' : HERO === 'anchoress' ? 'arites' : 'rites'] = { m1: r[0], m2: r[1], pen: r[2] };
       slots.forEach((sl, i) => { if (ENCH[i]) { HS.SAVE.equip[sl].ench = ENCH[i]; HS.SAVE.equip[sl].enchT = ENCHT; } });
       HS.SAVE.rubrics = []; HS.SAVE.rsock = {}; for (const rid of r) { HS.SAVE.rsock[rid] = []; (window.__RUB || []).forEach((k, j) => { const u = `b${rid}${k}`; HS.SAVE.rubrics.push({ u, r: rid, k, t: 3 }); HS.SAVE.rsock[rid][j] = u; }); } HS.rubBuild();
-      HS.game.nextDiff = st - 1; HS.game.nextStratum = 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.game.stigAt = 1e9; HS.game.run.wounds = WOUNDS; HS.applyGear(true);
+      HS.game.nextDiff = st - 1; HS.game.nextStratum = window.__STR || 1; HS.game.nextOmens = []; HS.newRun(); HS.tut.on = false; HS.game.stigAt = 1e9; HS.game.run.wounds = WOUNDS; HS.applyGear(true);
       for (const e of HS.enemies) e.dead = true;
       // The crowd: kept at 30 around the Saint. Damage taken is counted and healed back.
       const P = HS.player, home = { x: P.x, y: P.y }, mix = ['risen', 'crawler', 'acolyte', 'flagellant', 'risen'];
