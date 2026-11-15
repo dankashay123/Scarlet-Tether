@@ -133,6 +133,7 @@ const CM = { ...MATS, ice: { ramp: 'holy', spec: 0.9, bias: 0.12, max: 4 }, iceD
 export const CRYSTALS = { enlightened: ['violet', 'violet'], void: ['rose', 'ink'], psychedelic: null, dread: ['flame', 'ink'], radiant: ['gold', 'rose'], divine: ['cloth', 'gold'], demonic: ['ember', 'crimson'] };
 for (const [k, v] of Object.entries(CRYSTALS)) if (v) { CM[`ice_${k}`] = { ramp: v[0], spec: 0.9, bias: 0.12, max: 4 }; CM[`iceDark_${k}`] = { ramp: v[1], bias: -0.18, min: 2, max: 6 }; }
 function crystal(i, slim = false, skin = null) {
+  if (skin && PCRY[skin]) return pweapon('cry', i, skin, 34, PCRY_LEN * (slim ? 0.85 : 1));
   const a = i / 16 * Math.PI * 2, dx0 = Math.cos(a), dy0 = Math.sin(a) * 0.55, dl = Math.hypot(dx0, dy0), dx = dx0 / dl, dy = dy0 / dl;
   const L = (15 + 9 * Math.abs(Math.cos(a))) * (slim ? 0.95 : 1), c = [17, 17], S = new Scene(), R0 = slim ? 3.9 : 4.8;
   const at = (t) => [c[0] + dx * t, c[1] + dy * t, 3];
@@ -155,6 +156,7 @@ export const DAGGERS = { plain: ['iron', 'gold', 'crimson'], enlightened: ['viol
 const DM = { ...MATS };
 for (const [k, [b, g, h]] of Object.entries(DAGGERS)) { DM[`db_${k}`] = { ramp: b, spec: 0.9, bias: 0.15, max: 4 }; DM[`dd_${k}`] = { ramp: b, bias: -0.15, min: 2, max: 6 }; DM[`dg_${k}`] = { ramp: g, spec: 0.6, max: 5 }; DM[`dh_${k}`] = { ramp: h, bias: -0.1, min: 2 }; }
 function vdagger(i, k = 'plain') {
+  if (PDAG[k]) return pweapon('dag', i, k, 34, PDAG_LEN);
   const a = i / 16 * Math.PI * 2, dx0 = Math.cos(a), dy0 = Math.sin(a) * 0.55, dl = Math.hypot(dx0, dy0), dx = dx0 / dl, dy = dy0 / dl;
   const L = 11 + 6 * Math.abs(Math.cos(a)), c = [16, 16], S = new Scene(), at = (t, z = 3) => [c[0] + dx * t, c[1] + dy * t, z], nx = -dy, ny = dx;
   S.add(capsule(at(-1), at(L), 2.6, 0.45, `db_${k}`), 0);                                                      // the blade
@@ -166,6 +168,61 @@ function vdagger(i, k = 'plain') {
   if (k === 'psychedelic') PSY.forEach((m, j) => S.paint({ f: (x, y) => { const u = (x - c[0]) * dx + (y - c[1]) * dy, v = (((u / 2.5) % 7) + 7) % 7; return Math.max(Math.abs(v - j - 0.5) - 0.5, -u); }, mat: m }));
   const f = render(S, 32, 32, DM, { contrast: 1.25 });
   put(f, c[0] + dx * L * 0.6 - nx * down, c[1] + dy * L * 0.6 - ny * down, 'white');
+  return f;
+}
+// Round 123: every premium skin's daggers and shards have their own shape, not a recolour. A model is built
+// along its heading: F.at(u, v, z) is a point u along the axis (from the grip toward the point) and v across it
+// in the screen; F.L is the length (shorter when the heading points at or away from the camera).
+const PM = { ...MATS, pw_violet: { ramp: 'violet', spec: 0.8, bias: 0.15 }, pw_violetGlow: { ramp: 'violet', glow: 1 }, pw_ink: { ramp: 'ink', bias: 0.2, min: 1, spec: 0.5 }, pw_gold: { ramp: 'gold', spec: 0.9, bias: 0.05 },
+  pw_rose: { ramp: 'rose', glow: 1 }, pw_lime: { ramp: 'flame', glow: 1 }, pw_bone: { ramp: 'bone', spec: 0.4 }, pw_sun: { ramp: 'gold', glow: 1 }, pw_white: { ramp: 'cloth', spec: 0.5, bias: 0.15 }, pw_teal: { ramp: 'teal', glow: 1 },
+  pw_ember: { ramp: 'ember', glow: 1 }, pw_horn: { ramp: 'bone', bias: -0.3, spec: 0.4 }, pw_char: { ramp: 'shroud', bias: -0.3, spec: 0.2, min: 3 }, pw_steel: { ramp: 'iron', spec: 0.9, bias: 0.1 } };
+for (const m of PSY) PM[m] = MATS[m];
+function axisF(i, size, len) {
+  const a = i / 16 * Math.PI * 2, dx0 = Math.cos(a), dy0 = Math.sin(a) * 0.55, dl = Math.hypot(dx0, dy0), dx = dx0 / dl, dy = dy0 / dl, nx = -dy, ny = dx, c = [size / 2, size / 2];
+  const L = len * (0.62 + 0.38 * Math.abs(Math.cos(a)));
+  return { L, dx, dy, nx, ny, c, at: (u, v = 0, z = 3) => [c[0] + dx * u + nx * v, c[1] + dy * u + ny * v, z], down: ny > 0 || (ny === 0 && nx < 0) ? 1 : -1 };
+}
+const band = (S, F, mats, step) => mats.forEach((m, k) => S.paint({ f: (x, y) => { const u = (x - F.c[0]) * F.dx + (y - F.c[1]) * F.dy, w = (((u / step) % mats.length) + mats.length) % mats.length; return Math.abs(w - k - 0.5) - 0.5; }, mat: m }));
+// The daggers (blade from u = 0 to the point at u = L; grip below 0).
+const PDAG = {
+  // Enlightened: a feather of violet light for a blade, a little halo for a guard.
+  enlightened: (S, F) => { const L = F.L; for (let k = 0; k < 5; k++) { const u = (k + 0.5) * L / 5; S.add(ellipsoid(F.at(u, 0), [2.2, 2.2, 1.2].map((r, j) => j < 2 ? 0.7 + 2.3 * Math.sin(Math.PI * (k + 0.6) / 5.6) : r), 'pw_violet'), 0.9); }
+    S.add(capsule(F.at(-1), F.at(L * 0.95), 0.5, 0.3, 'pw_violetGlow'), 0); S.add(torus(F.at(-0.6, 0, 4), 2.6, 0.7, Math.PI / 2, 'pw_gold'), 0); S.add(capsule(F.at(-1.5), F.at(-5.5), 1, 1, 'pw_ink'), 0.3); },
+  // The Void: a wavy black blade edged in gold, a rose ring for a pommel.
+  void: (S, F) => { const L = F.L, pts = [0, 1, 2, 3, 4].map((k) => F.at(k * L / 4.4, k % 2 ? 1.3 : -1.3)); pts.push(F.at(L, 0)); for (let k = 0; k < pts.length - 1; k++) S.add(capsule(pts[k], pts[k + 1], 2.5 - k * 0.3, 2.1 - k * 0.3, 'pw_ink'), 0.8); S.paint({ f: (x, y) => 1.5 - Math.abs((x - F.c[0]) * F.nx + (y - F.c[1]) * F.ny) + ((x - F.c[0]) * F.dx + (y - F.c[1]) * F.dy < 0.5 ? 9 : 0), mat: 'pw_gold' });
+    S.add(capsule(F.at(-0.3, -3.2), F.at(-0.3, 3.2), 0.9, 0.9, 'pw_gold'), 0.2); S.add(capsule(F.at(-1), F.at(-4.5), 1, 1, 'pw_ink'), 0.3); S.add(torus(F.at(-6.4, 0, 3.5), 1.8, 0.65, Math.PI / 2, 'pw_rose'), 0); },
+  // Psychedelic: a lightning bolt of every colour, a star for a pommel.
+  psychedelic: (S, F) => { const L = F.L, pts = [F.at(0, 0), F.at(L * 0.35, 2.2), F.at(L * 0.55, -1.6), F.at(L, 1)]; for (let k = 0; k < 3; k++) S.add(capsule(pts[k], pts[k + 1], 2.2 - k * 0.45, 1.8 - k * 0.5, 'psyGold'), 0.5); band(S, F, PSY, 2);
+    S.add(capsule(F.at(-1), F.at(-4.5), 1, 1, 'pw_ink'), 0.3); for (const [u, v] of [[-6.5, 0], [-5.5, 1.6], [-5.5, -1.6], [-7.8, 0]]) S.add(sphere(F.at(u, v), 0.9, 'psyRose'), 0.6); },
+  // The Dread: a sickle, its edge burning green, on a bone grip.
+  dread: (S, F) => { const L = F.L, pts = [0, 1, 2, 3, 4, 5].map((k) => { const t = k / 5; return F.at(t * L * 0.85, (t * t) * 6 * F.down); }); for (let k = 0; k < 5; k++) S.add(capsule(pts[k], pts[k + 1], 2.4 - k * 0.38, 2.05 - k * 0.38, 'pw_steel'), 0.5);
+    for (let k = 2; k < 6; k++) S.add(sphere([pts[k][0], pts[k][1], 4.2], 0.6, 'pw_lime'), 0); S.add(capsule(F.at(-0.5), F.at(-5.5), 1.1, 0.9, 'pw_bone'), 0.4); S.add(sphere(F.at(-6.4), 1.4, 'pw_bone'), 0.4); },
+  // The Radiant: a gold blade rising out of a sunburst.
+  radiant: (S, F) => { const L = F.L; S.add(capsule(F.at(0), F.at(L), 2.3, 0.4, 'pw_gold'), 0); for (let k = 0; k < 8; k++) { const t = k / 8 * Math.PI * 2; S.add(capsule(F.at(0, 0, 4), F.at(Math.cos(t) * 3.4, Math.sin(t) * 3.4, 4), 0.55, 0.3, 'pw_sun'), 0.2); }
+    S.add(sphere(F.at(0, 0, 4.5), 1.4, 'pw_sun'), 0.3); S.add(capsule(F.at(-1.5), F.at(-5), 1, 1, 'violetRobe'), 0.3); },
+  // The Divine: a broad white blade through a gold ring set with a teal stone.
+  divine: (S, F) => { const L = F.L; S.add(capsule(F.at(0), F.at(L), 2.4, 0.5, 'pw_white'), 0.2); S.add(torus(F.at(-0.6, 0, 3.5), 3, 0.8, Math.PI / 2, 'pw_gold'), 0); S.add(sphere(F.at(-0.6, 0, 4.4), 1.2, 'pw_teal'), 0);
+    S.add(capsule(F.at(-2.5), F.at(-5.5), 0.9, 0.9, 'pw_gold'), 0.3); },
+  // Demonic: a jagged blade with teeth along one edge and horns for a guard.
+  demonic: (S, F) => { const L = F.L, d = F.down; S.add(capsule(F.at(0), F.at(L), 2.6, 0.45, 'pw_char'), 0.2); for (let k = 1; k <= 3; k++) S.add(capsule(F.at(k * L / 4.2, -d * 1.8), F.at(k * L / 4.2 - 2.4, -d * 4), 1.2, 0.35, 'pw_char'), 0.3);
+    S.paint({ f: (x, y) => Math.abs((x - F.c[0]) * F.nx + (y - F.c[1]) * F.ny) - 0.6 + ((x - F.c[0]) * F.dx + (y - F.c[1]) * F.dy < 1 ? 9 : 0), mat: 'pw_ember' });
+    for (const s of [-1, 1]) { S.add(capsule(F.at(-0.5, s * 1), F.at(-1, s * 3.6), 0.9, 0.7, 'pw_horn'), 0.3); S.add(capsule(F.at(-1, s * 3.6), F.at(-3.4, s * 4.6), 0.7, 0.3, 'pw_horn'), 0.3); } S.add(capsule(F.at(-1), F.at(-5), 1, 1, 'pw_char'), 0.3); },
+};
+// The shards (hovering crystals; slim for flight), centred on the frame.
+const PCRY = {
+  enlightened: (S, F) => { const L = F.L; for (let k = 0; k < 6; k++) { const u = -L * 0.4 + (k + 0.5) * L / 6; S.add(ellipsoid(F.at(u, 0), [0.8 + 2.6 * Math.sin(Math.PI * (k + 0.7) / 6.4), 0.8 + 2.6 * Math.sin(Math.PI * (k + 0.7) / 6.4), 1.3], 'pw_violet'), 1); } S.add(capsule(F.at(-L * 0.5), F.at(L * 0.6), 0.55, 0.3, 'pw_violetGlow'), 0); },
+  void: (S, F) => { const L = F.L; S.add(sphere(F.at(0), 4.2, 'pw_ink'), 0); for (const [u, v] of [[L * 0.6, 0], [-L * 0.5, 0], [0, 6], [0, -6]]) S.add(capsule(F.at(0), F.at(u, v), 2.8, 0.4, 'pw_ink'), 0.4); S.add(torus(F.at(0, 0, 4.5), 4.4, 0.85, Math.PI / 2, 'pw_gold'), 0); S.add(sphere(F.at(0, 0, 6), 1.6, 'pw_rose'), 0); },
+  psychedelic: (S, F) => { const L = F.L; S.add(capsule(F.at(-L * 0.45), F.at(L * 0.55), 2.6, 0.3, 'psyGold'), 0.4); S.add(capsule(F.at(0, -5), F.at(0, 5), 2, 0.3, 'psyGold'), 0.4); band(S, F, PSY, 1.8); S.add(sphere(F.at(0, 0, 5), 1.2, 'pw_white'), 0); },
+  dread: (S, F) => { const L = F.L; S.add(capsule(F.at(-L * 0.45), F.at(L * 0.55), 2.4, 0.5, 'pw_bone'), 0.3); for (const u of [-L * 0.2, 0, L * 0.2]) S.add(capsule(F.at(u, -2.6), F.at(u, 2.6), 0.6, 0.6, 'pw_bone'), 0.3); S.add(sphere(F.at(L * 0.55), 1.6, 'pw_lime'), 0); },
+  radiant: (S, F) => { const L = F.L; S.add(capsule(F.at(-L * 0.5), F.at(L * 0.6), 1.2, 0.3, 'pw_gold'), 0); S.add(sphere(F.at(L * 0.1, 0, 4), 2.6, 'pw_sun'), 0.3); for (let k = 0; k < 6; k++) { const t = k / 6 * Math.PI * 2 + 0.5; S.add(capsule(F.at(L * 0.1, 0, 4), F.at(L * 0.1 + Math.cos(t) * 4.6, Math.sin(t) * 4.6, 4), 0.5, 0.3, 'pw_sun'), 0.2); } },
+  divine: (S, F) => { const L = F.L; for (const s of [-1, 1]) S.add(capsule(F.at(0), F.at(s * L * (s > 0 ? 0.55 : 0.4)), 3, 0.4, 'pw_teal'), 0.4); S.add(torus(F.at(0, 0, 3.5), 4.2, 0.8, Math.PI / 2, 'pw_gold'), 0); for (const v of [-4.2, 4.2]) S.add(sphere(F.at(0, v, 4), 0.9, 'pw_white'), 0); },
+  demonic: (S, F) => { const L = F.L, d = F.down, pts = [0, 1, 2, 3, 4].map((k) => { const t = k / 4; return F.at(-L * 0.45 + t * L, -d * Math.sin(t * Math.PI * 0.8) * 3.5); }); for (let k = 0; k < 4; k++) S.add(capsule(pts[k], pts[k + 1], 2.6 - k * 0.55, 2.1 - k * 0.55, k < 2 ? 'pw_horn' : 'pw_char'), 0.6); S.add(sphere(pts[4], 1.3, 'pw_ember'), 0); },
+};
+const PDAG_LEN = 17, PCRY_LEN = 21;
+function pweapon(kind, i, skin, size, len) {
+  const F = axisF(i, size, len), S = new Scene(); (kind === 'dag' ? PDAG : PCRY)[skin](S, F);
+  const f = render(S, size, size, PM, { contrast: 1.25 });
+  put(f, F.at(F.L * (kind === 'dag' ? 0.62 : 0.2))[0] - F.nx * F.down, F.at(F.L * (kind === 'dag' ? 0.62 : 0.2))[1] - F.ny * F.down, 'white');
   return f;
 }
 function shardBolt() {

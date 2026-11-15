@@ -32,6 +32,13 @@ const anims = (skin) => { const M = (o) => saintModel({ hero: H, skin, ...STANCE
     A(M({ lean: 0.8, legs: [-2, 2], fh: [6, 9, 2.5], swing: 0.7, bh: [8, 0, 5], swing2: -1.6, cape: -2 })),
     A(M({ bob: 2, bend: [1, 1], lean: 0.3, legs: [-2, 2], cape: -1, halo: 1 })),
   ],
+  // The Thousand Cuts: stabs so fast the arms blur, front and back blade in turn, high and low.
+  flurry: () => [
+    A(M({ lean: 2, legs: [-3, 3], bend: [1, 1], fh: [13, -3, 3], swing: -0.1, bh: [4, 4, 4], swing2: -1.4, cape: -4 })),
+    A(M({ lean: 2.2, legs: [-3, 3], bend: [1, 1], fh: [6, 4, 3], swing: 0.4, bh: [13, 3, 4.5], swing2: 0.15, cape: -5, halo: 1 })),
+    A(M({ lean: 2, legs: [-3, 3], bend: [1, 1], fh: [13, 4, 3], swing: 0.35, bh: [5, -2, 4], swing2: -1, cape: -4 })),
+    A(M({ lean: 2.2, legs: [-3, 3], bend: [1, 1], fh: [6, -2, 3], swing: -0.4, bh: [13, -4, 4.5], swing2: -0.2, cape: -5, halo: 1 })),
+  ],
   // A whirl (the Whirlwind, Cinder Whirl, Wire Sweep, whirls): arms flung wide, the blades
   // going round the body. Eight frames make one turn; the game turns him to the other side halfway.
   spin: () => [0, 1, 2, 3, 4, 5, 6, 7].map((k) => { const th = k / 8 * Math.PI * 2, c = Math.cos(th), sn = Math.sin(th);

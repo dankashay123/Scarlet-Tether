@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 122 (build 122, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 123 (build 123, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -320,6 +320,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **Vesper balance (round 123).** Kill rates hardly answer to `MELEE.cut`:
+  his set effects (`maceHit`/`maceRing` with `MELEE.k`) and the storm
+  (`VDAG.k`) carry the crowd numbers. To bring him to the others' 7 at XII,
+  trim those or `MELEE.k` itself, then rerun setbal for all three classes.
 - **The Vesper (rounds 118-122).** Sets, rites, pets, Hallowed, poses
   (round 122) and mobility are an assassin's. Not done: Steel Chime still
   uses the old stun rings, the Thousand Cuts and the Red Hour have no pose
@@ -494,6 +498,34 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 123:** the owner picked 1-4 from round 122's list and asked for
+  each premium skin's crossbow, daggers and shards to be its own shape,
+  not a recolour. **Weapons:** `PXBOW` (`weapon.mjs`): Enlightened wings of
+  feathers through a gold halo, the Void a gold lattice prod with rose rings
+  and a crown of spikes, Psychedelic a rainbow prod and bead stock with a
+  star, the Dread a bone stock and skull with rib limbs and a scythe, the
+  Radiant a sunburst behind the prod, the Divine a great gold ring with
+  teal stones, Demonic curled horns and a molten eye. `rotZ` bounds a part
+  by its own size round the pivot, which clipped parts far from the centre:
+  `pcrossbow` gives each part the whole frame. `PDAG`/`PCRY` (`vfx.mjs`,
+  built along the heading by `axisF`): daggers (a feather blade with a
+  halo guard, a wavy black kris edged in gold, a lightning bolt, a sickle, a
+  sunburst dagger, a white blade through a gold ring, a serrated blade with
+  horns) and shards (feathers, black spiked gems in gold rings, four-point
+  stars, bone spikes with green tips, little suns, teal gems in gold rings,
+  horns). **Vesper:** `flurry` (4 frames) during the Thousand Cuts,
+  `drawRedHour` hourglasses over held foes, a spin then a throw as the
+  daggers launch. **Pilot:** the densest pack not in a pool (`bestCluster`),
+  fights from blade reach, dashes in at a pack 90-210 px away above 60%
+  health with a dash to spare. autobench (Iron at Station X gear, Station X,
+  NOREFILL, 150 s, 4 trials): first try 2 of 4 died (pools); with the pool
+  checks 4 of 4 cleared the descent in 93-120 s, 749-891 kills (was
+  610-802 in 150 s). **Balance:** XII before trims: sets 7.5-8.9, mixes
+  6.9-7.8; VI sets 13.5-19.3, mixes 11.1-17.5. Shipped: cut 0.33 (was
+  0.42), `SETK.six` Nightblade and Dusk Walker 1.75: XII sets 7.4-9.8 (no
+  gear 2.2); VI sets 12.9-17.8, mixes 11.4-16.4. The cut barely moves kills
+  (his set effects and the storm scale from `MELEE.k`); he stays 10-25%
+  above the other classes at XII. Test: `round123.cjs`.
 - **Round 122:** the owner asked for better Vesper attack animations
   (real arm and hand movement), better skills (the Whirlwind as a spin),
   faster movement, and the class improved overall. **Arms:** `fh`/`bh`

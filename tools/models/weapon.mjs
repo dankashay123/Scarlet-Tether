@@ -36,8 +36,70 @@ Object.assign(XSKIN, {
 });
 Object.assign(M, { charredBow: { ramp: 'shroud', bias: -0.3, spec: 0.12, min: 3 }, charred: { ramp: 'shroud', bias: -0.15, spec: 0.15 }, emberHot: { ramp: 'ember', glow: 0 }, violetGlow: { ramp: 'violet', glow: 1 } });
 
+// Round 123: each premium skin's crossbow is its own build, not a recolour. A builder adds its parts with
+// add(shape) in the crossbow's own frame (P(x, y, z): x along the aim, y across) and returns the limb tips the
+// string runs from, and the string's colour.
+Object.assign(M, { sunGlow: { ramp: 'gold', glow: 1 }, lime: { ramp: 'flame', glow: 1 }, boneW: { ramp: 'bone', spec: 0.35 } });
+const ring = (add, P, c, R, r, mat, n = 16) => { for (let k = 0; k < n; k++) { const a0 = k / n * Math.PI * 2, a1 = (k + 1) / n * Math.PI * 2; add(capsule(P(c[0] + Math.cos(a0) * R, c[1] + Math.sin(a0) * R, c[2] || 0), P(c[0] + Math.cos(a1) * R, c[1] + Math.sin(a1) * R, c[2] || 0), r * K, r * K, mat), 0.2); } };
+const PXBOW = {
+  // Enlightened: a slim black stock through a gold halo, wings of lilac feathers for limbs.
+  enlightened: (add, P) => {
+    add(capsule(P(-13, 0.8), P(7, 0.4), 1.4 * K, 1.1 * K, 'void'), 0); ring(add, P, [-4, 0.5, 0.5], 3.2, 0.7, 'halo');
+    for (const s of [-1, 1]) for (let k = 0; k < 4; k++) add(capsule(P(7 - k * 0.6, s * 1.6), P(5 - k * 2.4, s * (5.5 + k * 1.9)), (1.5 - k * 0.15) * K, 0.6 * K, k % 2 ? 'wingDark' : 'wing'), 0.5);
+    add(capsule(P(-2, -1.4, 0.6), P(15, -1.4, 0.6), 0.75 * K, 0.4 * K, 'shardGlow'), 0);
+    return { tips: [[-2.2, -11.2], [-2.2, 11.2]], str: 'violet1' };
+  },
+  // The Void: an angular black stock, the prod a gold lattice, rose rings round it, a crown of spikes at the front.
+  void: (add, P) => {
+    add(box(P(-3, 0.5), [10 * K, 1.8 * K, 1.4 * K], 0.2, 'void'), 0); add(box(P(-12.5, 1.8), [2.4 * K, 2.8 * K, 1.6 * K], 0.2, 'void'), 0.5);
+    for (const s of [-1, 1]) { add(capsule(P(7, s * 1.5), P(4, s * 11), 0.8 * K, 0.6 * K, 'limb'), 0.2); add(capsule(P(4, s * 11), P(-0.5, s * 5.5), 0.7 * K, 0.6 * K, 'limb'), 0.2); add(capsule(P(-0.5, s * 5.5), P(7, s * 1.5), 0.7 * K, 0.7 * K, 'limb'), 0.2); ring(add, P, [3.5, s * 7, 1.2], 1.8, 0.5, 'roseGlow', 10); }
+    for (const dy of [-1.8, 0, 1.8]) add(capsule(P(8, dy), P(11 + (dy ? 0 : 1.5), dy * 1.4), 0.7 * K, 0.2 * K, 'limb'), 0.2);
+    add(capsule(P(-2, -1.4, 0.6), P(14, -1.4, 0.6), 0.7 * K, 0.4 * K, 'roseGlow'), 0);
+    return { tips: [[4, -11], [4, 11]], str: 'rose1' };
+  },
+  // Psychedelic: a rainbow for a prod, beads of every colour down the stock, a star at the butt.
+  psychedelic: (add, P) => {
+    for (let k = 0; k < 7; k++) add(capsule(P(-13 + k * 2.8, 0.6), P(-10.2 + k * 2.8, 0.6), 1.9 * K, 1.9 * K, PSY[k]), 0.3);
+    for (let k = 0; k < 14; k++) { const a0 = -1.35 + k / 14 * 2.7, a1 = -1.35 + (k + 1) / 14 * 2.7; add(capsule(P(1.5 + Math.cos(a0) * 9.5, Math.sin(a0) * 11), P(1.5 + Math.cos(a1) * 9.5, Math.sin(a1) * 11), 1.8 * K, 1.8 * K, PSY[k % 7]), 0.2); }
+    for (const [x, y] of [[-15.5, 0.6], [-14, -1.8], [-14, 3], [-17, 0.6]]) add(sphere(P(x, y), 1.3 * K, 'psyGold'), 0.4);
+    add(capsule(P(-2, -1.4, 0.6), P(14, -1.4, 0.6), 0.7 * K, 0.4 * K, 'psyRose'), 0);
+    return { tips: [[3.4, -10.7], [3.4, 10.7]], str: 'rose1' };
+  },
+  // The Dread: a bone stock ending in a skull, ribs for limbs, a scythe blade along the top, green lights.
+  dread: (add, P) => {
+    add(capsule(P(-11, 0.8), P(7, 0.4), 1.3 * K, 1.1 * K, 'boneW'), 0); add(sphere(P(-12.8, 0.8), 2.6 * K, 'boneW'), 0.5);
+    for (const dy of [-0.4, 1.9]) add(sphere(P(-13.6, dy, 1.6), 0.7 * K, 'lime'), 0);
+    for (const s of [-1, 1]) for (let k = 0; k < 3; k++) { const x0 = 7 - k * 2.2; add(capsule(P(x0, s * 1.4), P(x0 - 1.5, s * (6 + k)), 0.8 * K, 0.6 * K, 'boneW'), 0.3); add(capsule(P(x0 - 1.5, s * (6 + k)), P(x0 - 4.5, s * (9.5 + k * 0.6)), 0.6 * K, 0.4 * K, 'boneW'), 0.3); }
+    const sc = [0, 1, 2, 3, 4].map((k) => P(-6 + k * 4.2, -3 - k * k * 0.42, 1.4)); for (let k = 0; k < 4; k++) add(capsule(sc[k], sc[k + 1], (1.2 - k * 0.2) * K, (1 - k * 0.2) * K, 'steel'), 0.3);
+    add(capsule(P(-2, -1.4, 0.6), P(14, -1.4, 0.6), 0.7 * K, 0.4 * K, 'lime'), 0);
+    return { tips: [[-2.5, -10.7], [-2.5, 10.7]], str: 'flame1' };
+  },
+  // The Radiant: a violet stock, straight gold limbs, a sunburst blazing behind the prod.
+  radiant: (add, P) => {
+    add(box(P(-3, 0.5), [9 * K, 1.5 * K, 1.4 * K], 0.7, 'violetRobe'), 0); add(box(P(-11.5, 1.6), [2.2 * K, 2.4 * K, 1.6 * K], 0.8, 'violetRobe'), 1);
+    add(sphere(P(6, 0, -1.5), 3.6 * K, 'sunGlow'), 0); for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; add(capsule(P(6 + Math.cos(a) * 3, Math.sin(a) * 3, -2), P(6 + Math.cos(a) * (k % 2 ? 8 : 10.5), Math.sin(a) * (k % 2 ? 8 : 10.5), -2), 0.7 * K, 0.3 * K, 'sunGlow'), 0.2); }
+    for (const s of [-1, 1]) add(capsule(P(7, s * 1.4), P(4.5, s * 11.5), 1.2 * K, 0.8 * K, 'limb'), 0.4);
+    add(capsule(P(-2, -1.4, 0.6), P(15, -1.4, 0.6), 0.7 * K, 0.4 * K, 'limb'), 0);
+    return { tips: [[4.5, -11.5], [4.5, 11.5]], str: 'gold1' };
+  },
+  // The Divine: a white stock, and for a prod a great gold ring set with teal stones.
+  divine: (add, P) => {
+    add(box(P(-3, 0.5), [9 * K, 1.5 * K, 1.4 * K], 0.7, 'white'), 0); add(box(P(-11.5, 1.6), [2.2 * K, 2.4 * K, 1.6 * K], 0.8, 'white'), 1); add(box(P(-13.6, 1.6), [0.8 * K, 2.8 * K, 1.8 * K], 0.3, 'limb'), 0);
+    ring(add, P, [4.5, 0, 0.5], 10, 1.1, 'limb', 20); for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) add(sphere(P(4.5 + Math.cos(a) * 10, Math.sin(a) * 10, 1.6), 1.5 * K, 'tealGlow'), 0);
+    add(capsule(P(-2, -1.4, 0.6), P(15, -1.4, 0.6), 0.7 * K, 0.4 * K, 'tealGlow'), 0);
+    return { tips: [[4.5, -10], [4.5, 10]], str: 'teal1' };
+  },
+  // Demonic: a charred stock with a molten eye, horns curling back for limbs.
+  demonic: (add, P) => {
+    add(box(P(-3, 0.5), [9.5 * K, 1.7 * K, 1.4 * K], 0.4, 'charredBow'), 0); add(box(P(-11.8, 1.8), [2.4 * K, 2.8 * K, 1.6 * K], 0.4, 'charredBow'), 0.6); add(ellipsoid(P(-4.5, 0.4, 1.6), [1.8 * K, 1.2 * K, 1 * K], 'emberHot'), 0);
+    for (const s of [-1, 1]) { const h = [[7, 1.4], [6, 5.5], [3, 9], [-1, 10.5], [-3.5, 9]].map(([x, y]) => P(x, s * y)); for (let k = 0; k < 4; k++) add(capsule(h[k], h[k + 1], (1.7 - k * 0.32) * K, (1.4 - k * 0.32) * K, 'horn'), 0.5); }
+    add(capsule(P(-2, -1.4, 0.6), P(14, -1.4, 0.6), 0.7 * K, 0.4 * K, 'emberHot'), 0);
+    return { tips: [[-1, -10.5], [-1, 10.5]], str: 'ember1' };
+  },
+};
 // Build the crossbow pointing right, centred on (C, C); my = 1 or -1 mirrors it.
 function crossbow(ang, my, skin = null) {
+  if (skin && PXBOW[skin]) return pcrossbow(ang, my, skin);
   const S = new Scene(), X = skin ? XSKIN[skin] : null;
   const mt = (m) => (X && X.mats[m]) || m;
   const P = (x, y, z = 0) => [C + x * K, C + y * K * my, z * K];
@@ -80,6 +142,16 @@ function crossbow(ang, my, skin = null) {
   }
   // A glint on the gem.
   const g = rot(P(-5.2, -0.4)); dot(f, g[0], g[1], 'white');
+  return f;
+}
+
+function pcrossbow(ang, my, skin) {
+  // rotZ bounds a part by its own size round the pivot; these parts sit far out, so give each the whole frame.
+  const S = new Scene(), P = (x, y, z = 0) => [C + x * K, C + y * K * my, z * K], add = (p, k = 0) => { const q = rotZ(p, [C, C], ang); q.bb = [0, 0, q.bb[2], S0, S0, q.bb[5]]; S.add(q, k * K); };
+  const { tips, str } = PXBOW[skin](add, P);
+  const f = render(S, S0, S0, M, { contrast: 1.35 });
+  const rot = ([x, y]) => { const dx = x - C, dy = y - C, c = Math.cos(ang), sn = Math.sin(ang); return [C + dx * c - dy * sn, C + dx * sn + dy * c]; };
+  for (const [tx, ty] of tips) { const [ax, ay] = rot(P(tx, ty)), [bx, by] = rot(P(-1.5, -1.4)), n = Math.ceil(Math.hypot(bx - ax, by - ay)); for (let i = 1; i < n; i++) dot(f, ax + (bx - ax) * i / n, ay + (by - ay) * i / n, str); }
   return f;
 }
 
