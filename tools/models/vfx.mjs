@@ -265,13 +265,15 @@ const BODY = {
     S.add(capsule([17.5, 6.5, 2.5], [21, 12.5, 2.5], 1.4, 0.9, 'gold'), 0.8);
     S.add(capsule([9, 15, 3.6], [20, 4, 3.6], 0.6, 0.6, 'iron'), 0);
   },
-  // The Mendicant's arms (round 55). The mace, head up-right: wood haft, gilt bands, an iron head.
+  // The Vesper's arms (round 118; the key stays 'mace'): two daggers crossed, points up.
   mace: (S) => {
-    S.add(capsule([4, 21, 2], [15, 9, 2], 1.5, 1.4, 'wood'), 0);
-    S.add(sphere([3.5, 21.5, 2.2], 1.9, 'gold'), 0.4);
-    for (const t of [0.3, 0.55]) S.add(sphere([4 + 11 * t, 21 - 12 * t, 2.4], 1.8, 'gold'), 0.3);
-    S.add(sphere([16.5, 7.5, 2.5], 4.6, 'iron'), 0);
-    for (const [x, y] of [[16.5, 2.4], [21.6, 7.5], [16.5, 12.6], [11.6, 6], [20.2, 3.6]]) S.add(sphere([x, y, 2.8], 1.5, 'iron'), 0);
+    for (const k of [1, -1]) {
+      const X = (x) => (k > 0 ? x : 24 - x);
+      S.add(sphere([X(3.6), 21.4, 2], 1.5, 'gold'), 0.3);                               // pommel
+      S.add(capsule([X(4.4), 20.6, 2], [X(7.4), 17.6, 2], 1.2, 1.2, 'wood'), 0.3);       // grip
+      S.add(capsule([X(6.2), 15.2, 2.6], [X(10.2), 19.2, 2.6], 1, 1, 'gold'), 0.3);     // guard
+      S.add(capsule([X(8.6), 16.4, 2 + k * 0.6], [X(19.6), 5.4, 2 + k * 0.6], 1.9, 0.45, 'iron'), 0.2); // blade
+    }
   },
   // His satchel of nails: a leather bag, a gilt clasp on the flap, nail heads at the top.
   satchel: (S) => {
@@ -722,7 +724,7 @@ const INGR = [
 ];
 
 // Round 81: the nine mythic Wounds' emblems (24 px, drawn at 2x on the level-up card), in
-// MYTHIC_ICONS order: halo, fury, zeal, nailstorm heart, eye of heaven, giant's mace,
+// MYTHIC_ICONS order: halo, fury, zeal, nailstorm heart, eye of heaven, giant's blades,
 // earthbreaker, choir of glass, prism heart. Each sits on a rose-lit ground.
 const MM = { ...MATS, rose: { ramp: 'blood', spec: 0.5, bias: 0.12 }, roseDark: { ramp: 'blood', bias: -0.15, min: 2 }, glass: { ramp: 'holy', spec: 0.9, bias: 0.1 } };
 const micon = (fn) => { const S = new Scene(); fn(S); return render(S, 24, 24, MM, { contrast: 1.35, rich: IRICH }); };
@@ -739,8 +741,8 @@ const MYTHIC_ICONS = [
   () => micon((S) => { heart(S, 12, 18.5, 4.2, 'rose'); for (const a of [-0.9, 0, 0.9]) { const dx = Math.sin(a), dy = -Math.cos(a); S.add(capsule([12 + dx * 5, 17 + dy * 5, 3], [12 + dx * 12, 17 + dy * 12, 3], 1.2, 0.7, 'iron'), 0); S.add(sphere([12 + dx * 12.5, 17 + dy * 12.5, 3], 1.7, 'gold'), 0.2); } }),
   // Eye of Heaven: an open eye with a holy iris, rays above.
   () => micon((S) => { S.add(ellipsoid([12, 13, 2], [9, 4.6, 2.6], 'bone'), 0); S.add(sphere([12, 13, 3.2], 3.8, 'glass'), 0.2); S.add(sphere([12, 13, 6.4], 1.8, 'rose'), 0); for (const a of [-0.9, -0.45, 0, 0.45, 0.9]) S.add(capsule([12 + Math.sin(a) * 7, 13 - Math.cos(a) * 7, 2], [12 + Math.sin(a) * 10.5, 13 - Math.cos(a) * 10.5, 2], 0.9, 0.5, 'gold'), 0); }),
-  // The Giant's Mace: a great flanged head on a short haft, rose-gilt.
-  () => micon((S) => { S.add(capsule([5, 20, 2], [13, 11, 2], 1.3, 1.3, 'wood'), 0); S.add(sphere([15.5, 8.5, 2], 4.4, 'iron'), 0); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; S.add(capsule([15.5, 8.5, 2], [15.5 + Math.cos(a) * 6.5, 8.5 + Math.sin(a) * 6.5, 2], 1.1, 0.5, 'iron'), 0.6); } S.add(torus([12.6, 11.6, 2], 1.8, 0.8, 1.2, 'rose'), 0.2); }),
+  // The Giant's Blades (the Giant's Mace until round 118): two great glass blades crossed, rose grips.
+  () => micon((S) => { for (const k of [1, -1]) { const X = (x) => (k > 0 ? x : 24 - x); S.add(capsule([X(3.5), 21, 2], [X(7.5), 17, 2], 1.4, 1.4, 'roseDark'), 0.3); S.add(capsule([X(5.5), 14.5, 2.6], [X(10.5), 19.5, 2.6], 1.2, 1.2, 'gold'), 0.3); S.add(capsule([X(8.5), 16, 2 + k], [X(21), 3, 2 + k], 2.4, 0.5, 'glass'), 0.2); } }),
   // Earthbreaker: a split slab of stone with fire in the crack.
   () => micon((S) => { S.add(bumpy(box([12, 14, 2], [9, 6, 3], 1.2, 'stone'), 0.4, 0.5, 3), 0); S.sub(rotZ(box([12, 14, 4], [1.2, 8, 3], 0.3, 'void'), [12, 14], 0.35), 0.3); S.add(rotZ(box([12, 14, 1.5], [0.9, 6.5, 1], 0.2, 'ember'), [12, 14], 0.35), 0); }),
   // Choir of Glass: five ice crystals in a ring round a rose light.

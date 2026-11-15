@@ -94,24 +94,20 @@ function quiver(skin) {
   return Object.assign(render(S, 18, 24, M, { contrast: 1.35 }), { ax: 9, ay: 23 });
 }
 
-// The Mendicant's flanged mace, laid on a slant (round 55): the icon for his
+// The Vesper's two daggers, crossed points up (round 118; the Mendicant's mace
+// until then, and the anim keeps the name 'mace'): the icon for the class's
 // weapon Wounds, where the Saint's show the crossbow.
 function mace() {
-  const S = new Scene(), ang = -0.75;
+  const S = new Scene();
   const P = (x, y, z = 0) => [C + x * K, C + y * K, z * K];
-  const add = (p, k = 0) => S.add(rotZ(p, [C, C], ang), k * K);
-  add(capsule(P(-13, 0), P(3, 0), 1.5 * K, 1.5 * K, 'stock'), 0); // haft
-  add(sphere(P(-14, 0), 1.8 * K, 'limb'), 0.4); // pommel
-  for (const x of [-9, -5]) add(box(P(x, 0), [0.7 * K, 1.9 * K, 1.9 * K], 0.3, 'limb'), 0.3); // grip bands
-  add(box(P(3.5, 0), [1 * K, 2.4 * K, 2.4 * K], 0.4, 'limb'), 0.4); // collar
-  add(sphere(P(9, 0), 4.2 * K, 'iron'), 0); // head
-  for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; add(sphere(P(9 + Math.cos(a) * 4.7, Math.sin(a) * 4.7, 0.6), 1.7 * K, 'steel'), 0); } // studs
-  add(sphere(P(9, 0, 4), 1.6 * K, 'steel'), 0);
-  const f = render(S, S0, S0, M, { contrast: 1.35 });
-  const rot = ([x, y]) => { const dx = x - C, dy = y - C, c = Math.cos(ang), sn = Math.sin(ang); return [C + dx * c - dy * sn, C + dx * sn + dy * c]; };
-  const g = rot(P(7.5, -2)); dot(f, g[0], g[1], 'white');
-  for (const [x, y] of [[9, 2.6], [11.6, 0.4], [6.6, 0.8], [9.4, -1]]) { const q = rot(P(x, y)); dot(f, q[0], q[1], 'iron2'); } // stud shadows, placed by hand
-  return f;
+  for (const [ang, z] of [[-0.8, 0], [-Math.PI + 0.8, 1.2]]) {
+    const add = (p, k = 0) => S.add(rotZ(p, [C, C], ang), k * K);
+    add(sphere(P(-12.5, 0, z), 1.7 * K, 'limb'), 0.3);                          // pommel
+    add(capsule(P(-11.5, 0, z), P(-6.5, 0, z), 1.4 * K, 1.4 * K, 'stock'), 0.3); // grip
+    add(box(P(-5.5, 0, z), [0.9 * K, 3.2 * K, 1.3 * K], 0.4, 'limb'), 0.3);      // guard
+    add(capsule(P(-5, 0, z), P(12, 0, z), 2 * K, 0.5 * K, 'steel'), 0.2);         // blade
+  }
+  return render(S, S0, S0, M, { contrast: 1.35 });
 }
 
 export default {

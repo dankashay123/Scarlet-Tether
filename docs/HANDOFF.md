@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 117 (build 118, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 118 (build 119, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -125,10 +125,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   made; no switching in game. Front screens: splash, character select,
   creation with three class cards (`HEROES`). Three classes:
   - **The Saint:** a floating auto-aiming crossbow (`updateCrossbow`).
-  - **The Mendicant:** a mace that hits every foe in its arc
-    (`updateMelee`, `MELEE`; 10% less damage taken). Blows go through
-    `boltStrike(b, e)` with `b.melee`. Rites `MRITES` (`castMM1`/`castMM2`,
-    `maceHit`).
+  - **The Vesper (round 118; the Mendicant with a mace before):** an
+    assassin with two blades. Each attack is two quick cuts in a narrow
+    arc, front blade then back (`updateMelee`, `MELEE`: `cut`, `strike`,
+    `strike2`; 10% less damage taken). Cuts go through `boltStrike(b, e)`
+    with `b.melee` and `b.cut` (light knockback). Only the shown name
+    changed: the id is still `mendicant`, and so are his sheets, sets
+    (Beggar King's Iron and the rest) and rites `MRITES` (`castMM1`/`castMM2`,
+    `maceHit`). Older notes below call him the Mendicant.
   - **The Anchoress (round 71):** reliquary shards that fire on their own
     (`SHARD`, `shardCount`, `updateShards`, `fireShard`). Since round 73
     they are ice-blue crystal blades hovering in a ring over her head (fx
@@ -316,6 +320,12 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **The Vesper (round 118).** Not done: renaming his five sets and 18
+  rites to fit an assassin (they still read as a beggar friar's: the
+  Beggar King's Iron, Alms, the Cracked Bell, Smite, Bell Toll), new
+  rite effects (his rites still land as heavy blows with quakes, `maceHit`),
+  a proper blade sound (we speed up `swing`), poses for the Wardens'
+  photos. Ask the owner how the speed and reach feel on the phone.
 - **Parked by the owner (round 116, "come back to those later").** Suggestions
   they did not pick yet: a short label or hold tip under the two auto icons;
   a size setting (small, normal, large) for the right-hand button cluster;
@@ -483,6 +493,37 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 118:** the owner asked to turn the melee class into an assassin
+  with two blades: lower damage, fast attacks. **The Vesper** (shown name;
+  id, saves, sets and rites unchanged). **Art:** `HEROES.mendicant` in
+  `base.mjs` is a slim hooded figure in night-dark cloth with a scarf over
+  the face, red eyes, a sash in the set's accent (`K.cross`) and a blade in
+  each hand (`blade()`); `saintModel` takes `swing2` (back blade angle)
+  and `back` (moves the back hand). `mendicant.mjs`: blades held low, a
+  six-frame `swing` (front cut, back cut), new cast, hit, die and dash. Set
+  and premium skins carry over. Bust (`portrait_m`) darker. Arms icons
+  (loot `marms`, weapon `mace`) and the Giant's Blades mythic icon are
+  crossed daggers. **Attack:** `MELEE` reach 44 (was 50), arc 0.8 (1.15),
+  attack every 0.36 s (0.52), two cuts per attack, each `MELEE.cut` (0.5)
+  of `MELEE.k`; set procs still count attacks and scale from `MELEE.k`.
+  Cuts push foes 34 (blows 110) so they stay in reach. Thin quick arcs per
+  cut (`drawSwingGlow`, `smear` takes `dir` and `th`), lighter sounds (a
+  fast `swing`, `hit1`, `glass` on crits), no shockwave per cut. **Text:**
+  `HERO_TEXT` says blades (old saved mace names too), Wound, Calling,
+  enchant and pet lines reworded (Hamstring, Weighted Hilts, Long Edge,
+  the Giant's Blades), starter set the Vesper's Wraps, arms renamed (the
+  Beggar King's Knives and so on). **Balance** (setbal, Station XII, 4
+  seeds, kills a second, mace then blades at first): iron 8.8 / 6.5, road
+  6.3 / 6.2, alms 7.2 / 8.1, gaol 7.2 / 9.2, bell 6.5 / 7.7; the 4+2 mixes
+  6.3 / 5.8 on average. Faster attacks feed the Gaoler's fetters and the
+  Bell's rings and weaken Iron's crushes, so `SETK.six` moved: iron 2.14 to
+  2.6, alms 1.76 to 1.65, bell 1.54 to 1.5, gaol 1.3 to 1.05. Remeasured:
+  iron 8.3, alms 7.4, gaol 8.3, bell 6.0 (at 1.4; 1.5 ships), so every set
+  sits at 6-8.3 again. Not remeasured at Station VI. **Bug fixed:** the
+  Bell's ring and Cinder Slam passed palette ramp names (`teal`, `ember`)
+  to `vemit`, which has no such `FXR` ramps; the particle draw threw that
+  frame. `vemit` now maps them through `fxRamp`.
+  Test: `round118.cjs`.
 - **Round 117:** the owner asked for premium skins in the shop for the
   crossbow, the shards and the player, with bolts to match, and sent
   seven reference screens from their golf game: Enlightened (its

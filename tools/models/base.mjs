@@ -92,7 +92,7 @@ export const MATS = {
 export function saintModel(pose = {}) {
   // reach: the front arm thrust forward (cast); haloAt: [dx, dy] knocks the halo loose.
   // hero: 'mendicant' builds the second playable saint on the same body (HEROES below).
-  const { bob = 0, legs = 0, lift = [0, 0], bend = [0, 0], cape = 0, lean = 0, aim = 0, blink = false, halo = 0, skin = null, reach = 0, haloAt = null, hero = null, swing = 0 } = pose;
+  const { bob = 0, legs = 0, lift = [0, 0], bend = [0, 0], cape = 0, lean = 0, aim = 0, blink = false, halo = 0, skin = null, reach = 0, haloAt = null, hero = null, swing = 0, swing2 = 2.2, back = null } = pose;
   const HR = hero ? HEROES[hero] : null;
   const K = { robe: 'crimson', robeDark: 'crimsonDark', tabard: 'cloth', hose: 'shroud', boot: 'leather', trim: 'gold', hood: 'crimson', cowl: 'crimson', cape: 'crimsonDark', capeHem: 'gold', cross: 'crimson', ...(HR ? HR.mats : {}), ...(skin ? SKINS[skin].mats : {}) };
   // legs: one number (mirrored swing) or [back leg, front leg] foot offsets.
@@ -124,9 +124,12 @@ export function saintModel(pose = {}) {
   // The cowl: hood, mantle and shoulders as one drape.
   S.add(ellipsoid([cx + X, 28.4 + B, 0], HR && HR.broad ? [7.8, 3.8, 4.8] : [6.6, 3.2, 4.2], K.cowl), 1.8);
   // Back arm, half hidden.
-  S.add(capsule([cx - 4 + X, 29.5 + B, -2.6], [cx - 5.6 + X, 35 + B, -2.8], 2.1, 1.8, K.robeDark), 1);
-  S.add(capsule([cx - 5.6 + X, 35 + B, -2.8], [cx - 4.6 + X, 39.4 + B, -2], 1.8, 1.6, K.robeDark), 0.6);
-  S.add(sphere([cx - 4.6 + X, 40 + B, -2], 1.55, K.boot), 0.5);
+  // back: [dx, dy, dz] moves the back hand (the Vesper's second blade, round 118).
+  const bh = [cx - 4.6 + X + (back ? back[0] : 0), 40 + B + (back ? back[1] : 0), -2 + (back ? back[2] || 0 : 0)];
+  const be = back ? [(cx - 4 + X + bh[0]) / 2 - 1.6, (29.5 + B + bh[1]) / 2 + 2, (bh[2] - 2.6) / 2 - 0.4] : [cx - 5.6 + X, 35 + B, -2.8];
+  S.add(capsule([cx - 4 + X, 29.5 + B, -2.6], be, 2.1, 1.8, K.robeDark), 1);
+  S.add(capsule(be, [bh[0], bh[1] - 0.6, bh[2]], 1.8, 1.6, K.robeDark), 0.6);
+  S.add(sphere(bh, 1.55, K.boot), 0.5);
   // Front arm raised in a casting gesture: the crossbow floats, guided by this hand.
   const hand = [cx + 8.4 + X + reach * 4, 31.6 + B + aim - reach * 1.6, 5.8], elbow = [cx + 6.6 + X + reach * 2.6, 37 + B - reach * 1.8, 4.6];
   S.add(capsule([cx + 4.4 + X, 29.6 + B, 2.4], elbow, 2.5, 2.1, K.robe), 1.3);
@@ -140,7 +143,7 @@ export function saintModel(pose = {}) {
   S.add(capsule([cx + X, 27 + B, 0], [hx, hy + 3, 0.3], 3, 3.6, K.cowl), 1.6);
   const hood = ellipsoid([hx, hy, 0.5], [6.1, 5.5, 5.4], K.hood);
   S.add(hood, 1.8);
-  if (!HR) S.add(capsule([hx - 2.6, hy - 3.2, -1.3], [hx - 7, hy - 6, -3.2], 3.3, 0.9, K.hood), 2);
+  if (!HR || HR.point) S.add(capsule([hx - 2.6, hy - 3.2, -1.3], [hx - 7, hy - 6, -3.2], 3.3, 0.9, K.hood), 2);
   else if (HR.broad) S.paint({ f: (x, y, z) => Math.max(Math.abs(y - (hy - 2.2)) - 0.9, -z - 1), mat: K.trim }); // an iron brow band round the round hood
   // The hollow where a face should be, rimmed in gilt.
   const fc = [hx + 2.4, hy + 1.2, 4.6], hoodD = hood.f;
@@ -157,7 +160,7 @@ export function saintModel(pose = {}) {
   // The cracked halo, seen from just above.
   // Tipped up enough that its hole still shows on the chunky 2x2 grid.
   if (!SKINS[skin]?.crown) S.add(torus(haloAt ? [cx + haloAt[0], 62 - 1.2 + haloAt[1], 2] : [hx - 1, hy - 12 + halo, 0], 4.8, 1.05, haloAt ? 1.25 : 0.55, 'halo'), 0);
-  const J = { cx, B, X, hx, hy, hand, fc, swing, hero };
+  const J = { cx, B, X, hx, hy, hand, fc, swing, swing2, bh, hero, K };
   if (skin) SKINS[skin].add?.(S, J);
   if (HR) HR.add(S, J);
   const f = render(S, FW, 68, MATS, { ground: 62, rich: process.env.NORICH ? false : { melt: 1.25, meltAdd: 0.25, detail: 0.7, fall: 0.08 } }); // round 79: the heroes shade like the elites
@@ -195,21 +198,27 @@ Object.assign(MATS, {
 function chain(S, pts, mat) {
   for (let i = 0; i < pts.length; i++) S.add(torus(pts[i], 1.25, 0.75, i % 2 ? 1.5 : 0.25, mat), 0);
 }
-// The second playable saint (round 49): the Mendicant, a broad friar in brown
-// homespun under an iron mantle, with a flanged mace. swing is the mace's
-// angle from the fist (0 points forward, negative raises it).
+// The second class (round 49; an assassin since round 118): the Vesper, slim
+// and hooded in night-dark cloth with a scarf over the face and a blade in each
+// hand. swing is the front blade's angle from the fist (0 points forward,
+// negative raises it), swing2 the back blade's.
+function blade(S, g, a, len) {
+  const d = [Math.cos(a), Math.sin(a)], at = (t) => [g[0] + d[0] * t, g[1] + d[1] * t, g[2]];
+  S.add(sphere(at(-1.8), 0.9, 'gold'), 0.2);                                   // pommel
+  S.add(ellipsoid(at(1.4), [Math.abs(d[1]) * 1.8 + 0.7, Math.abs(d[0]) * 1.8 + 0.7, 1.1], 'gold'), 0.2); // the guard across the blade
+  S.add(capsule(at(1.8), at(len), 1.45, 0.45, 'silver'), 0.3);                   // the blade, tapering to a point
+}
 export const HEROES = {
   mendicant: {
-    w: 64, ox: 8, broad: true, eyes: ['ember0', 'ember1', 'ember3'],
-    mats: { robe: 'shroud', robeDark: 'shroud', hood: 'shroud', cowl: 'steel', cape: 'shroud', capeHem: 'leather', tabard: 'creamDark', trim: 'iron', cross: 'crimson', hose: 'slateDark', boot: 'leather' },
-    add: (S, { hand, swing }) => {
-      const g = [hand[0] + 0.4, hand[1] - 0.6, hand[2] + 0.6], d = [Math.cos(swing), Math.sin(swing)];
-      const at = (t) => [g[0] + d[0] * t, g[1] + d[1] * t, g[2]];
-      S.add(capsule(at(-2.5), at(11), 1.15, 1.05, 'wood'), 0.3);           // the haft, a little past the fist
-      S.paint({ f: (x, y, z) => { const [px, py] = at(3); return Math.hypot(x - px, y - py, z - g[2]) - 1.7; }, mat: 'leather' }); // grip wrap
-      S.add(sphere(at(13.2), 3.1, 'steel'), 0.6);                          // the head
-      for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3, c = at(13.2); S.add(ellipsoid([c[0] + Math.cos(a) * 2.6, c[1] + Math.sin(a) * 2.6, c[2]], [1.5, 1.5, 2.8], 'iron'), 0.5); } // flanges
-      S.paint({ f: (x, y, z) => { const c = at(10.6); return Math.hypot(x - c[0], y - c[1], z - c[2]) - 1.6; }, mat: 'gold' }); // a gilt collar under the head
+    w: 64, ox: 8, point: true, eyes: ['crimson0', 'crimson1', 'crimson3'],
+    mats: { robe: 'inkRobe', robeDark: 'inkRobe', hood: 'inkRobe', cowl: 'slateDark', cape: 'inkRobe', capeHem: 'crimson', tabard: 'slateDark', trim: 'iron', cross: 'crimson', hose: 'inkRobe', boot: 'leather' },
+    add: (S, J) => { const { hand, swing, swing2, bh, fc, K } = J;
+      blade(S, [hand[0] + 0.4, hand[1] - 0.2, hand[2] + 0.6], swing, 14);
+      blade(S, [bh[0] + 0.2, bh[1], bh[2] - 0.4], swing2, 13);
+      // A crimson sash from the shoulder to the hip.
+      S.paint({ f: (x, y, z) => Math.max(Math.abs((x - J.cx - J.X) * 0.9 + (y - 37 - J.B) * 0.75) - 1.1, -z + 0.5, Math.abs(y - 37 - J.B) - 8), mat: K.cross });
+      // A scarf over the lower face: only the eyes show.
+      S.add(ellipsoid([fc[0] - 0.2, fc[1] + 2.3, fc[2] - 0.9], [3, 1.5, 2.2], K.cowl), 0.8);
     },
   },
 };

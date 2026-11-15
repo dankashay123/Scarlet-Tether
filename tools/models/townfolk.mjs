@@ -325,9 +325,9 @@ function crow(i) {
 // A bust of the Saint for the dialog box: hood, gilt-rimmed void, eyes. 34x34.
 // The HUD portrait; a vestment set skin recolours it and swaps the halo for its crown.
 function portrait(skin = null, hero = null) {
-  // hero (round 83): the Mendicant's and the Anchoress's own busts, in their models' materials.
+  // hero (round 83): the Vesper's (the Mendicant's until round 118) and the Anchoress's own busts, in their models' materials.
   const HR = hero ? HEROES[hero] : null, hm = HR ? HR.mats : {};
-  const K = { hood: 'crimson', cowl: 'crimson', trim: 'gold', cross: 'crimson', ...(HR ? { hood: hm.hood, cowl: hero === 'mendicant' ? 'iron' : hm.cowl, trim: hero === 'mendicant' ? 'steel' : hm.trim, cross: hm.cross } : {}), ...(skin ? SKINS[skin].mats : {}) };
+  const K = { hood: 'crimson', cowl: 'crimson', trim: 'gold', cross: 'crimson', ...(HR ? { hood: hm.hood, cowl: hm.cowl, trim: hero === 'mendicant' ? 'slateDark' : hm.trim, cross: hm.cross } : {}), ...(skin ? SKINS[skin].mats : {}) };
   const S = new Scene(), cx = 16, hy = 16, wide = HR && HR.broad ? 1.5 : 0;
   // Shoulders and mantle, with the stole.
   S.add(ellipsoid([cx, 33, -1], [14 + wide, 7 + wide * 0.6, 7], K.cowl), 0);
