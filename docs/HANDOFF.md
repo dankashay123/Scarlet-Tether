@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 131 (build 131, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 132 (build 132, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -39,7 +39,7 @@ see "The owner's preferences".) When the owner answers with numbers
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
-   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-131 on
+   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-132 on
    `claude/brave-fermi-kw8he3`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
@@ -366,12 +366,20 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Offered after round 131, not picked yet:** (1) buff icons for enchant
-  procs and Hallowed powers with timers (Hunger stacks, the Still Cloak's
-  ward); (2) the pilot test for the Vesper's and the Anchoress's sets at
-  Station VI, as done for the Saint; (3) a hold tip on the Carnage plate;
-  (4) a small fade-in when a buff icon appears; (5) ask the owner how the
-  Vesper's defence feels.
+- **Offered after round 132, not picked yet:** (1) the pilot plays the
+  Anchoress's Psalter and Glass Martyr far below their setbal numbers (below);
+  check how it positions her before tuning; (2) a bigger, clearer icon for
+  the Vesper's storm (the dagger frame is small at 18 px); (3) ask the owner
+  how the Vesper's defence feels (asked again in round 132); (4) buff icons
+  for pets that act on a timer; (5) the stall's long set cards end mid-sentence
+  at MORE IN THE BAG: a short "tap for the set" line there instead.
+- **Measured in round 132.** Pilot (autobench, Station VI gear and Station,
+  3 runs; seconds to clear and kills a second): Vesper Viper's Fang 50 / 11.2,
+  Nightblade 63 / 9.3, Dusk Walker 66 / 8.9, Veil 74 / 8.8, Bloodletter 74 /
+  9.0; Anchoress Lantern 77 / 7.7, Reliquary 92 / 7.2, Thorn 103 / 5.0,
+  Psalter 106 / 3.5, Glass 112 / 3.9 (Psalter and Glass lost almost no
+  health: the pilot likely keeps her too far off for them). The Saint's
+  (rounds 130-131): Choir 53, Stride 72, Confessor 83, Nails 83, Font 95.
 - **Measured in round 131.** `SETK.low6.nails` 1.4: the pilot at Station VI
   clears in 71-95 s (was 100-111), 6.3-7.9 kills a second, level with the
   Confessor; setbal VI Nails 16.3, Nails 4 + Font 2 15.7. Glass 4 + Psalter
@@ -624,6 +632,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 132:** the owner said "All" to round 131's list. Buff icons for
+  Hunger, Bone Ward and the Still Cloak (held), the Long Descent's crits
+  (held, with a count) and the Vesper's blade storm (timed); held icons
+  have a full rim; new icons fade in with a pop; the streak plate has a hold
+  tip. The pilot measured at Station VI for the Vesper and the Anchoress
+  (see Next steps; nothing tuned). menus.cjs caught a Drowned Font card
+  running off the screen in Pell's stall: the stall's cards and the item
+  popup now pass `maxY`. Test: `round132.cjs`.
 
 - **Round 131:** the owner said "All" to round 130's list. Nails low-Station
   factor at six pieces; the Glass mix on Candlemass rechecked; a shorter
