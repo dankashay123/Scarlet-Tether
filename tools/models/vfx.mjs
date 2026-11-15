@@ -238,7 +238,7 @@ function scourge(i) {
 // A Reckoning's sigil on the floor: rings open out, spokes and four runes
 // turn, a star flares at the centre, then it all thins and fades. 12 frames,
 // seen in perspective (squashed to 0.55).
-const SIGIL_RAMP = { gold: 'gold', font: 'holy', nails: 'gold', stride: 'ember', confessor: 'violet', choir: 'crimson', reliquary: 'violet', iron: 'iron', road: 'sand', alms: 'moss', gaol: 'brick', bell: 'teal', glass: 'holy', psalter: 'crimson', lantern: 'ember', thorn: 'rot' };
+const SIGIL_RAMP = { gold: 'gold', font: 'holy', nails: 'gold', stride: 'ember', confessor: 'violet', choir: 'crimson', reliquary: 'violet', iron: 'iron', road: 'sand', alms: 'moss', gaol: 'blood', bell: 'teal', glass: 'holy', psalter: 'crimson', lantern: 'ember', thorn: 'rot' };
 function sigil(i, set) {
   const W = 112, H = 64, f = frame(W, H), cx = W / 2, cy = H / 2, n = 12, t = i / (n - 1), R = SIGIL_RAMP[set] || 'gold';
   const sq = 0.55, ease = 1 - (1 - Math.min(1, t * 1.8)) ** 3, fade = t < 0.6 ? 0 : (t - 0.6) / 0.4;
@@ -475,21 +475,21 @@ const LEGEND_ICONS = [
   () => legendIcon('quiver', { leather: 'iron', iron: 'ember' }, (S) => flames(S, [[13, 3], [16, 4], [11, 5]], 1.4)),
   // 29 The Quiver of No Mercy: black leather bound in chain.
   () => legendIcon('quiver', { leather: 'ink', gold: 'iron', iron: 'blood' }, (S) => { for (let k = 0; k < 3; k++) S.add(torus([9 + k * 3, 14 + k * 1.2, 4], 1.3, 0.6, k % 2 ? 0 : Math.PI / 2, 'iron'), 0); }),
-  // The Mendicant's (round 51), in LEGENDS order after the thirty.
-  // The Penitent's Gauntlets: iron gloves gripping a mace head.
-  () => legendIcon('gloves', { leather: 'iron', iron: 'gold' }, (S) => { S.add(sphere([19, 8, 4], 3.2, 'iron'), 0.5); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; S.add(sphere([19 + Math.cos(a) * 3, 8 + Math.sin(a) * 3, 4], 1.4, 'iron'), 0.4); } }),
-  // The Bellringer's Stole: a gold-hemmed mantle with a small bell.
-  () => legendIcon('mantle', { violet: 'gold' }, (S) => { S.add(ellipsoid([12, 17, 5], [3, 3.4, 2], 'gold'), 0.5); S.add(sphere([12, 20.5, 5.5], 1.1, 'iron'), 0); }),
-  // Sabatons of the Charge: dark greaves trailing embers.
-  () => legendIcon('greaves', { iron: 'wood', gold: 'ember' }, (S) => flames(S, [[6, 20], [9, 22]], 1.2)),
-  // Beads of Iron Shards: a rosary of iron beads hung with nail shards.
-  () => legendIcon('rosary', { blood: 'iron', gold: 'slate' }, (S) => { for (const x of [9, 12, 15]) S.add(capsule([x, 18, 3.5], [x, 23, 3.5], 0.8, 0.3, 'iron'), 0.2); }),
-  // Seal of the Iron Vow: an iron ring with an ember stone.
-  () => legendIcon('seal', { gold: 'iron', blood: 'ember' }),
-  // The Undertow Cord: a sea-blue cord dripping water.
-  () => legendIcon('girdle', { leather: 'holy', gold: 'iron' }, (S) => { for (const [x, y] of [[8, 20], [13, 22], [18, 20]]) S.add(ellipsoid([x, y, 3], [1.1, 1.7, 1.1], 'holy'), 0); }),
-  // The Seventh Bell-Hammer: a relic crossed by a small gold hammer.
-  () => legendIcon('relic', { gold: 'iron' }, (S) => { S.add(capsule([7, 20, 4], [17, 8, 4], 0.9, 0.9, 'wood'), 0.2); S.add(box([17.5, 7.5, 4], [3.2, 1.6, 1.6], 0.6, 'gold'), 0.3); }),
+  // The Vesper's (round 51; redrawn for his rites in round 121), in LEGENDS order after the thirty.
+  // The Venom-Stained Gloves: dark gloves, green venom on the fingers.
+  () => legendIcon('gloves', { leather: 'slateDark', iron: 'leather' }, (S) => { for (const [x, y] of [[17, 7], [20, 10], [15, 11]]) S.add(ellipsoid([x, y, 4.5], [1.3, 1.8, 1], 'vial'), 0); }),
+  // The Whirler's Sash: a teal mantle with a knife tucked in it.
+  () => legendIcon('mantle', { violet: 'tealRobe', crimson: 'tealRobe', gold: 'bronze' }, (S) => { S.add(capsule([8, 20, 5.5], [17, 10, 5.5], 1.2, 0.4, 'silver'), 0.2); S.add(capsule([6.5, 21.5, 5.5], [8.5, 19.5, 5.5], 1.1, 1.1, 'leather'), 0.2); }),
+  // Boots of the Shadow Rush: black greaves trailing shadow.
+  () => legendIcon('greaves', { iron: 'inkRobe', gold: 'slate' }, (S) => { for (const [x, y] of [[5, 19], [3, 21]]) S.add(ellipsoid([x, y, 2], [2, 1, 1], 'slateDark'), 0.6); }),
+  // The Knife-Maker's Beads: a rosary hung with three small knives.
+  () => legendIcon('rosary', { blood: 'iron', gold: 'slate' }, (S) => { for (const x of [9, 12, 15]) { S.add(capsule([x, 17.5, 3.5], [x, 19.5, 3.5], 0.6, 0.6, 'leather'), 0.2); S.add(capsule([x, 19.8, 3.5], [x, 24, 3.5], 0.9, 0.3, 'silver'), 0.2); } }),
+  // Seal of the Shadow Cloak: a dark ring with a violet stone.
+  () => legendIcon('seal', { gold: 'slate', blood: 'violet' }),
+  // The Serpent's Cord: a green cord dripping venom.
+  () => legendIcon('girdle', { leather: 'mossRobe', gold: 'iron' }, (S) => { for (const [x, y] of [[8, 20], [13, 22], [18, 20]]) S.add(ellipsoid([x, y, 3], [1.1, 1.7, 1.1], 'vial'), 0); }),
+  // The Seventh Falling Blade: a relic with a dagger plunged in, point down.
+  () => legendIcon('relic', { gold: 'iron' }, (S) => { S.add(capsule([16, 3, 4.5], [16, 7, 4.5], 1, 1, 'leather'), 0.2); S.add(capsule([13.5, 7.5, 4.5], [18.5, 7.5, 4.5], 0.8, 0.8, 'gold'), 0.2); S.add(capsule([16, 8, 4.5], [16, 16, 4.5], 1.4, 0.4, 'silver'), 0.2); }),
   // The Anchoress's (round 71), after the Mendicant's.
   // The Crown of Splinters: a violet hood ringed by floating shards.
   () => legendIcon('hood', { crimson: 'violetDark', gold: 'silver' }, (S) => { for (const [x, y] of [[5, 6], [12, 2.5], [19, 6]]) S.add(ellipsoid([x, y, 4], [1.2, 2.4, 1], 'shardGlow'), 0); }),

@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 119 (build 120, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 121 (build 121, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -320,11 +320,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **The Vesper (rounds 118-119).** His sets are an assassin's since round
-  119. Not done: his 18 rites (still a friar's: Smite, Bell Toll, Hammer of
-  Heaven, holy pools; icons show bells and hammers), their effects (heavy
-  blows with quakes, `maceHit`), his class pets (Alms Hound, Bell Crow) and
-  three Hallowed pieces named for bells,
+- **The Vesper (rounds 118-121).** Sets, rites, pets and Hallowed are an
+  assassin's since round 121. Not done: rites that still make a friar's
+  effects under a new name (Antidote and Venom Flood leave pools drawn like
+  holy water in the set's green; the Whirlwind and Steel Chime still use
+  the old shockwave and stun rings), Rubric and Codex art for his rites,
   a proper blade sound (we speed up `swing`), poses for the Wardens'
   photos. Ask the owner how the speed and reach feel on the phone.
 - **Parked by the owner (round 116, "come back to those later").** Suggestions
@@ -494,6 +494,31 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 121:** the owner picked 1, 2, 3 and 5 from round 119's list.
+  **Rites:** names and texts as an assassin's (ids kept): Venom Strike,
+  Serpent's Coil, Fan of Knives, Shadow Rush, Crippling Cut, Cinder Whirl,
+  Blood Hook, Wire Sweep, Steel Chime, Shadow Cloak, Knife Belt, Antidote,
+  the Whirlwind, Blades From Above, Venom Flood, the Thousand Cuts,
+  Duskfire, the Red Hour; their Wounds, twists and synergy lines too. New
+  glyphs (`knife()`, `vdrop()` in `props.mjs`). `maceHit` lands as crossing
+  slashes and a burst; thrown nails fly as his daggers; Blades From Above
+  drops a great dagger. The Bloodletter's rite colours are red now
+  (`RITE_FX.gaol`, `RITE_INK.gaol`, sigil). **Pips:** ten under the Zeal
+  bar count attacks to the next storm (flash when ready, lit while the
+  daggers are out). **Pets:** the Shadow Hound (grey, pointed ears, red
+  eyes) and the Night Raven (no bell, a red cry). **Hallowed:** the
+  Venom-Stained Gloves, the Whirler's Sash, Boots of the Shadow Rush, the
+  Knife-Maker's Beads, Seal of the Shadow Cloak, the Serpent's Cord, the
+  Seventh Falling Blade, with new icons. **Bug fixed on the way:** a
+  comment placed mid-line cut off two closing braces (the page did not
+  load; `node --check` on the extracted script finds this fast).
+  **Measured (item 5):** setbal Station VI, 4 seeds, kills per second:
+  no gear 6.0, Nightblade 16.7, Dusk Walker 13.6, Viper's Fang 12.6,
+  Bloodletter 13.2, Whirling Veil 16.0; mixes 10.8-15.1 (the mace's range
+  was 11.6-19). The Bellwright at Station XII, 3 seeds, 120 s cap: every
+  set killed it every time; seconds: Nightblade 41, Dusk Walker 68, Viper's
+  Fang 65, Bloodletter 43, Whirling Veil 48 (the mace's sets: 38-68).
+  Nothing tuned. Test: `round121.cjs`.
 - **Round 119:** the owner asked for two floating daggers that fly into
   the nearest pack every 10 attacks (elites and Wardens first) and make a
   blade storm hitting 10 times a second for 2 s; skins working for the

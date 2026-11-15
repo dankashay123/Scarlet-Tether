@@ -539,7 +539,7 @@ function button(size, glyph) {
 // its set's colour (lit edge top-left, dark edge bottom-right) with a shadow under it.
 // The game draws these as they are (RICH_BTN in index.html skips the HUD's recolour).
 const RITE_INK = { font: ['holy2', 'holy3', 'holy4'], nails: ['crimson0', 'crimson1', 'crimson3'], stride: ['ember1', 'ember2', 'ember4'], confessor: ['violet0', 'violet1', 'violet3'], choir: ['gold0', 'gold1', 'gold3'],
-  iron: ['iron0', 'iron1', 'iron3'], road: ['sand0', 'sand1', 'sand3'], alms: ['moss0', 'moss1', 'moss3'], gaol: ['brick0', 'brick1', 'brick3'], bell: ['sea0', 'sea1', 'sea3'],
+  iron: ['iron0', 'iron1', 'iron3'], road: ['sand0', 'sand1', 'sand3'], alms: ['moss0', 'moss1', 'moss3'], gaol: ['blood1', 'blood2', 'blood4'], bell: ['sea0', 'sea1', 'sea3'],
   reliquary: ['violet0', 'violet1', 'violet3'], glass: ['holy1', 'holy2', 'holy4'], psalter: ['crimson0', 'crimson1', 'crimson3'], lantern: ['ember1', 'ember2', 'ember4'], thorn: ['rot0', 'rot1', 'rot3'],
   // Passive icons by their badge's ramp (round 85).
   crimson: ['crimson0', 'crimson1', 'crimson3'], holy: ['holy1', 'holy2', 'holy4'], gold: ['gold0', 'gold1', 'gold3'],
@@ -571,6 +571,10 @@ function hudButton(size, glyph) {
   return f;
 }
 const seg = (u, v, ax, ay, bx, by, w) => { const dx = bx - ax, dy = by - ay, t = clamp(((u - ax) * dx + (v - ay) * dy) / (dx * dx + dy * dy), 0, 1); return Math.hypot(u - ax - dx * t, v - ay - dy * t) < w; };
+// Round 120: a knife from its pommel (a) to its point (b): grip, guard and a blade that tapers.
+const knife = (u, v, ax, ay, bx, by, w) => { const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy), t = ((u - ax) * dx + (v - ay) * dy) / (L * L), d = Math.abs((u - ax) * dy - (v - ay) * dx) / L; if (t < 0 || t > 1) return false; if (t < 0.26) return d < w * 0.7; if (t < 0.32) return d < w * 2.4; return d < w * 1.35 * (1 - (t - 0.32) / 0.68) + 0.02; };
+// A drop, its point up.
+const vdrop = (u, v, x, y, r) => Math.hypot(u - x, v - y) < r || (v < y && v > y - r * 1.9 && Math.abs(u - x) < r * (v - (y - r * 1.9)) / (r * 1.9));
 const GLYPH = {
   dash: (u, v) => [-0.42, -0.02, 0.38].some((o) => seg(u, v, o - 0.2, -0.36, o + 0.12, 0, 0.12) || seg(u, v, o + 0.12, 0, o - 0.2, 0.36, 0.12)),
   flask: (u, v) => Math.hypot(u, v - 0.18) < 0.42 || (Math.abs(u) < 0.14 && v > -0.48 && v < 0) || (Math.abs(u) < 0.22 && v > -0.6 && v < -0.46),
@@ -601,25 +605,25 @@ const GLYPH = {
   asperse: (u, v) => [[-0.36, 0.34], [0.36, 0.34], [0, -0.2]].some(([x, y]) => Math.hypot(u - x, v - y) < 0.18 || (v < y && v > y - 0.34 && Math.abs(u - x) < (v - (y - 0.34)) * 0.5)),
   pilgrim: (u, v) => (Math.abs(u) < 0.1 && v > 0 && v < 0.62) || (Math.abs(v - 0.62) < 0.08 && Math.abs(u) < 0.28) || Math.hypot(u, v + 0.18) < 0.24 || (v < -0.18 && v > -0.66 && Math.abs(u - Math.sin((v + 0.66) * 4) * 0.05) < (v + 0.66) * 0.5),
   greatpen: (u, v) => seg(u, v, -0.45, -0.45, 0.45, 0.45, 0.07) || seg(u, v, -0.45, 0.45, 0.45, -0.45, 0.07) || [[-0.48, -0.48], [0.48, -0.48], [-0.48, 0.48], [0.48, 0.48]].some(([x, y]) => { const d = Math.hypot(u - x, v - y); return d < 0.17 && d > 0.07; }),
-  // The Mendicant's rites (round 50).
-  smite: (u, v) => seg(u, v, -0.5, 0.5, 0.05, -0.05, 0.09) || Math.hypot(u - 0.22, v + 0.22) < 0.24 || (Math.abs(v - 0.56) < 0.06 && Math.abs(u - 0.25) < 0.32),
-  undertow: (u, v) => [0.22, 0.44].some((R) => Math.abs(Math.hypot(u, v) - R) < 0.07 && Math.atan2(v, u) > -2.4 && Math.atan2(v, u) < 1.6) || seg(u, v, 0.62, -0.05, 0.62, 0.3, 0.07) || Math.hypot(u, v) < 0.08,
-  nailburst: (u, v) => Math.hypot(u + 0.36, v - 0.36) < 0.2 || [-0.5, 0, 0.5].some((k) => seg(u, v, -0.15, 0.15, -0.15 + Math.cos(k - 0.78) * 0.72, 0.15 + Math.sin(k - 0.78) * 0.72, 0.06)),
-  charge: (u, v) => seg(u, v, -0.15, 0.45, 0.3, -0.1, 0.08) || Math.hypot(u - 0.36, v + 0.2) < 0.2 || [0.15, 0.35].some((o) => seg(u, v, -0.62, o - 0.3, -0.28, o - 0.3, 0.05)) || seg(u, v, -0.62, 0.3, -0.3, 0.3, 0.05),
-  shackleblow: (u, v) => seg(u, v, -0.5, 0.5, 0, 0, 0.08) || Math.hypot(u - 0.16, v + 0.16) < 0.2 || (Math.abs(Math.hypot(u - 0.3, v - 0.32) - 0.2) < 0.06),
-  cinderslam: (u, v) => (Math.abs(v - 0.5) < 0.07 && Math.abs(u) < 0.6) || [-0.32, 0, 0.32].some((x) => { const t = (0.42 - v) / (x === 0 ? 0.9 : 0.6); return t > 0 && t < 1 && Math.abs(u - x) < 0.14 * Math.sin(t * Math.PI) + 0.02; }),
+  // The Vesper's rites (round 50; redrawn as an assassin's in round 120): knives, venom, hooks, whirls.
+  smite: (u, v) => knife(u, v, -0.6, 0.6, 0.5, -0.5, 0.085) || vdrop(u, v, 0.42, 0.22, 0.15),
+  undertow: (u, v) => { const y = Math.sin(u * 4.2) * 0.26; return (Math.abs(v - y) < 0.09 && u > -0.55 && u < 0.38) || Math.hypot(u - 0.42, v - Math.sin(0.42 * 4.2) * 0.26) < 0.15; },
+  nailburst: (u, v) => [-0.6, 0, 0.6].some((a) => knife(u, v, Math.sin(a) * 0.22, 0.62 - Math.cos(a) * 0.12, Math.sin(a) * 0.82, 0.62 - Math.cos(a) * 1.15, 0.075)),
+  charge: (u, v) => knife(u, v, -0.25, 0.05, 0.62, 0.05, 0.11) || [-0.2, 0.05, 0.3].some((y) => Math.abs(v - y) < 0.045 && u > -0.65 - Math.abs(y) * 0.3 && u < -0.32),
+  shackleblow: (u, v) => knife(u, v, -0.5, 0.5, 0.36, -0.36, 0.1) || (Math.abs(Math.hypot(u + 0.12, v + 0.22) - 0.2) < 0.06 && u < 0.02),
+  cinderslam: (u, v) => (Math.abs(Math.hypot(u, (v - 0.22) * 1.6) - 0.42) < 0.07) || [-0.3, 0, 0.3].some((x) => { const t = (0.12 - v) / 0.55; return t > 0 && t < 1 && Math.abs(u - x - Math.sin(t * 5) * 0.05) < 0.11 * (1 - t); }),
   hook: (u, v) => (Math.abs(u - 0.12) < 0.08 && v > -0.6 && v < 0.2) || (Math.abs(Math.hypot(u + 0.1, v - 0.2) - 0.24) < 0.08 && v > 0.15) || seg(u, v, -0.34, 0.2, -0.42, 0.02, 0.07) || Math.hypot(u - 0.12, v + 0.6) < 0.1,
-  chainsweep: (u, v) => [0, 1, 2, 3, 4, 5, 6, 7].some((k) => { const a = k * Math.PI / 4, d = Math.hypot(u - Math.cos(a) * 0.46, v - Math.sin(a) * 0.46); return d < 0.13 && d > 0.05; }) || Math.hypot(u, v) < 0.14,
-  toll: (u, v) => (v > -0.45 && v < 0.32 && Math.abs(u) < 0.18 + (v + 0.45) * 0.38) && !(v > 0.18 && Math.abs(u) < 0.08) || Math.hypot(u, v - 0.44) < 0.1 || (Math.abs(u) < 0.07 && v > -0.62 && v < -0.4),
-  vow: (u, v) => ((Math.abs(u) < 0.42 && v > -0.5 && v < 0.05) || (v >= 0.05 && v < 0.6 && Math.abs(u) < (0.6 - v) * 0.8)) && !((Math.abs(u) < 0.3 && v > -0.38 && v < 0.05) || (v >= 0.05 && v < 0.42 && Math.abs(u) < (0.42 - v) * 0.8)) || Math.hypot(u, v + 0.08) < 0.12,
-  shards: (u, v) => [[-0.32, 0.2, 0.3], [0.08, -0.25, 0.34], [0.38, 0.28, 0.26]].some(([x, y, h]) => v < y + h * 0.5 && v > y - h && Math.abs(u - x) < (y + h * 0.5 - v) * 0.4),
-  wellspring: (u, v) => (Math.hypot(u, v - 0.26) < 0.24) || (v < 0.26 && v > -0.2 && Math.abs(u) < (v + 0.2) * 0.52) || [-0.42, 0.42].some((x) => seg(u, v, x * 0.6, -0.1, x, -0.5, 0.06)),
-  tolling: (u, v) => ((v > -0.35 && v < 0.25 && Math.abs(u) < 0.12 + (v + 0.35) * 0.32) && !(v > 0.12 && Math.abs(u) < 0.06)) || Math.hypot(u, v - 0.36) < 0.08 || [-1, 1].some((sd) => [0.42, 0.62].some((R) => Math.abs(Math.hypot(u, v + 0.05) - R) < 0.05 && sd * u > Math.abs(v + 0.05) * 0.9)),
-  hammer: (u, v) => (Math.abs(u) < 0.08 && v > -0.2 && v < 0.62) || (Math.abs(v + 0.32) < 0.16 && Math.abs(u) < 0.46) || [-0.6, 0.6].some((x) => seg(u, v, x * 0.8, -0.62, x, -0.55, 0.04)),
-  deluge: (u, v) => [-0.32, 0, 0.32].some((y) => Math.abs(v - y - Math.sin(u * 7) * 0.08) < 0.07 && Math.abs(u) < 0.6),
-  hundredblows: (u, v) => [-0.3, 0, 0.3].some((o) => seg(u, v, -0.45 + o, 0.5, 0.05 + o, -0.15, 0.06) || Math.hypot(u - (0.12 + o), v + 0.25) < 0.13),
-  pyre: (u, v) => (Math.abs(v - 0.52) < 0.07 && Math.abs(u) < 0.55) || [-0.3, 0, 0.3].some((x) => { const t = (0.45 - v) / (x === 0 ? 1 : 0.7); return t > 0 && t < 1 && Math.abs(u - x - Math.sin(t * 5) * 0.03) < 0.15 * Math.pow(1 - t, 0.6) + 0.01; }),
-  verdict: (u, v) => (Math.abs(Math.abs(u) - 0.42) < 0.07 && Math.abs(v) < 0.42) || (Math.abs(Math.abs(v) - 0.42) < 0.07 && Math.abs(u) < 0.42) || (Math.abs(u) < 0.07 && Math.abs(v) < 0.28) || (Math.abs(v) < 0.07 && Math.abs(u) < 0.28),
+  chainsweep: (u, v) => { const r = Math.hypot(u, v), a = Math.atan2(v, u); return (Math.abs(r - 0.45) < 0.05) || (Math.abs(r - 0.45) < 0.14 && Math.abs(Math.sin(a * 6)) < 0.25); },
+  toll: (u, v) => knife(u, v, -0.42, 0.52, 0.3, -0.38, 0.09) || knife(u, v, 0.42, 0.52, -0.3, -0.38, 0.09) || [0.5, 0.66].some((R) => Math.abs(Math.hypot(u, v + 0.15) - R) < 0.04 && v < -0.3),
+  vow: (u, v) => Math.hypot(u, v + 0.3) < 0.22 || (v > -0.22 && v < 0.62 && Math.abs(u) < 0.14 + (v + 0.22) * 0.5 && !(Math.hypot(u, v + 0.3) < 0.3 && v < -0.05)),
+  shards: (u, v) => [-0.36, 0, 0.36].some((x) => knife(u, v, x, 0.6, x, -0.55, 0.085)) || (Math.abs(v - 0.3) < 0.06 && Math.abs(u) < 0.58),
+  wellspring: (u, v) => Math.hypot(u, v - 0.22) < 0.34 || (Math.abs(u) < 0.12 && v > -0.42 && v < 0) || (Math.abs(v + 0.48) < 0.08 && Math.abs(u) < 0.2),
+  tolling: (u, v) => [0, 1, 2].some((k) => { const a = Math.atan2(v, u) - k * 2.094, r = Math.hypot(u, v), w = ((a % 2.094) + 2.094) % 2.094; return r > 0.12 && r < 0.62 && Math.abs(r - (0.12 + w * 0.24)) < 0.08; }),
+  hammer: (u, v) => knife(u, v, 0, -0.62, 0, 0.6, 0.12) || [-0.4, 0.4].some((x) => Math.abs(u - x) < 0.045 && v > -0.6 && v < -0.05),
+  deluge: (u, v) => vdrop(u, v, 0, -0.1, 0.3) || [0.42].some((y) => Math.abs(v - y - Math.sin(u * 7) * 0.06) < 0.06 && Math.abs(u) < 0.62),
+  hundredblows: (u, v) => [-0.36, -0.12, 0.12, 0.36].some((o) => seg(u, v, -0.4 + o, 0.45, 0.22 + o, -0.45, 0.055)),
+  pyre: (u, v) => knife(u, v, -0.5, 0.55, 0.15, -0.2, 0.09) || [0.15, 0.42].some((x) => { const t = (0.55 - v) / 0.95; return t > 0 && t < 1 && Math.abs(u - x - Math.sin(t * 5) * 0.06) < 0.13 * (1 - t); }),
+  verdict: (u, v) => (Math.abs(Math.abs(v) - 0.55) < 0.06 && Math.abs(u) < 0.42) || (Math.abs(v) < 0.5 && Math.abs(Math.abs(u) - (0.06 + Math.abs(v) * 0.62)) < 0.065) || (v > 0.18 && v < 0.5 && Math.abs(u) < (v - 0.12) * 0.6),
 };
 // Map badges for the town map: a small coloured disc, lit from the top-left,
 // with a pale glyph and a heavy outline. Order matches MAP_BADGES in index.html.

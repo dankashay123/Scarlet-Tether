@@ -60,8 +60,9 @@ export default { pets: {
   // Battle pets.
   nailfinch: anim({ fly: 1, mat: 'gold', belly: 'cloth', bw: 3.6, bh: 3, hr: 2.6, beak: 'iron', wing: 'emberLit', tail: 'fan' }),
   censermouse: anim({ mat: 'grey', belly: 'cloth', bw: 3.8, bh: 3, leg: 2, hr: 2.6, ears: 'round', earMat: 'rose', tail: 'long', tailMat: 'rose', snout: 1, extra: (S, q) => { S.add(sphere([9, q.cy - 4.5, 0], 1.8, 'gold'), 0); S.add(sphere([9, q.cy - 6.6 - q.step, 0], 1, 'ember'), 0); } }),
-  almshound: anim({ mat: 'fur', belly: 'sand', bw: 5, bh: 3.4, leg: 4, hr: 3, ears: 'flop', earMat: 'leather', tail: 'up', snout: 1, extra: (S, q) => S.add(torus([q.hx - 2.4, q.hy + 2, 0.6], 2, 0.7, 0.4, 'iron'), 0) }),
-  bellcrow: anim({ fly: 1, mat: 'coal', bw: 4, bh: 3.2, hr: 2.8, beak: 'bone', wing: 'slate', wingW: 4.6, tail: 'fan', eye: 'gold1', extra: (S, q) => S.add(sphere([12.5, q.cy + 4.4, 1], 1.6, 'gold'), 0) }),
+  // Round 121: the Vesper's pets: the Shadow Hound (was the Alms Hound) and the Night Raven (was the Bell Crow); ids kept.
+  almshound: anim({ mat: 'slate', belly: 'slateDark', bw: 5, bh: 3.4, leg: 4, hr: 3, ears: 'point', tail: 'up', snout: 1, eye: 'crimson0', extra: (S, q) => S.add(torus([q.hx - 2.4, q.hy + 2, 0.6], 2.2, 0.9, 0.4, 'crimson'), 0) }),
+  bellcrow: anim({ fly: 1, mat: 'coal', bw: 4.4, bh: 3.2, hr: 2.8, beak: 'bone', wing: 'slate', wingW: 5.2, tail: 'fan', eye: 'crimson0' }),
   glassmoth: anim({ fly: 1, mat: 'violet', bw: 2.4, bh: 3.4, hr: 2, hx: 0.5, hy: 4, wing: 'glassWing', wing2: 1, wingW: 5.4, eye: 'holy0', ex: 0.6 }),
   votivewisp: wisp,
   lamb: anim({ mat: 'cloth', bw: 5, bh: 4, leg: 3, legMat: 'coal', hr: 2.6, head: 'coal', ears: 'flop', earMat: 'coal', eye: 'cloth0', extra: (S, q) => { for (const [x, y] of [[9, q.cy - 3], [13, q.cy - 3.4], [11, q.cy - 4]]) S.add(sphere([x, y, 0.4], 2, 'cloth'), 1); } }),
