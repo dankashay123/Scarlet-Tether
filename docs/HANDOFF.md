@@ -39,14 +39,23 @@ see "The owner's preferences".) When the owner answers with numbers
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
-   `claude/brave-brown-mytba1`.
+   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
-   sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73 sheets
+   sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
    a test run alongside three soaks can drop a request; `loadAssets` retries
    (build 118), but read every soak result before pushing.
 9. Balance jobs in a shell script: do not pass `WOUNDS='{"x":1}'` through
    `xargs` (it strips the quotes and the run prints nothing).
+10. After any edit to `index.html` made by a script, check the page still
+   parses: extract the main `<script>` and run `node --check` on it:
+   `python3 -c "import re;s=open('index.html').read();open('/tmp/g.js','w').write(max(re.findall(r'<script>(.*?)</script>',s,re.S),key=len))" && node --check /tmp/g.js`
+   (write the file to the scratchpad in a cloud session). Never put a `//` comment in the middle of a line
+   that has more code after it: twice (rounds 121 and 124) that cut off code
+   and broke the page or the Hallowed icons.
+11. To compare balance against the shipped build, copy `HEAD` to the
+   scratchpad (`git archive HEAD | tar -x`), serve it on another port and
+   point a copy of `setbal.cjs` at it (round 118 did this).
 
 ## Where the game stands
 
@@ -125,14 +134,32 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   made; no switching in game. Front screens: splash, character select,
   creation with three class cards (`HEROES`). Three classes:
   - **The Saint:** a floating auto-aiming crossbow (`updateCrossbow`).
-  - **The Vesper (round 118; the Mendicant with a mace before):** an
-    assassin with two blades. Each attack is two quick cuts in a narrow
-    arc, front blade then back (`updateMelee`, `MELEE`: `cut`, `strike`,
-    `strike2`; 10% less damage taken). Cuts go through `boltStrike(b, e)`
-    with `b.melee` and `b.cut` (light knockback). Only the shown name
-    changed: the id is still `mendicant`, and so are his sheets, sets
-    (Beggar King's Iron and the rest) and rites `MRITES` (`castMM1`/`castMM2`,
-    `maceHit`). Older notes below call him the Mendicant.
+  - **The Vesper (rounds 118-124; the Mendicant with a mace before):** an
+    assassin with two blades. The id is still `mendicant` (saves, sheets,
+    sets, rites, `isMelee()`); older notes below call him the Mendicant.
+    - Attack: two quick cuts in a narrow arc, front blade then back
+      (`updateMelee`, `MELEE`: `cut`, `strike`, `strike2`), through
+      `boltStrike(b, e)` with `b.melee` and `b.cut` (light knockback). A
+      foe beside him comes before a far elite (round 124). 10% less damage
+      taken, runs 25% faster (`MELEE.move`), dashes recharge 25% faster
+      (`MELEE.dashK`), lunges onto a foe up to 46 px past his reach
+      (`MELEE.lunge`).
+    - Two floating daggers (`player.vd`, `VDAG`): every 10th attack they
+      fly at the nearest elite or Warden, else the biggest pack, and spin
+      there as a blade storm for 3 s (10 hits a second), flying on to the
+      next pack when the circle is empty. Ten pips under the Zeal bar count
+      toward it. Their look follows his premium skin or set.
+    - Looks: hands posed by target with a two-bone elbow solve (`fh`/`bh`,
+      `ik()` in `base.mjs`): an eight-frame two-cut attack, a combat stance,
+      a run with the arms pumping, spin, throw, clash, flurry. The rites
+      that whirl spin him; the Whirlwind spins him the whole time.
+    - Rites (`MRITES`, ids kept): Venom Strike, Fan of Knives, Shadow Rush,
+      Cinder Whirl, Serpent's Coil, Crippling Cut; Blood Hook, Steel Chime,
+      Knife Belt, Shadow Cloak, Wire Sweep, Antidote; the Whirlwind, the
+      Thousand Cuts, Blades From Above, Duskfire, Venom Flood, the Red Hour.
+      They land as crossing slashes (`maceHit`), his thrown nails fly as
+      knives, his pools are venom green. Blade sounds `slash`, `shing`,
+      `stab`, `whirl` (`tools/build-blades.py`, synthesised).
   - **The Anchoress (round 71):** reliquary shards that fire on their own
     (`SHARD`, `shardCount`, `updateShards`, `fireShard`). Since round 73
     they are ice-blue crystal blades hovering in a ring over her head (fx
@@ -208,20 +235,33 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   screen hides the HUD and shows held Wounds as tiles. A death returns
   straight to Vael.
 - **Gear:** 10 slots (8 vestments plus two arms slots: crossbow and quiver,
-  a mace and satchel for him, a reliquary and phylactery for her), 5
+  blades and a satchel for the Vesper, a reliquary and phylactery for her), 5
   rarities, item level = Station (Sanctity). Drops are rare on purpose
   (`DROP`); Hallowed pieces are about 1-1.8% of drops.
 - **Sets (round 72):** each class finds only its own five 6-piece sets and
   starter set (`HERO_SETS`, `STARTER`, `mySets()`): the Saint the Hundred
   Nails, Penitent's Stride, Drowned Font, Last Confessor, Burning Choir and
-  Odile's Habit; the Mendicant the Beggar King's Iron, Wanderer's Road,
-  Almsgiver's Bowl, Gaoler's Keys, Cracked Bell and his Rags; the Anchoress
+  Odile's Habit; the Vesper the Nightblade, Dusk Walker, Viper's Fang
+  (Venom), Bloodletter (Bleeds), Whirling Veil (whirls) and his Wraps (ids
+  `iron`, `road`, `alms`, `gaol`, `bell`, `rags`); the Anchoress
   the Shattered Reliquary, Glass Martyr, Mother's Psalter, Veiled Lantern,
   Thorned Crucible and her Shroud. Each has 2/4/6 bonuses (4 pieces also
   give +110% damage, 6 pieces +25% plus the set's own big 6-piece bonus),
   2-piece arms, a skin, item icons, a badge, a sigil and a Penitent Cell.
   Strength in `SETK`; check with `setbal.cjs` per class. `docs/SETS.md` has
   the table.
+- **Hallowed and the altar (round 124):** 58 named pieces in `LEGENDS`
+  (shared ones, and pieces for one class with `hero`), each with a power no
+  other piece has (`round124.cjs` checks). A class only finds, and the
+  altar only lists and applies, its own and the shared pieces
+  (`legendMine`, `altarPickLegends`). `LEGEND_ICONS` follows `LEGENDS` order
+  exactly: add new pieces at the end of both.
+- **Premium skins (rounds 117 and 123):** seven skins sold in the shop's
+  SKINS tab (Enlightened, the Void, Psychedelic, the Dread, the Radiant, the
+  Divine, Demonic), each with a hero look for every class, an aura, and its
+  own crossbow, daggers and shards in a shape of their own (`PXBOW` in
+  `weapon.mjs`, `PDAG`/`PCRY` in `vfx.mjs`). Bolts follow the skin's colours
+  only.
 - **Affix tiers (round 71):** besides basic stats, a piece holds up to two
   Graven (advanced) and two Beatified (ultimate) lines (`GRAVEN`,
   `BEATIFIED`, `it.adv`, `it.ult`). Graven lines sometimes drop on rare+
@@ -272,13 +312,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 - **Settings and tools:** settings panel (effects, shake, damage numbers,
   text size, haptics, music, sounds, voices, monster cries, left-handed),
   dev menu (`devRows()`), `?prof` and `?fps` profiling.
-- **Sound (round 77):** every attack has a sound: the mace's swing and
-  blow, monster swings, casts and slams (`sfxAt`, quieter with distance,
+- **Sound (round 77):** every attack has a sound: the Vesper's slash and
+  stab (the mace's swing and blow before round 122), monster swings, casts and slams (`sfxAt`, quieter with distance,
   deeper for elites and Wardens), a cast on every rite, glass on a shard
   crit, the Anchoress's chime. Built from CC0 OpenGameArt packs already in
   `docs/CREDITS.md` (`build-sfx.py`; the packs download from
   opengameart.org here, kenney.nl is blocked; the chime is synthesised by
-  `tools/build-chime.py`).
+  `tools/build-chime.py`; the Vesper's blade sounds by
+  `tools/build-blades.py`, round 122).
 - **Not yet checked by ear:** the round 77 attack sounds and the chime, and
   the round 31 sounds (`roar_`/`fall_ossuarch`, `roar_`/`fall_ashWidow`,
   `music_ossuary`, `music_warden_ossuary`) were only measured. Ask the owner
@@ -314,33 +355,46 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 - Skins and looks: they supply reference screenshots from their other
   game (a golf game; ignore the club) and want "super cool" looks. Bolts,
   weapon and hero should all match.
+- Each class should feel its own (rounds 118-124): the Vesper fast and
+  mobile with blade movement you can see; skins with weapons of their own
+  shape, not recolours; no two Hallowed powers alike; nothing of one class
+  (shard upgrades) shown to another.
 - Ship each finished round to `master`. Raise `BUILD` and add its lines
   to `CHANGES` every round (the owner sees them on their phone). Keep updates short, lead with the
   outcome, attach screenshots.
 
 ## Next steps (ideas, building on what is there)
 
-- **Vesper balance (round 123).** Kill rates hardly answer to `MELEE.cut`:
+- **Offered after round 124, not picked yet:** (1) rebalance the Vesper
+  (below); (2) a note on Hallowed cards for pieces already learned at the
+  altar; (3) Codex hints for the 15 new Hallowed pieces; (4) the old
+  overlapping lines in a list at 667x375 (`round72.cjs` reports "20-40%"
+  over "Max 100%" and "Lightning Every 12th Hit" over "300-500%"; there
+  since before round 118); (5) bolt shapes for the premium skins to match
+  their crossbows.
+- **Vesper balance (rounds 123-124).** At Station XII his sets make 7.4-9.8
+  kills a second against about 7 for the other classes (VI: 12.9-17.8);
+  round 124's 3 s storm, its hops and his four new Hallowed pieces push him
+  higher and were not measured. Kill rates hardly answer to `MELEE.cut`:
   his set effects (`maceHit`/`maceRing` with `MELEE.k`) and the storm
-  (`VDAG.k`) carry the crowd numbers. To bring him to the others' 7 at XII,
-  trim those or `MELEE.k` itself, then rerun setbal for all three classes.
-- **The Vesper (rounds 118-122).** Sets, rites, pets, Hallowed, poses
-  (round 122) and mobility are an assassin's. Not done: Steel Chime still
-  uses the old stun rings, the Thousand Cuts and the Red Hour have no pose
-  of their own, the auto pilot does not know about the lunge or the faster
-  run (it should close in on packs sooner), Rubric and Codex art for his rites,
-  a proper blade sound (we speed up `swing`), poses for the Wardens'
-  photos. Ask the owner how the speed and reach feel on the phone.
+  (`VDAG.k`) carry the crowd numbers. Trim those or `MELEE.k` itself, then
+  rerun setbal for all three classes (4 seeds; runs move about 20%).
+- **The Vesper (rounds 118-124).** Still open: Steel Chime uses the old
+  stun rings; Rubric and Codex art for his rites; his class pets' battle
+  cues; Warden photos with his new poses. The 15 new Hallowed pieces were
+  checked one by one in `round124.cjs` but not balanced; zealCrit, dashCrit,
+  ricochet and the Pulsing Heart are the ones to watch. Ask the owner how
+  his speed, reach and lunge feel on the phone.
 - **Parked by the owner (round 116, "come back to those later").** Suggestions
   they did not pick yet: a short label or hold tip under the two auto icons;
   a size setting (small, normal, large) for the right-hand button cluster;
   skipping the death summary too, with a toast of what was lost; drawing
   health orbs in when the pilot is under half health; Sister Odile's "Back
   again" moved to when the player talks to her after a death.
-- **Premium skins (round 117).** Not done: skinned maces for the
-  Mendicant (his mace is part of his sprite), busts for the Mendicant and Anchoress, skinned rite and
+- **Premium skins (rounds 117 and 123).** Not done: bolt shapes per skin,
+  busts for the Vesper and the Anchoress in a skin, skinned rite and
   Reckoning effects (they still use the set's colours), a showcase on the
-  character select. The owner's references have larger ground discs and
+  character select or a close-up of the weapon in the shop. The owner's references have larger ground discs and
   orbiting attendants; ours is a small ring aura. Prices (1,500) are a
   guess; packs are still free.
 - **Auto play (rounds 108-116).** Measured with `autobench.cjs` (six
