@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 142 (build 142, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 143 (build 143, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; rounds 136-142 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-143 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -329,6 +329,7 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## The owner's preferences
 
+- **No more Sanctity or chest work for now (round 143):** the owner asked for different ideas.
 - **Set balance is done (round 141, the owner's word: within 20% is fine).** "15% is fine. They don't
   need to be 100% equal. It's fine if one set is better than the other." Then:
   "As long as they are within 20% of each other, it's fine." Do not
@@ -748,6 +749,13 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 143:** the owner sent a phone screenshot: the bolts were too big and
+  blocky for the crossbow. On the 2x2 grid the thinnest shaft plus outline came
+  out about 6 px tall, and the game rotates bolts, which made the blocks
+  stair-step. Bolts now render on fine 1 px pixels (`fine()` in `vfx.mjs`,
+  `f.fine` skipped by `sprites.mjs`'s chunky pass) with a 1.5 px shaft; premium
+  bolts are 1.1x the plain one (was 1.35x).
 
 - **Round 142:** the owner said "All except 5" to round 141's list. Pell's stall
   shows the Sanctity pill and colours its stock by it (`sanctPill`); ground

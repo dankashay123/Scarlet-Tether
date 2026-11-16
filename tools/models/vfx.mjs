@@ -2,7 +2,7 @@
 // Solid things (bolt, thurible, flask, chain, hook) are SDF models.
 // Soft things (impacts, blood bursts, smoke, orbs) are 2D metaball forms lit
 // from the top-left and banded onto palette ramps, with no dithering.
-import { Scene, sphere, ellipsoid, capsule, box, rotZ, render, bumpy, clip, dot, pline, LIGHT } from '../sdf.mjs';
+import { Scene, sphere, ellipsoid, capsule, box, rotZ, render, bumpy, clip, dot, pline, LIGHT, setRes, getRes } from '../sdf.mjs';
 import { MATS, torus, PSY } from './base.mjs';
 import { IDX, FINE } from '../palette.mjs';
 
@@ -102,16 +102,21 @@ const BOLTS = {
   enlightened: ['wing', 'shardGlow', 'violet0'], void: ['void', 'gold', 'rose0'], psychedelic: ['psyRose', 'lime', 'holy0'], dread: ['slate', 'vial', 'flame0'],
   radiant: ['gold', 'roseGlow', 'gold0'], divine: ['white', 'gold', 'teal0'], demonic: ['molten', 'crimson', 'ember0'],
 };
-function bolt(skin = null) {
+// Round 143: bolts render on fine 1 px pixels (the owner: too big and blocky for the crossbow). On the 2x2 grid the
+// thinnest shaft plus its outline came out 6 px tall, and the game turns bolts to any angle, which made the blocks
+// stair-step. `f.fine` tells sprites.mjs to skip the chunky pass for these frames.
+const fine = (fn) => { const r0 = getRes(); setRes(1); try { const f = fn(); f.fine = true; return f; } finally { setRes(r0); } };
+function bolt(skin = null) { return fine(() => bolt0(skin)); }
+function bolt0(skin = null) {
   if (skin && PBOLT[skin]) return pbolt(skin);
   const [shaft, collar, tip] = skin ? BOLTS[skin] : ['iron', 'gold', 'gold0'];
   const S = new Scene();
-  S.add(capsule([4, 4.5, 2], [17, 4.5, 2], 1.1, 1.1, shaft), 0);
-  S.add(capsule([17, 4.5, 2], [21.5, 4.5, 2], 1.1, 0.2, shaft), 0.6);
-  S.add(ellipsoid([3, 4.5, 2], [1.2, 2.6, 2.4], shaft), 0.5);
+  S.add(capsule([5, 4.5, 2], [17, 4.5, 2], 0.75, 0.75, shaft), 0);
+  S.add(capsule([17, 4.5, 2], [21, 4.5, 2], 0.95, 0.15, shaft), 0.4);
+  S.add(ellipsoid([4, 4.5, 2], [1.4, 1.7, 1.4], shaft), 0.4);
   S.paint({ f: (x) => Math.abs(x - 7.5) - 0.9, mat: collar });
   const f = render(S, 23, 9, MATS, { contrast: 1.5 });
-  put(f, 20, 4, 'white'); put(f, 19, 4, tip);
+  put(f, 19, 4, 'white'); put(f, 18, 4, tip);
   return f;
 }
 // The Anchoress's reliquary shards (round 71): a violet crystal splinter in a
@@ -228,7 +233,8 @@ function pweapon(kind, i, skin, size, len) {
 }
 // Round 125: each premium skin's crossbow bolt has its own shape to match its crossbow (PXBOW in weapon.mjs),
 // flying right like the plain bolt: the point near x = 25, the tail near x = 3, the axis at y = 6.5.
-const PK = 1.35, R = (r) => r * PK, PB = (u, v = 0, z = 3) => [2 + u * PK, 8.5 + v * PK, z];
+const PK = 1.1, R = (r) => r * PK, // round 143: 1.1x the plain bolt (was 1.35x; the owner found bolts too big)
+  PW = Math.ceil(2 + 26.5 * PK + 2), PB = (u, v = 0, z = 3) => [2 + u * PK, 8.5 + v * PK, z];
 const PBOLT = {
   // Enlightened: a shaft of violet light, a gold point and three feathers for fletching.
   enlightened: (S) => { S.add(capsule(PB(5), PB(21), R(1.1), R(1.1), 'pw_violetGlow'), 0); S.add(capsule(PB(20), PB(25.5), R(1.6), R(0.25), 'pw_gold'), 0.4);
@@ -257,8 +263,8 @@ const PBOLT = {
 };
 function pbolt(skin) {
   const S = new Scene(); PBOLT[skin](S);
-  const f = render(S, 37, 18, PM, { contrast: 1.25 });
-  put(f, 33, 8, 'white');
+  const f = render(S, PW, 18, PM, { contrast: 1.25 });
+  put(f, PW - 4, 8, 'white');
   return f;
 }
 function shardBolt() {

@@ -171,6 +171,7 @@ Add `?prof` to the URL to fill `HS.PROF` with per-system ms per frame. Each test
   - Use `folds()` on cloth and `bumpy()` on flesh and stone.
   - No dithering mush and nothing that looks AI-made.
   - Every pixel must be on the palette.
+  - One exception (round 143, the owner found them too big and blocky): crossbow bolts (`bolt`, `bolt_<id>` in `vfx.mjs`) render on fine 1 px pixels through `fine()` and carry `f.fine`, which `sprites.mjs` skips in the chunky pass; premium bolts are 1.1x the plain one (`PK`).
   - Chunky pixels: art ships on a 2x2 grid (each art pixel is 2 world pixels), so details under 2 px vanish. Keep thin parts (halos, strings, rims) at least 2 px thick and check with `CHUNKY=1` previews. The screen always uses a whole-number scale with nearest-neighbour pixels.
   - Characters face right; the engine flips them.
   - Every character frame sets `ax`/`ay` at the feet.

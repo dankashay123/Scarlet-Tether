@@ -168,7 +168,7 @@ function sheet(name, anims, extra = {}) {
   setRes(FINE_SHEETS.has(name) ? 1 : CHUNK);
   if (OVR[name]) { anims = { ...anims }; for (const [a, fn] of Object.entries(OVR[name])) anims[a] = fn(); }
   // Snap every frame (models and the older hand-drawn art) to the chunky grid.
-  if (!FINE_SHEETS.has(name)) for (const [a, fs] of Object.entries(anims)) for (const f of fs) chunkify(f, { outline: OVR[name] && OVR[name][a] ? false : 'auto' });
+  if (!FINE_SHEETS.has(name)) for (const [a, fs] of Object.entries(anims)) for (const f of fs) if (!f.fine) chunkify(f, { outline: OVR[name] && OVR[name][a] ? false : 'auto' }); // round 143: bolts stay fine
   // Monster frames are cropped to their pixels (on the 2x2 grid), keeping the feet anchor.
   if (name.startsWith('mon_')) for (const fs of Object.values(anims)) fs.forEach((f, i) => { if (f.ax !== undefined) fs[i] = trim(f); });
   // Each animation is a strip of cells as wide as its widest frame; strips
