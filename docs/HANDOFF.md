@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 138 (build 138, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 139 (build 139, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; rounds 136-138 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-139 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -372,9 +372,25 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   rounds 133-135 all deployed first time. If the owner sends a failed-deploy
   email, check the run's job steps before changing anything (round 131's was
   a 504 on GitHub's side).
-- **Offered after round 138, not picked yet:** see the end of round 138's reply
-  (the owner answers with numbers or "All"). Round 137's fifth (a "last run"
-  line on the Descent panel) was not picked.
+- **Offered after round 139, not picked yet:** see the end of round 139's reply
+  (the owner answers with numbers or "All").
+- **Benchmarks must run alone (round 139).** Three 8-run `autobench.cjs` jobs
+  at Station XII at once starved the browsers: some runs stalled at 1-2 kills
+  a second (the Reliquary on seed 304 read 1.4 in the batch, 9.4 alone), and
+  the Reliquary and the Nails looked 35% weak when they are level. Run deep
+  benches one at a time (about 2 minutes a run); compare sets per seed. Even
+  alone, about 1 run in 8 stalls (moving all the time, low level, hurt by
+  cherubs' homing shots): the pilot's dodging of homing shots is the next
+  thing to fix there.
+- **Station XII, run alone (round 139, seeds 300-307, medians in kills a
+  second).** Psalter 5.8, Reliquary 5.5, Nails 5.3, Glass 3.6 before and 6.2
+  after `SETK.six.glass` 2.1 (was 1.67) and `guard6.glass` 0.45 (was 0.55);
+  `low6.glass` 0.8 keeps Station VI about where it was. The round 138 numbers
+  for the other sets came from parallel runs: rerun them alone before tuning.
+- **Aspersion (round 139):** a burst of holy water (a `still` nova, 80 px, 34
+  damage) on top of the heal and pool. A version that pulled foes in made the
+  Font slower (it dragged packs onto a ranged hero, who dashed away from his
+  own pools). Same-load A/B at Station VI: 90 s (old) against 83 s.
 - **Where kills come from (round 138, `killBy`/`dmgBy` in autobench, Station
   VI).** The Reckoning decides most of the gap between sets: the Choir's Rain
   of Reckoning gets 549-579 of about 620 kills; the Confessor's bolts deal about
@@ -700,6 +716,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 139:** the owner said "All" to round 138's list. The Descent panel's
+  footer shows the last run (`SAVE.lastRun`, `lastRunLine`); Reckonings that
+  need a way of playing have a line in the Rites panel and on their Codex card
+  (`PLAY_TIP`); Aspersion has a burst; bolts fired during the Hundredfold and
+  the Hundred Splinters count as that Reckoning (Rubrics too); the pilot handles
+  each class's pool and dash Reckonings by kind. Station XII alone, 8 seeds:
+  only the Glass Martyr was behind; tuned (see Next steps). Test:
+  `round139.cjs`.
 
 - **Round 138:** the owner said "All except 5" to round 137's list and asked for
   very light sounds. The pet sounds and buff chime now sit about -40 dB (under a
