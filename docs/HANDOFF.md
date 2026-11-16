@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 135 (build 135, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 135 (build 135, on `master` and deployed; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -368,6 +368,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 - **The owner on the Vesper (round 133):** "feels great" with 25% less damage
   taken and 15% more health. Leave it.
+- **Deploys:** since round 133 the workflow retries a failed deploy once;
+  rounds 133-135 all deployed first time. If the owner sends a failed-deploy
+  email, check the run's job steps before changing anything (round 131's was
+  a 504 on GitHub's side).
 - **Offered after round 135, not picked yet:** (1) the Drowned Font is the
   pilot's slowest set at Station VI (100 s) though setbal puts it near the top:
   find out why (pools left behind as the pilot moves on?); (2) the pilot's
@@ -656,7 +660,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   Font low-Station numbers nudged from 5-run pilot data (see Next steps); a
   hold tip on the Zeal bar; the stall's tap line in gold with an arrow; a NEWS
   tile on the pause screen that reopens this build's notes (WHAT'S NEW was
-  chopped at 667x375, so the tile is NEWS). Test: `round135.cjs`.
+  chopped at 667x375, so the tile is NEWS). Test: `round135.cjs`. The Pages
+  deploy (run 43798038952) passed on the first try with the Node 24 actions;
+  the retry step was skipped. Every test, `menus.cjs` at 667x375 (and
+  `TEXT=large`) and a soak per class were clean.
 
 - **Round 134:** the owner said "All" to round 133's list. The Glass Martyr's
   slow pilot runs (and every earlier pilot set comparison) came from
