@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 136 (build 136, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 137 (build 137, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; round 136 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-137 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -372,8 +372,23 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   rounds 133-135 all deployed first time. If the owner sends a failed-deploy
   email, check the run's job steps before changing anything (round 131's was
   a 504 on GitHub's side).
-- **Offered after round 136, not picked yet:** see the end of round 136's reply
+- **Offered after round 137, not picked yet:** see the end of round 137's reply
   (the owner answers with numbers or "All").
+- **All 15 sets through the pilot (round 137, Station VI, seeds 100-103, 4
+  runs each, seconds to clear).** Saint: Confessor 58 (65 on a rerun), Choir
+  65, Nails 73, Font 83-87, Stride 102-110. Vesper: Nightblade 50 (60 after
+  `low6.iron` 0.8), Viper's Fang 60, Bloodletter 66, Veil 68, Dusk Walker 72.
+  Anchoress: Lantern 66, Thorn 72, Reliquary 73, Psalter 77, Glass 85 (66
+  after `low6.glass` 1, was 0.7). Noise on fixed seeds is about 10% (the
+  Confessor 58 then 65). Open: the Stride and the Font. Neither moved with
+  more low-Station damage (Stride ×1.3, Font 1.45 tried and taken back), and a
+  pilot that dashed to renew the Stride's window was no faster and lost more
+  health (taken back). Next guess: their rites (Stride: Ember Step, Martyr's
+  Ward, the Pilgrim's Reckoning; Font: Holy Water, Baptism, the Great Font):
+  count each rite's kills, or try the sets on the starter rites.
+- **The Psalter and pools (round 137).** Its set bonus is about rite casts
+  (every shard fires on a cast), not pools, so the Font's pool problem does not
+  apply; the pilot already casts every rite as soon as it is ready.
 - **The Drowned Font and the pilot (round 136).** Why the pilot was slow with
   it: the Font hurts foes standing in its pools, and while fighting only about
   3 foes stood in its 8-9 pools at a time (kills a second while engaged 7.5-8.5
@@ -665,6 +680,19 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 137:** the owner said "All" to round 136's list. All 15 sets through
+  the pilot on fixed seeds (see Next steps): `low6.glass` 1 (was 0.7) and
+  `low6.iron` 0.8 shipped; a card's low line reads NO EXTRA DAMAGE AT 6 PIECES
+  for a factor of 1. Hold tips on the two auto icons; a deferred tap on the play
+  screen was lost (the HUD's own buttons are handled in `pointerDown`), fixed with
+  `hudIconTap` on release. Pet cues: the Finch's chirp, the Lamb's bleat and green
+  ring, the Mouse's puff and embers, the Cherub's clink and grey ring (sounds from
+  `tools/build-pets.py`). Damage numbers re-check their spot each frame and small
+  ones take part, so a blade storm's numbers no longer stack (`round132.cjs` now
+  0 text problems). `round129.cjs` and `round130.cjs` still expected round 135's
+  Font 0.78; updated. Test: `round137.cjs`. An Anchoress soak run alongside other
+  tests stuck on a dropped sheet load; alone it was clean.
 
 - **Round 136:** the owner said "let's continue", so round 135's five suggestions
   were done: the Drowned Font's slow pilot runs explained and tuned (see Next

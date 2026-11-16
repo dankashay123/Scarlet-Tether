@@ -71,6 +71,7 @@ multi-gigabyte archives.
 
 - `chime.mp3` (the Anchoress's shards): synthesised by `tools/build-chime.py`, no sample used.
 - `buff.mp3` (a buff icon appearing, round 136): synthesised by `tools/build-buff.py`, no sample used.
+- `chirp.mp3`, `bleat.mp3`, `puff.mp3` (the Nail Finch, the White Lamb, the Censer Mouse, round 137): synthesised by `tools/build-pets.py`, no sample used.
 - `slash.mp3`, `shing.mp3`, `stab.mp3`, `whirl.mp3` (the Vesper's blades, round 122): synthesised by `tools/build-blades.py`, no sample used.
 - `sacrifice.mp3` (the Wound sacrifice): synthesised by `tools/build-sacrifice.py`, no sample used.
 

@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '136';
+const BUILD = '137';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '137': ['HOLD THE AUTO PLAY OR AUTO WOUNDS ICON TO SEE WHAT IT DOES. A QUICK TAP STILL SWITCHES IT.', 'PETS HAVE THEIR OWN CUES: THE NAIL FINCH CHIRPS, THE WHITE LAMB BLEATS AS IT HEALS, THE CENSER MOUSE PUFFS EMBERS ON FOES, AND THE STONE CHERUB CLINKS WHEN IT SOFTENS A HIT.', 'DAMAGE NUMBERS FROM FAST HITS NO LONGER STACK ON TOP OF EACH OTHER.', 'AT STATION VI AND LOWER: THE GLASS MARTYR NO LONGER LOSES DAMAGE AT 6 PIECES, AND THE NIGHTBLADE DEALS A LITTLE LESS AT 6 PIECES.'],
   '136': ['NEWS ON THE PAUSE SCREEN HAS TABS FOR THE LAST THREE BUILDS.', 'HOLD THE TOLL BAR TO SEE HOW THE TOLL FILLS.', 'A SOFT CHIME PLAYS AS A BUFF ICON APPEARS.', 'THE DROWNED FONT DEALS MORE DAMAGE AT STATION VI AND LOWER AT 6 PIECES.', 'AUTO PLAY HOLDS GROUND IN ITS OWN POOLS WHEN WEARING THE DROWNED FONT.'],
   '135': ['NEWS ON THE PAUSE SCREEN SHOWS THIS LIST AGAIN.', 'HOLD THE ZEAL BAR TO SEE HOW ZEAL STEPS WORK.', 'IN PELL\'S STALL THE LINE THAT OPENS A SET IS GOLD WITH AN ARROW.', 'THE HUNDRED NAILS\' EXTRA DAMAGE AT LOW STATIONS IS SMALLER AT 6 PIECES.'],
   '134': ['SETTINGS, CONTROLS: BUFF ICONS ALL, NO PETS OR OFF.', 'PET ICONS SIT ON A DISC OF THEIR COLOUR, SO DARK PETS STAND OUT.', 'AFTER AN UPDATE THE TITLE SCREEN SAYS WHICH BUILD YOU ARE ON.'],
@@ -641,8 +642,8 @@ if (document.fonts) Promise.all([document.fonts.load(fontOf(22, false)), documen
 // <audio> elements routed through the same context, so memory stays low.
 // iOS 17+: audioSession 'ambient' makes the game follow the silent switch.
 const AUDIO = (() => {
-  const SFX = ['slash', 'shing', 'stab', 'whirl', 'swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'buff', 'sacrifice', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_ashWidow', 'fall_ashWidow'];
-  const VOL = { slash: 0.45, shing: 0.35, stab: 0.5, whirl: 0.45, swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, buff: 0.28, sacrifice: 0.55, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
+  const SFX = ['slash', 'shing', 'stab', 'whirl', 'swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'buff', 'chirp', 'bleat', 'puff', 'sacrifice', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_ashWidow', 'fall_ashWidow'];
+  const VOL = { slash: 0.45, shing: 0.35, stab: 0.5, whirl: 0.45, swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, buff: 0.28, chirp: 0.22, bleat: 0.3, puff: 0.3, sacrifice: 0.55, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
   const A = { ctx: null, buf: {}, last: {}, muted: false, master: null, sfxBus: null, voiceBus: null, musicBus: null, tracks: {}, want: [] };
   try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch { /* not supported */ }
   try { A.muted = !!JSON.parse(localStorage.getItem('hollow-saint') || '{}').muted; } catch { /* private mode */ }
@@ -812,9 +813,7 @@ function pointerDown(id, cx, cy) {
   if (HUD.minimap && inRect(HUD.minimap, x, y)) { sfx('tap'); game.state = 'map'; return; }
   if (hitBtn(HUD.pause, x, y)) { sfx('tap'); game.state = 'pause'; return; }
   if (hitBtn(HUD.bag, x, y)) { openInventory(); return; }
-  if (autoHudShown()) { const I = autoIcons(), hit = (c) => Math.hypot(x - c.x, y - c.y) < c.r + 5;
-    if (hit(I.play)) { autoPlayTap(); return; }
-    if (hit(I.wounds)) { if (autoRun()) toast('AUTO WOUNDS ARE ALWAYS ON IN AUTO PLAY.', 1.8); else { autoW().on = !autoW().on; persist(); toast(autoW().on ? 'AUTO WOUNDS ON' : 'AUTO WOUNDS OFF', 1.4); } sfx('tap'); return; } }
+  if (hudIconTap(x, y)) return;
   if (tutTap(x, y)) return;
   if (game.interact && hitBtn(HUD.act, x, y)) { game.interact.use(); return; }
   if (hitBtn(HUD.dash, x, y, 10)) { input.dash = true; HUD.dash.pressed = 0.12; return; }
@@ -832,6 +831,15 @@ function pointerDown(id, cx, cy) {
   for (const e of enemies) { if (e.dead || e.state === 'spawn') continue; const d = Math.hypot(e.x - wx, e.y - e.hy - wy); if (d < bd) { bd = d; best = e; } }
   player.lock = best && player.lock !== best ? best : null;
 }
+// The auto icons by the minimap. Round 137: also called on release for a deferred tap (they have hold tips), since
+// onTap does not handle the play screen's own buttons.
+function hudIconTap(x, y) {
+  if (game.state !== 'play' || !autoHudShown()) return false;
+  const I = autoIcons(), hit = (c) => Math.hypot(x - c.x, y - c.y) < c.r + 5;
+  if (hit(I.play)) { autoPlayTap(); return true; }
+  if (hit(I.wounds)) { if (autoRun()) toast('AUTO WOUNDS ARE ALWAYS ON IN AUTO PLAY.', 1.8); else { autoW().on = !autoW().on; persist(); toast(autoW().on ? 'AUTO WOUNDS ON' : 'AUTO WOUNDS OFF', 1.4); } sfx('tap'); return true; }
+  return false;
+}
 function pointerMove(id, cx, cy) {
   if (game.state === 'store' && game.store && game.store.drag && game.store.drag.id === id) { const [, y] = toLocal(cx, cy), D = game.store.drag; game.store.scroll = D.s0 - (y - D.y0); gearGeo(featLayout(), game.store, storeList().length); return; }
   if (game.hold && game.hold.id === id) { const [x, y] = toLocal(cx, cy); if (Math.hypot(x - game.hold.x, y - game.hold.y) > 6) game.hold = game.hold.defer ? { ...game.hold, t: Infinity } : null; } // a deferred tap still lands on release
@@ -848,7 +856,7 @@ function pointerMove(id, cx, cy) {
 }
 function pointerUp(id) {
   if (game.store && game.store.drag && game.store.drag.id === id) game.store.drag = null;
-  if (game.hold && game.hold.id === id) { const h = game.hold; game.hold = null; if (h.defer && game.state === h.st) onTap(h.x, h.y); } // a deferred tap, released before the hold
+  if (game.hold && game.hold.id === id) { const h = game.hold; game.hold = null; if (h.defer && game.state === h.st && !onTap(h.x, h.y)) hudIconTap(h.x, h.y); } // a deferred tap, released before the hold
   if (game.ench && game.ench.drag && game.ench.drag.id === id) game.ench.drag = null;
   if (game.forge && game.forge.drag && game.forge.drag.id === id) game.forge.drag = null;
   if (game.state === 'designer' && DES) { desUp(id); return; }
@@ -1604,7 +1612,7 @@ function addToll(e) {
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
 // fourOf(id): a set's damage at 4 or 5 pieces (fourBy overrides SETK.four for one set).
 const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
-const SETK = { choirHp: 3, choirHp6: 3, choirR: 110, fontHp: 8, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 3.6, strideT: 7, font: 3.5, bound: 1.6, bound6: 2.75, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3, strideT4: 4, font4: 3.5, bound4: 2.6, choir4: 3, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 63, stride: 140, iron: 150, alms: 140, glass: 400, font: 450, choir: 233, road: 230, bell: 230, reliquary: 270, psalter: 450, lantern: 200, gaol: 35, thorn: 160 } , /* rounds 101 and 104: 4+2 mixes toward about 6 kills a second at XII */ shardPer: 15, crushK: 3, momK: 22, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ring4: 4, strideGuard: 30, low: { gaol: 1.4, lantern: 2.5, confessor: 1.8, font: 1.6, nails: 1.4, choir: 1.4, thorn: 1.4, psalter: 1.3, glass: 1.2 }, low6: { nails: 1.3, font: 1.3, choir: 0.68, glass: 0.7, gaol: 1.9, thorn: 1.8, confessor: 1.25, lantern: 1.25 }, boss6: { nails: 2.2, glass: 2.7, font: 6.5, confessor: 3.4, choir: 1.6, iron: 1.7, alms: 4.2, reliquary: 1.2, thorn: 1.05, psalter: 1.3 }, boss: { font: 3.3, alms: 3.4, bell: 3.4, gaol: 3.2, iron: 2.05, road: 1.6, confessor: 5, nails: 2.4, stride: 1.1, choir: 2.3, glass: 2.8, lantern: 1.8, psalter: 1.65, thorn: 1.55, reliquary: 1.55 }, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 10, veinK: 2, thornK6: 150, psalK6: 2.4, lampK6: 80, lampHop: 0.35, // Round 101: every set's six pieces tuned to about 7 kills a second at Station XII (setbal.cjs, 6 seeds; the Stride, Confessor,
+const SETK = { choirHp: 3, choirHp6: 3, choirR: 110, fontHp: 8, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 3.6, strideT: 7, font: 3.5, bound: 1.6, bound6: 2.75, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3, strideT4: 4, font4: 3.5, bound4: 2.6, choir4: 3, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 63, stride: 140, iron: 150, alms: 140, glass: 400, font: 450, choir: 233, road: 230, bell: 230, reliquary: 270, psalter: 450, lantern: 200, gaol: 35, thorn: 160 } , /* rounds 101 and 104: 4+2 mixes toward about 6 kills a second at XII */ shardPer: 15, crushK: 3, momK: 22, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ring4: 4, strideGuard: 30, low: { gaol: 1.4, lantern: 2.5, confessor: 1.8, font: 1.6, nails: 1.4, choir: 1.4, thorn: 1.4, psalter: 1.3, glass: 1.2 }, low6: { nails: 1.3, font: 1.3, choir: 0.68, glass: 1, iron: 0.8, gaol: 1.9, thorn: 1.8, confessor: 1.25, lantern: 1.25 }, boss6: { nails: 2.2, glass: 2.7, font: 6.5, confessor: 3.4, choir: 1.6, iron: 1.7, alms: 4.2, reliquary: 1.2, thorn: 1.05, psalter: 1.3 }, boss: { font: 3.3, alms: 3.4, bell: 3.4, gaol: 3.2, iron: 2.05, road: 1.6, confessor: 5, nails: 2.4, stride: 1.1, choir: 2.3, glass: 2.8, lantern: 1.8, psalter: 1.65, thorn: 1.55, reliquary: 1.55 }, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 10, veinK: 2, thornK6: 150, psalK6: 2.4, lampK6: 80, lampHop: 0.35, // Round 101: every set's six pieces tuned to about 7 kills a second at Station XII (setbal.cjs, 6 seeds; the Stride, Confessor,
   // Lantern and Nails through their own numbers, so no card shows a multiplier under 1), and the sets that
   // took the most damage given a damage-taken multiplier at six pieces (guard6), so no set is far safer or deadlier than another.
   six: { font: 1.7, choir: 1.44, iron: 1.75, road: 1.8, alms: 1.05, bell: 1.2, gaol: 1.05, glass: 1.67, thorn: 1.5, psalter: 1.79 },
@@ -6514,6 +6522,7 @@ function damagePlayer(src, dmg, contacts, how) {
   if (isWardenSrc(src)) dmg = Math.min(dmg, Math.ceil(player.maxHp * WARDEN_BLOW));
   if (tal('unbroken')) dmg = Math.min(dmg, Math.ceil(player.maxHp * 0.3));
   noteHurt(src, how, dmg);
+  if (pet('cherub') && game.time - (player.cherubT ?? -9) > 1.5) { player.cherubT = game.time; sfx('block', { vol: 0.25, rate: 1.35, gap: 1 }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.3, r: 22, color: '178,184,196' }); } // round 137: the Stone Cherub takes the edge off a hit
   player.hp -= dmg; player.iframes = T.hurtIframes; player.hurt = 0.3; if (pas('ironvigil')) player.ivT = game.time + 2; game.lastHit = src.type; sfx('hurt'); buzz(35);
   if (G.powers.has('ashRing') && (player.ashT || 0) < game.time) { player.ashT = game.time + 2; fireRing(14); }
   game.shake = Math.max(game.shake, 4); game.hitstop = 0.05;
@@ -7102,7 +7111,7 @@ for (const id of ALL_SETS) { const b6 = VSETS[id].bonus.find((q) => q[0] === 6),
   if (b4 && bk && bk > 1) b4[1] = `${b4[1]} WARDENS TAKE ${Math.round((bk - 1) * 100)}% MORE DAMAGE FROM YOU.`;
   const b6w = VSETS[id].bonus.find((q) => q[0] === 6), bk6 = SETK.boss6[id]; if (b6w && bk6 && bk6 !== bk) b6w[1] = `${b6w[1]} WARDENS TAKE ${Math.round((bk6 - 1) * 100)}% MORE DAMAGE FROM YOU INSTEAD.`;
   // Round 130: the low-Station factor (SETK.low, low6) is written on the cards too.
-  const lowTxt = (m, inst) => `STATION VI OR LOWER: ${m > 1 ? '+' : '-'}${Math.round(Math.abs(m - 1) * 100)}% DAMAGE${inst ? ' INSTEAD' : ''} (FADES BY XII).`; // round 131: shorter
+  const lowTxt = (m, inst) => m === 1 ? 'STATION VI OR LOWER: NO EXTRA DAMAGE AT 6 PIECES.' : `STATION VI OR LOWER: ${m > 1 ? '+' : '-'}${Math.round(Math.abs(m - 1) * 100)}% DAMAGE${inst ? ' INSTEAD' : ''} (FADES BY XII).`; // round 131: shorter
   const l4 = SETK.low[id], l6 = SETK.low6[id]; if (b4 && l4) b4[1] = `${b4[1]} ${lowTxt(l4)}`; if (b6w && l6 && l6 !== l4) b6w[1] = `${b6w[1]} ${lowTxt(l6, !!l4)}`; }
 const mySets = () => HERO_SETS[heroId()];
 const starterSet = () => STARTER[heroId()];
@@ -8203,12 +8212,12 @@ function updatePets(dt) {
   const aim = () => Math.atan2(t.y - (t.hy || 10) - (from.y - 12), t.x - from.x);
   // Round 107: a pet that acts shows it: the follower hops, with a small burst in its own colour and a quiet sound.
   const act = (id, ramp, snd, o) => { if (PETF.on && petShown() === id) PETF.hop = 0.24; if (ramp) vemit(from.x, from.y - 10, { n: 5, ramp, sp: 30, up: 30, life: 0.4, size: 2, glow: 4 }); if (snd) sfx(snd, { gap: 0.3, bus: 'sfx', ...o }); };
-  if (pet('nailfinch') && every('finch', 1.5)) { if (t) { spawnBolt(from.x, from.y - 12, aim(), false); act('nailfinch', 'iron'); } else T0.finch = 1.5; }
+  if (pet('nailfinch') && every('finch', 1.5)) { if (t) { spawnBolt(from.x, from.y - 12, aim(), false); act('nailfinch', 'iron', 'chirp', { vol: 0.6, gap: 4.4 }); } else T0.finch = 1.5; }
   if (pet('votivewisp') && every('wisp', 5)) { if (t) { for (const k of [-1, 0, 1]) spawnBolt(from.x, from.y - 12, aim() + k * 0.18, false); act('votivewisp', 'holy', 'cast', { vol: 0.2, rate: 1.5 }); } else T0.wisp = 5; }
-  if (pet('censermouse') && every('mouse', 1)) { const fs = nearestFoes(from.x, from.y, 6, 75); for (const e of fs) e.burn = Math.max(e.burn || 0, T.thurible.burn.time); if (fs.length) act('censermouse', 'fire'); }
+  if (pet('censermouse') && every('mouse', 1)) { const fs = nearestFoes(from.x, from.y, 6, 75); for (const e of fs) { vemit(e.x, e.y - (e.hy || 10), { n: 2, ramp: 'fire', sp: 18, up: 26, life: 0.45, size: 2, glow: 4 }); e.burn = Math.max(e.burn || 0, T.thurible.burn.time); } if (fs.length) act('censermouse', 'fire', 'puff', { gap: 3 }); } // round 137: embers on each foe it touches, a soft puff (the Saint's censer already lights most foes near him)
   if (pet('almshound') && every('hound', 2)) { const e = nearestFoes(p.x, p.y, 1, 80)[0]; if (e) { const [lo, hi] = T.crossbow.dmg; hurtEnemy(e, rand(lo, hi) * MELEE.k, false, 0, 0, 40, { color: PAL.cloth0 }); if (!e.boss) e.bound = Math.max(e.bound || 0, 0.5); pfxHit(e.x, e.y - (e.hy || 10), false, 'holy', true); act('almshound', null, 'mswing', { vol: 0.2, rate: 1.3 }); } else T0.hound = 2; }
   if (pet('bellcrow') && every('crow', 8)) { const fs = nearestFoes(p.x, p.y, 12, 100).filter((e) => !e.boss); if (fs.length) { for (const e of fs) e.bound = Math.max(e.bound || 0, 1); rings.push({ x: p.x, y: p.y - 10, t: 0, max: 0.5, r: 100, color: '232,56,63', flat: true }); act('bellcrow', 'blood', 'die_vermin0', { vol: 0.3, rate: 1.4, bus: 'sfx' }); } else T0.crow = 8; } // round 121: the Night Raven's cry, in red
-  if (pet('lamb') && every('lamb', 4) && p.hp < p.maxHp) { p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01); act('lamb', null); vemit(p.x, p.y - 12, { n: 4, ramp: 'life', sp: 14, up: 40, life: 0.6, size: 2, glow: 4, spread: 6 }); }
+  if (pet('lamb') && every('lamb', 4) && p.hp < p.maxHp) { p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01); act('lamb', null, 'bleat', { gap: 11.5 }); rings.push({ x: p.x, y: p.y - 4, t: 0, max: 0.5, r: 26, color: '120,220,130', flat: true }); vemit(p.x, p.y - 12, { n: 4, ramp: 'life', sp: 14, up: 40, life: 0.6, size: 2, glow: 4, spread: 6 }); }
 }
 // A pet as a list icon: its 36 px sprite at two thirds, feet a little under the ring's centre.
 function petIcon(id, x, y, fr = 0, k = 0.67) { ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(k, k); spr('pets', id, fr, 0, 0); ctx.restore(); }
@@ -9556,11 +9565,14 @@ function render() {
     const sc = n.crit ? (1.45 + 0.25 * (n.heat || 0)) * (1 + 0.6 * pop) : n.small ? 1 : 1 + 0.3 * pop;
     ctx.globalAlpha = n.t > 0.65 ? Math.max(0, 1 - (n.t - 0.65) / 0.2) : 1;
     const str = String(n.v) + (n.crit && typeof n.v === 'number' ? '!' : '');
-    if (!n.small) {
+    { // round 137: small numbers (poison, bleed and burn ticks) take part too, or big ones landed on them
       // First try beside, then above; the number keeps the spot it found.
-      const bw = textW(str, sc, false), bh = 8 * sc, hit = (x, y) => placed.some((q) => x < q.x + q.w && x + bw > q.x && y < q.y + q.h && y + bh > q.y);
+      const bw = textW(str, sc, n.small), bh = 8 * sc, hit = (x, y) => placed.some((q) => x < q.x + q.w && x + bw > q.x && y < q.y + q.h && y + bh > q.y);
       const x0 = n.x - cx - bw / 2, y0 = n.y - cy - rise;
-      if (n.dx === undefined) { n.dx = 0; n.lift = 0; for (const [dx, dy] of [[0, 0], [bw * 0.6, 0], [-bw * 0.6, 0], [0, bh + 1], [bw * 0.6, bh + 1], [-bw * 0.6, bh + 1], [0, 2 * bh + 2]]) if (!hit(x0 + dx, y0 - dy)) { n.dx = dx; n.lift = dy; break; } }
+      // Round 137: checked every frame, not only at the start: a new number rises fast and ran into the one above it
+      // (a blade storm's steady hits). It only moves when its spot is taken, and never back down.
+      if (n.dx === undefined) { n.dx = 0; n.lift = 0; }
+      if (hit(x0 + n.dx, y0 - n.lift)) for (const [dx, dy] of [[0, 0], [bw * 0.6, 0], [-bw * 0.6, 0], [0, bh + 1], [bw * 0.6, bh + 1], [-bw * 0.6, bh + 1], [0, 2 * bh + 2], [0, 3 * bh + 3]]) if (dy >= n.lift && !hit(x0 + dx, y0 - dy)) { n.dx = dx; n.lift = dy; break; }
       n.lift = Math.min(n.lift, Math.max(0, y0 - 2));
       placed.push({ x: x0 + n.dx, y: y0 - n.lift, w: bw, h: bh });
     }
@@ -10465,6 +10477,10 @@ function renderHud() {
     ctx.beginPath(); ctx.moveTo(P.x - 2.5, P.y - 4); ctx.lineTo(P.x + 4, P.y); ctx.lineTo(P.x - 2.5, P.y + 4); ctx.fill();
     ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.arc(P.x, P.y, P.r - 3.2, -2.6, 1.2); ctx.stroke();
     const Q = I.wounds; disc(Q, autoWoundsOn()); // a drop of blood
+    // Round 137: hold either icon for what it does (a quick tap still switches it, on release).
+    const R0 = game.run, cut = `AN AUTO DESCENT PAYS ${Math.round((1 - AUTO_PAY.drop) * 100)}% LESS GOLD AND DROPS AND ${Math.round((1 - AUTO_PAY.xp) * 100)}% LESS XP.`;
+    BUFF_TIPS.push({ x: P.x - P.r - 3, y: P.y - P.r - 3, w: P.r * 2 + 6, h: P.r * 2 + 6, defer: true, below: true, title: 'AUTO PLAY', text: autoRun() ? `AUTO PLAY MOVES AND FIGHTS FOR YOU. TAP TO ${R0.autoOff ? 'TURN IT BACK ON' : 'PAUSE IT'}. THIS DESCENT STILL PAYS LESS WHILE IT IS PAUSED.` : `AUTO PLAY MOVES AND FIGHTS FOR YOU. TAP TO TURN IT ON (ONLY ON A STATION WHOSE WARDEN YOU HAVE KILLED). ${cut}` });
+    BUFF_TIPS.push({ x: Q.x - Q.r - 3, y: Q.y - Q.r - 3, w: Q.r * 2 + 6, h: Q.r * 2 + 6, defer: true, below: true, title: 'AUTO WOUNDS', text: autoRun() ? 'AUTO WOUNDS PICKS YOUR WOUNDS AT EACH LEVEL. IT IS ALWAYS ON IN AUTO PLAY. SET WHAT IT FAVOURS IN THE AUTO WINDOW ON THE PAUSE SCREEN.' : 'AUTO WOUNDS PICKS YOUR WOUNDS AT EACH LEVEL. TAP TO TURN IT ON OR OFF. SET WHAT IT FAVOURS IN THE AUTO WINDOW ON THE PAUSE SCREEN.' });
     ctx.beginPath(); ctx.moveTo(Q.x, Q.y - 5.5); ctx.quadraticCurveTo(Q.x + 4.5, Q.y + 0.5, Q.x + 3.5, Q.y + 2.5); ctx.arc(Q.x, Q.y + 1.8, 3.6, 0.2, Math.PI - 0.2); ctx.quadraticCurveTo(Q.x - 4.5, Q.y + 0.5, Q.x, Q.y - 5.5); ctx.fill();
     if (autoRun() && AP.hand && !game.run.autoOff) text('YOU STEER', P.x - P.r - 3, P.y - 4, PAL.gold1, { align: 'right', small: true }); }
   // The kill streak moved to a plate under the Zeal bar in round 128 (see the Zeal block above).

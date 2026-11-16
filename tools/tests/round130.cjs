@@ -27,7 +27,7 @@ fs.mkdirSync(`${S}/shots`, { recursive: true });
   }
   out.buffOk = Object.values(out.buffs).every((q) => ['shrine', 'reck', 'ward', 'stride', 'frenzy'].every((id) => q.ids.includes(id)) && q.wardSpent > 0.2 && q.wardSpent < 0.8 && !q.text);
   out.cards = await p.evaluate(() => ['confessor', 'font', 'lantern'].map((id) => HS.VSETS[id].bonus.filter((q) => q[0] >= 4).map((q) => (q[1].match(/STATION VI OR LOWER: ([+-]\d+)% DAMAGE( INSTEAD)?/) || [])[1] || null)));
-  out.cardsOk = JSON.stringify(out.cards) === JSON.stringify([['+80', '+25'], ['+60', '-22'], ['+150', '+25']]);
+  out.cardsOk = JSON.stringify(out.cards) === JSON.stringify([['+80', '+25'], ['+60', '+30'], ['+150', '+25']]);
   if (globalThis.__more) await globalThis.__more(p, out);
   await p.evaluate(() => { HS.SAVE.hero = 'saint'; });
   console.log(JSON.stringify(out));

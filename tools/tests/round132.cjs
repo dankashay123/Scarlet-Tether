@@ -20,7 +20,7 @@ fs.mkdirSync(`${S}/shots`, { recursive: true });
   await p.screenshot({ path: `${S}/shots/r132-held.png`, clip: { x: 0, y: 0, width: 300, height: 170 } });
   // The Vesper's storm with its time left.
   await run('mendicant'); await p.waitForTimeout(300);
-  out.storm = await p.evaluate(async () => { const P = HS.player, e = HS.spawnMonster('risen', P.x + 60, P.y, { room: HS.game.curRoom.id }); e.state = 'move'; e.spawnDelay = 0; e.asleep = false; e.hp = e.maxHp = 1e7; e.speed = 0; const V = P.vd; V.st = 'storm'; V.t = 1; V.tgt = e; V.cx = e.x; V.cy = e.y; await new Promise((r) => setTimeout(r, 120)); const q = HS.activeBuffs().find((x) => x.B.id === 'storm'); return q ? { left: +q.left.toFixed(2) } : null; });
+  out.storm = await p.evaluate(async () => { const P = HS.player, e = HS.spawnMonster('risen', P.x + 60, P.y, { room: HS.game.curRoom.id }); e.state = 'move'; e.spawnDelay = 0; e.asleep = false; e.hp = e.maxHp = 1e7; e.speed = 0; HS.game.cardAt = -99; const V = P.vd; V.st = 'storm'; V.t = 1; V.tgt = e; V.cx = e.x; V.cy = e.y; await new Promise((r) => setTimeout(r, 120)); const q = HS.activeBuffs().find((x) => x.B.id === 'storm'); return q ? { left: +q.left.toFixed(2) } : null; });
   await p.screenshot({ path: `${S}/shots/r132-storm.png`, clip: { x: 0, y: 0, width: 300, height: 170 } });
   // Hold the streak plate.
   const pos = await p.evaluate(async () => { HS.game.massacre = { n: 6, last: HS.game.time + 30 }; await new Promise((r) => setTimeout(r, 120)); const q = HS.HOLD_TIPS.find((r) => r.title === 'KILL STREAK'); if (!q) return null; const c = document.getElementById('screen').getBoundingClientRect(), k = c.width / HS.W; return { x: c.left + (q.x + q.w / 2) * k, y: c.top + (q.y + q.h / 2) * k }; });
