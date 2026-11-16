@@ -329,8 +329,9 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## The owner's preferences
 
-- **Set balance is done (round 141, the owner's word).** "15% is fine. They don't
-  need to be 100% equal. It's fine if one set is better than the other." Do not
+- **Set balance is done (round 141, the owner's word: within 20% is fine).** "15% is fine. They don't
+  need to be 100% equal. It's fine if one set is better than the other." Then:
+  "As long as they are within 20% of each other, it's fine." Do not
   run or suggest set re-measuring or tuning on your own; reopen it only when the
   owner says a set feels off in play, or a change clearly breaks one (a set far
   outside the 5-8 kills a second band at Station XII). Do not use balance
