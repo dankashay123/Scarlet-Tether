@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 139 (build 139, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 140 (build 140, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; rounds 136-139 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-140 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -372,8 +372,19 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   rounds 133-135 all deployed first time. If the owner sends a failed-deploy
   email, check the run's job steps before changing anything (round 131's was
   a 504 on GitHub's side).
-- **Offered after round 139, not picked yet:** see the end of round 139's reply
-  (the owner answers with numbers or "All").
+- **Offered after round 140, not picked yet:** see the end of round 140's reply;
+  round 139's five (all 11 other sets alone at XII, the pilot and homing shots,
+  a gear tip on the Station picker, a NEW BEST mark, the Glass Martyr against
+  Wardens) were set aside for the owner's Sanctity request.
+- **Sanctity with Might (round 140, the owner's request).** Measured Might (random
+  rolls; seeds vary): plain Blessed gear 1.7-2.6, a six-piece set with arms
+  2.95-4.2, plus enchants, passives and talents 3.8-5.1. Need factor
+  `NEED_R^0.58`: 1 at I, 1.5 at VI, 3.0 at XII, 4.75 at XX, 6.2 at XXX. The
+  Saint's random-roll set build at gear XII reads 867 against a need of 881.
+  The `MIGHT` weights are guesses from earlier measurements (a full set x1.7,
+  arms x1.1, each Hallowed power x1.04, enchants +4% a tier, passives x1.06,
+  Rubrics +1% a tier, the Calling +0.8% a point, legendary talents x1.03); check
+  them against autobench if the owner finds the number off for a build.
 - **Benchmarks must run alone (round 139).** Three 8-run `autobench.cjs` jobs
   at Station XII at once starved the browsers: some runs stalled at 1-2 kills
   a second (the Reliquary on seed 304 read 1.4 in the batch, 9.4 alone), and
@@ -716,6 +727,12 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 140:** the owner asked for Sanctity to count everything that makes a
+  hero stronger, not only item levels. Your Sanctity is now gear Sanctity times
+  Might (`mightParts`), the Station's need is on the same scale (`stationNeed`),
+  and tapping Sanctity in the bag shows the breakdown. Gear power, item
+  Sanctity, drop Sanctity and temper costs are unchanged. Test: `round140.cjs`.
 
 - **Round 139:** the owner said "All" to round 138's list. The Descent panel's
   footer shows the last run (`SAVE.lastRun`, `lastRunLine`); Reckonings that
