@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 140 (build 140, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 141 (build 141, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; rounds 136-140 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-141 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -372,10 +372,23 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   rounds 133-135 all deployed first time. If the owner sends a failed-deploy
   email, check the run's job steps before changing anything (round 131's was
   a 504 on GitHub's side).
-- **Offered after round 140, not picked yet:** see the end of round 140's reply;
-  round 139's five (all 11 other sets alone at XII, the pilot and homing shots,
-  a gear tip on the Station picker, a NEW BEST mark, the Glass Martyr against
-  Wardens) were set aside for the owner's Sanctity request.
+- **Offered after round 141, not picked yet:** see the end of round 141's reply.
+- **All 15 sets at Station XII, run alone (round 141, seeds 300-303, 4 runs,
+  the homing-shot pilot; median kills a second).** Saint: Confessor 7.8, Choir
+  6.5, Stride 6.2, Nails 4.8, Font 4.8. Vesper: Nightblade 7.1, Dusk Walker 7.1,
+  Bloodletter 6.2, Veil 5.9, Viper's Fang 5.5. Anchoress: Thorn 6.3, Lantern 6.0,
+  Reliquary 5.6, Glass 5.4, Psalter 5.1 (the safest: 1.2 health lost a run).
+  Plain Blessed gear with no set: Saint 0.73, Vesper 2.0, Anchoress 0.44 (died
+  in 2 of 4). Nothing tuned: 4 runs are about 15% noise. Candidates for an
+  8-run check: the Confessor (high), the Font and the Nails (low).
+- **Sanctity against play (round 141).** The plain builds read about half a set
+  build's Sanctity but played 3-10x worse, so `MIGHT.six` went 1.7 -> 2.6 and
+  `NEED_EXP` 0.58 -> 0.73 (need factor 1 at I, 1.66 at VI, 4.0 at XII, 7.1 at
+  XX). Among sets Sanctity ranks roughly with play (Nightblade high and fast,
+  Font and Nails low and slow); the Psalter reads high for its defence.
+- **Homing shots (round 141).** The pilot no longer sidesteps every homing shot
+  (it kept moving and barely fought); it dashes sideways when one is within 40
+  px. The Reliquary's stalled map went 1.95 -> 4.7 kills a second.
 - **Sanctity with Might (round 140, the owner's request).** Measured Might (random
   rolls; seeds vary): plain Blessed gear 1.7-2.6, a six-piece set with arms
   2.95-4.2, plus enchants, passives and talents 3.8-5.1. Need factor
@@ -727,6 +740,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 141:** the owner said "All" to round 140's list. The bag's BETTER/WORSE
+  pill now comes from your Sanctity with and without the piece and shows both
+  numbers (`sanctIfWorn`); wearing a piece toasts the change; the pilot dashes
+  out of homing shots instead of stepping across each; all 15 sets and a plain
+  build per class ran alone at Station XII (see Next steps) and the Sanctity
+  weights moved to match play. The worker restarted mid-run once; the Anchoress
+  runs were redone. Test: `round141.cjs`.
 
 - **Round 140:** the owner asked for Sanctity to count everything that makes a
   hero stronger, not only item levels. Your Sanctity is now gear Sanctity times
