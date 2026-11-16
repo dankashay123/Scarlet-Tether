@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 133 (build 133, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 134 (build 134, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -39,7 +39,7 @@ see "The owner's preferences".) When the owner answers with numbers
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
-   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-133 on
+   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-134 on
    `claude/brave-fermi-kw8he3`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
@@ -368,12 +368,21 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 - **The owner on the Vesper (round 133):** "feels great" with 25% less damage
   taken and 15% more health. Leave it.
-- **Offered after round 133, not picked yet:** (1) the Glass Martyr is still
-  the pilot's slowest Anchoress set (110 s at Station VI; its power is shard
-  crits, not range); (2) a setting to show or hide the buff icons; (3) the pet
-  clocks for the faster pets (hound, finch) if the owner wants them; (4) the
-  Lantern and Reliquary with the pilot's new range rechecked on a second
-  seed set; (5) bigger, clearer pet icons in the buff row (the crow is dark).
+- **Offered after round 134, not picked yet:** (1) round 131's `SETK.low6.nails`
+  came from a pilot run without the Nails' own rites; with them the Nails
+  clears in 71 s, so that boost may not be needed; (2) the Choir clears fastest
+  with the pilot at Station VI (52 s) though setbal puts it mid-pack: more
+  runs; (3) the slow group (Font, Stride, Viper, Thorn, Glass, about 91-95 s)
+  checked with more runs; (4) a hold tip on the Zeal bar; (5) the pet clocks
+  for the faster pets if wanted.
+- **Pilot with each set's own rites (round 134, Station VI, 3 runs; seconds
+  to clear and kills a second).** Until round 134 `autobench.cjs SET=` ran
+  every set on the starter rites, so earlier pilot numbers (rounds 130-133)
+  are off for every set whose rites differ. Saint: Choir 52 / 11.7,
+  Confessor 67 / 9.4, Nails 71 / 8.9, Font 94 / 6.2, Stride 95 / 5.8. Vesper:
+  Veil 64 / 8.6, Dusk 66 / 9.4, Bloodletter 67 / 9.4, Nightblade 79 / 7.2,
+  Viper 93 / 6.7. Anchoress: Lantern 66 / 9.7, Psalter 80 / 7.6, Reliquary 84
+  / 7.8, Thorn 91 / 6.7, Glass 93 / 5.3. Nothing tuned from these.
 - **Measured in round 133.** Pilot (Anchoress, Station VI, 3 runs) with the
   closer range: Psalter 91 s / 5.0 kills a second (was 106 / 3.5), Glass 110 /
   4.4 (was 112 / 3.9), Lantern 84 / 7.4 (was 77 / 7.7, within noise).
@@ -636,6 +645,13 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 134:** the owner said "All" to round 133's list. The Glass Martyr's
+  slow pilot runs (and every earlier pilot set comparison) came from
+  `autobench.cjs` never equipping a set's rites; it now does, and all 15
+  sets were rerun (see Next steps). Also: the BUFF ICONS setting (Controls:
+  all, no pets, off), pets on a disc of their colour in the buff row, and the
+  title screen says UPDATED TO BUILD N after an update. Test: `round134.cjs`.
 
 - **Round 133:** round 131's deploy failed with a 504 from GitHub's Pages API
   (round 132's deploy went through, so the site was current). The workflow

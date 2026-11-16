@@ -6,16 +6,22 @@
 // and reports the seconds to kill it (wardenT, null if it lived). NOREFILL=1 lets the pilot die (state 'dead', secs = when).
 const { chromium } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const N = +(process.argv[2] || 3), SECS = +(process.argv[3] || 60), HERO = process.env.HERO || 'saint', ST = +(process.env.STATION || 1) - 1, SET = process.env.SET || '', GEAR = !!process.env.GEAR || !!SET, WARDEN = process.env.WARDEN || '', GEARST = +(process.env.GEARST || 0), STRATUM = +(process.env.STRATUM_K || 1); // STRATUM_K=2 or 3 plays the Drowned Nave or the Ossuary Spire (round 115) // GEARST=12: gear of that Station (default: the Station played)
+// Round 134: SET= also equips that set's own rites (the same table as setbal.cjs); before, every set ran with the starter rites.
+const RITES = HERO === 'anchoress'
+  ? { none: ['svolley', 'sward', 'shattered'], reliquary: ['svolley', 'sward', 'shattered'], glass: ['shrapnel', 'splinter', 'hundredshards'], thorn: ['flight', 'shardchain', 'relicpyre'], psalter: ['consecrate', 'mending', 'reliquaryfont'], lantern: ['emberrelic', 'shardknell', 'relicjudge'] }
+  : HERO === 'mendicant'
+  ? { none: ['smite', 'hook', 'tolling'], iron: ['nailburst', 'shards', 'hundredblows'], road: ['charge', 'vow', 'pyre'], alms: ['smite', 'wellspring', 'deluge'], gaol: ['shackleblow', 'chainsweep', 'verdict'], bell: ['cinderslam', 'toll', 'tolling'] }
+  : { none: ['water', 'chain', 'rain'], nails: ['storm', 'nailring', 'volley'], stride: ['step', 'ward', 'pilgrim'], font: ['water', 'asperse', 'font'], confessor: ['brand', 'chain', 'greatpen'], choir: ['hymn', 'censer', 'rain'] };
 (async () => {
   const b = await chromium.launch(); const errs = [];
   const p = await (await b.newContext({ viewport: { width: 844, height: 390 } })).newPage();
   p.on('pageerror', (e) => errs.push(String(e.stack || e).slice(0, 300)));
   for (let k = 0; k < N; k++) {
-    await p.goto('http://localhost:8123/?town&dev'); await p.waitForTimeout(1500);
+    await p.goto('http://localhost:8123/?town&dev'); await p.waitForTimeout(1500); await p.evaluate((R) => { window.__RITES = R; }, RITES);
     await p.evaluate(([hero, st, gear, set, gst, sk]) => { const il = gst || st + 1; HS.tut.on = false; HS.game.dialog = null; HS.game.news = null; HS.SAVE.hero = hero; HS.SAVE.equip = {}; HS.SAVE.suspend = null; HS.SAVE.autoW = { on: true, off: 2, def: 2, util: 0 };
       if (gear) { HS.SAVE.lvl = 60; for (const sl of ['hood', 'mantle', 'gloves', 'girdle', 'greaves', 'rosary', 'seal', 'relic', 'bow', 'quiver']) HS.SAVE.equip[sl] = HS.makeItem(sl, 2, 'X', undefined, il);
         if (set) { for (const sl of HS.VSETS[set].slots.slice(0, 6)) { const it = HS.makeItem(sl, 4, 'X', undefined, il); it.set = set; HS.SAVE.equip[sl] = it; } for (const sl of ['bow', 'quiver']) HS.SAVE.equip[sl] = HS.armsItem(set, sl, il); } }
-      HS.applyGear(true); HS.SAVE.cleared = 29; HS.SAVE.autoPlay = true; HS.game.descent = { i: st, t: 0, stratum: sk }; HS.beginDescent(st); }, [HERO, ST, GEAR, SET, GEARST, STRATUM]);
+      if (set && window.__RITES && window.__RITES[set]) { const r = window.__RITES[set]; HS.SAVE[hero === 'mendicant' ? 'mrites' : hero === 'anchoress' ? 'arites' : 'rites'] = { m1: r[0], m2: r[1], pen: r[2] }; } HS.applyGear(true); HS.SAVE.cleared = 29; HS.SAVE.autoPlay = true; HS.game.descent = { i: st, t: 0, stratum: sk }; HS.beginDescent(st); }, [HERO, ST, GEAR, SET, GEARST, STRATUM]);
     await p.waitForFunction(() => HS.game.scene === 'wound' && HS.game.state === 'play', null, { timeout: 20000 });
     const r = await p.evaluate(async ([secs, warden, refill]) => { HS.DEV.speed = 2; const P = HS.player; let wardenT = null, wd = null, wet = 0, wetStill = 0, n = 0, root = 0; if (warden) { HS.spawnWarden(warden); wd = HS.game.warden; } let lost = 0, was = P.hp, stuck = 0, lx = P.x, ly = P.y; const t0 = performance.now();
       while (performance.now() - t0 < secs * 500) { await new Promise((r) => setTimeout(r, 100)); if (HS.game.state !== 'play') { if (HS.game.state === 'dead') break; continue; } lost += Math.max(0, was - P.hp); if (refill && P.hp < P.maxHp * 0.3) P.hp = P.maxHp; was = P.hp;

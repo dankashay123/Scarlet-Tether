@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '133';
+const BUILD = '134';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '134': ['SETTINGS, CONTROLS: BUFF ICONS ALL, NO PETS OR OFF.', 'PET ICONS SIT ON A DISC OF THEIR COLOUR, SO DARK PETS STAND OUT.', 'AFTER AN UPDATE THE TITLE SCREEN SAYS WHICH BUILD YOU ARE ON.'],
   '133': ['IN PELL\'S STALL, TAP A SET PIECE\'S CARD TO SEE THE WHOLE SET.', 'PETS THAT ACT EVERY FEW SECONDS (THE WHITE LAMB, THE VOTIVE WISP, THE BELL CROW) SHOW AN ICON WITH THE TIME TO THEIR NEXT ACT.', 'THE BLADE STORM\'S ICON IS TWO CROSSED BLADES, EASIER TO SEE.', 'AUTO PLAY FIGHTS CLOSER AS THE ANCHORESS, SO HER RITES REACH.'],
   '132': ['MORE BUFF ICONS: HUNGER, BONE WARD, THE STILL CLOAK, THE LONG DESCENT\'S CRITS AND THE VESPER\'S BLADE STORM. WARDS WAITING FOR A HIT SHOW A FULL RIM.', 'NEW BUFF ICONS FADE IN SO YOU NOTICE THEM.', 'HOLD THE STREAK PLATE TO SEE HOW STREAKS AND CARNAGE WORK.'],
   '131': ['HOLD A BUFF ICON TO SEE WHAT IT IS AND WHAT IT DOES.', 'A KILL STREAK RINGS OUT AS IT REACHES 10 AND TURNS INTO CARNAGE.', 'THE HUNDRED NAILS DEALS MORE DAMAGE AT STATION VI AND LOWER, AT 6 PIECES TOO. SET CARDS SAY IT MORE SHORTLY.'],
@@ -4996,7 +4997,7 @@ function renderNews() {
 
 // ------------------------------------------------------------ settings ---
 // From the pause screen. Saved in SAVE.opts.
-const OPT_DEF = { text: 'normal', fx: 'full', shake: true, nums: 'all', haptics: true, music: 2, sound: 3, voices: 3, cries: 'all', hand: 'right' };
+const OPT_DEF = { text: 'normal', fx: 'full', shake: true, nums: 'all', haptics: true, music: 2, sound: 3, voices: 3, cries: 'all', hand: 'right', buffs: 'all' };
 const opt = (k) => (SAVE.opts && SAVE.opts[k] !== undefined ? SAVE.opts[k] : OPT_DEF[k]);
 function setOpt(k, v) { SAVE.opts = SAVE.opts || {}; SAVE.opts[k] = v; persist(); if (k === 'music' || k === 'sound' || k === 'voices') AUDIO.setVol(); if (k === 'hand') layoutHud(); }
 // A short buzz where the browser allows it (Android; iPhone Safari has no vibration).
@@ -5014,9 +5015,10 @@ const OPT_ROWS = [
   { sec: 1, k: 'voices', name: 'VOICES', vals: [0, 1, 2, 3], seg: VOL_SEG, show: (v) => (v ? '#'.repeat(v) : 'OFF') },
   { sec: 1, k: 'cries', name: 'MONSTER CRIES', vals: ['all', 'fewer', 'off'], seg: ['ALL', 'FEWER', 'OFF'], show: (v) => (v === 'fewer' ? 'RARES AND ELITES' : v.toUpperCase()) },
   { sec: 2, k: 'haptics', name: 'HAPTICS', vals: [false, true], seg: ['OFF', 'ON'], show: (v) => (v ? 'ON' : 'OFF') },
+  { sec: 2, k: 'buffs', name: 'BUFF ICONS', vals: ['all', 'nopets', 'off'], seg: ['ALL', 'NO PETS', 'OFF'], show: (v) => (v === 'nopets' ? 'ALL BUT PETS' : v.toUpperCase()) }, // round 134
   { sec: 2, k: 'hand', name: 'MOVE STICK', vals: ['right', 'left'], seg: ['LEFT', 'RIGHT'], show: (v) => (v === 'right' ? 'STICK LEFT' : 'STICK RIGHT') },
 ];
-const SET_SECS = [['GRAPHICS', 'LOW EFFECTS RUNS BETTER ON OLDER PHONES. CRITS ONLY SHOWS BIG HITS.'], ['SOUND', 'FEWER CRIES PLAYS ONLY RARE, ELITE AND WARDEN VOICES. PRESS N TO MUTE ON A KEYBOARD.'], ['CONTROLS', 'HAPTICS VIBRATE ON BIG HITS IF YOUR PHONE SUPPORTS IT.']];
+const SET_SECS = [['GRAPHICS', 'LOW EFFECTS RUNS BETTER ON OLDER PHONES. CRITS ONLY SHOWS BIG HITS.'], ['SOUND', 'FEWER CRIES PLAYS ONLY RARE, ELITE AND WARDEN VOICES. PRESS N TO MUTE ON A KEYBOARD.'], ['CONTROLS', 'HAPTICS VIBRATE ON BIG HITS IF YOUR PHONE SUPPORTS IT. BUFF ICONS SHOW UNDER THE ZEAL BAR.']];
 function setLayout() {
   const pw = Math.min(660, W - 12), ph = Math.min(H - 12, 300), x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2), sec = game.setSec || 0;
   const rail = { x: x0 + 8, y: y0 + 36, w: Math.max(84, Math.min(120, Math.round(pw * 0.22))) }, ax = rail.x + rail.w + 12, aw = x0 + pw - 10 - ax, lw = Math.min(130, Math.round(aw * 0.36));
@@ -10326,7 +10328,7 @@ const BUFFS = [
   { id: 'dashcrit', name: 'THE LONG DESCENT', text: () => `YOUR NEXT ${player.dashCrits || 0} HITS ARE CRITICAL.`, held: () => (player.dashCrits || 0) > 0 && G.powers.has('dashCrit'), n: () => player.dashCrits, rgb: '255,209,85', icon: (x, y, s) => { const L = LEGENDS.find((q) => q.key === 'dashCrit'); fitIcon('loot', 'legend', L ? LEGENDS.indexOf(L) : 0, x, y, s); } },
   // Round 133: equipped battle pets that act every few seconds: the clock runs to their next action (from updatePets' timers).
   ...[['lamb', 'lamb', 4, '182,211,106'], ['votivewisp', 'wisp', 5, '216,247,255'], ['bellcrow', 'crow', 8, '232,56,63']].map(([pid, key, per, rgb]) => ({ id: `pet_${pid}`, name: () => (PET_BY[pid] ? heroText(PET_BY[pid].name) : ''), text: () => (PET_BY[pid] ? `${heroText(PET_BY[pid].text)} THE RIM SHOWS THE TIME TO ITS NEXT ACT.` : ''),
-    end: () => (pet(pid) && game.scene === 'wound' ? game.time + Math.max(0.05, per - ((player.petT || {})[key] || 0)) : 0), rgb, icon: (x, y, s) => fitIcon('pets', pid, 0, x, y + 1, s + 4) })),
+    end: () => (pet(pid) && game.scene === 'wound' ? game.time + Math.max(0.05, per - ((player.petT || {})[key] || 0)) : 0), rgb, bg: true, icon: (x, y, s) => fitIcon('pets', pid, 0, x, y + 1, s + 4) })),
 ];
 // Round 133: the storm's icon: two blades crossed in an X (steel, gold guard, dark grip), clearer than a dagger sprite at 18 px.
 function stormGlyph(x, y, s) {
@@ -10340,7 +10342,9 @@ function stormGlyph(x, y, s) {
 const BUFF_DUR = {}, BUFF_R = 9, BUFF_TIPS = []; // BUFF_TIPS: this frame's icon rects, added to HOLD_TIPS after render() clears it
 function activeBuffs() {
   const now = game.time, out = [];
+  const mode = opt('buffs'); if (mode === 'off') return out; // round 134: the BUFF ICONS setting
   for (const B of BUFFS) {
+    if (mode === 'nopets' && B.id.startsWith('pet_')) continue;
     const S = BUFF_DUR[B.id];
     if (B.held) { if (player && B.held()) { if (!S) BUFF_DUR[B.id] = { end: Infinity, dur: 1, t0: game.real }; out.push({ B, left: Infinity, dur: 1, held: true, t0: BUFF_DUR[B.id].t0 }); } else if (S) delete BUFF_DUR[B.id]; continue; }
     const e = (player && B.end()) || 0;
@@ -10360,7 +10364,7 @@ function drawBuffs(x, y, w) {
     const age = game.real - (t0 ?? -9), fin = Math.min(1, age / 0.25); ctx.save(); ctx.globalAlpha = fin; if (fin < 1) { const k = 1 + 0.4 * (1 - fin); ctx.translate(cx, cy); ctx.scale(k, k); ctx.translate(-cx, -cy); }
     ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.arc(cx, cy, r + 1, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = 'rgba(14,18,30,0.92)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r - 1.5, 0, Math.PI * 2); ctx.clip(); B.icon(cx, cy, r * 2 - 3); ctx.restore();
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r - 1.5, 0, Math.PI * 2); ctx.clip(); if (B.bg) { ctx.fillStyle = `rgba(${rgb},0.38)`; ctx.fillRect(cx - r, cy - r, r * 2, r * 2); } B.icon(cx, cy, r * 2 - 3); ctx.restore(); // round 134: pets sit on a soft disc of their colour
     if (u > 0) { ctx.fillStyle = 'rgba(40,44,54,0.68)'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r - 1, a0, a1); ctx.closePath(); ctx.fill(); }
     const blink = left < 1 && Math.sin(game.real * 18) > 0;
     ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(120,128,140,0.9)'; ctx.beginPath(); ctx.arc(cx, cy, r - 0.5, a0, a1); ctx.stroke();
@@ -10892,7 +10896,9 @@ function renderTitle() {
   ctx.fillStyle = g; ctx.fillRect(0, y, W, b.h);
   for (const yy of [y, y + b.h - 1]) { const r = ctx.createLinearGradient(0, 0, W, 0); r.addColorStop(0, 'rgba(255,209,85,0)'); r.addColorStop(0.5, 'rgba(255,209,85,0.55)'); r.addColorStop(1, 'rgba(255,209,85,0)'); ctx.fillStyle = r; ctx.fillRect(0, yy, W, 1); }
   ctx.globalAlpha = 0.75 + 0.25 * Math.sin(game.real * 3); text(b.label, b.x, b.y - 6, PAL.white, { align: 'center', sc: 1.4, bold: true }); ctx.globalAlpha = 1;
-  text(`BUILD ${BUILD}`, 8 + SAFE.l, 6, PAL.stone3, { small: true, outline: null });
+  // Round 134: after an update the corner says so in gold (NEWS: this build is new to this player), else the build in grey.
+  if (NEWS) { ctx.globalAlpha = 0.7 + 0.3 * Math.sin(game.real * 2.5); text(`UPDATED TO BUILD ${BUILD}`, 8 + SAFE.l, 6, PAL.gold1, { small: true, bold: true }); ctx.globalAlpha = 1; }
+  else text(`BUILD ${BUILD}`, 8 + SAFE.l, 6, PAL.stone3, { small: true, outline: null });
   HUD.mute.icon = AUDIO.muted ? 'muted' : 'sound'; button(HUD.mute);
 }
 // The character select: slots on the left, the chosen hero in the middle, the
