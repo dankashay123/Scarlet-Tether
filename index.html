@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '145';
+const BUILD = '146';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '146': ['AUTO PLAY NOW PAYS IN FULL: THE SAME GOLD, DROPS AND XP AS PLAYING YOURSELF.'],
   '145': ['NEW SET PIECES IN OPEN CLEARINGS: A WAYSIDE ALTAR WITH CANDLES, AND A FALLEN COLUMN BESIDE ITS STANDING TWIN.', 'SHORT WALLS NOW VARY: A WINDOW, A BANNER WITH HANGING CHAINS, OR A STATUE ALCOVE WITH CANDLES. LONG SIDE WALLS GET TWO EVENLY SPACED TORCHES.', 'LOOSE BONES AND WEED GATHER ALONG THE WALLS. FLOOR SEALS MARK ELITE ROOMS, SHRINES, TREASURIES AND BARE HALLS.', 'THE DARK SPACE AROUND A MAP IS NOW ROUGH BEDROCK, NOT FLAT BLACK.'],
   '144': ['DUNGEON WALLS ARE DRESSED IN EVEN BAYS: STAINED GLASS IN THE MIDDLE OF EACH BAY WITH A TORCH ON EITHER SIDE, STATUES BETWEEN THEM. WINDOWS NO LONGER OVERLAP THE PILLARS.', 'PEWS, PILLARS AND RUBBLE ARE LAID OUT SYMMETRICALLY. CRATES SIT ONLY IN REAL CORNERS, AND LONG SIDE WALLS GET A TORCH.'],
   '143': ['CROSSBOW BOLTS ARE THINNER AND DRAWN IN FINER PIXELS, SO THEY FIT THE CROSSBOW. PREMIUM SKIN BOLTS ARE SMALLER TOO.'],
@@ -5770,7 +5771,7 @@ function renderDescent() {
   const dstep = Math.min(10, Math.floor(220 / (DIFF.length - 1))); DIFF.forEach((q, k) => { const px = L.x0 + L.pw / 2 - Math.round((DIFF.length - 1) * dstep / 2) + k * dstep; ctx.fillStyle = k === D.i ? '#ffd155' : 'rgba(0,0,0,0.6)'; ctx.fillRect(px - 3, L.y0 + 66, 6, 6); ctx.fillStyle = k === D.i ? PAL.white : diffOpen(k) ? q.col : '#2a3346'; ctx.fillRect(px - 2, L.y0 + 67, 4, 4); });
   const autoOn = !!SAVE.autoPlay && autoCan(D.i); // round 108: the price of auto play, where every phone shows it
   const autoRisk = autoOn && playerSanctity() < 0.9 * stationNeed(Math.min(DIFF.length - 1, D.i + 2)); // round 113: the pilot is safe about two Stations under the gear (round 140: on the full Sanctity scale)
-  text(autoOn ? fitText(`Auto Play: ${Math.round((1 - AUTO_PAY.drop) * 100)}% less gold and drops, ${Math.round((1 - AUTO_PAY.xp) * 100)}% less XP.${autoRisk ? ' Risky with your gear.' : ''}`, 2 * (L.vig.x - 10 - (L.x0 + L.pw / 2)), autoRisk ? 'Auto Play is risky here with your gear.' : `Auto Play: ${Math.round((1 - AUTO_PAY.drop) * 100)}% less loot, ${Math.round((1 - AUTO_PAY.xp) * 100)}% less XP.`) : open ? df.text : `LOCKED. ${diffNeed(D.i)} TO OPEN IT.`, L.x0 + L.pw / 2, L.y0 + 77, autoRisk ? PAL.blood0 : autoOn ? PAL.flame1 : open ? PAL.cloth1 : PAL.blood0, { align: 'center', small: true, outline: null });
+  text(autoOn ? !AUTO_CUT ? (autoRisk ? 'Auto Play is risky here with your gear.' : 'Auto Play: full gold, drops and XP.') : fitText(`Auto Play: ${Math.round((1 - AUTO_PAY.drop) * 100)}% less gold and drops, ${Math.round((1 - AUTO_PAY.xp) * 100)}% less XP.${autoRisk ? ' Risky with your gear.' : ''}`, 2 * (L.vig.x - 10 - (L.x0 + L.pw / 2)), autoRisk ? 'Auto Play is risky here with your gear.' : `Auto Play: ${Math.round((1 - AUTO_PAY.drop) * 100)}% less loot, ${Math.round((1 - AUTO_PAY.xp) * 100)}% less XP.`) : open ? df.text : `LOCKED. ${diffNeed(D.i)} TO OPEN IT.`, L.x0 + L.pw / 2, L.y0 + 77, autoRisk ? PAL.blood0 : autoOn ? PAL.flame1 : open ? PAL.cloth1 : PAL.blood0, { align: 'center', small: true, outline: null });
   // Three columns of numbers.
   // Short screens drop the footer notes and the least useful rows.
   const cw = Math.floor((L.pw - 32) / 3), top = L.y0 + 88, cx = (c) => L.x0 + 12 + c * (cw + 4), om = D.omens || [];
@@ -10653,8 +10654,8 @@ function renderHud() {
     ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.arc(P.x, P.y, P.r - 3.2, -2.6, 1.2); ctx.stroke();
     const Q = I.wounds; disc(Q, autoWoundsOn()); // a drop of blood
     // Round 137: hold either icon for what it does (a quick tap still switches it, on release).
-    const R0 = game.run, cut = `AN AUTO DESCENT PAYS ${Math.round((1 - AUTO_PAY.drop) * 100)}% LESS GOLD AND DROPS AND ${Math.round((1 - AUTO_PAY.xp) * 100)}% LESS XP.`;
-    BUFF_TIPS.push({ x: P.x - P.r - 3, y: P.y - P.r - 3, w: P.r * 2 + 6, h: P.r * 2 + 6, defer: true, below: true, title: 'AUTO PLAY', text: autoRun() ? `AUTO PLAY MOVES AND FIGHTS FOR YOU. TAP TO ${R0.autoOff ? 'TURN IT BACK ON' : 'PAUSE IT'}. THIS DESCENT STILL PAYS LESS WHILE IT IS PAUSED.` : `AUTO PLAY MOVES AND FIGHTS FOR YOU. TAP TO TURN IT ON (ONLY ON A STATION WHOSE WARDEN YOU HAVE KILLED). ${cut}` });
+    const R0 = game.run, cut = !AUTO_CUT ? 'AN AUTO DESCENT PAYS IN FULL.' : `AN AUTO DESCENT PAYS ${Math.round((1 - AUTO_PAY.drop) * 100)}% LESS GOLD AND DROPS AND ${Math.round((1 - AUTO_PAY.xp) * 100)}% LESS XP.`;
+    BUFF_TIPS.push({ x: P.x - P.r - 3, y: P.y - P.r - 3, w: P.r * 2 + 6, h: P.r * 2 + 6, defer: true, below: true, title: 'AUTO PLAY', text: autoRun() ? `AUTO PLAY MOVES AND FIGHTS FOR YOU. TAP TO ${R0.autoOff ? 'TURN IT BACK ON' : 'PAUSE IT'}.${AUTO_CUT ? ' THIS DESCENT STILL PAYS LESS WHILE IT IS PAUSED.' : ''}` : `AUTO PLAY MOVES AND FIGHTS FOR YOU. TAP TO TURN IT ON (ONLY ON A STATION WHOSE WARDEN YOU HAVE KILLED). ${cut}` });
     BUFF_TIPS.push({ x: Q.x - Q.r - 3, y: Q.y - Q.r - 3, w: Q.r * 2 + 6, h: Q.r * 2 + 6, defer: true, below: true, title: 'AUTO WOUNDS', text: autoRun() ? 'AUTO WOUNDS PICKS YOUR WOUNDS AT EACH LEVEL. IT IS ALWAYS ON IN AUTO PLAY. SET WHAT IT FAVOURS IN THE AUTO WINDOW ON THE PAUSE SCREEN.' : 'AUTO WOUNDS PICKS YOUR WOUNDS AT EACH LEVEL. TAP TO TURN IT ON OR OFF. SET WHAT IT FAVOURS IN THE AUTO WINDOW ON THE PAUSE SCREEN.' });
     ctx.beginPath(); ctx.moveTo(Q.x, Q.y - 5.5); ctx.quadraticCurveTo(Q.x + 4.5, Q.y + 0.5, Q.x + 3.5, Q.y + 2.5); ctx.arc(Q.x, Q.y + 1.8, 3.6, 0.2, Math.PI - 0.2); ctx.quadraticCurveTo(Q.x - 4.5, Q.y + 0.5, Q.x, Q.y - 5.5); ctx.fill();
     if (autoRun() && AP.hand && !game.run.autoOff) text('YOU STEER', P.x - P.r - 3, P.y - 4, PAL.gold1, { align: 'right', small: true }); }
@@ -10721,10 +10722,13 @@ function autoWoundTake() {
 }
 // Auto play: only on a Station already cleared, chosen on the Descent panel. The Saint fights alone (autoPilot) and
 // the run pays less: AUTO_PAY.drop of the gold, gear and other drops, AUTO_PAY.xp of the Saint XP.
-const AUTO_PAY = { drop: 0.25, xp: 0.5 };
+// Round 146: the owner turned the cut off to farm with auto play ("remind me every now and then to enable it again").
+// To restore it, set AUTO_CUT back to true (it was drop 0.25, xp 0.5). All player text reads AUTO_CUT.
+const AUTO_CUT = false;
+const AUTO_PAY = AUTO_CUT ? { drop: 0.25, xp: 0.5 } : { drop: 1, xp: 1 };
 const autoRun = () => game.scene === 'wound' && !!(game.run && game.run.auto);
 const autoK = () => autoRun() ? AUTO_PAY.drop : 1;
-const autoSkip = () => autoRun() && Math.random() >= AUTO_PAY.drop; // a drop roll an auto run does not get
+const autoSkip = () => autoRun() && AUTO_PAY.drop < 1 && Math.random() >= AUTO_PAY.drop; // a drop roll an auto run does not get
 const autoCan = (i) => (SAVE.cleared ?? -1) >= i;
 const AP = { t: 0, field: null, w: 0, goal: '', strafe: 1, flipT: 0, lastX: 0, lastY: 0, stuckT: 0, jit: 0, ja: 0, castT: 0, hand: false };
 function autoField(src) {
@@ -10766,8 +10770,9 @@ const autoHudShown = () => game.scene === 'wound' && !!game.run && !game.run.yar
 // auto run (run.auto stays set; turning the pilot off only pauses it), so it asks first.
 function autoPlayTap() {
   const R = game.run; sfx('tap');
-  if (R.auto) { R.autoOff = !R.autoOff; toast(R.autoOff ? 'AUTO PLAY PAUSED. PAY STAYS REDUCED.' : 'AUTO PLAY ON', 2); return; }
+  if (R.auto) { R.autoOff = !R.autoOff; toast(R.autoOff ? (AUTO_CUT ? 'AUTO PLAY PAUSED. PAY STAYS REDUCED.' : 'AUTO PLAY PAUSED') : 'AUTO PLAY ON', 2); return; }
   if (!autoCan(R.diff || 0)) { toast("KILL THIS STATION'S WARDEN ONCE TO AUTO PLAY IT.", 2.2); return; }
+  if (!AUTO_CUT) { R.auto = true; R.autoOff = false; AP.field = null; AP.goal = ''; toast('AUTO PLAY ON', 1.6); return; }
   ask(`TURN ON AUTO PLAY? THE REST OF THIS DESCENT PAYS ${Math.round((1 - AUTO_PAY.drop) * 100)}% LESS GOLD AND DROPS AND ${Math.round((1 - AUTO_PAY.xp) * 100)}% LESS XP, EVEN IF YOU TURN IT OFF AGAIN.`, () => { R.auto = true; R.autoOff = false; AP.field = null; AP.goal = ''; toast('AUTO PLAY ON', 1.6); }, 'AUTO PLAY');
 }
 // Round 136: the Saint's own pool to hold ground in (the biggest one within 70 px with time left), or null.
@@ -11276,7 +11281,7 @@ function renderReceipt(survived = false) {
   const best = [...r.items].sort((a, b) => b.ri - a.ri)[0];
   if (best) text(fitText(best.name, w - 16, null, false), mid, y + 138 + dy, RARITY[best.ri].color, { align: 'center', glow: best.ri >= 3 });
   goldRule(x + 10, y + 107, w - 20, '200,212,232', false);
-  if (survived) { line(r.auto ? fitText(`Auto Play cost about ${r.auto.gold.toLocaleString('en-US')} gold and ${r.auto.gear} gear.`, w - 16, `Auto Play cost ${r.auto.gold.toLocaleString('en-US')} gold.`, false) : 'YOU KEPT EVERYTHING YOU FOUND.', 113, PAL.flame1); }
+  if (survived) { line(r.auto && AUTO_CUT ? fitText(`Auto Play cost about ${r.auto.gold.toLocaleString('en-US')} gold and ${r.auto.gear} gear.`, w - 16, `Auto Play cost ${r.auto.gold.toLocaleString('en-US')} gold.`, false) : 'YOU KEPT EVERYTHING YOU FOUND.', 113, PAL.flame1); }
   else { line(r.martyr ? 'VOW BROKEN. EVERYTHING YOU FOUND IS LOST.' : 'YOU LOST HALF YOUR GOLD AND FINDS.', 113, PAL.blood0); }
   if (best) line('BEST FIND', 126 + dy, PAL.stone2, 'center', { small: true });
   if (sold) text(fitText(`Auto Sell sold ${r.auto.sold} pieces for ${r.auto.soldGold.toLocaleString('en-US')} gold.`, w - 16, `Auto Sell: ${r.auto.sold} for ${r.auto.soldGold.toLocaleString('en-US')} gold.`), mid, y + 125, PAL.gold1, { align: 'center', small: true, outline: null }); // round 115

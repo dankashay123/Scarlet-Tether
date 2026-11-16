@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 145 (build 145, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 146 (build 146, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; rounds 136-145 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-146 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -329,6 +329,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## The owner's preferences
 
+- **REMIND THE OWNER (round 146): auto play's pay cut is OFF.** The owner asked for it off to farm without playing,
+  and asked to be reminded every now and then to turn it back on. Mention it in a reply every few rounds. To restore
+  it, set `AUTO_CUT = true` in `index.html` (drop 0.25, XP 0.5; every text reads `AUTO_CUT`, and the turn-on question
+  comes back with it).
 - **No more Sanctity or chest work for now (round 143):** the owner asked for different ideas.
 - **Maps should look decorated by a person (round 144):** the owner found statues, pews and torches placed at random
   ("looks very AI generated") and windows overlapping pilasters. Keep dressing planned and mirrored (`planRun`), not
@@ -752,6 +756,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 146:** at the owner's request auto play pays in full: `AUTO_CUT = false` sets `AUTO_PAY` to 1 and hides
+  every line about the cut (Descent panel, icon tip, pause toast, tally, the turn-on question). Remind the owner now
+  and then to turn it back on (see the preferences).
 
 - **Round 145:** the owner said "All" to round 144's list. (1) Side walls: a
   room's long side wall (16+ tiles) gets two torch stands at its thirds, and
