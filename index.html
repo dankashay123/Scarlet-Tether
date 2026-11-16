@@ -112,7 +112,7 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 const BUILD = '145';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
-  '145': ['NEW SET PIECES IN OPEN CLEARINGS: A WAYSIDE ALTAR WITH CANDLES, AND A FALLEN COLUMN BESIDE ITS STANDING TWIN.', 'SHORT WALLS NOW VARY: A WINDOW, A BANNER WITH HANGING CHAINS, OR A STATUE ALCOVE WITH CANDLES. LONG SIDE WALLS GET TWO EVENLY SPACED TORCHES.', 'LOOSE BONES AND WEED GATHER ALONG THE WALLS. FLOOR SEALS MARK ELITE ROOMS, SHRINES, TREASURIES AND BARE HALLS.'],
+  '145': ['NEW SET PIECES IN OPEN CLEARINGS: A WAYSIDE ALTAR WITH CANDLES, AND A FALLEN COLUMN BESIDE ITS STANDING TWIN.', 'SHORT WALLS NOW VARY: A WINDOW, A BANNER WITH HANGING CHAINS, OR A STATUE ALCOVE WITH CANDLES. LONG SIDE WALLS GET TWO EVENLY SPACED TORCHES.', 'LOOSE BONES AND WEED GATHER ALONG THE WALLS. FLOOR SEALS MARK ELITE ROOMS, SHRINES, TREASURIES AND BARE HALLS.', 'THE DARK SPACE AROUND A MAP IS NOW ROUGH BEDROCK, NOT FLAT BLACK.'],
   '144': ['DUNGEON WALLS ARE DRESSED IN EVEN BAYS: STAINED GLASS IN THE MIDDLE OF EACH BAY WITH A TORCH ON EITHER SIDE, STATUES BETWEEN THEM. WINDOWS NO LONGER OVERLAP THE PILLARS.', 'PEWS, PILLARS AND RUBBLE ARE LAID OUT SYMMETRICALLY. CRATES SIT ONLY IN REAL CORNERS, AND LONG SIDE WALLS GET A TORCH.'],
   '143': ['CROSSBOW BOLTS ARE THINNER AND DRAWN IN FINER PIXELS, SO THEY FIT THE CROSSBOW. PREMIUM SKIN BOLTS ARE SMALLER TOO.'],
   '142': ['PELL\'S STALL SAYS WHAT EACH PIECE WOULD DO TO YOUR SANCTITY; ITS STOCK LIST SHOWS UPGRADES IN GREEN.', 'GEAR ON THE GROUND GETS ITS GREEN ARROW ONLY IF IT WOULD RAISE YOUR SANCTITY, AND PICKING ONE UP SAYS BY HOW MUCH.', 'AUTO SELL KEEPS ONLY PIECES THAT WOULD RAISE YOUR SANCTITY.', 'CHESTS AND SHRINES YOU HAVE PASSED SHOW CLEARER ON THE MAP, AND THE MINIMAP POINTS TO THEM FROM ITS EDGE.', 'NEW LOOKS FOR THE GLASS MOTH, THE ROSE MOTH AND THE STONE CHERUB.'],
@@ -1421,6 +1421,7 @@ function makeDungeon() {
     if (isFloor(x, y + 1)) f = HA.wall[3]; else if (isFloor(x, y + 2)) f = HA.wall[4]; else if (isFloor(x, y + 3)) f = HA.wall[2]; else if (isFloor(x, y + 4)) f = HA.wall[1];
     tile(f, x, y, IMG.hall);
   }
+  bakeRock(rc, w, h, isFloor);
   bakeWallEdges(rc, w, h, isFloor);
   // Back walls (round 144): pilasters and windows come from the same plan as the statues and torches in front of
   // them (wallRuns, planRun), so a window sits in the middle of its bay and never touches a pilaster.
@@ -1482,6 +1483,45 @@ function strataPal() {
   const P = Object.create(PAL);
   for (const [from, [to, k]] of Object.entries(OSSUARY_PAL)) { const a = rampOf(from), b = rampOf(to); a.forEach((n, i) => { P[n] = PAL[b[Math.max(0, Math.min(b.length - 1, i + k))]]; }); }
   return P;
+}
+// Round 145 (the owner: do something with the empty dark space): the solid ground round a map is rough bedrock, not
+// flat black. Three tiling patterns of cracked stone blocks, brighter near the floor and dimmer far from it, with the
+// odd old bone set in the rock. Built once per stratum (ROCK_PAT), stamped per tile at bake time.
+const ROCK_PAT = new Map();
+function rockPattern(P, lvl) {
+  const key = `${game.buildStratum || 1},${lvl}`; if (ROCK_PAT.has(key)) return ROCK_PAT.get(key);
+  const N = 80, L = 10, M = N / L, hh = (a, b, s) => (((a * 73856093) ^ (b * 19349663) ^ (s * 83492791)) >>> 0) % 1000 / 1000;
+  const c = document.createElement('canvas'); c.width = c.height = N * 2; const x = c.getContext('2d');
+  const id = new Int16Array(N * N);
+  for (let gy = 0; gy < N; gy++) for (let gx = 0; gx < N; gx++) {
+    let best = 1e9, bi = 0; const ci = Math.floor(gx / L), cj = Math.floor(gy / L);
+    for (let j = cj - 1; j <= cj + 1; j++) for (let i = ci - 1; i <= ci + 1; i++) { const wi = (i + M) % M, wj = (j + M) % M, sx = (i + 0.15 + 0.7 * hh(wi, wj, 1)) * L, sy = (j + 0.15 + 0.7 * hh(wi, wj, 2)) * L, d = (gx - sx) ** 2 + ((gy - sy) * 1.5) ** 2; if (d < best) { best = d; bi = wj * M + wi; } }
+    id[gy * N + gx] = bi;
+  }
+  const at = (gx, gy) => id[((gy + N) % N) * N + ((gx + N) % N)];
+  const [crack, lo, hi, lit] = lvl === 0 ? [P.ink0, P.ink2, P.ink3, P.ink4 || P.stone4] : lvl === 1 ? [P.ink0, P.ink1, P.ink2, P.ink3] : [P.ink0, P.ink1, P.ink1, P.ink2];
+  for (let gy = 0; gy < N; gy++) for (let gx = 0; gx < N; gx++) {
+    const k = at(gx, gy), t = hh(k, 7, 3);
+    x.fillStyle = at(gx + 1, gy) !== k || at(gx, gy + 1) !== k ? crack : (at(gx - 1, gy) !== k || at(gx, gy - 1) !== k) && t < (lvl === 2 ? 0.45 : 0.8) ? lit : t < 0.4 ? hi : lo;
+    x.fillRect(gx * 2, gy * 2, 2, 2);
+  }
+  ROCK_PAT.set(key, c); return c;
+}
+function bakeRock(rc, w, h, isFloor) {
+  const P = strataPal(), INF = 99, d = new Uint8Array(w * h).fill(INF), q = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (isFloor(x, y)) { d[y * w + x] = 0; q.push(x, y); }
+  for (let i = 0; i < q.length; i += 2) { const x = q[i], y = q[i + 1], v = d[y * w + x]; if (v >= 9) continue; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= w || ny >= h || d[ny * w + nx] <= v + 1) continue; d[ny * w + nx] = v + 1; q.push(nx, ny); } }
+  const pats = [0, 1, 2].map((l) => rockPattern(P, l)), S = pats[0].width, hh = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0) % 1000 / 1000;
+  const face = (x, y) => [1, 2, 3, 4].some((k) => isFloor(x, y + k));
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const v = d[y * w + x]; if (!v || face(x, y)) continue;
+    rc.drawImage(pats[v <= 3 ? 0 : v <= 6 ? 1 : 2], (x * TILE) % S, (y * TILE) % S, TILE, TILE, x * TILE, y * TILE, TILE, TILE);
+  }
+  // Old bones set in the rock, a few tiles in from the walls (more of them in the Ossuary).
+  const bf = SPR.props.anims.bonestrew, rate = (game.buildStratum || 1) === 3 ? 0.03 : 0.012;
+  rc.save(); rc.globalAlpha = 0.22;
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 2; x++) { const v = d[y * w + x]; if (v < 4 || v > 8 || d[y * w + x + 1] < 4 || face(x, y) || face(x + 1, y) || hh(x * 7 + 3, y * 13 + 1) >= rate) continue; const f = bf[(x + y) % bf.length]; rc.drawImage(IMG.props, f.x, f.y, f.w, f.h, x * TILE, y * TILE, f.w, f.h); }
+  rc.restore();
 }
 function bakeWallEdges(rc, w, h, isFloor) {
   const P = strataPal(), solid = (x, y) => !isFloor(x, y);

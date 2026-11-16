@@ -768,6 +768,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   mark elite rooms, shrines, treasuries and bare halls (plans empty, grid4,
   pillars), no longer a 60% roll; in an empty clearing the seal lines up with
   the middle of the back wall when that is within 4 tiles.
+  Then the owner sent a screenshot of the black space beside an open map and
+  asked for something there: `bakeRock` stamps cracked bedrock over every solid
+  tile that is not a wall face (three tiling patterns from `rockPattern`, cached
+  in `ROCK_PAT`, dimmer with distance from the floor) and sets a few faint old
+  bones in it (more in the Ossuary).
 
 - **Round 144:** the owner asked for a graphics check on maps (stained glass
   clipping over pilasters; statues, pews and torches placed at random). Every
