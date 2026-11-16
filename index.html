@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '134';
+const BUILD = '135';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '135': ['NEWS ON THE PAUSE SCREEN SHOWS THIS LIST AGAIN.', 'HOLD THE ZEAL BAR TO SEE HOW ZEAL STEPS WORK.', 'IN PELL\'S STALL THE LINE THAT OPENS A SET IS GOLD WITH AN ARROW.', 'THE HUNDRED NAILS\' EXTRA DAMAGE AT LOW STATIONS IS SMALLER AT 6 PIECES.'],
   '134': ['SETTINGS, CONTROLS: BUFF ICONS ALL, NO PETS OR OFF.', 'PET ICONS SIT ON A DISC OF THEIR COLOUR, SO DARK PETS STAND OUT.', 'AFTER AN UPDATE THE TITLE SCREEN SAYS WHICH BUILD YOU ARE ON.'],
   '133': ['IN PELL\'S STALL, TAP A SET PIECE\'S CARD TO SEE THE WHOLE SET.', 'PETS THAT ACT EVERY FEW SECONDS (THE WHITE LAMB, THE VOTIVE WISP, THE BELL CROW) SHOW AN ICON WITH THE TIME TO THEIR NEXT ACT.', 'THE BLADE STORM\'S ICON IS TWO CROSSED BLADES, EASIER TO SEE.', 'AUTO PLAY FIGHTS CLOSER AS THE ANCHORESS, SO HER RITES REACH.'],
   '132': ['MORE BUFF ICONS: HUNGER, BONE WARD, THE STILL CLOAK, THE LONG DESCENT\'S CRITS AND THE VESPER\'S BLADE STORM. WARDS WAITING FOR A HIT SHOW A FULL RIM.', 'NEW BUFF ICONS FADE IN SO YOU NOTICE THEM.', 'HOLD THE STREAK PLATE TO SEE HOW STREAKS AND CARNAGE WORK.'],
@@ -515,7 +516,7 @@ const isBold = (o) => o.bold ?? !!(o.glow || (o.sc || 1) >= 1.5); // titles and 
 // turns a short label into Title Case and anything longer into a sentence, and
 // keeps game names (sets, rites, Wardens, sites, terms) and Roman numerals capitalised.
 // A string that already has a lower-case letter is left as it is.
-const CASE_TERMS = new Set('INDULGENCE INDULGENCES TESTAMENT TESTAMENTS RUBRIC RUBRICS ZEAL TOLL WARDEN WARDENS SAINT SAINTS STATION STATIONS VIGIL VIGILS HALLOWED RECKONING RECKONINGS EMBERSTONE EMBERSTONES CHRISM CHRISMS MENDICANT VESPER SANCTITY VAEL ODILE PELL CINDER VANE HOLLIS BARNABY ULM CANONRY CENSER ENCHANTER UNDERCROFT NAVE OSSUARY STRATUM STRATA CARNAGE WOUND WOUNDS'.split(' '));
+const CASE_TERMS = new Set('MURMUR CHANT RAPTURE FRENZY INDULGENCE INDULGENCES TESTAMENT TESTAMENTS RUBRIC RUBRICS ZEAL TOLL WARDEN WARDENS SAINT SAINTS STATION STATIONS VIGIL VIGILS HALLOWED RECKONING RECKONINGS EMBERSTONE EMBERSTONES CHRISM CHRISMS MENDICANT VESPER SANCTITY VAEL ODILE PELL CINDER VANE HOLLIS BARNABY ULM CANONRY CENSER ENCHANTER UNDERCROFT NAVE OSSUARY STRATUM STRATA CARNAGE WOUND WOUNDS'.split(' '));
 const CASE_SMALL = new Set('A AN THE OF TO IN ON AT FOR AND OR BY WITH FROM PER VS AS'.split(' '));
 const CASE_KEEP = /^(?:HP|XP|DPS|FX|OK|UI|PNG|(?=[IVXL])L?X{0,3}(?:IX|IV|V?I{0,3})\+?|[A-Z]\d+)$/; // HP, XP, Roman numerals, F1
 const CASE_VERBS = new Set('TAP HOLD DRAG WEAR BUY GO FINISH KILL PICK CHOOSE SPEND TALK OPEN PRESS MOVE REACH FIND CLEAR NO GET WALK FALL BEAT SELL BURN USE CLAIM DIES COMES'.split(' '));
@@ -895,7 +896,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyI' || e.code === 'KeyB') { if (game.state === 'play') openInventory(); else if (game.state === 'inv') closeInventory(); }
   if (e.code === 'Escape' && game.state === 'inv') { closeInventory(); return; }
   if (e.code === 'Escape' && game.state === 'altar' && game.altarPick) { game.altarPick = null; return; }
-  if (game.state === 'news') { if (e.code === 'Escape' || e.code === 'Enter' || e.code === 'Space') game.state = 'play'; return; }
+  if (game.state === 'news') { if (e.code === 'Escape' || e.code === 'Enter' || e.code === 'Space') { game.state = game.newsBack || 'play'; game.newsBack = null; } return; }
   if (e.code === 'Escape' && ['descent', 'site', 'map', 'vigil', 'shop', 'forge', 'enchant', 'canonry', 'gift', 'cells', 'board', 'altar', 'plush', 'pool', 'martyr', 'roll'].includes(game.state)) { game.state = 'play'; return; }
   if (e.code === 'KeyM' && (game.scene === 'town' || game.scene === 'wound')) { if (game.state === 'play') game.state = 'map'; else if (game.state === 'map') game.state = 'play'; }
   if (game.state === 'descent' && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) { const D = game.descent; D.i = (D.i + (e.code === 'ArrowLeft' ? DIFF.length - 1 : 1)) % DIFF.length; }
@@ -1602,7 +1603,7 @@ function addToll(e) {
 // four: damage at 4 or 5 pieces of a set; four6 once it is complete (round 51: so 4+2 mixes keep up with full sets).
 // fourOf(id): a set's damage at 4 or 5 pieces (fourBy overrides SETK.four for one set).
 const fourOf = (id) => (SETK.fourBy && SETK.fourBy[id]) || SETK.four;
-const SETK = { choirHp: 3, choirHp6: 3, choirR: 110, fontHp: 8, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 3.6, strideT: 7, font: 3.5, bound: 1.6, bound6: 2.75, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3, strideT4: 4, font4: 3.5, bound4: 2.6, choir4: 3, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 63, stride: 140, iron: 150, alms: 140, glass: 400, font: 450, choir: 233, road: 230, bell: 230, reliquary: 270, psalter: 450, lantern: 200, gaol: 35, thorn: 160 } , /* rounds 101 and 104: 4+2 mixes toward about 6 kills a second at XII */ shardPer: 15, crushK: 3, momK: 22, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ring4: 4, strideGuard: 30, low: { gaol: 1.4, lantern: 2.5, confessor: 1.8, font: 1.6, nails: 1.4, choir: 1.4, thorn: 1.4, psalter: 1.3, glass: 1.2 }, low6: { nails: 1.4, font: 0.7, choir: 0.75, glass: 0.7, gaol: 1.9, thorn: 1.8, confessor: 1.25, lantern: 1.25 }, boss6: { nails: 2.2, glass: 2.7, font: 6.5, confessor: 3.4, choir: 1.6, iron: 1.7, alms: 4.2, reliquary: 1.2, thorn: 1.05, psalter: 1.3 }, boss: { font: 3.3, alms: 3.4, bell: 3.4, gaol: 3.2, iron: 2.05, road: 1.6, confessor: 5, nails: 2.4, stride: 1.1, choir: 2.3, glass: 2.8, lantern: 1.8, psalter: 1.65, thorn: 1.55, reliquary: 1.55 }, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 10, veinK: 2, thornK6: 150, psalK6: 2.4, lampK6: 80, lampHop: 0.35, // Round 101: every set's six pieces tuned to about 7 kills a second at Station XII (setbal.cjs, 6 seeds; the Stride, Confessor,
+const SETK = { choirHp: 3, choirHp6: 3, choirR: 110, fontHp: 8, fontHp6: 10, fontGrow: 1.3, fontGrow6: 1.35, fontGrowM: 1.15, fontGrow6M: 1.25, stride: 3.6, strideT: 7, font: 3.5, bound: 1.6, bound6: 2.75, crush: 12, choir: 1.9, choirDrain: 18, nail: 0.04, four: 110, four6: 25, nail4: 0.03, stride4: 3, strideT4: 4, font4: 3.5, bound4: 2.6, choir4: 3, bindEvery: 6, bindEvery2: 10, fourBy: { confessor: 63, stride: 140, iron: 150, alms: 140, glass: 400, font: 450, choir: 233, road: 230, bell: 230, reliquary: 270, psalter: 450, lantern: 200, gaol: 35, thorn: 160 } , /* rounds 101 and 104: 4+2 mixes toward about 6 kills a second at XII */ shardPer: 15, crushK: 3, momK: 22, almsMax: 40, almsR: 90, almsR6: 125, gaolR: 150, almsK: 1.5, fetK: 15, stunK: 40, lampK: 40, lampBurn: 100, thornK: 30, thornR4: 1.45, thornR6: 1.65, crushK6: 5, ring4: 4, strideGuard: 30, low: { gaol: 1.4, lantern: 2.5, confessor: 1.8, font: 1.6, nails: 1.4, choir: 1.4, thorn: 1.4, psalter: 1.3, glass: 1.2 }, low6: { nails: 1.3, font: 0.78, choir: 0.68, glass: 0.7, gaol: 1.9, thorn: 1.8, confessor: 1.25, lantern: 1.25 }, boss6: { nails: 2.2, glass: 2.7, font: 6.5, confessor: 3.4, choir: 1.6, iron: 1.7, alms: 4.2, reliquary: 1.2, thorn: 1.05, psalter: 1.3 }, boss: { font: 3.3, alms: 3.4, bell: 3.4, gaol: 3.2, iron: 2.05, road: 1.6, confessor: 5, nails: 2.4, stride: 1.1, choir: 2.3, glass: 2.8, lantern: 1.8, psalter: 1.65, thorn: 1.55, reliquary: 1.55 }, ringK6: 3, momK6: 25, almsK6: 3.5, fetK6: 10, veinK: 2, thornK6: 150, psalK6: 2.4, lampK6: 80, lampHop: 0.35, // Round 101: every set's six pieces tuned to about 7 kills a second at Station XII (setbal.cjs, 6 seeds; the Stride, Confessor,
   // Lantern and Nails through their own numbers, so no card shows a multiplier under 1), and the sets that
   // took the most damage given a damage-taken multiplier at six pieces (guard6), so no set is far safer or deadlier than another.
   six: { font: 1.7, choir: 1.44, iron: 1.75, road: 1.8, alms: 1.05, bell: 1.2, gaol: 1.05, glass: 1.67, thorn: 1.5, psalter: 1.79 },
@@ -2598,7 +2599,7 @@ function drawItemCard(it, C, worn = null, pick = -1, maxY = Infinity, more = 'MO
   if (it.set || it.wset) for (const [t, col] of setLines(it)) extra.push(...wrapW(heroText(t), C.w - 12, true).map((l, i) => [l, col, i === 0]));
   for (const [i, [l, col, first]] of extra.entries()) {
     if (first) y += 3;
-    if (y + 9 > maxY - (i < extra.length - 1 ? 9 : 0)) { text(more, C.x + 6, y, PAL.stone2, { small: true, outline: null }); y += 9; break; }
+    if (y + 9 > maxY - (i < extra.length - 1 ? 9 : 0)) { const tap = more.startsWith('TAP'); text(more, C.x + 6, y, tap ? PAL.gold1 : PAL.stone2, { small: true, outline: null }); if (tap) { const ax = Math.round(C.x + 6 + textW(more, 1, true) + 4), ay = y + 2; ctx.fillStyle = PAL.gold1; for (let k = 0; k < 3; k++) ctx.fillRect(ax + k, ay + k, 1, 6 - k * 2); } y += 9; break; } // round 135: the tap line in gold with an arrow
     text(l, C.x + 6, y, col, { small: true, outline: null }); y += 9;
   }
   return { y, rows };
@@ -4986,7 +4987,7 @@ function renderNews() {
   const L = newsLayout(), small = { small: true, outline: null };
   ctx.fillStyle = 'rgba(11,7,16,0.7)'; ctx.fillRect(0, 0, W, H);
   panelFrame(L.x, L.y, L.w, L.h); headerBar(L.x, L.y, L.w, 26);
-  text('A NEW BUILD', L.x + 14, L.y + 9, PAL.gold1); text(`BUILD ${game.newsFor}`, L.x + L.w - 14, L.y + 10, PAL.stone1, { ...small, align: 'right' });
+  text(game.newsBack ? "WHAT'S NEW" : 'A NEW BUILD', L.x + 14, L.y + 9, PAL.gold1); text(`BUILD ${game.newsFor}`, L.x + L.w - 14, L.y + 10, PAL.stone1, { ...small, align: 'right' });
   let y = L.y + 36;
   for (const ws of L.wrapped) {
     ctx.fillStyle = PAL.gold1; ctx.fillRect(L.x + 18, y + 2, 2, 2); ctx.fillRect(L.x + 17, y + 3, 4, 1); ctx.fillRect(L.x + 19, y + 1, 1, 4);
@@ -10392,6 +10393,7 @@ function renderHud() {
   if (game.scene === 'wound') {
     const tier = fervorTier(), framp = ['ember', 'ember', 'crimson', 'gold'][tier], zw = hw;
     hudBar(X, 25, zw, 6, game.fervor / 100, 0, framp, false, 4);
+    BUFF_TIPS.push({ x: X, y: 22, w: zw, h: 20, defer: true, below: true, title: 'ZEAL', text: 'KILLS AND HITS FILL ZEAL. EVERY 25 ZEAL IS A STEP (CHANT, RAPTURE, FRENZY), AND EACH STEP GIVES +10% DAMAGE. ZEAL STARTS TO FADE 2 S AFTER YOU LAST GAINED ANY.' }); // round 135: hold the Zeal bar for what it is
     // Reaching a new step flashes the bar and rings a rising bell.
     if (tier > (game.zTier ?? 0)) { game.zFlashT = game.real; sfx('knell', { vol: 0.4, rate: 0.9 + tier * 0.15 }); }
     game.zTier = tier;
@@ -10739,7 +10741,7 @@ function autoWinTap(x, y) {
   if (autoRun() && inRect(L.row(7), x, y)) { game.run.autoOff = !game.run.autoOff; sfx('tap'); }
 }
 function pauseLayout() {
-  const tiles = [['bag', 'BAG'], ...(game.scene === 'wound' || game.scene === 'town' ? [['rites', 'RITES'], ['map', 'MAP']] : []), ...(game.scene === 'wound' && game.run && !game.run.yard ? [['wounds', 'WOUNDS']] : []), ['codex', 'CODEX'], ['shop', 'SHOP'], ['settings', 'SETTINGS'], ['auto', 'AUTO'], ['sound', AUDIO.muted ? 'SOUND OFF' : 'SOUND ON'], ...(devOn() ? [['dev', 'DEV'], ['layout', 'LAYOUT']] : []), ['resume', 'RESUME']];
+  const tiles = [['bag', 'BAG'], ...(game.scene === 'wound' || game.scene === 'town' ? [['rites', 'RITES'], ['map', 'MAP']] : []), ...(game.scene === 'wound' && game.run && !game.run.yard ? [['wounds', 'WOUNDS']] : []), ['codex', 'CODEX'], ['shop', 'SHOP'], ['news', 'NEWS'], ['settings', 'SETTINGS'], ['auto', 'AUTO'], ['sound', AUDIO.muted ? 'SOUND OFF' : 'SOUND ON'], ...(devOn() ? [['dev', 'DEV'], ['layout', 'LAYOUT']] : []), ['resume', 'RESUME']];
   const pw = Math.max(168, Math.min(232, Math.round(W * 0.4))), px = W - pw - SAFE.r, cols = 3, gap = 4, tw = Math.floor((pw - 16 - gap * (cols - 1)) / cols);
   const top = 46, rows = Math.ceil(tiles.length / cols), th = Math.max(36, Math.min(54, Math.floor((H - top - 10 - gap * (rows - 1)) / rows)));
   return { px, pw, tiles: tiles.map(([id, label], i) => ({ id, label, x: px + 8 + (i % cols) * (tw + gap), y: top + Math.floor(i / cols) * (th + gap), w: tw, h: th })), back: { x: W - SAFE.r - 18, y: 17, r: 12 } };
@@ -10755,6 +10757,7 @@ function pauseIcon(id, x, y) {
   else if (id === 'sound') { ctx.fillStyle = C; ctx.fillRect(x - 7, y - 3, 4, 6); ctx.beginPath(); ctx.moveTo(x - 4, y - 3); ctx.lineTo(x + 1, y - 7); ctx.lineTo(x + 1, y + 7); ctx.lineTo(x - 4, y + 3); ctx.fill();
     ctx.strokeStyle = C; ctx.lineWidth = 1.5; if (AUDIO.muted) { ctx.beginPath(); ctx.moveTo(x + 3, y - 3); ctx.lineTo(x + 8, y + 3); ctx.moveTo(x + 8, y - 3); ctx.lineTo(x + 3, y + 3); ctx.stroke(); } else for (const r of [4, 7]) { ctx.beginPath(); ctx.arc(x + 1, y, r, -0.8, 0.8); ctx.stroke(); } }
   else if (id === 'shop') sprC('pets', 'indul', 0, x, y);
+  else if (id === 'news') { ctx.fillStyle = C; ctx.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 3.2 : 7.5; ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } ctx.closePath(); ctx.fill(); } // round 135: what's new
   else if (id === 'codex') { // a book
     ctx.fillStyle = '#b51d36'; ctx.fillRect(x - 6, y - 7, 12, 14); ctx.fillStyle = '#7d1233'; ctx.fillRect(x - 6, y - 7, 2, 14);
     ctx.fillStyle = C; ctx.fillRect(x - 4, y + 5, 10, 2); ctx.fillStyle = '#ffd155'; ctx.fillRect(x - 2, y - 3, 6, 2); ctx.fillRect(x, y - 5, 2, 6);
@@ -10828,6 +10831,7 @@ function pauseTap(x, y) {
     if (t.id === 'auto') { game.state = 'autow'; return; }
     if (t.id === 'wounds') { game.woundWin = { sel: 0 }; game.state = 'wounds'; return; }
     if (t.id === 'shop') return openStore(0, 'pause');
+    if (t.id === 'news') { game.newsFor = BUILD; game.newsBack = 'pause'; game.state = 'news'; sfx('tap'); return; } // round 135
     if (t.id === 'sound') { AUDIO.setMuted(!AUDIO.muted); return; }
     if (t.id === 'dev') return openDev();
     if (t.id === 'layout') return openDesigner();
@@ -12334,7 +12338,7 @@ function onTap(x, y) {
     case 'cells': cellsTap(x, y); return true;
     case 'yard': yardTap(x, y); return true;
     case 'rites': ritesTap(x, y); return true;
-    case 'news': if (inRect(newsLayout().ok, x, y) || !inRect(newsLayout(), x, y)) { game.state = 'play'; sfx('tap'); } return true;
+    case 'news': if (inRect(newsLayout().ok, x, y) || !inRect(newsLayout(), x, y)) { game.state = game.newsBack || 'play'; game.newsBack = null; sfx('tap'); } return true;
     case 'censer': censerTap(x, y); return true;
     case 'board': boardTap(x, y); return true;
     case 'altar': altarTap(x, y); return true;

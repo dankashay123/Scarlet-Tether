@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 134 (build 134, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 135 (build 135, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -39,7 +39,7 @@ see "The owner's preferences".) When the owner answers with numbers
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
-   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-134 on
+   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
    `claude/brave-fermi-kw8he3`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
@@ -368,13 +368,19 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 - **The owner on the Vesper (round 133):** "feels great" with 25% less damage
   taken and 15% more health. Leave it.
-- **Offered after round 134, not picked yet:** (1) round 131's `SETK.low6.nails`
-  came from a pilot run without the Nails' own rites; with them the Nails
-  clears in 71 s, so that boost may not be needed; (2) the Choir clears fastest
-  with the pilot at Station VI (52 s) though setbal puts it mid-pack: more
-  runs; (3) the slow group (Font, Stride, Viper, Thorn, Glass, about 91-95 s)
-  checked with more runs; (4) a hold tip on the Zeal bar; (5) the pet clocks
-  for the faster pets if wanted.
+- **Offered after round 135, not picked yet:** (1) the Drowned Font is the
+  pilot's slowest set at Station VI (100 s) though setbal puts it near the top:
+  find out why (pools left behind as the pilot moves on?); (2) the pilot's
+  spread is wide (one set 54-107 s across runs): more runs or a fixed seed;
+  (3) a hold tip on the Toll bar; (4) the NEWS tile could list the last three
+  builds; (5) a short sound when a buff icon appears.
+- **Pilot, 5 runs each (round 135, Station VI; seconds to clear and kills a
+  second).** Before the nudges: Choir 49 / 12.8, Viper's Fang 66 / 9.5, Glass
+  90 / 6.8, Stride 92 / 6.7, Nails 100 / 4.0 (70-119, with `low6.nails` 1.2),
+  Font 103 / 5.6. Shipped `SETK.low6` choir 0.68 (was 0.75), font 0.78 (was
+  0.7), nails 1.3 (was 1.4, briefly 1.2); after: Choir 56 / 11.7, Nails 76 /
+  8.9, Thorn 86 / 7.4, Font 100 / 6.0. setbal VI with nails 1.2: Nails 15.7,
+  Nails 4 + Font 2 15.9.
 - **Pilot with each set's own rites (round 134, Station VI, 3 runs; seconds
   to clear and kills a second).** Until round 134 `autobench.cjs SET=` ran
   every set on the starter rites, so earlier pilot numbers (rounds 130-133)
@@ -645,6 +651,12 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 135:** the owner said "All" to round 134's list. The Nails, Choir and
+  Font low-Station numbers nudged from 5-run pilot data (see Next steps); a
+  hold tip on the Zeal bar; the stall's tap line in gold with an arrow; a NEWS
+  tile on the pause screen that reopens this build's notes (WHAT'S NEW was
+  chopped at 667x375, so the tile is NEWS). Test: `round135.cjs`.
 
 - **Round 134:** the owner said "All" to round 133's list. The Glass Martyr's
   slow pilot runs (and every earlier pilot set comparison) came from

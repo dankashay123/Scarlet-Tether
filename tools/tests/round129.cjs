@@ -20,7 +20,7 @@ const { chromium } = (() => { try { return require('/opt/node-tools/node_modules
     return R;
   });
   const k = out.k, near = (a, b) => Math.abs(a - b) < 0.02;
-  out.ok = near(k.stride6.VI, 1.25) && near(k.stride6.XII, 1) && k.stride6.IX > 1.05 && k.stride6.IX < 1.2 && near(k.stride6.III, 1.25) && near(k.stride4.VI, 1.8) && near(k.stride4.XII, 1) && near(k.font6.VI / k.font6.XII, 0.7);
+  out.ok = near(k.stride6.VI, 1.25) && near(k.stride6.XII, 1) && k.stride6.IX > 1.05 && k.stride6.IX < 1.2 && near(k.stride6.III, 1.25) && near(k.stride4.VI, 1.8) && near(k.stride4.XII, 1) && near(k.font6.VI / k.font6.XII, 0.78);
   console.log(JSON.stringify(out));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();
 })();
