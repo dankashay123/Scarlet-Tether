@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-15, after round 132 (build 132, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-15, after round 133 (build 133, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -39,7 +39,7 @@ see "The owner's preferences".) When the owner answers with numbers
 7. Rounds 74-81 were worked on the branch `claude/pensive-archimedes-wuz1yw`
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
-   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-132 on
+   `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-133 on
    `claude/brave-fermi-kw8he3`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
@@ -366,13 +366,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Offered after round 132, not picked yet:** (1) the pilot plays the
-  Anchoress's Psalter and Glass Martyr far below their setbal numbers (below);
-  check how it positions her before tuning; (2) a bigger, clearer icon for
-  the Vesper's storm (the dagger frame is small at 18 px); (3) ask the owner
-  how the Vesper's defence feels (asked again in round 132); (4) buff icons
-  for pets that act on a timer; (5) the stall's long set cards end mid-sentence
-  at MORE IN THE BAG: a short "tap for the set" line there instead.
+- **The owner on the Vesper (round 133):** "feels great" with 25% less damage
+  taken and 15% more health. Leave it.
+- **Offered after round 133, not picked yet:** (1) the Glass Martyr is still
+  the pilot's slowest Anchoress set (110 s at Station VI; its power is shard
+  crits, not range); (2) a setting to show or hide the buff icons; (3) the pet
+  clocks for the faster pets (hound, finch) if the owner wants them; (4) the
+  Lantern and Reliquary with the pilot's new range rechecked on a second
+  seed set; (5) bigger, clearer pet icons in the buff row (the crow is dark).
+- **Measured in round 133.** Pilot (Anchoress, Station VI, 3 runs) with the
+  closer range: Psalter 91 s / 5.0 kills a second (was 106 / 3.5), Glass 110 /
+  4.4 (was 112 / 3.9), Lantern 84 / 7.4 (was 77 / 7.7, within noise).
 - **Measured in round 132.** Pilot (autobench, Station VI gear and Station,
   3 runs; seconds to clear and kills a second): Vesper Viper's Fang 50 / 11.2,
   Nightblade 63 / 9.3, Dusk Walker 66 / 8.9, Veil 74 / 8.8, Bloodletter 74 /
@@ -632,6 +636,14 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 133:** round 131's deploy failed with a 504 from GitHub's Pages API
+  (round 132's deploy went through, so the site was current). The workflow
+  now uses the Node 24 actions and retries a deploy once. The owner said the
+  Vesper "feels great" and picked 1-5: the pilot fights closer as the
+  Anchoress; the storm icon is two crossed blades (`stormGlyph`); a set
+  piece's card in the stall opens its set; pet clocks for the Lamb, Wisp and
+  Bell Crow. Test: `round133.cjs`.
 
 - **Round 132:** the owner said "All" to round 131's list. Buff icons for
   Hunger, Bone Ward and the Still Cloak (held), the Long Descent's crits
