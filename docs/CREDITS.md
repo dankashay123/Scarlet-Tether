@@ -70,6 +70,7 @@ multi-gigabyte archives.
 - Before round 29: [Kenney Fonts](https://kenney.nl/assets/kenney-fonts) "Kenney High" (CC0 1.0) as a bitmap font. The glyph tables (`GLYPHS`, `FONT`) are still in `index.html` but unused.
 
 - `chime.mp3` (the Anchoress's shards): synthesised by `tools/build-chime.py`, no sample used.
+- `buff.mp3` (a buff icon appearing, round 136): synthesised by `tools/build-buff.py`, no sample used.
 - `slash.mp3`, `shing.mp3`, `stab.mp3`, `whirl.mp3` (the Vesper's blades, round 122): synthesised by `tools/build-blades.py`, no sample used.
 - `sacrifice.mp3` (the Wound sacrifice): synthesised by `tools/build-sacrifice.py`, no sample used.
 

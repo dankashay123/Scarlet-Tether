@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 135 (build 135, on `master` and deployed; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 136 (build 136, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`.
+   `claude/brave-fermi-kw8he3`; round 136 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -372,12 +372,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   rounds 133-135 all deployed first time. If the owner sends a failed-deploy
   email, check the run's job steps before changing anything (round 131's was
   a 504 on GitHub's side).
-- **Offered after round 135, not picked yet:** (1) the Drowned Font is the
-  pilot's slowest set at Station VI (100 s) though setbal puts it near the top:
-  find out why (pools left behind as the pilot moves on?); (2) the pilot's
-  spread is wide (one set 54-107 s across runs): more runs or a fixed seed;
-  (3) a hold tip on the Toll bar; (4) the NEWS tile could list the last three
-  builds; (5) a short sound when a buff icon appears.
+- **Offered after round 136, not picked yet:** see the end of round 136's reply
+  (the owner answers with numbers or "All").
+- **The Drowned Font and the pilot (round 136).** Why the pilot was slow with
+  it: the Font hurts foes standing in its pools, and while fighting only about
+  3 foes stood in its 8-9 pools at a time (kills a second while engaged 7.5-8.5
+  against the Choir's 13-18). setbal's bot stands still, so foes walk into its
+  pools, and at Station VI every set is at the crowd's ceiling there (Font 22,
+  Nails 20, Choir 18 kills a second): setbal cannot see this. Shipped:
+  `SETK.low6.font` 1.3 (was 0.78) and the pilot holds ground in its own pool
+  with Font 4+ (`autoFontPool`). Pilot, Station VI, seeds 100-107 (`SEED=`):
+  Font 99 s before (seeds 100-103), 88 after; Nails 84, Choir about 60 on the
+  same seeds. Real players move like the pilot, so trust it over setbal for
+  pool sets at low Stations.
+- **Pilot spread (round 136).** `autobench.cjs SEED=n` puts trial k on map
+  seed n + k. The map is most of the spread: seed 105 cleared in 55-62 s and
+  107 in 103-118 s for every set. Compare sets on the same seeds, in pairs.
 - **Pilot, 5 runs each (round 135, Station VI; seconds to clear and kills a
   second).** Before the nudges: Choir 49 / 12.8, Viper's Fang 66 / 9.5, Glass
   90 / 6.8, Stride 92 / 6.7, Nails 100 / 4.0 (70-119, with `low6.nails` 1.2),
@@ -655,6 +665,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 136:** the owner said "let's continue", so round 135's five suggestions
+  were done: the Drowned Font's slow pilot runs explained and tuned (see Next
+  steps), `SEED=` for `autobench.cjs`, a hold tip on the Toll bar, NEWS tabs
+  for the last three builds (`newsBuilds`, the panel sized for the longest),
+  and a soft synthesised chime as a buff icon appears (`buff`,
+  `tools/build-buff.py`; pets' clocks and a buff back within 4 s stay quiet,
+  `BUFF_SND`). The Anchoress and the Bell Crow keep their capitals in text.
+  Test: `round136.cjs`. Every test, `menus.cjs` at three sizes (and
+  `TEXT=large`) and a soak per class were clean (`round132.cjs` reports one
+  text problem on the old build too).
 
 - **Round 135:** the owner said "All" to round 134's list. The Nails, Choir and
   Font low-Station numbers nudged from 5-run pilot data (see Next steps); a
