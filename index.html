@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '141';
+const BUILD = '142';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '142': ['PELL\'S STALL SAYS WHAT EACH PIECE WOULD DO TO YOUR SANCTITY; ITS STOCK LIST SHOWS UPGRADES IN GREEN.', 'GEAR ON THE GROUND GETS ITS GREEN ARROW ONLY IF IT WOULD RAISE YOUR SANCTITY, AND PICKING ONE UP SAYS BY HOW MUCH.', 'AUTO SELL KEEPS ONLY PIECES THAT WOULD RAISE YOUR SANCTITY.', 'CHESTS AND SHRINES YOU HAVE PASSED SHOW CLEARER ON THE MAP, AND THE MINIMAP POINTS TO THEM FROM ITS EDGE.', 'NEW LOOKS FOR THE GLASS MOTH, THE ROSE MOTH AND THE STONE CHERUB.'],
   '141': ['IN THE BAG, A PIECE\'S CARD SAYS WHAT WEARING IT DOES TO YOUR SANCTITY, AND BETTER OR WORSE NOW COMES FROM THAT.', 'WEARING A PIECE SHOWS YOUR SANCTITY BEFORE AND AFTER.', 'AUTO PLAY NO LONGER STEPS ASIDE FROM EVERY HOMING SHOT: IT DASHES SIDEWAYS WHEN ONE IS CLOSE, SO IT KEEPS FIGHTING.'],
   '140': ['YOUR SANCTITY NOW COUNTS EVERYTHING THAT MAKES YOU STRONGER: GEAR ROLLS, SETS, ENCHANTS, HALLOWED POWERS, TALENTS, PASSIVES, RUBRICS AND THE CALLING, NOT ONLY ITEM LEVELS.', 'TAP SANCTITY IN THE BAG TO SEE WHAT MAKES IT UP.', 'EACH STATION\'S SANCTITY NEED IS ON THE SAME SCALE, SO YOUR SANCTITY AGAINST IT SAYS HOW READY YOU ARE.'],
   '139': ['THE DESCENT PANEL SHOWS YOUR LAST RUN: THE STATION, HOW LONG IT TOOK, KILLS AND THE SET YOU WORE.', 'RECKONINGS THAT NEED A WAY OF PLAYING SAY SO IN THE RITES PANEL AND THE CODEX (STAY IN THE POOL, KEEP DASHING, STAY CLOSE).', 'ASPERSION ALSO HITS THE FOES AROUND YOU WITH A BURST OF HOLY WATER.', 'RUBRICS ON THE HUNDREDFOLD AND THE HUNDRED SPLINTERS NOW BOOST THE BOLTS AND SHARDS FIRED WHILE THEY LAST.', 'AUTO PLAY USES DUSKFIRE, THE RELIC PYRE AND THE BRIMMING RELIQUARY BETTER.', 'THE GLASS MARTYR AT 6 PIECES: ALL YOUR DAMAGE X2.1 (WAS X1.67) AND 55% LESS DAMAGE TAKEN (WAS 45%). AT STATION VI AND LOWER IT GAINS LESS.'],
@@ -2590,6 +2591,18 @@ function affixLines(it, x, y, w, label = true) {
   return y;
 }
 function affixGem(cx, cy, col) { ctx.fillStyle = PAL.outline; ctx.fillRect(cx - 2, cy - 1, 5, 3); ctx.fillRect(cx - 1, cy - 2, 3, 5); ctx.fillStyle = col; ctx.fillRect(cx - 1, cy - 1, 3, 3); ctx.fillStyle = '#ffffff'; ctx.fillRect(cx - 1, cy - 1, 1, 1); }
+// Round 142: the BETTER / WORSE pill (bag and Pell's stall): your Sanctity now and with the piece, from its top-left (x, y),
+// the verdict word dropped when it does not fit in room. Returns the verdict (1, 0, -1).
+function sanctPill(it, worn, x, y, room) {
+  const a = playerSanctity(), b = sanctIfWorn(it), r = b == null ? null : b / Math.max(1, a);
+  const d = r == null ? (worn ? itemScore(it) - itemScore(worn) : 1) : r > 1.005 ? 1 : r < 0.995 ? -1 : 0, word = d > 0.2 ? 'BETTER' : d < -0.2 ? 'WORSE' : 'SIDEGRADE';
+  const nums = b == null ? '' : `SANCTITY ${a.toLocaleString('en-US')} TO ${b.toLocaleString('en-US')}`;
+  const t0 = !nums ? (d > 0.2 ? 'BETTER THAN WORN' : d < -0.2 ? 'WORSE THAN WORN' : 'SIDEGRADE') : textW(`${word}: ${nums}`, 1, true) <= room ? `${word}: ${nums}` : nums;
+  const col = d > 0.2 ? PAL.flame1 : d < -0.2 ? PAL.blood0 : PAL.stone1, bw = textW(t0, 1, true) + 12 + (d ? 4 : 0);
+  ctx.fillStyle = `rgba(${hexRgb(col)},0.16)`; ctx.fillRect(x, y, bw, 13); ctx.fillStyle = `rgba(${hexRgb(col)},0.6)`; ctx.fillRect(x, y, 2, 13);
+  if (d > 0.2 || d < -0.2) cmpArrow(x + 4, y + 3, d > 0.2);
+  text(t0, x + (d > 0.2 || d < -0.2 ? 10 : 6), y + 3, col, { small: true, outline: null }); return d;
+}
 // Round 141: your Sanctity if this piece were worn in its slot (tried on for a moment; cached until gear changes).
 const SANCT_IF = new Map();
 function sanctIfWorn(it) {
@@ -2674,11 +2687,12 @@ function renderShop() {
     const sz = Math.min(26, r.h - 2), my = r.y + Math.round(r.h / 2);
     itemSlot({ x: r.x + 3, y: r.y + Math.round((r.h - sz) / 2), w: sz, h: sz }, q);
     text(fitText(q.name, r.w - sz - 60), r.x + sz + 8, my - 9, RARITY[q.ri].color, { small: true, outline: null });
-    text(`SANCTITY ${itemSanctity(q)}`, r.x + sz + 8, my + 2, PAL.stone1, { small: true, outline: null });
+    { const b = sanctIfWorn(q), a = playerSanctity(); text(`SANCTITY ${itemSanctity(q)}`, r.x + sz + 8, my + 2, b == null || Math.abs(b - a) <= a * 0.005 ? PAL.stone1 : b > a ? PAL.flame1 : PAL.blood0, { small: true, outline: null }); } // round 142: green if it would raise your Sanctity
     text(String(q.price), r.x + r.w - 6, my - 4, (SAVE.gold || 0) >= q.price ? PAL.gold1 : PAL.blood0, { align: 'right' });
   });
   if (it && !it.sold) {
-    drawItemCard(it, L.card, SAVE.equip[it.slot], -1, L.btnA.y - 4, it.set || it.wset ? 'TAP THE CARD FOR THE FULL SET.' : 'MORE IN THE BAG.'); // round 132: long set lines stop above the buttons (round 133: a tap opens the set)
+    drawItemCard(it, L.card, SAVE.equip[it.slot], -1, L.btnA.y - 20, it.set || it.wset ? 'TAP THE CARD FOR THE FULL SET.' : 'MORE IN THE BAG.'); // round 132: long set lines stop above the buttons (round 133: a tap opens the set; round 142: and above the Sanctity pill)
+    sanctPill(it, SAVE.equip[it.slot], L.card.x + 6, L.btnA.y - 17, L.card.w - 28); // round 142
     const can = (SAVE.gold || 0) >= it.price && (SAVE.bag.length < BAG_SIZE || !SAVE.equip[it.slot]);
     invButton(L.btnA, game.shop.cmp ? 'STOCK' : 'COMPARE', PAL.stone4, true);
     invButton(L.btnB, can ? `BUY ${it.price}` : (SAVE.gold || 0) < it.price ? 'NEED GOLD' : 'BAG FULL', PAL.gold3, can);
@@ -7480,7 +7494,7 @@ function updateDrops(dt) {
       if (d.kind === 'gold') { d.amount = Math.round(d.amount * (1 + G.gold / 100) * (game.run.martyr ? 2 : 1)); game.run.gold += d.amount; nums.push({ x: player.x + rand(-6, 6), y: player.y - 39, v: `+${d.amount}`, t: 0, color: PAL.gold0, small: true }); }
       if (d.kind === 'globe') { if (G.powers.has('tithe')) addFervor(10); const h = Math.round(player.maxHp * 0.15 * (G.powers.has('globe') ? 2 : 1) * (1 + ts('orbs') / 100)); if (tal('bloodrush')) player.rushT = game.time + 6; player.hp = Math.min(player.maxHp, player.hp + h); nums.push({ x: player.x, y: player.y - 55, v: `+${h}`, t: 0, color: PAL.flame1, small: false }); rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.3, r: 20, color: '224,32,46' }); }
       if (d.kind === 'item' && autoSellPick(d.item)) { /* sold as it was picked up (round 113) */ }
-      else if (d.kind === 'item') { game.run.items.push(d.item); const R = RARITY[d.item.ri]; const auto = !SAVE.equip[d.item.slot]; bagAdd(d.item); if (!auto) { toast(`${nm(d.item)}`, 2); game.toastColor = R.color; } if (d.item.ri >= 3) { game.flash = 0.06; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: R.rgb }); } }
+      else if (d.kind === 'item') { game.run.items.push(d.item); const R = RARITY[d.item.ri]; const auto = !SAVE.equip[d.item.slot]; const gain = auto ? 0 : (sanctIfWorn(d.item) ?? 0) - playerSanctity(); bagAdd(d.item); if (!auto) { toast(gain > playerSanctity() * 0.005 ? (textW(`${nm(d.item)}: +${gain.toLocaleString('en-US')} SANCTITY IF WORN`) <= W - 40 ? `${nm(d.item)}: +${gain.toLocaleString('en-US')} SANCTITY IF WORN` : `+${gain.toLocaleString('en-US')} SANCTITY IF WORN`) : `${nm(d.item)}`, 2); game.toastColor = R.color; } if (d.item.ri >= 3) { game.flash = 0.06; rings.push({ x: player.x, y: player.y - 16, t: 0, max: 0.5, r: 40, color: R.rgb }); } }
     }
   }
   drops = drops.filter((d) => !d.taken);
@@ -7529,7 +7543,8 @@ function drawDropLabels() {
     ctx.fillStyle = 'rgba(11,7,16,0.6)'; ctx.fillRect(Math.round(d.x - w / 2), Math.round(y - 3), w, h);
     text(nm(d.item), d.x, y, RARITY[d.item.ri].color, { align: 'center' });
     const worn = SAVE.equip[d.item.slot];
-    if (!worn || itemScore(d.item) > itemScore(worn) + 0.2) { const ax = Math.round(d.x + w / 2 + 3), ay = Math.round(y); ctx.fillStyle = PAL.outline; ctx.fillRect(ax - 1, ay - 1, 7, 9); ctx.fillStyle = PAL.flame1; for (let r = 0; r < 3; r++) ctx.fillRect(ax + 2 - r, ay + r, 1 + r * 2, 1); ctx.fillRect(ax + 1, ay + 3, 3, 4); }
+    const up = !worn || (sanctIfWorn(d.item) ?? 0) > playerSanctity() * 1.005; // round 142: an upgrade by your Sanctity, not a rough item score
+    if (up) { const ax = Math.round(d.x + w / 2 + 3), ay = Math.round(y); ctx.fillStyle = PAL.outline; ctx.fillRect(ax - 1, ay - 1, 7, 9); ctx.fillStyle = PAL.flame1; for (let r = 0; r < 3; r++) ctx.fillRect(ax + 2 - r, ay + r, 1 + r * 2, 1); ctx.fillRect(ax + 1, ay + 3, 3, 4); }
   }
 }
 // Pillars of light over dropped gear, by rarity: taller and brighter the
@@ -10275,8 +10290,11 @@ function drawMapMarks(ox, oy, k, mx, my, mw, mh) {
   const at = (x, y) => [Math.round(ox + x / TILE * k), Math.round(oy + y / TILE * k)];
   const icon = (name, x, y, col) => { const [px, py] = at(x, y); if (px > mx - 4 && px < mx + mw + 4 && py > my - 4 && py < my + mh + 4) mapIcon(name, px - 2, py - 4, col); };
   for (const r of room.rooms) {
-    if (r.shrine && !r.shrine.used && seen(r.shrine.x, r.shrine.y)) icon('shrine', r.shrine.x, r.shrine.y, PAL.holy1);
-    if (r.chest && !r.chest.open && seen(r.chest.x, r.chest.y)) icon('treasury', r.chest.x, r.chest.y, PAL.gold1);
+    // Round 142: unopened chests and unused shrines are easier to spot: a soft pulsing ring behind the icon.
+    const ring = (x, y, rgb) => { const [px, py] = at(x, y); if (px < mx - 8 || px > mx + mw + 8 || py < my - 8 || py > my + mh + 8) return; const t = (game.real * 1.2) % 1, rr = 4 + t * 5;
+      ctx.strokeStyle = `rgba(${rgb},${(0.85 * (1 - t)).toFixed(2)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(px, py - 2, rr, 0, Math.PI * 2); ctx.stroke(); };
+    if (r.shrine && !r.shrine.used && seen(r.shrine.x, r.shrine.y)) { ring(r.shrine.x, r.shrine.y, '120,200,255'); icon('shrine', r.shrine.x, r.shrine.y, PAL.holy1); }
+    if (r.chest && !r.chest.open && seen(r.chest.x, r.chest.y)) { ring(r.chest.x, r.chest.y, '255,209,85'); icon('treasury', r.chest.x, r.chest.y, PAL.gold1); }
   }
   for (const e of enemies) {
     if (e.dead || e.boss || Math.abs(e.x - player.x) > 300 || Math.abs(e.y - player.y) > 200) continue;
@@ -10308,6 +10326,12 @@ function renderMinimap() {
           const k = Math.min(ex / Math.max(0.01, Math.abs(dx)), ey / Math.max(0.01, Math.abs(dy))), a = Math.atan2(dy, dx), ax = Math.round(cx + dx * k), ay = Math.round(cy + dy * k);
           const col = W0 === game.waystone ? PAL.holy1 : Math.floor(game.real * 4) % 2 ? PAL.blood0 : PAL.gold0, tri = (r) => { ctx.beginPath(); ctx.moveTo(ax + Math.cos(a) * r, ay + Math.sin(a) * r); ctx.lineTo(ax + Math.cos(a + 2.4) * r, ay + Math.sin(a + 2.4) * r); ctx.lineTo(ax + Math.cos(a - 2.4) * r, ay + Math.sin(a - 2.4) * r); ctx.closePath(); ctx.fill(); };
           ctx.fillStyle = PAL.outline; tri(8.5); ctx.fillStyle = col; tri(6); } } }
+    // Round 142: a chest or shrine you have seen and left behind gets a small pip on the minimap's edge, pointing to it.
+    { const cx = mx + mw / 2, cy = my + mh / 2, ex = mw / 2 - 5, ey = mh / 2 - 5, seen = (x, y) => room.seen[Math.floor(y / TILE) * room.w + Math.floor(x / TILE)];
+      const pip = (x, y, col) => { const dx = ox + x / TILE - cx, dy = oy + y / TILE - cy; if (Math.abs(dx) <= ex + 2 && Math.abs(dy) <= ey + 2) return;
+        const k = Math.min(ex / Math.max(0.01, Math.abs(dx)), ey / Math.max(0.01, Math.abs(dy))), px = Math.round(cx + dx * k), py = Math.round(cy + dy * k);
+        ctx.fillStyle = PAL.outline; ctx.fillRect(px - 3, py - 3, 6, 6); ctx.fillStyle = col; ctx.fillRect(px - 2, py - 2, 4, 4); };
+      for (const r of room.rooms) { if (r.chest && !r.chest.open && seen(r.chest.x, r.chest.y)) pip(r.chest.x, r.chest.y, PAL.gold1); if (r.shrine && !r.shrine.used && seen(r.shrine.x, r.shrine.y)) pip(r.shrine.x, r.shrine.y, PAL.holy1); } }
     const pulse = Math.floor(game.real * 4) % 2;
     ctx.fillStyle = PAL.outline; ctx.fillRect(mx + mw / 2 - 2, my + mh / 2 - 2, 5, 5);
     ctx.fillStyle = pulse ? PAL.white : PAL.gold0; ctx.fillRect(mx + mw / 2 - 1, my + mh / 2 - 1, 3, 3);
@@ -10828,12 +10852,13 @@ const AUTO_SELL = ['OFF', 'COMMON', 'BLESSED AND BELOW', 'CONSECRATED AND BELOW'
 const autoSellMax = () => autoRun() ? (autoW().sell | 0) - 1 : -1;
 function autoSold(it) { const R = game.run; R.gold += SALVAGE[it.ri]; R.autoSold = (R.autoSold || 0) + 1; R.autoSoldGold = (R.autoSoldGold || 0) + SALVAGE[it.ri]; nums.push({ x: player.x + rand(-8, 8), y: player.y - 52, v: `SOLD +${SALVAGE[it.ri]}`, t: 0, color: PAL.gold1, small: true }); }
 function autoSellPick(it) {
-  if (it.ri > autoSellMax() || it.set || it.wset || !SAVE.equip[it.slot] || itemScore(it) > itemScore(SAVE.equip[it.slot]) + 0.2) return false;
+  // Round 142: kept only if wearing it would raise your Sanctity (was a rough item score).
+  if (it.ri > autoSellMax() || it.set || it.wset || !SAVE.equip[it.slot] || (sanctIfWorn(it) ?? 0) > playerSanctity() * 1.005) return false;
   autoSold(it); return true;
 }
 function autoSellFor(it) {
-  const mx = autoSellMax(); let v = null; for (const q of SAVE.bag) if (q.ri <= mx && !q.set && !q.wset && (!v || q.ri < v.ri || (q.ri === v.ri && itemScore(q) < itemScore(v)))) v = q;
-  if (!v || (it.ri <= v.ri && itemScore(it) <= itemScore(v))) return false;
+  const mx = autoSellMax(), sv = (q) => sanctIfWorn(q) ?? 0; let v = null; for (const q of SAVE.bag) if (q.ri <= mx && !q.set && !q.wset && (!v || sv(q) < sv(v))) v = q; // round 142: the bag piece that would do least for your Sanctity
+  if (!v || sv(it) <= sv(v)) return false;
   SAVE.bag = SAVE.bag.filter((q) => q !== v); game.run.items = game.run.items.filter((q) => q !== v); autoSold(v); return true;
 }
 // The auto window: opened from the pause screen. Auto Wounds on or off, its three weights, and the pilot of an auto run.
@@ -10856,7 +10881,7 @@ function renderAutoWin() {
   HOLD_TIPS.push({ ...L.row(4), x: L.x0 + 10, w: L.pw - 20, title: 'STOP FOR A STIGMA', text: 'WHEN A STIGMA CARD IS OFFERED, THE LEVEL-UP SCREEN OPENS SO YOU CHOOSE. NOT IN AN AUTO PLAY RUN.' });
   HOLD_TIPS.push({ ...L.row(5), x: L.x0 + 10, w: L.pw - 20, title: 'REROLL A WEAK DRAW', text: 'WHEN NO CARD IS OF A KIND YOU RATE HIGHEST, AUTO WOUNDS PAYS FOR ONE REROLL FROM THE RUN\'S GOLD.' });
   lab(6, 'AUTO SELL'); invButton(L.row(6), `< ${['OFF', 'COMMON', 'BLESSED DOWN', 'CONSEC. DOWN'][A.sell | 0]} >`, PAL.stone4);
-  HOLD_TIPS.push({ ...L.row(6), x: L.x0 + 10, w: L.pw - 20, title: `AUTO SELL: ${AUTO_SELL[A.sell | 0]}`, text: 'IN AN AUTO PLAY RUN, GEAR OF THE CHOSEN RARITY IS SOLD AS IT IS PICKED UP, UNLESS IT BEATS WHAT YOU WEAR. WITH A FULL BAG, THE WEAKEST SUCH PIECE IN THE BAG IS SOLD FOR A BETTER ONE. HALLOWED AND SET PIECES ARE NEVER SOLD.' });
+  HOLD_TIPS.push({ ...L.row(6), x: L.x0 + 10, w: L.pw - 20, title: `AUTO SELL: ${AUTO_SELL[A.sell | 0]}`, text: 'IN AN AUTO PLAY RUN, GEAR OF THE CHOSEN RARITY IS SOLD AS IT IS PICKED UP, UNLESS WEARING IT WOULD RAISE YOUR SANCTITY. WITH A FULL BAG, THE WEAKEST SUCH PIECE IN THE BAG IS SOLD FOR A BETTER ONE. HALLOWED AND SET PIECES ARE NEVER SOLD.' });
   if (autoRun()) { lab(7, 'AUTO PLAY'); invButton(L.row(7), game.run.autoOff ? 'PAUSED' : 'ON', game.run.autoOff ? PAL.stone4 : PAL.gold3); }
   invButton(L.done, 'DONE', PAL.stone4);
 }
@@ -12209,14 +12234,7 @@ function renderInventory() {
     for (const [ws, col, , tap] of lines) { const y0 = y; for (const l of ws) { if (y + 9 > stop) break; text(l, C.x + 6, y, col, { small: true, outline: null }); y += 9; } if (tap) game.inv.setTap = { x: C.x, y: y0 - 3, w: C.w, h: y - y0 + 6, it }; }
   }
   // Round 141: the verdict comes from your Sanctity with and without the piece (gear times Might), and says both.
-  if (worn) { const a = playerSanctity(), b = sanctIfWorn(it), r = b == null ? null : b / Math.max(1, a);
-    const d = r == null ? itemScore(it) - itemScore(worn) : r > 1.005 ? 1 : r < 0.995 ? -1 : 0, word = d > 0.2 ? 'BETTER' : d < -0.2 ? 'WORSE' : 'SIDEGRADE';
-    const nums = b == null ? '' : `SANCTITY ${a.toLocaleString('en-US')} TO ${b.toLocaleString('en-US')}`, room = C.w - 12 - (L.narrow ? textW('TAP THE CARD TO GO BACK', 1, true) + 10 : 0) - 16;
-    const t0 = !nums ? (d > 0.2 ? 'BETTER THAN WORN' : d < -0.2 ? 'WORSE THAN WORN' : 'SIDEGRADE') : textW(`${word}: ${nums}`, 1, true) <= room ? `${word}: ${nums}` : nums;
-    const col = d > 0.2 ? PAL.flame1 : d < -0.2 ? PAL.blood0 : PAL.stone1, bw = textW(t0, 1, true) + 12;
-    ctx.fillStyle = `rgba(${hexRgb(col)},0.16)`; ctx.fillRect(C.x + 6, C.y + C.h - 43, bw, 13); ctx.fillStyle = `rgba(${hexRgb(col)},0.6)`; ctx.fillRect(C.x + 6, C.y + C.h - 43, 2, 13);
-    if (d > 0.2 || d < -0.2) cmpArrow(C.x + 10, C.y + C.h - 40, d > 0.2);
-    text(t0, C.x + 6 + (d > 0.2 || d < -0.2 ? 10 : 6), C.y + C.h - 40, col, { small: true, outline: null }); }
+  if (worn) sanctPill(it, worn, C.x + 6, C.y + C.h - 43, C.w - 12 - (L.narrow ? textW('TAP THE CARD TO GO BACK', 1, true) + 10 : 0) - 16);
   if (game.inv.sel.from === 'bag') { invButton(L.btnA, 'WEAR', PAL.gold3); invButton(L.btnB, `SELL ${SALVAGE[it.ri]}`, PAL.crimson3); }
   else invButton(L.btnA, 'TAKE OFF', PAL.stone4, SAVE.bag.length < BAG_SIZE);
 }

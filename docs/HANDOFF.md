@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 141 (build 141, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 142 (build 142, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; rounds 136-141 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-142 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -379,7 +379,8 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   rounds 133-135 all deployed first time. If the owner sends a failed-deploy
   email, check the run's job steps before changing anything (round 131's was
   a 504 on GitHub's side).
-- **Offered after round 141, not picked yet:** see the end of round 141's reply.
+- **Offered after round 142, not picked yet:** see the end of round 142's reply.
+  Not picked from round 141's list: a "Ready for Station N" moment in town.
 - **All 15 sets at Station XII, run alone (round 141, seeds 300-303, 4 runs,
   the homing-shot pilot; median kills a second).** Saint: Confessor 7.8, Choir
   6.5, Stride 6.2, Nails 4.8, Font 4.8. Vesper: Nightblade 7.1, Dusk Walker 7.1,
@@ -747,6 +748,13 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 142:** the owner said "All except 5" to round 141's list. Pell's stall
+  shows the Sanctity pill and colours its stock by it (`sanctPill`); ground
+  labels, the pickup toast and auto sell compare Sanctity, not the item score;
+  unopened chests and unused shrines pulse on the map and the minimap points to
+  ones left behind; the Glass Moth, the Rose Moth and the Stone Cherub have
+  front-facing models of their own. Test: `round142.cjs`.
 
 - **Round 141:** the owner said "All" to round 140's list. The bag's BETTER/WORSE
   pill now comes from your Sanctity with and without the piece and shows both

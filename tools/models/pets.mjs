@@ -52,6 +52,33 @@ const wisp = () => [0, 1, 2, 3].map((i) => { const S = new Big(), b = i === 1 ||
 const bookworm = () => [0, 1, 2, 3].map((i) => { const S = new Big(), s = i % 2; S.add(box([12, 20, 0], [7, 1.2, 3], 0.4, 'violet'), 0); S.add(box([12, 18.6, 0.6], [6.2, 0.6, 2.6], 0.3, 'page'), 0);
   [[8, 16.5], [10.5, 15.6 - s], [13, 16.2 + s * 0.4]].forEach(([x, y]) => S.add(sphere([x, y, 1], 2.2, 'flame'), 1.2)); S.add(sphere([15.6, 14.6 - s, 1.2], 2.5, 'flame'), 1.2);
   const f = render(S, FW, FW, PM, { contrast: 1.4 }); eye(f, 16.6, 14 - s, 'ink2'); return A(f); });
+// Round 142: the moths and the Stone Cherub face the viewer (the shared side-on builder made lumpy boots and a grey
+// sock). A moth: a segmented body down the middle, two pairs of wings spread to both sides with an eye-spot, feathered
+// antennae; the wings open and close between frames.
+const moth = (body, wing, spot, eyeC) => () => [0, 1, 2, 3].map((i) => {
+  const S = new Big(), b = i === 1 || i === 2 ? 2 : 0, cy = 13 - b, open = i % 2 === 0, w = open ? 1 : 0.62;
+  for (const sd of [-1, 1]) { // an upper wing like a rounded triangle (wide at the tip), a gap, then a smaller lower wing
+    S.add(ellipsoid([12 + sd * 5 * w, cy - 3.6 - (open ? 0 : 1), -1], [2.8 * w + 0.6, 2.8, 0.8], wing), 0);
+    S.add(ellipsoid([12 + sd * 2.4 * w, cy - 1.4, -1], [1.8 * w + 0.4, 1.8, 0.8], wing), 0.9);
+    S.add(ellipsoid([12 + sd * 2.8 * w, cy + 3, -1.2], [2.2 * w + 0.4, 1.8, 0.7], wing), 0);
+  }
+  S.add(capsule([12, cy - 2.4, 1], [12, cy + 4.2, 1], 1.5, 1, body), 0);
+  S.add(sphere([12, cy - 4, 1.2], 1.6, body), 0.8);
+  for (const sd of [-1, 1]) S.add(capsule([12 + sd * 0.8, cy - 5.2, 1], [12 + sd * 2.8, cy - 8, 1], 0.7, 0.6, body), 0.3);
+  const f = render(S, FW, FW, PM, { contrast: 1.45 });
+  for (const sd of [-1, 1]) { const sx = 12 + sd * 5 * w, sy = cy - 3.8 - (open ? 0 : 1); dot(f, bx(sx), by(sy), spot); dot(f, bx(sx) + 1, by(sy), spot); dot(f, bx(sx), by(sy) + 1, spot); dot(f, bx(sx) + 1, by(sy) + 1, spot); }
+  eye(f, 11.2, cy - 4.2, eyeC); eye(f, 12.8, cy - 4.2, eyeC); return A(f); });
+// The Stone Cherub: a little winged statue: a round head with two eyes and rosy cheeks, a chubby body with small arms
+// and feet, feathered wings to both sides that flap, and a gold halo.
+const cherub = () => [0, 1, 2, 3].map((i) => {
+  const S = new Big(), b = i === 1 || i === 2 ? 2 : 0, cy = 14 - b, up = i % 2 === 0;
+  for (const sd of [-1, 1]) S.add(ellipsoid([12 + sd * 4.4, cy - (up ? 2.6 : 0.6), -1.6], [2.4, up ? 3.4 : 2.2, 0.8], 'bone'), 0.6);
+  S.add(ellipsoid([12, cy + 1.6, 0], [2.8, 3, 2.4], 'stone'), 0);
+  for (const sd of [-1, 1]) { S.add(capsule([12 + sd * 2.2, cy + 0.4, 1], [12 + sd * 3, cy + 2.4, 1.4], 0.9, 0.8, 'stone'), 0.6); S.add(sphere([12 + sd * 1.3, cy + 4.6, 0.6], 1.3, 'stone'), 0.6); }
+  S.add(sphere([12, cy - 3.6, 0.6], 3.3, 'stone'), 0.6);
+  S.add(torus([12, cy - 7.8, 0.4], 2.4, 0.8, 1.2, 'halo'), 0);
+  const f = render(S, FW, FW, PM, { contrast: 1.4 });
+  eye(f, 10.9, cy - 3.8, 'ink2'); eye(f, 13.1, cy - 3.8, 'ink2'); dot(f, bx(10.2), by(cy - 2.2), 'rose1'); dot(f, bx(13.8) + 1, by(cy - 2.2), 'rose1'); return A(f); });
 // The Indulgence: a rolled writ with a red wax seal (16x16, the currency icon).
 const indul = () => { const S = new Scene(); S.add(box([8, 8, 0], [5, 3.6, 1.2], 0.6, 'page'), 0); S.add(capsule([3, 4.4, 0.4], [13, 4.4, 0.4], 1.3, 1.3, 'page'), 0.6); S.add(capsule([3, 11.6, 0.4], [13, 11.6, 0.4], 1.3, 1.3, 'page'), 0.6); S.add(sphere([10.5, 9.4, 1.6], 2.4, 'seal'), 0);
   const f = render(S, 16, 16, PM, { contrast: 1.4 }); dot(f, 5, 7, 'stone2'); dot(f, 6, 7, 'stone2'); dot(f, 7, 7, 'stone2'); dot(f, 5, 9, 'stone2'); dot(f, 6, 9, 'stone2'); return Object.assign(f, { ax: 8, ay: 8 }); };
@@ -63,10 +90,10 @@ export default { pets: {
   // Round 121: the Vesper's pets: the Shadow Hound (was the Alms Hound) and the Night Raven (was the Bell Crow); ids kept.
   almshound: anim({ mat: 'slate', belly: 'slateDark', bw: 5, bh: 3.4, leg: 4, hr: 3, ears: 'point', tail: 'up', snout: 1, eye: 'crimson0', extra: (S, q) => S.add(torus([q.hx - 2.4, q.hy + 2, 0.6], 2.2, 0.9, 0.4, 'crimson'), 0) }),
   bellcrow: anim({ fly: 1, mat: 'coal', bw: 4.4, bh: 3.2, hr: 2.8, beak: 'bone', wing: 'slate', wingW: 5.2, tail: 'fan', eye: 'crimson0' }),
-  glassmoth: anim({ fly: 1, mat: 'violet', bw: 2.4, bh: 3.4, hr: 2, hx: 0.5, hy: 4, wing: 'glassWing', wing2: 1, wingW: 5.4, eye: 'holy0', ex: 0.6 }),
+  glassmoth: moth('violet', 'glassWing', 'violet0', 'violet0'),
   votivewisp: wisp,
   lamb: anim({ mat: 'cloth', bw: 5, bh: 4, leg: 3, legMat: 'coal', hr: 2.6, head: 'coal', ears: 'flop', earMat: 'coal', eye: 'cloth0', extra: (S, q) => { for (const [x, y] of [[9, q.cy - 3], [13, q.cy - 3.4], [11, q.cy - 4]]) S.add(sphere([x, y, 0.4], 2, 'cloth'), 1); } }),
-  cherub: anim({ fly: 1, mat: 'stone', bw: 3.4, bh: 3.4, hr: 3.2, hx: 1.4, hy: 4.6, wing: 'bone', wingW: 4, halo: 1, eye: 'ink2' }),
+  cherub,
   emberimp: anim({ mat: 'emberLit', belly: 'ember', bw: 3.6, bh: 3.6, leg: 3, hr: 3, hx: 2, hy: 4.4, ears: 'horn', tail: 'long', tailMat: 'blood', eye: 'white' }),
   hare: anim({ mat: 'sand', belly: 'cloth', bw: 4.4, bh: 3.4, leg: 3, hr: 2.8, ears: 'long', tail: 'bushy', tip: 'cloth' }),
   // Drop pets.
@@ -75,7 +102,7 @@ export default { pets: {
   emberfox: anim({ mat: 'emberLit', belly: 'cloth', bw: 4.6, bh: 3.2, leg: 3.5, legMat: 'coal', hr: 2.9, ears: 'point', tail: 'bushy', tip: 'cloth', snout: 1 }),
   herbmole: anim({ mat: 'coal', bw: 5, bh: 3.6, leg: 1.5, legMat: 'skin', hr: 0, extra: (S, q) => { S.add(capsule([15, q.cy + 0.6, 0.8], [18.4, q.cy + 1.4, 0.8], 2, 1, 'skin'), 1); S.add(sphere([9, q.cy - 4, 0], 1.6, 'moss'), 0); S.add(sphere([11, q.cy - 4.6, 0], 1.3, 'flame'), 0.4); }, after: (f, q) => eye(f, 15, q.cy - 1, 'cloth0') }),
   rubricowl: anim({ fly: 1, mat: 'fur', belly: 'sand', bw: 4, bh: 4, hr: 3.4, hx: 1, hy: 4.6, ears: 'point', beak: 'gold', wing: 'leather', wingW: 4.4, eye: 'gold1', ex: 1.6 }),
-  rosemoth: anim({ fly: 1, mat: 'blood', bw: 2.4, bh: 3.4, hr: 2, hx: 0.5, hy: 4, wing: 'roseWing', wing2: 1, wingW: 5.4, eye: 'white', ex: 0.6 }),
+  rosemoth: moth('blood', 'roseWing', 'crimson0', 'crimson0'),
   chrismsnail: anim({ mat: 'skin', bw: 5, bh: 1.8, leg: 0, hr: 2, hx: 5, hy: 2.4, shell: 1, extra: (S, q) => { for (const ex of [0, 1.6]) S.add(capsule([q.hx + ex, q.hy - 1.4, 0.4], [q.hx + ex + 0.6, q.hy - 4.4 + q.step, 0.4], 0.5, 0.7, 'skin'), 0); } }),
   orbtoad: anim({ mat: 'wart', belly: 'flame', bw: 5.4, bh: 3.6, leg: 1.6, hr: 3, hx: 3, hy: 2.2, eye: 'gold1', extra: (S, q) => S.add(sphere([q.hx - 0.4, q.hy - 2.6, 1.4], 1.5, 'wart'), 0.4) }),
   bookworm,
