@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Builds the battle pets' cues (round 137), synthesised here (no sample pack):
-#   chirp.mp3  the Nail Finch: two quick falling whistles
+#   chirp.mp3  the Nail Finch: two quick falling whistles (soft, near 2-3 kHz)
 #   bleat.mp3  the White Lamb: a soft wavering "meh"
 #   puff.mp3   the Censer Mouse: a small breath of fire (filtered noise)
 # Needs ffmpeg and numpy.  python3 tools/build-pets.py
@@ -21,7 +21,7 @@ def env(t, a, d):
 # chirp: two whistles sweeping down, the second shorter
 t = np.arange(int(SR * 0.22)) / SR
 x = np.zeros_like(t)
-for st, f0, f1, ln in [(0.0, 4200, 2900, 0.07), (0.09, 4600, 3300, 0.05)]:
+for st, f0, f1, ln in [(0.0, 2900, 2100, 0.07), (0.09, 3200, 2400, 0.05)]:  # round 138: lower and rounder (was 4.2-4.6 kHz)
     u = t - st; on = (u >= 0) & (u < ln)
     f = f0 + (f1 - f0) * np.clip(u / ln, 0, 1)
     ph = 2 * np.pi * np.cumsum(np.where(on, f, 0)) / SR

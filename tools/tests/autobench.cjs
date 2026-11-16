@@ -5,7 +5,8 @@
 // the Station, Saint level 60) or GEAR=1 (plain gear at the Station). WARDEN=<id> summons that Warden at the start
 // and reports the seconds to kill it (wardenT, null if it lived). NOREFILL=1 lets the pilot die (state 'dead', secs = when).
 // Round 136: SEED=n builds trial k on map seed n + k, so two sets (or two builds) run on the same maps; the fight itself
-// still rolls freely, so expect some spread.
+// still rolls freely, so expect some spread. Round 138: killBy and dmgBy list the top sources (a rite id, else bolt,
+// blade, shard, pool, status, other).
 const { chromium } = (() => { try { return require('/opt/node-tools/node_modules/playwright'); } catch { return require('playwright'); } })();
 const N = +(process.argv[2] || 3), SECS = +(process.argv[3] || 60), HERO = process.env.HERO || 'saint', ST = +(process.env.STATION || 1) - 1, SET = process.env.SET || '', GEAR = !!process.env.GEAR || !!SET, WARDEN = process.env.WARDEN || '', GEARST = +(process.env.GEARST || 0), STRATUM = +(process.env.STRATUM_K || 1), SEED = process.env.SEED; // STRATUM_K=2 or 3 plays the Drowned Nave or the Ossuary Spire (round 115) // GEARST=12: gear of that Station (default: the Station played)
 // Round 134: SET= also equips that set's own rites (the same table as setbal.cjs); before, every set ran with the starter rites.
@@ -29,7 +30,7 @@ const RITES = HERO === 'anchoress'
       while (performance.now() - t0 < secs * 500) { await new Promise((r) => setTimeout(r, 100)); if (HS.game.state !== 'play') { if (HS.game.state === 'dead') break; continue; } lost += Math.max(0, was - P.hp); if (refill && P.hp < P.maxHp * 0.3) P.hp = P.maxHp; was = P.hp;
         if (wd && wardenT === null && (wd.dead || !HS.game.warden)) { wardenT = Math.round(HS.game.time); break; } n++; const inPool = HS.hazards.some((hz) => hz.kind === 'pool' && Math.hypot(P.x - hz.x, (P.y - hz.y) / 0.6) < hz.r); if (inPool) { wet++; if (Math.hypot(P.x - lx, P.y - ly) < 1) wetStill++; } if ((P.rootT || 0) > 0 || (P.slowT || 0) > 0) root++; if (Math.hypot(P.x - lx, P.y - ly) < 1) stuck++; lx = P.x; ly = P.y; }
       const hurt = Object.entries(HS.game.run.hurt || {}).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k2, v]) => `${k2} ${Math.round(v)}`);
-      return { seed: HS.game.run.seed, stratum: HS.game.run.stratum, wardenT, secs: Math.round(HS.game.time), kills: HS.game.kills, lostK: +(lost / P.maxHp).toFixed(1), still: stuck, samples: n, inPool: wet, inPoolStill: wetStill, rootedOrSlowed: root, pools: HS.hazards.filter((hz) => hz.kind === 'pool').map((hz) => Math.round(hz.r)).slice(0, 8), level: HS.game.run.level, goal: HS.AP.goal, state: HS.game.state, hurt }; }, [SECS, WARDEN, !process.env.NOREFILL]);
+      const by = (o) => Object.entries(o || {}).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k2, v]) => `${k2} ${Math.round(v)}`); return { killBy: by(HS.game.run.killBy), dmgBy: by(HS.game.run.dmgBy), seed: HS.game.run.seed, stratum: HS.game.run.stratum, wardenT, secs: Math.round(HS.game.time), kills: HS.game.kills, lostK: +(lost / P.maxHp).toFixed(1), still: stuck, samples: n, inPool: wet, inPoolStill: wetStill, rootedOrSlowed: root, pools: HS.hazards.filter((hz) => hz.kind === 'pool').map((hz) => Math.round(hz.r)).slice(0, 8), level: HS.game.run.level, goal: HS.AP.goal, state: HS.game.state, hurt }; }, [SECS, WARDEN, !process.env.NOREFILL]);
     console.log(JSON.stringify(r));
   }
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();

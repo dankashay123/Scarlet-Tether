@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 137 (build 137, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 138 (build 138, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; rounds 136-137 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-138 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -372,8 +372,28 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   rounds 133-135 all deployed first time. If the owner sends a failed-deploy
   email, check the run's job steps before changing anything (round 131's was
   a 504 on GitHub's side).
-- **Offered after round 137, not picked yet:** see the end of round 137's reply
-  (the owner answers with numbers or "All").
+- **Offered after round 138, not picked yet:** see the end of round 138's reply
+  (the owner answers with numbers or "All"). Round 137's fifth (a "last run"
+  line on the Descent panel) was not picked.
+- **Where kills come from (round 138, `killBy`/`dmgBy` in autobench, Station
+  VI).** The Reckoning decides most of the gap between sets: the Choir's Rain
+  of Reckoning gets 549-579 of about 620 kills; the Confessor's bolts deal about
+  800k (bound foes take more); the Font's Great Font and the Stride's
+  Pilgrimage of Fire barely registered, because the pilot kept foes outside the
+  Font's following pool and never dashed during the Pilgrimage. The pilot now
+  does both: Font 83-87 s -> 77, Stride 102-110 -> 85 (seeds 100-103). Aspersion
+  (Font) is mostly a heal (1-9 kills a run). Bolts fired during a Reckoning count
+  as `bolt`, so the Hundredfold and the Glass Martyr's Reckoning do not show yet
+  (tag them with their rite to see them).
+- **Station XII, all 15 sets through the pilot (round 138, seeds 200-203, 180 s,
+  kills a second; few runs clear in time).** Saint: Choir 7.1, Confessor 6.7,
+  Font 5.5, Stride 5.5, Nails 4.7 (3.2-6.7 across runs). Vesper: Nightblade 7.1,
+  Bloodletter 6.3, Dusk Walker 6.0, Viper's Fang 5.4, Veil 5.2. Anchoress: Thorn
+  5.5, Psalter 5.4, Lantern 5.3, Glass 4.9, Reliquary 4.6. One Glass run died
+  at 25 s (pools burst faster than the bench's 30% refill). Single runs swing
+  2x at XII, so nothing was tuned; run 8 seeds before tuning from these. The
+  bench's cap is real time, so a loaded machine gives fewer game seconds:
+  compare kills a second, not seconds, at XII.
 - **All 15 sets through the pilot (round 137, Station VI, seeds 100-103, 4
   runs each, seconds to clear).** Saint: Confessor 58 (65 on a rerun), Choir
   65, Nails 73, Font 83-87, Stride 102-110. Vesper: Nightblade 50 (60 after
@@ -680,6 +700,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 138:** the owner said "All except 5" to round 137's list and asked for
+  very light sounds. The pet sounds and buff chime now sit about -40 dB (under a
+  menu tap; `VOL` buff 0.06, chirp 0.06, bleat 0.08, puff 0.1) and the chirp is
+  lower (2-3 kHz). A tally of damage and kills by source (`run.dmgBy`,
+  `run.killBy`) found the Font's and Stride's Reckonings unused by the pilot; it
+  now fights inside the Great Font and dashes through Pilgrimage of Fire. The
+  minimap points to a Warden (then the Waystone) out of its view. All 15 sets
+  through the pilot at Station XII (see Next steps). Test: `round138.cjs`.
 
 - **Round 137:** the owner said "All" to round 136's list. All 15 sets through
   the pilot on fixed seeds (see Next steps): `low6.glass` 1 (was 0.7) and
