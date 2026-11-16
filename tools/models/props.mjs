@@ -264,8 +264,39 @@ function fallencol() {
   S.add(capsule([41, G - 6.4, 1.5], [52, G - 6.4, 3.5], 6.2, 6.2, 'marble'), 0);
   S.sub(box([19, G - 7, 0], [0.7, 8, 8], 0.2), 0.2);
   S.sub(box([47, G - 6.4, 2.5], [0.7, 8, 8], 0.2), 0.2);
-  for (const [x, z, r, sd] of [[33.5, 4.5, 2.4, 1], [36, -2, 1.7, 2], [30.5, -4, 1.4, 4]]) S.add(bumpy(box([x, G - r, z], [r, r, r], 0.8, 'stoneDark'), 0.4, 0.9, sd), 0);
+  // Round 147: the broken ends are jagged, bitten out of the round shaft, with the raw stone showing.
+  for (const [x, y, z, r] of [[31, G - 10, 2, 3.4], [31.5, G - 4.5, -1, 3], [30.5, G - 7, 5, 2.8], [35, G - 9, -3, 3.2], [35.5, G - 3.5, 3.5, 2.6], [34.5, G - 6.5, 6, 2.4]]) S.sub(sphere([x, y, z], r), 0.6);
+  S.paint({ f: (x, y, z) => Math.abs(x - 32.5) - 3.2, mat: 'carve' });
+  S.paint({ f: (x, y, z) => Math.abs(x - 34.8) - 1.4, mat: 'stone' });
+  for (const [x, z, r, sd] of [[33.5, 7.5, 2.4, 1], [37, -3, 1.7, 2], [29.5, -6, 1.5, 4], [57, 5.5, 1.8, 5], [24, 7.8, 1.3, 6], [39, 7, 1.2, 7]]) S.add(bumpy(box([x, G - r, z], [r, r, r], 0.8, 'stoneDark'), 0.4, 0.9, sd), 0);
   return R(S, 62, 34, M, view(G, d));
+}
+// A dry well (round 147): a ring of rough stone round a black shaft, a broken winch frame over it, the rope cut short.
+// Frame 56 x 58, ground at y = 50; it blocks two tiles.
+function drywell() {
+  const S = new Scene(), G = 50, cx = 28, d = 14, L = (x, z) => Math.hypot(x - cx, z);
+  S.add(bumpy({ mat: 'stone', bb: [cx - 15, G - 14, -15, cx + 15, G, 15], f: (x, y, z) => { const l = L(x, z); return Math.max(Math.max(l - 14, 10.4 - l), Math.abs(y - (G - 6.5)) - 6.5); } }, 0.5, 0.7, 3), 0.6);
+  S.add({ mat: 'stoneDark', bb: [cx - 15, G - 16, -15, cx + 15, G - 10, 15], f: (x, y, z) => Math.hypot(L(x, z) - 12.4, y - (G - 13.4)) - 1.8 }, 0.8);
+  S.add({ mat: 'hole', bb: [cx - 11, G - 13, -11, cx + 11, G - 9, 11], f: (x, y, z) => Math.max(L(x, z) - 10.6, Math.abs(y - (G - 12.4)) - 0.5) }, 0);
+  for (const sx of [-1, 1]) S.add(box([cx + sx * 12.5, G - 25, -1], [1.5, 11, 1.5], 0.4, 'woodDark'), 0.3);
+  S.add(rotZ(box([cx - 1, G - 36.5, -1], [13, 1.4, 1.4], 0.4, 'wood'), [cx - 12.5, G - 36.5], 0.1), 0.3);
+  S.add(capsule([cx + 1, G - 36, -1], [cx + 1.5, G - 26, -1], 0.7, 0.7, 'woodDark'), 0.2);
+  return R(S, 56, 58, M, view(G, d, 0.5));
+}
+// Gravestones (round 147): a round-topped slab and a stone cross, leaning a little. Frame 20 x 30, ground at y = 27.
+function gravestone(v) {
+  const S = new Scene(), G = 27, cx = 10, d = 2.4;
+  S.add(box([cx, G - 1, 0], [6.5, 1, d + 2], 0.5, 'stoneDark'), 0);
+  if (v === 0) {
+    S.add(rotZ(bumpy(box([cx, G - 9, 0], [5, 8, d], 1.4, 'stone'), 0.3, 0.9, 2), [cx, G], v ? 0.08 : -0.08), 0);
+    S.add(rotZ(capsule([cx - 3, G - 17, 0], [cx + 3, G - 17, 0], 2.4, 2.4, 'stone'), [cx, G], -0.08), 0.6);
+    S.sub(rotZ(box([cx, G - 11, d + 0.4], [0.6, 3.5, 0.9], 0.2), [cx, G], -0.08), 0.2);
+    S.sub(rotZ(box([cx, G - 12.5, d + 0.4], [2.2, 0.6, 0.9], 0.2), [cx, G], -0.08), 0.2);
+  } else {
+    S.add(rotZ(bumpy(box([cx, G - 12, 0], [1.7, 11, d], 0.5, 'stone'), 0.25, 0.9, 5), [cx, G], 0.1), 0);
+    S.add(rotZ(bumpy(box([cx, G - 17.5, 0], [5, 1.6, d], 0.5, 'stone'), 0.25, 0.9, 6), [cx, G], 0.1), 0.4);
+  }
+  return R(S, 20, 30, M, view(G, d));
 }
 // A short stone pedestal with a skull on top: the Ossuary's pillars.
 function skullpillar() {
@@ -863,7 +894,7 @@ function pilaster() {
 export default {
   hall: { crate: () => [crate()], pilaster: () => [pilaster()], pillar: () => [0, 1].map(pillar) },
   props: { sarcophagus: () => [sarcophagus()], statue: () => [weepingSaint()], organ: () => [organ()], sunkpew: () => [sunkpew()], kelp: () => [0, 1, 2, 3].map(kelp), weedmat: () => [weedmat()],
-    boneshelf: () => [boneshelf()], skullheap: () => [skullheap()], cairn: () => [cairn(0), cairn(1)], bonepew: () => [bonepew()], bonestrew: () => [0, 1].map(bonestrew), skullpillar: () => [skullpillar()], stonewall: () => [0, 1].map(stonewall), plank: () => [0, 1].map(plank), fallencol: () => [fallencol()] },
+    boneshelf: () => [boneshelf()], skullheap: () => [skullheap()], cairn: () => [cairn(0), cairn(1)], bonepew: () => [bonepew()], bonestrew: () => [0, 1].map(bonestrew), skullpillar: () => [skullpillar()], stonewall: () => [0, 1].map(stonewall), plank: () => [0, 1].map(plank), fallencol: () => [fallencol()], drywell: () => [drywell()], gravestone: () => [0, 1].map(gravestone) },
   loot: {
     chest: () => [chest(false), chest(true)], pew: () => [pew()], altar: () => [altar()],
     shrine: () => ['fervor', 'haste', 'warding', 'plenty'].map(shrine), coffin: () => [coffin(false), coffin(true)],

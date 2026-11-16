@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '146';
+const BUILD = '147';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '147': ['FAINT DUST, SPRAY OR ASH DRIFTS OVER THE ROCK ROUND EACH MAP. THE DROWNED NAVE\'S ROCK SEEPS WATER AND THE OSSUARY\'S HOLDS OLD SKULL HEAPS.', 'NEW SET PIECES: A DRY WELL AND A RING OF GRAVESTONES ROUND A CANDLE. THE FALLEN COLUMN HAS JAGGED BROKEN ENDS.', 'THE OPEN SOUTH EDGES OF ROOMS NOW SHOW A SHORT ROCK FACE UNDER THE LEDGE.'],
   '146': ['AUTO PLAY NOW PAYS IN FULL: THE SAME GOLD, DROPS AND XP AS PLAYING YOURSELF.'],
   '145': ['NEW SET PIECES IN OPEN CLEARINGS: A WAYSIDE ALTAR WITH CANDLES, AND A FALLEN COLUMN BESIDE ITS STANDING TWIN.', 'SHORT WALLS NOW VARY: A WINDOW, A BANNER WITH HANGING CHAINS, OR A STATUE ALCOVE WITH CANDLES. LONG SIDE WALLS GET TWO EVENLY SPACED TORCHES.', 'LOOSE BONES AND WEED GATHER ALONG THE WALLS. FLOOR SEALS MARK ELITE ROOMS, SHRINES, TREASURIES AND BARE HALLS.', 'THE DARK SPACE AROUND A MAP IS NOW ROUGH BEDROCK, NOT FLAT BLACK.'],
   '144': ['DUNGEON WALLS ARE DRESSED IN EVEN BAYS: STAINED GLASS IN THE MIDDLE OF EACH BAY WITH A TORCH ON EITHER SIDE, STATUES BETWEEN THEM. WINDOWS NO LONGER OVERLAP THE PILLARS.', 'PEWS, PILLARS AND RUBBLE ARE LAID OUT SYMMETRICALLY. CRATES SIT ONLY IN REAL CORNERS, AND LONG SIDE WALLS GET A TORCH.'],
@@ -1340,13 +1341,18 @@ function makeDungeon() {
       if (r.type === 'treasury') { r.chest = place(r, 'chest', cx, cy, 1, 1, { sheet: 'loot', anim: 'chest', frame: 0 }); lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 70, c: 'gold', a: 0.8 }); for (const [dx, dy] of [[-4, -2], [4, -2], [-4, 2], [4, 2]]) if (ok(cx + dx, cy + dy, 1, 1, 0)) place(r, 'coffin', cx + dx, cy + dy, 1, 1, { sheet: 'loot', anim: 'coffin', breakable: 2 }); }
       if (r.type === 'elite') for (const [dx, dy] of [[-5, -3], [5, -3], [-5, 3], [5, 3]]) if (ok(cx + dx - 1, cy + dy - 1, 3, 3, 0)) place(r, 'pillar', cx + dx, cy + dy, 1, 1, pillarP());
       if (r.type === 'combat') {
-        r.plan = pick(drowned ? ['pool', 'pool', 'pillars', 'ruins', 'fallen'] : ossuary ? ['cairn', 'pillars', 'ruins', 'fallen', 'empty'] : ['pillars', 'sarco', 'ruins', 'altar', 'fallen', 'empty']);
+        r.plan = pick(drowned ? ['pool', 'pool', 'pillars', 'ruins', 'fallen'] : ossuary ? ['cairn', 'pillars', 'ruins', 'fallen', 'graves', 'empty'] : ['pillars', 'sarco', 'ruins', 'altar', 'fallen', 'well', 'graves', 'empty']);
         // Set pieces (round 144). A wayside altar: candles before it, a candelabra either side.
         if (r.plan === 'altar' && ok(cx - 3, cy - 2, 7, 3, 0)) {
           place(r, 'altar', cx - 1, cy - 1, 2, 1, { sheet: 'loot', anim: 'altar' });
           for (const dx of [-3, 3]) place(r, 'candelabra', cx + dx, cy - 1, 1, 1, { sheet: 'props', anim: 'candelabra', ph: rng() * 4 });
           for (let k = -2; k <= 2; k++) candle((cx + k * 1.1) * TILE, (cy + 1.3 - Math.abs(k) * 0.15) * TILE, 0.7);
         }
+        // A dry well with litter round its foot (round 147).
+        if (r.plan === 'well' && ok(cx - 2, cy - 2, 4, 4, 0)) { place(r, 'drywell', cx - 1, cy, 2, 1, { sheet: 'props', anim: 'drywell' }); decals.push({ kind: 'bonestrew', x: (cx + 2.2) * TILE, y: (cy + 1.4) * TILE, f: 1 }); }
+        // A ring of gravestones round a cluster of candles (round 147): all six or none.
+        if (r.plan === 'graves') { const ring = [0, 1, 2, 3, 4, 5].map((k) => { const a = -Math.PI / 2 + k * Math.PI / 3; return [cx + Math.round(Math.cos(a) * 3.6), cy + Math.round(Math.sin(a) * 2.4)]; });
+          if (ring.every(([x, y]) => ok(x, y, 1, 1, 0))) { ring.forEach(([x, y], k) => place(r, 'gravestone', x, y, 1, 1, { sheet: 'props', anim: 'gravestone', frame: k % 2 })); candle((cx + 0.5) * TILE, (cy + 0.8) * TILE, 0.8); } }
         // A pair of columns, one still standing, the other fallen across the floor.
         if (r.plan === 'fallen' && ok(cx - 4, cy - 2, 9, 4, 0)) {
           const sd = rng() < 0.5 ? -1 : 1;
@@ -1422,7 +1428,7 @@ function makeDungeon() {
     if (isFloor(x, y + 1)) f = HA.wall[3]; else if (isFloor(x, y + 2)) f = HA.wall[4]; else if (isFloor(x, y + 3)) f = HA.wall[2]; else if (isFloor(x, y + 4)) f = HA.wall[1];
     tile(f, x, y, IMG.hall);
   }
-  bakeRock(rc, w, h, isFloor);
+  const rockD = bakeRock(rc, w, h, isFloor);
   bakeWallEdges(rc, w, h, isFloor);
   // Back walls (round 144): pilasters and windows come from the same plan as the statues and torches in front of
   // them (wallRuns, planRun), so a window sits in the middle of its bay and never touches a pilaster.
@@ -1468,7 +1474,7 @@ function makeDungeon() {
   const ST = STRATA[game.buildStratum || 1];
   // A stratum can swap its warm torchlight for its own colour.
   for (const l of lights) { l.r *= WS; if (ST.light && (l.c === 'ember' || l.c === 'gold' || l.c === 'flame')) l.c = ST.light; }
-  room = { kind: 'wound', name: ST.name, open, zone, w, h, solid, isSolid, props, lights, decals: decals.filter((d) => d.kind === 'candles' || d.kind === 'kelp'), npcs: [], interact: [], pw: w * TILE, ph: h * TILE, top: 4, ambient: ST.ambient || T.ambient, torch: ST.torch, rooms, start, critters, water: waterSet, walls: [], baseSolid, seen: new Uint8Array(w * h) };
+  room = { kind: 'wound', name: ST.name, open, zone, rockD, w, h, solid, isSolid, props, lights, decals: decals.filter((d) => d.kind === 'candles' || d.kind === 'kelp'), npcs: [], interact: [], pw: w * TILE, ph: h * TILE, top: 4, ambient: ST.ambient || T.ambient, torch: ST.torch, rooms, start, critters, water: waterSet, walls: [], baseSolid, seen: new Uint8Array(w * h) };
   room.fog = document.createElement('canvas'); room.fog.width = w; room.fog.height = h; room.fogCtx = room.fog.getContext('2d');
   room.cx = start.cx; room.cy = start.cy;
 }
@@ -1522,7 +1528,12 @@ function bakeRock(rc, w, h, isFloor) {
   const bf = SPR.props.anims.bonestrew, rate = (game.buildStratum || 1) === 3 ? 0.03 : 0.012;
   rc.save(); rc.globalAlpha = 0.22;
   for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 2; x++) { const v = d[y * w + x]; if (v < 4 || v > 8 || d[y * w + x + 1] < 4 || face(x, y) || face(x + 1, y) || hh(x * 7 + 3, y * 13 + 1) >= rate) continue; const f = bf[(x + y) % bf.length]; rc.drawImage(IMG.props, f.x, f.y, f.w, f.h, x * TILE, y * TILE, f.w, f.h); }
+  // Round 147: the Ossuary packs old skull heaps into its rock; the Nave's rock is wet, with pale water seeping down from a few seams.
+  const st = game.buildStratum || 1;
+  if (st === 3) { const sk = SPR.props.anims.skullheap[0]; rc.globalAlpha = 0.26; for (let y = 2; y < h - 2; y++) for (let x = 1; x < w - 3; x++) { const v = d[y * w + x]; if (v < 4 || v > 9 || d[y * w + x + 2] < 4 || d[(y + 1) * w + x] < 4 || hh(x * 5 + 11, y * 3 + 7) >= 0.025) continue; rc.drawImage(IMG.props, sk.x, sk.y, sk.w, sk.h, x * TILE, y * TILE, sk.w, sk.h); } }
+  if (st === 2) { rc.globalAlpha = 1; for (let y = 1; y < h - 3; y++) for (let x = 0; x < w; x++) { const v = d[y * w + x]; if (v < 2 || v > 6 || face(x, y) || hh(x * 9 + 2, y * 5 + 3) >= 0.05) continue; const X = x * TILE + 3 + Math.floor(hh(x, y) * 10), len = 10 + Math.floor(hh(y, x) * 18); for (let k = 0; k < len; k += 2) { if (d[Math.floor((y * TILE + k) / TILE) * w + x] < 2) break; rc.fillStyle = k < 4 ? PAL.sea3 : k < len - 6 ? PAL.sea4 : PAL.ink3; rc.fillRect(X, y * TILE + k, 2, 2); } } }
   rc.restore();
+  return d;
 }
 function bakeWallEdges(rc, w, h, isFloor) {
   const P = strataPal(), solid = (x, y) => !isFloor(x, y);
@@ -1537,8 +1548,8 @@ function bakeWallEdges(rc, w, h, isFloor) {
     const X = x * TILE, Y = y * TILE;
     const L0 = isFloor(x - 1, y), R0 = isFloor(x + 1, y), U0 = isFloor(x, y - 1);
     // The south side of a room has no wall, as in Otherworld Legends: the
-    // floor ends in a stone ledge and drops into black.
-    if (U0 && !L0 && !R0) { px(X, Y, P.ink0, 16, 16); px(X, Y, P.stone3, 16, 4); px(X, Y, P.stone2, 16, 1); px(X, Y + 4, P.stone4, 16, 2); for (let k = 3 + (x % 3) * 2; k < 16; k += 7) px(X + k, Y + 1, P.stone4, 1, 3); continue; }
+    // floor ends in a stone ledge over a short rock face (round 147; it was black).
+    if (U0 && !L0 && !R0) { px(X, Y + 6, P.ink2, 16, 4); px(X, Y + 10, P.ink1, 16, 4); px(X, Y + 14, P.ink0, 16, 2); for (let k = 1 + (x % 4) * 3; k < 16; k += 6 + (x % 2) * 2) px(X + k, Y + 7 + (k % 3), P.ink0, 1, 5 - (k % 2) * 2); px(X, Y + 6, P.ink3, 16, 1); /* round 147: a short rock face under the ledge */ px(X, Y, P.stone3, 16, 4); px(X, Y, P.stone2, 16, 1); px(X, Y + 4, P.stone4, 16, 2); for (let k = 3 + (x % 3) * 2; k < 16; k += 7) px(X + k, Y + 1, P.stone4, 1, 3); continue; }
     if (!U0 && !L0 && !R0 && !isFloor(x, y + 1) && (isFloor(x - 1, y - 1) || isFloor(x + 1, y - 1))) {
       // Under the end of a side wall: the block's front face, then black.
       const left = isFloor(x + 1, y - 1);
@@ -2116,6 +2127,14 @@ function drawCritters(cx, cy) {
   }
 }
 function drawAmbientGlow(cx, cy) {
+  // Round 147: faint motes drift over the bedrock round the map (no state: each 32 px cell's mote comes from a hash).
+  if (room && room.rockD && game.scene === 'wound') { const D = room.rockD, RW = room.w, st = (game.run && game.run.stratum) || 1, col = st === 2 ? '150,228,255' : st === 3 ? '200,222,190' : '255,214,160', C = 32, t = game.real;
+    for (let gy = Math.floor(cy / C); gy <= Math.floor((cy + H) / C); gy++) for (let gx = Math.floor(cx / C); gx <= Math.floor((cx + W) / C); gx++) {
+      const hsh = (((gx * 73856093) ^ (gy * 19349663)) >>> 0) % 1000 / 1000; if (hsh > (LOWFX ? 0.15 : 0.38)) continue;
+      const per = 7 + hsh * 9, u = ((t + hsh * 97) % per) / per, x = gx * C + 16 + Math.sin(t * 0.3 + hsh * 40) * 14 + (st === 3 ? 0 : (u - 0.5) * 18), y = gy * C + 16 + (st === 3 ? (u - 0.5) * 26 : Math.cos(t * 0.23 + hsh * 30) * 10 - u * 8);
+      const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE); if (tx < 0 || ty < 0 || tx >= RW || ty >= room.h || D[ty * RW + tx] < 2) continue;
+      ctx.fillStyle = `rgba(${col},${(0.34 * Math.sin(u * Math.PI)).toFixed(2)})`; ctx.fillRect(Math.round(x), Math.round(y), hsh < 0.12 ? 2 : 1, hsh < 0.12 ? 2 : 1); }
+  }
   // Moths circling the nearest candles.
   let n = 0;
   for (const l of room.lights) {
@@ -9588,7 +9607,7 @@ function render() {
   shadow(player.x, player.y, 8);
   for (const g of gibs) shadow(g.x, g.y, 3);
   for (const f of falls) shadow(f.e.x, f.e.y, f.e.r * 1.3);
-  const SHADOW = { pillar: 10, torch: 6, statue_saint: 12, statue_angel: 12, statue_knight: 12, crate: 13, gallows: 22, cart: 20, well: 15, tomb: 6, tree: 10, stocks: 14, board: 8, brazier: 6, sarcophagus: 18, candelabra: 6, column: 11, statue: 11, lamp: 5, barrel: 6, crate: 7, anvil: 8, waystone: 10, pew: 15, coffin: 7, cage: 7, maiden: 8, altar: 17, shrine: 10, chest: 10, urn: 5 };
+  const SHADOW = { drywell: 18, gravestone: 7, fallencol: 20, pillar: 10, torch: 6, statue_saint: 12, statue_angel: 12, statue_knight: 12, crate: 13, gallows: 22, cart: 20, well: 15, tomb: 6, tree: 10, stocks: 14, board: 8, brazier: 6, sarcophagus: 18, candelabra: 6, column: 11, statue: 11, lamp: 5, barrel: 6, crate: 7, anvil: 8, waystone: 10, pew: 15, coffin: 7, cage: 7, maiden: 8, altar: 17, shrine: 10, chest: 10, urn: 5 };
   for (const p of room.props) if (SHADOW[p.kind] && onScreen(p.x, p.y, cx, cy, 40)) shadow(p.x, p.y - 2, SHADOW[p.kind]);
   for (const n of room.npcs) shadow(n.x, n.y, 6);
   if (PETF.on && petShown() && player.hp > 0) shadow(PETF.x, PETF.y, 5);

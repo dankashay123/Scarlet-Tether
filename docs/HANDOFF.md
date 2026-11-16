@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 146 (build 146, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 147 (build 147, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; rounds 136-146 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-147 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -756,6 +756,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 147:** the owner said "All" to round 145's list. (1) Motes drift over
+  the bedrock (`drawAmbientGlow`: one per hashed 32 px cell, no state; warm dust,
+  sea spray or ash by stratum; fewer under `LOWFX`); `bakeRock` returns its
+  distance map, kept as `room.rockD`. (2) The Nave's rock seeps water down a
+  few seams; the Ossuary's holds faint skull heaps. (3) Set pieces `well` (prop
+  `drywell`) and `graves` (six `gravestone` props round a candle, all or none).
+  (4) The fallen column's broken ends are jagged, with more rubble. (5) South
+  ledges show a short rock face instead of dropping to black. Perf unchanged.
 
 - **Round 146:** at the owner's request auto play pays in full: `AUTO_CUT = false` sets `AUTO_PAY` to 1 and hides
   every line about the cut (Descent panel, icon tip, pause toast, tally, the turn-on question). Remind the owner now
