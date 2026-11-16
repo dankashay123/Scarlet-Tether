@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 143 (build 143, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 144 (build 144, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; rounds 136-143 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-144 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -330,6 +330,9 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 ## The owner's preferences
 
 - **No more Sanctity or chest work for now (round 143):** the owner asked for different ideas.
+- **Maps should look decorated by a person (round 144):** the owner found statues, pews and torches placed at random
+  ("looks very AI generated") and windows overlapping pilasters. Keep dressing planned and mirrored (`planRun`), not
+  scattered tile by tile.
 - **Set balance is done (round 141, the owner's word: within 20% is fine).** "15% is fine. They don't
   need to be 100% equal. It's fine if one set is better than the other." Then:
   "As long as they are within 20% of each other, it's fine." Do not
@@ -749,6 +752,23 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 144:** the owner asked for a graphics check on maps (stained glass
+  clipping over pilasters; statues, pews and torches placed at random). Every
+  straight back wall is now planned once (`planRun`, `wallRuns` in
+  `makeDungeon`): pilasters evenly spaced about 6 tiles apart, and from the
+  middle outward, mirrored, a stained-glass bay (a torch stand either side), a
+  statue bay (the wall above bare, sometimes an urn either side), a banner bay,
+  and so on; organs and bone shelves stand in statue bays in the Nave and the
+  Ossuary. The bake draws pilasters and windows from the same plan, centred in
+  each bay, so a window never touches a pilaster. Room maps split the wall at a
+  north door (two knights still guard it); open maps split runs where the
+  clearing changes and leave short stepped walls bare. Open maps: long side walls
+  get one torch at their middle, crates sit only in real inside corners (not on
+  the steps of a diagonal wall), and the pillars and ruins plans are mirrored.
+  Pew rows are placed whole or not at all. New survey tool:
+  `tools/tests/survey.cjs <outDir> [seed] [strata] [kinds]` photographs the
+  middle and back wall of every room.
 
 - **Round 143:** the owner sent a phone screenshot: the bolts were too big and
   blocky for the crossbow. On the 2x2 grid the thinnest shaft plus outline came
