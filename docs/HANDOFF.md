@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 144 (build 144, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 145 (build 145, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; rounds 136-144 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-145 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -752,6 +752,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 145:** the owner said "All" to round 144's list. (1) Side walls: a
+  room's long side wall (16+ tiles) gets two torch stands at its thirds, and
+  open maps do the same; side walls have no face in this view, so the hanging
+  chains (the unused `hangchain` art) went to the back wall, one either side of
+  a banner in bays 6+ tiles wide. (2) Two set pieces for open clearings: plan
+  `altar` (the altar, a candelabra either side, candles before it) and plan
+  `fallen` (a standing pillar and its fallen twin, new prop `fallencol` in
+  `props.mjs`; `drawProp` now honours `p.flip`). (3) Open-map walls vary
+  (`planRun(..., vary)`): a one-bay wall is a window, a banner or a statue
+  alcove with candles at its foot; longer walls may start on a statue. (4) Loose
+  bones and weed gather at the foot of walls (`litter()` in rooms, the zone's
+  rim tiles in open maps); one in four lies out on the floor. (5) Floor seals
+  mark elite rooms, shrines, treasuries and bare halls (plans empty, grid4,
+  pillars), no longer a 60% roll; in an empty clearing the seal lines up with
+  the middle of the back wall when that is within 4 tiles.
 
 - **Round 144:** the owner asked for a graphics check on maps (stained glass
   clipping over pilasters; statues, pews and torches placed at random). Every

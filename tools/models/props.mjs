@@ -255,6 +255,18 @@ function stonewall(f) {
   for (const h of heads) sockets(fr, P, ...h);
   return fr;
 }
+// A fallen column (round 144): two broken drums lying on the floor, the capital still on one end, rubble beside the
+// break. Frame 60 x 30, ground at y = 27; it blocks three tiles.
+function fallencol() {
+  const S = new Scene(), G = 29, d = 7;
+  S.add(box([7, G - 8.5, 0], [3, 8.5, 8], 0.7, 'stone'), 0);
+  S.add(capsule([13, G - 7, 0], [25, G - 7, 0], 6.6, 6.6, 'marble'), 0.3);
+  S.add(capsule([41, G - 6.4, 1.5], [52, G - 6.4, 3.5], 6.2, 6.2, 'marble'), 0);
+  S.sub(box([19, G - 7, 0], [0.7, 8, 8], 0.2), 0.2);
+  S.sub(box([47, G - 6.4, 2.5], [0.7, 8, 8], 0.2), 0.2);
+  for (const [x, z, r, sd] of [[33.5, 4.5, 2.4, 1], [36, -2, 1.7, 2], [30.5, -4, 1.4, 4]]) S.add(bumpy(box([x, G - r, z], [r, r, r], 0.8, 'stoneDark'), 0.4, 0.9, sd), 0);
+  return R(S, 62, 34, M, view(G, d));
+}
 // A short stone pedestal with a skull on top: the Ossuary's pillars.
 function skullpillar() {
   const S = new Scene(), G = 46, cx = 12, d = 5, a = 0.38, P = proj(G, d + 3, a);
@@ -851,7 +863,7 @@ function pilaster() {
 export default {
   hall: { crate: () => [crate()], pilaster: () => [pilaster()], pillar: () => [0, 1].map(pillar) },
   props: { sarcophagus: () => [sarcophagus()], statue: () => [weepingSaint()], organ: () => [organ()], sunkpew: () => [sunkpew()], kelp: () => [0, 1, 2, 3].map(kelp), weedmat: () => [weedmat()],
-    boneshelf: () => [boneshelf()], skullheap: () => [skullheap()], cairn: () => [cairn(0), cairn(1)], bonepew: () => [bonepew()], bonestrew: () => [0, 1].map(bonestrew), skullpillar: () => [skullpillar()], stonewall: () => [0, 1].map(stonewall), plank: () => [0, 1].map(plank) },
+    boneshelf: () => [boneshelf()], skullheap: () => [skullheap()], cairn: () => [cairn(0), cairn(1)], bonepew: () => [bonepew()], bonestrew: () => [0, 1].map(bonestrew), skullpillar: () => [skullpillar()], stonewall: () => [0, 1].map(stonewall), plank: () => [0, 1].map(plank), fallencol: () => [fallencol()] },
   loot: {
     chest: () => [chest(false), chest(true)], pew: () => [pew()], altar: () => [altar()],
     shrine: () => ['fervor', 'haste', 'warding', 'plenty'].map(shrine), coffin: () => [coffin(false), coffin(true)],
