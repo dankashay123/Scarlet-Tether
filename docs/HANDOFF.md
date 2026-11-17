@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 149 (build 149, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 150 (build 150, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; rounds 136-149 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-150 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -756,6 +756,28 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 150:** the owner asked for a short campaign (about 30 minutes) that
+  explains the story and must be finished before the Stations open. THE FIRST
+  DESCENT: a prologue on waking (Odile, Vane) and five chapters (`STORY`):
+  The Waking (Undercroft, Mother Candlemass), The Odds (Undercroft, the Hollow
+  Cardinal), The Drowned Way (Drowned Nave, the Tide-Bishop), The Wall of Names
+  (Ossuary Spire, the Ossuarch), Count the Bells (Undercroft, the Bellwright).
+  The thread: the Choir rings the bells at each return to wipe the Saint's
+  memory, because a Saint who remembers stops the crowds coming; the Saint finds
+  messages in their own hand, a drowned earlier Saint, the wall of names and
+  Vane's signed order; silencing the Bellwright opens the Stations. Each chapter
+  is a Station I descent on a fixed seed with a scene in Vael before it
+  (`beginStory`), a message in the far room (`storyPlace`, candles, a gold light,
+  a rose minimap mark; the Toll's Warden waits until it is read), the chapter's
+  own Warden with a line when it appears, no Station unlock (`wardenSlain`,
+  `finishDescent`) and a closing scene back in Vael (`storyOutro`). Scenes are
+  `playScene([[speaker, text], ...], then)` (`SPEAKER` for portraits, also in the
+  Wound). The STORY page (`openStory`, pause tile STORY, and the cathedral doors
+  until the story is done) lists the chapters with BEGIN/PLAY AGAIN and READ.
+  `storyN()` treats any cleared Station as the story done, so older characters
+  keep their Stations. Test: `story.cjs`. The story text is a first draft: the
+  owner may want to change names, beats or lines.
 
 - **Round 149:** the owner said "All" to round 148's list. Bats squeak once a
   flight (`chirp`, very quiet), are a size larger with a rim of light; rats run

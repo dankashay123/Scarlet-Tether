@@ -20,7 +20,7 @@ const S = process.argv[2];
   await p.screenshot({ path: `${S}/shots/e-vane.png` });
   await closeDialog(); console.log('after talk', JSON.stringify(await st()));
   await p.evaluate(() => { HS.player.x = HS.CATHEDRAL_X; HS.player.y = HS.room.top * 16 + 14; }); await p.waitForTimeout(200);
-  await p.keyboard.press('KeyE'); await p.waitForTimeout(2600);
+  await p.keyboard.press('KeyE'); await p.waitForTimeout(300); await closeDialog(); await p.waitForTimeout(2600); // round 150: chapter 1's opening scene plays first
   console.log('dungeon', JSON.stringify(await st()));
   await p.screenshot({ path: `${S}/shots/e-dungeon.png` });
   // Walk into the first combat room for the next lesson.
