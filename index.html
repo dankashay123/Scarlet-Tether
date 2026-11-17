@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '148';
+const BUILD = '149';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '149': ['RATS DART OUT OF CRACKS AT THE FOOT OF THE WALLS AND RUN BACK IN. BATS ARE LARGER, CATCH A LITTLE LIGHT AND SQUEAK SOFTLY.', 'EMBERS RISE OFF THE UNDERCROFT\'S TORCHES. WALLS CAST DEEPER SHADOWS ONTO THE ROCK, CORNERS INCLUDED.'],
   '148': ['THE DARK ROUND EACH MAP IS ALIVE: BATS FLIT ACROSS NOW AND THEN, AND EYES BLINK FROM CRACKS IN THE ROCK.', 'THE DROWNED NAVE\'S ROCK SEEPS WATER DOWN LONGER SEAMS THAT DRIP AT THEIR FOOT.', 'WALLS CAST A SHADOW ONTO THE ROCK OUTSIDE THEM. THE GRAVESTONE RING AND THE WAYSIDE ALTAR GLOW SOFTLY.'],
   '147': ['FAINT DUST, SPRAY OR ASH DRIFTS OVER THE ROCK ROUND EACH MAP. THE DROWNED NAVE\'S ROCK SEEPS WATER AND THE OSSUARY\'S HOLDS OLD SKULL HEAPS.', 'NEW SET PIECES: A DRY WELL AND A RING OF GRAVESTONES ROUND A CANDLE. THE FALLEN COLUMN HAS JAGGED BROKEN ENDS.', 'THE OPEN SOUTH EDGES OF ROOMS NOW SHOW A SHORT ROCK FACE UNDER THE LEDGE.'],
   '146': ['AUTO PLAY NOW PAYS IN FULL: THE SAME GOLD, DROPS AND XP AS PLAYING YOURSELF.'],
@@ -1595,10 +1596,12 @@ function bakeWallEdges(rc, w, h, isFloor) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (!solid(x, y) || wallT(x, y)) continue;
     const X = x * TILE, Y = y * TILE, sh = (a, xx, yy, ww, hg) => { rc.fillStyle = `rgba(4,2,8,${a})`; rc.fillRect(xx, yy, ww, hg); };
-    if (wallT(x - 1, y)) { sh(0.6, X, Y, 3, 16); sh(0.32, X + 3, Y, 4, 16); sh(0.14, X + 7, Y, 4, 16); }
-    if (wallT(x, y - 1)) { sh(0.6, X, Y, 16, 3); sh(0.32, X, Y + 3, 16, 4); sh(0.14, X, Y + 7, 16, 4); }
-    if (wallT(x + 1, y)) sh(0.5, X + 14, Y, 2, 16);
-    if (wallT(x, y + 1)) sh(0.5, X, Y + 14, 16, 2);
+    const L = wallT(x - 1, y), U = wallT(x, y - 1);
+    if (L) { sh(0.78, X, Y, 4, 16); sh(0.48, X + 4, Y, 4, 16); sh(0.22, X + 8, Y, 4, 16); }
+    if (U) { sh(0.78, X, Y, 16, 4); sh(0.48, X, Y + 4, 16, 4); sh(0.22, X, Y + 8, 16, 4); }
+    if (!L && !U && wallT(x - 1, y - 1)) { sh(0.7, X, Y, 4, 4); sh(0.4, X, Y, 8, 8); } // round 149: the corner a wall's end shades
+    if (wallT(x + 1, y)) sh(0.62, X + 13, Y, 3, 16);
+    if (wallT(x, y + 1)) sh(0.62, X, Y + 13, 16, 3);
   }
 }
 
@@ -2137,19 +2140,36 @@ function updateCritters(dt) {
 let bats = [];
 function drawBats(cx, cy) {
   const dt = Math.min(0.05, game.realDt || 0);
-  if ((game.batT = (game.batT ?? 6 + Math.random() * 10) - dt) <= 0) { game.batT = 14 + Math.random() * 18; if (!LOWFX || Math.random() < 0.4) { const dir = Math.random() < 0.5 ? 1 : -1, y0 = cy + 20 + Math.random() * (H * 0.5), n = 1 + Math.floor(Math.random() * 3); for (let k = 0; k < n; k++) bats.push({ x: dir > 0 ? cx - 20 - k * 18 : cx + W + 20 + k * 18, y: y0 + (Math.random() - 0.5) * 24, vx: dir * (90 + Math.random() * 40), ph: Math.random() * 6, t: 0 }); } }
+  if ((game.batT = (game.batT ?? 6 + Math.random() * 10) - dt) <= 0) { game.batT = 14 + Math.random() * 18; if (!LOWFX || Math.random() < 0.4) { const dir = Math.random() < 0.5 ? 1 : -1, y0 = cy + 20 + Math.random() * (H * 0.5), n = 1 + Math.floor(Math.random() * 3); for (let k = 0; k < n; k++) bats.push({ x: dir > 0 ? cx - 20 - k * 22 : cx + W + 20 + k * 22, y: y0 + (Math.random() - 0.5) * 24, vx: dir * (90 + Math.random() * 40), ph: Math.random() * 6, t: 0 }); sfx('chirp', { vol: 0.45, rate: 1.9, gap: 3 }); } } // round 149: one faint squeak a flight
   const P = strataPal(), cell = (x, y, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, 2, 2); };
   for (const b of bats) {
     b.t += dt; b.x += b.vx * dt; b.y += Math.sin(b.t * 5 + b.ph) * 22 * dt; const up = Math.floor(b.t * 14 + b.ph) % 2, X = Math.round(b.x / 2) * 2, Y = Math.round(b.y / 2) * 2;
-    const wing = up ? [[-6, -4], [-4, -2], [-2, 0], [6, -4], [4, -2], [2, 0]] : [[-6, 2], [-4, 0], [-2, 0], [6, 2], [4, 0], [2, 0]];
+    // Round 149: a size larger, with a faint rim of light along the top of the wings so they read over dark floors.
+    const half = up ? [[-10, -6], [-8, -6], [-8, -4], [-6, -4], [-6, -2], [-4, -2], [-4, 0], [-2, 0]] : [[-10, 4], [-8, 2], [-8, 4], [-6, 2], [-6, 0], [-4, 0], [-2, 0], [-6, 4]];
+    const wing = [...half, ...half.map(([dx, dy]) => [-dx, dy])];
     for (const [dx, dy] of wing) cell(X + dx, Y + dy, P.ink2);
-    cell(X, Y, P.ink3); cell(X, Y + 2, P.ink2); cell(X - 2, Y - 2, P.ink3); cell(X + 2, Y - 2, P.ink3);
-    ctx.fillStyle = 'rgba(255,86,60,0.9)'; ctx.fillRect(X + (b.vx > 0 ? 1 : 0), Y, 1, 1);
+    ctx.fillStyle = 'rgba(196,184,224,0.45)'; for (const [dx, dy] of wing) if (!wing.some(([ex, ey]) => ex === dx && ey === dy - 2)) ctx.fillRect(X + dx, Y + dy, 2, 1);
+    cell(X, Y - 2, P.ink3); cell(X, Y, P.ink3); cell(X, Y + 2, P.ink2); cell(X - 2, Y - 4, P.ink3); cell(X + 2, Y - 4, P.ink3);
+    ctx.fillStyle = 'rgba(255,86,60,0.95)'; ctx.fillRect(X + (b.vx > 0 ? 1 : 0), Y - 2, 1, 1);
     if (b.x < cx - 60 || b.x > cx + W + 60) b.done = true;
   }
   bats = bats.filter((b) => !b.done);
 }
+// Round 149: now and then a rat darts out of a crack at the foot of a side wall, sniffs about and runs back in.
+let crackRats = [];
+function updateCrackRats(cx, cy) {
+  const dt = Math.min(0.05, game.realDt || 0);
+  if ((game.crackT = (game.crackT ?? 8 + Math.random() * 10) - dt) <= 0) { game.crackT = 18 + Math.random() * 20;
+    for (let k = 0; k < 40 && crackRats.length < 2; k++) { const tx = Math.floor((cx + Math.random() * W) / TILE), ty = Math.floor((cy + 30 + Math.random() * (H - 60)) / TILE);
+      if (room.isSolid(tx, ty)) continue; const sd = room.isSolid(tx - 1, ty) && !room.isSolid(tx + 1, ty) ? -1 : room.isSolid(tx + 1, ty) && !room.isSolid(tx - 1, ty) ? 1 : 0;
+      if (!sd || room.isSolid(tx - sd, ty) || room.isSolid(tx - sd * 2, ty) || !room.isSolid(tx + sd, ty - 1) || !room.isSolid(tx + sd, ty + 1)) continue;
+      const hx = (tx + (sd > 0 ? 1 : 0)) * TILE; crackRats.push({ hx, y: (ty + 0.7) * TILE, sd, out: 18 + Math.random() * 26, t: 0, x: hx }); break; } }
+  for (const r of crackRats) { r.t += dt; const go = r.t < 0.5 ? r.t / 0.5 : r.t < 2.2 ? 1 : r.t < 2.6 ? 1 - (r.t - 2.2) / 0.4 : 0; r.x = r.hx - r.sd * r.out * go; r.moving = (r.t < 0.5 || (r.t > 2.2 && r.t < 2.6)); r.back = r.t > 2.2; if (r.t > 2.7) r.done = true; }
+  crackRats = crackRats.filter((r) => !r.done);
+}
 function drawCritters(cx, cy) {
+  if (game.scene === 'wound' && room.rockD) { updateCrackRats(cx, cy);
+    for (const r of crackRats) { const a = Math.min(1, Math.abs(r.x - r.hx) / 8); if (a > 0.05) spr('mon_common', 'rat_walk', r.moving ? Math.floor(game.real * 14) : (Math.floor(game.real * 3) % 2), r.x, r.y, { flip: r.back ? r.sd < 0 : r.sd > 0, alpha: a }); } }
   for (const c of room.critters || []) {
     if (!onScreen(c.x, c.y, cx, cy, 20)) continue;
     const moving = Math.abs(c.vx) + Math.abs(c.vy) > 1;
@@ -2170,6 +2190,11 @@ function drawAmbientGlow(cx, cy) {
       const per = 9 + hs * 60, u = ((t + hs * 300) % per) / per, on = u < 0.55, blink = ((t * 1.7 + hs * 50) % 3.1) < 0.12; if (!on || blink) continue;
       const a = Math.min(1, u * 8, (0.55 - u) * 8) * 0.85; ctx.fillStyle = `rgba(${EC},${a.toFixed(2)})`; ctx.fillRect(x, y, 2, 1); ctx.fillRect(x + 4, y, 2, 1); }
   }
+  // Round 149: embers rise off each torch and drift past the wall top in the Undercroft.
+  if (room && game.scene === 'wound' && ((game.run && game.run.stratum) || 1) === 1) { const t = game.real, n = LOWFX ? 1 : 3; let m = 0;
+    for (const l of room.lights) { if (!l.torch || m > 12 || !onScreen(l.x, l.y, cx, cy, 30)) continue; m++;
+      for (let k = 0; k < n; k++) { const u = ((t * 0.28 + k / n + (l.x % 7) * 0.13) % 1), x = l.x + Math.sin(u * 7 + k * 2 + l.x) * 5 + u * 10 * (k % 2 ? 1 : -1), y = l.y + 6 - u * 46;
+        ctx.fillStyle = `rgba(255,${Math.round(190 - u * 90)},80,${(0.8 * (1 - u)).toFixed(2)})`; ctx.fillRect(Math.round(x), Math.round(y), 1, 1); } } }
   // Round 147: faint motes drift over the bedrock round the map (no state: each 32 px cell's mote comes from a hash).
   if (room && room.rockD && game.scene === 'wound') { const D = room.rockD, RW = room.w, st = (game.run && game.run.stratum) || 1, col = st === 2 ? '150,228,255' : st === 3 ? '200,222,190' : '255,214,160', C = 32, t = game.real;
     for (let gy = Math.floor(cy / C); gy <= Math.floor((cy + H) / C); gy++) for (let gx = Math.floor(cx / C); gx <= Math.floor((cx + W) / C); gx++) {
