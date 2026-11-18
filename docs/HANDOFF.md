@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-18, after round 164 (build 164, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-18, after round 165 (build 165, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -757,6 +757,20 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 165:** "All" to round 164's list. (1) The Crier calls news once, the next
+  time the Saint passes (`crierEvents(take)` against `SAVE.crierSeen`, noted quietly on
+  the first town visit): a stratum opened, a deeper Station's Warden killed, a new Vigil
+  record, with the character's name; the other townsfolk within 240 px hush while he
+  calls. (2) `checkMark(x, y)` (7x6, outlined) ticks finished quests in the quest log,
+  done goals in its detail, and done cells on the Bounty Board. (3) The crossbow ghost
+  read as a white blur (the offset copies filled the bow); now the outline is cut out
+  around the bow on one reused canvas (`GHOST_C`), the bow draws at 45% and its glow
+  halves (`xb.hid`). (4) `wardenSettle(e)` on a Warden's last death frame: shake 3, a
+  floor ring in its colour (`WDIE_SETTLE`), a low dust puff (FXR `dust`), `mslam`.
+  (5) Town minimap at 667x375: pins are placed first and nudged apart, a site's dot
+  hides under a pin on it, the Crier's bell steps aside from a pin.
+  `tools/tests/round165.cjs` checks all of it. Running five test browsers at once got
+  the container killed; run them one or two at a time.
 - **Round 164:** "All" to round 163's list. (1) The Crier's calls draw on their
   own plate (`drawCrierPlates`, after the site and quest marks: navy, gold rim, a
   tail to him, kept on screen); his plain bark text is skipped while he calls.
