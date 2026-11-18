@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-18, after round 166 (build 166, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-18, after round 167 (build 167, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -757,6 +757,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 167:** four reports from the owner. (1) Pell and the Plush seller stood 2 px from their stall's use spot,
+  so TALK took the shop button: they and the Enchanter now stand 38 px aside, and the interact picker adds 12 px to a
+  person's distance, so a place's button wins unless the person is clearly nearer (`round167.cjs` checks stall,
+  plush, ench and forge from the front and beside the keeper). (2) UNDEFINED in story maps: `storyPlace` still
+  toasted `C.goal`, gone since chapters became quests (round 151); it names the chapter's `read` goal now. Toasts
+  wrap to three lines (`T0.lines`), and the sites toast says "N PLACES" past two. (3) The move stick: `opt('stick')`
+  (`lock` by default, `follow`; STICK BASE in Settings, Controls): locked, a thumb within 64 px of the stick's spot
+  starts there, anywhere else starts where it lands, and the base never follows; the knob stays on the ring.
+  (4) `renderSaintBar`: in Vael a labelled gold bar where a descent's level bar goes; in a descent a narrower gold
+  line one row under the level bar; both have hold tips (`BUFF_TIPS`). The Crier's plate stays above the HUD buttons.
 - **Round 166:** two reports from the owner. (1) A story Warden was unseen through its opening lines: a spawning
   elite drew only a ring, and the dialogue holds the rise at 1.05 of its 1.1 s. `drawRising(e)` now draws any
   spawning `e.elite` (rares, elites, Wardens) sliding up through the floor line in 2 px steps, clipped at its feet,
