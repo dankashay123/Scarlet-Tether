@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '154';
+const BUILD = '155';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '155': ['THE BOUNTY BOARD NOW SHOWS TODAY\'S THREE DAILY QUESTS, THEIR PROGRESS AND THE TIME TO THE NEXT THREE.', 'WARDENS NOW SPEAK WITH A PORTRAIT TOO.', 'TOWNSFOLK PORTRAITS SIT BETTER IN THEIR FRAME, LEAVE OUT WHAT THEY HOLD, AND BLINK.', 'THE TOWN MINIMAP SHOWS ONLY THE FOUR NEAREST QUEST PINS, SMALLER, SO IT STAYS READABLE.'],
   '154': ['NEW: DAILY QUESTS. ONCE THE BOUNTY BOARD IS OPEN, THREE SMALL QUESTS COME EACH DAY AND PAY GOLD AND EMBERSTONES. SEE THE QUEST LOG.', 'QUEST MARKS NOW SHOW AS PINS ON THE TOWN MINIMAP.', 'TOWNSFOLK NOW SPEAK WITH A PORTRAIT OF THEIR HEAD AND SHOULDERS.', 'A STORY WARDEN NOW MAKES AN ENTRANCE: THE VIEW TURNS TO IT AND THE ROOM DARKENS WHILE IT SPEAKS.', 'THE ! OVER A TOWNSPERSON NOW RISES CLEAR OF THEIR NAME.'],
   '153': ['SIDE QUESTS NOW ALSO GIVE A LOOK OF THEIR OWN (A ROBE COLOUR, BOLT TRAIL OR DASH TRAIL), WORN FROM THE PLUSH STALL.', 'A SECOND WAVE OF SIDE QUESTS OPENS AT STATION X: HOLLIS, BROTHER CINDER AND THE PLUSH SELLER.', 'A GOLD RING AND A CHIME MARK EACH OBJECTIVE AND QUEST YOU FINISH.', 'A WARDEN\'S SPEECH PLATE NOW STAYS ON THE SCREEN AND POINTS AT THE WARDEN. TAP THE QUEST TRACKER TO FOLD IT TO TITLES.'],
   '152': ['NEW: SIDE QUESTS. ONCE THE STORY IS DONE, OLD BARNABY, BROTHER PELL AND THE TOWN CRIER EACH HAVE A JOB FOR YOU, WITH ITS OWN SCENES AND REWARD.', 'THE STORY TILE IS NOW QUESTS: A SECOND TAB LISTS EVERY QUEST, OPEN AND DONE, AND LETS YOU REREAD ITS SCENES.', 'A WARDEN\'S LINES MID-FIGHT NOW SHOW IN A SPEECH PLATE WITH A SHORT CRY, AND THE TRACKER SHOWS ONLY THE WARDEN WHILE IT LIVES.', 'REWARD BANNERS WAIT FOR THE DISTRICT NAME TO FADE, SO THE TWO NO LONGER OVERLAP.'],
@@ -2361,6 +2362,7 @@ function newRun() {
   populate();
   enemies.forEach((e, i) => { e.sid = i; });
   rng = Math.random;
+  if (R0.story === 0 && !resume) setTimeout(() => { if (game.scene === 'wound' && game.run && game.run.story === 0 && game.storyFind && !game.storyFind.read) { toast('THE PINK MARK ON THE MINIMAP SHOWS THE WRITING YOU ARE LOOKING FOR.', 4); game.toastColor = PAL.rose1; } }, 3800); // round 155
   if (R0.story != null) { storyPlace(); if (resume && resume.storyRead) { game.storyFind.read = true; const it = room.interact.find((q) => q.label === 'READ'); if (it) it.done = true; } }
   if (resume) resumeRun(resume); else if (tal('c_mready') && player) player.penance = T.penance.charge / 2;
   if (tutStep() && tutStep().start && tutStep().scene === 'wound') tutStep().start();
@@ -4583,7 +4585,7 @@ function bounties() {
   return SAVE.bounty;
 }
 function bumpBounty(id, n = 1) { if (tut.on || game.yard) return; lifeBump(id, n); if (id !== 'kills' || SAVE.life.kills % 250 === 0) censerCheck(); const B = SAVE.bounty; if (!B) return; for (const b of B.list) if (b.id === id && !b.claimed) b.have = Math.min(b.need, b.have + n); }
-const bountyRow = (L, i) => ({ x: L.x0 + 14, y: L.y0 + 40 + i * 44, w: L.pw - 28, h: 38 });
+const bountyRow = (L, i) => ({ x: L.x0 + 14, y: L.y0 + 40 + i * 40, w: L.pw - 28, h: 36 }); // round 155: 40 apart, to fit the dailies under them
 function openBoard() { bounties(); game.state = 'board'; sfx('tap'); }
 function renderBoard() {
   const L = featLayout(), B = bounties(), il = bestIl();
@@ -4602,7 +4604,27 @@ function renderBoard() {
     invButton({ x: r.x + r.w - 62, y: r.y + 9, w: 56, h: 20 }, b.claimed ? 'PAID' : 'CLAIM', PAL.gold3, done && !b.claimed);
   });
   const all = B.list.every((b) => b.claimed);
-  text(all ? 'ALL CLAIMED. NEW BOUNTIES AFTER YOUR NEXT DESCENT.' : 'CLAIM ALL THREE FOR A HALLOWED PIECE.', L.x0 + 14, L.y0 + 40 + 3 * 44 + 4, all ? PAL.flame1 : PAL.stone2, { small: true, outline: null });
+  text(all ? 'ALL CLAIMED. NEW BOUNTIES AFTER YOUR NEXT DESCENT.' : 'CLAIM ALL THREE FOR A HALLOWED PIECE.', L.x0 + 14, L.y0 + 40 + 3 * 40 + 2, all ? PAL.flame1 : PAL.stone2, { small: true, outline: null });
+  drawBoardDailies(L);
+}
+// Round 155: today's three daily quests under the bounties, with the time to the next three.
+function dailyLeft() { const n = new Date(), m = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1), s = Math.max(0, Math.round((m - n) / 1000)); return `${Math.floor(s / 3600)}H ${Math.floor(s / 60) % 60}M`; }
+function drawBoardDailies(L) {
+  ensureDailies(); const ids = dailyIds().sort(), y = L.y0 + 40 + 3 * 40 + 16, sm = { small: true, outline: null };
+  if (y + 40 > L.y0 + L.ph - 4) return;
+  goldRule(L.x0 + 14, y - 3, L.pw - 28, '255,209,85', false);
+  if (!ids.length) { text(storyDone() ? 'DAILY QUESTS COME TOMORROW.' : 'DAILY QUESTS OPEN AFTER THE STORY.', L.x0 + 14, y + 4, PAL.stone2, sm); return; }
+  text('DAILY QUESTS', L.x0 + 14, y + 3, PAL.gold1, { ...sm, bold: true });
+  text(`${DAILY_PAY.gold} GOLD AND ${DAILY_PAY.embers} EMBERSTONES EACH. NEW ONES IN ${dailyLeft()}`, L.x0 + L.pw - 14, y + 3, PAL.stone1, { ...sm, align: 'right' });
+  const cw = Math.floor((L.pw - 28 - 12) / 3);
+  ids.slice(0, 3).forEach((id, i) => {
+    const q = QS()[id], [k, n, t] = q.g, c = q.st === 'done' ? n : Math.min(n, q.c[k] || 0), b = { x: L.x0 + 14 + i * (cw + 6), y: y + 15, w: cw, h: 26 };
+    rowPlate(b, false, c >= n ? '255,209,85' : '138,212,255');
+    text(fitText(t, b.w - 50, null, true), b.x + 6, b.y + 3, c >= n ? PAL.stone2 : PAL.cloth0, sm);
+    text(c >= n ? 'DONE' : `${c}/${n}`, b.x + b.w - 6, b.y + 3, c >= n ? PAL.gold1 : PAL.stone1, { ...sm, align: 'right' });
+    const bw = b.w - 12; ctx.fillStyle = PAL.outline; ctx.fillRect(b.x + 5, b.y + 17, bw + 2, 5); ctx.fillStyle = PAL.ink3; ctx.fillRect(b.x + 6, b.y + 18, bw, 3);
+    ctx.fillStyle = c >= n ? PAL.gold1 : '#8ad4ff'; ctx.fillRect(b.x + 6, b.y + 18, Math.round(bw * c / n), 3);
+  });
 }
 function boardTap(x, y) {
   const L = featLayout(), B = bounties();
@@ -5767,7 +5789,7 @@ const STORY_PROLOGUE = [
 const STORY = [
   { title: 'THE WAKING', stratum: 1, map: 'rooms', seed: 31001, warden: 'candlemass', find: 'SCRATCHED INTO THE WALL', giver: 'vane', turn: 'odile',
     sum: 'THE RISEN CLIMB OUT OF THE UNDERCROFT EVERY NIGHT. GO DOWN, PUT THEM BACK AND FIND WHAT CALLS THEM UP.',
-    goals: [['read', 1, 'READ WHAT IS WRITTEN IN THE FAR ROOM'], ['kills', 150, 'KILL RISEN AND OTHER FOES'], ['rites', 10, 'USE YOUR RITES'], ['warden', 1, 'KILL MOTHER CANDLEMASS']],
+    goals: [['read', 1, 'FIND THE WRITING IN THE FAR ROOM'], ['kills', 150, 'KILL FOES'], ['rites', 10, 'USE YOUR RITES'], ['warden', 1, 'KILL MOTHER CANDLEMASS']],
     reward: { gold: 300, ri: 1 },
     intro: [['vane', 'THE RISEN COME UP THROUGH THE UNDERCROFT EVERY NIGHT. LAST NIGHT THEY TOOK THE BAKER\'S BOY FROM HIS BED.'], ['vane', 'SOMETHING DOWN THERE CALLS THEM UP. THE WATCH SAYS IT SINGS TO THEM, LIKE A MOTHER.'],
       ['vane', 'GO DOWN, PUT THEM BACK AND FIND WHAT CALLS THEM. THE CHOIR WILL PAY YOU IN GOLD AND IN PRAYERS.'], ['odile', 'AND COME BACK UP, SAINT. THAT IS ALL I ASK.']],
@@ -6075,11 +6097,9 @@ function drawQuestMarks(cx, cy) {
 }
 // A small pin for the town minimap: a gold ! or ? on a dark plate.
 function questPin(x, y, ch) {
-  const b = Math.round(Math.sin(game.real * 4)), X = Math.round(x) - 2, Y = Math.round(y) - 7 + b;
-  ctx.fillStyle = PAL.outline; ctx.fillRect(X - 1, Y - 1, 6, 9);
-  ctx.fillStyle = '#ffd155';
-  if (ch === '!') { ctx.fillRect(X + 1, Y, 2, 4); ctx.fillRect(X + 1, Y + 5, 2, 2); }
-  else { ctx.fillRect(X, Y, 4, 1); ctx.fillRect(X + 3, Y, 1, 3); ctx.fillRect(X + 1, Y + 2, 2, 2); ctx.fillRect(X + 1, Y + 5, 2, 2); }
+  const b = Math.round(Math.sin(game.real * 4)), X = Math.round(x) - 1, Y = Math.round(y) - 6 + b;
+  ctx.fillStyle = PAL.outline; ctx.fillRect(X - 1, Y - 1, 4, 7);
+  ctx.fillStyle = ch === '!' ? '#ffd155' : '#8ad4ff'; ctx.fillRect(X, Y, 2, 3); ctx.fillRect(X, Y + 4, 2, 1);
 }
 // The tracker on the left, under the HUD: each quest's title and its objectives with counts.
 const qRank = (id) => (id.startsWith('story') ? 0 : id.startsWith('daily_') ? 2 : 1); // round 154: dailies last
@@ -6096,7 +6116,8 @@ function drawQuestTracker(x, y) {
     if (fold) { /* folded: titles only */ }
     else if (q.st === 'offer') { /* handled above */ }
     else if (q.step === 1) rows.push([`TALK TO ${qName(d.turn)} IN VAEL`, false]);
-    else { if (d.story != null && game.scene === 'town') rows.push(['WALK INTO THE CATHEDRAL', false]);
+    else if (d.story != null && game.scene === 'town') { rows.push(['WALK INTO THE CATHEDRAL', false]); rows.push([`${d.goals.length} OBJECTIVES WAIT INSIDE.`, true]); } // round 155: the descent's rows show once inside
+    else {
       const boss = game.scene === 'wound' && game.warden && !game.warden.dead; // round 152: while a Warden lives, only its row, to keep clear of its speech
       for (const [k, n, t] of d.goals) { if (boss && k !== 'warden') continue; const c = Math.min(n, q.c[k] || 0); rows.push([n > 1 ? `${t} ${c}/${n}` : t, c >= n]); } }
     const h = 14 + rows.length * 11;
@@ -11013,7 +11034,7 @@ function renderMinimap() {
   const sx = (wx) => mx + 2 + Math.round((wx - vx) * k), sy = (wy) => my + 2 + Math.round((wy - srcY) * k);
   for (const S of SITES) { const y = sy(room.top * TILE + S.dy - 18); ctx.fillStyle = siteDone(S) ? PAL.gold1 : PAL.stone3; ctx.fillRect(sx(S.x) - 1, y - 1, 3, 3); }
   badge('descend', sx(CATHEDRAL_X), sy(room.top * TILE + CATHEDRAL_DY - 10));
-  for (const t of questTargets()) questPin(sx(t.x), Math.max(my + 9, sy(t.y)), t.ch); // round 154: quest pins
+  for (const t of questTargets().sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y)).slice(0, 4)) questPin(sx(t.x), Math.max(my + 8, sy(t.y)), t.ch); // round 154: quest pins; round 155: the nearest four, smaller
   ctx.restore();
   const px = Math.max(mx + 3, Math.min(mx + mw - 4, sx(player.x))), py = Math.min(my + mh - 4, sy(player.y));
   ctx.fillStyle = PAL.outline; ctx.fillRect(px - 3, py - 3, 7, 7);
@@ -11831,6 +11852,19 @@ function frontTap(x, y) {
   }
 }
 
+// Round 155: where a monster's head sits in its first walk frame (found once from the sheet's pixels), for its portrait.
+const MON_BUST = {};
+function monBust(id) {
+  if (MON_BUST[id] !== undefined) return MON_BUST[id];
+  const d = MON[id], f = frameOf(d.sheet, d.walk, 0), img = IMG[d.sheet]; let r = null;
+  try { const c = document.createElement('canvas'); c.width = f.w; c.height = f.h; const g = c.getContext('2d'); g.drawImage(img, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h);
+    const px = g.getImageData(0, 0, f.w, f.h).data, A = (x, y) => px[(y * f.w + x) * 4 + 3] > 0; let top = 0;
+    while (top < f.h && ![...Array(f.w).keys()].some((x) => A(x, top))) top++;
+    let lo = f.w, hi = 0; for (let y = top; y < Math.min(f.h, top + 34); y++) for (let x = 0; x < f.w; x++) if (A(x, y)) { lo = Math.min(lo, x); hi = Math.max(hi, x); }
+    r = { sheet: d.sheet, anim: d.walk, top, cx: Math.round((lo + hi) / 2) };
+  } catch (e) { r = null; }
+  return (MON_BUST[id] = r);
+}
 function renderDialog() {
   const d = game.dialog, x = 70, w = W - 140, h = 64, y = H - h - 12;
   panelFrame(x, y, w, h);
@@ -11838,11 +11872,14 @@ function renderDialog() {
   const npc = room.npcs.find((n) => (n.talk || n.npc) === who && Math.hypot(n.x - player.x, n.y - player.y) < 60) || room.npcs.find((n) => (n.talk || n.npc) === who) || (d.who && SP ? { sheet: SP.sheet, npc: SP.anim } : null);
   // Round 154: a head-and-shoulders bust where the speaker has one (ui bust_<id>), else the town sprite scaled up.
   const bf = SPR.ui && SPR.ui.anims['bust_' + ((SP && SP.bust) || who)] ? 'bust_' + ((SP && SP.bust) || who) : null;
-  if (bf) { ctx.save(); ctx.beginPath(); ctx.rect(x + 4, y + 4, 34, h - 8); ctx.clip(); { const g = ctx.createLinearGradient(0, y + 4, 0, y + h - 4); g.addColorStop(0, '#2a2140'); g.addColorStop(1, '#120d1c'); ctx.fillStyle = g; } ctx.fillRect(x + 4, y + 4, 34, h - 8); spr('ui', bf, 0, x + 4, y + h - 52, { ax: 0, ay: 0 }); ctx.restore(); }
+  const mw = !bf && MON[who] && MON[who].sheet ? monBust(who) : null, tx = x + (mw ? 60 : 46); // round 155: a Warden shows its head and shoulders
+  if (mw) { ctx.save(); ctx.beginPath(); ctx.rect(x + 4, y + 4, 50, h - 8); ctx.clip(); { const g = ctx.createLinearGradient(0, y + 4, 0, y + h - 4); g.addColorStop(0, '#3a1420'); g.addColorStop(1, '#12080e'); ctx.fillStyle = g; } ctx.fillRect(x + 4, y + 4, 50, h - 8);
+    spr(mw.sheet, mw.anim, Math.floor(game.real * 3), x + 29 - mw.cx, y + 7 - mw.top, { ax: 0, ay: 0 }); ctx.restore(); }
+  else if (bf) { ctx.save(); ctx.beginPath(); ctx.rect(x + 4, y + 4, 34, h - 8); ctx.clip(); { const g = ctx.createLinearGradient(0, y + 4, 0, y + h - 4); g.addColorStop(0, '#2a2140'); g.addColorStop(1, '#120d1c'); ctx.fillStyle = g; } ctx.fillRect(x + 4, y + 4, 34, h - 8); spr('ui', bf, (game.real % 3.7) < 0.13 && SPR.ui.anims[bf].length > 1 ? 1 : 0, x + 4, y + h - 52, { ax: 0, ay: 0 }); ctx.restore(); }
   else if (npc) { ctx.save(); ctx.beginPath(); ctx.rect(x + 4, y + 4, 34, h - 8); ctx.clip(); ctx.fillStyle = PAL.ink2; ctx.fillRect(x + 4, y + 4, 34, h - 8); ctx.translate(x + 21, y + h + 22); ctx.scale(2, 2); spr(npc.sheet || 'town', npc.npc, npc.npc.endsWith('_walk') ? 2 : Math.floor(game.real * 2), 0, 0); ctx.restore(); }
-  text(d.who ? speakerName(who, d) : d.name, x + 46, y + 6, who === 'note' ? PAL.holy1 : MON[who] ? PAL.blood0 : PAL.gold1, { outline: null });
+  text(d.who ? speakerName(who, d) : d.name, tx, y + 6, who === 'note' ? PAL.holy1 : MON[who] ? PAL.blood0 : PAL.gold1, { outline: null });
   const full = caseOf(d.lines[d.i]), shown = full.slice(0, Math.floor(d.t * 45)); // round 151: case the whole line first, so words do not change case as they type out
-  wrap(shown, Math.floor((w - 56) / 7)).forEach((l, i) => text(l, x + 46, y + 20 + i * 12, PAL.cloth0, { outline: null }));
+  wrap(shown, Math.floor((w - (tx - x) - 10) / 7)).forEach((l, i) => text(l, tx, y + 20 + i * 12, PAL.cloth0, { outline: null }));
   if (shown.length >= full.length && Math.floor(game.real * 2) % 2 === 0) text(d.i < d.lines.length - 1 ? 'TAP' : 'TAP TO CLOSE', x + w - 6, y + h - 10, PAL.stone1, { outline: null, align: 'right' });
 }
 
@@ -13279,7 +13316,7 @@ function townOverlaps() {
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
   return [...new Set(out)];
 }
-window.HS = { get G() { return G; }, questTargets, ensureDailies, dailyIds, DAILY_POOL, get bossIntro() { return game.bossIntro; }, get camOff() { return game.camOff; }, talk, questBump, qOf, ensureQuests, QSITE, get bossSay() { return game.bossSay; }, STORY, storyN, storyDone, beginStory, openStory, storyRead, playScene, storyLayout, get storyFind() { return game.storyFind; }, sanctIfWorn, equip, stationNeed, NEED_R, playerSanctity, mightParts, gearSanctity, MIGHT, lastRunLine, newsLayout, newsBuilds, autoFontPool, BUFF_SND, activeBuffs, BUFFS, setFoeK, LOW_SETS, thAnim, bustAnim, riteFx, riteRamp, RITE_FX_P, get pfx() { return pfx; }, get cam() { return cam; }, nm, vdAnim, VDAG, vdEvery, vdTime, legendMine, startDash, ALTAR_SOCKETS, PSKINS, pskin, pskinsOwned, openStore, storeTap, autoIcons, autoPlayTap, playerSanctity, stationSanctity, autoHudBtn, autoSellFor, autoSellPick, AUTO_SELL, woundsLayout, woundsTap, woundsHeld, get SAC_PAGE_N() { return SAC_PAGE_N; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get G() { return G; }, monBust, drawBoardDailies, questTargets, ensureDailies, dailyIds, DAILY_POOL, get bossIntro() { return game.bossIntro; }, get camOff() { return game.camOff; }, talk, questBump, qOf, ensureQuests, QSITE, get bossSay() { return game.bossSay; }, STORY, storyN, storyDone, beginStory, openStory, storyRead, playScene, storyLayout, get storyFind() { return game.storyFind; }, sanctIfWorn, equip, stationNeed, NEED_R, playerSanctity, mightParts, gearSanctity, MIGHT, lastRunLine, newsLayout, newsBuilds, autoFontPool, BUFF_SND, activeBuffs, BUFFS, setFoeK, LOW_SETS, thAnim, bustAnim, riteFx, riteRamp, RITE_FX_P, get pfx() { return pfx; }, get cam() { return cam; }, nm, vdAnim, VDAG, vdEvery, vdTime, legendMine, startDash, ALTAR_SOCKETS, PSKINS, pskin, pskinsOwned, openStore, storeTap, autoIcons, autoPlayTap, playerSanctity, stationSanctity, autoHudBtn, autoSellFor, autoSellPick, AUTO_SELL, woundsLayout, woundsTap, woundsHeld, get SAC_PAGE_N() { return SAC_PAGE_N; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

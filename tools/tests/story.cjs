@@ -45,7 +45,7 @@ require('fs').mkdirSync(`${S}/shots`, { recursive: true });
     await p.evaluate(() => { const F = HS.storyFind; HS.player.x = F.x; HS.player.y = F.y + 10; HS.enemies.length = 0; }); await p.waitForTimeout(500);
     await p.keyboard.press('KeyE'); await p.waitForTimeout(200);
     // The message, then the Warden's lines the moment it appears (one unbroken scene: no blow lands between them).
-    if (k === 0) { for (let i = 0; i < 40 && !(await p.evaluate(() => !!HS.game.warden)); i++) { await tap(200, 150); await p.waitForTimeout(80); } await p.waitForTimeout(900); c.intro = await p.evaluate(() => ({ on: !!HS.bossIntro, off: HS.camOff && Math.round(Math.hypot(HS.camOff.x, HS.camOff.y)), dim: HS.bossIntro && HS.bossIntro.dim })); await shot('entrance'); }
+    if (k === 0) { for (let i = 0; i < 40 && !(await p.evaluate(() => !!HS.game.warden)); i++) { await tap(200, 150); await p.waitForTimeout(80); } await p.waitForTimeout(900); c.intro = await p.evaluate(() => ({ on: !!HS.bossIntro, off: HS.camOff && Math.round(Math.hypot(HS.camOff.x, HS.camOff.y)), dim: HS.bossIntro && HS.bossIntro.dim })); await shot('entrance'); c.monBust = await p.evaluate(() => HS.monBust(HS.game.warden.type)); }
     const seen = await closeDialog(k === 0 ? `note${k}` : null);
     c.warden = await p.evaluate(() => HS.game.warden && HS.game.warden.type);
     c.spawnSpoke = seen.includes(c.warden);
@@ -105,6 +105,7 @@ require('fs').mkdirSync(`${S}/shots`, { recursive: true });
     return { n: ids.length, done: q.st, gold: HS.SAVE.gold - g0, embers: (HS.SAVE.embers || 0) - e0, n1, next: ids2.length, fresh: ids2.every((id) => id.includes('20990101')) }; });
   out.pins = await p.evaluate(() => HS.questTargets().length);
   await p.evaluate(() => { HS.game.state = 'play'; HS.game.toast = null; HS.game.banner = null; }); await p.waitForTimeout(400); await shot('dailies');
+  await p.evaluate(() => { HS.openBoard(); }); await p.waitForTimeout(400); await shot('board'); out.boardText = await p.evaluate(() => HS.textProblems().length); out.boardWhat = await p.evaluate(() => JSON.stringify(HS.textProblems()).slice(0, 300)); await p.evaluate(() => { HS.game.state = 'play'; });
   await p.evaluate(() => { HS.playScene([['odile', 'A TEST LINE FOR THE BUST.'], ['vane', 'AND ANOTHER.'], ['barkeep', 'ONE MORE.']]); }); await p.waitForTimeout(800); await shot('bust');
   await closeDialog();
   out.done = await p.evaluate(() => HS.storyDone());

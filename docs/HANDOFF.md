@@ -757,6 +757,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 155:** the owner said "All" to round 154's list. (1) Wardens speak with
+  a portrait: `monBust(id)` finds the top of the monster's first walk frame and
+  its head's middle once (cached in `MON_BUST`) and `renderDialog` draws it at
+  scale 1 in a 50 px crimson box. (2) The Bounty Board lists today's dailies
+  under the bounties (`drawBoardDailies`, `dailyLeft()` to local midnight; the
+  bounty rows are 40 apart now). (3) Busts: head left of centre, held props
+  left out (`pose.noProp`), haloed townsfolk at 1.9x lower down, a second
+  blink frame shown 0.13 s in every 3.7 s. (4) Minimap pins: the nearest four
+  only, 4x7 px. (5) Chapter one: plainer objective text, the town tracker shows
+  only WALK INTO THE CATHEDRAL and a count, and a toast points at the pink mark
+  on the minimap 3.8 s into the first chapter.
 - **Round 154:** the owner said "All" to round 153's list. (1) Quest pins on the
   town minimap (`questTargets()` feeds both the marks over heads and `questPin`).
   (2) A story Warden's entrance: `game.bossIntro` is set at spawn; while its
