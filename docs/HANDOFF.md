@@ -757,6 +757,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 162:** "All" to round 161's list, plus the crossbow. (1) `updateCrossbow`
+  keeps the crossbow at least 32 px to the aimed side (38 px when level) and a
+  little lower, so aiming up or down no longer parks it over the head; idle it
+  sits 26 px behind. (2) After `checkBuild` reloads, `sessionStorage['hs-updated']`
+  makes the town toast UPDATED TO BUILD N. (3) The Enchanter wears deep teal
+  (`deepTeal`, `tealHood`), stands 26 px right of her stall's middle facing left
+  (the stall marker covered her head), and her book has a flickering light and
+  rising motes (in `update`). (4) A Warden's settled remains (`f.soul`) draw in
+  the floor pass, without a shadow, so the Saint walks over them. (5)
+  `townOverlaps` flags walker routes within 30 px of a standing townsperson; the
+  market loop now runs along y 545 (was 500, along the stall fronts) and the west
+  lane starts away from the gate guard.
 - **Round 161:** "All" to round 160's list, plus the owner's ask to clear the
   Ashen Altar's front. (1) The fence across the altar yard's front is gone.
   (2) The Enchanter stands at her stall (`CAST.enchanter`, town2 `enchanter`,

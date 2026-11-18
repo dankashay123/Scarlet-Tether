@@ -17,6 +17,7 @@ const M = {
   hatInk: { ramp: 'ink', bias: 0.3, min: 0, max: 8 }, moss: { ramp: 'moss', min: 1 }, mossDark: { ramp: 'moss', min: 2, bias: -0.08 },
   skinFace: { ramp: 'skin', min: 1, bias: 0.16, spec: 0.05 }, skinPaleFace: { ramp: 'skin', min: 1, bias: 0.2, spec: 0.05 }, skinRedFace: { ramp: 'skin', min: 1, bias: 0.1, spec: 0.08 }, skinOldFace: { ramp: 'sand', min: 1, bias: 0.16 },
   cuffDark: { ramp: 'shroud', bias: -0.12, min: 2 },
+  deepTeal: { ramp: 'teal', bias: -0.1, min: 1, spec: 0.08 }, tealHood: { ramp: 'teal', bias: -0.2, min: 2 }, // round 162: the Enchanter
   dimHalo: { ramp: 'gold', bias: -0.2, spec: 0.3, min: 2 },
 };
 
@@ -238,7 +239,7 @@ const CAST = {
   penitent: { robe: 'skinPale', sleeve: 'skinPale', skirtLen: 'tunic', skirt: 'rags', legs: 'skinPale', shoe: 'skinPale', head: 'hood', hoodM: 'rags', prop: 'whip', skin: 'pale', hunch: 1, scars: true, eyes: true },
   priest: { robe: 'purple', head: 'tonsure', hair: 'hairDark', stole: 'gold', prop: 'rosary', belly: true },
   // Round 161: the Enchanter: a violet hood and robe with a gold stole, a book of recipes.
-  enchanter: { robe: 'purple', head: 'hood', hoodM: 'purple', stole: 'gold', prop: 'book', skin: 'pale', belt: 'gold' },
+  enchanter: { robe: 'deepTeal', head: 'hood', hoodM: 'tealHood', stole: 'gold', prop: 'book', skin: 'pale', belt: 'gold' }, // round 162: deep teal, apart from Brother Cinder's violet
   plushseller: { robe: 'dress', skirtLen: 'long', head: 'hair', hair: 'hairGinger', apron: 'apronCloth', prop: 'plush', smile: true },
   vane: { robe: 'white', head: 'bald', hat: 'mitre', stole: 'gold', prop: 'rosary', skin: 'old', build: 0.92, brow: 'sand4' },
   beggar: { robe: 'rags', head: 'shaggy', hair: 'hairGrey', beard: 'long', prop: 'bowl', hunch: 2, skin: 'old', halo: true, legs: 'rags' },
