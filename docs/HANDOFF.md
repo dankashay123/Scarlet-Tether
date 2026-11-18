@@ -757,6 +757,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 154:** the owner said "All" to round 153's list. (1) Quest pins on the
+  town minimap (`questTargets()` feeds both the marks over heads and `questPin`).
+  (2) A story Warden's entrance: `game.bossIntro` is set at spawn; while its
+  lines play the view eases toward it (`game.camOff`, added in `camFollow`,
+  eased in `update`) and the room darkens (dim 0.3, `layerBreak` first), then
+  eases back. (3) Daily quests: `DAILY_POOL`, three a day picked from the date
+  (`dayKey`, `game.dayKey` overrides it in tests), ids `daily_<day>_<i>`, the
+  goal stored on the quest (`q.g`), offered by `ensureDailies` once the story is
+  done and the bounty board is open, counted outside story runs, paid at once
+  (`DAILY_PAY`: 400 gold, 3 Emberstones), yesterday's dropped; tracker (gold
+  diamond, listed last) and quest log (listed first). (4) The ! over a
+  townsperson rises 14 px while their name label shows. (5) NPC busts:
+  `npcBust(id)` in `townfolk.mjs` rebuilds `person()`'s scene (`pose.raw`)
+  scaled 2.3x about the head, 34x48, ui `bust_<id>` for ten townsfolk;
+  `renderDialog` draws one when it exists (`SPEAKER.bust` maps Cinder to
+  `priest`). `story.cjs` checks the entrance, dailies, pins and a bust shot.
 - **Round 153:** the owner said "All" to round 152's list. (1) Side quests give
   a look (`reward.look`, a tag added to `looks().own`; dyes `iron` and `sand`,
   bolt trails `relic` and `ash`, dash trails `oldash` and `forge`, each with

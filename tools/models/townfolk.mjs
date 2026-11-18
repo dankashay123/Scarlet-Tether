@@ -97,6 +97,7 @@ function person(sp, pose = {}) {
   const post = [];
   (PROP[sp.prop] || (() => {}))(S, fHand, { G, B, t, post, cx: tx, bHand });
   if (sp.halo) S.add(torus([hx - 1, hy - 7.4, 0], 4, 0.65, 0.4, 'dimHalo'), 0), S.sub(sphere([hx + 3, hy - 7, 2.6], 1.2), 0), S.sub(sphere([hx - 4.4, hy - 7.6, -1], 1), 0);
+  if (pose.raw) return { S, hx, hy, sp }; // round 154: the bust builds from the same model
   const fr = render(S, W, H, M, { ground: G, contourDepth: 3 });
   // Face: eyes, brows, mouth.
   const ey = hy - 0.1;
@@ -321,6 +322,22 @@ function crow(i) {
   return fr;
 }
 
+// ---------------------------------------------------- the NPC busts ---
+// Round 154: a head-and-shoulders bust of a townsperson for the dialogue box, 34x48: their own model, scaled up
+// about the head (every shape's distance field scaled), then eyes, brows and mouth placed by hand at bust size.
+function npcBust(id) {
+  const { S, hx, hy, sp } = person(CAST[id], { raw: true }), s = 2.3, bx = 15, by = 17, B = new Scene();
+  const map = (p) => ({ ...p, bb: p.bb && [bx + (p.bb[0] - hx) * s, by + (p.bb[1] - hy) * s, p.bb[2] * s, bx + (p.bb[3] - hx) * s, by + (p.bb[4] - hy) * s, p.bb[5] * s], f: (x, y, z) => p.f(hx + (x - bx) / s, hy + (y - by) / s, z / s) * s });
+  B.prims = S.prims.map(map); B.paints = S.paints.map(map);
+  const fr = render(B, 34, 48, M, { ground: 99, rich: process.env.NORICH ? false : { melt: 1.1, meltAdd: 0.12, detail: 0.6, fall: 0.06, reach: 10 } });
+  const X = (x) => bx + (x - hx) * s, Y = (y) => by + (y - hy) * s, two = (x, y, c) => { for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) dot(fr, Math.round(x) + a, Math.round(y) + b, c); };
+  const ey = hy - 0.1;
+  for (const ex of [hx + 1.8, hx + 4]) { two(X(ex) - 0.5, Y(ey) - 1.5, 'ink0'); dot(fr, Math.round(X(ex)), Math.round(Y(ey) + 0.6), 'ink1'); }
+  if (sp.brow) for (const [ex, d] of [[hx + 1.4, 1.8], [hx + 4, 2]]) { dot(fr, Math.round(X(ex) - 1), Math.round(Y(ey - d)), sp.brow); dot(fr, Math.round(X(ex)), Math.round(Y(ey - d)), sp.brow); }
+  if (!sp.beard) { const mc = sp.smile ? 'skin4' : 'skin3h'; dot(fr, Math.round(X(hx + 3.6) - 1), Math.round(Y(hy + 2.9)), mc); dot(fr, Math.round(X(hx + 3.6)), Math.round(Y(hy + 2.9)), mc); if (sp.smile) dot(fr, Math.round(X(hx + 3.6) + 1), Math.round(Y(hy + 2.9) - 1), mc); }
+  return fr;
+}
+const BUSTS = ['odile', 'vane', 'barkeep', 'hollis', 'pell', 'crier', 'beggar', 'plushseller', 'priest', 'guard'];
 // ------------------------------------------------------ the portrait ---
 // A bust of the Saint for the dialog box: hood, gilt-rimmed void, eyes. 34x34.
 // The HUD portrait; a vestment set skin recolours it and swaps the halo for its crown.
@@ -382,6 +399,6 @@ export default {
     kid: () => [0, 1, 2, 3].map((t) => child(t, 0)), kid2: () => [0, 1, 2, 3].map((t) => child(t, 1)),
     crow: () => [0, 1, 2, 3].map(crow),
   },
-  ui: { portrait: () => [portrait()], portrait_m: () => [portrait(null, 'mendicant')], portrait_a: () => [portrait(null, 'anchoress')], ...Object.fromEntries(Object.keys(SKINS).filter((k) => !SKINS[k].hero || SKINS[k].hero === 'saint').map((k) => [`portrait_${k}`, () => [portrait(k)]])),
+  ui: { ...Object.fromEntries(BUSTS.map((id) => [`bust_${id}`, () => [npcBust(id)]])), portrait: () => [portrait()], portrait_m: () => [portrait(null, 'mendicant')], portrait_a: () => [portrait(null, 'anchoress')], ...Object.fromEntries(Object.keys(SKINS).filter((k) => !SKINS[k].hero || SKINS[k].hero === 'saint').map((k) => [`portrait_${k}`, () => [portrait(k)]])),
     ...Object.fromEntries(Object.keys(PBUST).flatMap((k) => [[`portrait_m_${k}`, () => [portrait(k, 'mendicant')]], [`portrait_a_${k}`, () => [portrait(k, 'anchoress')]]])) },
 };

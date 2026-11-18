@@ -45,6 +45,7 @@ require('fs').mkdirSync(`${S}/shots`, { recursive: true });
     await p.evaluate(() => { const F = HS.storyFind; HS.player.x = F.x; HS.player.y = F.y + 10; HS.enemies.length = 0; }); await p.waitForTimeout(500);
     await p.keyboard.press('KeyE'); await p.waitForTimeout(200);
     // The message, then the Warden's lines the moment it appears (one unbroken scene: no blow lands between them).
+    if (k === 0) { for (let i = 0; i < 40 && !(await p.evaluate(() => !!HS.game.warden)); i++) { await tap(200, 150); await p.waitForTimeout(80); } await p.waitForTimeout(900); c.intro = await p.evaluate(() => ({ on: !!HS.bossIntro, off: HS.camOff && Math.round(Math.hypot(HS.camOff.x, HS.camOff.y)), dim: HS.bossIntro && HS.bossIntro.dim })); await shot('entrance'); }
     const seen = await closeDialog(k === 0 ? `note${k}` : null);
     c.warden = await p.evaluate(() => HS.game.warden && HS.game.warden.type);
     c.spawnSpoke = seen.includes(c.warden);
@@ -98,6 +99,14 @@ require('fs').mkdirSync(`${S}/shots`, { recursive: true });
   out.fold = await p.evaluate(() => !!HS.SAVE.trackFold); await shot('tracker-fold');
   if (tr) { const t2 = await p.evaluate(() => HS.game.trackR); await tap(t2.x + 20, t2.y + 6); await p.waitForTimeout(200); }
   out.unfold = await p.evaluate(() => !HS.SAVE.trackFold);
+  // Round 154: daily quests (three, today's only, counted and paid), the minimap pins and the bust in a scene.
+  out.daily = await p.evaluate(() => { HS.SAVE.eliteKills = 10; HS.ensureQuests(); const ids = HS.dailyIds(), q = HS.qOf(ids[0]), g0 = HS.SAVE.gold, e0 = HS.SAVE.embers || 0, run = HS.game.run; HS.game.run = { story: null }; HS.questBump(q.g[0], q.g[1]); HS.game.run = run;
+    const n1 = HS.dailyIds().length; HS.game.dayKey = 20990101; HS.ensureQuests(); const ids2 = HS.dailyIds(); HS.game.dayKey = 0;
+    return { n: ids.length, done: q.st, gold: HS.SAVE.gold - g0, embers: (HS.SAVE.embers || 0) - e0, n1, next: ids2.length, fresh: ids2.every((id) => id.includes('20990101')) }; });
+  out.pins = await p.evaluate(() => HS.questTargets().length);
+  await p.evaluate(() => { HS.game.state = 'play'; HS.game.toast = null; HS.game.banner = null; }); await p.waitForTimeout(400); await shot('dailies');
+  await p.evaluate(() => { HS.playScene([['odile', 'A TEST LINE FOR THE BUST.'], ['vane', 'AND ANOTHER.'], ['barkeep', 'ONE MORE.']]); }); await p.waitForTimeout(800); await shot('bust');
+  await closeDialog();
   out.done = await p.evaluate(() => HS.storyDone());
   await p.evaluate(() => { HS.game.state = 'play'; HS.startDescent(); }); await p.waitForTimeout(300);
   out.afterGate = (await st()).state;
