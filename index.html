@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '152';
+const BUILD = '153';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '153': ['SIDE QUESTS NOW ALSO GIVE A LOOK OF THEIR OWN (A ROBE COLOUR, BOLT TRAIL OR DASH TRAIL), WORN FROM THE PLUSH STALL.', 'A SECOND WAVE OF SIDE QUESTS OPENS AT STATION X: HOLLIS, BROTHER CINDER AND THE PLUSH SELLER.', 'A GOLD RING AND A CHIME MARK EACH OBJECTIVE AND QUEST YOU FINISH.', 'A WARDEN\'S SPEECH PLATE NOW STAYS ON THE SCREEN AND POINTS AT THE WARDEN. TAP THE QUEST TRACKER TO FOLD IT TO TITLES.'],
   '152': ['NEW: SIDE QUESTS. ONCE THE STORY IS DONE, OLD BARNABY, BROTHER PELL AND THE TOWN CRIER EACH HAVE A JOB FOR YOU, WITH ITS OWN SCENES AND REWARD.', 'THE STORY TILE IS NOW QUESTS: A SECOND TAB LISTS EVERY QUEST, OPEN AND DONE, AND LETS YOU REREAD ITS SCENES.', 'A WARDEN\'S LINES MID-FIGHT NOW SHOW IN A SPEECH PLATE WITH A SHORT CRY, AND THE TRACKER SHOWS ONLY THE WARDEN WHILE IT LIVES.', 'REWARD BANNERS WAIT FOR THE DISTRICT NAME TO FADE, SO THE TWO NO LONGER OVERLAP.'],
   '151': ['THE STORY IS NOW A QUEST LINE. TALK TO THE PERSON WITH A ! OVER THEIR HEAD TO TAKE A CHAPTER, AND TO THE ONE WITH A ? TO HAND IT IN.', 'EACH CHAPTER HAS OBJECTIVES (KILLS, RITES, ELITES, A CHEST, DASHES), SHOWN IN A TRACKER ON THE LEFT, AND PAYS GOLD AND A PIECE OF GEAR.', 'MORE STORY: LONGER SCENES, AND EVERY WARDEN NOW SPEAKS WHEN IT APPEARS, AT EACH PHASE AND WHEN IT FALLS.', 'WHEN A PLACE IN VAEL OPENS, A ! APPEARS OVER IT. VISIT IT FOR A SHORT GUIDE, SOMETHING TO TRY IT WITH (EMBERSTONES AT THE FORGE, EMBERWAKE\'S INGREDIENTS AT THE ENCHANTER) AND A SMALL QUEST.', 'FIXED: WORDS IN DIALOGUE NO LONGER CHANGE CASE AS THEY TYPE OUT.'],
   '150': ['NEW: THE FIRST DESCENT, A STORY IN FIVE CHAPTERS (ABOUT HALF AN HOUR). NEW CHARACTERS PLAY IT BEFORE THE STATIONS OPEN.', 'EACH CHAPTER HAS A SCENE IN VAEL, A MESSAGE TO FIND IN THE FAR ROOM AND ITS OWN WARDEN. THE WARDEN WAITS UNTIL YOU READ THE MESSAGE.', 'CHARACTERS THAT HAVE CLEARED A STATION KEEP THEIR STATIONS. ANYONE CAN PLAY A CHAPTER OR REREAD ITS SCENES FROM THE NEW STORY TILE ON THE PAUSE SCREEN.'],
@@ -425,6 +426,7 @@ const DYES = [
   { id: 'moss', name: 'CLOISTER GREEN', short: 'GREEN', price: 400 }, { id: 'roof', name: 'MADDER', price: 500 }, { id: 'slate', name: 'ASH GREY', short: 'GREY', price: 600 },
   { id: 'teal', name: 'DROWNED TEAL', short: 'TEAL', price: 800 }, { id: 'rose', name: 'BLOODROSE', short: 'ROSE', price: 1200 }, { id: 'cloth', name: 'VIGIL WHITE', short: 'WHITE', price: 1500 },
   { id: 'gold', name: 'CANONISED GOLD', short: 'GOLD', earn: 'lv100' }, // Saint level 100 (round 88)
+  { id: 'iron', name: "THE CRIER'S BLUE", short: 'CRIER', earn: 'q:crier' }, { id: 'sand', name: 'STITCHED TAN', short: 'TAN', earn: 'q:plush' }, // side quests (round 153)
 ];
 const HALOS = [
   { id: 'gold', name: 'GILT HALO', short: 'GILT', price: 0 }, { id: 'iron', name: 'SILVER HALO', short: 'SILVER', price: 500 }, { id: 'ember', name: 'EMBER HALO', short: 'EMBER', price: 800 },
@@ -448,12 +450,14 @@ const TRAILS = [
   { id: 'violet', name: 'NIGHT BOLTS', short: 'NIGHT', price: 1000, rgb: '154,106,230', crit: '212,176,255' }, { id: 'verdant', name: 'VERDANT BOLTS', short: 'GREEN', price: 1200, rgb: '95,220,108', crit: '184,255,143' },
   { id: 'rose', name: 'BLOODROSE BOLTS', short: 'ROSE', price: 1500, rgb: '232,90,166', crit: '255,156,207' }, { id: 'silver', name: 'SILVER BOLTS', short: 'SILVER', price: 1500, rgb: '178,188,203', crit: '238,242,247' },
   { id: 'gilt', name: 'GILDED BOLTS', short: 'GILT', earn: 'lv75', rgb: '255,209,85', crit: '255,244,176' }, // Saint level 75
+  { id: 'relic', name: 'RELIC GLINT', short: 'RELIC', earn: 'q:pell', rgb: '214,170,96', crit: '255,226,160' }, { id: 'ash', name: 'ALTAR ASH', short: 'ASH', earn: 'q:cinder', rgb: '150,140,165', crit: '214,206,226' }, // side quests (round 153)
 ];
 const DASHES = [
   { id: 'white', name: 'PALE SHADOWS', short: 'PALE', price: 0 }, { id: 'ember', name: 'EMBER STEPS', short: 'EMBER', price: 500, rgb: '255,122,31' },
   { id: 'holy', name: 'STARLIGHT STEPS', short: 'STAR', price: 700, rgb: '138,224,255' }, { id: 'violet', name: 'NIGHT STEPS', short: 'NIGHT', price: 900, rgb: '154,106,230' },
   { id: 'rose', name: 'BLOODROSE STEPS', short: 'ROSE', price: 1200, rgb: '232,90,166' }, { id: 'shadow', name: 'THE BLACK FAST', short: 'BLACK', price: 1500, rgb: '42,34,54' },
   { id: 'gilt', name: 'GILDED STEPS', short: 'GILT', earn: 'lv75', rgb: '255,209,85' },
+  { id: 'oldash', name: "THE OLD SAINT'S ASH", short: 'OLD ASH', earn: 'q:barnaby', rgb: '178,168,150' }, { id: 'forge', name: 'FORGE SPARKS', short: 'SPARKS', earn: 'q:hollis', rgb: '255,150,60' }, // side quests (round 153)
 ];
 // A tinted silhouette of a sheet (one canvas per sheet and colour, kept).
 function tintKey(sheet, rgb) {
@@ -828,6 +832,7 @@ function pointerDown(id, cx, cy) {
   if (HUD.minimap && inRect(HUD.minimap, x, y)) { sfx('tap'); game.state = 'map'; return; }
   if (hitBtn(HUD.pause, x, y)) { sfx('tap'); game.state = 'pause'; return; }
   if (hitBtn(HUD.bag, x, y)) { openInventory(); return; }
+  if (game.trackR && inRect(game.trackR, x, y)) { SAVE.trackFold = !SAVE.trackFold; persist(); sfx('tap', { vol: 0.5 }); return; } // round 153: fold the quest tracker
   if (hudIconTap(x, y)) return;
   if (tutTap(x, y)) return;
   if (game.interact && hitBtn(HUD.act, x, y)) { game.interact.use(); return; }
@@ -2148,16 +2153,19 @@ function updateCritters(dt) {
 function drawBossSay() {
   const B = game.bossSay; if (!B) return; const age = game.real - B.t;
   if (age > 3.6 || !B.e || B.e.dead) { game.bossSay = null; return; }
-  const a = Math.min(1, age * 6, (3.6 - age) * 3), lines = wrapW(B.text, 180, true), top = B.e.y - (B.e.def.hy || 30) * 2 - 18 - lines.length * 10;
-  // Round 152: a speech plate: dark glass, a crimson rim, a small tail down to the Warden.
-  const bw = Math.round(Math.max(...lines.map((l) => textW(l, 1, true))) + 14), bh = lines.length * 10 + 7, bx = Math.round(B.e.x - bw / 2), by = Math.round(top - 4), mx = Math.round(B.e.x);
+  const a = Math.min(1, age * 6, (3.6 - age) * 3), lines = wrapW(B.text, 180, true), head = B.e.y - (B.e.def.hy || 30) * 2;
+  // Round 152: a speech plate: dark glass, a crimson rim, a small tail to the Warden. Round 153: kept inside the view
+  // (clear of the top band and the screen's edges); the tail points down to the Warden, or up when it is above.
+  const bw = Math.round(Math.max(...lines.map((l) => textW(l, 1, true))) + 14), bh = lines.length * 10 + 7, vx = Math.round(cam.x), vy = Math.round(cam.y);
+  const bx = Math.round(Math.max(vx + 6, Math.min(vx + W - bw - 6, B.e.x - bw / 2))), want = head - 18 - bh, by = Math.round(Math.max(vy + 74, Math.min(vy + H - bh - 60, want)));
+  const up = by > head - 6, mx = Math.round(Math.max(bx + 8, Math.min(bx + bw - 8, B.e.x))), ty = up ? by : by + bh, d = up ? -1 : 1;
   ctx.globalAlpha = a;
   ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(bx + 1, by + 2, bw, bh);
-  ctx.fillStyle = '#8a1a2a'; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2); ctx.beginPath(); ctx.moveTo(mx - 5, by + bh + 1); ctx.lineTo(mx, by + bh + 7); ctx.lineTo(mx + 5, by + bh + 1); ctx.fill();
-  ctx.fillStyle = 'rgba(14,10,22,0.96)'; ctx.fillRect(bx, by, bw, bh); ctx.beginPath(); ctx.moveTo(mx - 4, by + bh); ctx.lineTo(mx, by + bh + 5); ctx.lineTo(mx + 4, by + bh); ctx.fill();
+  ctx.fillStyle = '#8a1a2a'; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2); ctx.beginPath(); ctx.moveTo(mx - 5, ty + d); ctx.lineTo(mx, ty + d * 7); ctx.lineTo(mx + 5, ty + d); ctx.fill();
+  ctx.fillStyle = 'rgba(14,10,22,0.96)'; ctx.fillRect(bx, by, bw, bh); ctx.beginPath(); ctx.moveTo(mx - 4, ty); ctx.lineTo(mx, ty + d * 5); ctx.lineTo(mx + 4, ty); ctx.fill();
   ctx.fillStyle = 'rgba(255,120,130,0.25)'; ctx.fillRect(bx, by, bw, 1);
   ctx.globalAlpha = 1;
-  if (a > 0.4) lines.forEach((l, i) => text(l, B.e.x, top + i * 10, '#ff8a8a', { align: 'center', small: true, outline: null }));
+  if (a > 0.4) lines.forEach((l, i) => text(l, bx + bw / 2, by + 4 + i * 10, '#ff8a8a', { align: 'center', small: true, outline: null }));
 }
 // Round 148: now and then a few bats flutter across the view, high over the floor (pixel art in 2 px cells, no sheet).
 let bats = [];
@@ -3769,7 +3777,7 @@ function renderPlush() {
     ctx.save(); ctx.beginPath(); ctx.rect(C.x, C.y, C.w, C.h); ctx.clip(); ctx.strokeStyle = `rgba(${c0},0.7)`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx - 34, by); ctx.stroke(); ctx.fillStyle = `rgb(${c0})`; ctx.fillRect(bx - 2, by - 2, 6, 4); ctx.fillStyle = PAL.white; ctx.fillRect(bx + 2, by - 1, 2, 2); ctx.restore(); }
   const c = (P.sel && list.find((q) => q.id === P.sel)) || null, own = c && plushOwn(P.tab, c.id), worn = c && plushWorn(P.tab) === c.id;
   text(c ? fitText(c.name, C.w - 16, c.short) : 'TRY ON A LOOK', C.x + 8, C.y + 8, c ? PAL.gold1 : PAL.stone1, small);
-  const note = c && c.earn && !own ? (c.earn.startsWith('lv') ? `EARNED AT SAINT LEVEL ${c.earn.slice(2)}.` : c.earn === 'martyr' ? "EARNED BY DYING UNDER THE MARTYR'S VOW WITH THE TOLL AT 50% OR MORE." : `EARNED BY KILLING ${MON[c.earn].name} AT STATION ${ROMAN[EARN_FROM - 1]}+.`) : c && c.earn ? 'EARNED.' : ['COSMETIC.', 'COSMETIC. SET SKINS KEEP THEIR OWN HEADWEAR.', 'BOLT TRAIL. COSMETIC.', 'DASH TRAIL. COSMETIC.'][P.tab];
+  const note = c && c.earn && !own ? (c.earn.startsWith('lv') ? `EARNED AT SAINT LEVEL ${c.earn.slice(2)}.` : c.earn.startsWith('q:') ? 'EARNED BY FINISHING A QUEST FOR SOMEONE IN VAEL.' : c.earn === 'martyr' ? "EARNED BY DYING UNDER THE MARTYR'S VOW WITH THE TOLL AT 50% OR MORE." : `EARNED BY KILLING ${MON[c.earn].name} AT STATION ${ROMAN[EARN_FROM - 1]}+.`) : c && c.earn ? 'EARNED.' : ['COSMETIC.', 'COSMETIC. SET SKINS KEEP THEIR OWN HEADWEAR.', 'BOLT TRAIL. COSMETIC.', 'DASH TRAIL. COSMETIC.'][P.tab];
   wrapW(note, C.w - 16, true).forEach((l, j) => text(l, C.x + 8, C.y + 20 + j * 9, c && c.earn && !own ? PAL.rose1 : PAL.stone2, small));
   if (c && !(c.earn && !own)) invButton(Gm.btn, worn ? 'WORN' : own ? 'WEAR' : `BUY ${c.price}`, worn ? PAL.ink3 : own ? PAL.crimson3 : PAL.gold3, !worn && (own || (SAVE.gold || 0) >= c.price));
 }
@@ -5903,20 +5911,33 @@ const QSITE = {
 };
 // Round 152: side quests from townsfolk, offered once the story is done; counted in any Station descent.
 const SIDE = {
-  barnaby: { giver: 'beggar', turn: 'beggar', title: 'THE OLD HALO', goals: [['warden', 3, 'KILL WARDENS AT ANY STATION']], reward: { gold: 1500, ri: 2 },
+  barnaby: { giver: 'beggar', turn: 'beggar', title: 'THE OLD HALO', goals: [['warden', 3, 'KILL WARDENS AT ANY STATION']], reward: { gold: 1500, ri: 2, look: 's:oldash' },
     sum: 'OLD BARNABY WAS A SAINT ONCE. A WARDEN WEARS THE OTHER HALF OF HIS HALO.',
     intro: [['beggar', 'YOU REMEMBER NOW, DO YOU NOT. I CAN SEE IT IN HOW YOU WALK.'], ['beggar', 'I WAS A SAINT ONCE. THE BELLS RANG AND I FORGOT, AND ONE YEAR I CAME BACK UP TOO SLOW, AND THEY FOUND A NEW ONE.'],
       ['beggar', 'MY HALO STILL BURNS AT NIGHT. THE WARDENS DOWN THERE CARRY THE ASH OF IT. KILL THREE OF THEM AND BRING ME WHAT IS LEFT.']],
     outro: [['beggar', 'THAT IS IT. THAT IS THE ASH. IT SMELLS LIKE ME, ALMOST.'], ['beggar', 'THE BURNING HAS STOPPED. FIRST TIME IN THIRTY YEARS.'], ['beggar', 'TAKE THIS. A SAINT SHOULD HAVE SOMETHING THAT REMEMBERS FOR THEM.']] },
-  pell: { giver: 'pell', turn: 'pell', title: 'GENUINE RELICS', goals: [['elites', 20, 'KILL RARE OR ELITE FOES']], reward: { gold: 2500, embers: 5 },
+  pell: { giver: 'pell', turn: 'pell', title: 'GENUINE RELICS', goals: [['elites', 20, 'KILL RARE OR ELITE FOES']], reward: { gold: 2500, embers: 5, look: 'b:relic' },
     sum: 'BROTHER PELL WANTS RELICS FROM THE RARE BEASTS OF THE WOUND. GENUINE ONES, THIS TIME.',
     intro: [['pell', 'BUSINESS IS BAD. NOBODY BUYS A SAINT\'S TOENAIL WHEN THE SAINT WALKS ABOUT WITH ALL TEN.'], ['pell', 'BUT A RELIC FROM A RARE BEAST? THAT SELLS. THE BLUE ONES AND THE GOLD ONES, DOWN IN THE STATIONS.'],
       ['pell', 'KILL TWENTY OF THEM. I WILL COLLECT THE PIECES. YOU WILL COLLECT A CUT.']],
     outro: [['pell', 'LOVELY. GENUINE. SOME OF THEM ARE EVEN STILL WARM.'], ['pell', 'HERE IS YOUR CUT, AND FIVE EMBERSTONES I FOUND. DO NOT TELL THE CHOIR.']] },
-  crier: { giver: 'crier', turn: 'crier', title: 'THE TOWN\'S SAINT', goals: [['kills', 500, 'KILL FOES IN THE STATIONS']], reward: { gold: 2000, ri: 2 },
+  crier: { giver: 'crier', turn: 'crier', title: 'THE TOWN\'S SAINT', goals: [['kills', 500, 'KILL FOES IN THE STATIONS']], reward: { gold: 2000, ri: 2, look: 'd:iron' },
     sum: 'THE CHOIR SAYS THE SAINT IS UNWELL. THE TOWN CRIER WANTS TO PROVE THEM WRONG.',
     intro: [['crier', 'HEAR YE! THE CHOIR SAYS THE SAINT IS UNWELL! THE CITY IS WORRIED!'], ['crier', 'HEAR YE! I SAY THE SAINT SHOULD SHOW THEM! KILL FIVE HUNDRED OF THE RISEN AND I WILL CRY IT IN EVERY STREET!']],
-    outro: [['crier', 'HEAR YE! FIVE HUNDRED! THE CHILDREN HAVE MADE A SONG ABOUT IT! IT DOES NOT RHYME!'], ['crier', 'HEAR YE! THE GILDED LAMB SENDS ITS REGARDS, AND A PURSE!']] },
+    outro: [['crier', 'HEAR YE! FIVE HUNDRED! THE CHILDREN HAVE MADE A SONG ABOUT IT! IT DOES NOT RHYME!'], ['crier', 'HEAR YE! THE GILDED LAMB SENDS ITS REGARDS, AND A PURSE! AND A NEW ROBE, IN THE TOWN COLOURS!']] },
+  // Round 153: the second wave, once the Warden of Station X has fallen.
+  hollis: { wave: 2, giver: 'hollis', turn: 'hollis', title: 'THE COLD ANVIL', goals: [['reforge', 10, 'REFORGE STATS AT THE FORGE']], reward: { gold: 3000, embers: 10, look: 's:forge' },
+    sum: 'HOLLIS THINKS A SAINT SHOULD KNOW WHAT THE IRON WANTS. TEN REFORGES AT HIS ANVIL.',
+    intro: [['hollis', 'TEN STATIONS DEEP AND STILL BREATHING. THE CHOIR SAYS I SHOULD MAKE YOU SOMETHING.'], ['hollis', 'I SAY THE STEEL SHOULD MAKE ITSELF. REFORGE TEN STATS AT MY ANVIL. YOU WILL LEARN WHAT THE IRON WANTS.']],
+    outro: [['hollis', 'THERE. HEAR THE DIFFERENCE IN THE RING OF IT NOW?'], ['hollis', 'TAKE TEN EMBERSTONES, AND THESE SPARKS. THEY FOLLOW A SMITH\'S FEET. YOURS NOW.']] },
+  cinder: { wave: 2, giver: 'cinder', turn: 'cinder', title: 'ASH FOR THE ALTAR', goals: [['warden', 5, 'KILL WARDENS']], reward: { gold: 3000, chrism: 1, look: 'b:ash' },
+    sum: 'BROTHER CINDER SAYS THE ASHEN ALTAR HUNGERS FOR THE ASH OF WARDENS.',
+    intro: [['cinder', 'THE ALTAR IS HUNGRY, SAINT. IT LIKES THE ASH OF THINGS THAT SHOULD HAVE STAYED DEAD.'], ['cinder', 'FIVE WARDENS. BURN THEM DOWN THERE AND THE ASH WILL FIND ITS WAY TO ME. IT ALWAYS DOES.']],
+    outro: [['cinder', 'THE ALTAR IS QUIET. FED.'], ['cinder', 'YOUR BOLTS WILL CARRY A LITTLE OF ITS ASH NOW. AND TAKE A CHRISM FOR YOUR NEXT BURN.']] },
+  plush: { wave: 2, giver: 'plushseller', turn: 'plushseller', title: 'A NEW PLUSH', goals: [['elites', 40, 'KILL RARE OR ELITE FOES']], reward: { gold: 3500, look: 'd:sand' },
+    sum: 'THE PLUSH SELLER IS MAKING A NEW PLUSH SAINT AND WANTS TO GET THE FIGHTING RIGHT.',
+    intro: [['plushseller', 'I AM MAKING A NEW PLUSH SAINT! LIMITED EDITION! BUT I NEED TO GET THE SNARL RIGHT.'], ['plushseller', 'GO AND KILL FORTY OF THE BIG BLUE AND GOLD ONES. I WILL WATCH FROM A SAFE DISTANCE. FOR REFERENCE.']],
+    outro: [['plushseller', 'PERFECT! THE SNARL! THE LITTLE STAB-STAB MOTION! IT WILL SELL LIKE BREAD.'], ['plushseller', 'HERE IS THE FIRST BOLT OF CLOTH, DYED TO MATCH. ON THE HOUSE.']] },
 };
 SPEAKER.beggar = { name: 'OLD BARNABY', sheet: 'town2', anim: 'beggar' };
 const QS = () => (SAVE.q = SAVE.q || {});
@@ -5934,11 +5955,12 @@ function questBump(key, n = 1) {
   for (const id in QS()) {
     const q = QS()[id]; if (q.st !== 'active' || q.step !== 0) continue;
     const d = qDef(id); if (d.story != null && !(storyRun() && game.run.story === d.story)) continue;
-    if (d.side && (game.scene !== 'wound' || storyRun())) continue;
+    if (d.side && storyRun()) continue; // round 153: anywhere but a story chapter (a reforge counts in town)
     const g = d.goals.find((x) => x[0] === key); if (!g || (q.c[key] || 0) >= g[1]) continue;
     q.c[key] = Math.min(g[1], (q.c[key] || 0) + n);
     if (q.c[key] < g[1]) continue;
-    if (!d.goals.every(([k, m]) => (q.c[k] || 0) >= m)) { toast(`DONE: ${g[2]}`, 2); game.toastColor = PAL.holy1; persist(); continue; }
+    if (!d.goals.every(([k, m]) => (q.c[k] || 0) >= m)) { toast(`DONE: ${g[2]}`, 2); game.toastColor = PAL.holy1; questFanfare(false); persist(); continue; }
+    questFanfare(true);
     if (d.story != null || d.side) { q.step = 1; toast(`${d.title} DONE. TALK TO ${qName(d.turn)} IN VAEL.`, 4); game.toastColor = PAL.gold1; }
     else { q.st = 'done'; SAVE.gold = (SAVE.gold || 0) + 100; toast(`QUEST DONE: ${d.title}. +100 GOLD`, 3); game.toastColor = PAL.gold1; sfx('gold'); }
     persist();
@@ -5947,7 +5969,7 @@ function questBump(key, n = 1) {
 // New quests: the next story chapter, and any town site that has opened since this character last looked.
 function ensureQuests() {
   if (!storyDone()) { const k = storyN(); if (!qOf(`story${k}`)) { qOffer(`story${k}`); persist(); } }
-  else for (const k in SIDE) if (!qOf(`side_${k}`)) { qOffer(`side_${k}`); persist(); }
+  else for (const k in SIDE) if (!qOf(`side_${k}`) && (!SIDE[k].wave || (SAVE.cleared ?? -1) >= 9)) { qOffer(`side_${k}`); persist(); }
   if (!SAVE.siteMet) { SAVE.siteMet = {}; for (const S of SITES) if (siteDone(S)) SAVE.siteMet[S.id] = 1; persist(); return; }
   const fresh = [];
   for (const S of SITES) if (QSITE[S.id] && !SAVE.siteMet[S.id] && siteDone(S)) { SAVE.siteMet[S.id] = 1; qOffer(`site_${S.id}`); fresh.push(S.name); }
@@ -5969,15 +5991,24 @@ function questTalk(npc) {
   }
   return false;
 }
+// Round 153: a little fanfare when an objective or quest is done: a gold ring and sparks round the Saint, a chime.
+function questFanfare(big) {
+  if (!player) return;
+  rings.push({ x: player.x, y: player.y - 18, t: 0, max: big ? 0.8 : 0.55, r: big ? 74 : 44, color: '255,209,85' });
+  vemit(player.x, player.y - 20, { n: LOWFX ? 4 : big ? 16 : 8, ramp: 'gold', sp: big ? 90 : 60, up: 70, life: 0.7, glow: 5 });
+  sfx('chime', { vol: big ? 0.5 : 0.3, rate: big ? 0.8 : 1.25, gap: 0.25 });
+}
 // Round 152: a banner that waits for the district's name card to fade, so the two never sit on top of each other.
 function bannerSoon(b, ms = 0) { setTimeout(() => { const wait = Math.max(0, 3.5 - (game.real - (game.cardAt || 0))); setTimeout(() => { if (game.scene === 'town') { game.banner = { ...b, t: 0 }; } }, wait * 1000); }, ms); }
 function rewardPiece(ri, il) { for (let i = 0; i < 4000; i++) { const c = rollItem(ri >= 4 ? 9 : 3, il); if (c.ri === ri) { c.run = false; return c; } } return null; }
 function sideTurnIn(k) {
   const q = qOf(`side_${k}`), D = SIDE[k], R = D.reward; q.st = 'done';
-  SAVE.gold = (SAVE.gold || 0) + R.gold; if (R.embers) SAVE.embers = (SAVE.embers || 0) + R.embers;
+  SAVE.gold = (SAVE.gold || 0) + R.gold; if (R.embers) SAVE.embers = (SAVE.embers || 0) + R.embers; if (R.chrism) chrisms()[0] += R.chrism;
+  if (R.look) { const K = looks(); if (!K.own.includes(R.look)) K.own.push(R.look); setTimeout(() => { const [t, id] = R.look.split(':'), L0 = (t === 'd' ? DYES : t === 'b' ? TRAILS : DASHES).find((c) => c.id === id); if (L0) { toast(`NEW LOOK: ${L0.name}. WEAR IT AT THE PLUSH STALL.`, 3.5); game.toastColor = PAL.rose1; } }, 2600); }
+  questFanfare(true);
   let it = R.ri != null ? rewardPiece(R.ri, Math.max(1, bestIl())) : null; if (it && !bagAdd(it)) { SAVE.gold += 500; it = null; }
   persist(); sfx('gold'); sfx('learn', { gap: 0.2 });
-  bannerSoon({ text: `${D.title} COMPLETE`, sub: `+${R.gold} GOLD${R.embers ? `, +${R.embers} EMBERSTONES` : ''}`, color: PAL.gold0 });
+  bannerSoon({ text: `${D.title} COMPLETE`, sub: `+${R.gold} GOLD${R.embers ? `, +${R.embers} EMBERSTONES` : ''}${R.chrism ? ', A CHRISM' : ''}`, color: PAL.gold0 });
   if (it) setTimeout(() => { toast(nm(it), 3); game.toastColor = RARITY[it.ri].color; }, 1200);
 }
 // A finished chapter pays out: gold and a piece of gear.
@@ -5986,7 +6017,7 @@ function storyTurnIn(k) {
   SAVE.gold = (SAVE.gold || 0) + C.reward.gold; let it = null;
   it = rewardPiece(C.reward.ri, 1);
   if (it && !bagAdd(it)) { SAVE.gold += 300; it = null; }
-  persist(); sfx('gold'); sfx('learn', { gap: 0.2 });
+  persist(); sfx('gold'); sfx('learn', { gap: 0.2 }); questFanfare(true);
   bannerSoon({ text: `${C.title} COMPLETE`, sub: `+${C.reward.gold} GOLD`, color: PAL.gold0 });
   if (it) setTimeout(() => { toast(nm(it), 3); game.toastColor = RARITY[it.ri].color; }, 1200); // the piece's name alone, so it keeps its capitals
   if (k === STORY.length - 1) { bannerSoon({ text: 'THE STATIONS ARE OPEN', sub: 'AT THE CATHEDRAL', color: PAL.gold0 }, 3000); setTimeout(() => sfx('elite', { rate: 0.8 }), 3000); }
@@ -6012,12 +6043,16 @@ function drawQuestMarks(cx, cy) {
 // The tracker on the left, under the HUD: each quest's title and its objectives with counts.
 function drawQuestTracker(x, y) {
   const list = Object.keys(QS()).filter((id) => QS()[id].st !== 'done' && (game.scene === 'town' || (id.startsWith('story') && storyRun() && game.run.story === qDef(id).story) || (id.startsWith('side_') && QS()[id].st === 'active' && !storyRun()))).sort((a, b) => (a.startsWith('story') ? 0 : 1) - (b.startsWith('story') ? 0 : 1)).slice(0, 3);
+  game.trackR = null;
   if (!list.length || game.state !== 'play') return y;
+  const fold = !!SAVE.trackFold, y0 = y + 6;
   const w = Math.min(170, Math.round(W * 0.3)), lim = H - 112, sm = { small: true }; let yy = y + 6;
   for (const id of list) {
     if (yy + 24 > lim) break;
     const q = QS()[id], d = qDef(id), rows = [];
-    if (q.st === 'offer') rows.push([d.site ? `GO TO ${d.title}` : `TALK TO ${qName(d.giver)}`, false]);
+    if (q.st === 'offer' && !fold) rows.push([d.site ? `GO TO ${d.title}` : `TALK TO ${qName(d.giver)}`, false]);
+    if (fold) { /* folded: titles only */ }
+    else if (q.st === 'offer') { /* handled above */ }
     else if (q.step === 1) rows.push([`TALK TO ${qName(d.turn)} IN VAEL`, false]);
     else { if (d.story != null && game.scene === 'town') rows.push(['WALK INTO THE CATHEDRAL', false]);
       const boss = game.scene === 'wound' && game.warden && !game.warden.dead; // round 152: while a Warden lives, only its row, to keep clear of its speech
@@ -6031,6 +6066,7 @@ function drawQuestTracker(x, y) {
     for (const [t, done] of rows) { if (ry + 10 > lim) break; ctx.fillStyle = done ? PAL.stone3 : PAL.gold1; ctx.fillRect(x + 5, ry + 4, 3, 3); text(fitText(t, w - 16, null, true), x + 13, ry, done ? PAL.stone3 : PAL.cloth0, sm); ry += 11; }
     yy = ry + 5;
   }
+  game.trackR = { x: x - 2, y: y0 - 2, w, h: yy - y0 };
   return yy;
 }
 // The quest log (round 152): side and site quests, newest first among the open ones, then the finished.

@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 152 (build 152, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 153 (build 153, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; rounds 136-152 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-153 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -756,6 +756,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 153:** the owner said "All" to round 152's list. (1) Side quests give
+  a look (`reward.look`, a tag added to `looks().own`; dyes `iron` and `sand`,
+  bolt trails `relic` and `ash`, dash trails `oldash` and `forge`, each with
+  `earn: 'q:<quest>'`; the Plush stall says EARNED BY FINISHING A QUEST). (2)
+  `questFanfare(big)`: a gold ring, sparks and a chime on each objective and
+  quest done. (3) A second wave in `SIDE` (`wave: 2`: Hollis ten reforges,
+  Brother Cinder five Wardens, the Plush Seller forty elites), offered once
+  Station X is cleared; side quests now count anywhere but story runs. (4)
+  `drawBossSay` keeps the plate inside the view and under the top band, its tail
+  pointing at the Warden (up when the Warden is above it). (5) A tap on the
+  tracker folds it to titles (`SAVE.trackFold`, `game.trackR`, `pointerDown`).
 
 - **Round 152:** the owner said "All" to round 151's list. (1) The pause tile is
   QUESTS; the story page has a second tab, the quest log (`renderQuestLog`,

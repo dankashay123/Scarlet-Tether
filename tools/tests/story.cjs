@@ -89,6 +89,15 @@ require('fs').mkdirSync(`${S}/shots`, { recursive: true });
   out.sidePaid = (await p.evaluate(() => HS.SAVE.gold || 0)) - g0; out.sideDone = (await q('side_barnaby')).st;
   await p.evaluate(() => { HS.openStory(0, 'pause', 1); }); await p.waitForTimeout(400); await shot('log');
   out.logText = await p.evaluate(() => HS.textProblems().length); out.logWhat = await p.evaluate(() => JSON.stringify(HS.textProblems()).slice(0, 300));
+  // Round 153: Barnaby's look, the second wave at Station X, and the tracker folding on a tap.
+  out.look = await p.evaluate(() => HS.SAVE.looks && HS.SAVE.looks.own && HS.SAVE.looks.own.includes('s:oldash'));
+  out.wave2 = await p.evaluate(() => { HS.ensureQuests(); return ['hollis', 'cinder', 'plush'].map((k) => HS.qOf(`side_${k}`) && HS.qOf(`side_${k}`).st); });
+  await p.evaluate(() => { HS.game.state = 'play'; HS.game.toast = null; HS.game.banner = null; }); await p.waitForTimeout(400); await shot('tracker-open');
+  const tr = await p.evaluate(() => HS.game.trackR);
+  if (tr) { await tap(tr.x + 20, tr.y + 6); await p.waitForTimeout(300); }
+  out.fold = await p.evaluate(() => !!HS.SAVE.trackFold); await shot('tracker-fold');
+  if (tr) { const t2 = await p.evaluate(() => HS.game.trackR); await tap(t2.x + 20, t2.y + 6); await p.waitForTimeout(200); }
+  out.unfold = await p.evaluate(() => !HS.SAVE.trackFold);
   out.done = await p.evaluate(() => HS.storyDone());
   await p.evaluate(() => { HS.game.state = 'play'; HS.startDescent(); }); await p.waitForTimeout(300);
   out.afterGate = (await st()).state;
