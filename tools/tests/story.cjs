@@ -80,6 +80,15 @@ require('fs').mkdirSync(`${S}/shots`, { recursive: true });
   await closeDialog(); await p.evaluate(() => { HS.game.state = 'play'; });
   out.ench = await p.evaluate(() => { const i = HS.ENCHANTS ? HS.ENCHANTS.findIndex((e) => e.id === 'emberwake') : -1; HS.openSite(HS.SITES.find((t) => t.id === 'ench')); return { st: HS.qOf('site_ench') && HS.qOf('site_ench').st, ingr: i >= 0 ? HS.SAVE.ingr.slice(i * 3, i * 3 + 3) : null }; });
   await closeDialog('ench'); await p.evaluate(() => { HS.game.state = 'play'; });
+  // Round 152: side quests once the story is done: Barnaby's (three Wardens in any Station descent), then the log.
+  out.side = await p.evaluate(() => { HS.ensureQuests(); return Object.keys(HS.SAVE.q).filter((id) => id.startsWith('side_')).map((id) => `${id}:${HS.qOf(id).st}`); });
+  await p.evaluate(() => { HS.game.state = 'play'; HS.talk('beggar'); }); await p.waitForTimeout(150); out.sideIntro = await closeDialog('side');
+  out.sideCount = await p.evaluate(() => { const was = HS.game.scene, run = HS.game.run; HS.game.scene = 'wound'; HS.game.run = { story: null }; HS.questBump('warden', 3); HS.game.scene = was; HS.game.run = run; return { ...HS.qOf('side_barnaby') }; });
+  const g0 = await p.evaluate(() => HS.SAVE.gold || 0);
+  await p.evaluate(() => { HS.game.state = 'play'; HS.talk('beggar'); }); await p.waitForTimeout(150); out.sideOutro = await closeDialog();
+  out.sidePaid = (await p.evaluate(() => HS.SAVE.gold || 0)) - g0; out.sideDone = (await q('side_barnaby')).st;
+  await p.evaluate(() => { HS.openStory(0, 'pause', 1); }); await p.waitForTimeout(400); await shot('log');
+  out.logText = await p.evaluate(() => HS.textProblems().length); out.logWhat = await p.evaluate(() => JSON.stringify(HS.textProblems()).slice(0, 300));
   out.done = await p.evaluate(() => HS.storyDone());
   await p.evaluate(() => { HS.game.state = 'play'; HS.startDescent(); }); await p.waitForTimeout(300);
   out.afterGate = (await st()).state;
