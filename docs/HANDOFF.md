@@ -757,6 +757,19 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 157:** the owner wanted portraits with big pixels, like the figure in
+  the bag, then said yes to round 156's items 2-5. (1) The sculpted busts are gone
+  (`npcBust` removed): `renderDialog` draws each speaker's own sprite at 2x in a
+  52 px box, centred on the head (`spriteBust(sheet, anim)`: `hx`, `hy` = 36 px
+  over the feet, so tall hats crop off); Wardens stay 1x from the top of their
+  frame (`monBust`). (2) The Warden's name banner waits in `bossIntro.banner`
+  until its lines end. (3) A weekly quest (`WEEKLY_POOL`, `weekKey` from
+  Monday, id `weekly_<monday>`, `WEEKLY_PAY` 2000 gold and 2 Tears) as a fourth
+  cell on the Bounty Board, in the tracker and the log. (4) `STORY_HINT`: a
+  toast per chapter at 3.8 s for its one new objective; plainer objective text
+  (NAMED FOES, CAST YOUR RECKONING, FIND THE LEDGER). (5) `voice_lo/mid/hi`
+  from `tools/build-voices.py` (synthesised murmurs) play quietly as each
+  townsperson's line opens (`VOICE_OF`: register and pitch per speaker).
 - **Round 156:** owner reports. (1) A story Warden's first lines played over an
   empty room: play is paused under the dialogue, so its `spawn` rise never ran.
   The entrance block in `update` now advances `e.t` (to 1.05) and `animT` in

@@ -1,4 +1,3 @@
-import { chunkify } from '../chunky.mjs';
 // Sculpted models for the townsfolk of Vael: the named NPCs, walkers,
 // children, crows and the Saint's dialog portrait. Exports
 // { sheetName: { animName: () => frames } }. Characters face right; each
@@ -96,9 +95,8 @@ function person(sp, pose = {}) {
   if (sp.beard) S.add(bumpy(ellipsoid([hx + 2, hy + 3.8, 1.2], [3.6, sp.beard === 'long' ? 4.2 : 3, 3.1], hairM), 0.35, 0.9, 3), 1);
   // Prop shapes.
   const post = [];
-  if (!pose.noProp) (PROP[sp.prop] || (() => {}))(S, fHand, { G, B, t, post, cx: tx, bHand }); // round 155: busts leave the held prop out
+  (PROP[sp.prop] || (() => {}))(S, fHand, { G, B, t, post, cx: tx, bHand });
   if (sp.halo) S.add(torus([hx - 1, hy - 7.4, 0], 4, 0.65, 0.4, 'dimHalo'), 0), S.sub(sphere([hx + 3, hy - 7, 2.6], 1.2), 0), S.sub(sphere([hx - 4.4, hy - 7.6, -1], 1), 0);
-  if (pose.raw) return { S, hx, hy, sp }; // round 154: the bust builds from the same model
   const fr = render(S, W, H, M, { ground: G, contourDepth: 3 });
   // Face: eyes, brows, mouth.
   const ey = hy - 0.1;
@@ -323,27 +321,6 @@ function crow(i) {
   return fr;
 }
 
-// ---------------------------------------------------- the NPC busts ---
-// Round 154: a head-and-shoulders bust of a townsperson for the dialogue box, 34x48: their own model, scaled up
-// about the head (every shape's distance field scaled), then eyes, brows and mouth placed by hand at bust size.
-function npcBust(id, blink) {
-  // Round 155: the head sits left of centre (faces look right), held props are left out, and a halo shrinks the bust to fit.
-  const { S, hx, hy, sp } = person(CAST[id], { raw: true, noProp: true }), s = sp.halo ? 1.9 : 2.2, bx = 14, by = sp.halo ? 26 : 19, B = new Scene();
-  const map = (p) => ({ ...p, bb: p.bb && [bx + (p.bb[0] - hx) * s, by + (p.bb[1] - hy) * s, p.bb[2] * s, bx + (p.bb[3] - hx) * s, by + (p.bb[4] - hy) * s, p.bb[5] * s], f: (x, y, z) => p.f(hx + (x - bx) / s, hy + (y - by) / s, z / s) * s });
-  B.prims = S.prims.map(map); B.paints = S.paints.map(map);
-  const fr = render(B, 34, 48, M, { ground: 99, rich: process.env.NORICH ? false : { melt: 1.1, meltAdd: 0.12, detail: 0.6, fall: 0.06, reach: 10 } });
-  // Round 156: snapped to the 2x2 grid like every sprite in play (the owner found the fine render too smooth), then the
-  // face placed by hand in whole 2x2 cells.
-  chunkify(fr, { outline: false });
-  const X = (x) => Math.floor((bx + (x - hx) * s) / 2) * 2, Y = (y) => Math.floor((by + (y - hy) * s) / 2) * 2;
-  const cell = (x, y, c) => { for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) dot(fr, x + a, y + b, c); };
-  const ey = hy - 0.3;
-  for (const ex of [hx + 1.6, hx + 4.2]) cell(X(ex), Y(ey), blink ? (sp.skin === 'skinPale' ? 'skin3h' : 'skin3h') : 'ink0');
-  if (sp.brow) for (const ex of [hx + 1.6, hx + 4.2]) cell(X(ex), Y(ey) - 4, sp.brow);
-  if (!sp.beard) { const mc = sp.smile ? 'skin4' : 'skin3h', mx = X(hx + 3.4), my = Y(hy + 3); cell(mx, my, mc); if (sp.smile) cell(mx + 2, my - 2 < 0 ? my : my, mc); }
-  return fr;
-}
-const BUSTS = ['odile', 'vane', 'barkeep', 'hollis', 'pell', 'crier', 'beggar', 'plushseller', 'priest', 'guard'];
 // ------------------------------------------------------ the portrait ---
 // A bust of the Saint for the dialog box: hood, gilt-rimmed void, eyes. 34x34.
 // The HUD portrait; a vestment set skin recolours it and swaps the halo for its crown.
@@ -405,6 +382,6 @@ export default {
     kid: () => [0, 1, 2, 3].map((t) => child(t, 0)), kid2: () => [0, 1, 2, 3].map((t) => child(t, 1)),
     crow: () => [0, 1, 2, 3].map(crow),
   },
-  ui: { ...Object.fromEntries(BUSTS.map((id) => [`bust_${id}`, () => [npcBust(id), npcBust(id, true)]])), portrait: () => [portrait()], portrait_m: () => [portrait(null, 'mendicant')], portrait_a: () => [portrait(null, 'anchoress')], ...Object.fromEntries(Object.keys(SKINS).filter((k) => !SKINS[k].hero || SKINS[k].hero === 'saint').map((k) => [`portrait_${k}`, () => [portrait(k)]])),
+  ui: { portrait: () => [portrait()], portrait_m: () => [portrait(null, 'mendicant')], portrait_a: () => [portrait(null, 'anchoress')], ...Object.fromEntries(Object.keys(SKINS).filter((k) => !SKINS[k].hero || SKINS[k].hero === 'saint').map((k) => [`portrait_${k}`, () => [portrait(k)]])),
     ...Object.fromEntries(Object.keys(PBUST).flatMap((k) => [[`portrait_m_${k}`, () => [portrait(k, 'mendicant')]], [`portrait_a_${k}`, () => [portrait(k, 'anchoress')]]])) },
 };
