@@ -5,6 +5,7 @@
 // Same conventions as common.mjs, rare.mjs and elite.mjs: smooth-joined
 // forms, lit from the top-left, eyes placed by hand, facing right, ax/ay at
 // the feet.
+import { deathFrames } from '../deaths.mjs';
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, noise3, dot, under } from '../sdf.mjs';
 import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt, rear } from './base.mjs';
 
@@ -369,6 +370,6 @@ for (const [id, fn] of [['ossuarch', ossuarch], ['ashWidow', ashWidow]]) {
   const r = reactions(() => fn(0, 0), 0.8);
   mon_warden[`${id}_walk`] = () => HALF.map((t) => fn(t, 0));
   mon_warden[`${id}_attack`] = () => [1, 2, 3].map((a) => fn(0, a));
-  mon_warden[`${id}_hit`] = r.hit; mon_warden[`${id}_die`] = r.die;
+  mon_warden[`${id}_hit`] = r.hit; mon_warden[`${id}_die`] = () => deathFrames(id, fn(0, 0)); // round 158
 }
 export default { mon_common, mon_rare, mon_warden };

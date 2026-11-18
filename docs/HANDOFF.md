@@ -757,6 +757,21 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 158:** the owner asked for each Warden to die its own way.
+  `tools/deaths.mjs` builds 16 death frames per Warden from its standing frame:
+  the frame is chunkified, read as 2x2 cells, and a small simulation moves the
+  cells (`melt` with a pool and kept colours, `heap` of bone chunks dropped
+  bottom-first onto a height map with a roll-outward rule, `ash`, `burn`
+  (sinks into a climbing fire band), `shatter` (Voronoi pieces, cracks first),
+  `sink`, `hollow`); frames carry `fine` so the chunky pass leaves them. Kinds:
+  Candlemass melt into wax (live `flameTongue` candles on the pool gutter out
+  at 66%), Tide-Bishop melt into seawater, Ossuarch heap, Ash Widow ash,
+  Charnel King burn, Lady of Nails shatter (strong), Bellwright shatter (slump),
+  Organist sink, Cardinal hollow (mitre kept). In the game `wardenDies(e)` marks
+  the fall (`f.wd`): `WDIE` (0.15 s a frame, hold 1.6 s, fade 0.9 s), per-frame
+  sounds and particles in `WDIE_FX`, no gibs. The level-up screen waits until
+  the death has played; the death keeps playing under the Warden's last lines;
+  the Waystone rises 64 px to the side. `round158.cjs` photographs each.
 - **Round 157:** the owner wanted portraits with big pixels, like the figure in
   the bag, then said yes to round 156's items 2-5. (1) The sculpted busts are gone
   (`npcBust` removed): `renderDialog` draws each speaker's own sprite at 2x in a

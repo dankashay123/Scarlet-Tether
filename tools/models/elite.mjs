@@ -2,6 +2,7 @@
 // Every model faces right; ax/ay mark where the feet meet the ground.
 import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, folds, bumpy, clip, render, dot, pline, under } from '../sdf.mjs';
 import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt, rear } from './base.mjs';
+import { deathFrames } from '../deaths.mjs';
 import { NAMES } from '../palette.mjs';
 // Hand-placed pixel only where the sculpt shows a dark cavity (mouths).
 const inMaw = (fr, x, y) => { const v = under(fr, x, y); return v >= 0 && /^(ink|blood)/.test(NAMES[v]); };
@@ -891,5 +892,5 @@ const R = { colossus: set(colossus), titan: set(titan), inquisitor: set(inquisit
 const mon_elite = {};
 for (const [id, s] of Object.entries(R)) { mon_elite[`${id}_walk`] = s.walk; mon_elite[`${id}_attack`] = s.attack; mon_elite[`${id}_hit`] = s.hit; mon_elite[`${id}_die`] = s.die; }
 const mon_warden = {};
-for (const [id, fn] of Object.entries(WARDENS)) { const w = set(fn); mon_warden[`${id}_walk`] = w.walk; mon_warden[`${id}_attack`] = w.attack; mon_warden[`${id}_hit`] = w.hit; mon_warden[`${id}_die`] = w.die; }
+for (const [id, fn] of Object.entries(WARDENS)) { const w = set(fn); mon_warden[`${id}_walk`] = w.walk; mon_warden[`${id}_attack`] = w.attack; mon_warden[`${id}_hit`] = w.hit; mon_warden[`${id}_die`] = () => deathFrames(id, fn(0, 0)); } // round 158: each Warden's own death (tools/deaths.mjs)
 export default { mon_elite, mon_warden, loot: { imp: () => [0, 1, 2, 3].map((t) => imp(t)) } };
