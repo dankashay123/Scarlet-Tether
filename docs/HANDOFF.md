@@ -757,6 +757,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 163:** items 2-5 of round 162's list (the owner is fine with the
+  Vesper's daggers: one is always in front, one behind). (1) After the actors
+  draw, the crossbow is drawn again at 55% when a prop or foe in front of it
+  (larger y) with a picture 34 px+ tall covers its middle. (2) Site markers sit
+  `SITE_MARK` (54, was 42) px over the site's foot; the quest ! over a site moves
+  with them. (3) Warden remains dim to 35% over a minute after they settle.
+  (4) Once a day (`SAVE.crierDay` against `dayKey()`), the Town Crier stops when
+  the Saint is within 150 px, rings and calls the day's quests and the weekly
+  one as barks, 2.8 s each.
 - **Round 162:** "All" to round 161's list, plus the crossbow. (1) `updateCrossbow`
   keeps the crossbow at least 32 px to the aimed side (38 px when level) and a
   little lower, so aiming up or down no longer parks it over the head; idle it

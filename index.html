@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '162';
+const BUILD = '163';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '163': ['THE CROSSBOW SHOWS THROUGH AS A FAINT GHOST WHEN A PILLAR OR A BIG FOE COVERS IT.', 'THE MARKERS OVER TOWN SITES FLOAT A LITTLE HIGHER, CLEAR OF ANYONE STANDING AT A STALL.', 'A WARDEN\'S REMAINS DIM SLOWLY OVER A MINUTE.', 'ONCE A DAY THE TOWN CRIER STOPS NEAR YOU, RINGS HIS BELL AND CALLS OUT THE DAY\'S QUESTS.'],
   '162': ['THE CROSSBOW FLOATS FURTHER OUT AND ALWAYS TO THE SIDE YOU AIM, SO THE SAINT\'S HEAD NO LONGER HIDES IT.', 'THE ENCHANTER WEARS DEEP TEAL, AND HER BOOK GLOWS AND SHEDS MOTES OF LIGHT.', 'A WARDEN\'S REMAINS NOW LIE FLAT ON THE FLOOR, SO YOU WALK OVER THEM.', 'TOWNSFOLK ON THEIR ROUNDS NO LONGER WALK RIGHT PAST PELL, THE ENCHANTER OR THE GATE GUARD.', 'AFTER THE GAME UPDATES ITSELF, A NOTE SAYS WHICH BUILD YOU ARE ON.'],
   '161': ['THE FENCE IN FRONT OF THE ASHEN ALTAR IS GONE, SO THE ALTAR IS EASY TO REACH.', 'THE ENCHANTER NOW STANDS AT HER STALL, AND HAS A PORTRAIT WHEN SHE SPEAKS.', 'A WARDEN\'S REMAINS NOW STAY ON THE FLOOR UNTIL YOU LEAVE THE LEVEL.', 'DIALOGUE IS ALWAYS IN SENTENCE CASE.', 'THE GAME NOW CHECKS FOR A NEW BUILD EVERY FEW MINUTES AND UPDATES WHEN YOU ARE FREE IN TOWN.'],
   '160': ['FIXED: A CONVERSATION COULD FREEZE WITH AN EMPTY BOX (FOR EXAMPLE THE ENCHANTER\'S QUEST AT HER STALL). A DIALOGUE BOX NOW ALWAYS SHOWS ITS TEXT AND A TAP ALWAYS MOVES IT ON.'],
@@ -5617,10 +5618,12 @@ function renderSite() {
   }
   invButton(L.ok, 'CLOSE', PAL.stone4);
 }
-// Floating badges over each site, with a lock until it opens.
+// Floating badges over each site, with a lock until it opens. Round 163: SITE_MARK px over the site's foot (was 42),
+// clear of the head of anyone standing at a stall.
+const SITE_MARK = 54;
 function drawSiteMarkers(cx, cy) {
   for (const S of SITES) {
-    const x = S.x - cx, y = room.top * TILE + S.dy - 42 - (S.lift || 0) - cy + Math.round(Math.sin(game.real * 2 + S.x) * 2);
+    const x = S.x - cx, y = room.top * TILE + S.dy - SITE_MARK - (S.lift || 0) - cy + Math.round(Math.sin(game.real * 2 + S.x) * 2);
     if (x < -20 || x > W + 20) continue;
     // Round 70: each marker is a navy hex with a gold rim (grey while locked) and a small pin below.
     const open = siteDone(S), hx = Math.round(x), hy = Math.round(y);
@@ -5700,6 +5703,14 @@ function updateTown(dt) {
     n.barkT = (n.barkT ?? rand(2, 12)) - dt;
     if (n.barkT <= 0 && n.bark && Math.hypot(n.x - player.x, n.y - player.y) < 170 && R.npcs.filter((m) => m.say).length < 2) { n.say = { text: pick(BARKS[n.bark]), t: 3 }; n.barkT = rand(8, 20); }
     if (n.say) { n.say.t -= dt; if (n.say.t <= 0) n.say = null; }
+    // Round 163: once a day the Town Crier stops near the Saint, rings his bell and calls out the day's quests.
+    if (n.talk === 'crier' && game.state === 'play') {
+      if (!n.cry && SAVE.crierDay !== dayKey() && Math.hypot(n.x - player.x, n.y - player.y) < 150) { const ids = dailyIds().sort(); if (ids.length) {
+        const L = ['HEAR YE! TODAY\'S QUESTS ON THE BOUNTY BOARD!', ...ids.map((id) => { const g = QS()[id].g; return `${g[2]}: ${g[1]}!`; })], w = weeklyId(); if (w) L.push(`AND THIS WEEK: ${QS()[w].g[2]}, ${QS()[w].g[1]}!`); L.push('REWARDS AT THE BOARD!');
+        n.cry = { L, i: -1, t: 0 }; SAVE.crierDay = dayKey(); persist(); sfx('knell', { vol: 0.5, rate: 1.7, gap: 0 }); } }
+      if (n.cry) { n.pause = 1; n.moving = false; n.face = player.x < n.x ? -1 : 1; n.cry.t -= dt;
+        if (n.cry.t <= 0) { n.cry.i++; if (n.cry.i >= n.cry.L.length) { n.cry = null; n.say = null; } else { n.say = { text: n.cry.L[n.cry.i], t: 2.8 }; n.cry.t = 2.8; n.barkT = 30; } } }
+    }
   }
   for (const it of R.interact) if (it.who) { it.x = it.who.x; it.y = it.who.y; }
   // Crows scatter when the Saint comes near, then drift home.
@@ -6138,7 +6149,7 @@ function drawQuestMarks(cx, cy) {
   for (const t of questTargets()) {
     const x = t.x - cx;
     if (x < -20 || x > W + 20) continue;
-    if (t.site) { questMark(x - 1, room.top * TILE + t.site.dy - 42 - (t.site.lift || 0) - cy - 30, '!'); continue; }
+    if (t.site) { questMark(x - 1, room.top * TILE + t.site.dy - SITE_MARK - (t.site.lift || 0) - cy - 30, '!'); continue; }
     const lift = game.interact && game.interact.who === t.n && game.state === 'play' ? 14 : 0; // round 154: clear of the name label
     questMark(x - 1, t.n.y - cy - 62 - lift, t.ch);
   }
@@ -10287,6 +10298,10 @@ function render() {
     } catch (err) { logError('draw', err); }
     ctx.restore();
   }
+  // Round 163: the crossbow shows through as a faint ghost when a tall prop or a big foe in front of it covers it.
+  if (player.xb && player.hp > 0 && !noBow()) { const xb = player.xb, by = player.y + (Math.sin(xb.ang) > 0.35 ? 3 : -3), covers = (sh, an, fr, x, y, k = 1) => { const A = SPR[sh] && SPR[sh].anims[an]; if (!A) return false; const f = A[(fr || 0) % A.length], ax = f.ax ?? SPR[sh].anchorX ?? f.w / 2, ay = f.ay ?? SPR[sh].anchorY ?? f.h - 1; return f.h * k >= 34 && xb.x > x - ax * k + 3 && xb.x < x + (f.w - ax) * k - 3 && xb.y > y - ay * k + 3 && xb.y < y - 2; };
+    const hid = room.props.some((q) => q.y > by && Math.abs(q.x - xb.x) < 60 && covers(q.sheet || 'props', q.anim || q.kind, q.frame, q.x, q.y)) || enemies.some((e) => !e.dead && e.y > by && Math.abs(e.x - xb.x) < 70 && covers(e.def.sheet, e.def.walk, 0, e.x, e.y, e.scaleK || 1));
+    if (hid) { ctx.save(); ctx.globalAlpha = 0.55; drawFloatBow(); ctx.restore(); } }
   // Round 46: behind a town building the Saint shows as a faint ghost.
   if (room.kind === 'town' && player.hp > 0 && room.props.some((q) => q.bldg && q.y > player.y + 2 && Math.abs(q.x - player.x) < frameOf(q.sheet, q.anim, q.frame).w / 2 - 4 && q.y - frameOf(q.sheet, q.anim, q.frame).h < player.y - 10)) { ctx.save(); ctx.globalAlpha = 0.4; try { drawPlayer(); } catch (err) { logError('draw', err); } ctx.restore(); }
   if (DEV.boxes) { // dev: body circles (blue) and hurt circles (red)
@@ -10616,7 +10631,7 @@ function updateFalls(dt) {
 function drawFall(f) {
   const e = f.e, d = e.def, k = e.scaleK;
   let i = Math.min(2, Math.floor(f.t / dieStep(e))), alpha = e.illusion ? 0.6 : 1;
-  if (f.wd) { const n = SPR[d.sheet].anims[d.die].length, end = n * WDIE.step + WDIE.hold; i = Math.min(n - 1, Math.floor(f.t / WDIE.step)); }
+  if (f.wd) { const n = SPR[d.sheet].anims[d.die].length, end = n * WDIE.step + WDIE.hold; i = Math.min(n - 1, Math.floor(f.t / WDIE.step)); if (f.t > end) alpha = Math.max(0.35, 1 - (f.t - end) / 60 * 0.65); } // round 163: remains dim to a third over a minute
   // The first instant of a death washes white over the sprite (round 64: not a solid white shape).
   const draw = (o) => { if (k !== 1) { ctx.save(); ctx.translate(Math.round(e.x), Math.round(e.y)); ctx.scale(k, k); spr(d.sheet, d.die, i, 0, 0, o); ctx.restore(); } else spr(d.sheet, d.die, i, e.x, e.y, o); };
   draw({ flip: e.face < 0, alpha });
