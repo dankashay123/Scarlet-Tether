@@ -237,6 +237,8 @@ const CAST = {
   guard: { robe: 'mail', skirtLen: 'tunic', legs: 'mail', tabard: 'red', head: 'bald', hat: 'kettle', prop: 'spear', belt: 'leather', brow: 'skin4', build: 1.08 },
   penitent: { robe: 'skinPale', sleeve: 'skinPale', skirtLen: 'tunic', skirt: 'rags', legs: 'skinPale', shoe: 'skinPale', head: 'hood', hoodM: 'rags', prop: 'whip', skin: 'pale', hunch: 1, scars: true, eyes: true },
   priest: { robe: 'purple', head: 'tonsure', hair: 'hairDark', stole: 'gold', prop: 'rosary', belly: true },
+  // Round 161: the Enchanter: a violet hood and robe with a gold stole, a book of recipes.
+  enchanter: { robe: 'purple', head: 'hood', hoodM: 'purple', stole: 'gold', prop: 'book', skin: 'pale', belt: 'gold' },
   plushseller: { robe: 'dress', skirtLen: 'long', head: 'hair', hair: 'hairGinger', apron: 'apronCloth', prop: 'plush', smile: true },
   vane: { robe: 'white', head: 'bald', hat: 'mitre', stole: 'gold', prop: 'rosary', skin: 'old', build: 0.92, brow: 'sand4' },
   beggar: { robe: 'rags', head: 'shaggy', hair: 'hairGrey', beard: 'long', prop: 'bowl', hunch: 2, skin: 'old', halo: true, legs: 'rags' },
@@ -378,7 +380,7 @@ export default {
   town: { odile: () => idle('odile'), hollis: () => idle('hollis'), pell: () => idle('pell'), barkeep: () => idle('barkeep'), crier: () => idle('crier') },
   town2: {
     peasant_walk: () => walk('peasant'), peasant2_walk: () => walk('peasant2'), guard_walk: () => walk('guard'), penitent_walk: () => walk('penitent'), priest_walk: () => walk('priest'),
-    plushseller: () => idle('plushseller'), vane: () => idle('vane'), beggar: () => idle('beggar'),
+    plushseller: () => idle('plushseller'), enchanter: () => idle('enchanter'), vane: () => idle('vane'), beggar: () => idle('beggar'),
     kid: () => [0, 1, 2, 3].map((t) => child(t, 0)), kid2: () => [0, 1, 2, 3].map((t) => child(t, 1)),
     crow: () => [0, 1, 2, 3].map(crow),
   },

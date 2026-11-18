@@ -757,6 +757,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 161:** "All" to round 160's list, plus the owner's ask to clear the
+  Ashen Altar's front. (1) The fence across the altar yard's front is gone.
+  (2) The Enchanter stands at her stall (`CAST.enchanter`, town2 `enchanter`,
+  `NPC_INFO`, `NPC_BADGE`, `NPC_ROLE`; `SPEAKER.enchanter` has her sprite, so her
+  lines get a portrait). (3) `townOverlaps()` also checks small props (same row
+  or two tall ones overlapping); the two hay bales were the only clash.
+  (4) Dialogue lines are always sentence case (`renderDialog` cases a line with
+  a full stop added, then drops it). (5) Warden remains stay until the level is
+  left (`WDIE` has no fade; the soul rises once after `hold`). (6) `checkBuild`
+  runs every 4 minutes too; in a descent, a menu or a conversation it only sets
+  `game.newBuild`, and `update` reloads once back to plain play in town.
 - **Round 160:** the owner got stuck in an empty dialogue box at the Enchanter's
   stall (site quest). The screenshot showed the 34 px portrait box of builds
   154-156, where a speaker with no town sprite (the Enchanter) threw on

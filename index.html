@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '160';
+const BUILD = '161';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '161': ['THE FENCE IN FRONT OF THE ASHEN ALTAR IS GONE, SO THE ALTAR IS EASY TO REACH.', 'THE ENCHANTER NOW STANDS AT HER STALL, AND HAS A PORTRAIT WHEN SHE SPEAKS.', 'A WARDEN\'S REMAINS NOW STAY ON THE FLOOR UNTIL YOU LEAVE THE LEVEL.', 'DIALOGUE IS ALWAYS IN SENTENCE CASE.', 'THE GAME NOW CHECKS FOR A NEW BUILD EVERY FEW MINUTES AND UPDATES WHEN YOU ARE FREE IN TOWN.'],
   '160': ['FIXED: A CONVERSATION COULD FREEZE WITH AN EMPTY BOX (FOR EXAMPLE THE ENCHANTER\'S QUEST AT HER STALL). A DIALOGUE BOX NOW ALWAYS SHOWS ITS TEXT AND A TAP ALWAYS MOVES IT ON.'],
   '159': ['FIXED: SHRINES AND TREASURE CHESTS NO LONGER STAND ON TOP OF WALLS IN OPEN MAPS. THEY MOVE TO OPEN FLOOR.', 'FIXED: PILLARS, COFFINS, CRATES AND TORCH STANDS NO LONGER CLIP INTO EACH OTHER ON THE FLOOR.'],
   '158': ['EVERY WARDEN NOW DIES ITS OWN WAY: MOTHER CANDLEMASS MELTS INTO A POOL OF WAX WHILE HER CANDLES BURN DOWN AND GO OUT, THE OSSUARCH COLLAPSES INTO A HEAP OF BONES, THE ASH WIDOW BLOWS AWAY AS ASH, THE CHARNEL KING BURNS DOWN TO EMBERS, OUR LADY OF NAILS SHATTERS, THE BELLWRIGHT BREAKS APART, THE TIDE-BISHOP DISSOLVES INTO SEAWATER, THE DROWNED ORGANIST SINKS INTO BLACK WATER AND THE HOLLOW CARDINAL\'S EMPTY ROBES FALL AS THE LIGHT LEAVES THEM.'],
@@ -300,12 +301,13 @@ async function checkBuild() {
   try {
     const t = await (await fetch(`${location.pathname}?build=${Date.now()}`, { cache: 'no-store' })).text(), m = t.match(/const BUILD = '([^']+)'/);
     if (!m || m[1] === BUILD) return;
-    if (typeof game !== 'undefined' && game.scene === 'wound') { game.newBuild = true; return; }
+    if (typeof game !== 'undefined' && (game.scene === 'wound' || (game.state && game.state !== 'play' && game.state !== 'title'))) { game.newBuild = true; return; } // round 161: not in a descent, a menu or a conversation
     try { snapRun(); } catch { /* nothing to keep */ }
     location.replace(`${location.pathname}?v=${m[1]}${location.search.replace(/^\?/, '&').replace(/&v=[^&]*/, '')}`);
   } catch { /* offline: keep playing */ }
 }
 setTimeout(checkBuild, 4000);
+setInterval(checkBuild, 240000); // round 161: a long session in town picks up a new build too
 addEventListener('visibilitychange', () => { if (!document.hidden) checkBuild(); });
 let SPR, PAL, IMG = {}, WHITE = {}, TINT = {};
 async function loadAssets() {
@@ -2489,6 +2491,7 @@ const NPC_INFO = {
     'GRIND THREE KNOWN PIECES INTO A CHRISM.',
     'THE BLEEDING VIGIL DROPS CHRISM. HIGHER VIGILS DROP BETTER CHRISM.'] },
   hollis: { name: 'HOLLIS THE SMITH', lines: () => ["FORGE STAYS COLD TILL THE CHOIR PAYS ME.", 'KILL THE WARDEN OF STATION II AND I WILL OPEN THE FORGE.'] },
+  enchanter: { name: 'THE ENCHANTER', lines: () => ['EVERY PIECE OF IRON HAS A SECOND NAME. I ONLY TEACH IT TO ANSWER.', 'BRING ME WHAT THE WARDENS LEAVE BEHIND, AND I WILL PUT IT TO WORK.'] },
   pell: { name: 'BROTHER PELL', lines: () => ["GENUINE SAINT'S TOENAILS. THREE FOR A COPPER.", "DON'T LOOK AT YOUR FEET. WHY WOULD YOU LOOK AT YOUR FEET?"] },
   barkeep: { name: 'THE BOOKIE', lines: () => [`THE LAMB IS GIVING ${ODDS[(SAVE.descents || 0) % ODDS.length]} YOU DON'T COME BACK UP.`, 'I TOOK THE BET. AGAINST YOU. NOTHING PERSONAL.'] },
   crier: { name: 'THE TOWN CRIER', lines: () => SAVE.lastDeath
@@ -2634,7 +2637,7 @@ function makeTown() {
   // The Pilgrims' Gate: braziers, the waymark and hay by the road.
   brazier(36, base + 34); brazier(190, base + 34);
   place('waymark', 200, base + 60, 1, { ph: 0 }); lights.push({ x: 210, y: base + 30, r: 46, c: 'ember', a: 0.7, flick: 5 });
-  st('hay', 236, 392); st('hay', 258, 398);
+  st('hay', 232, 392); st('hay', 248, 410); // round 161: one behind the other, not jammed side by side
   // The cathedral close: Martyrdom's stake and the Canonry's lectern either side of the doors.
   place('stake', CATHEDRAL_X - 96, base + 74, 2, { ph: 0 }); lights.push({ x: CATHEDRAL_X - 96, y: base + 64, r: 60, c: 'ember', a: 0.7, flick: 4 });
   place('lectern', CATHEDRAL_X + 104, base + 48, 2, { ph: 0 }); lights.push({ x: CATHEDRAL_X + 104, y: base + 20, r: 50, c: 'gold', a: 0.6 });
@@ -2647,7 +2650,7 @@ function makeTown() {
   const T0 = TOWN_ALTAR;
   place('ashaltar', T0.ax, T0.ay, 3, { ph: 0 }); lights.push({ x: T0.ax, y: T0.ay - 40, r: 90, c: 'ember', a: 0.9, flick: 2 }); block(T0.ax - 28, T0.ay - 20, T0.ax + 28, T0.ay + 2);
   brazier(T0.x0 + 18, T0.ay - 4); brazier(T0.x1 - 18, T0.ay - 4);
-  for (let x = T0.x0 + 21; x < T0.x1; x += 42) { if (Math.abs(x - T0.ax) < 30) continue; place('fence', x, T0.y1, 2, { solid: false }); block(x - 21, T0.y1 - 10, x + 21, T0.y1 + 2); }
+  // Round 161: no fence across the yard's front (the owner found the altar hard to reach through its gap).
   // The Quiet Acre: tombs, crows on the dead trees, a fence along its front east of the gate.
   lights.push({ x: TOWN_CELLS, y: base - 52, r: 65, c: 'holy', a: 0.5 });
   for (let k = 0; k < 18; k++) { const x = A.x0 + 24 + rng() * (A.x1 - A.x0 - 48), y = base + 28 + rng() * (A.y1 - base - 46); if (Math.abs(x - TOWN_CELLS) < 70 && y < base + 44) continue; const t = place('tomb', x, y, 1, { frame: Math.floor(rng() * 3) }); if (rng() < 0.3) crows.push({ x: t.x, y: t.y - 24, hx: t.x, hy: t.y - 24, state: 'sit', t: rng() * 3, vx: 0, vy: 0 }); }
@@ -2689,6 +2692,7 @@ function makeTown() {
   person('town2', 'vane', CATHEDRAL_X + 64, base + 39, { talk: 'vane', face: -1 });
   person('town', 'pell', STALLS.stall, SY.stall + 20, { talk: 'pell' });
   person('town2', 'plushseller', STALLS.plush, SY.plush + 20, { talk: 'plushseller' });
+  person('town2', 'enchanter', STALLS.ench, SY.ench + 20, { talk: 'enchanter' }); // round 161: the Enchanter stands at her stall
   person('town', 'barkeep', STALLS.tavern + 40, SY.tavern + 22, { talk: 'barkeep', face: -1 });
   person('town', 'hollis', STALLS.forge + 40, SY.forge + 17, { talk: 'hollis', face: -1 });
   person('town2', 'priest_walk', T0.ax + 40, T0.ay + 6, { talk: 'cinder', face: -1, still: true });
@@ -5799,7 +5803,7 @@ const SPEAKER = {
   odile: { name: 'SISTER ODILE', sheet: 'town', anim: 'odile' }, vane: { name: 'ARCHDEACON VANE', sheet: 'town2', anim: 'vane' },
   barkeep: { name: 'THE BOOKIE', sheet: 'town', anim: 'barkeep' }, crier: { name: 'THE TOWN CRIER', sheet: 'town', anim: 'crier' },
   hollis: { name: 'HOLLIS THE SMITH', sheet: 'town', anim: 'hollis' }, pell: { name: 'BROTHER PELL', sheet: 'town', anim: 'pell' },
-  cinder: { name: 'BROTHER CINDER', sheet: 'town2', anim: 'priest_walk' }, plushseller: { name: 'THE PLUSH SELLER', sheet: 'town2', anim: 'plushseller' }, guard: { name: 'GATE GUARD', sheet: 'town2', anim: 'guard_walk' }, enchanter: { name: 'THE ENCHANTER' },
+  cinder: { name: 'BROTHER CINDER', sheet: 'town2', anim: 'priest_walk' }, plushseller: { name: 'THE PLUSH SELLER', sheet: 'town2', anim: 'plushseller' }, guard: { name: 'GATE GUARD', sheet: 'town2', anim: 'guard_walk' }, enchanter: { name: 'THE ENCHANTER', sheet: 'town2', anim: 'enchanter' },
 };
 const STORY_PROLOGUE = [
   ['odile', 'EASY. DO NOT TRY TO STAND YET. YOU HAVE BEEN ASLEEP SINCE THE BELLS RANG.'],
@@ -10090,6 +10094,7 @@ function update(realDt) {
     I && (I.dim = Math.max(0, Math.min(1, (I.dim || 0) + (on ? realDt : -realDt) * 4)));
     if (player && room && game.state === 'dialog' && game.scene === 'wound') camFollow(); }
   if (game.state === 'dialog' && game.scene === 'wound' && falls.some((f) => f.wd)) { updateFalls(realDt); safe('vparts', () => updateVparts(realDt)); } // round 158: a Warden keeps dying while it speaks its last lines
+  if (game.newBuild && game.scene === 'town' && game.state === 'play' && game.real > (game.nbT || 0)) { game.nbT = game.real + 5; game.newBuild = false; checkBuild(); } // round 161: reload once back to plain play in town
   if (game.toast) { game.toast.t -= realDt; if (game.toast.t <= 0) game.toast = null; }
   for (const k of ['dash', 'm1', 'm2', 'pen']) if (HUD[k] && HUD[k].pressed) HUD[k].pressed = Math.max(0, HUD[k].pressed - realDt);
   if (game.state === 'dead' || game.state === 'tally') game.deathT += realDt;
@@ -10573,8 +10578,8 @@ function spriteTop(e) { const s = SPR[e.def.sheet], f = s.anims[e.def.walk][0]; 
 const HIT_T = 0.16, DIE_STEP = 0.07;
 const dieStep = (e) => DIE_STEP * (e.tier === 'elite' ? 1.6 : 1);
 // Round 158: a Warden dies its own way (tools/deaths.mjs: 16 frames over WDIE.step each), its remains lie there
-// WDIE.hold seconds, then fade over WDIE.fade. WDIE_FX adds what a frame cannot: live flames, ripples, embers, sound.
-const WDIE = { step: 0.15, hold: 1.6, fade: 0.9 };
+// until the level is left (round 161; a soul rises after WDIE.hold s). WDIE_FX adds what a frame cannot: live flames, ripples, embers, sound.
+const WDIE = { step: 0.15, hold: 1.6 }; // round 161: the remains stay on the floor until the level is left
 const wardenDies = (e) => e.def.warden && SPR[e.def.sheet].anims[e.def.die] && SPR[e.def.sheet].anims[e.def.die].length > 3;
 const WDIE_FX = {
   candlemass: (f, i, e) => { if (i === 0) sfx('burn', { vol: 0.6, rate: 0.7 }); if (i === 11) { sfx('puff', { vol: 0.7, rate: 0.6, gap: 0 }); if (!LOWFX) vemit(e.x, e.y - 14, { n: 10, ramp: 'bone', sp: 10, up: 26, life: 1.6, grav: -12, size: 2 }); } },
@@ -10593,7 +10598,7 @@ function updateFalls(dt) {
     if (f.wd) {
       const n = SPR[f.e.def.sheet].anims[f.e.def.die].length, i = Math.min(n - 1, Math.floor(f.t / WDIE.step));
       if (i !== f.fi) { f.fi = i; const fx = WDIE_FX[f.e.type]; if (fx) fx(f, i, f.e); }
-      if (f.t >= n * WDIE.step + WDIE.hold + WDIE.fade) { f.done = true; if (!LOWFX) vemit(f.e.x, f.e.y - 10, { n: 8, ramp: 'holy', sp: 10, up: 60, life: 1.2, grav: -30, size: 2, glow: 4 }); }
+      if (f.t >= n * WDIE.step + WDIE.hold && !f.soul) { f.soul = true; if (!LOWFX) vemit(f.e.x, f.e.y - 10, { n: 8, ramp: 'holy', sp: 10, up: 60, life: 1.2, grav: -30, size: 2, glow: 4 }); }
       continue;
     }
     if (f.t >= dieStep(f.e) * 4) { f.done = true; dismember(f.e, f.dirx, f.diry, false); }
@@ -10603,7 +10608,7 @@ function updateFalls(dt) {
 function drawFall(f) {
   const e = f.e, d = e.def, k = e.scaleK;
   let i = Math.min(2, Math.floor(f.t / dieStep(e))), alpha = e.illusion ? 0.6 : 1;
-  if (f.wd) { const n = SPR[d.sheet].anims[d.die].length, end = n * WDIE.step + WDIE.hold; i = Math.min(n - 1, Math.floor(f.t / WDIE.step)); if (f.t > end) alpha = Math.max(0, 1 - (f.t - end) / WDIE.fade); }
+  if (f.wd) { const n = SPR[d.sheet].anims[d.die].length, end = n * WDIE.step + WDIE.hold; i = Math.min(n - 1, Math.floor(f.t / WDIE.step)); }
   // The first instant of a death washes white over the sprite (round 64: not a solid white shape).
   const draw = (o) => { if (k !== 1) { ctx.save(); ctx.translate(Math.round(e.x), Math.round(e.y)); ctx.scale(k, k); spr(d.sheet, d.die, i, 0, 0, o); ctx.restore(); } else spr(d.sheet, d.die, i, e.x, e.y, o); };
   draw({ flip: e.face < 0, alpha });
@@ -11117,8 +11122,8 @@ function renderMinimap() {
   return { mx, my, mw, mh };
 }
 // Named townsfolk on the map.
-const NPC_BADGE = { cinder: 'relic', odile: 'npc', vane: 'relic', pell: 'market', plushseller: 'plush', barkeep: 'tavern', hollis: 'forge', beggar: 'npc', crier: 'npc' };
-const NPC_ROLE = { cinder: 'BROTHER CINDER, THE ALTAR', odile: 'SISTER ODILE, YOUR KEEPER', vane: 'ARCHDEACON VANE', pell: 'BROTHER PELL, CURIO SELLER', plushseller: 'THE PLUSH SELLER', barkeep: 'THE BOOKIE, WAGERS', hollis: 'HOLLIS THE SMITH', beggar: 'OLD BARNABY', crier: 'THE TOWN CRIER' };
+const NPC_BADGE = { enchanter: 'ench', cinder: 'relic', odile: 'npc', vane: 'relic', pell: 'market', plushseller: 'plush', barkeep: 'tavern', hollis: 'forge', beggar: 'npc', crier: 'npc' };
+const NPC_ROLE = { enchanter: 'THE ENCHANTER', cinder: 'BROTHER CINDER, THE ALTAR', odile: 'SISTER ODILE, YOUR KEEPER', vane: 'ARCHDEACON VANE', pell: 'BROTHER PELL, CURIO SELLER', plushseller: 'THE PLUSH SELLER', barkeep: 'THE BOOKIE, WAGERS', hollis: 'HOLLIS THE SMITH', beggar: 'OLD BARNABY', crier: 'THE TOWN CRIER' };
 // The full town map: the whole street, every site and person, and a legend.
 // The whole explored Undercroft, scaled to fit, with every mark.
 function renderDungeonMap() {
@@ -11958,7 +11963,7 @@ function renderDialog() {
     spr(B.sheet, B.anim, mon ? Math.floor(game.real * 3) : 0, 0, 0, { ax: 0, ay: 0 }); ctx.restore();
   } catch (err) { ctx.restore(); logError('portrait', err); }
   text(d.who ? speakerName(who, d) : d.name, tx, y + 6, who === 'note' ? PAL.holy1 : MON[who] ? PAL.blood0 : PAL.gold1, { outline: null });
-  const full = caseOf(String(d.lines[d.i] ?? '')), shown = full.slice(0, Math.floor(d.t * 45)); // round 151: case the whole line first, so words do not change case as they type out
+  const raw = String(d.lines[d.i] ?? ''), full = /[.!?,]\s*$/.test(raw) || !raw ? caseOf(raw) : caseOf(raw + '.').slice(0, -1), shown = full.slice(0, Math.floor(d.t * 45)); // round 151: case the whole line first, so words do not change case as they type out
   wrap(shown, Math.floor((w - (tx - x) - 10) / 7)).forEach((l, i) => text(l, tx, y + 20 + i * 12, PAL.cloth0, { outline: null }));
   if (shown.length >= full.length && Math.floor(game.real * 2) % 2 === 0) text(d.i < d.lines.length - 1 ? 'TAP' : 'TAP TO CLOSE', x + w - 6, y + h - 10, PAL.stone1, { outline: null, align: 'right' });
 }
@@ -13395,6 +13400,10 @@ function townOverlaps() {
   for (let i = 0; i < B.length; i++) for (let j = i + 1; j < B.length; j++) if ((B[i].p.bldg || B[j].p.bldg || B[i].p.kind === 'oak' || B[j].p.kind === 'oak') && hit(B[i], B[j])) out.push(`${B[i].p.kind}@${B[i].p.x},${B[i].p.y} x ${B[j].p.kind}@${B[j].p.x},${B[j].p.y}`);
   for (const it of room.interact) for (const b of B) if (b.p.bldg && it.x > b.x0 + 4 && it.x < b.x1 - 4 && it.y > b.y0 && it.y < b.p.y - 4) out.push(`${it.label} ${it.site ? it.site.id : it.who ? it.who.npc : ''}@${Math.round(it.x)},${Math.round(it.y)} behind ${b.p.kind}@${b.p.x}`);
   for (const n of room.npcs) for (const b of B) if (b.p.bldg && n.path) for (let i = 1; i < n.path.length; i++) { const [x0, y0] = n.path[i - 1], [x1, y1] = n.path[i]; for (let t = 0; t <= 1; t += 0.05) { const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.p.y + 4) { out.push(`walk ${n.npc} through ${b.p.kind}@${b.p.x}`); t = 2; i = 99; } } }
+  // Round 161: small props too: two on the same row whose pictures overlap, or two tall ones overlapping a lot.
+  const sm = B.filter((b) => !b.p.bldg && b.p.kind !== 'oak');
+  for (let i = 0; i < sm.length; i++) for (let j = i + 1; j < sm.length; j++) { const a = sm[i], b = sm[j], ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0), ha = a.y1 - a.y0, hb = b.y1 - b.y0;
+    if (ox > 4 && oy > 4 && (Math.abs(a.p.y - b.p.y) < 8 || (ha >= 40 && hb >= 40 && ox * oy > 0.2 * Math.min((a.x1 - a.x0) * ha, (b.x1 - b.x0) * hb)))) out.push(`${a.p.kind}@${Math.round(a.p.x)},${Math.round(a.p.y)} clips ${b.p.kind}@${Math.round(b.p.x)},${Math.round(b.p.y)}`); }
   return [...new Set(out)];
 }
 // Round 159: props that clip on the current map: standing on a wall tile, two props on one tile, or a shrine or
