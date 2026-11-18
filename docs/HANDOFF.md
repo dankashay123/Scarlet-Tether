@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 153 (build 153, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-18, after round 164 (build 164, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -757,6 +757,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 164:** "All" to round 163's list. (1) The Crier's calls draw on their
+  own plate (`drawCrierPlates`, after the site and quest marks: navy, gold rim, a
+  tail to him, kept on screen); his plain bark text is skipped while he calls.
+  (2) `crierLine(q)` says DONE for a finished quest and C OF N for a started one;
+  ALL DONE TODAY when every daily is done. (3) `crierNews()` puts a gold bell
+  (`MAP_ICON.bell`) on the town minimap at the Crier while today's call is unmade.
+  (4) The crossbow ghost (`drawFloatBowGhost`) adds a pale 1 px outline (tinted
+  copies offset four ways) under the bow at 50%. (5) Walkers by the fountain were
+  checked over 30 s: closest pair 8 px, one close pair in 1,260 samples, so the
+  routes were left alone. `tools/tests/round164.cjs` checks all of it.
 - **Round 163:** items 2-5 of round 162's list (the owner is fine with the
   Vesper's daggers: one is always in front, one behind). (1) After the actors
   draw, the crossbow is drawn again at 55% when a prop or foe in front of it

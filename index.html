@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '163';
+const BUILD = '164';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '164': ['THE TOWN CRIER\'S CALLS SIT ON THEIR OWN GOLD-RIMMED PLATE, CLEAR OF THE OTHER CHATTER.', 'THE CRIER SAYS WHICH OF TODAY\'S QUESTS ARE DONE AND HOW FAR ALONG THE OTHERS ARE.', 'A GOLD BELL ON THE TOWN MINIMAP SHOWS WHERE THE CRIER IS WHILE HE HAS NEWS.', 'THE CROSSBOW\'S GHOST BEHIND A PILLAR OR FOE NOW HAS A THIN PALE OUTLINE.'],
   '163': ['THE CROSSBOW SHOWS THROUGH AS A FAINT GHOST WHEN A PILLAR OR A BIG FOE COVERS IT.', 'THE MARKERS OVER TOWN SITES FLOAT A LITTLE HIGHER, CLEAR OF ANYONE STANDING AT A STALL.', 'A WARDEN\'S REMAINS DIM SLOWLY OVER A MINUTE.', 'ONCE A DAY THE TOWN CRIER STOPS NEAR YOU, RINGS HIS BELL AND CALLS OUT THE DAY\'S QUESTS.'],
   '162': ['THE CROSSBOW FLOATS FURTHER OUT AND ALWAYS TO THE SIDE YOU AIM, SO THE SAINT\'S HEAD NO LONGER HIDES IT.', 'THE ENCHANTER WEARS DEEP TEAL, AND HER BOOK GLOWS AND SHEDS MOTES OF LIGHT.', 'A WARDEN\'S REMAINS NOW LIE FLAT ON THE FLOOR, SO YOU WALK OVER THEM.', 'TOWNSFOLK ON THEIR ROUNDS NO LONGER WALK RIGHT PAST PELL, THE ENCHANTER OR THE GATE GUARD.', 'AFTER THE GAME UPDATES ITSELF, A NOTE SAYS WHICH BUILD YOU ARE ON.'],
   '161': ['THE FENCE IN FRONT OF THE ASHEN ALTAR IS GONE, SO THE ALTAR IS EASY TO REACH.', 'THE ENCHANTER NOW STANDS AT HER STALL, AND HAS A PORTRAIT WHEN SHE SPEAKS.', 'A WARDEN\'S REMAINS NOW STAY ON THE FLOOR UNTIL YOU LEAVE THE LEVEL.', 'DIALOGUE IS ALWAYS IN SENTENCE CASE.', 'THE GAME NOW CHECKS FOR A NEW BUILD EVERY FEW MINUTES AND UPDATES WHEN YOU ARE FREE IN TOWN.'],
@@ -5706,7 +5707,7 @@ function updateTown(dt) {
     // Round 163: once a day the Town Crier stops near the Saint, rings his bell and calls out the day's quests.
     if (n.talk === 'crier' && game.state === 'play') {
       if (!n.cry && SAVE.crierDay !== dayKey() && Math.hypot(n.x - player.x, n.y - player.y) < 150) { const ids = dailyIds().sort(); if (ids.length) {
-        const L = ['HEAR YE! TODAY\'S QUESTS ON THE BOUNTY BOARD!', ...ids.map((id) => { const g = QS()[id].g; return `${g[2]}: ${g[1]}!`; })], w = weeklyId(); if (w) L.push(`AND THIS WEEK: ${QS()[w].g[2]}, ${QS()[w].g[1]}!`); L.push('REWARDS AT THE BOARD!');
+        const L = ['HEAR YE! TODAY\'S QUESTS ON THE BOUNTY BOARD!', ...ids.map((id) => crierLine(QS()[id]))], w = weeklyId(); if (w) L.push(`AND THIS WEEK: ${crierLine(QS()[w])}`); if (ids.every((id) => QS()[id].st !== 'active')) L.splice(1, 0, 'ALL DONE TODAY! WELL WORKED!'); L.push('REWARDS AT THE BOARD!');
         n.cry = { L, i: -1, t: 0 }; SAVE.crierDay = dayKey(); persist(); sfx('knell', { vol: 0.5, rate: 1.7, gap: 0 }); } }
       if (n.cry) { n.pause = 1; n.moving = false; n.face = player.x < n.x ? -1 : 1; n.cry.t -= dt;
         if (n.cry.t <= 0) { n.cry.i++; if (n.cry.i >= n.cry.L.length) { n.cry = null; n.say = null; } else { n.say = { text: n.cry.L[n.cry.i], t: 2.8 }; n.cry.t = 2.8; n.barkT = 30; } } }
@@ -5776,7 +5777,21 @@ function drawNpc(n) {
   const walkAnim = SPR[n.sheet].anims[n.npc] && n.npc.endsWith('_walk');
   const i = walkAnim ? (n.moving ? Math.floor(game.real * 11 + n.ph) : 2) : Math.floor(game.real * 2 + n.ph);
   spr(n.sheet, n.npc, i, n.x, n.y, { flip: n.face < 0 });
-  if (n.say) { const a = Math.min(1, n.say.t * 2); ctx.globalAlpha = a; text(n.say.text, n.x, n.y - 56, PAL.cloth1, { align: 'center' }); ctx.globalAlpha = 1; }
+  if (n.say && !n.cry) { const a = Math.min(1, n.say.t * 2); ctx.globalAlpha = a; text(n.say.text, n.x, n.y - 56, PAL.cloth1, { align: 'center' }); ctx.globalAlpha = 1; }
+}
+// Round 164: the Crier's daily call sits on its own plate (navy, gold rim, a tail to him) above the markers and chatter.
+function drawCrierPlates(cx, cy) {
+  for (const n of room.npcs || []) {
+    if (!n.cry || !n.say) continue;
+    const s = n.say.text, a = Math.min(1, n.say.t * 3, (2.8 - n.say.t) * 6 + 0.2), w = textW(s) + 14, h = 15;
+    const px = Math.round(Math.max(4, Math.min(W - 4 - w, n.x - cx - w / 2))), py = Math.round(n.y - cy - 74), tx = Math.round(Math.max(px + 6, Math.min(px + w - 6, n.x - cx)));
+    ctx.globalAlpha = a;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(px + 1, py + 2, w, h);
+    ctx.fillStyle = '#ffd155'; ctx.fillRect(px - 1, py - 1, w + 2, h + 2); ctx.beginPath(); ctx.moveTo(tx - 4, py + h); ctx.lineTo(tx + 4, py + h); ctx.lineTo(tx, py + h + 5); ctx.fill();
+    ctx.fillStyle = '#16203a'; ctx.fillRect(px, py, w, h); ctx.beginPath(); ctx.moveTo(tx - 3, py + h); ctx.lineTo(tx + 3, py + h); ctx.lineTo(tx, py + h + 3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(px, py, w, 1);
+    text(s, px + w / 2, py + 2, PAL.gold0, { align: 'center' }); ctx.globalAlpha = 1;
+  }
 }
 
 function enterTown(wake = true) {
@@ -6045,6 +6060,10 @@ function ensureDailies() {
   for (let i = 0; i < 3; i++) { const g = pool.splice(Math.floor(r() * pool.length), 1)[0]; Q[`daily_${day}_${i}`] = { st: 'active', step: 0, c: {}, g: g.slice() }; }
   persist(); return true;
 }
+// Round 164: the Crier while he still has today's call to make (a bell on the town minimap).
+const crierNews = () => (game.scene === 'town' && SAVE.crierDay !== dayKey() && dailyIds().length ? (room.npcs || []).find((n) => n.talk === 'crier' && !n.cry) : null);
+// Round 164: the Crier says DONE for a finished quest and how far along a started one is.
+function crierLine(q) { const g = q.g, c = (q.c && q.c[g[0]]) || 0; return q.st !== 'active' || c >= g[1] ? `${g[2]}: DONE!` : c > 0 ? `${g[2]}: ${c} OF ${g[1]}!` : `${g[2]}: ${g[1]}!`; }
 const dailyIds = () => Object.keys(QS()).filter((id) => id.startsWith('daily_'));
 const weeklyId = () => Object.keys(QS()).find((id) => id.startsWith('weekly_'));
 // A quest step counts once; the story's are counted only in that chapter's own descents.
@@ -8415,6 +8434,14 @@ function drawFloatBow() {
   ctx.fillStyle = 'rgba(11,7,16,0.25)'; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(player.y + 4), 7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
   sprC('weapon', wskin() && SPR.weapon.anims[`xbow_${wskin()}`] ? `xbow_${wskin()}` : 'xbow', i, x, y, { white: xb.flash > 0.75 });
 }
+// Round 164: the crossbow behind a prop or foe: a thin pale outline, then the bow at half strength, so it reads as behind.
+function drawFloatBowGhost() {
+  const xb = player.xb; if (!xb) return;
+  const i = ((Math.round(xb.ang / (Math.PI / 8)) % 16) + 16) % 16, x = xb.x - Math.cos(xb.ang) * xb.recoil * 5, y = xb.y - Math.sin(xb.ang) * xb.recoil * 5;
+  const an = wskin() && SPR.weapon.anims[`xbow_${wskin()}`] ? `xbow_${wskin()}` : 'xbow', tk = tintKey('weapon', '232,220,255');
+  if (tk) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) sprC('weapon', an, i, x + dx, y + dy, { tint: tk, alpha: 0.5 });
+  sprC('weapon', an, i, x, y, { alpha: 0.5 });
+}
 function drawFloatBowGlow() {
   const xb = player.xb; if (!xb || player.hp <= 0) return;
   // The sigil that holds it aloft: a slowly turning ring of gold ticks.
@@ -10301,7 +10328,7 @@ function render() {
   // Round 163: the crossbow shows through as a faint ghost when a tall prop or a big foe in front of it covers it.
   if (player.xb && player.hp > 0 && !noBow()) { const xb = player.xb, by = player.y + (Math.sin(xb.ang) > 0.35 ? 3 : -3), covers = (sh, an, fr, x, y, k = 1) => { const A = SPR[sh] && SPR[sh].anims[an]; if (!A) return false; const f = A[(fr || 0) % A.length], ax = f.ax ?? SPR[sh].anchorX ?? f.w / 2, ay = f.ay ?? SPR[sh].anchorY ?? f.h - 1; return f.h * k >= 34 && xb.x > x - ax * k + 3 && xb.x < x + (f.w - ax) * k - 3 && xb.y > y - ay * k + 3 && xb.y < y - 2; };
     const hid = room.props.some((q) => q.y > by && Math.abs(q.x - xb.x) < 60 && covers(q.sheet || 'props', q.anim || q.kind, q.frame, q.x, q.y)) || enemies.some((e) => !e.dead && e.y > by && Math.abs(e.x - xb.x) < 70 && covers(e.def.sheet, e.def.walk, 0, e.x, e.y, e.scaleK || 1));
-    if (hid) { ctx.save(); ctx.globalAlpha = 0.55; drawFloatBow(); ctx.restore(); } }
+    if (hid) drawFloatBowGhost(); }
   // Round 46: behind a town building the Saint shows as a faint ghost.
   if (room.kind === 'town' && player.hp > 0 && room.props.some((q) => q.bldg && q.y > player.y + 2 && Math.abs(q.x - player.x) < frameOf(q.sheet, q.anim, q.frame).w / 2 - 4 && q.y - frameOf(q.sheet, q.anim, q.frame).h < player.y - 10)) { ctx.save(); ctx.globalAlpha = 0.4; try { drawPlayer(); } catch (err) { logError('draw', err); } ctx.restore(); }
   if (DEV.boxes) { // dev: body circles (blue) and hurt circles (red)
@@ -10347,7 +10374,7 @@ function render() {
   if (game.scene === 'town') drawTownOverlay(cx, cy);
   renderLight(cx, cy);
   mark('light');
-  if (game.scene === 'town') { drawTownForeground(cx, cy); drawSiteMarkers(cx, cy); drawQuestMarks(cx, cy); }
+  if (game.scene === 'town') { drawTownForeground(cx, cy); drawSiteMarkers(cx, cy); drawQuestMarks(cx, cy); drawCrierPlates(cx, cy); }
 
   // Additive glow (VFX layer). Soft glows go to a half-size layer that is
   // added to the screen once; additive blending does not care about order.
@@ -11054,6 +11081,7 @@ function button(b, { active = true, cd = 0, cdText = '', ring = 0, ringColor = P
 // Tiny pixel glyphs for the minimap, 5x5.
 const MAP_ICON = {
   exit: ['01110', '11011', '10101', '11111', '01010'],      // skull
+  bell: ['00100', '01110', '01110', '11111', '00100'],      // bell (round 164: the Crier has news)
   elite: ['10101', '11111', '01110', '11111', '00000'],     // crown
   shrine: ['00100', '01110', '00100', '00100', '00100'],    // cross
   treasury: ['01110', '11111', '10101', '11111', '11111'],  // chest
@@ -11136,6 +11164,7 @@ function renderMinimap() {
   for (const S of SITES) { const y = sy(room.top * TILE + S.dy - 18); ctx.fillStyle = siteDone(S) ? PAL.gold1 : PAL.stone3; ctx.fillRect(sx(S.x) - 1, y - 1, 3, 3); }
   badge('descend', sx(CATHEDRAL_X), sy(room.top * TILE + CATHEDRAL_DY - 10));
   for (const t of questTargets().sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y)).slice(0, 4)) questPin(sx(t.x), Math.max(my + 8, sy(t.y)), t.ch); // round 154: quest pins; round 155: the nearest four, smaller
+  { const cr = crierNews(); if (cr) mapIcon('bell', sx(cr.x) - 2, Math.max(my + 3, sy(cr.y) - 7 + Math.round(Math.sin(game.real * 5))), '#ffd155'); } // round 164
   ctx.restore();
   const px = Math.max(mx + 3, Math.min(mx + mw - 4, sx(player.x))), py = Math.min(my + mh - 4, sy(player.y));
   ctx.fillStyle = PAL.outline; ctx.fillRect(px - 3, py - 3, 7, 7);
