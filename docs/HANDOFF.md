@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-16, after round 150 (build 150, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-16, after round 151 (build 151, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -40,7 +40,7 @@ see "The owner's preferences".) When the owner answers with numbers
    and pushed to `master` each round; rounds 82-85 on `claude/nifty-darwin-4oposd`;
    rounds 86-106 on `claude/laughing-babbage-0cov0r`; rounds 107-117 on
    `claude/brave-brown-mytba1`; rounds 118-124 on `claude/pensive-lamport-s9smvm`; rounds 125-135 on
-   `claude/brave-fermi-kw8he3`; rounds 136-150 on `claude/lucid-wright-lmjzi4`.
+   `claude/brave-fermi-kw8he3`; rounds 136-151 on `claude/lucid-wright-lmjzi4`.
 8. Start the server with `nohup python3 -m http.server 8123 &` and check it
    (`curl -s -o /dev/null -w "%{http_code}" localhost:8123`): it dies between
    sessions and tests then fail with `ERR_CONNECTION_REFUSED`. With 73+ sheets
@@ -756,6 +756,27 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
    elites, no dashing) with their own leaderboard.
 
 ## History by round
+
+- **Round 151:** the owner asked for a deeper story, more Warden dialogue, quests
+  given by NPCs (! and ?), objectives such as kills and rites, a tracker on the
+  left (after a reference screenshot), rewards, no free hits before a Warden
+  speaks, and guided quests for each town site as it opens. Done: quests in
+  `SAVE.q` (`qOffer`, `qDef`, `questBump(key)`, `ensureQuests`, `questTalk`,
+  `storyTurnIn`); story chapters have `giver`, `turn`, `goals` (`read`, `kills`,
+  `rites`, `elites`, `chest`, `pen`, `dash`, `warden`; counted only in that
+  chapter's own descents, kept between tries) and `reward` (gold and gear of
+  rarity `ri`, rolled at Station I). The cathedral starts a chapter only once its
+  giver has given it. Scenes are longer; each Warden has `spawn` lines (played at
+  once in `spawnWarden`, so the scene starts before another blow), `phase` lines
+  (`game.bossSay`, over its head, no pause) and `death` lines (`sceneSoon`, real
+  time, waits for a free screen). Site quests (`QSITE`): a ! over a newly opened
+  site; the first visit plays its guide, gives its gift (forge 6 Emberstones,
+  Enchanter Emberwake's three ingredients, altar a Chrism, stall and pool gold)
+  and asks for one use (`buy`, `talent`, `wager`, `reforge`, `enchant`, or a
+  visit). Sites already open when a character first runs this build are skipped
+  (`SAVE.siteMet`). Dialogue is cased as a whole line before it types out (the
+  owner saw `There Is a Wall` turn into `There is a wall`). Tracker:
+  `drawQuestTracker` under the HUD's left block; marks: `drawQuestMarks`.
 
 - **Round 150:** the owner asked for a short campaign (about 30 minutes) that
   explains the story and must be finished before the Stations open. THE FIRST
