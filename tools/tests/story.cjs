@@ -84,7 +84,7 @@ require('fs').mkdirSync(`${S}/shots`, { recursive: true });
   await p.evaluate(() => { HS.game.state = 'play'; HS.startDescent(); }); await p.waitForTimeout(300);
   out.afterGate = (await st()).state;
   await p.evaluate(() => { HS.openStory(2, 'pause'); }); await p.waitForTimeout(300); await shot('done');
-  out.donePageText = await p.evaluate(() => HS.textProblems().length);
+  out.donePageText = await p.evaluate(() => HS.textProblems().length); out.donePageWhat = await p.evaluate(() => JSON.stringify(HS.textProblems()).slice(0, 400));
   out.old = await p.evaluate(() => { const was = HS.SAVE.story; delete HS.SAVE.story; HS.SAVE.cleared = 3; const r = HS.storyN(); HS.SAVE.story = was; return r; });
   console.log(JSON.stringify(out, null, 1));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();
