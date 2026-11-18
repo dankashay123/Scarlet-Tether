@@ -757,6 +757,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 159:** the owner sent a shrine standing on a block of wall (an open
+  map's ring clearing has wall in its middle, and shrines and chests went to
+  the zone's centre unchecked). Shrines and treasury chests now move to the
+  nearest tile of their zone with a 5x4 clear area (3x3 at worst). `place()`
+  in `makeDungeon` now refuses a prop whose tiles are already solid, or whose
+  drawn sprite (`picRect`) would overlap another by more than 4 px on the same
+  row, or two tall (40 px+) props overlapping by over 20% (`clips`); shrines
+  and chests are exempt. `HS.propClash()` lists clips on the current map and
+  `tools/tests/clip.cjs [maps]` runs it over both map kinds in all strata
+  (150 maps: 0 before shipping; it was hundreds: pillars stacked on pillars,
+  coffins and crates side by side, crates in torch stands).
 - **Round 158:** the owner asked for each Warden to die its own way.
   `tools/deaths.mjs` builds 16 death frames per Warden from its standing frame:
   the frame is chunkified, read as 2x2 cells, and a small simulation moves the
