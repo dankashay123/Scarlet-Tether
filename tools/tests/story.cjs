@@ -108,6 +108,11 @@ require('fs').mkdirSync(`${S}/shots`, { recursive: true });
   await p.evaluate(() => { HS.game.state = 'play'; HS.game.toast = null; HS.game.banner = null; }); await p.waitForTimeout(400); await shot('dailies');
   await p.evaluate(() => { HS.openBoard(); }); await p.waitForTimeout(400); await shot('board'); out.boardText = await p.evaluate(() => HS.textProblems().length); out.boardWhat = await p.evaluate(() => JSON.stringify(HS.textProblems()).slice(0, 300)); await p.evaluate(() => { HS.game.state = 'play'; });
   await p.evaluate(() => { HS.playScene([['odile', 'A TEST LINE FOR THE BUST.'], ['vane', 'AND ANOTHER.'], ['barkeep', 'ONE MORE.']]); }); await p.waitForTimeout(800); out.busts = await closeDialog('bust');
+  // Round 160: a speaker with no town sprite (the Enchanter), a broken line and a scene end that throws: the box shows
+  // its text, and taps always get back to play.
+  await p.evaluate(() => { HS.ERRS.length = 0; HS.game.state = 'play'; HS.playScene([['enchanter', 'A LINE WITH NO PORTRAIT.'], ['enchanter', undefined]], () => { throw new Error('test'); }); }); await p.waitForTimeout(500); await shot('noportrait');
+  for (let i = 0; i < 8 && (await st()).state === 'dialog'; i++) { await tap(200, 150); await p.waitForTimeout(120); }
+  out.unstuck = await p.evaluate(() => ({ st: HS.game.state, errs: HS.ERRS.map((e) => e.where || '').join(',') }));
   out.done = await p.evaluate(() => HS.storyDone());
   await p.evaluate(() => { HS.game.state = 'play'; HS.startDescent(); }); await p.waitForTimeout(300);
   out.afterGate = (await st()).state;

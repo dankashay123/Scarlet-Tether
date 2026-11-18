@@ -757,6 +757,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 160:** the owner got stuck in an empty dialogue box at the Enchanter's
+  stall (site quest). The screenshot showed the 34 px portrait box of builds
+  154-156, where a speaker with no town sprite (the Enchanter) threw on
+  `npc.npc.endsWith` after drawing the box, so no text drew; build 157+ no longer
+  does that, but now `renderDialog` guards the portrait (try/catch, `logError`),
+  reads a missing line as empty, the dialog tap closes a broken scene and
+  survives a throwing `then`, and `update` drops back to play if the dialog is
+  gone. `story.cjs` checks a no-portrait speaker, a missing line and a throwing
+  scene end.
 - **Round 159:** the owner sent a shrine standing on a block of wall (an open
   map's ring clearing has wall in its middle, and shrines and chests went to
   the zone's centre unchecked). Shrines and treasury chests now move to the
