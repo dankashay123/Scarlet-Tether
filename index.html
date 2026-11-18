@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '165';
+const BUILD = '166';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '166': ['A STORY WARDEN NOW SHOWS WHILE IT SPEAKS ITS FIRST LINES: IT RISES OUT OF THE FLOOR.', 'ELITES AND RARES NOW RISE OUT OF THE FLOOR TOO, IN A PUFF OF DUST.', 'ELITES AND RARES NOW DIE THEIR OWN WAY: BONES COLLAPSE INTO A HEAP, FLESH MELTS INTO A POOL, SPIRITS FADE AWAY, ARMOUR SHATTERS, CLERICS SINK INTO FIRE AND VERMIN BURST APART.', 'THE LEVEL-UP SCREEN WAITS UNTIL AN ELITE HAS FINISHED DYING.'],
   '165': ['THE TOWN CRIER NOW CALLS BIG NEWS THE NEXT TIME YOU PASS HIM: A NEW STRATUM OPENED, A DEEPER WARDEN KILLED OR A NEW VIGIL RECORD.', 'THE REST OF THE SQUARE GOES QUIET WHILE THE CRIER CALLS.', 'FINISHED QUESTS GET A GOLD CHECK MARK IN THE QUEST LOG AND ON THE BOUNTY BOARD.', 'THE CROSSBOW BEHIND A PILLAR OR FOE NOW SHOWS AS A THIN OUTLINE, NOT A PALE BLUR.', 'A WARDEN\'S REMAINS LAND WITH A SMALL SHAKE AND A PUFF OF DUST.', 'THE TOWN MINIMAP KEEPS ITS QUEST PINS, SITE DOTS AND THE CRIER\'S BELL FROM PILING UP.'],
   '164': ['THE TOWN CRIER\'S CALLS SIT ON THEIR OWN GOLD-RIMMED PLATE, CLEAR OF THE OTHER CHATTER.', 'THE CRIER SAYS WHICH OF TODAY\'S QUESTS ARE DONE AND HOW FAR ALONG THE OTHERS ARE.', 'A GOLD BELL ON THE TOWN MINIMAP SHOWS WHERE THE CRIER IS WHILE HE HAS NEWS.', 'THE CROSSBOW\'S GHOST BEHIND A PILLAR OR FOE NOW HAS A THIN PALE OUTLINE.'],
   '163': ['THE CROSSBOW SHOWS THROUGH AS A FAINT GHOST WHEN A PILLAR OR A BIG FOE COVERS IT.', 'THE MARKERS OVER TOWN SITES FLOAT A LITTLE HIGHER, CLEAR OF ANYONE STANDING AT A STALL.', 'A WARDEN\'S REMAINS DIM SLOWLY OVER A MINUTE.', 'ONCE A DAY THE TOWN CRIER STOPS NEAR YOU, RINGS HIS BELL AND CALLS OUT THE DAY\'S QUESTS.'],
@@ -6897,6 +6898,7 @@ function updateEnemy(e, dt) {
   if (e.illusion) { e.life -= dt; if (e.life <= 0) { e.dead = true; playFx('fx', 'smoke', e.x, e.y - 8, 14); return; } }
   if (e.kx || e.ky) { moveCircle(e, e.kx * dt, e.ky * dt, e.r); e.kx *= Math.pow(0.001, dt); e.ky *= Math.pow(0.001, dt); if (Math.abs(e.kx) + Math.abs(e.ky) < 2) e.kx = e.ky = 0; }
   if (e.state === 'spawn') {
+    if (e.elite && !LOWFX && e.t < 1 && rng() < dt * 22) vemit(e.x + rand(-1, 1) * (e.hr || 12), e.y, { n: 2, ramp: 'dust', sp: 30, up: 8, life: 0.6, grav: 12, size: 2, glow: 0 }); // round 166: dust as it rises
     if (e.t > (e.elite ? 1.1 : 0.7)) { e.state = 'move'; e.t = 0; playFx('fx', 'smoke', e.x, e.y - 6, 14, { alpha: 0.8 }); if (e.tier === 'elite') { rings.push({ x: e.x, y: e.y - 12, t: 0, max: 0.6, r: 60, color: '255,209,85' }); game.shake = 4; } }
     return;
   }
@@ -7503,7 +7505,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   if (e.illusion) { playFx('fx', 'smoke', e.x, e.y - 8, 14); return; }
   if (game.yard) { // the yard: the kill shows, but nothing is gained
     game.kills++; addFervor(e.def.fervor + 1 + 2 * tal('c_mzeal')); if (!e.boss) maybeIndul(e, e.tier === 'elite' ? INDUL_DROP.elite : INDUL_DROP.other); massacre(); game.shake = Math.max(game.shake, e.tier === 'elite' ? 7 : 1.5);
-    if (!executed && e.def.die && SPR[e.def.sheet].anims[e.def.die]) falls.push({ e, dirx, diry, t: 0, y: e.y, wd: wardenDies(e) }); else dismember(e, dirx, diry, executed);
+    bodyFalls(e, dirx, diry, executed);
     if (e.boss) { game.warden = null; game.banner = { text: 'WARDEN KILLED', sub: 'PRACTICE ONLY', t: 0, color: PAL.gold0 }; }
     enchKill(e);
     return;
@@ -7541,8 +7543,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   game.shake = Math.max(game.shake, e.tier === 'elite' ? 7 : e.elite ? 4 : 1.5);
   hitStop(e.tier === 'elite' ? 0.12 : e.elite ? 0.06 : 0.025, e.tier === 'elite');
   // The body falls over before it bursts (executions burst at once).
-  if (!executed && e.def.die && SPR[e.def.sheet].anims[e.def.die]) falls.push({ e, dirx, diry, t: 0, y: e.y, wd: wardenDies(e) });
-  else dismember(e, dirx, diry, executed);
+  bodyFalls(e, dirx, diry, executed);
   massacre();
   for (const a of e.affixes) AFFIX[a].death && AFFIX[a].death(e);
   if (e.pack && e.affixes.includes('vengeful')) for (const m of e.pack.members) if (!m.dead && m !== e && m.affixes.includes('vengeful')) { m.dmgK *= 1.25; m.scaleK *= 1.12; m.hp = Math.min(m.maxHp, m.hp + m.maxHp * 0.2); rings.push({ x: m.x, y: m.y - 12, t: 0, max: 0.4, r: 30, color: '224,32,46' }); }
@@ -7565,18 +7566,23 @@ function bleed(x, y, n, dir) {
 function sparks(x, y, c, n) {
   for (let i = 0; i < n; i++) parts.push({ kind: 'spark', x, y, z: 0, vx: rand(-90, 90), vy: rand(-90, 90), vz: 0, c, life: rand(0.1, 0.3) });
 }
-function dismember(e, dirx, diry, executed) {
+// Round 166: how a body leaves: a Warden's own death, an elite's or rare's crumble, or the plain fall and burst.
+function bodyFalls(e, dirx, diry, executed) {
+  if (!executed && !e.boss && (e.elite || e.tier === 'elite' || e.tier === 'rare') && !e.illusion && falls.filter((f) => f.cr).length < 6) { const cr = startCrumble(e); if (cr) { falls.push({ e, dirx, diry, t: 0, y: e.y, cr }); dismember(e, dirx, diry, false, cr.kind); return; } }
+  if (!executed && e.def.die && SPR[e.def.sheet].anims[e.def.die]) falls.push({ e, dirx, diry, t: 0, y: e.y, wd: wardenDies(e) }); else dismember(e, dirx, diry, executed);
+}
+function dismember(e, dirx, diry, executed, soft) {
   const armored = e.def.shield || ['knight', 'jailer', 'inquisitor', 'titan', 'golem'].includes(e.type), big = e.tier === 'elite';
   const n = big ? 4 : e.elite ? 3 : 2 + Math.floor(rng() * 3);
-  const kinds = [0, 1, 2, 3].sort(() => rng() - 0.5).slice(0, n);
+  const kinds = soft ? [] : [0, 1, 2, 3].sort(() => rng() - 0.5).slice(0, n), wet = !soft || soft === 'melt' || soft === 'burst'; // round 166: a crumble is its own body; no gibs
   for (const k of kinds) gibs.push({ anim: armored ? 'wardenGib' : 'gib', i: k, x: e.x, y: e.y - 6, z: 10, vx: dirx * rand(30, 100) + rand(-45, 45), vy: diry * rand(30, 100) + rand(-45, 45), vz: rand(50, 120), settled: false });
-  bleed(e.x, e.y - e.hy, executed ? 34 : e.elite ? 24 : 12, dirx);
-  playFx('fx', 'burst', e.x, e.y - e.hy, 18, { big: e.elite || executed });
+  if (wet) bleed(e.x, e.y - e.hy, executed ? 34 : e.elite ? (soft ? 10 : 24) : 12, dirx);
+  if (!soft) playFx('fx', 'burst', e.x, e.y - e.hy, 18, { big: e.elite || executed });
   // Round 63: a burst in the family's colour and a soul that rises; elites shake the floor and are taken by light.
-  { const R = monRamp(e); pfxHit(e.x, e.y - e.hy, true, R, !e.elite); if (!LOWFX) vemit(e.x, e.y - e.hy, { n: e.elite ? 10 : 4, ramp: VOICE[e.type] === 'spirit' ? 'violet' : 'holy', sp: 12, up: 70, life: 0.9, grav: -30, size: 2, glow: 4 });
-    if (e.elite) { addPfx({ kind: 'quake', x: e.x, y: e.y, r: big ? 90 : 60, max: 0.5, ramp: R, ground: true }); pfxCrack(e.x, e.y, 5, R); if (big) addPfx({ kind: 'beam', x: e.x, y: e.y, max: 0.5, ramp: 'gold' }); } }
-  if (big) { playFx('fx', 'burst', e.x - 10, e.y - e.hy * 1.4, 14, { big: true }); playFx('fx', 'burst', e.x + 10, e.y - e.hy * 0.6, 12, { big: true }); rings.push({ x: e.x, y: e.y - 12, t: 0, max: 0.6, r: 70, color: '255,209,85' }); }
-  splat(e.x + dirx * 6, e.y, e.elite || executed);
+  { const R = monRamp(e); if (!soft) pfxHit(e.x, e.y - e.hy, true, R, !e.elite); if (!LOWFX) vemit(e.x, e.y - e.hy, { n: e.elite ? 10 : 4, ramp: VOICE[e.type] === 'spirit' ? 'violet' : 'holy', sp: 12, up: 70, life: 0.9, grav: -30, size: 2, glow: 4 });
+    if (e.elite) { addPfx({ kind: 'quake', x: e.x, y: e.y, r: big ? 90 : 60, max: 0.5, ramp: R, ground: true }); pfxCrack(e.x, e.y, 5, R); if (big && !soft) addPfx({ kind: 'beam', x: e.x, y: e.y, max: 0.5, ramp: 'gold' }); } } // round 166: a crumble shows itself, so no burst or beam over it
+  if (big) { if (!soft) { playFx('fx', 'burst', e.x - 10, e.y - e.hy * 1.4, 14, { big: true }); playFx('fx', 'burst', e.x + 10, e.y - e.hy * 0.6, 12, { big: true }); } rings.push({ x: e.x, y: e.y - 12, t: 0, max: 0.6, r: 70, color: '255,209,85' }); }
+  if (wet) splat(e.x + dirx * 6, e.y, e.elite || executed);
 }
 function splat(x, y, big = false) {
   const f = frameOf('fx', 'splat', Math.floor(rng() * 3));
@@ -10209,7 +10215,7 @@ function update(realDt) {
     { const nb = bolts.length; safe('crossbow', () => updateCrossbow(dt)); // round 139: bolts and shards the weapon fires during the Hundredfold or the Hundred Splinters count as that Reckoning (Rubrics, the Calling, the kill tally)
       if (player.rainT > 0 && player.penKind === 'volley') for (let j = nb; j < bolts.length; j++) if (!bolts[j].rite) bolts[j].rite = player.penRite; }
     safe('skills', () => updateSkills(dt)); HIT_RITE = null;
-    if (game.run.pending > 0 && game.state === 'play' && game.real >= (game.stigAt || 0) && !falls.some((f) => f.wd && f.t < SPR[f.e.def.sheet].anims[f.e.def.die].length * WDIE.step + 0.4)) openStigmata(); // round 158: not over a Warden's death
+    if (game.run.pending > 0 && game.state === 'play' && game.real >= (game.stigAt || 0) && !falls.some((f) => (f.wd && f.t < SPR[f.e.def.sheet].anims[f.e.def.die].length * WDIE.step + 0.4) || (f.cr && f.t < CRUMBLE_T[f.cr.kind]))) openStigmata(); // round 158: not over a Warden's death; round 166: nor an elite's
     safe('floor', () => updateFloor(dt));
     // A monster whose update throws is removed rather than freezing the game.
     // Sleepers wake when the Saint comes near or when they are hurt; a
@@ -10327,7 +10333,7 @@ function render() {
   for (const e of enemies) if (e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 60)) shadow(e.x, e.y, e.r * 1.3 * (e.def.fly ? 0.7 : 1));
   shadow(player.x, player.y, 8);
   for (const g of gibs) shadow(g.x, g.y, 3);
-  for (const f of falls) if (!(f.wd && f.soul)) shadow(f.e.x, f.e.y, f.e.r * 1.3);
+  for (const f of falls) if (!(f.wd && f.soul) && !f.cr) shadow(f.e.x, f.e.y, f.e.r * 1.3);
   const SHADOW = { drywell: 18, gravestone: 7, fallencol: 20, pillar: 10, torch: 6, statue_saint: 12, statue_angel: 12, statue_knight: 12, crate: 13, gallows: 22, cart: 20, well: 15, tomb: 6, tree: 10, stocks: 14, board: 8, brazier: 6, sarcophagus: 18, candelabra: 6, column: 11, statue: 11, lamp: 5, barrel: 6, crate: 7, anvil: 8, waystone: 10, pew: 15, coffin: 7, cage: 7, maiden: 8, altar: 17, shrine: 10, chest: 10, urn: 5 };
   for (const p of room.props) if (SHADOW[p.kind] && onScreen(p.x, p.y, cx, cy, 40)) shadow(p.x, p.y - 2, SHADOW[p.kind]);
   for (const n of room.npcs) shadow(n.x, n.y, 6);
@@ -10337,7 +10343,7 @@ function render() {
   mark('shadows');
   // Y-sorted actors and props.
   const th = thuriblePos();
-  const actors = [player, ...(isAnch() && player.hp > 0 && player.shards ? player.shards.map((sh, i) => ({ shardA: sh, si: i, y: sh.y })) : []), ...(isMelee() && player.hp > 0 && player.vd ? player.vd.d.map((d, i) => ({ vdA: d, si: i, y: d.y })) : []), ...(player.xb && player.hp > 0 ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 90)), ...falls.filter((f) => !(f.wd && f.soul)).map((f) => ({ fall: f, y: f.y })), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, p.big || 90))];
+  const actors = [player, ...(isAnch() && player.hp > 0 && player.shards ? player.shards.map((sh, i) => ({ shardA: sh, si: i, y: sh.y })) : []), ...(isMelee() && player.hp > 0 && player.vd ? player.vd.d.map((d, i) => ({ vdA: d, si: i, y: d.y })) : []), ...(player.xb && player.hp > 0 ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => (e.state !== 'spawn' || e.elite) && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 90)), ...falls.filter((f) => !(f.wd && f.soul) && (!f.cr || onScreen(f.e.x, f.e.y, cx, cy, 120))).map((f) => ({ fall: f, y: f.y })), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, p.big || 90))];
   for (const w of room.walls || []) for (const [tx, ty] of w.tiles) actors.push({ wall: w, tx, ty, y: ty * TILE + 15 });
   if (PETF.on && petShown() && player.hp > 0) actors.push({ petA: true, y: PETF.y });
   actors.sort((a, b) => a.y - b.y);
@@ -10355,6 +10361,7 @@ function render() {
       else if (a.kind) drawProp(a);
       else if (a.npc) drawNpc(a);
       else if (a.fall) drawFall(a.fall);
+      else if (a.state === 'spawn') drawRising(a);
       else drawEnemy(a);
     } catch (err) { logError('draw', err); }
     ctx.restore();
@@ -10684,9 +10691,106 @@ function wardenSettle(e) {
   addPfx({ kind: 'quake', x: e.x, y: e.y, r: w * 2.2, max: 0.55, ramp, ground: true });
   vemit(e.x, e.y - 2, { n: 18, ramp: 'dust', sp: 46, up: 10, life: 0.9, grav: 14, size: 2, spread: w * 0.5, glow: 0, drag: 3 });
 }
+// Round 166: elites and rares die their own way. The standing frame is read once per look into 2x2 cells, and the
+// cells move by the body's kind: bones collapse into a heap, flesh melts into a pool, spirits rise as motes,
+// vermin burst apart, clerics burn upward from the feet, armour shatters into blocks. The remains rest, then fade.
+const CRUMBLE_FAM = { bone: 'heap', flesh: 'melt', spirit: 'fade', vermin: 'burst', cleric: 'burn' };
+const CRUMBLE_BY = { knight: 'shatter', golem: 'shatter', titan: 'shatter', inquisitor: 'shatter', effigy: 'burn', motherwax: 'melt', lantern: 'burn' };
+const CRUMBLE_T = { heap: 1.5, melt: 1.5, fade: 1.8, burst: 1.5, shatter: 1.7, burn: 2.3 }, CRUMBLE_REST = 5, CRUMBLE_FADE = 1.5;
+const crumbleKind = (e) => CRUMBLE_BY[e.type] || CRUMBLE_FAM[VOICE[e.type]] || 'burst';
+let CR_C = null; const CR_CELLS = new Map(), CR_RGB = new Map();
+const crHash = (x, y, k = 0) => { let h = ((x + 999) * 374761393 + (y + 999) * 668265263 + k * 2246822519) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return (h & 0xffff) / 65536; };
+function crumbleCells(e) {
+  const d = e.def, sh = d.sheet, an = d.walk, f = frameOf(sh, an, 0), k = Math.round((e.scaleK || 1) * 20) / 20, flip = e.face < 0, key = `${sh}/${an}/${k}/${flip ? 1 : 0}`;
+  let C = CR_CELLS.get(key); if (C) return C;
+  const S = SPR[sh], ax = f.ax ?? S.anchorX ?? Math.floor(f.w / 2), ay = f.ay ?? S.anchorY ?? f.h - 1, w = Math.ceil(f.w * k) + 2, h = Math.ceil(f.h * k) + 2;
+  if (!CR_C) CR_C = document.createElement('canvas');
+  if (CR_C.width < w || CR_C.height < h) { CR_C.width = Math.max(CR_C.width, w, 64); CR_C.height = Math.max(CR_C.height, h, 64); }
+  const g = CR_C.getContext('2d', { willReadFrequently: true }); g.imageSmoothingEnabled = false; g.clearRect(0, 0, w, h);
+  g.drawImage(IMG[sh], f.x, f.y, f.w, f.h, 0, 0, Math.round(f.w * k), Math.round(f.h * k));
+  const px = g.getImageData(0, 0, w, h).data, oX = Math.round(ax * k), oY = Math.round(ay * k), cells = [];
+  for (let y = ((oY % 2) + 2) % 2; y < h; y += 2) for (let x = ((oX % 2) + 2) % 2; x < w; x += 2) {
+    const i = (y * w + x) * 4; if (px[i + 3] < 128) continue;
+    const rgb = (px[i] << 16) | (px[i + 1] << 8) | px[i + 2]; let c = CR_RGB.get(rgb); if (!c) { c = `rgb(${px[i]},${px[i + 1]},${px[i + 2]})`; CR_RGB.set(rgb, c); }
+    const rx = x - oX; cells.push({ x: flip ? -rx - 2 : rx, y: y - oY, c });
+  }
+  cells.sort((a, b) => (a.c < b.c ? -1 : a.c > b.c ? 1 : 0));
+  let top = 0, wh = 4; for (const q of cells) { top = Math.min(top, q.y); wh = Math.max(wh, Math.abs(q.x)); }
+  C = { cells, H: Math.max(4, -top), Wh: wh }; CR_CELLS.set(key, C); return C;
+}
+function startCrumble(e) {
+  let C; try { C = crumbleCells(e); } catch (err) { logError('crumble', err); return null; } if (!C.cells.length) return null;
+  const kind = crumbleKind(e), cr = { kind, H: C.H, Wh: C.Wh, hm: new Map(), chunks: new Map(), snd: 0 };
+  cr.cells = C.cells.map((q, n) => { const hr = Math.max(0, Math.min(1, -q.y / C.H)), r = crHash(q.x, q.y, n);
+    const c = { x: q.x, y: q.y, x0: q.x, y0: q.y, c: q.c, hr, r, on: true, s: 2, z: -q.y, gy: 0, vx: 0, vz: 0, vg: 0, rest: false };
+    if (kind === 'melt') { c.d = 0.12 + 0.04 * Math.sin(q.x * 0.21) + 0.03 * Math.sin(q.x * 0.57 + 1); c.xF = q.x * 1.45; const Wm = C.Wh * 1.6 + 4, T = Math.min(10, 4 + C.H * 0.12) * Math.sqrt(Math.max(0, 1 - (c.xF / Wm) ** 2)); c.yF = -Math.round(T * crHash(q.y, q.x, 3) / 2) * 2; } // a lens of a pool, thickest in the middle
+    else if (kind === 'fade') { c.d = 0.05 + (1 - hr) * 0.55 + r * 0.2; c.L = 0.45 + r * 0.5; c.vy = -(18 + r * 30); }
+    else if (kind === 'burst') { c.vx = (q.x / C.Wh) * (50 + r * 90) + (crHash(q.y, q.x) - 0.5) * 50; c.vg = (crHash(q.x + 7, q.y) - 0.5) * 70; c.vz = (40 + crHash(q.x, q.y + 3) * 120) * (0.5 + hr); }
+    else if (kind === 'heap') { c.d = 0.04 + r * 0.08; c.dust = r < 0.35; c.vx = (q.x / C.Wh) * 12; }
+    else if (kind === 'shatter') { const kx = Math.floor((q.x + 64) / 8), ky = Math.floor((q.y + 256) / 8), ck = kx * 1000 + ky; let ch = cr.chunks.get(ck);
+      if (!ch) { const a = crHash(kx, ky, 5); ch = { x: 0, gy: 0, z: 0, by: -1e9, vx: ((kx * 8 - 64) / C.Wh) * (14 + a * 34) + (a - 0.5) * 20, vg: (crHash(ky, kx, 2) - 0.5) * 64, vz: 30 + crHash(kx, ky, 9) * 80, rest: false }; cr.chunks.set(ck, ch); }
+      ch.by = Math.max(ch.by, q.y); c.ch = ch; }
+    else if (kind === 'burn') { c.ash = r < 0.09; }
+    return c; });
+  for (const ch of cr.chunks.values()) ch.z = -ch.by;
+  if (kind === 'burn') sfx('burn', { vol: 0.6, rate: 1.2 }); else if (kind === 'shatter') sfx('break', { vol: 0.8, rate: 0.75 }); else if (kind === 'melt') sfx('drip', { vol: 0.7, rate: 0.7 }); else if (kind === 'fade') sfx('shrine', { vol: 0.35, rate: 1.4 });
+  return cr;
+}
+// A cell landing on the heap: it rolls to a lower column up to two over, then stacks there.
+function crLand(cr, c) {
+  let col = Math.round(c.x / 2); const hm = cr.hm, H = (k) => hm.get(k) || 0;
+  for (let i = 0; i < 10; i++) { const m = H(col), l = Math.min(H(col - 1), H(col - 2) + 1), r = Math.min(H(col + 1), H(col + 2) + 1); if (Math.min(l, r) >= m || (i > 1 && crHash(c.x0, c.y0, i) < 0.22)) break; /* some catch early, so the heap is lumpy */ col += l < r ? -1 : r < l ? 1 : (c.r < 0.5 ? -1 : 1); }
+  c.x = col * 2; c.z = H(col) * 2; hm.set(col, H(col) + 1); c.rest = true; c.vz = 0;
+}
+function updateCrumble(f, dt) {
+  const cr = f.cr, t = f.t, e = f.e, end = CRUMBLE_T[cr.kind];
+  if (t > end + CRUMBLE_REST + CRUMBLE_FADE) { f.done = true; return; }
+  if (t > end + 0.2) return; // resting
+  for (const c of cr.cells) {
+    if (!c.on || c.rest) continue;
+    if (cr.kind === 'heap') {
+      if (t < c.d) continue; c.vz -= 620 * dt; c.z += c.vz * dt; c.x += c.vx * dt;
+      const col = Math.round(c.x / 2); if (c.z <= (cr.hm.get(col) || 0) * 2) { if (c.dust) { c.on = false; if (!LOWFX && c.r < 0.05) vemit(e.x + c.x, e.y - 1, { n: 2, ramp: 'dust', sp: 18, up: 6, life: 0.6, grav: 10, size: 2, glow: 0 }); } else crLand(cr, c); }
+      c.y = -c.z;
+    } else if (cr.kind === 'melt') {
+      const p0 = Math.max(0, Math.min(1, (t - c.d) / 0.95)), p = p0 * p0 * (3 - 2 * p0);
+      c.x = Math.round((c.x0 + (c.xF - c.x0) * p * p) / 2) * 2; c.y = Math.round((c.y0 * (1 - p) + c.yF * p) / 2) * 2; c.sw = p > 0.15 ? 4 : 2; if (p0 >= 1) c.rest = true; // wider as it spreads, so no gaps open between columns
+    } else if (cr.kind === 'fade') {
+      if (t < c.d) continue; const a = t - c.d; if (a > c.L) { c.on = false; continue; }
+      c.y += c.vy * dt; c.x += Math.sin((t + c.r * 6) * 5) * 10 * dt; c.s = a > c.L * 0.6 ? 1 : 2;
+    } else if (cr.kind === 'burst') {
+      c.vz -= 520 * dt; c.z += c.vz * dt; c.x += c.vx * dt; c.gy += c.vg * dt;
+      if (c.z <= 0) { c.z = 0; if (Math.abs(c.vz) < 40) { c.rest = true; c.vz = 0; } else { c.vz = -c.vz * 0.3; c.vx *= 0.5; c.vg *= 0.5; } }
+      c.y = c.gy - c.z;
+    } else if (cr.kind === 'shatter') {
+      const ch = c.ch; c.x = Math.round(ch.x + c.x0); c.y = Math.round(ch.gy - ch.z + (c.y0 - ch.by)); if (ch.rest) c.rest = true;
+    } else if (cr.kind === 'burn') {
+      const u = Math.max(0, Math.min(1, (t - 0.1) / 1.35)), sink = (cr.H + 8) * u * (0.6 + 0.4 * u);
+      if (!c.burnT) { c.y = Math.round((c.y0 + sink) / 2) * 2; if (c.y > -6) { c.burnT = t; if (c.ash) { c.c = c.r < 0.03 ? PAL.stone4 : PAL.ink3; c.x = Math.round(c.x0 * 0.8 / 2) * 2; crLand(cr, c); c.y = -c.z; continue; } c.L = 0.35 + c.r * 0.5; c.vy = -(18 + c.r * 30); } else continue; }
+      if (c.burnT) { const a = t - c.burnT; if (a > c.L) { c.on = false; continue; } c.y += c.vy * dt; c.x += Math.sin((t + c.r * 5) * 6) * 8 * dt; c.c = a < c.L * 0.3 ? PAL.ember1 : a < c.L * 0.6 ? PAL.ember3 : PAL.ember4; c.s = a > c.L * 0.7 ? 1 : 2; }
+    }
+  }
+  if (cr.kind === 'shatter') for (const ch of cr.chunks.values()) { if (ch.rest) continue; ch.vz -= 520 * dt; ch.z += ch.vz * dt; ch.x += ch.vx * dt; ch.gy += ch.vg * dt;
+    if (ch.z <= 0) { ch.z = 0; if (Math.abs(ch.vz) < 35) { ch.rest = true; ch.vz = 0; } else { ch.vz = -ch.vz * 0.3; ch.vx *= 0.5; ch.vg *= 0.5; if (!cr.snd || t - cr.snd > 0.12) { cr.snd = t; sfx('block', { vol: 0.35, rate: 0.7 + rng() * 0.4, gap: 0.05 }); } } } }
+  if (cr.kind === 'heap' && !cr.snd && t > 0.28) { cr.snd = t; sfx('break', { vol: 0.6, rate: 1.4 }); }
+  if (cr.kind === 'burn' && !LOWFX && t < 1.5 && rng() < dt * 34) vemit(e.x + rand(-cr.Wh, cr.Wh) * 0.8, e.y - 3, { n: 2, ramp: 'fire', sp: 10, up: 46, life: 0.5, grav: -30, size: 2, glow: 4 });
+  if (cr.kind === 'fade' && !LOWFX && t < 1.0 && rng() < dt * 14) vemit(e.x + rand(-cr.Wh, cr.Wh), e.y - rand(0, cr.H), { n: 1, ramp: 'violet', sp: 6, up: 30, life: 0.7, grav: -20, size: 2, glow: 4 });
+}
+function drawCrumble(f) {
+  const cr = f.cr, e = f.e, end = CRUMBLE_T[cr.kind] + CRUMBLE_REST, X = Math.round(e.x), Y = Math.round(e.y);
+  const a = f.t > end ? Math.max(0, 1 - (f.t - end) / CRUMBLE_FADE) : 1; if (a <= 0) return;
+  ctx.globalAlpha = a; let last = null;
+  for (const c of cr.cells) {
+    if (!c.on) continue;
+    if (c.c !== last) { ctx.fillStyle = c.c; last = c.c; }
+    ctx.fillRect(X + Math.round(c.x), Y + Math.round(c.y), c.sw || c.s, c.s);
+  }
+  ctx.globalAlpha = 1;
+}
 function updateFalls(dt) {
   for (const f of falls) {
     f.t += dt;
+    if (f.cr) { updateCrumble(f, dt); continue; }
     if (f.wd) {
       const n = SPR[f.e.def.sheet].anims[f.e.def.die].length, i = Math.min(n - 1, Math.floor(f.t / WDIE.step));
       if (i !== f.fi) { f.fi = i; const fx = WDIE_FX[f.e.type]; if (fx) fx(f, i, f.e); if (i === n - 1) wardenSettle(f.e); }
@@ -10698,6 +10802,7 @@ function updateFalls(dt) {
   falls = falls.filter((f) => !f.done);
 }
 function drawFall(f) {
+  if (f.cr) return drawCrumble(f);
   const e = f.e, d = e.def, k = e.scaleK;
   let i = Math.min(2, Math.floor(f.t / dieStep(e))), alpha = e.illusion ? 0.6 : 1;
   if (f.wd) { const n = SPR[d.sheet].anims[d.die].length, end = n * WDIE.step + WDIE.hold; i = Math.min(n - 1, Math.floor(f.t / WDIE.step)); if (f.t > end) alpha = Math.max(0.35, 1 - (f.t - end) / 60 * 0.65); } // round 163: remains dim to a third over a minute
@@ -10708,6 +10813,14 @@ function drawFall(f) {
   // Mother Candlemass: her candles keep burning on the pool of wax, then gutter and go out.
   if (f.wd && e.type === 'candlemass' && !LOWFX) { const n = SPR[d.sheet].anims[d.die].length, u = Math.min(1, f.t / (n * WDIE.step)), top = spriteTop(e) * (1 - 0.8 * u * u * (3 - 2 * u)), a = u < 0.66 ? 1 : Math.max(0, 1 - (u - 0.66) / 0.1);
     if (a > 0) for (let c = -1; c <= 1; c++) flameTongue(e.x + c * (8 + u * 10), e.y - Math.max(5, top * (c ? 0.75 : 1)), 9 * (1 - u * 0.4) * (0.6 + 0.4 * a), 3, c * 2.1, a); }
+}
+// Round 166: an elite, rare or Warden rising out of the floor while it spawns (it was only a ring before, so a story
+// Warden was unseen through its opening lines). The sprite slides up through the floor line in whole 2 px steps.
+function drawRising(e) {
+  const k = Math.min(1, e.t / 1.0), u = 1 - (1 - k) * (1 - k), h = spriteTop(e) + 8, off = Math.round((1 - u) * h / 2) * 2;
+  if (off >= h) return;
+  ctx.beginPath(); ctx.rect(e.x - 160, e.y - 400, 320, 401); ctx.clip();
+  ctx.translate(Math.round(Math.sin(game.real * 40) * (1 - u) * 1.5), off); drawEnemy(e);
 }
 function drawEnemy(e) {
   const d = e.def, flip = e.face < 0;

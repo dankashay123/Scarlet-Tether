@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-18, after round 165 (build 165, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-18, after round 166 (build 166, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -757,6 +757,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 166:** two reports from the owner. (1) A story Warden was unseen through its opening lines: a spawning
+  elite drew only a ring, and the dialogue holds the rise at 1.05 of its 1.1 s. `drawRising(e)` now draws any
+  spawning `e.elite` (rares, elites, Wardens) sliding up through the floor line in 2 px steps, clipped at its feet,
+  with dust (`vemit` 'dust'). (2) Elite deaths were the plain fall: now `bodyFalls` sends rares and elites (by kind
+  or spawned tier; not Wardens or illusions; at most six at once) to a run-time crumble: `crumbleCells(e)` reads
+  the standing frame once per look (cached in `CR_CELLS`) as 2x2 cells, and `updateCrumble` moves them by kind
+  (`crumbleKind`: family from `VOICE` through `CRUMBLE_FAM`, overrides in `CRUMBLE_BY`): `heap` (bones fall and roll
+  into a lumpy pile, `crLand`), `melt` (the body widens evenly while its columns sink into a lens of a pool),
+  `fade` (motes rise, top first), `burst` (cells fly and bounce), `shatter` (8 px blocks fly and settle), `burn`
+  (the body sinks into a band of fire, cells turn to embers, a little ash). Remains rest `CRUMBLE_REST` s and fade.
+  `dismember(..., soft)` keeps the floor ring, cracks, soul and sound but drops gibs, the white burst and the gold
+  beam (they hid the start). The level-up screen waits for a crumble too. `tools/tests/round166.cjs`.
 - **Round 165:** "All" to round 164's list. (1) The Crier calls news once, the next
   time the Saint passes (`crierEvents(take)` against `SAVE.crierSeen`, noted quietly on
   the first town visit): a stratum opened, a deeper Station's Warden killed, a new Vigil
