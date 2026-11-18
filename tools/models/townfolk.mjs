@@ -1,3 +1,4 @@
+import { chunkify } from '../chunky.mjs';
 // Sculpted models for the townsfolk of Vael: the named NPCs, walkers,
 // children, crows and the Saint's dialog portrait. Exports
 // { sheetName: { animName: () => frames } }. Characters face right; each
@@ -331,14 +332,15 @@ function npcBust(id, blink) {
   const map = (p) => ({ ...p, bb: p.bb && [bx + (p.bb[0] - hx) * s, by + (p.bb[1] - hy) * s, p.bb[2] * s, bx + (p.bb[3] - hx) * s, by + (p.bb[4] - hy) * s, p.bb[5] * s], f: (x, y, z) => p.f(hx + (x - bx) / s, hy + (y - by) / s, z / s) * s });
   B.prims = S.prims.map(map); B.paints = S.paints.map(map);
   const fr = render(B, 34, 48, M, { ground: 99, rich: process.env.NORICH ? false : { melt: 1.1, meltAdd: 0.12, detail: 0.6, fall: 0.06, reach: 10 } });
-  const X = (x) => bx + (x - hx) * s, Y = (y) => by + (y - hy) * s, two = (x, y, c) => { for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) dot(fr, Math.round(x) + a, Math.round(y) + b, c); };
-  const ey = hy - 0.1;
-  for (const ex of [hx + 1.8, hx + 4]) {
-    if (blink) { dot(fr, Math.round(X(ex) - 1), Math.round(Y(ey)), 'ink1'); dot(fr, Math.round(X(ex)), Math.round(Y(ey)), 'ink1'); dot(fr, Math.round(X(ex) + 1), Math.round(Y(ey)), 'ink1'); }
-    else { two(X(ex) - 0.5, Y(ey) - 1.5, 'ink0'); dot(fr, Math.round(X(ex)), Math.round(Y(ey) + 0.6), 'ink1'); }
-  }
-  if (sp.brow) for (const [ex, d] of [[hx + 1.4, 1.8], [hx + 4, 2]]) { dot(fr, Math.round(X(ex) - 1), Math.round(Y(ey - d)), sp.brow); dot(fr, Math.round(X(ex)), Math.round(Y(ey - d)), sp.brow); }
-  if (!sp.beard) { const mc = sp.smile ? 'skin4' : 'skin3h'; dot(fr, Math.round(X(hx + 3.6) - 1), Math.round(Y(hy + 2.9)), mc); dot(fr, Math.round(X(hx + 3.6)), Math.round(Y(hy + 2.9)), mc); if (sp.smile) dot(fr, Math.round(X(hx + 3.6) + 1), Math.round(Y(hy + 2.9) - 1), mc); }
+  // Round 156: snapped to the 2x2 grid like every sprite in play (the owner found the fine render too smooth), then the
+  // face placed by hand in whole 2x2 cells.
+  chunkify(fr, { outline: false });
+  const X = (x) => Math.floor((bx + (x - hx) * s) / 2) * 2, Y = (y) => Math.floor((by + (y - hy) * s) / 2) * 2;
+  const cell = (x, y, c) => { for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) dot(fr, x + a, y + b, c); };
+  const ey = hy - 0.3;
+  for (const ex of [hx + 1.6, hx + 4.2]) cell(X(ex), Y(ey), blink ? (sp.skin === 'skinPale' ? 'skin3h' : 'skin3h') : 'ink0');
+  if (sp.brow) for (const ex of [hx + 1.6, hx + 4.2]) cell(X(ex), Y(ey) - 4, sp.brow);
+  if (!sp.beard) { const mc = sp.smile ? 'skin4' : 'skin3h', mx = X(hx + 3.4), my = Y(hy + 3); cell(mx, my, mc); if (sp.smile) cell(mx + 2, my - 2 < 0 ? my : my, mc); }
   return fr;
 }
 const BUSTS = ['odile', 'vane', 'barkeep', 'hollis', 'pell', 'crier', 'beggar', 'plushseller', 'priest', 'guard'];

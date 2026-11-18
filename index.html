@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '155';
+const BUILD = '156';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '156': ['FIXED: A STORY WARDEN NOW RISES INTO VIEW WHILE IT SPEAKS, SO ITS FIRST LINES NO LONGER PLAY OVER AN EMPTY ROOM.', 'TOWNSFOLK PORTRAITS NOW USE THE SAME BLOCKY PIXELS AS EVERYTHING ELSE IN PLAY.'],
   '155': ['THE BOUNTY BOARD NOW SHOWS TODAY\'S THREE DAILY QUESTS, THEIR PROGRESS AND THE TIME TO THE NEXT THREE.', 'WARDENS NOW SPEAK WITH A PORTRAIT TOO.', 'TOWNSFOLK PORTRAITS SIT BETTER IN THEIR FRAME, LEAVE OUT WHAT THEY HOLD, AND BLINK.', 'THE TOWN MINIMAP SHOWS ONLY THE FOUR NEAREST QUEST PINS, SMALLER, SO IT STAYS READABLE.'],
   '154': ['NEW: DAILY QUESTS. ONCE THE BOUNTY BOARD IS OPEN, THREE SMALL QUESTS COME EACH DAY AND PAY GOLD AND EMBERSTONES. SEE THE QUEST LOG.', 'QUEST MARKS NOW SHOW AS PINS ON THE TOWN MINIMAP.', 'TOWNSFOLK NOW SPEAK WITH A PORTRAIT OF THEIR HEAD AND SHOULDERS.', 'A STORY WARDEN NOW MAKES AN ENTRANCE: THE VIEW TURNS TO IT AND THE ROOM DARKENS WHILE IT SPEAKS.', 'THE ! OVER A TOWNSPERSON NOW RISES CLEAR OF THEIR NAME.'],
   '153': ['SIDE QUESTS NOW ALSO GIVE A LOOK OF THEIR OWN (A ROBE COLOUR, BOLT TRAIL OR DASH TRAIL), WORN FROM THE PLUSH STALL.', 'A SECOND WAVE OF SIDE QUESTS OPENS AT STATION X: HOLLIS, BROTHER CINDER AND THE PLUSH SELLER.', 'A GOLD RING AND A CHIME MARK EACH OBJECTIVE AND QUEST YOU FINISH.', 'A WARDEN\'S SPEECH PLATE NOW STAYS ON THE SCREEN AND POINTS AT THE WARDEN. TAP THE QUEST TRACKER TO FOLD IT TO TITLES.'],
@@ -10043,6 +10044,7 @@ function update(realDt) {
   // Round 154: a story Warden's entrance. While it speaks the view eases toward it (half way from the Saint) and back after.
   { const I = game.bossIntro, on = I && game.state === 'dialog' && game.scene === 'wound' && I.e && !I.e.dead, O = game.camOff || (game.camOff = { x: 0, y: 0 });
     const tx = on ? Math.max(-W * 0.38, Math.min(W * 0.38, (I.e.x - player.x) * 0.55)) : 0, ty = on ? Math.max(-H * 0.3, Math.min(H * 0.3, (I.e.y - player.y) * 0.55)) : 0, k = 1 - Math.exp(-realDt * 4);
+    if (on && I.e.state === 'spawn') { I.e.t = Math.min(1.05, I.e.t + realDt); I.e.animT += realDt; } // round 156: the Warden rises while it speaks (play is paused under the dialogue)
     O.x += (tx - O.x) * k; O.y += (ty - O.y) * k; if (!on && Math.abs(O.x) + Math.abs(O.y) < 0.5) { O.x = 0; O.y = 0; if (I && game.state !== 'dialog') game.bossIntro = null; }
     I && (I.dim = Math.max(0, Math.min(1, (I.dim || 0) + (on ? realDt : -realDt) * 4)));
     if (player && room && game.state === 'dialog' && game.scene === 'wound') camFollow(); }

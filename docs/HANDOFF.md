@@ -757,6 +757,12 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 156:** owner reports. (1) A story Warden's first lines played over an
+  empty room: play is paused under the dialogue, so its `spawn` rise never ran.
+  The entrance block in `update` now advances `e.t` (to 1.05) and `animT` in
+  real time while the Warden speaks. (2) NPC busts were too smooth: `npcBust`
+  now runs `chunkify` (the ui sheet is fine, so it is not done for it) and places
+  eyes, brows and mouth as whole 2x2 cells.
 - **Round 155:** the owner said "All" to round 154's list. (1) Wardens speak with
   a portrait: `monBust(id)` finds the top of the monster's first walk frame and
   its head's middle once (cached in `MON_BUST`) and `renderDialog` draws it at
