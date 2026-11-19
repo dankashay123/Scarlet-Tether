@@ -44,10 +44,15 @@ fs.mkdirSync(`${S}/shots`, { recursive: true });
   out.run = await p.evaluate(() => ({ story: HS.game.run.story, find: !!HS.storyFind, lvl: HS.SAVE.lvl }));
   // The pilot fights (god mode) until every goal but the message and the Warden is met.
   await p.evaluate(() => { HS.DEV.god = true; HS.DEV.speed = 2; HS.game.run.auto = true; });
-  const goalsMet = () => p.evaluate((k) => { const q = HS.qOf(`story${k}`), d = HS.STORY[k]; return d.goals.filter(([g]) => g !== 'read' && g !== 'warden').every(([g, m]) => (q.c[g] || 0) >= m); }, CH);
+  const goalsMet = () => p.evaluate((k) => { const q = HS.qOf(`story${k}`), d = HS.STORY[k]; return d.goals.filter(([g]) => g !== 'read' && g !== 'warden' && g !== 'chest').every(([g, m]) => (q.c[g] || 0) >= m); }, CH);
   const tick = async (where) => { const s0 = await st(); if (s0.state === 'stig') await p.evaluate(() => HS.pickStigma(0)); else if (s0.state === 'dialog') await closeDialog(where); else if (s0.state !== 'play' && s0.state !== 'loading' && s0.state !== 'tally') await p.evaluate(() => { HS.game.state = 'play'; }); await scan(where); };
   const t0 = Date.now(); let shots = 0;
   while (Date.now() - t0 < 240000 && !(await goalsMet())) { await tick('fight'); if (Date.now() - t0 > 15000 * (shots + 1) && shots < 3) await shot(`fight${shots++}`); await p.waitForTimeout(450); }
+  // The pilot never opens chests: when a chapter asks for one, walk to the nearest unopened chest and press E.
+  for (let k = 0; k < 3 && await p.evaluate((ch) => { const q = HS.qOf(`story${ch}`), g = HS.STORY[ch].goals.find(([x]) => x === 'chest'); return g && (q.c.chest || 0) < g[1]; }, CH); k++) {
+    const C0 = await p.evaluate(() => { const r = HS.room.rooms.filter((q) => q.chest && !q.chest.open).sort((a, b) => Math.hypot(a.chest.x - HS.player.x, a.chest.y - HS.player.y) - Math.hypot(b.chest.x - HS.player.x, b.chest.y - HS.player.y))[0]; return r && { x: r.chest.x, y: r.chest.y }; });
+    if (!C0) break; await walkTo(C0.x, C0.y + 14); out.chestButton = await p.evaluate(() => HS.interact && HS.interact.label); await press('KeyE'); await p.waitForTimeout(400); await tick('chest');
+  }
   out.fightSecs = Math.round((Date.now() - t0) / 1000);
   out.counts = await p.evaluate((k) => ({ ...HS.qOf(`story${k}`).c }), CH);
   // The message, then the Warden's lines.
