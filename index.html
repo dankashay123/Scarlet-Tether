@@ -2919,7 +2919,7 @@ function makeTown() {
   [0, 1, 2, 3, 4, 2].forEach((wi, k) => { const [id, bark] = kinds[k % kinds.length], w0 = onPath(TOWN_WALKS[wi]); person('town2', `${id}_walk`, w0.x, w0.y, { ...w0, speed: id === 'penitent' ? 10 : 14 + rng() * 10, bark, talk: id }); });
   interact.push({ x: CATHEDRAL_X, y: base + 8, r: 36, label: 'DESCEND', icon: 'descend', door: true, use: () => startDescent() });
   for (const it of interact) if (it.who) { it.x = it.who.x; it.y = it.who.y; }
-  for (const S1 of SITES) { const gate = S1.id === 'road' && gateOpen(); interact.push({ x: S1.x, y: base + S1.dy, r: 26, label: gate ? 'LEAVE VAEL' : siteDone(S1) ? 'LOOK' : 'LOCKED', icon: gate ? 'descend' : siteDone(S1) ? 'use' : 'lock', site: S1, use: () => (gate ? openTravel() : openSite(S1)) }); } // round 171: the Pilgrims' Gate opens onto the moor
+  for (const S1 of SITES) { const gate = () => S1.id === 'road' && gateOpen(); interact.push({ x: S1.x, y: base + S1.dy, r: 26, get label() { return gate() ? 'LEAVE VAEL' : siteDone(S1) ? 'LOOK' : 'LOCKED'; }, get icon() { return gate() ? 'descend' : siteDone(S1) ? 'use' : 'lock'; }, site: S1, use: () => (gate() ? openTravel() : openSite(S1)) }); } // round 171: the Pilgrims' Gate opens onto the moor (read live, so it opens the moment chapter 1 is handed in)
   chunkCanvas(roomCanvas);
   stain = roomCanvas; sctxStain = rc;
   // The town map and minimap read a copy with the buildings and trees drawn in.
