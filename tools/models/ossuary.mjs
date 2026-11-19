@@ -6,7 +6,7 @@
 // forms, lit from the top-left, eyes placed by hand, facing right, ax/ay at
 // the feet.
 import { deathFrames } from '../deaths.mjs';
-import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, noise3, dot, under } from '../sdf.mjs';
+import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, noise3, dot, under, mk } from '../sdf.mjs';
 import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt, rear } from './base.mjs';
 
 const PI = Math.PI, sin = Math.sin, cos = Math.cos;
@@ -31,7 +31,7 @@ const MM = {
   censer: { ramp: 'iron', spec: 0.6, bias: -0.18, min: 2 }, brass: { ramp: 'gold', spec: 0.6, bias: -0.25, min: 2 },
   goldDark: { ramp: 'gold', bias: -0.22, spec: 0.6, min: 2 },
 };
-const A = (f, ax, ay) => Object.assign(f, { ax, ay });
+const A = (f, ax, ay) => Object.assign(f, { ax: mk(ax), ay: mk(ay) }); // round 171: anchors follow the model scale
 const D = (f, x, y, c) => dot(f, Math.floor(x), Math.floor(y), c);
 const eye = (f, x, y, a, b) => { D(f, x, y, a); if (b) D(f, x, y + 1, b); };
 const free = (f, x, y, c) => { if (under(f, Math.floor(x), Math.floor(y)) < 0) D(f, x, y, c); };

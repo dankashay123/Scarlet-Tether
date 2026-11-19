@@ -28,7 +28,7 @@ fs.mkdirSync(`${S}/shots`, { recursive: true });
   await tap(W / 2, Math.round(H * 0.8)); await p.waitForTimeout(500);
   await tap(W / 2, Math.round(H * 0.8)); await p.waitForTimeout(2500);
   out.prologue = await closeDialog('prologue');
-  await p.evaluate((k) => { HS.tut.on = false; HS.SAVE.tutorialDone = true; HS.game.news = null; if (k > 0) { HS.SAVE.story = k; HS.SAVE.lvl = Math.max(HS.SAVE.lvl || 1, 2 + k * 3); } HS.ensureQuests(); HS.game.state = 'play'; HS.persist(); }, CH);
+  await p.evaluate((k) => { HS.tut.on = false; HS.SAVE.tutorialDone = true; HS.game.news = null; HS.SAVE.walkDone = true; if (k > 0) { HS.SAVE.story = k; HS.SAVE.lvl = Math.max(HS.SAVE.lvl || 1, 2 + k * 3); } HS.ensureQuests(); HS.game.state = 'play'; HS.persist(); }, CH);
   const C = await p.evaluate((k) => ({ giver: HS.STORY[k].giver, turn: HS.STORY[k].turn, goals: HS.STORY[k].goals, title: HS.STORY[k].title }), CH);
   out.title = C.title;
   // The giver: walk up and press E.
@@ -37,8 +37,17 @@ fs.mkdirSync(`${S}/shots`, { recursive: true });
   out.intro = await closeDialog('intro');
   out.taken = await p.evaluate((k) => HS.qOf(`story${k}`).st, CH);
   await p.waitForTimeout(300); await scan('town-taken');
-  // The cathedral doors.
-  { const D = await p.evaluate(() => { const d = HS.room.interact.find((q) => q.door); return d && { x: d.x, y: d.y }; }); await walkTo(D.x, D.y + 4); out.doorButton = await p.evaluate(() => HS.interact && HS.interact.label); await press('KeyE'); }
+  // The cathedral doors, or for a region chapter (round 171) the Pilgrims' Gate, the steps out there and the barrow door.
+  if (await p.evaluate((k) => !!HS.STORY[k].region, CH)) {
+    const G0 = await p.evaluate(() => { const it = HS.room.interact.find((q) => q.label === 'LEAVE VAEL'); return it && { x: it.x, y: it.y }; }); await walkTo(G0.x, G0.y); out.doorButton = await p.evaluate(() => HS.interact && HS.interact.label); await press('KeyE'); await p.evaluate(() => { if (HS.game.ask) { const L = HS.askLayout(); HS.askTap(L.yes.x + 4, L.yes.y + 4); } });
+    for (let i = 0; i < 60 && !(await p.evaluate(() => HS.game.scene === 'wound' && HS.room.region)); i++) await p.waitForTimeout(100);
+    await p.waitForTimeout(600); await scan('moor'); await shot('moor');
+    for (const who of ['wenna', 'brask']) { const n = await npcAt(who); if (!n) continue; await p.evaluate(([x, y]) => { for (const e of HS.enemies) if (Math.hypot(e.x - x, e.y - y) < 500) e.dead = true; }, [n.x, n.y]); await walkTo(n.x - 20, n.y + 10); await press('KeyE'); await closeDialog(`npc-${who}`); }
+    const Mw = await p.evaluate(() => { const m = HS.room.marks.find((q) => q.kind === 'wagons'); return m && { x: m.x, y: m.y }; }); if (Mw) { await walkTo(Mw.x, Mw.y + 30); await p.waitForTimeout(500); }
+    out.regionSteps = await p.evaluate((k) => ({ ...HS.qOf(`story${k}`).c }), CH);
+    const Dr = await p.evaluate(() => { const it = HS.room.interact.find((q) => q.label === 'ENTER'); return it && { x: it.x, y: it.y }; }); await p.evaluate(([x, y]) => { for (const e of HS.enemies) if (Math.hypot(e.x - x, e.y - y) < 500) e.dead = true; }, [Dr.x, Dr.y]); await walkTo(Dr.x, Dr.y + 4); await press('KeyE');
+    for (let i = 0; i < 80 && !(await p.evaluate(() => HS.game.scene === 'wound' && !HS.room.region && HS.game.state === 'play')); i++) await p.waitForTimeout(100);
+  } else { const D = await p.evaluate(() => { const d = HS.room.interact.find((q) => q.door); return d && { x: d.x, y: d.y }; }); await walkTo(D.x, D.y + 4); out.doorButton = await p.evaluate(() => HS.interact && HS.interact.label); await press('KeyE'); }
   for (let i = 0; i < 60 && (await st()).scene !== 'wound'; i++) await p.waitForTimeout(100);
   await p.waitForTimeout(800); await scan('arrive'); await shot('arrive');
   out.run = await p.evaluate(() => ({ story: HS.game.run.story, find: !!HS.storyFind, lvl: HS.SAVE.lvl }));

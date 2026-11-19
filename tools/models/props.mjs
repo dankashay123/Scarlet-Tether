@@ -4,7 +4,7 @@
 // tilts them about the ground line and lifts them so the front edge sits on
 // the frame floor. Also the leftovers from the old hand-drawn art: floor
 // splats, spawn mounds, candles, gibs, cobwebs and the HUD buttons.
-import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, folds, bumpy, clip, dot, pline } from '../sdf.mjs';
+import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, folds, bumpy, clip, dot, pline, getModelK } from '../sdf.mjs';
 import { torus } from './base.mjs';
 import { MM, R, flame } from './dungeon.mjs';
 import { blobs } from './vfx.mjs';
@@ -12,8 +12,8 @@ import { IDX, FINE } from '../palette.mjs';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 function hash(x, y, s = 0) { let h = (x * 374761393 + y * 668265263 + s * 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
-const put = (f, x, y, name) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < f.w && y < f.h) f.px[y * f.w + x] = IDX[name]; };
-const has = (f, x, y) => { x = Math.round(x); y = Math.round(y); return x >= 0 && y >= 0 && x < f.w && y < f.h && f.px[y * f.w + x] >= 0; };
+const put = (f, x, y, name) => { x = Math.round(x * getModelK()); y = Math.round(y * getModelK()); if (x >= 0 && y >= 0 && x < f.w && y < f.h) f.px[y * f.w + x] = IDX[name]; };
+const has = (f, x, y) => { x = Math.round(x * getModelK()); y = Math.round(y * getModelK()); return x >= 0 && y >= 0 && x < f.w && y < f.h && f.px[y * f.w + x] >= 0; };
 
 const M = {
   ...MM,

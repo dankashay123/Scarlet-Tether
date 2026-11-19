@@ -23,7 +23,7 @@ const S = process.argv[2], WH = (process.argv[3] || '').split('x').map(Number);
   const log = [];
   const shotTab = async (i, n) => { await tab(i); await p.waitForTimeout(120); await p.screenshot({ path: `${S}/shots/d${i + 1}-${n}.png` }); };
   // Every tab renders, with no label run past its cell.
-  for (const [i, n] of ['hero', 'gear', 'forge', 'world', 'town', 'debug'].entries()) await shotTab(i, n);
+  for (const [i, n] of ['hero', 'gear', 'forge', 'world', 'regions', 'town', 'pets', 'debug'].entries()) await shotTab(i, n);
   // GEAR: a whole set worn with its arms, items at a rarity, the bag.
   await tab(1);
   await press('< ', 1); await press('WEAR SET + ARMS'); log.push('worn skin ' + await p.evaluate(() => `${HS.G.skin} arms ${HS.SAVE.equip.bow && HS.SAVE.equip.bow.wset}`));
@@ -53,12 +53,12 @@ const S = process.argv[2], WH = (process.argv[3] || '').split('x').map(Number);
   log.push('hero ' + await p.evaluate(() => JSON.stringify({ lvl: HS.game.run.level, wounds: Object.keys(HS.game.run.wounds).length })));
   await tab(2); await press('WARDEN DROPS'); log.push('drops ' + await p.evaluate(() => HS.drops.filter((d) => d.kind === 'ember').length));
   // TOWN and DEBUG
-  await tab(4); await press('ALL STATIONS'); await press('+3 BLOODROSE KEYS'); log.push('keys ' + await p.evaluate(() => HS.SAVE.vkeys));
-  await tab(5); await press('FPS'); await press('PROFILE'); await press('HITBOXES'); await press('< SPEED', 1);
+  await tab(5); await press('ALL STATIONS'); await press('+3 BLOODROSE KEYS'); log.push('keys ' + await p.evaluate(() => HS.SAVE.vkeys));
+  await tab(7); await press('FPS'); await press('PROFILE'); await press('HITBOXES'); await press('< SPEED', 1);
   await p.waitForTimeout(400); await p.screenshot({ path: `${S}/shots/d6b-debug-on.png` });
   log.push('debug ' + await p.evaluate(() => JSON.stringify({ fps: HS.DEV.fps, boxes: HS.DEV.boxes, speed: HS.DEV.speed })));
   // Every button label fits its button.
-  log.push('overflow ' + await p.evaluate(() => { const bad = []; for (let t = 0; t < 6; t++) { HS.DEV.tab = t; for (const c of HS.devCells(HS.devLayout())) if (!c.it.lab && HS.textW(c.it.t) > c.w - 6) bad.push(c.it.t); } return JSON.stringify(bad); }));
+  log.push('overflow ' + await p.evaluate(() => { const bad = []; for (let t = 0; t < 8; t++) { HS.DEV.tab = t; for (const c of HS.devCells(HS.devLayout())) if (!c.it.lab && HS.textW(c.it.t) > c.w - 6) bad.push(c.it.t); } return JSON.stringify(bad); }));
   await p.evaluate(() => HS.closeDev()); await p.waitForTimeout(500); await p.screenshot({ path: `${S}/shots/d7-boxes.png` });
   console.log(log.join('\n'));
   console.log('errors', errs.length, errs.slice(0, 3)); await b.close();

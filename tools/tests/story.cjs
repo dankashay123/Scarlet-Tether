@@ -22,7 +22,7 @@ require('fs').mkdirSync(`${S}/shots`, { recursive: true });
   await tap(W / 2, Math.round(H * 0.8)); await p.waitForTimeout(500);
   await tap(W / 2, Math.round(H * 0.8)); await p.waitForTimeout(2500);
   out.prologue = await closeDialog('prologue');
-  await p.evaluate(() => { HS.tut.on = false; HS.SAVE.tutorialDone = true; HS.game.state = 'play'; HS.persist(); });
+  await p.evaluate(() => { HS.tut.on = false; HS.SAVE.tutorialDone = true; HS.SAVE.walkDone = true; const w = HS.qOf('walk_vael'); if (w) w.st = 'done'; HS.ensureQuests(); HS.game.state = 'play'; HS.persist(); }); // round 171: the walk is round171.cjs's
   out.offer0 = await q('story0');
   // The doors stay shut until the chapter is taken.
   await p.evaluate(() => HS.startDescent()); await p.waitForTimeout(200); out.gate = (await st()).state;
@@ -35,7 +35,14 @@ require('fs').mkdirSync(`${S}/shots`, { recursive: true });
     c.intro = await closeDialog(k === 0 ? 'intro0' : null);
     c.taken = (await q(`story${k}`)).st;
     if (k === 0) { await p.waitForTimeout(300); await p.evaluate(() => { HS.game.toast = null; }); await shot('tracker-town'); }
-    await p.evaluate(() => HS.startDescent());
+    // Round 171: a region chapter starts at the Pilgrims' Gate; its steps out there, then the barrow door into the station.
+    if (await p.evaluate((k) => !!HS.STORY[k].region, k)) {
+      await p.evaluate((k) => HS.travelRegion(HS.STORY[k].region), k);
+      for (let i = 0; i < 60 && !(await p.evaluate(() => HS.game.scene === 'wound' && HS.room.region)); i++) await p.waitForTimeout(100);
+      c.region = await p.evaluate(() => HS.room.region);
+      await p.evaluate((k) => { for (const g of HS.STORY[k].steps) HS.questBump(g); HS.room.interact.find((q) => q.label === 'ENTER').use(); }, k);
+      for (let i = 0; i < 60 && !(await p.evaluate(() => HS.game.scene === 'wound' && !HS.room.region && HS.game.state === 'play')); i++) await p.waitForTimeout(100);
+    } else await p.evaluate(() => HS.startDescent());
     for (let i = 0; i < 60 && (await st()).scene !== 'wound'; i++) await p.waitForTimeout(100);
     await p.waitForTimeout(700);
     c.run = await p.evaluate(() => ({ story: HS.game.run.story, stratum: HS.game.run.stratum, find: !!HS.storyFind }));

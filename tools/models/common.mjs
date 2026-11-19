@@ -2,7 +2,7 @@
 // smooth-joined shapes (tools/sdf.mjs), lit as one form, then finished with
 // hand-placed eyes and glints. Everything faces right; frames carry ax/ay at
 // the ground contact point.
-import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, noise3, dot, pline, under } from '../sdf.mjs';
+import { Scene, sphere, ellipsoid, capsule, box, skirt, rotZ, render, folds, bumpy, clip, noise3, dot, pline, under, mk } from '../sdf.mjs';
 import { MATS, torus, stride, odd, cyc, HALF, reactions, bobAt, posedFrame, rear } from './base.mjs';
 
 const MM = {
@@ -23,7 +23,7 @@ const MM = {
   silt: { ramp: 'teal', spec: 0.25, bias: -0.08 }, weed: { ramp: 'moss', spec: 0.15, bias: -0.15, min: 1 }, eel: { ramp: 'slate', spec: 0.6, bias: 0.05 }, eelDark: { ramp: 'teal', spec: 0.4, bias: -0.2, min: 2 }, belly: { ramp: 'moss', spec: 0.25 }, bellyHot: { ramp: 'blood', spec: 0.55, bias: 0.05 },
 };
 
-const A = (f, ax, ay) => Object.assign(f, { ax, ay });
+const A = (f, ax, ay) => Object.assign(f, { ax: mk(ax), ay: mk(ay) }); // round 171: anchors follow the model scale
 const R = (S, w, h, ground, o = {}) => render(S, w, h, MM, { ground, rich: RICH, ...o });
 // Round 79: commons take the blended shading too, a little calmer (they are small).
 const RICH = process.env.NORICH ? false : { melt: 1.3, meltAdd: 0.3, detail: 0.7 };

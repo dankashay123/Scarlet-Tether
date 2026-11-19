@@ -4,7 +4,7 @@
 //
 // Same 3/4 view as the town (tools/models/street.mjs): the scene is sheared so tops catch the light. World axes:
 // x right, y down, z toward the viewer; each prop's front foot sits on the frame's bottom row.
-import { Scene, sphere, ellipsoid, capsule, box, bumpy, render, clip, noise3, dot, pline } from '../sdf.mjs';
+import { Scene, sphere, ellipsoid, capsule, box, bumpy, render, clip, noise3, dot, pline, rotZ, getModelK } from '../sdf.mjs';
 import { MATS } from './base.mjs';
 import { IDX, FINE } from '../palette.mjs';
 
@@ -65,6 +65,9 @@ function castShadow(fr, { by = 3, maxT = 40, bias = 0.6, elev = 0.45 } = {}) {
 }
 const R = (S, w, h, o = {}) => castShadow(render(S, w, h, MM, { zmin: -80, zmax: 60, contrast: 1.25, contourDepth: 6, ground: h - 1, ...o }), o.shadow);
 const blank = (w, h) => ({ w, h, px: new Int16Array(w * h).fill(-1) });
+// Round 171: props render bigger under a model scale (PROP_K in tools/sprites.mjs), so touch-ups that look at the
+// finished frame work in its pixels: px2 paints one 2x2 block there.
+const px2 = (fr, x, y, name) => { x = Math.floor(x / 2) * 2; y = Math.floor(y / 2) * 2; for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) if (x + i >= 0 && y + j >= 0 && x + i < fr.w && y + j < fr.h) fr.px[(y + j) * fr.w + x + i] = IDX[name]; };
 const solidAt = (fr, x, y) => x >= 0 && y >= 0 && x < fr.w && y < fr.h && fr.px[y * fr.w + x] >= 0 && fr.px[y * fr.w + x] !== IDX.outline;
 // Lichen and moss: recolour a few stone pixels (only on stone) near the base and on the lit top.
 function lichen(fr, seed, low = 0.55, k = 0.22) {
@@ -113,7 +116,7 @@ function barrow(v) {
   S.paint({ mat: 'turfO', f: (x, y, z) => (noise3(x * 0.07 + 9 + v, y * 0.1, z * 0.07) > 0.3 && Math.abs(x - dx) > 20 ? -1 : 1) });
   const fr = lichen(R(S, W, H), 11 + v, 0.5, 0.18);
   // Grass tufts on the crest.
-  for (let k = 0; k < 18; k++) { const x = 18 + Math.floor(hash(k, 4, v) * (W - 36)); for (let y = 0; y < H; y++) if (solidAt(fr, x, y)) { dot(fr, x, y - 1, hash(k, 6) < 0.5 ? 'sand5' : 'rot4'); break; } }
+  for (let k = 0; k < 26; k++) { const x = Math.floor(fr.w * (0.14 + hash(k, 4, v) * 0.72)); for (let y = 0; y < fr.h; y++) if (solidAt(fr, x, y)) { px2(fr, x, y - 2, hash(k, 6) < 0.5 ? 'sand5' : 'rot4'); break; } }
   return fr;
 }
 
@@ -133,7 +136,7 @@ function gorse(v) {
   blobs.forEach(([dx, dy, dz, r], k) => S.add(bumpy(ellipsoid([cx + dx, G + dy, dz], [r, r * 0.8, r * 0.8], k % 2 ? 'gorse' : 'gorseL'), 1, 0.7, k + v * 5), 2.4));
   const fr = R(S, W, H);
   // Spines: short dark strokes on the edge; flowers: gold dots on the lit side.
-  for (let k = 0; k < 26; k++) { const x = Math.floor(hash(k, 1, v) * W), y = Math.floor(hash(k, 2, v) * (H - 4)); if (!solidAt(fr, x, y)) continue; dot(fr, x, y, hash(k, 3) < 0.45 ? (x < W * 0.55 && y < H * 0.55 ? 'gold2' : 'gold4') : 'moss7'); }
+  for (let k = 0; k < 34; k++) { const x = Math.floor(hash(k, 1, v) * fr.w), y = Math.floor(hash(k, 2, v) * (fr.h - 4)); if (!solidAt(fr, x, y)) continue; px2(fr, x, y, hash(k, 3) < 0.45 ? (x < fr.w * 0.55 && y < fr.h * 0.55 ? 'gold2' : 'gold4') : 'moss7'); }
   return fr;
 }
 
@@ -191,6 +194,69 @@ function tent() {
   return fr;
 }
 
+// ============================================================ wagon ===
+// The lost convoy's wagon: its back wheel broken, so the bed has dropped to the ground at the back; the front wheel
+// still stands. Sacks lie in the bed and on the ground, and the shafts point up at the sky.
+function wagon() {
+  const W = 92, H = 60, S = new View(), G = groundY(H, 12), cx = 44, tip = -0.2, pv = [cx + 24, G - 14];
+  const bed = (p) => rotZ(p, pv, tip);
+  S.add(bed(box([cx, G - 14, 0], [26, 1.6, 10], 0.5, 'wood')), 0);
+  for (const z of [-10, 10]) S.add(bed(box([cx, G - 18, z], [26, 4, 0.9], 0.4, 'woodB')), 0.3);
+  for (const x of [cx - 26, cx + 26]) S.add(bed(box([x, G - 18, 0], [0.9, 4, 10], 0.4, 'woodB')), 0.3);
+  for (const x of [cx - 17, cx - 6, cx + 5, cx + 16]) S.add(bed(box([x, G - 18, 10.8], [0.3, 3.5, 0.3], 0.1, 'hole')), 0, 'sub');
+  // The front wheel, upright on the side toward us, and the broken back wheel flat on the ground.
+  const wheel = (c, r, flat, broken) => {
+    S.add({ mat: 'woodB', bb: [c[0] - r - 2, c[1] - r - 2, c[2] - r - 2, c[0] + r + 2, c[1] + r + 2, c[2] + r + 2], f: (x, y, z) => flat ? Math.hypot(Math.hypot(x - c[0], (z - c[2])) - r, y - c[1]) - 1.3 : Math.hypot(Math.hypot(x - c[0], y - c[1]) - r, z - c[2]) - 1.3 }, 0);
+    for (let k = 0; k < 6; k++) { if (broken && k % 3 === 1) continue; const a = k * Math.PI / 3 + 0.3, e = flat ? [c[0] + Math.cos(a) * r, c[1], c[2] + Math.sin(a) * r] : [c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, c[2]]; S.add(rod(c, e, 0.7, 'wood'), 0.3); }
+    S.add(sphere(c, 1.8, 'iron'), 0.4);
+  };
+  wheel([cx + 16, G - 10, 12], 9.5, false, false);
+  wheel([cx - 30, G - 1, 8], 9, true, true);
+  for (const z of [-6, 6]) S.add(rod([cx + 26, G - 16, z], [cx + 44, G - 34, z * 1.2], 1.1, 'wood'), 0.3);
+  // Sacks in the bed and spilled behind it.
+  for (const [x, y, z, r] of [[cx - 12, G - 18, 0, 4.5], [cx - 2, G - 20, -3, 4], [cx - 26, G - 3, 14, 4.2], [cx - 38, G - 2.5, 10, 3.6]]) S.add(lump([x, y, z], [r, r * 0.75, r * 0.8], 'canvas', x, 0.5), 1);
+  return R(S, W, H);
+}
+
+// ======================================================= thorn tree ===
+// A wind-bent hawthorn: a leaning trunk and a crown of black thorny twigs swept one way.
+function thorn(v) {
+  const W = 112, H = 112, S = new View(), G = groundY(H, 5), cx = 40, lean = v ? 0.42 : 0.3;
+  const grow = (a, ang, len, r, depth, seed) => {
+    const b = [a[0] + Math.sin(ang) * len, a[1] - Math.cos(ang) * len, a[2] + (hash(seed, 1, v) - 0.5) * 5];
+    S.add(capsule(a, b, r, r * 0.66, 'woodB'), r > 2 ? 1.4 : 0.6);
+    if (depth <= 0 || r < 0.6) return;
+    const n = 2 + (hash(seed, 2, v) < 0.5 ? 1 : 0);
+    for (let k = 0; k < n; k++) grow(b, ang + lean * 0.5 + (k - (n - 1) / 2) * (0.5 + hash(seed, k + 3, v) * 0.4), len * (0.6 + hash(seed, k + 5, v) * 0.2), r * 0.64, depth - 1, seed * 3 + k + 1);
+  };
+  for (const [dx, dz] of [[-9, 2], [8, 3], [2, -4]]) S.add(capsule([cx, G - 6, 0], [cx + dx, G, dz], 3.2, 1.1, 'woodB'), 1.4);
+  S.add(capsule([cx, G, 0], [cx + 14, G - 40, 0], 5.4, 3.8, 'woodB'), 2);
+  grow([cx + 14, G - 40, 0], lean, 26, 3.8, 4, 7 + v);
+  grow([cx + 9, G - 30, 0], lean + 0.9, 18, 2.6, 3, 11 + v);
+  grow([cx + 11, G - 34, 0], lean - 0.7, 16, 2.4, 3, 13 + v);
+  const fr = R(S, W, H, { ground: H - 1 });
+  // Thorns: short dark spikes along the twig tips, and a few haws (red berries) on the lit side.
+  for (let k = 0; k < 40; k++) { const x = Math.floor(hash(k, 7, v) * fr.w), y = Math.floor(hash(k, 8, v) * fr.h * 0.6); if (!solidAt(fr, x, y)) continue; px2(fr, x + 2, y - 2, 'ink1'); if (hash(k, 9, v) < 0.25 && x < fr.w * 0.6) px2(fr, x, y, 'crimson3'); }
+  return fr;
+}
+
+// ============================================================ sheep ===
+// A moor sheep in a thick grey-cream fleece, dark face and legs; v 0 grazing (head down), v 1 looking up.
+MM.wool = { ramp: 'bone', spec: 0.04, bias: -0.04, min: 1 }; MM.woolD = { ramp: 'bone', bias: -0.2, min: 2 }; MM.face = { ramp: 'ink', spec: 0.1, bias: 0.2, min: 2 };
+function sheep(v) {
+  const W = 40, H = 30, S = new View(), G = groundY(H, 4), cx = 18;
+  for (const [dx, dz] of [[-7, -2], [-6, 2.5], [7, -2], [8, 2.5]]) S.add(capsule([cx + dx, G - 9, dz], [cx + dx + 0.5, G - 0.8, dz], 1.4, 1.1, 'face'), 0.3);
+  S.add(bumpy(ellipsoid([cx, G - 14, 0], [12, 7.5, 7], 'wool'), 1.1, 0.55, v + 3), 0);
+  S.add(bumpy(ellipsoid([cx - 6, G - 16, 0], [5.5, 5, 5.5], 'woolD'), 0.9, 0.6, v + 5), 2);
+  const hx = cx + 12, hy = v ? G - 20 : G - 9;
+  S.add(capsule([cx + 8, G - 15, 0], [hx, hy, 0], 3.2, 2.8, 'face'), 1.4);
+  S.add(ellipsoid([hx + 2, hy + 1, 0], [3.8, 2.8, 2.6], 'face'), 1);
+  for (const z of [-2.6, 2.6]) S.add(ellipsoid([hx - 1, hy - 1.6, z], [1.8, 0.9, 1.4], 'face'), 0.4);
+  const fr = R(S, W, H);
+  dot(fr, hx + 2, hy, 'bone1');
+  return fr;
+}
+
 // ============================================= ground bits (baked flat) ===
 // Heather: a small clump of purple flowers on dark stems.
 function heather(v) {
@@ -228,6 +294,9 @@ export default {
     drywall: () => [0, 1].map(drywall),
     gibbet: () => [gibbet()],
     tent: () => [tent()],
+    wagon: () => [wagon()],
+    sheep: () => [0, 1].map(sheep),
+    thorn: () => [0, 1].map(thorn),
     heather: () => [0, 1, 2].map(heather),
     tuft: () => [0, 1, 2].map(tuft),
     mudpatch: () => [0, 1].map(mudpatch),

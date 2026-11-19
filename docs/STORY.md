@@ -1,7 +1,8 @@
 # The campaign: draft for approval
 
-*Round 170 draft. Nothing here is in the game yet. Mark up anything you want changed;
-once you approve it, each round builds one part of it.*
+*Approved by the owner in round 171 (the open questions at the end take their planned answers: keep the twist,
+Vane unaging, the names as written, the opening skippable on later characters). Round 171 built the prologue and
+Region I's chapter; each later round builds the next part.*
 
 ## The short version
 

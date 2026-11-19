@@ -65,6 +65,7 @@ export function clip(prim, fn) { const f = prim.f; return { ...prim, f: (x, y, z
 // --------------------------------------------------------- pixel touch-ups ---
 // Hand-placed pixels drawn after rendering (eyes, strings, glints).
 export function dot(fr, x, y, name) {
+  x *= MK; y *= MK; // round 171: model units under a model scale
   if (POSE && fr.posed) [x, y] = poseXY(x, y);
   x = Math.round(x); y = Math.round(y);
   // On the chunky grid a hand-placed pixel fills its whole block.
@@ -72,7 +73,7 @@ export function dot(fr, x, y, name) {
   if (x >= 0 && y >= 0 && x < fr.w && y < fr.h) fr.px[y * fr.w + x] = IDX[name];
 }
 export function pline(fr, x0, y0, x1, y1, name) { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (let i = 0; i <= n; i++) dot(fr, x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, name); }
-export function under(fr, x, y) { if (POSE && fr.posed) [x, y] = poseXY(x, y); x = Math.round(x); y = Math.round(y); return x >= 0 && y >= 0 && x < fr.w && y < fr.h ? fr.px[y * fr.w + x] : -1; }
+export function under(fr, x, y) { x *= MK; y *= MK; if (POSE && fr.posed) [x, y] = poseXY(x, y); x = Math.round(x); y = Math.round(y); return x >= 0 && y >= 0 && x < fr.w && y < fr.h ? fr.px[y * fr.w + x] : -1; }
 
 // ------------------------------------------------------------- scenes ---
 // Each shape joins the scene with:
@@ -125,6 +126,19 @@ export const getRes = () => RES;
 // put. pad, dx and dy must be even to keep the 2x2 grid.
 let POSE = null;
 export function setPose(p) { POSE = p; }
+// Round 171: a model scale (the owner: the world should be in proportion to the Saint). While set, render() grows the
+// scene and its frame by MK, so a model built in its own units comes out bigger with real detail (not stretched
+// pixels), and dot(), pline() and under() take model units. Anchors set by a model go through mk(). Pose pivots and
+// pads stay in frame pixels (posedFrame reads them from a frame already scaled).
+let MK = 1;
+export function setModelK(k) { MK = k; }
+export const getModelK = () => MK;
+export const mk = (v) => Math.round(v * MK);
+function scaleScene(scene, k) {
+  const t = (p) => { const f = p.f; return { ...p, bb: p.bb && p.bb.map((v) => v * k), f: (x, y, z) => k * f(x / k, y / k, z / k) }; };
+  const S2 = new Scene(); S2.prims = scene.prims.map((p) => ({ ...t(p), k: (p.k || 0) * k, op: p.op })); S2.paints = scene.paints.map(t);
+  return S2;
+}
 function poseXY(x, y) {
   const { rot = 0, pivot: [px, py], dx = 0, dy = 0, pad = 0 } = POSE, c = Math.cos(rot), s = Math.sin(rot);
   const u = x - px, v = y - py;
@@ -146,6 +160,11 @@ function poseScene(scene) {
   return S2;
 }
 export function render(scene, w, h, MATS, opts = {}) {
+  if (MK !== 1) {
+    const k = MK; scene = scaleScene(scene, k); w = Math.round(w * k / 2) * 2; h = Math.round(h * k / 2) * 2; opts = { ...opts };
+    opts.zmax = opts.zmax ?? 60; opts.zmin = opts.zmin ?? -60; opts.contourDepth = opts.contourDepth ?? 5;
+    for (const key of ['ground', 'tiltY', 'tiltLift', 'zmin', 'zmax', 'contourDepth']) if (opts[key] != null) opts[key] *= k;
+  }
   if (POSE) {
     const pad = POSE.pad || 0;
     scene = poseScene(scene); w += pad * 2; h += pad * 2;

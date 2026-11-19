@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-19, after round 170 (build 170, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-19, after round 171 (build 171, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -757,6 +757,32 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 171:** the owner: "make sure everything is proportional to the Saint; everything looks small and the Saint
+  a giant", and "1-5" (approving `docs/STORY.md` as drafted; its open questions take the draft's defaults: keep the
+  twist, Vane unaging, the names as written, the opening skippable). The owner chose: props and monsters now, Vael's
+  buildings next round. (A) Scale: `tools/sdf.mjs` has a model scale (`setModelK`, `mk`): render() grows the scene
+  and frame by MK (real detail, not stretched pixels), dot/pline/under take model units; `tools/sprites.mjs` sets it
+  per anim from `MODEL_K` (person-sized commons: risen 1.5, crawler 1.4, acolyte 1.2, gravewarden 1.25, votary 1.3,
+  silt wretch 1.4, gleaner 1.4 and others) and `PROP_K` ('sheet/anim': the moor's stones 1.6, barrows 1.7, gibbet
+  1.45, tent, walls; the dungeon's organ 1.5, coffin 1.35, pews 1.25, sarcophagus, maiden, skull pillar). `MON_K` in
+  index.html matches MODEL_K: r, hy, hr grow by k and melee reach by its square root. Anchors in common/ossuary go
+  through `mk()`, props.mjs `put/has` scale too. New moor models: `wagon` (the convoy's, a broken wheel), `thorn`
+  (wind-bent hawthorn), `sheep`. Rares (62-74 px) and elites were already in proportion. (B) The opening (new
+  characters, `SAVE.walkStart`): `NARRATION` (seven pictures from the game's sprites, drawn by `drawNarration` under
+  speaker `narr`, SKIP top right), `STORY_VESTRY`, the walk (`walk_vael` quest: Hollis, Pell, the Bookie, the Crier,
+  `WALK_LINES`, `walkTalk`), the night (`WALK_NIGHT`, region `acre`: graves, a mausoleum, a pack of risen a
+  clearing; it ends when they all lie still, `acreDone`), then Vane offers chapter 1; the tutorial's town steps
+  follow the walk and its combat lessons run in the Acre. (C) The moor's chapter: chapter 2 (THE ODDS) has
+  `region: 'moor'` and `steps` (camp, wagons, brask) before its station; Vane gives it; the Pilgrims' Gate (the
+  road site's button, LEAVE VAEL, once chapter 1 is done: `gateOpen`, `travelRegion`) leads out; Wenna at the camp
+  and Sergeant Brask by the barrows (`REGION_NPC`, `regionTalk`, marks in `drawRegionMarks`); six lore pieces
+  (`REGION_LORE`, LOOK spots with a glint, `readLore`, `SAVE.lore`, the Codex's new LORE section); Wenna's flock
+  (`RSIDE`, quest ids `rside_*`, counted only in that region); the barrow door (`regionDoorUse`) starts the station
+  once the steps are done; the cathedral sends you to the gate instead. (D) The 1-5 list: crows on the gibbet and
+  thorn trees, grazing sheep and seed fluff on the wind (`regionTick`, `drawRegionMarks`); the tally's own card for
+  a region (BACK FROM THE HOLLOW MOOR, landmarks and lore found); the pilot opens a chest a chapter asks for
+  (`AP.goal = 'chest'`); the dev menu's REGIONS tab (index 4; TOWN, PETS and DEBUG moved up one). Tests:
+  `round171.cjs` (the whole opening and the moor chapter), story.cjs, storyplay.cjs and e2e.cjs follow the new flow.
 - **Round 170:** "All" to round 169's list, plus the owner's new direction: a much deeper story told across an open
   world outside Vael (four outdoor regions, about twenty minutes each, each ending at a story station, with quests,
   side quests and lore). The owner chose: the world is the campaign (the five chapters become its stations; Stations
