@@ -112,7 +112,7 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 const BUILD = '172';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
-  '172': ['VAEL IS NOW ITS TRUE SIZE: HOUSES, THE TAVERN, THE FORGE, THE CATHEDRAL, THE GATE, THE FOUNTAIN AND THE TREES ARE TWICE AS BIG, AND THE TOWN IS LAID OUT TO FIT. YOU RUN FASTER IN TOWN.', 'NEW REGION: THE SALLOW FEN, THROUGH THE SOUTH GATE. FLOODED VILLAGES, REED BEDS, A BELL TOWER IN THE WATER, OLD TOBE AND SISTER MARL, SIX PIECES OF LORE AND TWO SIDE QUESTS. CHAPTER 3 NOW STARTS THERE.', 'WORLD BOSSES: THE CHARNEL KING AT THE MOOR\'S OLD BARROWS AND THE DROWNED ORGANIST IN THE FEN\'S SUNKEN CHAPEL. THEY DROP LOOT AND EMBERSTONES.', 'THE MOOR HAS ITS OWN DEAD: BARROW-DEAD AND BOG HOUNDS.', 'THE OPENING IS SHORTER, AND LATER CHARACTERS CAN SKIP IT.', 'THE CODEX LORE PAGE SHOWS A PICTURE FOR EACH PIECE AND HOW MUCH OF THE UNWRITTEN GOSPEL YOU HAVE FOUND.', 'FIXED: THE SCREEN WENT BLANK NEAR SERGEANT BRASK ON THE MOOR.', 'TOWNSFOLK WALKING THE SAME PATH NOW STEP AROUND EACH OTHER.'],
+  '172': ['VAEL IS NOW ITS TRUE SIZE: HOUSES, THE TAVERN, THE FORGE, THE CATHEDRAL, THE GATE, THE FOUNTAIN AND THE TREES ARE TWICE AS BIG, AND THE TOWN IS LAID OUT TO FIT. YOU RUN FASTER IN TOWN.', 'NEW REGION: THE SALLOW FEN, THROUGH THE SOUTH GATE. FLOODED VILLAGES, REED BEDS, A BELL TOWER IN THE WATER, OLD TOBE AND SISTER MARL, SIX PIECES OF LORE AND TWO SIDE QUESTS. CHAPTER 3 NOW STARTS THERE.', 'WORLD BOSSES: THE CHARNEL KING AT THE MOOR\'S OLD BARROWS AND THE DROWNED ORGANIST IN THE FEN\'S SUNKEN CHAPEL. THEY DROP LOOT AND EMBERSTONES.', 'THE MOOR HAS ITS OWN DEAD: BARROW-DEAD AND BOG HOUNDS.', 'THE OPENING IS SHORTER, AND LATER CHARACTERS CAN SKIP IT.', 'THE CODEX LORE PAGE SHOWS A PICTURE FOR EACH PIECE AND HOW MUCH OF THE UNWRITTEN GOSPEL YOU HAVE FOUND.', 'FIXED: THE SCREEN WENT BLANK NEAR SERGEANT BRASK ON THE MOOR.', 'TOWNSFOLK WALKING THE SAME PATH NOW STEP AROUND EACH OTHER.', 'STORY MAPS HAVE A QUARTER MORE FOES AND MORE CHAMPION PACKS, AND THE REGIONS ARE BUSIER. READING A CHAPTER\'S MESSAGE WAKES THE DEAD AROUND YOU. IF THE WARDEN FALLS BEFORE YOU HAVE KILLED ENOUGH, THE DEAD KEEP RISING UNTIL YOU HAVE, SO YOU NEVER HAVE TO PLAY A CHAPTER TWICE.'],
   '171': ['THE WORLD IS NOW IN PROPORTION TO THE SAINT: THE RISEN AND OTHER COMMON FOES STAND AS TALL AS HIM, AND STANDING STONES, BARROWS, COFFINS, PEWS AND THE ORGAN ARE THEIR TRUE SIZE.', 'A NEW CHARACTER STARTS WITH A NARRATED OPENING, A WALK THROUGH VAEL AND A NIGHT FIGHT IN THE QUIET ACRE BEFORE THE FIRST DESCENT.', 'CHAPTER 2 NOW TAKES YOU OUT OF THE PILGRIMS\' GATE ONTO THE HOLLOW MOOR: FIND THE LOST CONVOY, MEET WENNA AND THE SURVIVOR, THEN GO DOWN INTO THE OLD BARROW.', 'LORE TO FIND ON THE MOOR, A SIDE QUEST FOR WENNA, AND A NEW LORE PAGE IN THE CODEX.', 'CROWS, SHEEP AND WIND ON THE MOOR, AND ITS OWN END CARD WHEN YOU GO HOME.', 'AUTO PLAY NOW OPENS A CHEST WHEN A CHAPTER ASKS FOR ONE.'],
   '170': ['AFTER YOU HAND IN A STORY CHAPTER, A CARD SHOWS ITS TIME, KILLS AND REWARD, AND TAKE ME THERE WALKS YOU TO THE NEXT CHAPTER\'S GIVER.', 'THE TOWN MAP HAS PLACES AND PEOPLE TABS, SO EVERY PLACE SHOWS WHAT OPENS IT.', 'HOLD THE SAINT LEVEL BAR IN VAEL TO SEE WHAT THE NEXT LEVELS OPEN.', 'A PERSON WITH A ! OR ? OVER THEIR HEAD NOW TAKES THE BUTTON OVER A PLACE NEXT TO THEM.', 'WARDEN AND QUEST NAMES KEEP THEIR CAPITALS IN OBJECTIVES.'],
   '169': ['BACK IN VAEL AFTER A DESCENT THAT RAISED YOUR SAINT LEVEL, A CARD LISTS WHAT THE NEW LEVELS OPENED, WITH BUTTONS TO TALENTS AND RITES.', 'THE TOWN MINIMAP SHOWS HOW MANY OF TODAY\'S DAILY QUESTS ARE DONE BY THE BOUNTY BOARD.', 'THE LOCKED MOVE STICK HAS A DARK RIM SO IT SHOWS ON BRIGHT FLOORS, AND A GOLD RING WHILE YOU HOLD IT.', 'EVERY RARE AND ELITE IN A BIG PACK NOW DIES ITS OWN WAY. BEFORE, THE LAST FEW FELL OVER.', 'QUEST, ITEM AND ELITE NAMES KEEP THEIR CAPITALS IN MESSAGES.'],
@@ -1942,13 +1942,14 @@ const TOLL_SHARE = 0.9, MAX_FOES = 1100;
 function populate() {
   const df = curDiff(), tutorial = tut.on && tut.step <= 8;
   // Density climbs with the Station (and with Vigil levels and omens).
-  const dens = (1 + (df.n - 1) * 0.07) * (df.dens || 1);
+  const story = !!(game.run && game.run.story != null) && !room.region; // round 172: a story chapter's station is a quarter denser
+  const dens = (1 + (df.n - 1) * 0.07) * (df.dens || 1) * (story ? 1.25 : 1);
   const before = enemies.length;
   for (const r of room.rooms) {
     if (r.type === 'start') continue;
     const d = Math.min(3, Math.max(0, r.depth - 1) + Math.floor(df.n / 3));
     const acre = room.region === 'acre', RGP = room.region && REGIONS[room.region], commons = acre ? ['risen'] : tutorial ? ['risen', 'crawler'] : RGP && RGP.pool ? RGP.pool : poolC().filter(([, min]) => min <= d).map(([id]) => id);
-    const clusters = acre ? 1 : tutorial ? 2 : Math.round((3 + r.ak * 2.4) * Math.pow(dens, 0.6) * (room.region ? 0.35 : 1)) - (r.type === 'shrine' || r.type === 'treasury' ? 2 : 0); // round 170: a region is roomier
+    const clusters = acre ? 1 : tutorial ? 2 : Math.round((3 + r.ak * 2.4) * Math.pow(dens, 0.6) * (room.region ? 0.6 : 1)) - (r.type === 'shrine' || r.type === 'treasury' ? 2 : 0); // round 170: a region is roomier
     for (let k = 0; k < clusters; k++) {
       if (enemies.length - before > MAX_FOES) break; // a cap so phones stay smooth
       const id = pick(commons), per = MON[id].group || 1, n = Math.max(1, Math.round((4 + rng() * 3 + df.n * 0.25) * Math.pow(dens, 0.4) / per));
@@ -1956,7 +1957,7 @@ function populate() {
       for (let i = 0; i < n; i++) for (let g = 0; g < per; g++) spawnMonster(id, x + rand(-18, 18), y + rand(-12, 12), { room: r.id });
     }
     if (tutorial || acre) continue;
-    if (r.type === 'combat' && rng() < (0.35 + df.n * 0.02) * Math.min(1.8, dens)) { const [x, y] = spawnPoint(r, 120); spawnPack(pick(RGP && RGP.rares ? RGP.rares : poolR()), 'rare', x, y, 1 + df.aff + (rng() < 0.4 ? 1 : 0), r.id); }
+    if (r.type === 'combat' && rng() < (story ? 0.55 : 0.35 + df.n * 0.02) * Math.min(1.8, dens)) { const [x, y] = spawnPoint(r, 120); spawnPack(pick(RGP && RGP.rares ? RGP.rares : poolR()), 'rare', x, y, 1 + df.aff + (rng() < 0.4 ? 1 : 0), r.id); }
     if (r.type === 'elite') { const [x, y] = spawnPoint(r, 120); spawnPack(pick(ELITE_POOL), 'elite', x, y, 2 + df.aff + (rng() < 0.4 ? 1 : 0), r.id); }
   }
   let total = 0;
@@ -2092,7 +2093,7 @@ function deathVoice(e) {
 function wardenSlain(e) {
   const df = curDiff(); earnHalo(e);
   if (wardenTrophy(e, df)) later(3.5, () => toast(`NEW TROPHY: ${e.def.name}, STATION ${ROMAN[df.n - 1]}`, 3)); // round 84
-  game.warden = null; game.run.reach = Math.max(game.run.reach || 0, 2);
+  game.warden = null; game.run.reach = Math.max(game.run.reach || 0, 2); if (!e.world) game.storyWardenDown = true; // round 172: story waves (storyTick)
   // The fall: a long slow beat, a white flash, and a fountain of coins that
   // lands before it is drawn to the Saint.
   game.slowmo = 1.1; game.flash = 0.25; game.shake = 10; sfx('elite', { rate: 0.7 }); sfx(AUDIO.has(`fall_${e.type}`) ? `fall_${e.type}` : 'death', { gap: 0 }); AUDIO.duck(3, 0.2); buzz([60, 40, 90]);
@@ -2602,6 +2603,7 @@ function useStratum(k) {
 // so a descent left unfinished can be rebuilt and resumed.
 function seeded(a) { return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function newRun() {
+  game.storyWardenDown = false; game.storyWaveT = 0;
   const resume = game.resumeRun; game.resumeRun = null;
   // Round 70: what the character had going in, for the pause panel's "since last descent".
   if (!resume && !game.nextYard && player && game.scene === 'town') { SAVE.lastStats = { hp: player.maxHp, dmg: G.dmg || 0, sanct: playerSanctity(), lvl: SAVE.lvl || 1 }; persist(); }
@@ -6322,10 +6324,31 @@ function storyRead() {
   F.read = true; sfx('chime', { vol: 0.5, rate: 0.8 }); questBump('read');
   game.dialog = null;
   playScene(C.note.map((t) => ['note', t]), () => {
+    storyHorde(1.6); game.banner = { text: 'THE DEAD ANSWER', sub: 'THEY RISE AROUND YOU', t: 0, color: PAL.blood1 || PAL.gold0 }; sfx('knell', { vol: 0.5, rate: 0.7, gap: 0.5 }); // round 172: reading the message wakes the dead
     if (game.toll && game.toll.done && !game.warden) spawnWarden(C.warden);
     else toast('FILL THE TOLL TO CALL THE WARDEN.', 3);
   });
   if (game.dialog) game.dialog.noteName = C.find;
+}
+// Round 172: the dead rise in a ring around the Saint (a story chapter's set piece, and its safety net: once the
+// Warden is dead, waves keep coming until the chapter's kill count is met, so it never needs a second run).
+function storyHorde(k = 1) {
+  if (!player || !room || !room.isSolid) return 0; let n = 0;
+  const pool = room.region && REGIONS[room.region] && REGIONS[room.region].pool ? REGIONS[room.region].pool : poolC().filter(([, min]) => min <= 1).map(([id]) => id);
+  for (let p = 0; p < Math.round(3 * k); p++) {
+    let at = null; for (let t = 0; t < 14 && !at; t++) { const a = rng() * Math.PI * 2, d = 90 + rng() * 80, x = player.x + Math.cos(a) * d, y = player.y + Math.sin(a) * d * 0.7; if (!room.isSolid(Math.floor(x / TILE), Math.floor(y / TILE))) at = [x, y]; }
+    if (!at) continue; const id = pick(pool), per = MON[id].group || 1;
+    for (let i = 0; i < Math.max(1, Math.round(5 / per)); i++) for (let g = 0; g < per; g++) { const e = spawnMonster(id, at[0] + rand(-16, 16), at[1] + rand(-10, 10), {}); if (e) { e.asleep = false; n++; } }
+    later(0.05 * p, () => { if (!LOWFX) vemit(at[0], at[1], { n: 10, ramp: 'bone', sp: 40, up: 30, life: 0.8, grav: 60, size: 2 }); });
+  }
+  return n;
+}
+function storyTick(dt) {
+  const k = game.run.story, C = STORY[k], q = qOf(`story${k}`); if (!C || !q || q.st !== 'active' || q.step !== 0 || room.region) return;
+  const g = C.goals.find(([x]) => x === 'kills'); if (!g || (q.c.kills || 0) >= g[1] || !game.storyWardenDown) return;
+  const alive = enemies.filter((e) => !e.dead && !e.illusion && !e.asleep && Math.hypot(e.x - player.x, e.y - player.y) < 260).length;
+  game.storyWaveT = (game.storyWaveT || 0) - dt;
+  if (alive < 8 && game.storyWaveT <= 0) { game.storyWaveT = 3; storyHorde(Math.max(1, Math.min(2.5, (g[1] - (q.c.kills || 0)) / 40))); toast(`THE DEAD KEEP RISING. KILL ${g[1] - (q.c.kills || 0)} MORE.`, 2.5); game.toastColor = PAL.holy1; }
 }
 function storyComplete(k) { SAVE.story = Math.max(storyN(), k + 1); persist(); }
 // ------------------------------------------------------------ quests ---
@@ -10767,6 +10790,7 @@ function update(realDt) {
   if (game.scene === 'wound' && game.state === 'play' && game.run && game.run.stratum === 2) updateDrips(realDt);
   if (game.scene === 'wound' && game.state === 'play' && game.run && (game.run.stratum || 1) === 1 && !room.region) updateUndercroft(realDt);
   if (game.state === 'play' && regionRun()) regionTick(); // round 170
+  if (game.state === 'play' && storyRun() && !game.yard) safe('story', () => storyTick(dt)); // round 172
   game.time += dt;
   game.fervorT += dt;
   if (tal('c_szeal') && game.fervor < 25) game.fervor = 25;

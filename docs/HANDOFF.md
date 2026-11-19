@@ -791,6 +791,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   `REGIONS[id].pool/rares`. (E) The opening is shorter, and characters after the first can SKIP THE OPENING
   (`SAVE.introSeen`, account-wide). (F) The Codex LORE page: a picture per piece (`pic`) and THE UNWRITTEN GOSPEL,
   N% WRITTEN. Test: `tools/tests/round172.cjs`.
+  (G) The owner: "the campaign maps don't have enough mobs to complete the kill count". Measured: the stations held
+  390-440 foes but the Warden comes at 90% of the Toll (elites weigh more), so chapters 4-5 (300 kills) could end
+  short. Now a story station is 1.25x denser with more rare packs (`story` in `populate`), regions 0.6 (was 0.35),
+  reading the message raises a horde (`storyHorde`, THE DEAD ANSWER), and after the Warden falls (`game.storyWardenDown`)
+  `storyTick` raises waves near the Saint until the kill goal is met. Stations now hold 500-580 foes.
 - **Round 171:** the owner: "make sure everything is proportional to the Saint; everything looks small and the Saint
   a giant", and "1-5" (approving `docs/STORY.md` as drafted; its open questions take the draft's defaults: keep the
   twist, Vane unaging, the names as written, the opening skippable). The owner chose: props and monsters now, Vael's
