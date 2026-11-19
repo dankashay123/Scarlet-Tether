@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '168';
+const BUILD = '169';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '169': ['BACK IN VAEL AFTER A DESCENT THAT RAISED YOUR SAINT LEVEL, A CARD LISTS WHAT THE NEW LEVELS OPENED, WITH BUTTONS TO TALENTS AND RITES.', 'THE TOWN MINIMAP SHOWS HOW MANY OF TODAY\'S DAILY QUESTS ARE DONE BY THE BOUNTY BOARD.', 'THE LOCKED MOVE STICK HAS A DARK RIM SO IT SHOWS ON BRIGHT FLOORS, AND A GOLD RING WHILE YOU HOLD IT.', 'EVERY RARE AND ELITE IN A BIG PACK NOW DIES ITS OWN WAY. BEFORE, THE LAST FEW FELL OVER.', 'QUEST, ITEM AND ELITE NAMES KEEP THEIR CAPITALS IN MESSAGES.'],
   '168': ['A SAINT LEVEL GAINED IN A DESCENT FLASHES THE GOLD SAINT LINE AND SHOWS THE NEW LEVEL OVER IT.', 'THE LOCKED MOVE STICK GLOWS SOFTLY SO YOU CAN SEE WHERE IT IS.', 'THE TWO VILLAGERS BY THE SCRYING POOL STAND A LITTLE FARTHER OUT, CLEAR OF ITS BUTTON.', 'AN ELITE\'S DEATH STARTS WITH A WHITE WASH, AND ITS REMAINS SHOW A LITTLE FAINTER, SO THEY READ AS DEAD IN A CROWD.'],
   '167': ['BROTHER PELL, THE PLUSH SELLER AND THE ENCHANTER STAND BESIDE THEIR STALLS, SO THE STALL\'S BUTTON SHOWS WHEN YOU STAND IN FRONT OF IT. A PLACE\'S BUTTON NOW WINS OVER TALK UNLESS THE PERSON IS CLEARLY NEARER.', 'FIXED: UNDEFINED SHOWED IN THE MIDDLE OF THE SCREEN AT THE START OF A STORY CHAPTER. IT NOW SAYS WHAT TO FIND.', 'THE MOVE STICK IS LOCKED: IT STAYS WHERE IT IS WHILE YOU DRAG. SETTINGS, CONTROLS, STICK BASE SETS IT BACK TO FOLLOWS.', 'NEW: A SAINT LEVEL BAR. IN VAEL IT SITS AT THE BOTTOM OF THE SCREEN; IN A DESCENT IT IS THE GOLD LINE UNDER THE LEVEL BAR. HOLD IT FOR THE NUMBERS.', 'LONG MESSAGES NOW WRAP INSTEAD OF RUNNING OFF THE SCREEN.'],
   '166': ['A STORY WARDEN NOW SHOWS WHILE IT SPEAKS ITS FIRST LINES: IT RISES OUT OF THE FLOOR.', 'ELITES AND RARES NOW RISE OUT OF THE FLOOR TOO, IN A PUFF OF DUST.', 'ELITES AND RARES NOW DIE THEIR OWN WAY: BONES COLLAPSE INTO A HEAP, FLESH MELTS INTO A POOL, SPIRITS FADE AWAY, ARMOUR SHATTERS, CLERICS SINK INTO FIRE AND VERMIN BURST APART.', 'THE LEVEL-UP SCREEN WAITS UNTIL AN ELITE HAS FINISHED DYING.'],
@@ -554,7 +555,7 @@ const isBold = (o) => o.bold ?? !!(o.glow || (o.sc || 1) >= 1.5); // titles and 
 // turns a short label into Title Case and anything longer into a sentence, and
 // keeps game names (sets, rites, Wardens, sites, terms) and Roman numerals capitalised.
 // A string that already has a lower-case letter is left as it is.
-const CASE_TERMS = new Set('EMBERWAKE MURMUR CHANT RAPTURE FRENZY INDULGENCE INDULGENCES TESTAMENT TESTAMENTS RUBRIC RUBRICS ZEAL TOLL WARDEN WARDENS SAINT SAINTS STATION STATIONS VIGIL VIGILS HALLOWED RECKONING RECKONINGS EMBERSTONE EMBERSTONES CHRISM CHRISMS MENDICANT VESPER ANCHORESS SANCTITY MIGHT VAEL ODILE PELL CINDER VANE HOLLIS BARNABY ULM CANONRY CENSER ENCHANTER UNDERCROFT NAVE OSSUARY STRATUM STRATA CARNAGE WOUND WOUNDS'.split(' '));
+const CASE_TERMS = new Set('EMBERWAKE MURMUR CHANT RAPTURE FRENZY INDULGENCE INDULGENCES TESTAMENT TESTAMENTS RUBRIC RUBRICS ZEAL TOLL WARDEN WARDENS SAINT SAINTS STATION STATIONS VIGIL VIGILS HALLOWED RECKONING RECKONINGS EMBERSTONE EMBERSTONES CHRISM CHRISMS MENDICANT VESPER ANCHORESS SANCTITY MIGHT VAEL ODILE PELL CINDER VANE HOLLIS BARNABY ULM CANONRY CENSER ENCHANTER BOOKIE UNDERCROFT NAVE OSSUARY STRATUM STRATA CARNAGE WOUND WOUNDS'.split(' '));
 const CASE_SMALL = new Set('A AN THE OF TO IN ON AT FOR AND OR BY WITH FROM PER VS AS'.split(' '));
 const CASE_KEEP = /^(?:HP|XP|DPS|FX|OK|UI|PNG|(?=[IVXL])L?X{0,3}(?:IX|IV|V?I{0,3})\+?|[A-Z]\d+)$/; // HP, XP, Roman numerals, F1
 const CASE_VERBS = new Set('TAP HOLD DRAG WEAR BUY GO FINISH KILL PICK CHOOSE SPEND TALK OPEN PRESS MOVE REACH FIND CLEAR NO GET WALK FALL BEAT SELL BURN USE CLAIM DIES COMES'.split(' '));
@@ -563,7 +564,7 @@ function caseNames() {
   const add = (s) => { if (typeof s !== 'string' || !/^[A-Z][A-Z'\- ]+[A-Z]$/.test(s)) return; s = s.replace(/^THE /, ''); if (s.includes(' ')) CASE_NAMES.set(s, titleWords(s, true)); };
   const walk = (o, d) => { if (!o || d > 4) return; if (Array.isArray(o)) { for (const v of o) walk(v, d + 1); return; } if (typeof o !== 'object') return; for (const [k, v] of Object.entries(o)) { if (k === 'name' || k === 'short') add(v); else if (typeof v === 'object') walk(v, d + 1); } };
   try { walk([PETS, LEGENDS, RITES, MRITES, ARITES, VSETS, TALENT_TREES, SITES, STRATA, CHRISM, CENSER_UP, HALOS, OMENS, ENCHANTS, PASSIVES, WOUNDS, MON], 0); Object.values(LEGENDARIES).forEach(add); } catch { /* data not ready yet */ }
-  for (const s of ['ARCHDEACON VANE', 'BROTHER CINDER', 'BROTHER PELL', 'BROTHER ULM', 'SISTER ODILE', 'OLD BARNABY', 'BLOODROSE KEY', 'BLOODROSE KEYS', 'EMBER FORGE', 'ASHEN ALTAR', 'TRAINING YARD', 'BLEEDING VIGIL', 'WEEPING RELIQUARY', 'QUIET ACRE', 'PILGRIMS\' GATE', 'VIGIL ROLL', 'SCRYING POOL', 'BOUNTY BOARD', 'PENITENT CELLS', 'SAINT LEVEL', 'DROWNED NAVE', 'OSSUARY SPIRE', 'GREAT FONT', 'BELL CROW']) add(s);
+  for (const s of ['ARCHDEACON VANE', 'BROTHER CINDER', 'BROTHER PELL', 'BROTHER ULM', 'SISTER ODILE', 'OLD BARNABY', 'BLOODROSE KEY', 'BLOODROSE KEYS', 'EMBER FORGE', 'ASHEN ALTAR', 'TRAINING YARD', 'BLEEDING VIGIL', 'WEEPING RELIQUARY', 'QUIET ACRE', 'PILGRIMS\' GATE', 'VIGIL ROLL', 'SCRYING POOL', 'BOUNTY BOARD', 'PENITENT CELLS', 'SAINT LEVEL', 'DROWNED NAVE', 'OSSUARY SPIRE', 'GREAT FONT', 'BELL CROW', 'TOWN CRIER', 'PLUSH SELLER']) add(s);
   const list = [...CASE_NAMES.keys()].sort((a, b) => b.length - a.length).map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   CASE_RX = list.length ? new RegExp(`(?<![A-Z'])(?:${list.join('|')})(?![A-Z])`, 'g') : /$^/g;
 }
@@ -578,6 +579,9 @@ function wordCase(w, first, title) {
   return CASE_TERMS.has(base.replace(/'S$/, '')) ? cap(false) : lower;
 }
 function titleWords(s, title) { return s.split(' ').map((w, i) => wordCase(w, i === 0, title)).join(' '); }
+// Round 169: a sentence with names in it (a quest title, an item, an elite): the sentence is cased as usual and each
+// name, put in for XNAMEAX, XNAMEBX..., keeps its capitals ('Equipped Pendant of the Fox', not 'pendant of the fox').
+const named = (tpl, ...names) => names.reduce((s0, n, i) => s0.replace(new RegExp(`xname${'abcd'[i]}x`, 'i'), titleWords(String(n).toUpperCase(), true)), caseOf(tpl));
 function caseOf(s) {
   s = String(s);
   if (/[a-z]/.test(s)) return s; // already cased (a wrapped line, a typed-out part of one)
@@ -930,6 +934,7 @@ addEventListener('keydown', (e) => {
   if (game.state === 'codex') { if (e.code === 'Escape') game.state = game.codex.back; return; }
   if (game.state === 'rites' || game.state === 'censer' || game.state === 'canonry') { if (e.code === 'Escape') hubClose(); return; }
   if (game.state === 'resume') { if (e.code === 'Escape') { SAVE.suspend = null; persist(); game.state = 'play'; } return; }
+  if (game.state === 'saintlv') { if (e.code === 'Escape' || e.code === 'Enter') { game.lvUp = null; game.state = 'play'; } return; }
   if (e.code === 'KeyT' && (game.state === 'play' || game.state === 'pause')) { openRites(game.state); return; }
   if (game.state === 'stig') { if (game.stig.peek) game.stig.peek = null; else if (game.stig.t > 0.35 && game.stig.reveal) pickStigma(0); else if (game.stig.t > 0.35 && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) pickStigma(+e.code.slice(5) - 1); else if (game.stig.t > 0.35 && e.code === 'KeyR' && canReroll()) rerollWounds(); return; }
   if (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyK') input.dash = true;
@@ -2003,7 +2008,7 @@ function bankRun(died) {
 function renderRoomStatus() {
   // Location card that fades after arriving.
   const ct = game.real - (game.cardAt || 0);
-  if (ct < 3.5 && !(game.warden && !game.warden.dead) && !(game.focus && !game.focus.dead)) { ctx.globalAlpha = Math.min(1, ct * 3, (3.5 - ct) * 1.5); text(game.scene === 'town' && game.district ? game.district : room.name, W / 2, Math.round(H * 0.22), PAL.gold1, { align: 'center', sc: 2 }); ctx.globalAlpha = 1; }
+  if (ct < 3.5 && game.state !== 'saintlv' && !(game.warden && !game.warden.dead) && !(game.focus && !game.focus.dead)) { ctx.globalAlpha = Math.min(1, ct * 3, (3.5 - ct) * 1.5); text(game.scene === 'town' && game.district ? game.district : room.name, W / 2, Math.round(H * 0.22), PAL.gold1, { align: 'center', sc: 2 }); ctx.globalAlpha = 1; }
   if (game.scene !== 'wound') return;
   // The Warden's bar while it lives; otherwise the Toll.
   const wd = game.warden;
@@ -2380,6 +2385,7 @@ function newRun() {
   R0.cell = game.nextCell || null; game.nextCell = null; R0.seed = seed; R0.dead = [];
   R0.story = resume ? (resume.story ?? null) : (game.nextStory ?? null); game.nextStory = null; game.storyFind = null; // round 150
   R0.yard = !!game.nextYard; game.nextYard = false;
+  if (!R0.yard) game.lvStart = resume && game.lvStart ? game.lvStart : saintLv(); // round 169: for the level summary back in Vael
   R0.auto = !!(resume ? resume.auto : game.nextAuto) && !R0.vigil && !R0.cell && !R0.yard; game.nextAuto = false; AP.field = null; AP.goal = '';
   // The Martyr's vow is spent on the descent it was taken for.
   R0.martyr = !!game.nextMartyr && !R0.vigil && !R0.cell && !R0.yard && !tut.on; game.nextMartyr = false;
@@ -2751,7 +2757,7 @@ function openSite(s) {
   // Round 151: a site's quest: the first visit plays its scene and hands over things to try it with.
   { const q = qOf(`site_${s.id}`), D = QSITE[s.id];
     if (q && q.st === 'offer' && siteDone(s)) { q.st = 'active'; const gift = D.gift ? D.gift() : null; persist();
-      playScene([...D.lines.map((t) => [D.npc, t]), ...(gift ? [[D.npc, `YOU RECEIVED ${gift}.`]] : [])], () => { toast(`NEW QUEST: ${D.title}. ${D.goal[2]}.`, 3.5); game.toastColor = PAL.gold1; openSite(s); }); return; }
+      playScene([...D.lines.map((t) => [D.npc, t]), ...(gift ? [[D.npc, `YOU RECEIVED ${gift}.`]] : [])], () => { toast(named(`NEW QUEST: XNAMEAX. ${D.goal[2]}.`, D.title), 3.5); game.toastColor = PAL.gold1; openSite(s); }); return; }
     if (siteDone(s)) questBump(`site:${s.id}`); }
   if (s.id === 'cells' && (siteDone(s) || Object.keys(SAVE.cells || {}).length)) return openCells();
   if (s.id === 'stall' && siteDone(s)) return openShop();
@@ -2941,7 +2947,7 @@ function shopTap(x, y) {
   if (it && !it.sold && inRect(L.btnB, x, y) && (SAVE.bag.length < BAG_SIZE || !SAVE.equip[it.slot]) && spend(it.price)) {
     questBump('buy');
     const copy = { ...it, stats: it.stats.map((q) => [...q]), id: `${it.id}b` }; delete copy.price;
-    it.sold = true; bagAdd(copy); sfx('buy'); toast(`BOUGHT ${nm(copy)}`, 2); game.toastColor = RARITY[copy.ri].color; persist();
+    it.sold = true; bagAdd(copy); sfx('buy'); toast(named('BOUGHT XNAMEAX', nm(copy)), 2); game.toastColor = RARITY[copy.ri].color; persist();
   }
 }
 
@@ -3372,7 +3378,7 @@ function forgeTap(x, y) {
     if (embers() < 1) { toast('NO EMBERSTONES. WARDENS DROP THEM.', 2); return; }
     guard(() => { if (embers() > 0) reforgeOnce(it, si); });
   }
-  if (inRect(L.btnB, x, y) && (it.il || 1) < bestIl() && spend(temperCost(it))) { it.il = bestIl(); applyGear(); persist(); sfx('shrine', { gap: 0.2 }); toast(`${nm(it)} TEMPERED TO STATION ${ROMAN[it.il - 1]}`, 2); }
+  if (inRect(L.btnB, x, y) && (it.il || 1) < bestIl() && spend(temperCost(it))) { it.il = bestIl(); applyGear(); persist(); sfx('shrine', { gap: 0.2 }); toast(named(`XNAMEAX TEMPERED TO STATION ${ROMAN[it.il - 1]}`, nm(it)), 2); }
 }
 
 // ------------------------------------------------------------ the Enchanter ---
@@ -3540,7 +3546,7 @@ function enchantTap(x, y) {
     const go = () => {
       for (let k = 0; k < 3; k++) ingrs()[N.sel * 3 + k]--;
       it.ench = E.id; it.enchT = 1; applyGear(); questBump('enchant'); persist();
-      toast(`${nm(it)}: ${E.name}`, 2.6); game.toastColor = E.col; game.flash = 0.1;
+      toast(named(`XNAMEAX: ${E.name}`, nm(it)), 2.6); game.toastColor = E.col; game.flash = 0.1;
       sfx('learn', { gap: 0.2 }); rings.push({ x: player.x, y: player.y - 20, t: 0, max: 0.7, r: 60, color: E.rgb });
     };
     // Warn before losing an enchant, or doubling one that only counts once.
@@ -3731,11 +3737,70 @@ function gainSaintXp(n) {
   SAVE.lvl = SAVE.lvl || 1; SAVE.lxp = (SAVE.lxp || 0) + n;
   while (SAVE.lvl < MAX_SAINT && SAVE.lxp >= lvNeed(SAVE.lvl)) {
     SAVE.lxp -= lvNeed(SAVE.lvl); SAVE.lvl++; game.saintUp = { t: game.real, lv: SAVE.lvl }; // round 168: the Saint bar flashes
-    if (player && game.scene === 'wound') nums.push({ x: player.x, y: player.y - 84, v: `SAINT LEVEL ${SAVE.lvl}`, t: 0, color: PAL.holy0, crit: true });
     const r = Object.keys(RITE_LV).find((id) => RITE_LV[id] === SAVE.lvl && RITE_SLOTS.some(([sl]) => riteList(sl).some((q) => q.id === id))), nx = nextRite(); // this class's rites only
     levelLooks(); if (player) { toast(LEVEL_GIFT[SAVE.lvl] ? `SAINT LEVEL ${SAVE.lvl}: ${LEVEL_GIFT[SAVE.lvl]}` : r ? `SAINT LEVEL ${SAVE.lvl}: NEW RITE, ${RITE_BY[r].name}` : nx ? `SAINT LEVEL ${SAVE.lvl}. NEXT RITE AT LEVEL ${nx.lv}` : `SAINT LEVEL ${SAVE.lvl}: +1 TALENT POINT`, 2.6); game.toastColor = PAL.holy0; }
   }
   if (SAVE.lvl >= MAX_SAINT) SAVE.lxp = 0;
+}
+// Round 169: back in Vael after a descent that raised the Saint level, a card lists what those levels opened
+// (rites, passive slots, gifts, titles) and the talent points waiting, with buttons to the pages that use them.
+function saintLvRows(from, to) {
+  const R = [];
+  for (let L = from + 1; L <= to; L++) {
+    const r = Object.keys(RITE_LV).find((id) => RITE_LV[id] === L && RITE_SLOTS.some(([sl]) => riteList(sl).some((q) => q.id === id)));
+    // Written in mixed case (drawn as is), so a rite's name keeps its capitals and the rest reads as a sentence.
+    if (r && RITE_BY[r]) R.push({ lv: L, text: `New rite: ${caseOf(RITE_BY[r].name)}`, rite: r });
+    if (PASSIVE_AT.indexOf(L) > 0) R.push({ lv: L, text: LEVEL_GIFT[L] ? caseOf(`${LEVEL_GIFT[L]}.`).replace(/\.$/, '') : 'A new passive slot', col: PAL.holy1, pass: true });
+    else if (LEVEL_GIFT[L]) R.push({ lv: L, text: caseOf(`${LEVEL_GIFT[L]}.`).replace(/\.$/, ''), col: PAL.flame1 });
+    if (titleOf(L) !== titleOf(L - 1)) R.push({ lv: L, text: `A new title: ${caseOf(titleOf(L).trim())}`, col: PAL.gold1 });
+  }
+  return R;
+}
+const SLV_MAX = () => (H < 270 ? 3 : 4);
+function saintLvLayout() {
+  const U = game.lvUp, n = Math.min(SLV_MAX(), U.rows.length), more = U.rows.length - n, pw = Math.min(340, W - 40);
+  const ph = 58 + (n ? n * 20 + 6 : 0) + (more > 0 ? 13 : 0) + 14 + 30, x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2);
+  const B = [];
+  if (talPts() > 0) B.push({ k: 'tal', label: 'TALENTS', col: PAL.gold3 });
+  if (U.rows.some((r) => r.rite)) B.push({ k: 'rites', label: 'RITES', col: PAL.violet3 });
+  B.push({ k: 'ok', label: 'CLOSE', col: PAL.stone4 });
+  const bw = Math.min(96, Math.floor((pw - 24 - 8 * (B.length - 1)) / B.length)), bx = Math.round(W / 2 - (B.length * bw + (B.length - 1) * 8) / 2), by = y0 + ph - 30;
+  B.forEach((b, i) => Object.assign(b, { x: bx + i * (bw + 8), y: by, w: bw, h: 22 }));
+  return { x0, y0, pw, ph, n, more, B };
+}
+function renderSaintLv() {
+  const U = game.lvUp; if (!U) { game.state = 'play'; return; }
+  const L = saintLvLayout(), sm = { small: true, outline: null }, a = Math.min(1, (game.real - U.t) / 0.5);
+  ctx.fillStyle = 'rgba(11,7,16,0.62)'; ctx.fillRect(0, 0, W, H);
+  glow(W / 2, L.y0 + 14, 70 + 20 * (1 - a), `rgba(255,209,85,${(0.22 * (1 - a) + 0.06).toFixed(2)})`);
+  panelFrame(L.x0, L.y0, L.pw, L.ph, '_silver');
+  text(`SAINT LEVEL ${U.to}`, W / 2, L.y0 + 9, PAL.gold1, { align: 'center', sc: 1.5 });
+  text(`YOU ROSE FROM LEVEL ${U.from} TO ${U.to} IN THIS DESCENT.`, W / 2, L.y0 + 30, PAL.cloth1, { ...sm, align: 'center' });
+  let y = L.y0 + 46;
+  if (L.n) {
+    goldRule(L.x0 + 14, y - 3, L.pw - 28, '255,209,85', false);
+    U.rows.slice(0, L.n).forEach((r, i) => {
+      const yy = y + 3 + i * 20, ix = L.x0 + 24;
+      if (r.rite) riteBuff(r.rite)(ix, yy + 7, 16);
+      else if (r.pass) fitIcon('ui', 'passive', 13, ix, yy + 7, 16);
+      else { const d = (h, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(ix, yy + 7 - h); ctx.lineTo(ix + h, yy + 7); ctx.lineTo(ix, yy + 7 + h); ctx.lineTo(ix - h, yy + 7); ctx.closePath(); ctx.fill(); }; d(7, PAL.outline); d(5, r.col); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(ix - 1, yy + 3, 2, 2); }
+      text(`LEVEL ${r.lv}`, L.x0 + 38, yy + 2, PAL.gold1, { ...sm, bold: true });
+      text(fitText(r.text, L.pw - 104, null, true), L.x0 + 90, yy + 2, r.rite ? PAL.cloth0 : r.col, sm);
+    });
+    y += L.n * 20 + 6;
+    if (L.more > 0) { text(`AND ${L.more} MORE.`, L.x0 + 90, y - 3, PAL.stone2, sm); y += 13; }
+  }
+  const pts = talPts(), nx = nextRite();
+  text(pts > 0 ? `SPEND ${pts} TALENT POINT${pts > 1 ? 'S' : ''} ON THE TALENTS PAGE.` : nx ? `THE NEXT RITE OPENS AT LEVEL ${nx.lv}.` : 'EVERY RITE IS OPEN.', W / 2, y + 1, pts > 0 ? PAL.gold0 : PAL.stone1, { ...sm, align: 'center' });
+  for (const b of L.B) invButton(b, b.label, b.col);
+}
+function saintLvTap(x, y) {
+  const L = saintLvLayout(), b = L.B.find((q) => inRect(q, x, y));
+  if (!b && inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) return;
+  game.lvUp = null; game.state = 'play';
+  if (b && b.k === 'tal') return openCanonry();
+  if (b && b.k === 'rites') return openRites();
+  sfx('tap');
 }
 // Old saves: Devotion turns into Saint levels (the XP it held, on the new
 // curve); Virtues are gone and their points come back as talent points.
@@ -4671,7 +4736,7 @@ function boardTap(x, y) {
     const il = bestIl(); b.claimed = true;
     SAVE.gold = (SAVE.gold || 0) + 150 * il; gainSaintXp(250 * il);
     let it; do { it = rollItem(4, il); } while (it.ri < 2);
-    bagAdd(it); toast(`BOUNTY PAID: ${nm(it)}`, 2.5); game.toastColor = RARITY[it.ri].color; sfx('gold'); game.itemPop = it; // round 70: show what it paid
+    bagAdd(it); toast(named('BOUNTY PAID: XNAMEAX', nm(it)), 2.5); game.toastColor = RARITY[it.ri].color; sfx('gold'); game.itemPop = it; // round 70: show what it paid
     if (B.list.every((q) => q.claimed)) { let h; do { h = rollItem(6, il); } while (h.ri !== 3); bagAdd(h); B.next = (SAVE.descents || 0) + 1; game.banner = { text: 'ALL BOUNTIES CLAIMED', sub: h.name, t: 0, color: RARITY[3].color }; }
     persist();
   });
@@ -5803,6 +5868,7 @@ function drawCrierPlates(cx, cy) {
 }
 
 function enterTown(wake = true) {
+  { const L0 = game.lvStart; game.lvStart = null; if (L0 && saintLv() > L0) game.lvUp = { from: L0, to: saintLv(), rows: saintLvRows(L0, saintLv()), t: 0 }; } // round 169
   crierEvents(false); // round 165: the first visit only notes what the Crier has to call later
   if (game.newBuild) { game.newBuild = false; setTimeout(checkBuild, 500); }
   { let u = null; try { u = sessionStorage.getItem('hs-updated'); sessionStorage.removeItem('hs-updated'); } catch { /* private mode */ } if (u) setTimeout(() => { if (game.scene === 'town') { toast(`UPDATED TO BUILD ${u}. SEE NEWS ON THE PAUSE SCREEN.`, 4); game.toastColor = PAL.gold1; } }, 1800); }
@@ -6088,6 +6154,8 @@ function crierEvents(take) {
 // Round 164: the Crier says DONE for a finished quest and how far along a started one is.
 function crierLine(q) { const g = q.g, c = (q.c && q.c[g[0]]) || 0; return q.st !== 'active' || c >= g[1] ? `${g[2]}: DONE!` : c > 0 ? `${g[2]}: ${c} OF ${g[1]}!` : `${g[2]}: ${g[1]}!`; }
 const dailyIds = () => Object.keys(QS()).filter((id) => id.startsWith('daily_'));
+// Round 169: today's dailies done, for the board's count on the town minimap and map ({ n, of } or null).
+const dailyDone = () => { const ids = dailyIds(); if (!ids.length) return null; return { n: ids.filter((id) => { const q = QS()[id]; return q.st === 'done' || (q.c && q.c[q.g[0]] || 0) >= q.g[1]; }).length, of: ids.length }; };
 const weeklyId = () => Object.keys(QS()).find((id) => id.startsWith('weekly_'));
 // A quest step counts once; the story's are counted only in that chapter's own descents.
 function questBump(key, n = 1) {
@@ -6103,8 +6171,8 @@ function questBump(key, n = 1) {
     questFanfare(true);
     if (d.weekly) { q.st = 'done'; SAVE.gold = (SAVE.gold || 0) + WEEKLY_PAY.gold; SAVE.tears = (SAVE.tears || 0) + WEEKLY_PAY.tears; toast(`WEEKLY QUEST DONE. +${WEEKLY_PAY.gold} GOLD, +${WEEKLY_PAY.tears} RELIQUARY TEARS`, 4); game.toastColor = PAL.gold1; sfx('legend', { gap: 0.3 }); }
     else if (d.daily) { q.st = 'done'; SAVE.gold = (SAVE.gold || 0) + DAILY_PAY.gold; SAVE.embers = (SAVE.embers || 0) + DAILY_PAY.embers; toast(`DAILY DONE: ${d.title}. +${DAILY_PAY.gold} GOLD, +${DAILY_PAY.embers} EMBERSTONES`, 3.5); game.toastColor = PAL.gold1; sfx('gold'); }
-    else if (d.story != null || d.side) { q.step = 1; toast(`${d.title} DONE. TALK TO ${qName(d.turn)} IN VAEL.`, 4); game.toastColor = PAL.gold1; }
-    else { q.st = 'done'; SAVE.gold = (SAVE.gold || 0) + 100; toast(`QUEST DONE: ${d.title}. +100 GOLD`, 3); game.toastColor = PAL.gold1; sfx('gold'); }
+    else if (d.story != null || d.side) { q.step = 1; toast(named('XNAMEAX IS DONE. TALK TO XNAMEBX IN VAEL.', d.title, qName(d.turn)), 4); game.toastColor = PAL.gold1; }
+    else { q.st = 'done'; SAVE.gold = (SAVE.gold || 0) + 100; toast(named('QUEST DONE: XNAMEAX. +100 GOLD', d.title), 3); game.toastColor = PAL.gold1; sfx('gold'); }
     persist();
   }
 }
@@ -6123,13 +6191,13 @@ function questTalk(npc) {
   for (const id in QS()) {
     const q = QS()[id]; if (!id.startsWith('story')) continue;
     const d = qDef(id), C = STORY[d.story];
-    if (q.st === 'offer' && d.giver === npc) { playScene(C.intro, () => { q.st = 'active'; q.step = 0; q.c = q.c || {}; persist(); toast(`NEW QUEST: ${d.title}. WALK INTO THE CATHEDRAL TO BEGIN.`, 4); game.toastColor = PAL.gold1; sfx('learn', { gap: 0.2 }); }); return true; }
+    if (q.st === 'offer' && d.giver === npc) { playScene(C.intro, () => { q.st = 'active'; q.step = 0; q.c = q.c || {}; persist(); toast(named('NEW QUEST: XNAMEAX. WALK INTO THE CATHEDRAL TO BEGIN.', d.title), 4); game.toastColor = PAL.gold1; sfx('learn', { gap: 0.2 }); }); return true; }
     if (q.st === 'active' && q.step === 1 && d.turn === npc) { playScene(C.outro, () => storyTurnIn(d.story)); return true; }
   }
   for (const id in QS()) {
     const q = QS()[id]; if (!id.startsWith('side_')) continue;
     const d = qDef(id), D = SIDE[d.side];
-    if (q.st === 'offer' && d.giver === npc) { playScene(D.intro, () => { q.st = 'active'; q.step = 0; q.c = {}; persist(); toast(`NEW QUEST: ${D.title}.`, 3); game.toastColor = PAL.gold1; sfx('learn', { gap: 0.2 }); }); return true; }
+    if (q.st === 'offer' && d.giver === npc) { playScene(D.intro, () => { q.st = 'active'; q.step = 0; q.c = {}; persist(); toast(named('NEW QUEST: XNAMEAX.', D.title), 3); game.toastColor = PAL.gold1; sfx('learn', { gap: 0.2 }); }); return true; }
     if (q.st === 'active' && q.step === 1 && d.turn === npc) { playScene(D.outro, () => sideTurnIn(d.side)); return true; }
   }
   return false;
@@ -7558,7 +7626,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   if (e.type === 'imp') { dropLoot(e.x, e.y, { gold: 22, item: 3, itemBoost: 2, globe: 1 }); game.banner = { text: 'THE IMP IS KILLED', sub: 'GOLD DROPPED', t: 0, color: PAL.gold0 }; }
   else if (e.boss) { /* wardenSlain drops the loot */ }
   if (!e.minion && (e.tier === 'elite' || e.tier === 'rare')) maybeRubric(e.x, e.y, e.tier === 'elite' ? RUB_DROP.elite : RUB_DROP.rare);
-  if (e.type === 'imp') {} else if (e.tier === 'elite') { if (!e.minion) SAVE.eliteKills = (SAVE.eliteKills || 0) + 1; dropLoot(e.x, e.y, { gold: 10, item: DROP.elite, itemBoost: 1.5, globe: 2 }); game.banner = { text: `${e.name} FALLS`, sub: '', t: 0, color: PAL.gold0 }; }
+  if (e.type === 'imp') {} else if (e.tier === 'elite') { if (!e.minion) SAVE.eliteKills = (SAVE.eliteKills || 0) + 1; dropLoot(e.x, e.y, { gold: 10, item: DROP.elite, itemBoost: 1.5, globe: 2 }); game.banner = { text: `${titleWords(String(e.name).toUpperCase(), true)} Falls`, sub: '', t: 0, color: PAL.gold0 }; }
   else if (e.tier === 'rare') dropLoot(e.x, e.y, { gold: 3, item: DROP.rare, itemBoost: 1, globe: rng() < 0.4 ? 1 : 0 });
   else dropLoot(e.x, e.y, { gold: rng() < 0.3 ? 1 : 0, item: DROP.kill, globe: rng() < (e.minion ? 0.1 : 0.06) ? 1 : 0 });
 }
@@ -7573,7 +7641,7 @@ function sparks(x, y, c, n) {
 }
 // Round 166: how a body leaves: a Warden's own death, an elite's or rare's crumble, or the plain fall and burst.
 function bodyFalls(e, dirx, diry, executed) {
-  if (!executed && !e.boss && (e.elite || e.tier === 'elite' || e.tier === 'rare') && !e.illusion && falls.filter((f) => f.cr).length < 6) { const cr = startCrumble(e); if (cr) { falls.push({ e, dirx, diry, t: 0, y: e.y, cr }); dismember(e, dirx, diry, false, cr.kind); return; } }
+  if (!executed && !e.boss && (e.elite || e.tier === 'elite' || e.tier === 'rare') && !e.illusion && crumbleRoom()) { const cr = startCrumble(e); if (cr) { falls.push({ e, dirx, diry, t: 0, y: e.y, cr }); dismember(e, dirx, diry, false, cr.kind); return; } }
   if (!executed && e.def.die && SPR[e.def.sheet].anims[e.def.die]) falls.push({ e, dirx, diry, t: 0, y: e.y, wd: wardenDies(e) }); else dismember(e, dirx, diry, executed);
 }
 function dismember(e, dirx, diry, executed, soft) {
@@ -8221,7 +8289,7 @@ function bagAdd(it) {
   if (!it.t) codexItem(it); // round 84: the Codex counts each piece once, when it is first found
   if (!it.t) it.t = Date.now(); // when it was found, for the bag's NEWEST sort (round 70)
   // An empty slot takes the item straight away, even with a full bag.
-  if (!SAVE.equip[it.slot]) { it.run = false; it.isNew = false; SAVE.equip[it.slot] = it; applyGear(); toast(`EQUIPPED ${nm(it)}`, 2); game.toastColor = RARITY[it.ri].color; persist(); return true; }
+  if (!SAVE.equip[it.slot]) { it.run = false; it.isNew = false; SAVE.equip[it.slot] = it; applyGear(); toast(named('EQUIPPED XNAMEAX', nm(it)), 2); game.toastColor = RARITY[it.ri].color; persist(); return true; }
   if (SAVE.bag.length >= BAG_SIZE) return false;
   it.run = game.scene === 'wound';
   SAVE.bag.push(it); persist(); return true;
@@ -10164,6 +10232,7 @@ function update(realDt) {
   game.real += realDt; game.realDt = realDt;
   if (game.aim && (game.state !== 'play' || game.scene !== 'wound' || !player || player.hp <= 0)) game.aim = null;
   if (game.news === undefined) game.news = NEWS;
+  if (game.lvUp && !game.lvUp.t && !game.news && game.state === 'play' && game.scene === 'town' && !tut.on && game.real - (game.cardAt || 0) > 1.4) { game.lvUp.t = game.real; game.state = 'saintlv'; sfx('learn', { vol: 0.55, gap: 0.2 }); } // round 169
   if (game.news && game.state === 'play' && game.scene === 'town' && !game.dialog && !tut.on && game.real > 1.2) { game.newsFor = game.news; game.news = null; game.state = 'news'; persist(); sfx('shrine', { rate: 1.4, vol: 0.5 }); }
   // Music and ambience follow the scene.
   // While a Warden lives its battle loop plays: orchestral, or the organ in the Drowned Nave.
@@ -10185,7 +10254,7 @@ function update(realDt) {
   if (game.state === 'dialog' && game.scene === 'wound' && falls.some((f) => f.wd)) { updateFalls(realDt); safe('vparts', () => updateVparts(realDt)); } // round 158: a Warden keeps dying while it speaks its last lines
   if (game.newBuild && game.scene === 'town' && game.state === 'play' && game.real > (game.nbT || 0)) { game.nbT = game.real + 5; game.newBuild = false; checkBuild(); } // round 161: reload once back to plain play in town
   if (game.scene === 'town' && game.state === 'play' && !LOWFX && room && Math.random() < realDt * 2.2) { const n = room.npcs.find((q) => q.talk === 'enchanter'); if (n) vemit(n.x + 6 * (n.face || 1), n.y - 20, { n: 1, ramp: 'holy', sp: 3, up: 14, life: 1.3, grav: -6, size: 2, glow: 3 }); } // round 162: motes rise from the Enchanter's book
-  if (game.toast) { game.toast.t -= realDt; if (game.toast.t <= 0) game.toast = null; }
+  if (game.toast && game.state !== 'saintlv') { game.toast.t -= realDt; if (game.toast.t <= 0) game.toast = null; } // round 169: a message waits under the level summary
   for (const k of ['dash', 'm1', 'm2', 'pen']) if (HUD[k] && HUD[k].pressed) HUD[k].pressed = Math.max(0, HUD[k].pressed - realDt);
   if (game.state === 'dead' || game.state === 'tally') game.deathT += realDt;
   if (game.state === 'dialog') { if (!game.dialog || !game.dialog.lines) game.state = 'play'; else game.dialog.t += realDt; } // round 160
@@ -10540,6 +10609,7 @@ function render() {
   if (game.state === 'roll') renderRoll();
   if (game.state === 'codex') renderCodex();
   if (game.state === 'resume') renderResume();
+  if (game.state === 'saintlv') renderSaintLv();
   if (game.state === 'map') renderTownMap();
   if (game.state === 'loading') renderLoading();
   if (hubDx) ctx.restore();
@@ -10722,6 +10792,13 @@ function crumbleCells(e) {
   cells.sort((a, b) => (a.c < b.c ? -1 : a.c > b.c ? 1 : 0));
   let top = 0, wh = 4; for (const q of cells) { top = Math.min(top, q.y); wh = Math.max(wh, Math.abs(q.x)); }
   C = { cells, H: Math.max(4, -top), Wh: wh }; CR_CELLS.set(key, C); return C;
+}
+// Round 169: a big rare pack used to fill the old cap of six (remains count for 8 s), so the last members fell over
+// the old way. Now only crumbles still moving count (up to 10); past 14 in all, the oldest resting one fades early.
+function crumbleRoom() {
+  const C = falls.filter((f) => f.cr); if (C.filter((f) => f.t < CRUMBLE_T[f.cr.kind] + 0.2).length >= 10) return false;
+  if (C.length >= 14) { const old = C.filter((f) => f.t >= CRUMBLE_T[f.cr.kind] + 0.2 && f.t < CRUMBLE_T[f.cr.kind] + CRUMBLE_REST).sort((a, b) => b.t - a.t)[0]; if (old) old.t = CRUMBLE_T[old.cr.kind] + CRUMBLE_REST; }
+  return true;
 }
 function startCrumble(e) {
   let C; try { C = crumbleCells(e); } catch (err) { logError('crumble', err); return null; } if (!C.cells.length) return null;
@@ -11334,9 +11411,15 @@ function renderMinimap() {
   const near = (x, y, r) => pins.some((q) => Math.abs(q.x - x) < r && Math.abs(q.y - 3 - y) < r + 2);
   for (const S of SITES) { const x = sx(S.x), y = sy(room.top * TILE + S.dy - 18); if (near(x, y, 5)) continue; ctx.fillStyle = siteDone(S) ? PAL.gold1 : PAL.stone3; ctx.fillRect(x - 1, y - 1, 3, 3); }
   badge('descend', sx(CATHEDRAL_X), sy(room.top * TILE + CATHEDRAL_DY - 10));
+  // Round 169: the board's dailies done today, on a small plate by its spot.
+  { const D = dailyDone(), S = SITES.find((t) => t.id === 'board'); if (D && S && siteDone(S)) { const s0 = `${D.n}/${D.of}`, w = textW(s0, 1, true) + 4, all = D.n >= D.of;
+    let x = sx(S.x) + 3; const y = sy(room.top * TILE + S.dy - 18) - 5; if (near(x + w / 2, y + 5, 6)) x -= w + 6;
+    ctx.fillStyle = 'rgba(5,8,14,0.78)'; ctx.fillRect(x, y, w, 10); ctx.fillStyle = all ? PAL.gold1 : '#8ad4ff'; ctx.fillRect(x, y + 9, Math.round(w * D.n / D.of), 1);
+    game.boardTag = { s: s0, x: x + 2, y: y + 1, col: all ? PAL.gold1 : PAL.cloth0 }; } else game.boardTag = null; }
   for (const q of pins) questPin(q.x, q.y, q.ch);
   { const cr = crierNews(); if (cr) { let x = sx(cr.x) - 2; const y = Math.max(my + 3, sy(cr.y) - 7 + Math.round(Math.sin(game.real * 5))); if (near(x + 2, y + 3, 6)) x -= 7; mapIcon('bell', x, y, '#ffd155'); } } // round 164
   ctx.restore();
+  if (game.boardTag) { const T0 = game.boardTag; text(T0.s, T0.x, T0.y, T0.col, { small: true, outline: null }); }
   const px = Math.max(mx + 3, Math.min(mx + mw - 4, sx(player.x))), py = Math.min(my + mh - 4, sy(player.y));
   ctx.fillStyle = PAL.outline; ctx.fillRect(px - 3, py - 3, 7, 7);
   ctx.fillStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.fillRect(px - 2, py - 2, 5, 5);
@@ -11383,6 +11466,9 @@ function renderTownMap() {
   for (const n of room.npcs) if (NPC_BADGE[n.npc]) badge(NPC_BADGE[n.npc], sx(n.x), sy(n.y) - 4);
   // Round 67: labels go on last, each on a dark backing, and step aside when they would overlap.
   const labels = [...DISTRICTS.map(([name, x0, y0, x1, y1]) => [name.replace(/^THE /, '').replace('CATHEDRAL OF THE WOUND', 'CATHEDRAL'), sx((x0 + x1) / 2), sy(y1) - 10, PAL.cloth1])], placed = [];
+  { const D = dailyDone(), S = SITES.find((t) => t.id === 'board'); if (D && S && siteDone(S)) { const s0 = `${D.n}/${D.of}`, w = textW(s0, 1, true) + 6, x = sx(S.x) + 9, y = sy(room.top * TILE + S.dy - 20) - 12; // round 169: today's dailies done
+    ctx.fillStyle = 'rgba(5,8,14,0.78)'; ctx.fillRect(x, y, w, 10); ctx.fillStyle = D.n >= D.of ? PAL.gold1 : '#8ad4ff'; ctx.fillRect(x, y + 9, Math.round(w * D.n / D.of), 1);
+    text(s0, x + 3, y + 1, D.n >= D.of ? PAL.gold1 : PAL.cloth0, { small: true, outline: null }); placed.push({ x, y, w, h: 10 }); } }
   const px = sx(player.x), py = sy(player.y);
   ctx.fillStyle = PAL.outline; ctx.fillRect(px - 4, py - 4, 9, 9);
   ctx.fillStyle = Math.floor(game.real * 4) % 2 ? PAL.white : PAL.gold0; ctx.fillRect(px - 3, py - 3, 7, 7);
@@ -11398,7 +11484,7 @@ function renderTownMap() {
   // Legend to the right of the map.
   const lx = mx + Math.round(room.pw * k) + 10, ly = my, lw = x0 + pw - 8 - lx, cols = Math.max(1, Math.floor(lw / 170)), colW = Math.floor(lw / cols);
   const entries = [{ b: 'descend', name: 'THE DESCENT (CATHEDRAL DOORS)', sub: 'OPEN', col: PAL.flame1 },
-    ...SITES.map((S) => ({ b: S.badge, name: S.name, sub: siteDone(S) ? 'COMING SOON' : `LOCKED: ${S.need.replace('KILL THE WARDEN OF ', 'WARDEN OF ').replace('REACH LEVEL 20 IN ONE DESCENT', 'LEVEL 20 IN ONE RUN')}`, col: siteDone(S) ? PAL.stone1 : PAL.blood0 })),
+    ...SITES.map((S) => ({ b: S.badge, name: S.name, sub: siteDone(S) ? (S.id === 'board' && dailyDone() ? `DAILY QUESTS: ${dailyDone().n} OF ${dailyDone().of} DONE` : 'OPEN') : `LOCKED: ${S.need.replace('KILL THE WARDEN OF ', 'WARDEN OF ').replace('REACH LEVEL 20 IN ONE DESCENT', 'LEVEL 20 IN ONE RUN')}`, col: siteDone(S) ? PAL.stone1 : PAL.blood0 })),
     ...Object.entries(NPC_ROLE).map(([id, name]) => ({ b: NPC_BADGE[id], name, sub: 'TALK', col: PAL.stone1 }))];
   const rows = Math.ceil(entries.length / cols), rowH = Math.min(22, Math.floor((y0 + ph - 4 - ly) / rows));
   entries.forEach((e, i) => { const c = Math.floor(i / rows), r = i % rows, ex = lx + c * colW, ey = ly + r * rowH;
@@ -11604,7 +11690,10 @@ function renderHud() {
   // Bottom-left: joystick.
   const jx = stick.active ? stick.ox : HUD.joy.x, jy = stick.active ? stick.oy : HUD.joy.y;
   if (opt('stick') !== 'follow') glow(jx, jy, 40, `rgba(255,209,85,${stick.active ? 0.22 : 0.09})`, ctx); // round 168: a locked base glows faintly so you can see where it is
+  // Round 169: a dark rim round the base so it reads on bright floors, and a gold ring while the thumb is on it.
+  if (opt('stick') !== 'follow') { ctx.strokeStyle = 'rgba(5,8,14,0.45)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(jx, jy, 39.5, 0, Math.PI * 2); ctx.stroke(); }
   sprC('ui', 'ring', 0, jx, jy, { alpha: stick.active ? 0.85 : 0.4 });
+  if (stick.active && opt('stick') !== 'follow') { ctx.strokeStyle = `rgba(255,209,85,${(0.55 + 0.15 * Math.sin(game.real * 5)).toFixed(2)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(jx, jy, 37, 0, Math.PI * 2); ctx.stroke(); }
   { const kb = navyBtn('knob'), sd = Math.hypot(stick.x - jx, stick.y - jy), kc = sd > 31 ? 31 / sd : 1, kx = stick.active ? jx + (stick.x - jx) * kc : jx, ky = stick.active ? jy + (stick.y - jy) * kc : jy; /* the knob stays on the ring */ if (kb) { ctx.globalAlpha = stick.active ? 1 : 0.7; ctx.drawImage(kb.c, Math.round(kx - kb.ax), Math.round(ky - kb.ay)); ctx.globalAlpha = 1; } else sprC('ui', 'knob', 0, kx, ky, { alpha: stick.active ? 1 : 0.6 }); }
   renderRoomStatus();
   renderWaystoneArrow();
@@ -13559,6 +13648,7 @@ function onTap(x, y) {
     case 'roll': rollTap(x, y); return true;
     case 'codex': codexTap(x, y); return true;
     case 'resume': resumeTap(x, y); return true;
+    case 'saintlv': saintLvTap(x, y); return true;
     case 'map': sfx('tap'); game.state = 'play'; return true;
     case 'dialog': {
       const d = game.dialog;

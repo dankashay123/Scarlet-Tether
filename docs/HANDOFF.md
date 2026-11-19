@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-19, after round 168 (build 168, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-19, after round 169 (build 169, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -757,6 +757,25 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 169:** "All" to round 168's list. (1) The town minimap draws today's dailies done (`dailyDone()`, "1/3")
+  on a small plate by the Bounty Board's spot, with a bar under it; the town map's legend says DAILY QUESTS: N OF 3
+  DONE for the board, and OPEN (not COMING SOON) for other open places. (2) The Saint level summary: `newRun` notes
+  `game.lvStart` (not the yard); `enterTown` sets `game.lvUp` when the level rose and `update` opens state `saintlv`
+  1.4 s into Vael (after the tutorial and NEWS). `saintLvRows` lists each level that opened a rite, a passive slot,
+  a level gift or a title (rows in mixed case so names keep their capitals; three or four shown, then AND N MORE),
+  then the talent points to spend or the next rite's level; TALENTS (when points wait), RITES (when a rite opened)
+  and CLOSE. Toasts wait and the place card hides while it is open. (3) The locked stick has a dark rim (3 px,
+  45%) so it shows on bright floors and a gold ring while held. (4) Elite packs: rare packs (every member is rare)
+  and an elite pack's leader crumble; its minions are common types and die the old way, as they should. The old cap
+  (six crumbles alive, and remains count for 8 s) made the last members of a big rare pack fall over: `crumbleRoom`
+  now counts only moving crumbles (10) and fades the oldest resting one early past 14. (5) A story chapter played
+  through by the pilot (`storyplay.cjs`: walk to the giver and press E, the doors, the fight, the message, the
+  Warden, the Waystone, the tally, the summary, the ? and the closing scene) with every frame's text checked: no
+  UNDEFINED/NULL/NAN. It found names lower-cased mid-sentence ("New quest: The waking.", "Equipped pendant of the
+  fox", "Brother Ulm of the wax falls", "Talk to the bookie"): `named(tpl, ...names)` cases a sentence and puts each
+  XNAMEAX/XNAMEBX back in title case (quest toasts, equip, buy, bounty, temper, enchant); elite banners use
+  `titleWords`; BOOKIE, TOWN CRIER and PLUSH SELLER are case terms. The floating SAINT LEVEL N number over the Saint
+  is gone (it covered the Toll; the bar's flash and the toast say it).
 - **Round 168:** "All" to round 167's list. (1) `gainSaintXp` sets `game.saintUp`; `renderSaintBar` lights the track
   and swells a glow for 2.4 s, and in a descent writes SAINT LEVEL N! over it (above LEVEL UP! when that shows).
   (2) A locked stick draws a faint gold glow under its base (stronger while held). (3) Town audit: every still person
