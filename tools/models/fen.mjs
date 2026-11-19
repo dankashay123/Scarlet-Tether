@@ -47,7 +47,7 @@ const lump = (c, r, mat, seed = 0, amp = 0.8) => { const s0 = ellipsoid(c, r, ma
 // A roof prism along x: eaves at y = ye (front z = zf, back z = zb), ridge at y = yr.
 function roof(x0, x1, zb, zf, ye, yr, mat) {
   const zm = (zb + zf) / 2, hz = (zf - zb) / 2, rise = ye - yr;
-  return { mat, bb: [x0, yr - 1, zb - 1, x1, ye + 1, zf + 1], f: (x, y, z) => Math.max(x0 - x, x - x1, (Math.abs(z - zm) / hz) * rise - (ye - y) + 0, yr - y, y - ye) * 0.7 };
+  return { mat, bb: [x0, yr - 1, zb - 1, x1, ye + 1, zf + 1], f: (x, y, z) => Math.max(x0 - x, x - x1, yr + (Math.abs(z - zm) / hz) * rise - y, y - ye) * 0.6 };
 }
 function castShadow(fr, { by = 3, maxT = 50, bias = 0.6, elev = 0.45 } = {}) {
   const d = fr.depth; if (!d) return fr;

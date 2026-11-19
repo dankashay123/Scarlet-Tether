@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-19, after round 171 (build 171, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-19, after round 172 (build 172, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -381,6 +381,12 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **Round 172 leftovers:** Region III, the Ashfields (chapter 4, the Wall of Names) is next by the plan in
+  `docs/STORY.md`. Some older models use palette names past step 4 (`moss5`, `wood6`, `iron5`...), which fall back to
+  index 0 (`ink0`); they show as dark accents, so fix them only with a look at each. AUTO_CUT is still off: remind
+  the owner. `designer.cjs` fails before this round too (it taps the LAYOUT tile at a fixed spot that moved); fix
+  the test when the designer is next touched. The soak and several `?town` tests had sat in the opening since round
+  171 (fixed: `?town` starts past it, the soak skips the story).
 - **The owner on the Vesper (round 133):** "feels great" with 25% less damage
   taken and 15% more health. Leave it.
 - **Deploys:** since round 133 the workflow retries a failed deploy once;
@@ -757,6 +763,34 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 172:** the owner: "All" (round 171's five) and, mid-round, a photo: "screen disappears when approaching this
+  guy" (Sergeant Brask on the moor). (A) The bug: the interact label read `NPC_INFO[who].name`; region people are only
+  in `SPEAKER`, so the frame threw and the HUD vanished. Fixed (falls back to `SPEAKER`) and pushed alone to master
+  as a hotfix first. (B) Vael at true size: `TK = 2`. The town plan is written at the old size and doubled with
+  `tk()`/`tkO()`/`tkPts()` (TOWN_SQ, STALLS, STALL_Y, roads, districts, walks, SITES); buildings and trees
+  (house, tall, tavern, forge, cathedral, gate, mausoleum, tree, oak, fountain) render at model scale 2 through a new
+  'lo' frame path: `R` in `models/town.mjs` renders at 2x on the 2x2 grid, hands back a frame one pixel a block so the
+  hand-placed windows and roof courses keep their model coordinates (`dot`/`under` skip the scale on `fr.lo`), and
+  `upFrame` in `sprites.mjs` blows it back up. People and small props keep their size, so offsets beside a stall or
+  lamp stay as they were. Doors are now about the Saint's height (the cathedral's about three times). The town is
+  2880x2176; `TOWN_RUN` (1.4) speeds the Saint up in Vael; the map copy is half size (`room.mapK`); more lamps,
+  oaks, bushes, benches, carts and market clutter fill the bigger ground; walkers keep right and step apart
+  (`wx/wy`, `lx/ly`, `sx/sy`). `?town` (tests) now starts past the opening (`&opening` to see it): many town tests
+  had silently been sitting in the opening's dialog since round 171. The opening's city card is a far view; the title
+  cathedral keeps its old size. (C) The Sallow Fen (`REGIONS.fen`, sheet `fen` from `tools/models/fen.mjs`:
+  stilthouse, sunkhouse, belltower, sluice, reeds, willow, punt, post, lily, scum): a water-and-mud ground painter
+  (boardwalk causeway, wadeable pools in `room.water` that splash, deep water beyond the banks), Old Tobe's punt-house
+  camp, landmarks (the Choir's dam, the drowned village with a RING bell, the bell tower, reed beds, the causeway, the
+  sunken chapel, the old sluice as the door), `REGION_NPC` tobe and marl (people take `sheet`/`npc` now), six
+  `REGION_LORE.fen` pieces, `RSIDE` bell (ring the village bell) and eels (12 eel-men, `questBump('eel')` in
+  killEnemy). Chapter 3 (THE DROWNED WAY) has `region: 'fen'`, steps tobe, dam, marl; Hollis sends you south. The
+  South Gate in Vael opens onto the fen (`gateOpen('fen')`, chapter 3 on; `openTravel(id)`). (D) World bosses:
+  `spawnWarden(id, { world: true })`: the Charnel King at the moor's barrows, the Drowned Organist at the fen's
+  chapel (outside story runs); a world boss drops loot and Emberstones, opens no Station and raises no Waystone
+  (`SAVE.worldBoss`). The moor's own commons: Barrow-Dead and Bog Hounds (`common.mjs`), region pools in
+  `REGIONS[id].pool/rares`. (E) The opening is shorter, and characters after the first can SKIP THE OPENING
+  (`SAVE.introSeen`, account-wide). (F) The Codex LORE page: a picture per piece (`pic`) and THE UNWRITTEN GOSPEL,
+  N% WRITTEN. Test: `tools/tests/round172.cjs`.
 - **Round 171:** the owner: "make sure everything is proportional to the Saint; everything looks small and the Saint
   a giant", and "1-5" (approving `docs/STORY.md` as drafted; its open questions take the draft's defaults: keep the
   twist, Vane unaging, the names as written, the opening skippable). The owner chose: props and monsters now, Vael's

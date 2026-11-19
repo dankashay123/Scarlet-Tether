@@ -16,6 +16,8 @@ const S = process.argv[2], SECS = +(process.argv[3] || 180);
   await p.evaluate(() => { HS.SAVE.tutorialDone = true; HS.tut.on = false; });
   if (process.env.SOAK_HERO) await p.evaluate((h) => { HS.game.create = { hero: h, name: 'TESTER' }; }, process.env.SOAK_HERO); // SOAK_HERO=anchoress plays that class
   await tap(W / 2, Math.round(H * 0.8)); await p.waitForTimeout(600);
+  for (let i = 0; i < 60 && !(await p.evaluate(() => HS.game.scene === 'town' && !!HS.player)); i++) { await tap(W / 2, Math.round(H * 0.8)); await p.waitForTimeout(300); }
+  await p.evaluate(() => { HS.SAVE.story = HS.STORY.length; HS.SAVE.introSeen = HS.SAVE.walkStart = HS.SAVE.walkDone = true; HS.game.dialog = null; HS.game.state = 'play'; HS.ensureQuests(); }); // round 172: past the opening and the story (since round 171 the soak sat in the opening)
   const problems = [], peak = {}, keys = ['KeyW', 'KeyA', 'KeyS', 'KeyD'];
   let lastState = '', stateSince = Date.now(), lastPos = null, stillSince = Date.now(), shot = 0;
   const t0 = Date.now();
