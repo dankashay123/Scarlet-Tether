@@ -71,6 +71,7 @@ node tools/tests/menus.cjs <outDir> [WxH] # every menu window at one phone size 
 node tools/tests/clip.cjs [maps] [strata]     # props that clip (on walls, on each other) over many maps; keep at 0
 node tools/tests/round158.cjs <outDir>        # each Warden's own death, photographed at five moments
 node tools/tests/round164.cjs <outDir> [WxH] # the Crier's plate and DONE/progress lines, his minimap bell, walkers by the fountain
+node tools/tests/round168.cjs <outDir> [WxH] # town spots clear, story hints fit, elite deaths in a real fight (photos), the Saint bar's level-up flash, the locked stick's glow
 node tools/tests/round167.cjs <outDir> [WxH] # stall buttons over TALK in front of each stall, no UNDEFINED in a story chapter, the locked stick (and FOLLOWS), the Saint level bar in Vael and a descent
 node tools/tests/round166.cjs <outDir> [WxH] # an elite rising, one elite death of each kind (heap, melt, fade, burst, shatter, burn) photographed, remains gone
 node tools/tests/round165.cjs <outDir> [WxH] # the Crier's news, check marks in the quest log and board, the crossbow ghost behind a statue, a Warden settling, the town minimap

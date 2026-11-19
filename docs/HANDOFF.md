@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-18, after round 167 (build 167, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-19, after round 168 (build 168, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -757,6 +757,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 168:** "All" to round 167's list. (1) `gainSaintXp` sets `game.saintUp`; `renderSaintBar` lights the track
+  and swells a glow for 2.4 s, and in a descent writes SAINT LEVEL N! over it (above LEVEL UP! when that shows).
+  (2) A locked stick draws a faint gold glow under its base (stronger while held). (3) Town audit: every still person
+  against every place's use spot and every walker's route: only the pool's two villagers were close (22 px); they
+  stand 36 px out now, and `townOverlaps` reports anyone still within r + 8 of a spot. (4) Messages: none wraps to
+  three lines at the narrowest phone (the story hints reach two); chapter 1's hint no longer repeats the minimap line
+  the find toast already gives. (5) Elite deaths in a real fight (`round168.cjs`: a golem pack with commons and the
+  Saint shooting): the rubble read like another live golem, so a crumble starts with a white wash over its own
+  colours (0.12 s) and its settled remains draw at 75%.
 - **Round 167:** four reports from the owner. (1) Pell and the Plush seller stood 2 px from their stall's use spot,
   so TALK took the shop button: they and the Enchanter now stand 38 px aside, and the interact picker adds 12 px to a
   person's distance, so a place's button wins unless the person is clearly nearer (`round167.cjs` checks stall,
