@@ -16,7 +16,7 @@ require('fs').mkdirSync(`${S}/shots`, { recursive: true });
   const tap = async (x, y) => { const pos = await p.evaluate(([x, y]) => { const r = document.getElementById('screen').getBoundingClientRect(); return [r.left + x / HS.W * r.width, r.top + y / HS.H * r.height]; }, [x, y]); await p.mouse.click(pos[0], pos[1]); };
   const shot = (n) => p.screenshot({ path: `${S}/shots/r171-${n}-${VW}.png` });
   const closeDialog = async (w, every) => { let n = 0; for (let i = 0; i < 160 && (await st()).state === 'dialog'; i++) { await p.evaluate(() => { if (HS.game.dialog) HS.game.dialog.t = 99; }); await p.waitForTimeout(40); await scan(w); if (every && n < every) await shot(`${w}${n}`); n++; await tap(200, 150); await p.waitForTimeout(50); } return n; };
-  const walkTo = async (x, y) => { await p.evaluate(([x, y]) => { HS.player.x = x; HS.player.y = y; HS.game.toast = null; }, [x, y]); await p.waitForTimeout(350); };
+  const walkTo = async (x, y) => { for (let i = 0; i < 6 && (await st()).state === 'stig'; i++) { await p.evaluate(() => HS.pickStigma(0)); await p.waitForTimeout(250); } await p.evaluate(([x, y]) => { HS.player.x = x; HS.player.y = y; HS.game.toast = null; if (HS.game.run) HS.game.run.pending = 0; }, [x, y]); await p.waitForTimeout(350); };
   const press = async () => { await p.keyboard.press('KeyE'); await p.waitForTimeout(150); };
   const npc = (id) => p.evaluate((id) => { const n = HS.room.npcs.find((m) => (m.talk || m.npc) === id); return n && { x: n.x, y: n.y }; }, id);
   // A new character: the narrated opening (photograph each picture), then the Vestry.
