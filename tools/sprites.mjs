@@ -20,6 +20,11 @@ import { setModelK } from './sdf.mjs';
 // Props too: 'sheet/anim' keys (the moor's stones, barrows and gibbet; the dungeon's organ, coffins and pews).
 const PROP_K = { 'moor/menhir': 1.6, 'moor/barrow': 1.7, 'moor/cairn': 1.4, 'moor/gorse': 1.3, 'moor/boulder': 1.3, 'moor/drywall': 4 / 3, 'moor/gibbet': 1.45, 'moor/tent': 1.4, 'moor/wagon': 1.4, 'moor/thorn': 1.45,
   'props/organ': 1.5, 'props/sunkpew': 1.25, 'props/bonepew': 1.25, 'props/skullpillar': 1.3, 'props/sarcophagus': 1.2, 'loot/coffin': 1.35, 'loot/pew': 1.25, 'loot/maiden': 1.2 };
+// Round 172: Vael's buildings and trees at twice their old size (doors now about the Saint's height). Their models
+// render 'lo' frames (one pixel a 2x2 block, see R in models/town.mjs) that upFrame blows back up.
+for (const a of ['house', 'tavern', 'forge', 'fountain']) PROP_K[`town/${a}`] = 2;
+for (const a of ['tall', 'cathedral', 'gate', 'mausoleum', 'tree', 'oak']) PROP_K[`town2/${a}`] = 2;
+const upFrame = (f) => { if (!f || !f.lo) return f; const k = f.lo, w = f.w * k, h = f.h * k, px = new Int16Array(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) px[y * w + x] = f.px[Math.floor(y / k) * f.w + Math.floor(x / k)]; const o = { ...f, w, h, px, lo: 0 }; if (f.ax != null) o.ax = f.ax * k; if (f.ay != null) o.ay = f.ay * k; return o; };
 const MODEL_K = { risen: 1.5, crawler: 1.4, mourner: 1.1, acolyte: 1.2, gravewarden: 1.25, rat: 1.25, votary: 1.3, flagellant: 1.1, siltWretch: 1.4, naveEel: 1.3, gleaner: 1.4, dummy: 1.15 };
 // Chunky pixels: every model renders on a 2x2 grid (see tools/chunky.mjs).
 // The HUD sheet stays fine so buttons and icons read crisply.
@@ -174,7 +179,7 @@ function trim(f) {
 function sheet(name, anims, extra = {}) {
   if (process.argv.includes('--audit')) { const old = Object.keys(anims).filter((k) => !(OVR[name] && OVR[name][k])); if (old.length) console.log(`old art in ${name}: ${old.join(' ')}`); }
   setRes(FINE_SHEETS.has(name) ? 1 : CHUNK);
-  if (OVR[name]) { anims = { ...anims }; for (const [a, fn] of Object.entries(OVR[name])) { const k = PROP_K[`${name}/${a}`] || MODEL_K[name.startsWith('mon_') ? a.split('_')[0] : name] || 1; setModelK(k); try { anims[a] = fn(); } finally { setModelK(1); } } }
+  if (OVR[name]) { anims = { ...anims }; for (const [a, fn] of Object.entries(OVR[name])) { const k = PROP_K[`${name}/${a}`] || MODEL_K[name.startsWith('mon_') ? a.split('_')[0] : name] || 1; setModelK(k); try { anims[a] = fn().map(upFrame); } finally { setModelK(1); } } }
   // Snap every frame (models and the older hand-drawn art) to the chunky grid.
   if (!FINE_SHEETS.has(name)) for (const [a, fs] of Object.entries(anims)) for (const f of fs) if (!f.fine) chunkify(f, { outline: OVR[name] && OVR[name][a] ? false : 'auto' }); // round 143: bolts stay fine
   // Monster frames are cropped to their pixels (on the 2x2 grid), keeping the feet anchor.

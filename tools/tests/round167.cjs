@@ -11,7 +11,7 @@ const out = {};
   await p.addInitScript(() => { window.__U = []; const f = CanvasRenderingContext2D.prototype.fillText; CanvasRenderingContext2D.prototype.fillText = function (s, ...a) { if (/undefined|NaN/i.test(String(s)) && window.__U.length < 20) window.__U.push(String(s)); return f.call(this, s, ...a); }; });
   await p.goto('http://localhost:8123/?town'); await p.waitForTimeout(1500);
   for (let i = 0; i < 12 && await p.evaluate(() => HS.game.state === 'dialog'); i++) { await p.mouse.click(400, 200); await p.waitForTimeout(120); }
-  await p.evaluate(() => { HS.tut.on = false; HS.SAVE.tutorialDone = true; HS.SAVE.story = HS.STORY.length; HS.SAVE.descents = 30; HS.SAVE.cleared = 6; HS.ensureQuests(); HS.game.toast = null; });
+  await p.evaluate(() => { HS.tut.on = false; HS.SAVE.tutorialDone = true; HS.SAVE.story = HS.STORY.length; HS.SAVE.descents = 30; HS.SAVE.cleared = 6; HS.SAVE.walkStart = HS.SAVE.walkDone = HS.SAVE.introSeen = true; HS.game.dialog = null; HS.game.state = 'play'; HS.ensureQuests(); HS.game.toast = null; }); // round 172: past the opening
   // 1. Each stall: in front of it the stall's button shows; beside its keeper, TALK.
   out.stalls = [];
   for (const [site, who] of [['stall', 'pell'], ['plush', 'plushseller'], ['ench', 'enchanter'], ['forge', 'hollis']]) {

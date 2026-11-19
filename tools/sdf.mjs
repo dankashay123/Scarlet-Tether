@@ -65,15 +65,15 @@ export function clip(prim, fn) { const f = prim.f; return { ...prim, f: (x, y, z
 // --------------------------------------------------------- pixel touch-ups ---
 // Hand-placed pixels drawn after rendering (eyes, strings, glints).
 export function dot(fr, x, y, name) {
-  x *= MK; y *= MK; // round 171: model units under a model scale
+  const k = fr.lo ? 1 : MK; x *= k; y *= k; // round 171: model units under a model scale (round 172: a 'lo' frame is already in model pixels)
   if (POSE && fr.posed) [x, y] = poseXY(x, y);
   x = Math.round(x); y = Math.round(y);
   // On the chunky grid a hand-placed pixel fills its whole block.
-  if (RES > 1) { const bx = Math.floor(x / RES) * RES, by = Math.floor(y / RES) * RES; for (let j = 0; j < RES; j++) for (let i = 0; i < RES; i++) { const xx = bx + i, yy = by + j; if (xx >= 0 && yy >= 0 && xx < fr.w && yy < fr.h) fr.px[yy * fr.w + xx] = IDX[name]; } return; }
+  if (RES > 1 && !fr.lo) { const bx = Math.floor(x / RES) * RES, by = Math.floor(y / RES) * RES; for (let j = 0; j < RES; j++) for (let i = 0; i < RES; i++) { const xx = bx + i, yy = by + j; if (xx >= 0 && yy >= 0 && xx < fr.w && yy < fr.h) fr.px[yy * fr.w + xx] = IDX[name]; } return; }
   if (x >= 0 && y >= 0 && x < fr.w && y < fr.h) fr.px[y * fr.w + x] = IDX[name];
 }
 export function pline(fr, x0, y0, x1, y1, name) { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (let i = 0; i <= n; i++) dot(fr, x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, name); }
-export function under(fr, x, y) { x *= MK; y *= MK; if (POSE && fr.posed) [x, y] = poseXY(x, y); x = Math.round(x); y = Math.round(y); return x >= 0 && y >= 0 && x < fr.w && y < fr.h ? fr.px[y * fr.w + x] : -1; }
+export function under(fr, x, y) { const k = fr.lo ? 1 : MK; x *= k; y *= k; if (POSE && fr.posed) [x, y] = poseXY(x, y); x = Math.round(x); y = Math.round(y); return x >= 0 && y >= 0 && x < fr.w && y < fr.h ? fr.px[y * fr.w + x] : -1; }
 
 // ------------------------------------------------------------- scenes ---
 // Each shape joins the scene with:

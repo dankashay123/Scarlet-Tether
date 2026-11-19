@@ -8,7 +8,7 @@
 //
 // World axes: x right, y down, z toward the viewer. A building's street face
 // sits at z = 0 and its foot on the frame's bottom row.
-import { rotZ } from '../sdf.mjs';
+import { rotZ, getModelK } from '../sdf.mjs';
 import { Scene, sphere, ellipsoid, capsule, box, skirt, folds, render, clip, noise3, dot, pline, under } from '../sdf.mjs';
 import { MATS } from './base.mjs';
 import { IDX, FINE } from '../palette.mjs';
@@ -216,7 +216,7 @@ function stamp(dst, src, ox, oy) {
   for (let y = 0; y < src.h; y++) for (let x = 0; x < src.w; x++) { const v = src.px[y * src.w + x]; if (v < 0) continue; const X = x + ox, Y = y + oy; if (X >= 0 && Y >= 0 && X < dst.w && Y < dst.h) dst.px[Y * dst.w + X] = v; }
   return dst;
 }
-const blank = (w, h) => ({ w, h, px: new Int16Array(w * h).fill(-1) });
+const blank = (w, h) => ({ w, h, px: new Int16Array(w * h).fill(-1), lo: getModelK() > 1 ? getModelK() : 0 });
 // Cast shadows from the depth map: march toward the light in screen space;
 // if something nearer the viewer rises above the light ray, the pixel is in shadow.
 function castShadow(fr, { by = 3, maxT = 60, bias = 0.6, elev = 0.45 } = {}) {
@@ -236,7 +236,11 @@ function castShadow(fr, { by = 3, maxT = 60, bias = 0.6, elev = 0.45 } = {}) {
   }
   fr.px = out; return fr;
 }
-const R = (S, w, h, o = {}) => castShadow(render(S, w, h, TM, { zmin: -120, zmax: 80, contrast: 1.25, contourDepth: 6, ...o }), o.shadow);
+// Round 172: under a model scale of 2 (Vael's buildings at true size) the render comes back at twice the size on the
+// 2x2 grid, so every block is one model pixel. R hands back a 'lo' frame (one pixel a block) so the hand-placed touches
+// below keep their model coordinates; tools/sprites.mjs blows it back up (upFrame).
+const loFrame = (fr, k) => { const w = Math.round(fr.w / k), h = Math.round(fr.h / k), px = new Int16Array(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) px[y * w + x] = fr.px[Math.min(fr.h - 1, y * k) * fr.w + Math.min(fr.w - 1, x * k)]; return { ...fr, w, h, px, depth: null, lo: k }; };
+const R = (S, w, h, o = {}) => { const k = getModelK(), sh = k > 1 ? { ...(o.shadow || {}), maxT: ((o.shadow && o.shadow.maxT) || 60) * k } : o.shadow; const fr = castShadow(render(S, w, h, TM, { zmin: -120, zmax: 80, contrast: 1.25, contourDepth: 6, ...o }), sh); return k > 1 ? loFrame(fr, k) : fr; };
 
 // =============================================================== houses ===
 // Tall timber-framed townhouse, 88x172: stone ground floor, two jettied
