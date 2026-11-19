@@ -557,13 +557,84 @@ function dummy() {
   return A(f, cx, gy);
 }
 
+// ========================================================== barrow-dead ===
+// Round 172 (the Hollow Moor): an old king of the barrows in burial linen gone brown, a bronze circlet on a bare
+// skull and a green-bronze blade; it walks upright and slow, a finger-bell hanging from its other hand.
+MM.linen = { ramp: 'bone', spec: 0.04, bias: -0.18, min: 2 }; MM.linenD = { ramp: 'shroud', bias: -0.02, min: 2 }; MM.bronze = { ramp: 'gold', spec: 0.5, bias: -0.25, min: 2 }; MM.verd = { ramp: 'teal', spec: 0.3, bias: -0.12, min: 2 };
+MM.hound = { ramp: 'stone', spec: 0.15, bias: -0.32, min: 3 }; MM.houndD = { ramp: 'stone', bias: -0.46, min: 4 }; MM.bogweed = { ramp: 'moss', spec: 0.1, bias: -0.2, min: 3 };
+function barrowDead(t = 0, atk = -1) {
+  const S = new Scene(), w = 46, h = 62, gy = 59, cx = 20;
+  const s = sin(ph(t)), B = atk >= 0 ? 0 : bobAt(t) - 2, lean = atk === 0 ? -2 : atk === 1 ? 3 : 0;
+  const G = gaitL(t, 3.4, 1.4);
+  for (const [side, sw, up] of [[-1, atk >= 0 ? -2 : G[0].x, atk >= 0 ? 0 : G[0].up], [1, atk >= 0 ? 2 : G[1].x, atk >= 0 ? 0 : G[1].up]]) {
+    const z = side * 2.4, hip = [cx + side * 0.4, 38 + B, z], knee = [cx + sw * 0.5 + 1, 47 - up * 0.5, z + 0.4], foot = [cx + sw, gy - 1.6 - up, z];
+    limb(S, hip, knee, foot, 2.6, 2.1, 1.8, 'linen', 0.9);
+    S.add(ellipsoid([foot[0] + 1.4, gy - 1.2 - up, z], [2.8, 1.3, 1.8], 'linenD'), 0.7);
+  }
+  // A tall wrapped body, the linen in bands.
+  const tx = cx + lean * 0.5, ty = 27 + B;
+  S.add(folds(skirt(tx, ty - 8, 42 + B, 5.4, 6.8, 0, 0.8, 'linen'), { cx: tx, n: 7, amp: 0.5, y0: ty - 6, y1: 42 }), 0);
+  S.add(ellipsoid([tx, ty - 5, 0], [6.2, 7, 4.4], 'linen'), 2);
+  S.paint({ f: (x, y) => Math.abs((((y + x * 0.35) % 5) + 5) % 5 - 2.5) - 0.7, mat: 'linenD' });
+  // The front arm holds the blade out (strike: a chop down), the back arm hangs with the finger-bell.
+  const sh = [tx + 2.5, ty - 9, 3], shB = [tx - 2.5, ty - 9, -3];
+  const hand = atk === 0 ? [tx - 2, ty - 22, 3.5] : atk === 1 ? [tx + 13, ty + 1, 3.5] : [tx + 9, ty - 2 + s, 3.4];
+  const elbow = atk === 0 ? [tx + 2, ty - 16, 3.4] : atk === 1 ? [tx + 8, ty - 5, 3.4] : [tx + 6, ty - 6, 3.3];
+  limb(S, sh, elbow, hand, 2, 1.7, 1.5, 'linen', 1);
+  const tip = atk === 0 ? [hand[0] - 9, hand[1] - 4, 3.6] : atk === 1 ? [hand[0] + 5, hand[1] + 11, 3.6] : [hand[0] + 9, hand[1] - 6, 3.6];
+  S.add(capsule(hand, tip, 1.3, 0.5, 'verd'), 0.3);
+  S.add(capsule([hand[0] - 1.5, hand[1] + 1, 3.6], [hand[0] + 1.5, hand[1] - 1, 3.6], 0.8, 0.8, 'bronze'), 0.2);
+  const handB = [tx - 4 - s * 1.5, ty + 4, -3.4];
+  limb(S, shB, [tx - 4, ty - 2, -3.3], handB, 1.9, 1.6, 1.4, 'linenD', 1);
+  S.add(sphere([handB[0], handB[1] + 3, -3.4], 1.4, 'bronze'), 0.3);
+  // A bare skull, brown and cracked, under a bronze circlet.
+  const hx = tx + 1.5, hy = ty - 15;
+  S.add(capsule([tx, ty - 10, 0], [hx, hy + 3, 0], 2.2, 2, 'linen'), 1.2);
+  S.add(bumpy(sphere([hx, hy, 0.5], 4.4, 'bone'), 0.3, 0.9, 5), 1);
+  S.add(ellipsoid([hx + 1.6, hy + 3.4, 0.8], [2.6, 1.5, 2.2], 'bone'), 0.8);
+  S.add({ mat: 'bronze', bb: [hx - 6, hy - 6, -5, hx + 6, hy, 5], f: (x, y, z) => Math.hypot(Math.hypot(x - hx, z - 0.5) - 4.6, y - (hy - 2.2)) - 0.9 }, 0.4);
+  S.sub(sphere([hx + 2.2, hy - 0.2, 3.8], 1.3, 'hollow'), 0.4); S.sub(sphere([hx + 4.4, hy, 2.6], 1.1, 'hollow'), 0.3);
+  const f = R(S, w, h, gy);
+  eye(f, hx + 2.2, hy - 0.4, 'violet0', 'violet2'); D(f, hx + 4.3, hy - 0.2, 'violet1');
+  for (const dx of [-2, 0, 2]) D(f, hx + dx, hy - 6.5, 'gold1');
+  return A(f, cx, gy);
+}
+
+// ============================================================ bog hound ===
+// Round 172 (the Hollow Moor): a gaunt grey-black hound, all ribs and legs, weed hanging from its flanks; it trots
+// low and lunges with its jaws open.
+function bogHound(t = 0, atk = -1) {
+  const S = new Scene(), w = 56, h = 36, gy = 33;
+  const s = sin(ph(t)), lunge = atk === 1 ? 4 : atk === 0 ? -2 : 0, B = atk >= 0 ? 0 : bobAt(t) - 2;
+  const bx = 24 + lunge * 0.5, by = 19 + B;
+  S.add(bumpy(ellipsoid([bx + 4, by, 0], [8, 6.2, 5], 'hound'), 0.4, 0.8, 2), 0);
+  S.add(bumpy(ellipsoid([bx - 6, by + 0.5, 0], [6.2, 4.6, 4.2], 'hound'), 0.4, 0.8, 4), 3);
+  for (const [lx, p, near] of [[bx + 7, 0, true], [bx + 6, PI, false], [bx - 8, PI, true], [bx - 9, 0, false]]) {
+    const z = near ? 2.6 : -2.6, o = atk >= 0 ? (atk === 1 ? (lx > bx ? 3 : -3) : 0) : sin(ph(t) + p) * 3, lift = atk >= 0 ? 0 : Math.max(0, cos(ph(t) + p)) * 1.6;
+    const top = [lx, by + 3, z], knee = [lx + o * 0.5 + (lx > bx ? 1 : -1), by + 8 - lift, z], paw = [lx + o, gy - 1 - lift, z];
+    S.add(capsule(top, knee, 1.9, 1.3, near ? 'hound' : 'houndD'), 0.8); S.add(capsule(knee, paw, 1.3, 1, near ? 'hound' : 'houndD'), 0.6);
+  }
+  const hx = bx + 15 + lunge, hy = by - 4 + (atk === 0 ? -3 : 0);
+  S.add(capsule([bx + 9, by - 2, 0], [hx - 2, hy + 1, 0], 3.4, 2.6, 'hound'), 1.4);
+  S.add(ellipsoid([hx, hy, 0], [4, 3.2, 3], 'hound'), 1.2);
+  S.add(capsule([hx + 2, hy + 1, 0], [hx + 6.5, hy + (atk === 1 ? 2.5 : 1.8), 0], 2, 1.3, 'hound'), 0.8);
+  if (atk === 1) S.add(capsule([hx + 2, hy + 3, 0], [hx + 6, hy + 5, 0], 1.3, 0.9, 'houndD'), 0.5);
+  for (const z of [-1.8, 1.8]) S.add(capsule([hx - 2, hy - 2.5, z], [hx - 5, hy - 4.5, z * 1.1], 1, 0.6, 'houndD'), 0.5);
+  S.add(capsule([bx - 11, by - 1, 0], [bx - 17, by - 4 + s * 1.5, 0], 1.3, 0.6, 'hound'), 0.6);
+  S.paint({ f: (x, y, z) => (y > by + 2 && noise3(x * 0.5, y * 0.5, z * 0.5) > 0.2 ? -1 : 1), mat: 'bogweed' });
+  const f = R(S, w, h, gy);
+  eye(f, hx + 1.5, hy - 1, 'holy0', 'holy2');
+  if (atk === 1) { D(f, hx + 4, hy + 3, 'bone0'); D(f, hx + 5.5, hy + 3.4, 'bone0'); }
+  return A(f, bx, gy);
+}
+
 // ================================================================ export ===
 const walk = (fn) => () => HALF.map((t) => fn(t));
 const attack = (fn) => () => [fn(0, 0), rear(() => fn(0, 0)), fn(0, 1)];
-const MODELS = { risen, crawler, mourner, acolyte, gravewarden, rat, votary, flagellant, cherub, wisp, siltWretch, naveEel };
+const MODELS = { risen, crawler, mourner, acolyte, gravewarden, rat, votary, flagellant, cherub, wisp, siltWretch, naveEel, barrowDead, bogHound };
 const mon = {};
 for (const [id, fn] of Object.entries(MODELS)) {
-  const r = reactions(() => fn(0), 0, id === 'rat' || id === 'crawler' || id === 'naveEel');
+  const r = reactions(() => fn(0), 0, id === 'rat' || id === 'crawler' || id === 'naveEel' || id === 'bogHound');
   mon[`${id}_walk`] = walk(fn); mon[`${id}_attack`] = attack(fn); mon[`${id}_hit`] = r.hit; mon[`${id}_die`] = r.die;
 }
 // The dummy stands still; a hit rocks it on its post, a kill tips it over.
