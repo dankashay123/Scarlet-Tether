@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-19, after round 169 (build 169, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-19, after round 170 (build 170, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -757,6 +757,33 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 170:** "All" to round 169's list, plus the owner's new direction: a much deeper story told across an open
+  world outside Vael (four outdoor regions, about twenty minutes each, each ending at a story station, with quests,
+  side quests and lore). The owner chose: the world is the campaign (the five chapters become its stations; Stations
+  I-XXX stay the endgame), one region a round, the story drafted by us and approved by the owner before it goes in,
+  and all four regions (moors and barrows, drowned marsh, burnt farmland, salt cliffs). (A) `docs/STORY.md`: the
+  draft for approval (the mystery of Osanne and the Saint, the order of regions and stations, the long prologue,
+  each region's camp, main line, side quests, lore and world boss, the people, the build order and open questions).
+  Nothing from it is in the game yet. (B) The Hollow Moor prototype, dev only (WORLD tab, stratum picker HOLLOW
+  MOOR): `REGIONS`, `makeRegion` (called from `makeDungeon` when `game.buildRegion` is set by `newRun` from
+  `game.nextRegion`): `layoutOpen` with a longer path (`o.mainN`, `o.pockets`) on a 196x148 map; moor ground painted
+  in 2 px cells (grass, heather in whole patches, a mud track through the main clearings, the high moor shaded smooth
+  from `dS`, a peat bank where it drops to walkable ground, a dark rim on every edge); baked tufts, heather, mud and
+  out-of-reach gorse and stones; props (new sheet `moor` from `tools/models/moor.mjs`: standing stones, barrows with
+  a stone doorway, cairns, gorse, boulders, dry-stone walls, a gibbet, a tent; plus town2 carts, campfire and dead
+  trees); seven landmarks (`room.marks`, found within 120 px by `regionTick`: banner, chime, map icon; LANDMARKS n/7
+  at the top of the HUD); the camp with a Waystone (RETURN: `finishDescent`, but a region clears no Station and counts
+  no descent); the barrow door (sealed until the story is in); drifting mist (`drawRegionMist`); a third of the
+  dungeon's monster clusters (`populate`); no Toll, no Warden, no suspend yet. (C) The five polish items: story
+  play-throughs of chapters 2-5 (`storyplay.cjs`; found a done chapter re-offered when its old offer lingered, now
+  guarded in `questTalk`/`questTargets`, and lower-cased one-word Warden names and chapter titles in objectives:
+  `caseNames` adds quest titles and region names, one-word monster names join `CASE_TERMS`, and CAST, DASH, READ and
+  others are sentence verbs); the town map's legend has PLACES and PEOPLE tabs (`game.mapTab`, `game.mapTabs`) with
+  shorter unlock lines, so nothing is chopped at 667x375; the tracker drops IN VAEL in Vael; the Saint bar's hold tip
+  in Vael names the next two things a level opens; a chapter recap card (state `recap`, `renderChRecap`,
+  `chRecapTap`; time and kills from `game.chRecap`, set in `finishDescent`) replaces the banner, with TAKE ME THERE
+  (stands the Saint where the next giver's TALK is the nearest button). A person with a ! or ? now wins the button
+  over a place next to them (the interact picker).
 - **Round 169:** "All" to round 168's list. (1) The town minimap draws today's dailies done (`dailyDone()`, "1/3")
   on a small plate by the Bounty Board's spot, with a bar under it; the town map's legend says DAILY QUESTS: N OF 3
   DONE for the board, and OPEN (not COMING SOON) for other open places. (2) The Saint level summary: `newRun` notes
