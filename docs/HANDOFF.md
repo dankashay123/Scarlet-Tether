@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-19, after round 172 (build 172, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-19, after round 173 (build 173, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -381,8 +381,8 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Round 172 leftovers:** Region III, the Ashfields (chapter 4, the Wall of Names) is next by the plan in
-  `docs/STORY.md`. Some older models use palette names past step 4 (`moss5`, `wood6`, `iron5`...), which fall back to
+- **Round 173 leftovers:** next by `docs/STORY.md` is chapter 5 in the belfry made longer, then Region IV, the
+  Saltreach (the Lantern Chapel, Our Lady of Nails, a new Warden). Some older models use palette names past step 4 (`moss5`, `wood6`, `iron5`...), which fall back to
   index 0 (`ink0`); they show as dark accents, so fix them only with a look at each. AUTO_CUT is still off: remind
   the owner. `designer.cjs` fails before this round too (it taps the LAYOUT tile at a fixed spot that moved); fix
   the test when the designer is next touched. The soak and several `?town` tests had sat in the opening since round
@@ -763,6 +763,19 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 173:** the owner: "All" (round 172's last five). (A) Region III, the Ashfields (`REGIONS.ash`, sheet `ash`
+  from `tools/models/ash.mjs`: farm, mill (two sail frames), chartree, scarecrow, stook, furnace, cryptdoor, ashpatch,
+  stubble): its own ground painter (dirt road, stubble rows, grey ash, burnt hedges), Ide's mill camp, landmarks (the
+  burnt farms, the bell foundry, the abbey gallery (town2 `ruin`), the scarecrow rows with BURN, the plague pit with
+  SEARCH, the black field, the abbey crypt door), `REGION_NPC` ide and collector, six `REGION_LORE.ash` pieces,
+  `RSIDE` crows (burn 6) and tithe (the purse). Chapter 4 has `region: 'ash'`, steps ide, foundry, gallery (the last
+  two are lore you read, `story: 3`). The East Gate in Vael (`gateOpen('ash')`, an opening cut in the east wall at
+  `tk(720)`). (B) World bosses are a table (`WORLD_BOSSES`: Charnel King, Drowned Organist, Ash Widow), always drop
+  a Hallowed piece (`rewardPiece(3, ...)`), and wait `WORLD_BOSS_WAIT` (20 min, `SAVE.worldBossT`, `worldBossWait`)
+  before rising again. (C) A resting fire halfway along each region's track (REST heals fully). (D) Each chapter's
+  last room is its stage (`FINALE` props and light round the message in `storyPlace`), and the story Warden rises
+  in that room (`spawnWarden`). (E) The Toll bar shows the chapter's kills (`storyKills`). Tests: `round173.cjs`;
+  `storyplay.cjs` knows the three gates and reads a chapter's story lore; it waits longer for the denser stations.
 - **Round 172:** the owner: "All" (round 171's five) and, mid-round, a photo: "screen disappears when approaching this
   guy" (Sergeant Brask on the moor). (A) The bug: the interact label read `NPC_INFO[who].name`; region people are only
   in `SPEAKER`, so the frame threw and the HUD vanished. Fixed (falls back to `SPEAKER`) and pushed alone to master
