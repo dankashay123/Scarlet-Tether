@@ -242,6 +242,15 @@ SFX['music_ossuary'] = lambda: music('music_ossuary', 'cathedral-0', 'cathedral.
 SFX['music_warden_ossuary'] = lambda: music('music_warden_ossuary', 'boss-battle-2-symphonic-metal', 'boss_battle_#2_metal_loop.wav', seamless=True, lu=-20, tail=0.008)
 SFX['sting_warden'] = lambda: build('sting_warden', [L('string-and-piano-horror-stings', 'abyss_0.ogg', fade=0.5)], fade=1.0, rev=(0.3, 2.4, 2500), lu=-12)
 
+# Round 174: each region's own music and ambience (CC0, see docs/CREDITS.md).
+SFX['music_moor'] = lambda: music('music_moor', 'birds-and-wind', 'final.ogg', 20, 150, 4, lu=-23, br='64k')
+SFX['music_fen'] = lambda: music('music_fen', 'dark-place', 'dark_place.ogg', 0, None, 3, lu=-22, br='64k')
+SFX['music_ash'] = lambda: music('music_ash', 'ruined-city', 'Ruined City Theme.ogg', 0, None, 4, lu=-22, br='64k')
+SFX['music_salt'] = lambda: music('music_salt', 'birds-and-wind', 'ambient.ogg', 0, None, 4, lu=-23, br='64k')
+SFX['amb_wind'] = lambda: loop('amb_wind', 'wind1', 'wind1.wav', 0, 55, 3, lu=-27)
+SFX['amb_swamp'] = lambda: loop('amb_swamp', 'swamp', 'swamp.ogg', 5, 90, 3, lu=-26)
+SFX['amb_waves'] = lambda: build('amb_waves', [L('waves', 'wave1.flac', at=t, db=d, rate=r, fade=0.6) for t, d, r in [(0, 0, 1), (3.1, -3, 0.92), (6.4, -1, 1.05), (9.2, -4, 0.88), (12.5, -2, 0.97), (15.8, -1, 1.02), (19.0, -3, 0.9), (22.1, 0, 1)]], length=26, fade=0.8, lu=-25)
+
 # Loops (ambience near a site).
 SFX['amb_fire'] = lambda: loop('amb_fire', 'fireplace-sound-loop', 'fire.wav', 2, 12, lu=-22, hp=80)
 

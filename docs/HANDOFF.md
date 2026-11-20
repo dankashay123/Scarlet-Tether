@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-19, after round 173 (build 173, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-19, after round 174 (build 174, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -381,8 +381,8 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Round 173 leftovers:** next by `docs/STORY.md` is chapter 5 in the belfry made longer, then Region IV, the
-  Saltreach (the Lantern Chapel, Our Lady of Nails, a new Warden). Some older models use palette names past step 4 (`moss5`, `wood6`, `iron5`...), which fall back to
+- **Round 174 leftovers:** all four regions and six chapters are in. Next by `docs/STORY.md`: the endings at the
+  bottom of the Stations. The moor has no small ground creatures of its own (it has crows and sheep). Some older models use palette names past step 4 (`moss5`, `wood6`, `iron5`...), which fall back to
   index 0 (`ink0`); they show as dark accents, so fix them only with a look at each. AUTO_CUT is still off: remind
   the owner. `designer.cjs` fails before this round too (it taps the LAYOUT tile at a fixed spot that moved); fix
   the test when the designer is next touched. The soak and several `?town` tests had sat in the opening since round
@@ -763,6 +763,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 174:** the owner: "All" (round 173's five). (A) Region IV, the Saltreach (`REGIONS.salt`, sheet `salt` from
+  `tools/models/salt.mjs`: chapel, hut, boat (upturned, wreck), netrack, stack, saltpan, marram; also bellframe,
+  gatetower, frog, gull): a coast painter (sand track, salt crust, shingle, surf and grey sea), the salt-hut camp,
+  landmarks (the salt huts, the wreck, the stacks, the salt pans, the Lantern Shore, the net yard, the Lantern Chapel
+  as the door), `REGION_NPC` cass and keeper, six `REGION_LORE.salt` pieces, `RSIDE` gulls (30 dead on the beach,
+  `questBump('saltdead')`), the Tide-Bishop as its world boss at the wreck. The West Gate (`gateOpen('salt')` once
+  `storyN() >= 5`). (B) A sixth chapter, THE LANTERN CHAPEL (giver and turn Odile, region `salt`, steps cass, wreck,
+  lanternfolk, Our Lady of Nails, Osanne's book). `STORY_MAIN` (5) is the story the Stations wait for: `storyDone`,
+  the old-save upgrade in `storyN`, the recap's last line and its sound read it; `ensureQuests` offers chapters past
+  it. (C) COUNT THE BELLS: three bell frames (`SILENCE`, goal `bells`) in the belfry's rooms (`storyPlace`, chapter
+  4), gold marks on the minimap, a reminder after the Warden; Vane's outro tells the loop and Odile points to the
+  coast. (D) Region music (`REGION_MUSIC`, loops `music_moor`, `music_fen`, `music_ash`, `music_salt`, `amb_wind`,
+  `amb_swamp`, `amb_waves`, all CC0 from OpenGameArt, recipes in `tools/build-sfx.py`, credits in `docs/CREDITS.md`)
+  and creatures (`room.critters` with `kind`: frogs, rats, gulls). (E) Gate towers by the South, East and West Gates.
+  (F) The Codex lore page: a count per region and TAKE ME THERE on an unread page (in Vael, gate open). Tests:
+  `round174.cjs`; `storyplay.cjs` silences the bells.
 - **Round 173:** the owner: "All" (round 172's last five). (A) Region III, the Ashfields (`REGIONS.ash`, sheet `ash`
   from `tools/models/ash.mjs`: farm, mill (two sail frames), chartree, scarecrow, stook, furnace, cryptdoor, ashpatch,
   stubble): its own ground painter (dirt road, stubble rows, grey ash, burnt hedges), Ide's mill camp, landmarks (the

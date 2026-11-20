@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '173';
+const BUILD = '174';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '174': ['NEW REGION: THE SALTREACH, THROUGH THE WEST GATE ONCE THE STORY IS DONE. SALT HUTS, A WRECKED CHOIR SHIP, SEA STACKS, SALT PANS, THE LANTERN SHORE AND THE LANTERN CHAPEL ON ITS CLIFF. CASS AND THE LAMP KEEPER, SIX PIECES OF LORE AND A SIDE QUEST.', 'A NEW CHAPTER AFTER THE STORY: THE LANTERN CHAPEL, WITH OUR LADY OF NAILS. THE STATIONS STAY OPEN WHILE YOU PLAY IT.', 'COUNT THE BELLS IS LONGER: SILENCE THE THREE BELLS IN THE BELFRY (GOLD MARKS ON THE MINIMAP). VANE TELLS YOU THE REST AFTERWARDS.', 'EACH REGION HAS ITS OWN MUSIC AND SOUNDS: WIND ON THE MOOR, FROGS IN THE FEN, RATS IN THE ASHFIELDS, GULLS AND SURF ON THE COAST.', 'VAEL\'S GATES HAVE GATE TOWERS.', 'THE CODEX LORE PAGE COUNTS EACH REGION, AND AN UNREAD PAGE HAS A TAKE ME THERE BUTTON.', 'THE TIDE-BISHOP WALKS THE SALTREACH\'S WRECK AS ITS WORLD BOSS.'],
   '173': ['NEW REGION: THE ASHFIELDS, THROUGH THE EAST GATE BEYOND THE FORGE. BURNT FARMS, A BELL FOUNDRY, THE ABBEY\'S PORTRAITS, SCARECROW ROWS, A PLAGUE PIT, IDE AT HER MILL AND A RUNAWAY TITHE COLLECTOR. SIX PIECES OF LORE AND TWO SIDE QUESTS. CHAPTER 4 NOW STARTS THERE.', 'THE ASH WIDOW WALKS THE BLACK FIELD AS THE ASHFIELDS\' WORLD BOSS.', 'WORLD BOSSES ALWAYS DROP A HALLOWED PIECE, AND RISE AGAIN 20 MINUTES AFTER YOU KILL THEM.', 'EACH REGION HAS A RESTING FIRE HALFWAY ALONG ITS TRACK. REST THERE TO HEAL FULLY.', 'EACH STORY CHAPTER\'S LAST ROOM IS ITS OWN STAGE, AND THE WARDEN RISES THERE.', 'THE TOLL BAR SHOWS THE CHAPTER\'S KILL COUNT.'],
   '172': ['VAEL IS NOW ITS TRUE SIZE: HOUSES, THE TAVERN, THE FORGE, THE CATHEDRAL, THE GATE, THE FOUNTAIN AND THE TREES ARE TWICE AS BIG, AND THE TOWN IS LAID OUT TO FIT. YOU RUN FASTER IN TOWN.', 'NEW REGION: THE SALLOW FEN, THROUGH THE SOUTH GATE. FLOODED VILLAGES, REED BEDS, A BELL TOWER IN THE WATER, OLD TOBE AND SISTER MARL, SIX PIECES OF LORE AND TWO SIDE QUESTS. CHAPTER 3 NOW STARTS THERE.', 'WORLD BOSSES: THE CHARNEL KING AT THE MOOR\'S OLD BARROWS AND THE DROWNED ORGANIST IN THE FEN\'S SUNKEN CHAPEL. THEY DROP LOOT AND EMBERSTONES.', 'THE MOOR HAS ITS OWN DEAD: BARROW-DEAD AND BOG HOUNDS.', 'THE OPENING IS SHORTER, AND LATER CHARACTERS CAN SKIP IT.', 'THE CODEX LORE PAGE SHOWS A PICTURE FOR EACH PIECE AND HOW MUCH OF THE UNWRITTEN GOSPEL YOU HAVE FOUND.', 'FIXED: THE SCREEN WENT BLANK NEAR SERGEANT BRASK ON THE MOOR.', 'TOWNSFOLK WALKING THE SAME PATH NOW STEP AROUND EACH OTHER.', 'STORY MAPS HAVE A QUARTER MORE FOES AND MORE CHAMPION PACKS, AND THE REGIONS ARE BUSIER. READING A CHAPTER\'S MESSAGE WAKES THE DEAD AROUND YOU. IF THE WARDEN FALLS BEFORE YOU HAVE KILLED ENOUGH, THE DEAD KEEP RISING UNTIL YOU HAVE, SO YOU NEVER HAVE TO PLAY A CHAPTER TWICE.'],
   '171': ['THE WORLD IS NOW IN PROPORTION TO THE SAINT: THE RISEN AND OTHER COMMON FOES STAND AS TALL AS HIM, AND STANDING STONES, BARROWS, COFFINS, PEWS AND THE ORGAN ARE THEIR TRUE SIZE.', 'A NEW CHARACTER STARTS WITH A NARRATED OPENING, A WALK THROUGH VAEL AND A NIGHT FIGHT IN THE QUIET ACRE BEFORE THE FIRST DESCENT.', 'CHAPTER 2 NOW TAKES YOU OUT OF THE PILGRIMS\' GATE ONTO THE HOLLOW MOOR: FIND THE LOST CONVOY, MEET WENNA AND THE SURVIVOR, THEN GO DOWN INTO THE OLD BARROW.', 'LORE TO FIND ON THE MOOR, A SIDE QUEST FOR WENNA, AND A NEW LORE PAGE IN THE CODEX.', 'CROWS, SHEEP AND WIND ON THE MOOR, AND ITS OWN END CARD WHEN YOU GO HOME.', 'AUTO PLAY NOW OPENS A CHEST WHEN A CHAPTER ASKS FOR ONE.'],
@@ -559,7 +560,7 @@ const isBold = (o) => o.bold ?? !!(o.glow || (o.sc || 1) >= 1.5); // titles and 
 // turns a short label into Title Case and anything longer into a sentence, and
 // keeps game names (sets, rites, Wardens, sites, terms) and Roman numerals capitalised.
 // A string that already has a lower-case letter is left as it is.
-const CASE_TERMS = new Set('WENNA TOBE MARL OSANNE IDE EMBERWAKE MURMUR CHANT RAPTURE FRENZY INDULGENCE INDULGENCES TESTAMENT TESTAMENTS RUBRIC RUBRICS ZEAL TOLL WARDEN WARDENS SAINT SAINTS STATION STATIONS VIGIL VIGILS HALLOWED RECKONING RECKONINGS EMBERSTONE EMBERSTONES CHRISM CHRISMS MENDICANT VESPER ANCHORESS SANCTITY MIGHT VAEL ODILE PELL CINDER VANE HOLLIS BARNABY ULM CANONRY CENSER ENCHANTER BOOKIE CHOIR OSANNE WENNA BRASK UNDERCROFT NAVE OSSUARY STRATUM STRATA CARNAGE WOUND WOUNDS'.split(' '));
+const CASE_TERMS = new Set('WENNA TOBE MARL OSANNE IDE CASS LANTERNFOLK EMBERWAKE MURMUR CHANT RAPTURE FRENZY INDULGENCE INDULGENCES TESTAMENT TESTAMENTS RUBRIC RUBRICS ZEAL TOLL WARDEN WARDENS SAINT SAINTS STATION STATIONS VIGIL VIGILS HALLOWED RECKONING RECKONINGS EMBERSTONE EMBERSTONES CHRISM CHRISMS MENDICANT VESPER ANCHORESS SANCTITY MIGHT VAEL ODILE PELL CINDER VANE HOLLIS BARNABY ULM CANONRY CENSER ENCHANTER BOOKIE CHOIR OSANNE WENNA BRASK UNDERCROFT NAVE OSSUARY STRATUM STRATA CARNAGE WOUND WOUNDS'.split(' '));
 const CASE_SMALL = new Set('A AN THE OF TO IN ON AT FOR AND OR BY WITH FROM PER VS AS'.split(' '));
 const CASE_KEEP = /^(?:HP|XP|DPS|FX|OK|UI|PNG|(?=[IVXL])L?X{0,3}(?:IX|IV|V?I{0,3})\+?|[A-Z]\d+)$/; // HP, XP, Roman numerals, F1
 const CASE_VERBS = new Set('TAP HOLD DRAG WEAR BUY GO FINISH KILL PICK CHOOSE SPEND TALK OPEN PRESS MOVE REACH FIND CLEAR NO GET WALK FALL BEAT SELL BURN USE CLAIM DIES COMES CAST DASH VISIT LEARN REFORGE ENCHANT PLACE READ RING SILENCE'.split(' '));
@@ -570,7 +571,7 @@ function caseNames() {
   try { walk([PETS, LEGENDS, RITES, MRITES, ARITES, VSETS, TALENT_TREES, SITES, STRATA, CHRISM, CENSER_UP, HALOS, OMENS, ENCHANTS, PASSIVES, WOUNDS, MON], 0); Object.values(LEGENDARIES).forEach(add); } catch { /* data not ready yet */ }
   // Round 170: quest titles keep their capitals inside a sentence, and so do one-word monster names (the Bellwright).
   try { for (const R0 of Object.values(REGIONS)) { add(R0.name); Object.values(R0.marks).forEach(add); } for (const C of [...STORY, ...Object.values(SIDE), ...Object.values(QSITE)]) add(C.title); for (const m of Object.values(MON)) { const n = String(m.name || '').replace(/^THE /, ''); if (/^[A-Z][A-Z'-]{3,}$/.test(n)) CASE_TERMS.add(n); } } catch { /* data not ready yet */ }
-  for (const s of ['TITHE COLLECTOR', 'EAST GATE', 'OLD TOBE', 'SISTER MARL', 'SERGEANT BRASK', 'SOUTH GATE', 'ARCHDEACON VANE', 'BROTHER CINDER', 'BROTHER PELL', 'BROTHER ULM', 'SISTER ODILE', 'OLD BARNABY', 'BLOODROSE KEY', 'BLOODROSE KEYS', 'EMBER FORGE', 'ASHEN ALTAR', 'TRAINING YARD', 'BLEEDING VIGIL', 'WEEPING RELIQUARY', 'QUIET ACRE', 'PILGRIMS\' GATE', 'VIGIL ROLL', 'SCRYING POOL', 'BOUNTY BOARD', 'PENITENT CELLS', 'SAINT LEVEL', 'DROWNED NAVE', 'OSSUARY SPIRE', 'GREAT FONT', 'BELL CROW', 'TOWN CRIER', 'PLUSH SELLER', 'GILDED LAMB', 'PILGRIMS\' GATE', 'HOLLOW MOOR']) add(s);
+  for (const s of ['LAMP KEEPER', 'WEST GATE', 'TITHE COLLECTOR', 'EAST GATE', 'OLD TOBE', 'SISTER MARL', 'SERGEANT BRASK', 'SOUTH GATE', 'ARCHDEACON VANE', 'BROTHER CINDER', 'BROTHER PELL', 'BROTHER ULM', 'SISTER ODILE', 'OLD BARNABY', 'BLOODROSE KEY', 'BLOODROSE KEYS', 'EMBER FORGE', 'ASHEN ALTAR', 'TRAINING YARD', 'BLEEDING VIGIL', 'WEEPING RELIQUARY', 'QUIET ACRE', 'PILGRIMS\' GATE', 'VIGIL ROLL', 'SCRYING POOL', 'BOUNTY BOARD', 'PENITENT CELLS', 'SAINT LEVEL', 'DROWNED NAVE', 'OSSUARY SPIRE', 'GREAT FONT', 'BELL CROW', 'TOWN CRIER', 'PLUSH SELLER', 'GILDED LAMB', 'PILGRIMS\' GATE', 'HOLLOW MOOR']) add(s);
   const list = [...CASE_NAMES.keys()].sort((a, b) => b.length - a.length).map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   CASE_RX = list.length ? new RegExp(`(?<![A-Z'])(?:${list.join('|')})(?![A-Z])`, 'g') : /$^/g;
 }
@@ -731,7 +732,7 @@ const AUDIO = (() => {
     try { const src = A.ctx.createMediaElementSource(el); t.g = A.ctx.createGain(); t.g.gain.value = 0; src.connect(t.g); t.g.connect(A.musicBus); } catch { el.volume = 0; }
     return (A.tracks[name] = t);
   };
-  const LOOPS = { music_town: 0.8, music_dungeon: 0.75, music_warden: 0.85, music_warden_nave: 0.85, music_warden_ossuary: 0.85, music_undercroft: 0.8, music_nave: 0.8, music_ossuary: 0.8, amb_choir: 0.85, amb_town: 0.5, amb_crickets: 0.18, amb_fire: 0.7 };
+  const LOOPS = { music_town: 0.8, music_dungeon: 0.75, music_warden: 0.85, music_warden_nave: 0.85, music_warden_ossuary: 0.85, music_undercroft: 0.8, music_nave: 0.8, music_ossuary: 0.8, amb_choir: 0.85, amb_town: 0.5, amb_crickets: 0.18, amb_fire: 0.7, music_moor: 0.7, music_fen: 0.75, music_ash: 0.75, music_salt: 0.7, amb_wind: 0.5, amb_swamp: 0.55, amb_waves: 0.6 }; // round 174: the regions' own
   // Loops whose level follows the Saint (A.level): their start level.
   const LEVELED = { music_town: 1, amb_choir: 0, amb_fire: 0 };
   // A loop whose level follows something (the fire near the altar and forge), 0-1.
@@ -1102,7 +1103,11 @@ const REGIONS = {
   // Round 173: the third region, east of Vael: burnt farms, ash fields, a bell foundry, the abbey's crypt.
   ash: { name: 'THE ASHFIELDS', w: 196, h: 148, mainN: 13, pockets: 6, minFloor: 15000, ambient: 'rgba(24,14,14,0.42)', pool: ['gleaner', 'gleaner', 'cinderMoth', 'risen', 'crawler', 'barrowDead'], rares: ['gravedigger', 'knight', 'lantern', 'abbot'],
     marks: { farms: 'THE BURNT FARMS', foundry: 'THE BELL FOUNDRY', gallery: 'THE ABBEY GALLERY', crows: 'THE SCARECROW ROWS', pit: 'THE PLAGUE PIT', field: 'THE BLACK FIELD', door: 'THE ABBEY CRYPT' }, empty: 'THE CRYPT IS QUIET. THE NAMES ON THE WALL ARE ALL STILL THERE.', gate: 'THE EAST GATE' },
+  // Round 174: the fourth region, west of Vael: the coast, salt pans, wrecks, sea stacks and the Lantern Chapel.
+  salt: { name: 'THE SALTREACH', w: 196, h: 148, mainN: 13, pockets: 6, minFloor: 15000, ambient: 'rgba(14,18,30,0.36)', pool: ['siltWretch', 'naveEel', 'crawler', 'risen', 'barrowDead', 'bogHound'], rares: ['gravedigger', 'knight', 'lantern', 'collector'],
+    marks: { huts: 'THE SALT HUTS', wreck: 'THE WRECK', stacks: 'THE STACKS', pans: 'THE SALT PANS', lanterns: 'THE LANTERN SHORE', nets: 'THE NET YARD', door: 'THE LANTERN CHAPEL' }, empty: 'THE CHAPEL IS DARK NOW. ONLY THE LAMP AT THE TOP STILL BURNS.', gate: 'THE WEST GATE' },
 };
+const REGION_MUSIC = { acre: ['music_undercroft', 'amb_wind'], moor: ['music_moor', 'amb_wind'], fen: ['music_fen', 'amb_swamp'], ash: ['music_ash', 'amb_wind'], salt: ['music_salt', 'amb_waves'] }; // round 174
 const regionRun = () => game.scene === 'wound' && !!(room && room.region);
 function makeRegion(id) {
   const RG = REGIONS[id], w = RG.w, h = RG.h, solid = [];
@@ -1117,7 +1122,9 @@ function makeRegion(id) {
   for (const j of start.links) rooms[j].known = true;
   const mains = rooms.filter((r) => r.main), side = rooms.filter((r) => !r.main), door = mains[mains.length - 1];
   const marks = [], mark = (r, kind) => { if (!r || r.mark || r === start) return; r.mark = kind; marks.push({ kind, name: RG.marks[kind], r, x: (r.cx + 0.5) * TILE, y: (r.cy + 0.5) * TILE, found: false }); };
-  if (id === 'ash') { mark(door, 'door'); mark(mains[Math.round(mains.length * 0.3)], 'foundry'); mark(mains[Math.round(mains.length * 0.6)], 'gallery');
+  if (id === 'salt') { mark(door, 'door'); mark(mains[Math.round(mains.length * 0.3)], 'wreck'); mark(mains[Math.round(mains.length * 0.6)], 'lanterns');
+    ['huts', 'stacks', 'pans', 'nets'].forEach((k, i) => mark(side[i] || mains[2 + i * 2], k)); }
+  else if (id === 'ash') { mark(door, 'door'); mark(mains[Math.round(mains.length * 0.3)], 'foundry'); mark(mains[Math.round(mains.length * 0.6)], 'gallery');
     ['farms', 'crows', 'pit', 'field'].forEach((k, i) => mark(side[i] || mains[2 + i * 2], k)); }
   else if (id === 'fen') { mark(door, 'door'); mark(mains[Math.round(mains.length * 0.3)], 'dam'); mark(mains[Math.round(mains.length * 0.6)], 'tower');
     ['village', 'reeds', 'causeway', 'chapel'].forEach((k, i) => mark(side[i] || mains[2 + i * 2], k)); }
@@ -1140,8 +1147,8 @@ function makeRegion(id) {
   const rc = roomCanvas.getContext('2d'), PW = w * TILE, PH = h * TILE;
   // --- The ground, in 2 px cells: moor grass and heather, a mud track, and the rough high moor beyond the banks.
   const hex = (c) => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
-  const C = Object.fromEntries(['moss2h', 'moss3', 'moss3h', 'moss4', 'rot3', 'rot3h', 'rot4', 'violet2h', 'violet3', 'violet3h', 'violet4', 'shroud2h', 'shroud3', 'shroud3h', 'shroud4', 'stone2h', 'stone3', 'stone3h', 'sand3', 'sand3h', 'ink0', 'ink0h', 'ink1', 'ink1h', 'ink2', 'sea1h', 'sea2', 'sea2h', 'sea3', 'sea3h', 'sea4', 'wood2h', 'wood3', 'wood3h', 'moss2', 'sand2h', 'sand3h', 'rot2h', 'rot3', 'stone2', 'stone4', 'ink1', 'ember2', 'ember3', 'shroud2'].map((k) => [k, hex(PAL[k])]));
-  const fen = id === 'fen', ash = id === 'ash', wet = new Set(); // round 172: the fen's shallow water (walkable; it splashes)
+  const C = Object.fromEntries(['moss2h', 'moss3', 'moss3h', 'moss4', 'rot3', 'rot3h', 'rot4', 'violet2h', 'violet3', 'violet3h', 'violet4', 'shroud2h', 'shroud3', 'shroud3h', 'shroud4', 'stone2h', 'stone3', 'stone3h', 'sand3', 'sand3h', 'ink0', 'ink0h', 'ink1', 'ink1h', 'ink2', 'sea1h', 'sea2', 'sea2h', 'sea3', 'sea3h', 'sea4', 'wood2h', 'wood3', 'wood3h', 'moss2', 'sand2h', 'sand3h', 'rot2h', 'rot3', 'stone2', 'stone4', 'ink1', 'ember2', 'ember3', 'shroud2', 'sand2', 'sand4', 'bone1', 'bone2', 'stone1h'].map((k) => [k, hex(PAL[k])]));
+  const fen = id === 'fen', ash = id === 'ash', salt = id === 'salt', wet = new Set(); // round 172: the fen's shallow water (walkable; it splashes)
   const hsh = (x, y, k = 0) => { let v = (x * 374761393 + y * 668265263 + k * 1442695041) | 0; v = Math.imul(v ^ (v >>> 13), 1274126177); return ((v ^ (v >>> 16)) >>> 0) / 4294967296; };
   const vn = (x, y, sc, k) => { const gx = x / sc, gy = y / sc, x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy); const a = hsh(x0, y0, k), b = hsh(x0 + 1, y0, k), c = hsh(x0, y0 + 1, k), d = hsh(x0 + 1, y0 + 1, k); return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy; };
   const img = rc.createImageData(PW, PH), D = img.data;
@@ -1152,7 +1159,22 @@ function makeRegion(id) {
   for (let y = 0; y < PH; y += 2) for (let x = 0; x < PW; x += 2) {
     const tx = x >> 4, ty = y >> 4, ti = ty * w + tx, lx = x & 15, ly = y & 15, n = vn(x, y, 48, 1) * 0.6 + vn(x, y, 14, 2) * 0.4, r = hsh(x >> 1, y >> 1, 3);
     let c;
-    if (ash) {
+    if (salt) {
+      // The Saltreach: a sandy track, dune grass and shingle, white salt crust; beyond the banks the grey sea, with surf.
+      if (!solid[ty][tx]) {
+        const td = tileTrack[ti] < 48 ? trackAt(x, y) + (vn(x, y, 10, 4) - 0.5) * 8 : 99, crust = vn(x, y, 40, 7) + (vn(x, y, 12, 13) - 0.5) * 0.3;
+        if (td < 8) c = r < 0.04 ? C.stone3 : n > 0.6 ? C.sand3 : C.sand3h;
+        else if (td < 11) c = n > 0.5 ? C.sand4 : C.sand3h;
+        else if (crust > 0.7) c = crust > 0.76 ? C.bone2 : C.sand2h;
+        else if (crust < 0.24) c = n > 0.5 ? C.sand4 : C.stone3h;
+        else c = n > 0.66 ? C.sand2h : n < 0.3 ? C.moss4 : n < 0.46 ? C.sand3 : C.sand3h;
+        if ((ly < 5 && !floorAt(tx, ty - 1)) || (lx < 3 && !floorAt(tx - 1, ty))) c = c === C.sand3h || c === C.sand2h ? C.sand4 : c === C.bone1 ? C.bone2 : c;
+      } else {
+        const edge = (ly >= 12 && floorAt(tx, ty + 1)) || (lx >= 13 && floorAt(tx + 1, ty)) || (lx < 3 && floorAt(tx - 1, ty)) || (ly < 4 && floorAt(tx, ty - 1));
+        const k = dAt(x, y) + (vn(x, y, 26, 11) - 0.5) * 0.8, rip = vn(x * 0.5, y * 2.4, 16, 17);
+        c = edge ? (ly < 4 && floorAt(tx, ty - 1) ? C.sand4 : C.bone1) : k < 1.4 ? (rip > 0.6 ? C.bone1 : C.sea2h) : k < 2.6 ? (rip > 0.74 ? C.sea2h : C.sea3) : k < 4 ? (rip > 0.8 ? C.sea3 : C.sea3h) : k < 5.6 ? C.sea4 : C.ink1h;
+      }
+    } else if (ash) {
       // The Ashfields: a dirt road, stubble fields in rows, grey ash where the fire went through; beyond, burnt hedges.
       if (!solid[ty][tx]) {
         const td = tileTrack[ti] < 48 ? trackAt(x, y) + (vn(x, y, 10, 4) - 0.5) * 8 : 99, burnt = vn(x, y, 50, 7) + (vn(x, y, 14, 13) - 0.5) * 0.3;
@@ -1207,7 +1229,10 @@ function makeRegion(id) {
   }
   rc.putImageData(img, 0, 0);
   const bake = (sheet, anim, i, x, y, flip) => { const f = frameOf(sheet, anim, i); rc.save(); rc.translate(Math.round(x), Math.round(y)); if (flip) rc.scale(-1, 1); rc.drawImage(IMG[sheet], f.x, f.y, f.w, f.h, -Math.round(f.w / 2), -f.h, f.w, f.h); rc.restore(); };
-  if (ash) {
+  if (salt) {
+    for (let k = 0; k < Math.round(w * h * 0.05); k++) { const tx = 1 + Math.floor(rng() * (w - 2)), ty = 1 + Math.floor(rng() * (h - 2)); if (solid[ty][tx] || tileTrack[ty * w + tx] < 26) continue; const x = (tx + rng()) * TILE, y = (ty + 0.5 + rng() * 0.5) * TILE; bake('salt', 'marram', Math.floor(rng() * 2), x, y); }
+    for (let ty = 2; ty < h - 1; ty++) for (let tx = 1; tx < w - 1; tx++) { const ds = dS[ty * w + tx]; if (ds < 2 || ds > 5 || floorAt(tx, ty + 1) || floorAt(tx, ty + 2) || rng() > 0.025) continue; bake('salt', 'stack', rng() < 0.5 ? 1 : 0, (tx + 0.5) * TILE, (ty + 1) * TILE, rng() < 0.5); }
+  } else if (ash) {
     for (let k = 0; k < Math.round(w * h * 0.05); k++) { const tx = 1 + Math.floor(rng() * (w - 2)), ty = 1 + Math.floor(rng() * (h - 2)); if (solid[ty][tx] || tileTrack[ty * w + tx] < 26) continue; const x = (tx + rng()) * TILE, y = (ty + 0.5 + rng() * 0.5) * TILE; bake('ash', rng() < 0.55 ? 'stubble' : 'ashpatch', Math.floor(rng() * 2), x, y); }
     for (let ty = 2; ty < h - 1; ty++) for (let tx = 1; tx < w - 1; tx++) { const ds = dS[ty * w + tx]; if (ds < 2 || ds > 4 || floorAt(tx, ty + 1) || floorAt(tx, ty + 2) || rng() > 0.05) continue; bake('ash', rng() < 0.6 ? 'stook' : 'chartree', rng() < 0.5 ? 1 : 0, (tx + 0.5) * TILE, (ty + 1) * TILE, rng() < 0.5); }
   } else if (fen) {
@@ -1243,12 +1268,14 @@ function makeRegion(id) {
     if (r === rooms[rooms.length - 1]) put('town2', 'mausoleum', r.cx, r.cy - 2, { tw: 12, th: 3, force: true }); else if (rng() < 0.6) { const at = near(r, 8); if (at) put('moor', 'thorn', at[0], at[1], { tw: 2, frame: Math.floor(rng() * 2) }); } }
   // The camp: a tent, a fire, a fold of dry-stone wall and the Waystone home.
   if (!RG.acre) { const r = start, cx = r.cx, cy = r.cy;
-    if (ash) { put('ash', 'mill', cx - 6, cy - 2, { tw: 5, th: 2, force: true }); put('ash', 'stook', cx - 11, cy + 3, { force: true }); put('ash', 'stook', cx - 9, cy + 5, { force: true, frame: 0 }); lights.push({ x: (cx - 5.5) * TILE, y: (cy - 6) * TILE, r: 50, c: 'ember', a: 0.7, flick: 3 }); }
+    if (salt) { put('salt', 'hut', cx - 6, cy - 2, { tw: 6, th: 2, force: true }); put('salt', 'boat', cx - 9, cy + 5, { tw: 6, force: true, block: false }); put('salt', 'netrack', cx + 8, cy + 4, { tw: 4, force: true }); lights.push({ x: (cx - 7) * TILE, y: (cy - 3) * TILE, r: 50, c: 'ember', a: 0.7, flick: 3 }); }
+    else if (ash) { put('ash', 'mill', cx - 6, cy - 2, { tw: 5, th: 2, force: true }); put('ash', 'stook', cx - 11, cy + 3, { force: true }); put('ash', 'stook', cx - 9, cy + 5, { force: true, frame: 0 }); lights.push({ x: (cx - 5.5) * TILE, y: (cy - 6) * TILE, r: 50, c: 'ember', a: 0.7, flick: 3 }); }
     else if (fen) { put('fen', 'stilthouse', cx - 6, cy - 2, { tw: 8, th: 2, force: true }); put('fen', 'punt', cx - 9, cy + 4, { tw: 4, force: true, block: false }); put('fen', 'post', cx - 12, cy + 4, { force: true }); lights.push({ x: (cx - 4) * TILE, y: (cy - 6) * TILE, r: 60, c: 'ember', a: 0.8, flick: 3 }); }
     else put('moor', 'tent', cx - 5, cy - 2, { tw: 4, force: true }); put('town2', 'campfire', cx, cy - 1, { force: true, block: false });
     lights.push({ x: (cx + 0.5) * TILE, y: cy * TILE, r: 90, c: 'ember', a: 0.9, flick: 1 });
     const ws = put('town', 'waystone', cx + 4, cy - 1, { force: true }); if (ws) { lights.push({ x: ws.x, y: ws.y - 18, r: 70, c: 'holy', a: 0.8 }); interact.push({ x: ws.x, y: ws.y + 4, r: 26, label: 'RETURN', icon: 'descend', use: () => finishDescent() }); }
-    if (!fen && !ash) for (let k = 0; k < 3; k++) put('moor', 'drywall', cx - 8 + k * 4, cy + 4, { tw: 4, frame: k % 2, force: true });
+    if (salt) { const [nx, ny] = nearFree((cx - 1.5) * TILE, (cy + 1.5) * TILE); const n = { sheet: 'town2', npc: 'peasant2_walk', talk: 'cass', x: nx, y: ny, face: 1, ph: 0, still: true }; npcs.push(n); interact.push({ x: n.x, y: n.y, r: 34, label: 'TALK', icon: 'talk', who: n, use: () => talk('cass') }); }
+    if (!fen && !ash && !salt) for (let k = 0; k < 3; k++) put('moor', 'drywall', cx - 8 + k * 4, cy + 4, { tw: 4, frame: k % 2, force: true });
     if (ash) { const [nx, ny] = nearFree((cx - 1.5) * TILE, (cy + 1.5) * TILE); const n = { sheet: 'town2', npc: 'peasant2_walk', talk: 'ide', x: nx, y: ny, face: 1, ph: 0, still: true }; npcs.push(n); interact.push({ x: n.x, y: n.y, r: 34, label: 'TALK', icon: 'talk', who: n, use: () => talk('ide') }); }
     if (fen) { const [nx, ny] = nearFree((cx - 1.5) * TILE, (cy + 1.5) * TILE); const n = { sheet: 'town2', npc: 'beggar', talk: 'tobe', x: nx, y: ny, face: 1, ph: 0, still: true }; npcs.push(n); interact.push({ x: n.x, y: n.y, r: 34, label: 'TALK', icon: 'talk', who: n, use: () => talk('tobe') }); }
     if (id === 'moor') { const [nx, ny] = nearFree((cx - 1.5) * TILE, (cy + 1.5) * TILE); const n = { sheet: 'town2', npc: 'peasant_walk', talk: 'wenna', x: nx, y: ny, face: 1, ph: 0, still: true }; npcs.push(n); interact.push({ x: n.x, y: n.y, r: 34, label: 'TALK', icon: 'talk', who: n, use: () => talk('wenna') });
@@ -1274,7 +1301,14 @@ function makeRegion(id) {
     if (m.kind === 'crows') { for (let j = 0; j < 3; j++) for (let k = 0; k < 2; k++) { const p0 = put('ash', 'scarecrow', cx - 8 + j * 8, cy - 3 + k * 7, { frame: (j + k) % 2, flip: k > 0 }); if (!p0) continue; const it = { x: p0.x, y: p0.y + 6, r: 24, label: 'BURN', icon: 'use', use: () => { const q = qOf('rside_crows'); if (!q || q.st !== 'active' || q.step !== 0) { toast('A SCARECROW IN A MONK\'S HABIT. IT IS WATCHING THE ROAD.', 2.4); return; } it.done = true; p0.gone = true; sfx('burn', { vol: 0.5, gap: 0.2 }); vemit(p0.x, p0.y - 30, { n: 24, ramp: 'flame', sp: 40, up: 60, life: 1.1, size: 2 }); questBump('burn'); } }; interact.push(it); } }
     if (m.kind === 'pit') { for (let k = 0; k < 5; k++) { const at = near(r, 6); if (at) put('props', k % 2 ? 'bonepile' : 'gravestone', at[0], at[1], { frame: k % 2 }); } const pp = put('props', 'urn', cx + 1, cy + 1, { force: true }); if (pp) { const it = { x: pp.x, y: pp.y + 6, r: 26, label: 'SEARCH', icon: 'use', use: () => { const q = qOf('rside_tithe'); if (!q || q.st !== 'active' || q.step !== 0) { toast('A CHOIR STRONGBOX, BURNT BLACK. EMPTY, OR IT LOOKS IT.', 2.4); return; } it.done = true; sfx('gold'); questBump('purse'); toast('THE TITHE PURSE, UNDER THE ASH.', 2.4); } }; interact.push(it); } }
     if (m.kind === 'field') { for (let k = 0; k < 6; k++) { const at = near(r, 9); if (at) put('ash', k % 3 ? 'stook' : 'chartree', at[0], at[1], { tw: k % 3 ? 1 : 2, frame: 1, flip: rng() < 0.5 }); } }
-    if (m.kind === 'door' && ash) { const p = put('ash', 'cryptdoor', cx, cy - 3, { tw: 8, th: 2, force: true }); if (p) { m.x = p.x; m.y = p.y; interact.push({ x: p.x, y: p.y + 8, r: 36, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x, y: p.y - 40, r: 80, c: 'gold', a: 0.45 }); } }
+    if (m.kind === 'huts') { put('salt', 'hut', cx - 5, cy - 2, { tw: 6, th: 2, force: true, frame: 1 }); put('salt', 'hut', cx + 6, cy + 2, { tw: 6, th: 2 }); put('salt', 'netrack', cx - 9, cy + 4, { tw: 4 }); }
+    if (m.kind === 'wreck') { put('salt', 'boat', cx, cy - 1, { tw: 7, force: true, frame: 1 }); for (let k = 0; k < 3; k++) { const at = near(r, 7); if (at) put('salt', 'boat', at[0], at[1], { tw: 6, frame: 0, flip: k % 2 === 1 }); } }
+    if (m.kind === 'stacks') { put('salt', 'stack', cx - 4, cy - 1, { tw: 4, th: 2, force: true }); put('salt', 'stack', cx + 6, cy + 2, { tw: 5, th: 2, frame: 1 }); }
+    if (m.kind === 'pans') { for (let j = 0; j < 3; j++) for (let k = 0; k < 2; k++) bake('salt', 'saltpan', (j + k) % 2, (cx - 5 + j * 4) * TILE, (cy - 1 + k * 3) * TILE); }
+    if (m.kind === 'lanterns') { for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2, tx = Math.round(cx + Math.cos(a) * 6), ty = Math.round(cy + Math.sin(a) * 4); const pp = put('fen', 'post', tx, ty, { frame: k % 2, force: !isSolid(tx, ty) }); if (pp) lights.push({ x: pp.x, y: pp.y - 36, r: 46, c: 'gold', a: 0.75, flick: k + 1 }); } }
+    if (m.kind === 'nets') { for (let k = 0; k < 4; k++) { const at = near(r, 7); if (at) put('salt', 'netrack', at[0], at[1], { tw: 4 }); } put('salt', 'boat', cx, cy + 2, { tw: 6, force: true, flip: true }); }
+    if (m.kind === 'door' && salt) { const p = put('salt', 'chapel', cx, cy - 3, { tw: 8, th: 2, force: true }); if (p) { m.x = p.x - 10; m.y = p.y; interact.push({ x: p.x - 10, y: p.y + 8, r: 36, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x + 52, y: p.y - 150, r: 120, c: 'gold', a: 0.8, flick: 2 }); } }
+    else if (m.kind === 'door' && ash) { const p = put('ash', 'cryptdoor', cx, cy - 3, { tw: 8, th: 2, force: true }); if (p) { m.x = p.x; m.y = p.y; interact.push({ x: p.x, y: p.y + 8, r: 36, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x, y: p.y - 40, r: 80, c: 'gold', a: 0.45 }); } }
     else if (m.kind === 'door' && fen) { const p = put('fen', 'sluice', cx, cy - 3, { tw: 10, th: 2, force: true }); if (p) { m.x = p.x; m.y = p.y; interact.push({ x: p.x, y: p.y + 8, r: 36, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x, y: p.y - 40, r: 80, c: 'holy', a: 0.4 }); } }
     else if (m.kind === 'door') { const p = put('moor', 'barrow', cx, cy - 4, { tw: 12, th: 3, frame: 1, force: true }); if (p) { const dx0 = 24; m.x = p.x + dx0; m.y = p.y; interact.push({ x: p.x + dx0, y: p.y + 6, r: 34, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x + dx0, y: p.y - 24, r: 70, c: 'violet', a: 0.5 }); } }
   }
@@ -1289,6 +1323,7 @@ function makeRegion(id) {
   for (const r of rooms) {
     const n = Math.round(r.n / 60);
     for (let k = 0; k < n; k++) { const at = near(r, r.R || 12); if (!at) continue; const roll = rng();
+      if (salt) { if (roll < 0.35) put('salt', 'stack', at[0], at[1], { tw: 3, frame: Math.floor(rng() * 2), flip: rng() < 0.5 }); else if (roll < 0.6) put('salt', 'boat', at[0], at[1], { tw: 6, frame: 0, flip: rng() < 0.5 }); else if (roll < 0.8) put('moor', 'boulder', at[0], at[1], { frame: Math.floor(rng() * 2) }); else put('fen', 'post', at[0], at[1], { frame: Math.floor(rng() * 2) }); continue; }
       if (ash) { if (roll < 0.4) put('ash', 'stook', at[0], at[1], { frame: Math.floor(rng() * 2), flip: rng() < 0.5 }); else if (roll < 0.62) put('ash', 'chartree', at[0], at[1], { tw: 2, frame: Math.floor(rng() * 2), flip: rng() < 0.5 }); else if (roll < 0.8) put('moor', 'boulder', at[0], at[1], { frame: Math.floor(rng() * 2) }); else { for (let j = 0; j < 3; j++) if (!put('moor', 'drywall', at[0] + j * 4, at[1], { tw: 4, frame: j % 2 })) break; } continue; }
       if (fen) { if (roll < 0.5) put('fen', 'reeds', at[0], at[1], { frame: Math.floor(rng() * 3), flip: rng() < 0.5, block: false }); else if (roll < 0.72) put('fen', 'willow', at[0], at[1], { tw: 2, frame: Math.floor(rng() * 2), flip: rng() < 0.5 }); else if (roll < 0.88) put('fen', 'post', at[0], at[1], { frame: Math.floor(rng() * 2) }); else put('moor', 'boulder', at[0], at[1], { frame: Math.floor(rng() * 2) }); continue; }
       if (roll < 0.45) put('moor', 'gorse', at[0], at[1], { frame: Math.floor(rng() * 2), flip: rng() < 0.5 });
@@ -1297,10 +1332,12 @@ function makeRegion(id) {
       else if (roll < 0.9) put('moor', 'thorn', at[0], at[1], { tw: 2, frame: Math.floor(rng() * 2), flip: rng() < 0.5 });
       else { for (let j = 0; j < 3 + Math.floor(rng() * 3); j++) if (!put('moor', 'drywall', at[0] + j * 4, at[1], { tw: 4, frame: j % 2 })) break; } }
   }
+  // Round 174: each region's small creatures: frogs in the fen, rats in the Ashfields, gulls on the coast (crows on the moor sit on the gibbet and thorns).
+  const critters = []; { const kind = fen ? 'frog' : ash ? 'rat' : salt ? 'gull' : null; if (kind) for (let k = 0; k < 40; k++) { const tx = 2 + Math.floor(rng() * (w - 4)), ty = 2 + Math.floor(rng() * (h - 4)); if (solid[ty][tx]) continue; critters.push({ kind, x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE, room: zone[ty * w + tx], t: rng() * 5, vx: 0, vy: 0, hide: 0 }); } }
   chunkCanvas(roomCanvas);
   stain = roomCanvas; sctxStain = rc;
   for (const l of lights) l.r *= WS;
-  room = { kind: 'wound', region: id, name: RG.name, open: true, zone, rockD: null, seeps: [], w, h, solid, isSolid, props, lights, decals: [], npcs, interact, pw: PW, ph: PH, top: 4, ambient: RG.ambient, torch: null, rooms, start, critters: [], water: wet, walls: [], baseSolid, seen: new Uint8Array(w * h), marks };
+  room = { kind: 'wound', region: id, name: RG.name, open: true, zone, rockD: null, seeps: [], w, h, solid, isSolid, props, lights, decals: [], npcs, interact, pw: PW, ph: PH, top: 4, ambient: RG.ambient, torch: null, rooms, start, critters, water: wet, walls: [], baseSolid, seen: new Uint8Array(w * h), marks };
   room.fog = document.createElement('canvas'); room.fog.width = w; room.fog.height = h; room.fogCtx = room.fog.getContext('2d');
   room.cx = start.cx; room.cy = start.cy;
 }
@@ -1336,7 +1373,7 @@ function regionTick() {
     m.found = true; game.banner = { text: m.name, sub: m.kind === 'door' ? 'THE WAY DOWN' : 'LANDMARK FOUND', t: 0, color: PAL.gold0 }; sfx('chime', { vol: 0.45, rate: 0.9, gap: 0.5 });
   }
 }
-const WORLD_BOSSES = [['barrows', 'moor', 'charnelKing'], ['chapel', 'fen', 'organist'], ['field', 'ash', 'ashWidow']];
+const WORLD_BOSSES = [['barrows', 'moor', 'charnelKing'], ['chapel', 'fen', 'organist'], ['field', 'ash', 'ashWidow'], ['wreck', 'salt', 'tideBishop']];
 const WORLD_BOSS_WAIT = 20 * 60; // seconds of real time before a killed world boss rises again
 const worldBossWait = (id) => { const t = (SAVE.worldBossT || {})[id]; return t ? Math.max(0, WORLD_BOSS_WAIT - (Date.now() - t) / 1000) : 0; };
 // Mist drifting over the moor, in screen space with a little parallax; cached soft sprites.
@@ -2527,7 +2564,9 @@ function drawCritters(cx, cy) {
   for (const c of room.critters || []) {
     if (!onScreen(c.x, c.y, cx, cy, 20)) continue;
     const moving = Math.abs(c.vx) + Math.abs(c.vy) > 1;
-    spr('mon_common', 'rat_walk', moving ? Math.floor(game.real * 12) : 0, c.x, c.y, { flip: c.vx < 0 });
+    if (c.kind === 'frog') spr('salt', 'frog', moving ? 1 : 0, c.x, c.y, { flip: c.vx < 0 });
+    else if (c.kind === 'gull') spr('salt', 'gull', moving ? Math.floor(game.real * 8) % 2 : 0, c.x, c.y - (moving ? 26 : 0), { flip: c.vx < 0 });
+    else spr('mon_common', 'rat_walk', moving ? Math.floor(game.real * 12) : 0, c.x, c.y, { flip: c.vx < 0 });
   }
 }
 function drawAmbientGlow(cx, cy) {
@@ -3033,6 +3072,13 @@ function makeTown() {
     for (const y of [gy - 96, gy + 26]) { rc.fillStyle = PAL.stone2; rc.fillRect(PW - 72, y, 72, 52); rc.fillStyle = PAL.stone1; rc.fillRect(PW - 72, y, 72, 6); block(PW - 72, y, PW, y + 52); }
     lights.push({ x: PW - 70, y: gy - 30, r: 80, c: 'ember', a: 0.8, flick: 2 });
     interact.push({ x: PW - 90, y: gy, r: 44, get label() { return open() ? 'LEAVE VAEL' : 'LOCKED'; }, get icon() { return open() ? 'descend' : 'lock'; }, use: () => (open() ? openTravel('ash') : toast('THE EAST GATE STAYS SHUT. IT OPENS LATER IN THE STORY.', 2.6)) }); }
+  { const gy = tk(820), open = () => gateOpen('salt'); for (let y = Math.floor((gy - 40) / TILE); y <= Math.floor((gy + 24) / TILE); y++) for (let x = 0; x < E; x++) solid[y][x] = false; // round 174: the West Gate onto the Saltreach
+    rc.fillStyle = PAL.ink1; rc.fillRect(0, gy - 44, 64, 70); rc.fillStyle = 'rgba(11,7,16,0.6)'; rc.fillRect(0, gy - 44, 64, 8);
+    for (const y of [gy - 96, gy + 26]) { rc.fillStyle = PAL.stone2; rc.fillRect(0, y, 72, 52); rc.fillStyle = PAL.stone1; rc.fillRect(0, y, 72, 6); block(0, y, 72, y + 52); }
+    lights.push({ x: 70, y: gy - 30, r: 80, c: 'ember', a: 0.8, flick: 2 });
+    interact.push({ x: 90, y: gy, r: 44, get label() { return open() ? 'LEAVE VAEL' : 'LOCKED'; }, get icon() { return open() ? 'descend' : 'lock'; }, use: () => (open() ? openTravel('salt') : toast('THE WEST GATE STAYS SHUT. IT OPENS AFTER THE STORY.', 2.6)) }); }
+  // Round 174: a pair of gate towers stands by each gate in the wall (south, east, west).
+  for (const [x, y] of [[SG.x0 - 40, PH - 40], [SG.x1 + 40, PH - 40], [PW - 36, tk(720) - 46], [PW - 36, tk(720) + 178], [36, tk(820) - 46], [36, tk(820) + 178]]) { props.push({ kind: 'gatetower', sheet: 'salt', anim: 'gatetower', x, y, frame: 0, big: 160, bldg: true }); lights.push({ x: x + (x > PW / 2 ? -6 : 6), y: y - 60, r: 54, c: 'ember', a: 0.75, flick: 3 }); }
   { const open = () => gateOpen('fen'); interact.push({ x: (SG.x0 + SG.x1) / 2, y: PH - tk(40), r: 44, get label() { return open() ? 'LEAVE VAEL' : 'LOCKED'; }, get icon() { return open() ? 'descend' : 'lock'; }, use: () => (open() ? openTravel('fen') : toast('THE SOUTH GATE STAYS SHUT. IT OPENS LATER IN THE STORY.', 2.6)) }); } // round 172: the South Gate opens onto the Sallow Fen
   interact.push({ x: CATHEDRAL_X, y: base + 16, r: 48, label: 'DESCEND', icon: 'descend', door: true, use: () => startDescent() });
   for (const it of interact) if (it.who) { it.x = it.who.x; it.y = it.who.y; }
@@ -5281,7 +5327,7 @@ function codexList(sec) {
   if (sec === 2) return [...mySets(), starterSet()].map((id) => { const n = C.s[id] || 0, i = SET_ICONS.indexOf(id); return { id, name: VSETS[id].name, seen: n > 0, icon: (x, y) => sprC('loot', 'setitem', i * 10, x, y), tag: 'SET', rgb: SET_RGB[id] || '255,209,85', lines: [n === 1 ? 'YOU HAVE FOUND ONE PIECE.' : `YOU HAVE FOUND ${n.toLocaleString('en-US')} PIECES.`, setCount(id) ? `YOU ARE WEARING ${setCount(id)} OF THEM.` : 'YOU ARE NOT WEARING ANY.'] }; });
   if (sec === 3) return LEGENDS.map((L, i) => [L, i]).filter(([L]) => !L.hero || L.hero === hero).map(([L, i]) => { const n = C.h[L.id] || 0; return { id: L.id, name: L.name, seen: n > 0, icon: (x, y) => sprC('loot', 'legend', i, x, y), tag: 'HALLOWED', rgb: '255,122,31', hint: `${heroText(L.text)} IT DROPS AS A HALLOWED ${heroText(SLOT_NAME[L.slot] || L.slot.toUpperCase())}. ELITES AND WARDENS DROP HALLOWED PIECES MOST OFTEN, AND PELL'S STALL SOMETIMES SELLS ONE.`, lines: [heroText(L.text), n === 1 ? 'FOUND ONCE.' : `FOUND ${n.toLocaleString('en-US')} TIMES.`] }; });
   // Round 171: the Unwritten Gospel: every piece of lore found out in the world, to read again.
-  if (sec === 6) return Object.entries(REGION_LORE).flatMap(([rg, list]) => list.map((L) => ({ id: L.id, name: L.title, seen: !!loreFound()[L.id], rgb: '138,224,255', tag: REGIONS[rg] ? REGIONS[rg].name.replace(/^THE /, '') : '',
+  if (sec === 6) return Object.entries(REGION_LORE).flatMap(([rg, list]) => list.map((L) => ({ id: L.id, rg, name: L.title, seen: !!loreFound()[L.id], rgb: '138,224,255', tag: REGIONS[rg] ? REGIONS[rg].name.replace(/^THE /, '') : '',
     hint: 'LOOK FOR A FAINT GLINT NEAR A LANDMARK OUT IN THE WORLD, AND TAP LOOK.',
     icon: L.pic ? (x, y, sz) => fitIcon(L.pic[0], L.pic[1], L.pic[2], x, y + sz * 0.3, sz - 6) : (x, y, sz) => { const h0 = Math.round(sz * 0.6), w0 = Math.round(sz * 0.46); ctx.fillStyle = PAL.outline; ctx.fillRect(Math.round(x - w0 / 2) - 1, Math.round(y - h0 / 2) - 1, w0 + 2, h0 + 2); ctx.fillStyle = PAL.bone1 || PAL.cloth1; ctx.fillRect(Math.round(x - w0 / 2), Math.round(y - h0 / 2), w0, h0); ctx.fillStyle = PAL.stone3; for (let k = 0; k < 4; k++) ctx.fillRect(Math.round(x - w0 / 2) + 2, Math.round(y - h0 / 2) + 3 + k * 4, w0 - 4, 1); },
     lines: loreFound()[L.id] ? L.lines : ['NOT FOUND YET. LOOK FOR A FAINT GLINT NEAR A LANDMARK.'] })));
@@ -5330,9 +5376,13 @@ function renderCodex() {
   if (L.pages > 1) { invButton(L.prev, '<', PAL.stone4, K.page > 0); invButton(L.next, '>', PAL.stone4, K.page < L.pages - 1); text(`${K.page + 1} / ${L.pages}`, L.next.x + L.next.w + 8, L.next.y + 5, PAL.stone1, small); }
   // The card of the picked entry.
   const C = L.card, q = L.list[K.sel]; inset(C.x, C.y, C.w, C.h, q && q.seen ? q.rgb : null);
-  if (!q && K.sec === 6) { const all = Object.values(REGION_LORE).flat(), n = all.filter((q0) => loreFound()[q0.id]).length; text('THE UNWRITTEN GOSPEL', C.x + 8, C.y + 18, PAL.holy1, { bold: true }); text(`${Math.round(100 * n / Math.max(1, all.length))}% WRITTEN`, C.x + 8, C.y + 32, PAL.gold1, small); wrapW('THE WORLD REMEMBERS WHAT YOU FORGET. TAP A PAGE TO READ IT.', C.w - 16, true).forEach((l, i) => text(l, C.x + 8, C.y + 48 + i * 10, PAL.stone2, small)); return; } // round 172
+  if (!q && K.sec === 6) { const all = Object.values(REGION_LORE).flat(), n = all.filter((q0) => loreFound()[q0.id]).length; text('THE UNWRITTEN GOSPEL', C.x + 8, C.y + 18, PAL.holy1, { bold: true }); text(`${Math.round(100 * n / Math.max(1, all.length))}% WRITTEN`, C.x + 8, C.y + 32, PAL.gold1, small);
+    let yy = C.y + 48; for (const [rg, list] of Object.entries(REGION_LORE)) { const f = list.filter((q0) => loreFound()[q0.id]).length; text(REGIONS[rg].name.replace(/^THE /, ''), C.x + 8, yy, f >= list.length ? PAL.holy1 : PAL.cloth0, small); text(`${f} OF ${list.length}`, C.x + C.w - 8, yy, f >= list.length ? PAL.holy1 : PAL.stone1, { ...small, align: 'right' }); yy += 11; } // round 174: a count per region
+    wrapW('TAP A PAGE TO READ IT.', C.w - 16, true).forEach((l, i) => text(l, C.x + 8, yy + 4 + i * 10, PAL.stone2, small)); return; } // round 172
   if (!q) { wrapW('TAP AN ENTRY TO READ IT.', C.w - 16, true).forEach((l, i) => text(l, C.x + 8, C.y + 22 + i * 10, PAL.stone2, small)); return; }
   let ty = C.y + 20;
+  K.goBtn = null;
+  if (!q.seen && K.sec === 6 && q.rg) { const open = gateOpen(q.rg) && game.scene === 'town', b = { x: C.x + 8, y: C.y + C.h - 26, w: C.w - 16, h: 18 }; K.goBtn = open ? { ...b, rg: q.rg } : null; invButton(b, open ? 'TAKE ME THERE' : game.scene === 'town' ? 'ITS GATE IS SHUT' : 'GO FROM VAEL', open ? 'gold' : 'iron', open); } // round 174
   if (!q.seen) { text('NOT FOUND YET', C.x + 8, ty, PAL.stone1, { bold: true }); wrapW(q.hint || ['KILL ONE TO ADD IT TO THE CODEX.', 'KILL THIS WARDEN TO EARN ITS TROPHY.', 'FIND ANY PIECE OF THIS SET TO ADD IT.', 'FIND THIS PIECE TO ADD IT.', 'TAKE THIS WOUND ON A LEVEL-UP TO ADD IT.', 'FIND A RUBRIC FOR THIS RITE TO ADD IT. ELITES AND WARDENS RARELY DROP THEM.'][K.sec], C.w - 16, true).forEach((l, i) => text(l, C.x + 8, ty + 16 + i * 10, PAL.stone2, small)); return; }
   for (const l of wrapW(q.name, C.w - 16)) { text(l, C.x + 8, ty, `rgb(${q.rgb})`, { bold: true }); ty += 12; }
   pill(q.tag, C.x + 8 + Math.round((textW(q.tag, 1, true) + 8) / 2), ty + 1, PAL.stone1); ty += 16;
@@ -5345,6 +5395,7 @@ function codexTap(x, y) {
   if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { codexClearPage(); game.state = K.back; sfx('tap'); return; }
   for (let i = 0; i < CODEX_SECS.length; i++) if (inRect(L.tab(i), x, y)) { if (i !== K.sec) codexClearPage(); K.sec = i; K.sel = -1; K.page = 0; sfx('tap', { vol: 0.5 }); return; }
   if (L.pages > 1) { if (inRect(L.prev, x, y)) { codexClearPage(); K.page = Math.max(0, K.page - 1); sfx('tap', { vol: 0.5 }); return; } if (inRect(L.next, x, y)) { codexClearPage(); K.page = Math.min(L.pages - 1, K.page + 1); sfx('tap', { vol: 0.5 }); return; } }
+  if (K.goBtn && inRect(K.goBtn, x, y)) { const rg = K.goBtn.rg; codexClearPage(); game.state = 'play'; sfx('tap'); travelRegion(rg); return; } // round 174: TAKE ME THERE
   const n = Math.min(L.per, L.list.length - K.page * L.per);
   for (let j = 0; j < n; j++) if (inRect(L.cell(j), x, y)) { K.sel = K.page * L.per + j; sfx('tap', { vol: 0.5, rate: 1.2 }); return; }
 }
@@ -6259,6 +6310,7 @@ const STORY_HINT = [
   'OPEN A CHEST ON THIS FLOOR. CHESTS YOU PASS SHOW AS GOLD MARKS ON THE MINIMAP.',
   'KILLS FILL THE ZEAL BAR. WHEN IT IS FULL, TAP THE RECKONING BUTTON. CAST IT TWICE.',
   'DASH FORTY TIMES WITH THE BUTTON AT THE BOTTOM RIGHT. DASH THROUGH ATTACKS TO DODGE THEM.',
+  'THE SALT HUTS ARE BY THE CAMP. THE WRECK LIES ON THE SHORE, AND THE LANTERNFOLK LIGHT THEIR LAMPS NEAR THE STACKS.', // round 174
 ];
 const STORY = [
   { title: 'THE WAKING', stratum: 1, map: 'rooms', seed: 31001, warden: 'candlemass', find: 'SCRATCHED INTO THE WALL', giver: 'vane', turn: 'odile',
@@ -6316,7 +6368,7 @@ const STORY = [
       ['vane', 'THE BELLS MAKE IT BEARABLE. FOR YOU AND FOR US. VAEL HAS NO OTHER SAINT. YOU ARE NEEDED IN THE STATIONS, NOT IN THE PAST.']] },
   { title: 'COUNT THE BELLS', stratum: 1, map: 'rooms', seed: 31005, warden: 'bellwright', find: 'AN ORDER PINNED BY THE BELL ROPES', giver: 'odile', turn: 'vane',
     sum: 'EVERY TIME YOU COME BACK, THE BELLS RING AND YOU FORGET. THE BELLWRIGHT RINGS THEM FROM THE DEEP BELFRY. SILENCE HIM.',
-    goals: [['read', 1, 'FIND THE BELL CHAMBER'], ['kills', 300, 'KILL FOES'], ['elites', 4, 'KILL NAMED FOES'], ['dash', 40, 'DASH'], ['warden', 1, 'KILL THE BELLWRIGHT']],
+    goals: [['bells', 3, 'SILENCE THE THREE BELLS'], ['read', 1, 'FIND THE BELL CHAMBER'], ['kills', 300, 'KILL FOES'], ['elites', 4, 'KILL NAMED FOES'], ['dash', 40, 'DASH'], ['warden', 1, 'KILL THE BELLWRIGHT']],
     reward: { gold: 2000, ri: 4 },
     intro: [['odile', 'HE TOLD YOU, THEN. ABOUT THE BELLS.'], ['odile', 'EVERY TIME YOU COME BACK UP, THEY RING, AND YOU FORGET. THE CHOIR CALLS IT MERCY.'],
       ['odile', 'THE BELLWRIGHT RINGS THEM FROM THE DEEP BELFRY UNDER THE UNDERCROFT. SILENCE HIM AND YOU MIGHT KEEP WHAT YOU KNOW.'],
@@ -6327,12 +6379,29 @@ const STORY = [
     death: ['SILENCE... I HAVE NOT HEARD SILENCE... IN FOUR HUNDRED YEARS...'],
     outro: [['vane', 'THE BELLS ARE SILENT. THE CITY IS ASKING WHY.'], ['vane', 'SO YOU REMEMBER NOW. IT CHANGES NOTHING. THE WOUND STILL OPENS EVERY NIGHT, AND IT GOES DOWN THIRTY STATIONS.'],
       ['vane', 'THE DEAD WILL KEEP RISING UNTIL SOMETHING AT THE BOTTOM STOPS THEM. NONE OF YOU HAS EVER REACHED IT.'], ['vane', 'GO DOWN, THEN, AND REMEMBER EVERY STEP. I WILL BE WATCHING. WE ALL WILL.'],
-      ['odile', 'THEN WE GO DOWN ALL THIRTY. I WILL BE HERE WHEN YOU COME BACK, AND THIS TIME YOU WILL KNOW MY NAME.']] },
+      ['vane', 'YOU WANT THE REST? VERY WELL. THERE WAS NO FIRST SAINT. THERE WAS ONE CHILD WHO CAME UP OUT OF THE WOUND, AND THE CHOIR HAS SENT HIM DOWN FORTY-FOUR TIMES.'],
+      ['vane', 'YOU ARE HIM. EVERY ONE OF THEM WAS YOU. THE BELLS MADE YOU NEW EACH YEAR, AND THE CITY PAID TO WATCH.'],
+      ['odile', 'THEN WE GO DOWN ALL THIRTY. I WILL BE HERE WHEN YOU COME BACK, AND THIS TIME YOU WILL KNOW MY NAME.'],
+      ['odile', 'BUT FIRST THE COAST. THE WOMAN WITH THE LANTERN CAME FROM THE SEA. THE WEST GATE IS OPEN. GO AND FIND OUT WHO SHE WAS.']] },
+  // Round 174: the sixth chapter, after the main story: out to the Saltreach and the Lantern Chapel.
+  { title: 'THE LANTERN CHAPEL', stratum: 1, map: 'open', seed: 31006, warden: 'ladyOfNails', find: "OSANNE'S BOOK", giver: 'odile', turn: 'odile', region: 'salt', steps: ['cass', 'wreck', 'lanternfolk'],
+    sum: 'THE WOMAN WITH THE LANTERN CAME UP FROM THE SEA. GO OUT THROUGH THE WEST GATE TO THE SALTREACH, FIND HER FOLLOWERS, AND GO DOWN UNDER THE LANTERN CHAPEL.',
+    goals: [['cass', 1, 'TALK TO CASS AT THE SALT HUTS'], ['wreck', 1, 'FIND THE WRECK ON THE SHORE'], ['lanternfolk', 1, 'FIND THE LANTERNFOLK'], ['read', 1, "FIND OSANNE'S BOOK"], ['kills', 300, 'KILL FOES'], ['elites', 4, 'KILL NAMED FOES'], ['warden', 1, 'KILL OUR LADY OF NAILS']],
+    reward: { gold: 3000, ri: 4 },
+    intro: [['odile', 'THE CARVING ON THE MOOR. THE LANTERN BELL IN THE FOUNDRY BOOK. THE CHILD SISTER MARL SAW. IT ALL POINTS WEST, TO THE SEA.'], ['odile', 'THE OLD COAST ROAD RUNS FROM THE WEST GATE. THERE ARE STILL PEOPLE OUT THERE WHO LIGHT LANTERNS AT NIGHT. THE CHOIR NEVER FOUND THEM ALL.'],
+      ['vane', 'IF YOU GO TO THAT CHAPEL, YOU WILL FIND A WOMAN WHO HAS BEEN DEAD FOR FOUR HUNDRED YEARS AND DOES NOT KNOW IT. I KEPT HER THERE. DO NOT WAKE HER.']],
+    note: ["OSANNE'S BOOK, ITS PAGES STIFF WITH SALT. THE LAST ENTRY:", "'THE DEAD ARE NOT CURSED. THEY ARE CALLED. THE WOUND IS A DOOR, AND SOMETHING BELOW KNOCKS ON IT. I CARRY THE LANTERN DOWN SO IT KNOWS THE WAY UP.'", "'IF I DO NOT COME BACK, SEND THE CHILD. HE WILL NOT REMEMBER, BUT HIS FEET WILL.'", 'A SMALL HAND HAS DRAWN A CHILD WITH A LANTERN IN THE MARGIN. THE CHILD HAS YOUR SCARS.'],
+    spawn: ['WHO OPENS MY CHAPEL? THE ARCHDEACON PROMISED ME PEACE.', 'EVERY NAIL IN ME IS A PRAYER HE SAID FOR ME. FOUR HUNDRED YEARS OF PRAYERS.', 'YOU HAVE MY LANTERN IN YOUR EYES, CHILD. I WILL PUT IT OUT.'],
+    phase: ['THE TIDE COMES IN WHEN I CALL IT!', 'GO BACK DOWN. GO BACK DOWN WHERE I LEFT YOU!'],
+    death: ['THE LANTERN... TAKE IT... DOWN... ALL THE WAY...'],
+    outro: [['odile', 'HER BOOK. AND HER LANTERN, IN YOUR HAND.'], ['odile', 'SHE WENT DOWN FIRST. SHE SENT YOU AFTER. THE CHOIR TOOK YOU AND MADE A SHOW OF IT FOR FOUR HUNDRED YEARS.'],
+      ['odile', 'THE STATIONS GO DOWN THIRTY DEEP, AND WHATEVER KNOCKS IS UNDER THE LAST ONE. NOW YOU KNOW WHY YOU KEEP GOING.']] },
 ];
 // How many chapters this character has finished. Older characters that had cleared a Station count as done.
 // Story runs never clear a Station, so a cleared Station (an older character, or the dev menu) means the story is done.
-function storyN() { if (SAVE.story == null || ((SAVE.cleared ?? -1) >= 0 && SAVE.story < STORY.length)) { SAVE.story = (SAVE.cleared ?? -1) >= 0 || (SAVE.story == null && (SAVE.descents || 0) > 0) ? STORY.length : SAVE.story || 0; persist(); } return SAVE.story; }
-const storyDone = () => storyN() >= STORY.length;
+function storyN() { if (SAVE.story == null || ((SAVE.cleared ?? -1) >= 0 && SAVE.story < STORY_MAIN)) { SAVE.story = (SAVE.cleared ?? -1) >= 0 || (SAVE.story == null && (SAVE.descents || 0) > 0) ? Math.max(SAVE.story || 0, STORY_MAIN) : SAVE.story || 0; persist(); } return SAVE.story; }
+const STORY_MAIN = 5; // round 174: the first five chapters are the story the Stations wait for; THE LANTERN CHAPEL comes after
+const storyDone = () => storyN() >= STORY_MAIN;
 const storyRun = () => game.scene === 'wound' && game.run && game.run.story != null;
 // A scene: lines of [speaker, text], played one after another; then() runs when the last one closes.
 function playScene(lines, then) {
@@ -6357,6 +6426,7 @@ const FINALE = [
   { c: 'holy', props: [['props', 'organ'], ['props', 'kelp'], ['props', 'sunkpew'], ['props', 'kelp'], ['props', 'sunkpew'], ['props', 'kelp']] },
   { c: 'ember', props: [['props', 'skullpillar'], ['props', 'bonepile'], ['props', 'skullpillar'], ['props', 'skullheap'], ['props', 'skullpillar'], ['props', 'bonepile']] },
   { c: 'blood', props: [['props', 'column'], ['props', 'candelabra'], ['props', 'column'], ['props', 'statue'], ['props', 'column'], ['props', 'candelabra']] },
+  { c: 'gold', props: [['salt', 'bellframe'], ['props', 'candelabra'], ['props', 'urn'], ['salt', 'bellframe'], ['props', 'candelabra'], ['props', 'urn']] },
 ];
 function storyPlace() {
   const R0 = game.run, C = STORY[R0.story], st = room.start;
@@ -6365,6 +6435,10 @@ function storyPlace() {
   for (let r = 0; r < 8; r++) { let hit = null; for (let dy = -r; dy <= r && !hit; dy++) for (let dx = -r; dx <= r; dx++) { const x = far.cx + dx, y = far.cy + dy; if (!room.isSolid(x, y) && !room.isSolid(x, y + 1) && !room.props.some((p) => p.tiles && p.tiles.some(([a, b]) => Math.abs(a - x) <= 1 && Math.abs(b - y) <= 1))) { hit = [x, y]; break; } } if (hit) { [tx, ty] = hit; break; } }
   const x = (tx + 0.5) * TILE, y = (ty + 0.5) * TILE;
   game.storyFind = { x, y, read: false, room: far };
+  // Round 174: the belfry (chapter 5) has three bells in its rooms to silence on the way down.
+  if (R0.story === 4) { const rs = room.rooms.filter((q) => q !== st && q !== far && q.type !== 'start').sort((a, b) => Math.hypot(a.cx - st.cx, a.cy - st.cy) - Math.hypot(b.cx - st.cx, b.cy - st.cy)); const pickR = [rs[Math.floor(rs.length * 0.25)], rs[Math.floor(rs.length * 0.5)], rs[Math.floor(rs.length * 0.75)]].filter(Boolean);
+    pickR.forEach((r) => { let bx = r.cx, by = r.cy; for (let t = 0; t < 40 && (room.isSolid(bx, by) || room.isSolid(bx, by - 1)); t++) { bx = r.cx + Math.round(rand(-3, 3)); by = r.cy + Math.round(rand(-2, 2)); } const p0 = { kind: 'bellframe', sheet: 'salt', anim: 'bellframe', x: (bx + 0.5) * TILE, y: (by + 1) * TILE - 1, frame: 0 }; room.props.push(p0); room.lights.push({ x: p0.x, y: p0.y - 40, r: 70, c: 'gold', a: 0.5 });
+      const it = { x: p0.x, y: p0.y + 6, r: 30, label: 'SILENCE', icon: 'use', use: () => { it.done = true; p0.frame = 1; sfx('block', { vol: 0.7, rate: 0.6, gap: 0 }); hitStop(0.08); questBump('bells'); const q = qOf('story4'); toast(`BELL SILENCED. ${(q && q.c.bells) || 0} OF 3.`, 2.2); game.toastColor = PAL.gold1; } }; room.interact.push(it); }); }
   // Round 173: the chapter's last room is its stage: its own props in a ring round the message, a light in its colour,
   // and the Warden rises here (spawnWarden).
   { const F = FINALE[R0.story] || FINALE[0]; F.props.forEach(([sh, an, fr], i) => { const a = i / F.props.length * Math.PI * 2 + 0.3, px = x + Math.cos(a) * 92, py = y + Math.sin(a) * 58; const t0 = Math.floor(px / TILE), t1 = Math.floor(py / TILE); if (room.isSolid(t0, t1) || room.isSolid(t0, t1 - 1)) return; room.props.push({ kind: an, sheet: sh, anim: an, x: px, y: (t1 + 1) * TILE - 1, frame: fr || 0, solid: false }); });
@@ -6402,6 +6476,7 @@ function storyHorde(k = 1) {
 }
 function storyTick(dt) {
   const k = game.run.story, C = STORY[k], q = qOf(`story${k}`); if (!C || !q || q.st !== 'active' || q.step !== 0 || room.region) return;
+  { const gb = C.goals.find(([x]) => x === 'bells'); if (gb && game.storyWardenDown && (q.c.bells || 0) < gb[1] && game.real > (game.bellNagT || 0)) { game.bellNagT = game.real + 20; toast(`${gb[1] - (q.c.bells || 0)} BELLS STILL RING. THEY ARE GOLD MARKS ON THE MINIMAP.`, 3); game.toastColor = PAL.gold1; } } // round 174
   const g = C.goals.find(([x]) => x === 'kills'); if (!g || (q.c.kills || 0) >= g[1] || !game.storyWardenDown) return;
   const alive = enemies.filter((e) => !e.dead && !e.illusion && !e.asleep && Math.hypot(e.x - player.x, e.y - player.y) < 260).length;
   game.storyWaveT = (game.storyWaveT || 0) - dt;
@@ -6557,6 +6632,8 @@ SPEAKER.brask = { name: 'SERGEANT BRASK', sheet: 'town2', anim: 'guard_walk' };
 SPEAKER.tobe = { name: 'OLD TOBE', sheet: 'town2', anim: 'beggar' }; // round 172: the Sallow Fen
 SPEAKER.marl = { name: 'SISTER MARL', sheet: 'town2', anim: 'penitent_walk' };
 SPEAKER.ide = { name: 'IDE', sheet: 'town2', anim: 'peasant2_walk' }; // round 173: the Ashfields
+SPEAKER.cass = { name: 'CASS', sheet: 'town2', anim: 'peasant2_walk' }; // round 174: the Saltreach
+SPEAKER.keeper = { name: 'THE LAMP KEEPER', sheet: 'town2', anim: 'penitent_walk' };
 SPEAKER.collector = { name: 'THE TITHE COLLECTOR', sheet: 'town2', anim: 'priest_walk' };
 const REGION_NPC = {
   wenna: { region: 'moor', at: 'camp', lines: ['A SAINT, OUT HERE? THE GATES HAVE NOT OPENED IN FORTY-FOUR YEARS. I NEVER WENT IN, SO I NEVER CAME OUT.', 'THE CHOIR\'S WAGONS WENT BY A MONTH AGO, HEADED FOR GIBBET CROSS. I HEARD SHOUTING THAT NIGHT, AND THEN NOTHING.', 'THE DEAD ON THE MOOR USED TO STAY DOWN. NOW THEY WALK IN FROM VAEL\'S SIDE, AS IF SOMETHING THERE CALLED THEM AND THEN LET GO.', 'REST BY MY FIRE WHEN YOU NEED TO. THE WAYSTONE THERE WILL TAKE YOU HOME.'], goal: 'camp',
@@ -6571,6 +6648,10 @@ const REGION_NPC = {
     again: ['MY BROTHER WENT TO VAEL TO CARRY A SAINT\'S BAG. HE NEVER WROTE. IF YOU SEE HIM, TELL HIM THE MILL STILL TURNS.'] },
   collector: { region: 'ash', at: 'farms', sheet: 'town2', npc: 'priest_walk', lines: ['I COLLECTED THE CHOIR\'S TITHE FROM THESE FARMS FOR TWENTY YEARS. THEN I WATCHED THEM BURN THEM.', 'I RAN WITH THE LAST YEAR\'S PURSE. I THOUGHT I WOULD GIVE IT BACK TO THE FARMERS. THERE WERE NO FARMERS LEFT.', 'I HID IT IN THE PLAGUE PIT, WHERE NOBODY WOULD LOOK. NOW I CANNOT MAKE MYSELF GO BACK FOR IT.'], goal: 'collector',
     again: ['THE PURSE IS IN THE PIT, UNDER THE ASH. IDE SHOULD HAVE IT. HER FATHER PAID MORE THAN ANYONE.'] },
+  cass: { region: 'salt', at: 'camp', lines: ['YOU CAME DOWN THE COAST ROAD? NOBODY COMES DOWN THE COAST ROAD. I AM CASS. I BOIL SALT.', 'THE CHOIR\'S SHIP RAN AGROUND HERE FORTY-FOUR YEARS AGO, THE SAME NIGHT THE DEAD FIRST ROSE. THE WRECK IS STILL ON THE SHORE.', 'AT NIGHT YOU WILL SEE LANTERNS ON THE BEACH BY THE STACKS. THAT IS THE LANTERNFOLK. THEY KNOW ABOUT THE CHAPEL.', 'THE LANTERN CHAPEL IS ON THE CLIFF AT THE FAR END. ITS LAMP HAS NEVER GONE OUT. NOBODY TENDS IT.'], goal: 'cass',
+    again: ['THE GULLS GO QUIET WHEN THE DEAD COME UP THE BEACH. LISTEN FOR THAT.'] },
+  keeper: { region: 'salt', at: 'lanterns', sheet: 'town2', npc: 'penitent_walk', lines: ['YOU CARRY HER LIGHT IN YOUR FACE. WE HAVE WAITED A LONG TIME.', 'OSANNE CAME UP FROM THE SEA WITH A LANTERN AND WALKED INLAND TO THE WOUND. WHEREVER SHE PASSED, THE DEAD LAY DOWN.', 'THE CHOIR CAUGHT HER AT THE CHAPEL AND NAILED HER INSIDE IT. THEY TOOK HER BELL FOR THEIR BELFRY.', 'HER BOOK IS STILL UNDER THE CHAPEL. GO DOWN AND READ IT. WE WILL KEEP THE LAMPS LIT FOR YOU.'], goal: 'lanternfolk',
+    again: ['EVERY LAMP ON THIS SHORE IS LIT FOR SOMEONE WHO WENT DOWN. ONE OF THEM IS FOR YOU.'] },
 };
 const REGION_LORE = {
   moor: [
@@ -6598,11 +6679,19 @@ REGION_LORE.ash = [
   { id: 'a_pit', at: 'pit', pic: ['props', 'bonepile', 0], title: 'BURNT TITHE ROLLS', lines: ['IN THE PLAGUE PIT, UNDER THE BONES, THE ABBEY\'S TITHE ROLLS, HALF BURNT.', 'EVERY NAME ON THEM HAS A SMALL LANTERN DRAWN BESIDE IT. EVERY NAME HAS BEEN CROSSED OUT IN RED.', 'THE LAST PAGE IS A LIST OF CHILDREN SENT TO VAEL THAT YEAR. ONE NAME IS NOT CROSSED OUT.'] },
   { id: 'a_field', at: 'field', pic: ['ash', 'stook', 1], title: 'THE BLACK FIELD', lines: ['THE GROUND HERE IS BURNT DEEPER THAN ANYWHERE ELSE. NOTHING WILL TAKE ROOT.', 'THE FARMERS SAY A WIDOW WALKS THESE ROWS IN A DRESS OF ASH, LOOKING FOR THE HUSBAND THE CHOIR BURNED.', 'IF YOU HEAR HER SINGING, THEY SAY, LEAVE THE FIELD.'] },
 ];
+REGION_LORE.salt = [
+  { id: 's_huts', at: 'huts', pic: ['salt', 'hut', 0], title: 'A SALT BOILER\'S TALLY', lines: ['CHALK MARKS ON A HUT WALL: SACKS OF SALT, SOLD TO THE CHOIR EVERY SPRING FOR FORTY YEARS.', 'BESIDE EACH YEAR\'S TALLY, A SMALL LANTERN IN CHALK, AND A NAME.', 'THE NAMES ARE THE SAINTS SENT DOWN THAT YEAR. EVERY ONE OF THEM IS THE SAME NAME.'] },
+  { id: 's_wreck', at: 'wreck', pic: ['salt', 'boat', 1], title: 'THE CHOIR\'S SHIP', story: 5, lines: ['THE WRECK\'S NAMEBOARD STILL READS THE PENITENT, A CHOIR SHIP OUT OF VAEL.', 'IN ITS HOLD, IRON CAGES. ONE IS SMALL, THE SIZE OF A CHILD. ITS DOOR IS BENT OUTWARD.', 'THE LOG\'S LAST ENTRY: \'CARGO TAKEN FROM THE CHAPEL. ONE BELL. ONE BOY. BOUND FOR VAEL.\''] },
+  { id: 's_stacks', at: 'stacks', pic: ['salt', 'stack', 0], title: 'THE WATCHERS', lines: ['THE SEA STACKS HAVE FACES CUT INTO THEM, WORN SMOOTH BY THE SPRAY. ALL OF THEM LOOK INLAND.', 'THE LANTERNFOLK SAY THEY WATCH FOR THE DAY THE DEAD COME DOWN TO THE SEA INSTEAD.', 'ONE FACE IS NEWER THAN THE OTHERS. IT HAS YOUR CHIN.'] },
+  { id: 's_pans', at: 'pans', pic: ['salt', 'saltpan', 0], title: 'SALT FOR THE DEAD', lines: ['THE OLD COAST FOLK PACKED THEIR DEAD IN SALT AND LAID A LANTERN ON THE CHEST.', 'THE DEAD BURIED THAT WAY HAVE NEVER RISEN. NOT ONE, IN FORTY-FOUR YEARS.', 'THE CHOIR FORBADE IT THE SAME YEAR THE DEAD BEGAN TO RISE.'] },
+  { id: 's_lanterns', at: 'lanterns', pic: ['fen', 'post', 0], title: 'THE LANTERN SHORE', lines: ['LANTERNS ON POSTS ALONG THE SAND, EACH ONE LIT, EACH ONE WITH A NAME SCRATCHED ON THE GLASS.', 'THE NAMES GO BACK FOUR HUNDRED YEARS. THE NEWEST WAS SCRATCHED THIS MORNING.', 'IT IS YOURS.'] },
+  { id: 's_nets', at: 'nets', pic: ['salt', 'netrack', 0], title: 'WHAT THE NETS BRING UP', lines: ['THE FISHERS\' NETS COME UP WITH FISH, WEED, AND SOMETIMES A FINGER-BELL FROM THE MOOR.', 'THE BELLS WASH DOWN THE RIVERS TO THE SEA, ALL OF THEM CUT FROM THEIR STRINGS.', 'CASS KEEPS A JAR OF THEM BY HER DOOR. SHE SAYS THEY RING WHEN NOBODY IS NEAR.'] },
+];
 const loreFound = () => (SAVE.lore = SAVE.lore || {});
 function readLore(L) {
   playScene(L.lines.map((t) => ['note', t]), () => {
     if (!loreFound()[L.id]) { loreFound()[L.id] = 1; codexSee('l', L.id); const all = Object.values(REGION_LORE).flat(), n = all.filter((q) => loreFound()[q.id]).length; toast(`LORE FOUND: ${n} OF ${all.length}. READ IT AGAIN IN THE CODEX.`, 3); game.toastColor = PAL.holy1; persist(); }
-    if (L.id === 'm_wagons') questBump('wagons'); if (L.id === 'f_dam') questBump('dam'); if (L.id === 'a_foundry') questBump('foundry'); if (L.id === 'a_gallery') questBump('gallery');
+    if (L.id === 'm_wagons') questBump('wagons'); if (L.id === 'f_dam') questBump('dam'); if (L.id === 'a_foundry') questBump('foundry'); if (L.id === 's_wreck') questBump('wreck'); if (L.id === 'a_gallery') questBump('gallery');
   });
   if (game.dialog) game.dialog.noteName = L.title;
 }
@@ -6618,7 +6707,7 @@ function regionTalk(id) {
   return true;
 }
 // The Pilgrims' Gate opens once the first chapter is handed in (or for anyone past the old story).
-const gateOpen = (id = 'moor') => storyN() >= (id === 'ash' ? 3 : id === 'fen' ? 2 : 1); // round 173: the East Gate (the Ashfields) with chapter 4 // round 172: the South Gate (the fen) opens with chapter 3
+const gateOpen = (id = 'moor') => storyN() >= (id === 'salt' ? 5 : id === 'ash' ? 3 : id === 'fen' ? 2 : 1); // round 174: the West Gate (the Saltreach) once the main story is done // round 173: the East Gate (the Ashfields) with chapter 4 // round 172: the South Gate (the fen) opens with chapter 3
 function travelRegion(id) {
   const k = storyN(), C = STORY[k], q = qOf(`story${k}`), story = C && C.region === id && q && q.st === 'active' && q.step === 0 ? k : null;
   Object.assign(game, { nextRegion: id, nextStory: story, nextDiff: story != null ? 0 : Math.max(0, SAVE.cleared ?? 0), nextStratum: 1, nextOmens: [], nextVigil: 0, nextCell: null, nextAuto: false, nextMartyr: false });
@@ -6650,6 +6739,9 @@ const RSIDE = {
   crows: { region: 'ash', giver: 'ide', title: 'THE SCARECROWS', goals: [['burn', 6, 'BURN THE SCARECROWS IN THE ROWS']], reward: { gold: 800, ri: 2 },
     intro: [['ide', 'THE SCARECROWS IN THE OLD ROWS MOVE AT NIGHT. I HAVE SEEN THEM AT MY DOOR.'], ['ide', 'BURN THEM. ALL SIX. THEN MAYBE I CAN SLEEP WITH THE SHUTTERS OPEN.']],
     outro: [['ide', 'I WATCHED THE SMOKE FROM HERE. SIX FIRES. GOOD.'], ['ide', 'TAKE THIS. MY FATHER HID IT IN THE MILLSTONE. HE WOULD WANT A SAINT TO HAVE IT.']] },
+  gulls: { region: 'salt', giver: 'cass', title: 'THE QUIET GULLS', goals: [['saltdead', 30, 'KILL THE DEAD ON THE BEACH']], reward: { gold: 1500, ri: 2 },
+    intro: [['cass', 'THE GULLS HAVE GONE QUIET. THAT MEANS THE DEAD ARE ON THE BEACH AGAIN.'], ['cass', 'PUT THIRTY OF THEM DOWN AND THE GULLS WILL COME BACK. SO WILL I, TO MY PANS.']],
+    outro: [['cass', 'LISTEN. THE GULLS.'], ['cass', 'HERE. SALT AND SILVER. BOTH KEEP.']] },
   tithe: { region: 'ash', giver: 'collector', title: 'THE LAST TITHE', goals: [['purse', 1, 'FIND THE TITHE PURSE IN THE PLAGUE PIT']], reward: { gold: 1200, ri: 1 },
     intro: [['collector', 'WILL YOU GO INTO THE PIT FOR ME? THE PURSE IS IN A BURNT STRONGBOX BY THE BONES.'], ['collector', 'BRING IT BACK AND I WILL SEE IT GETS TO IDE. IT IS ALL I CAN DO.']],
     outro: [['collector', 'THERE IT IS. FORTY YEARS I HAVE OWED THIS.'], ['collector', 'KEEP A SHARE. THE FARMERS WOULD HAVE PAID A SAINT FOR LESS.']] },
@@ -6724,6 +6816,7 @@ function questBump(key, n = 1) {
 function ensureQuests() {
   if (!storyDone()) { const k = storyN(); if (k === 0 && SAVE.walkStart && !SAVE.walkDone) { if (!qOf('walk_vael')) { QS().walk_vael = { st: 'active', step: 0, c: {} }; persist(); } } else if (!qOf(`story${k}`)) { qOffer(`story${k}`); persist(); } }
   else for (const k in SIDE) if (!qOf(`side_${k}`) && (!SIDE[k].wave || (SAVE.cleared ?? -1) >= 9)) { qOffer(`side_${k}`); persist(); }
+  if (storyDone() && storyN() < STORY.length && !qOf(`story${storyN()}`)) { qOffer(`story${storyN()}`); persist(); } // round 174: the chapters after the main story (THE LANTERN CHAPEL)
   if (ensureDailies()) setTimeout(() => { if (game.scene === 'town') { toast('NEW DAILY QUESTS ON THE BOUNTY BOARD. SEE THE QUEST LOG.', 4); game.toastColor = PAL.gold1; } }, 1600);
   if (!SAVE.siteMet) { SAVE.siteMet = {}; for (const S of SITES) if (siteDone(S)) SAVE.siteMet[S.id] = 1; persist(); return; }
   const fresh = [];
@@ -6769,7 +6862,7 @@ function sideTurnIn(k) {
 }
 // A finished chapter pays out: gold and a piece of gear.
 function chRecapLayout() {
-  const R = game.recap, last = R.k >= STORY.length - 1, pw = Math.min(330, W - 40), ph = R.it ? 172 : 160, x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2) - 4;
+  const R = game.recap, last = R.k === STORY_MAIN - 1, pw = Math.min(330, W - 40), ph = R.it ? 172 : 160, x0 = Math.round(W / 2 - pw / 2), y0 = Math.round(H / 2 - ph / 2) - 4;
   const by = y0 + ph - 30, B = last ? [{ k: 'ok', label: 'CLOSE', col: PAL.gold3 }] : [{ k: 'go', label: 'TAKE ME THERE', col: PAL.gold3 }, { k: 'ok', label: 'LATER', col: PAL.stone4 }];
   const bw = Math.min(118, Math.floor((pw - 32) / B.length)), bx = Math.round(W / 2 - (B.length * bw + (B.length - 1) * 8) / 2);
   B.forEach((b, i) => Object.assign(b, { x: bx + i * (bw + 8), y: by, w: bw, h: 22 }));
@@ -6815,7 +6908,7 @@ function storyTurnIn(k) {
   const st = game.chRecap && game.chRecap.k === k ? game.chRecap : null; game.chRecap = null;
   game.recap = { k, t: game.real, time: st ? st.time : null, kills: st ? st.kills : null, gold: C.reward.gold, it };
   game.state = 'recap';
-  if (k === STORY.length - 1) setTimeout(() => sfx('elite', { rate: 0.8 }), 600);
+  if (k === STORY_MAIN - 1) setTimeout(() => sfx('elite', { rate: 0.8 }), 600);
   else ensureQuests(); // round 170: the recap card names the next chapter's giver
 }
 // The ! and ? over heads and site markers in Vael (screen coordinates, drawn over the town).
@@ -7055,7 +7148,7 @@ const curDiff = () => game.scene === 'wound' && game.run && game.run.df ? game.r
 function startDescent() {
   if (!storyDone()) { // round 150: the story comes first; round 151: a chapter starts from its giver
     const k = storyN(), q = qOf(`story${k}`), C = STORY[k];
-    if (q && q.st === 'active' && q.step === 0) { if (C.region) { toast(C.region === 'ash' ? 'THIS CHAPTER STARTS OUT IN THE ASHFIELDS. LEAVE BY THE EAST GATE, BEYOND THE FORGE.' : C.region === 'fen' ? 'THIS CHAPTER STARTS OUT IN THE FEN. LEAVE BY THE SOUTH GATE, BELOW THE MARKET.' : 'THIS CHAPTER STARTS OUT ON THE MOOR. LEAVE BY THE PILGRIMS\' GATE, WEST OF THE CATHEDRAL.', 3.5); return; } return beginStory(k, false); }
+    if (q && q.st === 'active' && q.step === 0) { if (C.region) { toast(C.region === 'salt' ? 'THIS CHAPTER STARTS OUT ON THE COAST. LEAVE BY THE WEST GATE, PAST THE HOMES.' : C.region === 'ash' ? 'THIS CHAPTER STARTS OUT IN THE ASHFIELDS. LEAVE BY THE EAST GATE, BEYOND THE FORGE.' : C.region === 'fen' ? 'THIS CHAPTER STARTS OUT IN THE FEN. LEAVE BY THE SOUTH GATE, BELOW THE MARKET.' : 'THIS CHAPTER STARTS OUT ON THE MOOR. LEAVE BY THE PILGRIMS\' GATE, WEST OF THE CATHEDRAL.', 3.5); return; } return beginStory(k, false); }
     if (q && q.st === 'active' && q.step === 1) { toast(`TALK TO ${qName(C.turn)} FIRST. LOOK FOR THE ? OVER THEIR HEAD.`, 3); return; }
     toast(`TALK TO ${qName(C.giver)} FIRST. LOOK FOR THE ! OVER THEIR HEAD.`, 3); return; }
   if (tut.on) return beginDescent(0);
@@ -8203,7 +8296,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   if (G.powers.has('killNova') && ++player.novaN % 10 === 0) skillFx.push({ kind: 'nova', x: player.x, y: player.y, t: 0, max: 0.3, r: 64 * WS, dmg: 24, hits: new Set() });
   if (e.elite && !e.minion && sb('confessor', 6)) player.m2cd = 0;
   if (sb('font', 6) && pools.some((pl) => Math.hypot((e.x - pl.x) / pl.r, (e.y - pl.y) / (pl.r * 0.6)) <= 1)) player.m1cd = Math.max(0, player.m1cd - 0.5);
-  game.kills++; questBump('kills'); if (e.type === 'naveEel' && regionRun()) questBump('eel'); if (e.tier !== 'common' && !e.minion && !e.boss) questBump('elites');
+  game.kills++; questBump('kills'); if (e.type === 'naveEel' && regionRun()) questBump('eel'); if (regionRun() && room.region === 'salt') questBump('saltdead'); if (e.tier !== 'common' && !e.minion && !e.boss) questBump('elites');
   if (!e.minion || rng() < 0.5) gainXp(xpOf(e));
   onWoundKill();
   addFervor(e.def.fervor + 1);
@@ -10830,8 +10923,8 @@ function update(realDt) {
   if (game.news && game.state === 'play' && game.scene === 'town' && !game.dialog && !tut.on && game.real > 1.2) { game.newsFor = game.news; game.news = null; game.state = 'news'; persist(); sfx('shrine', { rate: 1.4, vol: 0.5 }); }
   // Music and ambience follow the scene.
   // While a Warden lives its battle loop plays: orchestral, or the organ in the Drowned Nave.
-  const mus = game.state === 'dead' ? 'dead' : ['title', 'chars', 'create'].includes(game.state) ? 'title' : game.scene === 'wound' && game.warden ? 'warden' : game.scene;
-  if (mus !== game.music) { game.music = mus; AUDIO.set(mus === 'town' || mus === 'title' ? ['music_town', 'amb_choir', 'amb_town', 'amb_crickets'] : mus === 'warden' ? [curDiff().vigil ? 'music_warden' : ['music_warden', 'music_warden', 'music_warden_nave', 'music_warden_ossuary'][stratum()]] : mus === 'wound' ? [curDiff().vigil ? 'music_dungeon' : ['music_undercroft', 'music_undercroft', 'music_nave', 'music_ossuary'][stratum()]] : []); }
+  const mus = game.state === 'dead' ? 'dead' : ['title', 'chars', 'create'].includes(game.state) ? 'title' : game.scene === 'wound' && game.warden ? 'warden' : game.scene === 'wound' && room && REGION_MUSIC[room.region] ? `region_${room.region}` : game.scene;
+  if (mus !== game.music) { game.music = mus; AUDIO.set(mus.startsWith('region_') ? REGION_MUSIC[mus.slice(7)] : mus === 'town' || mus === 'title' ? ['music_town', 'amb_choir', 'amb_town', 'amb_crickets'] : mus === 'warden' ? [curDiff().vigil ? 'music_warden' : ['music_warden', 'music_warden', 'music_warden_nave', 'music_warden_ossuary'][stratum()]] : mus === 'wound' ? [curDiff().vigil ? 'music_dungeon' : ['music_undercroft', 'music_undercroft', 'music_nave', 'music_ossuary'][stratum()]] : []); }
   // The altar's and the forge's fires crackle as the Saint walks by.
   // Near the cathedral doors the chant is sung: the choir rises as the organ falls away.
   if (game.scene === 'town' && room && player && game.state !== 'title') { const D = room.interact && room.interact.find((q) => q.door); if (D) { const k = Math.max(0, Math.min(1, 1 - (Math.hypot(D.x - player.x, D.y - player.y) - 60) / 480)); AUDIO.level('amb_choir', k); AUDIO.level('music_town', 1 - k * 0.75); } }
@@ -11985,6 +12078,7 @@ function renderMinimap() {
         const k = Math.min(ex / Math.max(0.01, Math.abs(dx)), ey / Math.max(0.01, Math.abs(dy))), px = Math.round(cx + dx * k), py = Math.round(cy + dy * k);
         ctx.fillStyle = PAL.outline; ctx.fillRect(px - 3, py - 3, 6, 6); ctx.fillStyle = col; ctx.fillRect(px - 2, py - 2, 4, 4); };
       { const F = game.storyFind; if (F && !F.read) { const dx = ox + F.x / TILE - cx, dy = oy + F.y / TILE - cy; if (Math.abs(dx) <= ex + 2 && Math.abs(dy) <= ey + 2) { if (Math.floor(game.real * 3) % 2) { ctx.fillStyle = PAL.outline; ctx.fillRect(Math.round(cx + dx) - 3, Math.round(cy + dy) - 3, 6, 6); ctx.fillStyle = PAL.rose1; ctx.fillRect(Math.round(cx + dx) - 2, Math.round(cy + dy) - 2, 4, 4); } } else pip(F.x, F.y, PAL.rose1); } } // round 150: the chapter's message
+      for (const it of room.interact) if (it.label === 'SILENCE' && !it.done) { const dx = ox + it.x / TILE - cx, dy = oy + it.y / TILE - cy; if (Math.abs(dx) <= ex + 2 && Math.abs(dy) <= ey + 2) { ctx.fillStyle = PAL.outline; ctx.fillRect(Math.round(cx + dx) - 3, Math.round(cy + dy) - 3, 6, 6); ctx.fillStyle = PAL.gold0; ctx.fillRect(Math.round(cx + dx) - 2, Math.round(cy + dy) - 2, 4, 4); } else pip(it.x, it.y, PAL.gold0); } // round 174: the belfry's bells
       for (const r of room.rooms) { if (r.chest && !r.chest.open && seen(r.chest.x, r.chest.y)) pip(r.chest.x, r.chest.y, PAL.gold1); if (r.shrine && !r.shrine.used && seen(r.shrine.x, r.shrine.y)) pip(r.shrine.x, r.shrine.y, PAL.holy1); } }
     const pulse = Math.floor(game.real * 4) % 2;
     ctx.fillStyle = PAL.outline; ctx.fillRect(mx + mw / 2 - 2, my + mh / 2 - 2, 5, 5);
@@ -14376,7 +14470,7 @@ function propClash() {
   for (const sp of room.interact.filter((q) => !q.who)) for (const n of room.npcs) { if (n.path || n.circle) continue; const d = Math.hypot(sp.x - n.x, sp.y - n.y); if (d < sp.r + 8) out.push(`${n.npc}@${Math.round(n.x)},${Math.round(n.y)} on the ${sp.site ? sp.site.id : sp.label} spot (${Math.round(d)} px)`); }
   return out;
 }
-window.HS = { get G() { return G; }, TK, STALL_Y, TOWN_SQ, TOWN_YARD, TOWN_ROLL, TOWN_ALTAR, TOWN_CELLS, skipOpening, narrSkipAll, NARRATION, WALK_GOALS, REGION_NPC, REGION_LORE, RSIDE, gateOpen, travelRegion, openAcre, REGIONS, regionRun, regionTick, dailyDone, named, chRecapLayout, saintLvRows, questTalk, storyTurnIn, stick, wrapW, caseOf, STORY_HINT, spawnPack, get interact() { return game.interact; }, crierEvents, crierNews, wardenSettle, SIDE, propClash, get falls() { return falls; }, WDIE, weeklyId, spriteBust, monBust, drawBoardDailies, questTargets, ensureDailies, dailyIds, DAILY_POOL, get bossIntro() { return game.bossIntro; }, get camOff() { return game.camOff; }, talk, questBump, qOf, ensureQuests, QSITE, get bossSay() { return game.bossSay; }, STORY, storyN, storyDone, beginStory, openStory, storyRead, playScene, storyLayout, get storyFind() { return game.storyFind; }, sanctIfWorn, equip, stationNeed, NEED_R, playerSanctity, mightParts, gearSanctity, MIGHT, lastRunLine, newsLayout, newsBuilds, autoFontPool, BUFF_SND, activeBuffs, BUFFS, setFoeK, LOW_SETS, thAnim, bustAnim, riteFx, riteRamp, RITE_FX_P, get pfx() { return pfx; }, get cam() { return cam; }, nm, vdAnim, VDAG, vdEvery, vdTime, legendMine, startDash, ALTAR_SOCKETS, PSKINS, pskin, pskinsOwned, openStore, storeTap, autoIcons, autoPlayTap, playerSanctity, stationSanctity, autoHudBtn, autoSellFor, autoSellPick, AUTO_SELL, woundsLayout, woundsTap, woundsHeld, get SAC_PAGE_N() { return SAC_PAGE_N; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get G() { return G; }, codexTap, STORY_MAIN, TK, STALL_Y, TOWN_SQ, TOWN_YARD, TOWN_ROLL, TOWN_ALTAR, TOWN_CELLS, skipOpening, narrSkipAll, NARRATION, WALK_GOALS, REGION_NPC, REGION_LORE, RSIDE, gateOpen, travelRegion, openAcre, REGIONS, regionRun, regionTick, dailyDone, named, chRecapLayout, saintLvRows, questTalk, storyTurnIn, stick, wrapW, caseOf, STORY_HINT, spawnPack, get interact() { return game.interact; }, crierEvents, crierNews, wardenSettle, SIDE, propClash, get falls() { return falls; }, WDIE, weeklyId, spriteBust, monBust, drawBoardDailies, questTargets, ensureDailies, dailyIds, DAILY_POOL, get bossIntro() { return game.bossIntro; }, get camOff() { return game.camOff; }, talk, questBump, qOf, ensureQuests, QSITE, get bossSay() { return game.bossSay; }, STORY, storyN, storyDone, beginStory, openStory, storyRead, playScene, storyLayout, get storyFind() { return game.storyFind; }, sanctIfWorn, equip, stationNeed, NEED_R, playerSanctity, mightParts, gearSanctity, MIGHT, lastRunLine, newsLayout, newsBuilds, autoFontPool, BUFF_SND, activeBuffs, BUFFS, setFoeK, LOW_SETS, thAnim, bustAnim, riteFx, riteRamp, RITE_FX_P, get pfx() { return pfx; }, get cam() { return cam; }, nm, vdAnim, VDAG, vdEvery, vdTime, legendMine, startDash, ALTAR_SOCKETS, PSKINS, pskin, pskinsOwned, openStore, storeTap, autoIcons, autoPlayTap, playerSanctity, stationSanctity, autoHudBtn, autoSellFor, autoSellPick, AUTO_SELL, woundsLayout, woundsTap, woundsHeld, get SAC_PAGE_N() { return SAC_PAGE_N; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

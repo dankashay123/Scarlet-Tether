@@ -68,6 +68,7 @@ fs.mkdirSync(`${S}/shots`, { recursive: true });
   out.counts = await p.evaluate((k) => ({ ...HS.qOf(`story${k}`).c }), CH);
   // The message, then the Warden's lines.
   await p.evaluate(() => { HS.game.run.auto = false; });
+  for (let k = 0; k < 4; k++) { const B = await p.evaluate(() => { const it = HS.room.interact.find((q) => q.label === 'SILENCE' && !q.done); return it && { x: it.x, y: it.y }; }); if (!B) break; await tick('bell'); await p.evaluate(([x, y]) => { for (const e of HS.enemies) if (Math.hypot(e.x - x, e.y - y) < 300) e.dead = true; if (HS.game.state === 'stig') HS.pickStigma(0); HS.game.state = 'play'; }, [B.x, B.y]); await walkTo(B.x, B.y); await press('KeyE'); await p.waitForTimeout(300); } out.bells = await p.evaluate((k) => HS.qOf(`story${k}`).c.bells || 0, CH); // round 174: the belfry's bells
   { const F = await p.evaluate(() => HS.storyFind && { x: HS.storyFind.x, y: HS.storyFind.y }); await walkTo(F.x, F.y + 12); await scan('message'); await shot('message'); out.readButton = await p.evaluate(() => HS.interact && HS.interact.label); await press('KeyE'); }
   out.note = await closeDialog('note');
   // Until the Toll fills, the pilot keeps fighting; then the Warden rises and speaks.

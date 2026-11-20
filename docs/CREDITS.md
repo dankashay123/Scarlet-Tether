@@ -79,3 +79,15 @@ multi-gigabyte archives.
 ## Reference
 
 - Otherworld Legends (ChillyRoom) was studied as a style reference only. None of its art or audio is in this repo.
+
+## Region music and ambience (round 174, all CC0)
+
+| Source | Author | Used for |
+|---|---|---|
+| [Birds and Wind / Birds, Wind and Synth](https://opengameart.org/content/birds-and-wind-ambient-birds-wind-and-synth) | spring-spring | the Hollow Moor's music (`music_moor`), the Saltreach's music (`music_salt`) |
+| [wind1](https://opengameart.org/content/wind1) | lukerustltd | wind over the moor and the Ashfields (`amb_wind`) |
+| [Swamp Environment Audio](https://opengameart.org/content/swamp-environment-audio) | lokif | the Sallow Fen's ambience (`amb_swamp`) |
+| [Dark Place (loop)](https://opengameart.org/content/dark-place-loop) | skylethefrench | the Sallow Fen's music (`music_fen`) |
+| [Ruined City Theme](https://opengameart.org/content/ruined-city-theme) | cleytonkauffman | the Ashfields' music (`music_ash`) |
+| [Beach Ocean Waves](https://opengameart.org/content/beach-ocean-waves) | qubodup (from jasinski's recording) | the Saltreach's surf (`amb_waves`) |
+
