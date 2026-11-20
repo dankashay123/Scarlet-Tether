@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-19, after round 174 (build 174, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-19, after round 175 (build 175, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -763,6 +763,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 175:** the owner: "All" (round 174's five). (A) The travel map: every gate's LEAVE VAEL opens state `travel`
+  (`openTravel`, `renderTravel`, `travelTap`, `travelLayout`; `TRAVEL`, `TRAVEL_PIC`, `TRAVEL_CH`): four cards with
+  the region's landmark, gate, lore found, YOUR CHAPTER IS HERE or OPENS WITH CHAPTER N, and GO. (B) The ending: the
+  first time a Warden of Station XXX falls outside the Vigil and the story, `ENDING` plays (`SAVE.ending`). After THE
+  LANTERN CHAPEL (`lanternLit()`) a lantern glow follows the Saint in descents. (C) Each belfry bell, when silenced,
+  calls a Bell Ringer pack (THE BELL'S KEEPER). (D) The coast: `room.tides` (tide pools drawn by `drawTides`, filling
+  and emptying over 40 s, `tideK()`; full ones join `room.water`), `room.lamp` (the chapel's lamp sweeps the cliff in
+  the glow pass), gulls perched on boats, net racks and huts (the crows mechanism with `gull: true`). (E) Hares on the
+  moor (`critters` kind `hare`, the pets sheet's hare). Test: `round175.cjs`.
 - **Round 174:** the owner: "All" (round 173's five). (A) Region IV, the Saltreach (`REGIONS.salt`, sheet `salt` from
   `tools/models/salt.mjs`: chapel, hut, boat (upturned, wreck), netrack, stack, saltpan, marram; also bellframe,
   gatetower, frog, gull): a coast painter (sand track, salt crust, shingle, surf and grey sea), the salt-hut camp,
