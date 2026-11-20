@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-19, after round 175 (build 175, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-19, after round 176 (build 176, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -763,6 +763,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 176:** the owner: "All" (round 175's five). (A) The epilogue: with `SAVE.ending`, `EPILOGUE_BARKS` take most
+  townsfolk barks, Odile and Vane have new lines, `saintTitle()` adds LANTERN-BEARING, and a slow `knell` rings in Vael
+  every 38 s (`updateTown`). (B) HARD trips: from Station V cleared (`hardOpen`), the travel map's HARD button runs a
+  region `REGION_HARD` (4) Stations past the best (`travelRegion(id, hard)`, `game.run.hard`, banner A HARD ROAD).
+  Regions cap their density (`dens` at 1.6, pack size by Station VIII) so a deep region stays about 770 foes. (C) The
+  travel map shows places found (`SAVE.marksSeen` per region, written in `regionTick`) and the world boss's state.
+  (D) Tide pools: weed, crabs (critter kind `crab`, sprite `salt/crab`, sideways), and foes in a full pool move at 0.6
+  (`tideFull`, `e.tideT` in `slowK`). (E) `drawWalkPointer`: during the walk an arrow on the screen's edge names the
+  nearest person still to meet. Test: `round176.cjs`.
 - **Round 175:** the owner: "All" (round 174's five). (A) The travel map: every gate's LEAVE VAEL opens state `travel`
   (`openTravel`, `renderTravel`, `travelTap`, `travelLayout`; `TRAVEL`, `TRAVEL_PIC`, `TRAVEL_CH`): four cards with
   the region's landmark, gate, lore found, YOUR CHAPTER IS HERE or OPENS WITH CHAPTER N, and GO. (B) The ending: the

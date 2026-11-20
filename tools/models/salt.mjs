@@ -184,6 +184,12 @@ function gull(f) { const W = 24, H = 16, S = new View(), G = groundY(H, 2), cx =
   for (const s0 of [-1, 1]) S.add(capsule([cx, G - 8, s0 * 2], [cx - 3, G - 8 - up * 5, s0 * 10], 1, 0.6, 'gull'), 0.6);
   const fr = R(S, W, H); dot(fr, cx + 7, G - 9.5, 'gold2'); return fr; }
 
+FM.crab = { ramp: 'crimson', spec: 0.3, bias: -0.05, min: 1 };
+function crab(f) { const W = 18, H = 12, S = new View(), G = groundY(H, 2), cx = 9;
+  S.add(ellipsoid([cx, G - 3, 0], [5, 2.4, 3.6], 'crab'), 0);
+  for (const s0 of [-1, 1]) { S.add(sphere([cx + s0 * 6, G - 4 - (f && s0 > 0 ? 1 : 0), 1.5], 1.8, 'crab'), 0.6); for (let k = 0; k < 2; k++) S.add(capsule([cx + s0 * 3, G - 2, -1 + k * 2], [cx + s0 * (6 + (f ? 1 : 0)), G, -2 + k * 3], 0.7, 0.6, 'crab'), 0.3); }
+  const fr = R(S, W, H); dot(fr, cx - 1, G - 5, 'ink2'); dot(fr, cx + 1, G - 5, 'ink2'); return fr; }
+
 // ======================================================== flat bits ===
 function saltpan(v) { const W = 48, H = 26, fr = blank(W, H); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const e = x < 2 || y < 2 || x >= W - 2 || y >= H - 2 || x === 24 || x === 25; fr.px[y * W + x] = IDX[e ? 'stone3' : noise3(x * 0.3 + v, y * 0.3, v) > 0.25 ? 'bone1' : 'bone0']; } return fr; }
 function marram(v) { const W = 18, H = 16, fr = blank(W, H); for (let k = 0; k < 9; k++) { const x = 3 + Math.floor(hash(k, 1, v) * 12), h = 6 + Math.floor(hash(k, 2, v) * 8), l = hash(k, 3, v) < 0.5 ? -1 : 1; for (let d = 0; d < h; d++) dot(fr, x + (d > h * 0.6 ? l : 0), H - 1 - d, d > h - 3 ? 'sand1h' : d > h * 0.4 ? 'sand2h' : 'moss2h'); } return fr; }
@@ -199,6 +205,7 @@ export default {
     gatetower: () => [gatetower()],
     frog: () => [0, 1].map(frog),
     gull: () => [0, 1].map(gull),
+    crab: () => [0, 1].map(crab),
     saltpan: () => [0, 1].map(saltpan),
     marram: () => [0, 1].map(marram),
   },
