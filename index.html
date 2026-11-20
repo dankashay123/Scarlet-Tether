@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '176';
+const BUILD = '177';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '177': ['EACH DAY ONE DAILY QUEST SENDS YOU OUT INTO A REGION: KILLS, ELITES OR PLACES THERE. THE TRAVEL MAP SHOWS IT.', 'AT HALF HEALTH A WORLD BOSS CALLS ITS REGION: FOES COME TO ITS SIDE AND IT LEARNS A NEW ATTACK. WORLD BOSSES HAVE MORE HEALTH, AND THE CODEX SAYS WHERE EACH ONE WALKS.', 'WEATHER COMES AND GOES IN THE REGIONS: RAIN ON THE MOOR, FOG ON THE FEN, ASH IN THE ASHFIELDS, SPRAY ON THE SALTREACH.', 'FOES OUT IN THE REGIONS DROP MORE GEAR AND GOLD, MORE AGAIN ON A HARD TRIP.', 'THE OPENING IS SHORTER, AND THE STORY BOX GROWS TO FIT LONG LINES ON SMALL PHONES.'],
   '176': ['AFTER THE ENDING, VAEL IS QUIETER: THE BELLS RING SLOW ON THEIR OWN, TOWNSFOLK AND ODILE AND VANE HAVE NEW THINGS TO SAY, AND YOUR TITLE READS LANTERN-BEARING.', 'HARD ROADS: ONCE YOU HAVE CLEARED STATION V, THE TRAVEL MAP OFFERS A HARD TRIP TO EACH REGION, FOUR STATIONS PAST YOUR BEST, WITH MORE GEAR AND A STRONGER WORLD BOSS.', 'THE TRAVEL MAP SHOWS THE PLACES YOU HAVE FOUND IN EACH REGION AND WHETHER ITS WORLD BOSS WALKS.', 'THE TIDE POOLS HAVE WEED AND CRABS, AND FOES WADE SLOWLY THROUGH A FULL ONE.', 'ON THE WALK THROUGH VAEL, AN ARROW AT THE EDGE OF THE SCREEN POINTS TO THE NEXT PERSON TO MEET.'],
   '175': ['EVERY GATE NOW OPENS ONE TRAVEL MAP: ALL FOUR REGIONS, THEIR GATES, THE LORE YOU HAVE FOUND AND WHERE YOUR CHAPTER IS.', 'THE BOTTOM OF THE STATIONS: KILL THE WARDEN OF STATION XXX TO SEE WHAT KNOCKS UNDER THE WOUND. AFTER THE LANTERN CHAPEL, OSANNE\'S LANTERN LIGHTS YOUR WAY IN EVERY DESCENT.', 'EACH BELL IN THE BELFRY HAS A KEEPER THAT COMES WHEN YOU SILENCE IT.', 'THE COAST HAS TIDE POOLS THAT FILL AND EMPTY, THE CHAPEL\'S LAMP SWEEPS THE CLIFF, AND GULLS SIT ON THE BOATS, NETS AND ROOFS.', 'HARES RUN ON THE MOOR.'],
   '174': ['NEW REGION: THE SALTREACH, THROUGH THE WEST GATE ONCE THE STORY IS DONE. SALT HUTS, A WRECKED CHOIR SHIP, SEA STACKS, SALT PANS, THE LANTERN SHORE AND THE LANTERN CHAPEL ON ITS CLIFF. CASS AND THE LAMP KEEPER, SIX PIECES OF LORE AND A SIDE QUEST.', 'A NEW CHAPTER AFTER THE STORY: THE LANTERN CHAPEL, WITH OUR LADY OF NAILS. THE STATIONS STAY OPEN WHILE YOU PLAY IT.', 'COUNT THE BELLS IS LONGER: SILENCE THE THREE BELLS IN THE BELFRY (GOLD MARKS ON THE MINIMAP). VANE TELLS YOU THE REST AFTERWARDS.', 'EACH REGION HAS ITS OWN MUSIC AND SOUNDS: WIND ON THE MOOR, FROGS IN THE FEN, RATS IN THE ASHFIELDS, GULLS AND SURF ON THE COAST.', 'VAEL\'S GATES HAVE GATE TOWERS.', 'THE CODEX LORE PAGE COUNTS EACH REGION, AND AN UNREAD PAGE HAS A TAKE ME THERE BUTTON.', 'THE TIDE-BISHOP WALKS THE SALTREACH\'S WRECK AS ITS WORLD BOSS.'],
@@ -562,7 +563,7 @@ const isBold = (o) => o.bold ?? !!(o.glow || (o.sc || 1) >= 1.5); // titles and 
 // turns a short label into Title Case and anything longer into a sentence, and
 // keeps game names (sets, rites, Wardens, sites, terms) and Roman numerals capitalised.
 // A string that already has a lower-case letter is left as it is.
-const CASE_TERMS = new Set('WENNA TOBE MARL OSANNE IDE CASS LANTERNFOLK EMBERWAKE MURMUR CHANT RAPTURE FRENZY INDULGENCE INDULGENCES TESTAMENT TESTAMENTS RUBRIC RUBRICS ZEAL TOLL WARDEN WARDENS SAINT SAINTS STATION STATIONS VIGIL VIGILS HALLOWED RECKONING RECKONINGS EMBERSTONE EMBERSTONES CHRISM CHRISMS MENDICANT VESPER ANCHORESS SANCTITY MIGHT VAEL ODILE PELL CINDER VANE HOLLIS BARNABY ULM CANONRY CENSER ENCHANTER BOOKIE CHOIR OSANNE WENNA BRASK UNDERCROFT NAVE OSSUARY STRATUM STRATA CARNAGE WOUND WOUNDS'.split(' '));
+const CASE_TERMS = new Set('SALTREACH ASHFIELDS FEN MOOR WENNA TOBE MARL OSANNE IDE CASS LANTERNFOLK EMBERWAKE MURMUR CHANT RAPTURE FRENZY INDULGENCE INDULGENCES TESTAMENT TESTAMENTS RUBRIC RUBRICS ZEAL TOLL WARDEN WARDENS SAINT SAINTS STATION STATIONS VIGIL VIGILS HALLOWED RECKONING RECKONINGS EMBERSTONE EMBERSTONES CHRISM CHRISMS MENDICANT VESPER ANCHORESS SANCTITY MIGHT VAEL ODILE PELL CINDER VANE HOLLIS BARNABY ULM CANONRY CENSER ENCHANTER BOOKIE CHOIR OSANNE WENNA BRASK UNDERCROFT NAVE OSSUARY STRATUM STRATA CARNAGE WOUND WOUNDS'.split(' '));
 const CASE_SMALL = new Set('A AN THE OF TO IN ON AT FOR AND OR BY WITH FROM PER VS AS'.split(' '));
 const CASE_KEEP = /^(?:HP|XP|DPS|FX|OK|UI|PNG|(?=[IVXL])L?X{0,3}(?:IX|IV|V?I{0,3})\+?|[A-Z]\d+)$/; // HP, XP, Roman numerals, F1
 const CASE_VERBS = new Set('TAP HOLD DRAG WEAR BUY GO FINISH KILL PICK CHOOSE SPEND TALK OPEN PRESS MOVE REACH FIND CLEAR NO GET WALK FALL BEAT SELL BURN USE CLAIM DIES COMES CAST DASH VISIT LEARN REFORGE ENCHANT PLACE READ RING SILENCE'.split(' '));
@@ -1371,7 +1372,7 @@ function drawRegionMarks(cx, cy) {
     if (q && q.st === 'active' && C.goals.some(([g, m]) => g === P.goal && (q.c[g] || 0) < m)) ch = '!';
     for (const [rk, D] of Object.entries(RSIDE)) { if (D.giver !== n.talk) continue; const sq = qOf(`rside_${rk}`); if (sq && sq.st === 'active' && sq.step === 1) ch = '?'; else if (!sq && (SAVE.rtalk || {})[n.talk] && !ch) ch = '!'; }
     if (ch) questMark(n.x - cx - 1, n.y - cy - 62 - (game.interact && game.interact.who === n ? 14 : 0), ch);
-    if (Math.hypot(n.x - player.x, n.y - player.y) < 90) text(qName(n.talk), n.x - cx, n.y - cy - 60, PAL.gold1, { align: 'center', small: true }); }
+    if (Math.hypot(n.x - player.x, n.y - player.y) < 90 && !(game.interact && game.interact.who === n)) text(qName(n.talk), n.x - cx, n.y - cy - 60, PAL.gold1, { align: 'center', small: true }); }
   for (const it of room.interact) if (it.lore && !loreFound()[it.lore]) { const a = 0.5 + 0.5 * Math.sin(game.real * 3 + it.x); ctx.globalAlpha = a; ctx.fillStyle = PAL.holy0; ctx.fillRect(Math.round(it.x - cx) - 1, Math.round(it.y - cy) - 22, 2, 6); ctx.fillRect(Math.round(it.x - cx) - 3, Math.round(it.y - cy) - 20, 6, 2); ctx.globalAlpha = 1; }
 }
 // A landmark comes into view: its name as a banner, a chime, and a mark on the map.
@@ -1391,13 +1392,14 @@ function regionTick() {
   if (room.region === 'acre') { if (!room.acreEnd && enemies.every((e) => e.dead || e.illusion)) { room.acreEnd = game.real; game.banner = { text: 'THE DEAD LIE STILL', sub: 'THE QUIET ACRE IS QUIET AGAIN', t: 0, color: PAL.gold0 }; sfx('knell', { vol: 0.5 }); } if (room.acreEnd && game.real - room.acreEnd > 3) { room.acreEnd = 1e9; acreDone(); } return; }
   for (const m of room.marks) if (!m.found && Math.hypot(m.x - player.x, m.y - player.y) < 120) {
     ((SAVE.marksSeen = SAVE.marksSeen || {})[room.region] = SAVE.marksSeen[room.region] || {})[m.kind] = 1; persist(); // round 176: landmarks found, kept for the travel map
-    if (m.kind === 'wagons') questBump('wagons');
+    if (m.kind === 'wagons') questBump('wagons'); questBump(`rmark_${room.region}`); // round 177: a region daily
     for (const [mk, rg, id] of WORLD_BOSSES) if (m.kind === mk && room.region === rg && !game.warden && !(game.run && game.run.story != null)) { const left = worldBossWait(id); if (left > 0) later(1.2, () => toast(named(`XNAMEAX IS GONE FOR NOW. IT RISES AGAIN IN ${Math.ceil(left / 60)} MIN.`, MON[id].name), 3)); else later(1.6, () => { if (regionRun() && !game.warden) spawnWarden(id, { world: true }); }); } // round 172-173: world bosses, back 20 minutes after a kill
     if (m.kind === 'dam') questBump('dam');
     m.found = true; game.banner = { text: m.name, sub: m.kind === 'door' ? 'THE WAY DOWN' : 'LANDMARK FOUND', t: 0, color: PAL.gold0 }; sfx('chime', { vol: 0.45, rate: 0.9, gap: 0.5 });
   }
 }
 const WORLD_BOSSES = [['barrows', 'moor', 'charnelKing'], ['chapel', 'fen', 'organist'], ['field', 'ash', 'ashWidow'], ['wreck', 'salt', 'tideBishop']];
+const WORLD_HP = 1.5; // round 177: a world boss has half again a Warden's health (a full set killed one in 20 s at XII)
 const WORLD_BOSS_WAIT = 20 * 60; // seconds of real time before a killed world boss rises again
 const worldBossWait = (id) => { const t = (SAVE.worldBossT || {})[id]; return t ? Math.max(0, WORLD_BOSS_WAIT - (Date.now() - t) / 1000) : 0; };
 // Mist drifting over the moor, in screen space with a little parallax; cached soft sprites.
@@ -1409,6 +1411,26 @@ function drawRegionMist(cx, cy) {
     const sp = 6 + (i % 3) * 4, span = W + 520, x = ((i * 397 + t * sp - cx * 0.35) % span + span) % span - 260, y = ((i * 211 - cy * 0.35) % (H + 200) + H + 200) % (H + 200) - 100;
     ctx.globalAlpha = 0.16 + 0.06 * Math.sin(t * 0.3 + i); ctx.drawImage(MIST_SPR, Math.round(x), Math.round(y), 360 + (i % 2) * 140, 150);
   }
+  ctx.globalAlpha = 1;
+}
+
+// Round 177: weather per region that comes and goes over a few minutes: drizzle on the moor, fog on the fen, falling ash
+// in the Ashfields, sea spray on the Saltreach. Drawn in screen space as 2x2 palette pixels, a third as many under LOWFX.
+const WEATHER = { moor: { n: 140, name: 'RAIN' }, fen: { n: 6, name: 'FOG' }, ash: { n: 70, name: 'ASH' }, salt: { n: 46, name: 'SPRAY' } };
+const weatherK = () => { if (room.weatherK != null) return room.weatherK; const ph = (((game.run && game.run.seed) || 0) % 97) * 0.07, v = 0.35 + 0.9 * Math.sin(game.real / 150 + ph); return Math.max(0, Math.min(1, v)); };
+function drawWeather(cx, cy) {
+  const Wd = WEATHER[room.region]; if (!Wd || opt('fx') === 'off') return; const k = weatherK(); if (k <= 0.02) return;
+  const t = game.real, n = Math.round(Wd.n * k * (LOWFX ? 0.34 : 1)), sw = W + 40, sh = H + 40, md = (v, m) => ((v % m) + m) % m, sq = (x, y) => ctx.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, 2, 2);
+  if (room.region === 'fen') { // fog: a soft grey veil and slow banks of mist
+    ctx.fillStyle = `rgba(150,172,170,${(0.18 * k).toFixed(3)})`; ctx.fillRect(0, 0, W, H);
+    if (!MIST_SPR) drawRegionMist(cx, cy);
+    for (let i = 0; i < n; i++) { const x = md(i * 263 + t * (4 + i % 3 * 2) - cx * 0.6, W + 520) - 260, y = md(i * 157 - cy * 0.6, H + 220) - 110; ctx.globalAlpha = (0.22 + 0.08 * Math.sin(t * 0.25 + i)) * k; ctx.drawImage(MIST_SPR, Math.round(x), Math.round(y), 460, 190); }
+    ctx.globalAlpha = 1; return;
+  }
+  ctx.globalAlpha = 0.55 * Math.min(1, 0.4 + k);
+  if (room.region === 'moor') { ctx.globalAlpha = 0.75 * Math.min(1, 0.4 + k); ctx.fillStyle = PAL.stone1; for (let i = 0; i < n; i++) { const x = md(i * 137.5 - t * 70 - cx * 0.2, sw) - 20, y = md(i * 91.3 + t * 300 - cy * 0.2, sh) - 20; sq(x, y); sq(x - 2, y + 4); sq(x - 4, y + 8); sq(x - 6, y + 12); } ctx.fillStyle = 'rgba(40,50,70,0.18)'; ctx.globalAlpha = k; ctx.fillRect(0, 0, W, H); } // round 177: brighter streaks and a grey wash
+  else if (room.region === 'ash') { for (let i = 0; i < n; i++) { const x = md(i * 137.5 + 14 * Math.sin(t * 0.8 + i) - cx * 0.25, sw) - 20, y = md(i * 71.7 + t * (18 + i % 4 * 6) - cy * 0.25, sh) - 20; ctx.fillStyle = i % 13 === 0 ? PAL.ember1 : i % 3 ? PAL.stone2 : PAL.bone3; sq(x, y); } }
+  else if (room.region === 'salt') { ctx.fillStyle = PAL.bone0; for (let i = 0; i < n; i++) { const x = md(i * 151.1 + t * (200 + i % 5 * 30) - cx * 0.3, sw + 60) - 40, y = md(i * 59.3 + 6 * Math.sin(t + i) - cy * 0.3, sh) - 20, L = 4 + (i % 3) * 2; ctx.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, L, 2); } }
   ctx.globalAlpha = 1;
 }
 
@@ -2121,7 +2143,7 @@ function spawnWarden(force, o = {}) {
   const affixes = AFFIX_POOL.filter((a) => !['mirrored', 'horde', 'vengeful'].includes(a)).sort(() => rng() - 0.5).slice(0, 1 + df.aff);
   // The tutorial's Warden is gentler; every other one is meant to punish.
   const soft = tut.on || (game.run && game.run.story != null && game.run.story < 2);
-  const e = spawnMonster(id, x, y, { tier: 'elite', affixes, room: r.id, name: d.name, hpK: soft ? 1.1 : WARDEN.hpK });
+  const e = spawnMonster(id, x, y, { tier: 'elite', affixes, room: r.id, name: d.name, hpK: (soft ? 1.1 : WARDEN.hpK) * (o.world ? WORLD_HP : 1) });
   e.boss = true; e.title = o.world ? 'A WORLD BOSS' : `WARDEN OF ${df.name}`; e.world = !!o.world; e.phase = 0; e.dmgK *= soft ? 1.1 : WARDEN.dmgK; e.bornT = game.time + (soft ? 50 : 0);
   e.cds = e.def.attacks.map(() => rand(1, 2.5));
   game.warden = e; if (game.run) game.run.reach = Math.max(game.run.reach || 0, 1);
@@ -2135,9 +2157,10 @@ function spawnWarden(force, o = {}) {
 function wardenPhase(e) {
   if (!e.enraged && game.time - e.bornT > WARDEN.enrage) {
     e.enraged = true; e.dmgK *= 2; e.cdK *= 0.6; e.speedK *= 1.25;
-    game.banner = { text: 'THE WARDEN IS ENRAGED', sub: 'IT NOW DEALS DOUBLE DAMAGE.', t: 0, color: PAL.blood0 };
+    game.banner = { text: e.world ? `${e.name} IS ENRAGED` : 'THE WARDEN IS ENRAGED', sub: 'IT NOW DEALS DOUBLE DAMAGE.', t: 0, color: PAL.blood0 };
     game.shake = 8; sfx('elite', { rate: 0.5, vol: 1.4, gap: 0 });
   }
+  if (e.world && !e.called && e.hp / e.maxHp <= 0.5) worldCall(e); // round 177: a world boss's second phase
   const want = e.hp / e.maxHp <= 0.33 ? 2 : e.hp / e.maxHp <= 0.66 ? 1 : 0;
   if (want <= e.phase) return;
   e.phase = want; e.speedK *= 1.15; e.cdK *= 0.75;
@@ -2145,10 +2168,23 @@ function wardenPhase(e) {
   // Each phase teaches the Warden something worse.
   const more = (MON[e.type].phases || [])[want - 1] || [];
   e.def = { ...e.def, attacks: [...e.def.attacks, ...more] }; e.cds.push(...more.map(() => 0.6));
-  toast(want === 1 ? 'THE WARDEN RAGES' : 'THE WARDEN IS DESPERATE', 1.6); game.shake = 6;
+  toast(want === 1 ? (e.world ? 'IT RAGES' : 'THE WARDEN RAGES') : (e.world ? 'IT IS DESPERATE' : 'THE WARDEN IS DESPERATE'), 1.6); // round 177: a world boss is no Warden game.shake = 6;
   const n = 16 + want * 8, a = wardenSkills()[0];
   for (let k = 0; k < n; k++) shotAt(e, (k / n) * Math.PI * 2, { ...a, dmg: a.dmg * e.dmgK });
   for (let k = 0; k < 2 + want; k++) { const m = spawnMonster(pick(['risen', 'acolyte', 'flagellant']), e.x + rand(-40, 40), e.y + rand(-30, 30), { room: e.room, minion: true }); m.state = 'move'; }
+}
+// Round 177: at half health a world boss calls its region: a ring of the region's foes, a wave of light at its feet,
+// and one attack of the region's own kind (moor spikes, fen spiral, ash shockwave, salt spikes and spiral).
+const WORLD_CALL = { moor: ['spikes'], fen: ['spiral'], ash: ['shockwave'], salt: ['spikes', 'spiral'] };
+function worldCall(e) {
+  e.called = true; const rg = room.region, RG = REGIONS[rg] || {}, pool = RG.pool || ['risen'];
+  game.banner = { text: `${titleWords(e.name, true)} Calls`, sub: `THE ${REGION_SHORT[rg] || 'LAND'} ANSWERS. ITS FOES COME TO ITS SIDE.`, t: 0, color: PAL.blood0 };
+  game.shake = 8; game.flash = 0.1; sfx(AUDIO.has(`roar_${e.type}`) ? `roar_${e.type}` : 'roar', { gap: 0 }); sfx('knell', { vol: 0.5, rate: 0.6, gap: 0 });
+  rings.push({ x: e.x, y: e.y - 12, t: 0, max: 1, r: 150, color: '224,32,46' }); addPfx({ kind: 'quake', x: e.x, y: e.y, r: 170, max: 0.9, ramp: 'blood', ground: true });
+  const n = 4 + Math.min(4, curDiff().aff || 0);
+  for (let k = 0; k < n; k++) { const a = (k / n) * Math.PI * 2, m = spawnMonster(pick(pool), e.x + Math.cos(a) * 70, e.y + Math.sin(a) * 50, { room: e.room, minion: true }); m.state = 'move'; }
+  const more = (WORLD_CALL[rg] || []).map((t) => wardenSkills().find((a) => a.type === t)).filter(Boolean);
+  e.def = { ...e.def, attacks: [...e.def.attacks, ...more] }; e.cds.push(...more.map(() => 1.2)); e.speedK *= 1.1;
 }
 // What a Vigil pays beyond the Stations: Chrism twice as often and of better
 // kinds as the level climbs; its Warden always pays a set piece from
@@ -5353,7 +5389,9 @@ function codexList(sec) {
     const H0 = HALOS.find((q) => q.earn === id), hk = H0 ? EARNED.indexOf(H0) : -1, own = H0 && looks().own.includes(`h:${H0.id}`);
     const halo = H0 ? (own ? `YOU HAVE EARNED ${H0.name}.` : `KILL IT AT STATION ${ROMAN[EARN_FROM - 1]} OR DEEPER TO EARN ${H0.name}.`) : null;
     const art = H0 ? (x, y, k = 1) => { ctx.save(); ctx.translate(x, y); ctx.scale(k, k); spr('town2', 'halostand', own ? hk + 1 : 0, 0, 0); ctx.restore(); if (own && !LOWFX) twinkles(x, y - 34 * k, 6 * k, hk * 0.21, 4, k); } : null;
-    return { id, name: d.name, seen: !!(t && t.n), icon: monIcon(id), tag: 'WARDEN', rgb: '255,106,138', art, lines: !t ? [`FOUND IN ${strat(d)}.`, halo] : [`FOUND IN ${strat(d)}.`, halo, t.n === 1 ? 'YOU HAVE KILLED IT ONCE.' : `YOU HAVE KILLED IT ${t.n.toLocaleString('en-US')} TIMES.`, ...(sts.length ? [`DEEPEST KILL: STATION ${ROMAN[sts[0] - 1]}.`, 'YOUR FASTEST KILL AT EACH STATION:', sts.slice(0, 12).map((n) => `${ROMAN[n - 1]} ${mmss(t.st[n])}`).join(', ')] : ['SO FAR YOU HAVE ONLY KILLED IT IN VIGILS.'])] }; });
+    const wb = WORLD_BOSSES.find((w0) => w0[2] === id), wn = (SAVE.worldBoss || {})[id] || 0; // round 177: where it walks in the open world
+    const wl = wb ? `IT ALSO WALKS IN ${REGIONS[wb[1]].name}, AT ${REGIONS[wb[1]].marks[wb[0]]}. ${wn ? (wn === 1 ? 'YOU HAVE KILLED IT THERE ONCE.' : `YOU HAVE KILLED IT THERE ${wn} TIMES.`) : 'YOU HAVE NOT KILLED IT THERE YET.'}` : null;
+    return { id, name: d.name, seen: !!(t && t.n) || wn > 0, icon: monIcon(id), tag: wb ? 'WORLD BOSS' : 'WARDEN', rgb: '255,106,138', art, lines: !t ? [`FOUND IN ${strat(d)}.`, wl, halo].filter(Boolean) : [`FOUND IN ${strat(d)}.`, wl, halo, t.n === 1 ? 'YOU HAVE KILLED IT ONCE.' : `YOU HAVE KILLED IT ${t.n.toLocaleString('en-US')} TIMES.`, ...(sts.length ? [`DEEPEST KILL: STATION ${ROMAN[sts[0] - 1]}.`, 'YOUR FASTEST KILL AT EACH STATION:', sts.slice(0, 12).map((n) => `${ROMAN[n - 1]} ${mmss(t.st[n])}`).join(', ')] : ['SO FAR YOU HAVE ONLY KILLED IT IN VIGILS.'])] }; });
   if (sec === 2) return [...mySets(), starterSet()].map((id) => { const n = C.s[id] || 0, i = SET_ICONS.indexOf(id); return { id, name: VSETS[id].name, seen: n > 0, icon: (x, y) => sprC('loot', 'setitem', i * 10, x, y), tag: 'SET', rgb: SET_RGB[id] || '255,209,85', lines: [n === 1 ? 'YOU HAVE FOUND ONE PIECE.' : `YOU HAVE FOUND ${n.toLocaleString('en-US')} PIECES.`, setCount(id) ? `YOU ARE WEARING ${setCount(id)} OF THEM.` : 'YOU ARE NOT WEARING ANY.'] }; });
   if (sec === 3) return LEGENDS.map((L, i) => [L, i]).filter(([L]) => !L.hero || L.hero === hero).map(([L, i]) => { const n = C.h[L.id] || 0; return { id: L.id, name: L.name, seen: n > 0, icon: (x, y) => sprC('loot', 'legend', i, x, y), tag: 'HALLOWED', rgb: '255,122,31', hint: `${heroText(L.text)} IT DROPS AS A HALLOWED ${heroText(SLOT_NAME[L.slot] || L.slot.toUpperCase())}. ELITES AND WARDENS DROP HALLOWED PIECES MOST OFTEN, AND PELL'S STALL SOMETIMES SELLS ONE.`, lines: [heroText(L.text), n === 1 ? 'FOUND ONCE.' : `FOUND ${n.toLocaleString('en-US')} TIMES.`] }; });
   // Round 171: the Unwritten Gospel: every piece of lore found out in the world, to read again.
@@ -6636,17 +6674,15 @@ function drawNarration(kind, t) {
   const B = narrSkip(); ctx.fillStyle = 'rgba(11,7,16,0.7)'; ctx.fillRect(B.x, B.y, B.w, B.h); text('SKIP', B.x + B.w / 2, B.y + 5, PAL.stone1, { small: true, align: 'center', outline: null });
   const B2 = narrSkipAll(); if (B2) { ctx.fillStyle = 'rgba(11,7,16,0.7)'; ctx.fillRect(B2.x, B2.y, B2.w, B2.h); text('SKIP THE OPENING', B2.x + B2.w / 2, B2.y + 5, PAL.gold1, { small: true, align: 'center', outline: null }); }
 }
-const STORY_VESTRY = [
-  ['odile', 'EASY. DO NOT TRY TO STAND YET. YOU HAVE BEEN ASLEEP SINCE THE BELLS RANG.'],
-  ['odile', 'THE WATCH FOUND YOU ON THE CATHEDRAL STEPS AT DAWN. NO NAME, NO MEMORY, AND NOT A SCRATCH ON YOU. THE CHOIR CALLS THAT A SAINT.'],
-  ['odile', 'I AM SISTER ODILE. THIS IS VAEL. THE CITY IS SICK: OUR DEAD DO NOT STAY DOWN. EVERY NIGHT THEY CLIMB OUT OF THE WOUND UNDER THE CATHEDRAL.'],
-  ['odile', 'A SAINT GOES DOWN AND CLOSES THE WOUND FOR A WHILE. YOU REMEMBER NOTHING BECAUSE NOBODY DOES, COMING BACK UP. THE CHOIR CALLS THAT MERCY.'],
-  ['vane', 'SO THIS IS THE NEW ONE. GOOD. I AM ARCHDEACON VANE. I SPEAK FOR THE CHOIR, AND THE CHOIR SPEAKS FOR VAEL.'],
-  ['vane', 'TONIGHT THE DEAD WILL COME UP, AS THEY ALWAYS DO. TOMORROW YOU GO DOWN. TODAY, LEARN THE CITY YOU ARE DOING THIS FOR.'],
-  ['odile', 'COME, THEN. I WILL SEND YOU TO A FEW PEOPLE. EACH HAS SOMETHING YOU WILL NEED, AND EACH WILL TELL YOU A LITTLE OF VAEL.'],
-];
+const STORY_VESTRY = [ // round 177: seven lines cut to five
+  ['odile', 'EASY. DO NOT TRY TO STAND YET. THE WATCH FOUND YOU ON THE CATHEDRAL STEPS AT DAWN: NO NAME, NO MEMORY, NOT A SCRATCH ON YOU.'],
+  ['odile', 'I AM SISTER ODILE. THIS IS VAEL, AND OUR DEAD DO NOT STAY DOWN. EVERY NIGHT THEY CLIMB OUT OF THE WOUND UNDER THE CATHEDRAL.'],
+  ['odile', 'A SAINT GOES DOWN AND CLOSES THE WOUND FOR A WHILE. NOBODY REMEMBERS ANYTHING, COMING BACK UP. THE CHOIR CALLS THAT MERCY.'],
+  ['vane', 'SO THIS IS THE NEW ONE. I AM ARCHDEACON VANE, AND I SPEAK FOR THE CHOIR. TONIGHT THE DEAD COME UP. TOMORROW YOU GO DOWN.'],
+  ['odile', 'TODAY, LEARN THE CITY. I WILL SEND YOU TO FOUR PEOPLE. EACH HAS SOMETHING YOU WILL NEED.'],
+]
 // The walk through Vael: four people to talk to, then night falls on the Quiet Acre.
-const WALK_GOALS = [['talk_hollis', 1, 'TALK TO HOLLIS AT THE FORGE'], ['talk_pell', 1, 'TALK TO BROTHER PELL'], ['talk_barkeep', 1, 'TALK TO THE BOOKIE BY THE POOL'], ['talk_crier', 1, 'TALK TO THE TOWN CRIER']];
+const WALK_GOALS = [['talk_hollis', 1, 'TALK TO HOLLIS'], ['talk_pell', 1, 'TALK TO BROTHER PELL'], ['talk_barkeep', 1, 'TALK TO THE BOOKIE'], ['talk_crier', 1, 'TALK TO THE TOWN CRIER']]; // round 177: short, so they fit a small phone (the arrow shows where)
 const WALK_LINES = {
   hollis: ['SO YOU ARE THIS YEAR\'S. HERE: THE CHOIR PAYS ME TO KEEP YOUR WEAPON. IT KEEPS COMING BACK UP WITHOUT YOU, SOMEHOW.', 'THE GATES HAVE BEEN SHUT SINCE THE DEAD FIRST ROSE. NO IRON IN FORTY YEARS. THE CHOIR SAYS IT IS FOR OUR SAFETY.'],
   pell: ['A SAINT! GENUINE! YOU WILL WANT A RELIC OF SAINT OSANNE. EVERY SAINT DOES.', 'SHE IS IN EVERY CHAPEL IN VAEL: A WOMAN WALKING, WITH A LANTERN HELD UP. THE CHOIR\'S OWN SAINT, THEY SAY, THOUGH NOBODY REMEMBERS WHY SHE CARRIES THE LANTERN.'],
@@ -6749,7 +6785,10 @@ function regionTalk(id) {
 }
 // The Pilgrims' Gate opens once the first chapter is handed in (or for anyone past the old story).
 const gateOpen = (id = 'moor') => storyN() >= (id === 'salt' ? 5 : id === 'ash' ? 3 : id === 'fen' ? 2 : 1); // round 174: the West Gate (the Saltreach) once the main story is done // round 173: the East Gate (the Ashfields) with chapter 4 // round 172: the South Gate (the fen) opens with chapter 3
-const REGION_HARD = 4; // round 176: a HARD trip runs this many Stations past your best (more gear, a stronger world boss)
+const REGION_HARD = 4;
+// Round 177: the pilot kills about half as many a minute out in a region as in a descent (autobench REGION=), so a
+// region's foes drop more gear and gold, more again on a HARD trip.
+const REGION_LOOT = { k: 1.6, hard: 2 }; // round 176: a HARD trip runs this many Stations past your best (more gear, a stronger world boss)
 const hardOpen = () => (SAVE.cleared ?? -1) >= 4;
 function travelRegion(id, hard = false) {
   const k = storyN(), C = STORY[k], q = qOf(`story${k}`), story = C && C.region === id && q && q.st === 'active' && q.step === 0 ? k : null;
@@ -6778,7 +6817,9 @@ function renderTravel() {
     const nm = Object.keys(RG.marks).length, fm = Object.keys(((SAVE.marksSeen || {})[id]) || {}).length;
     text(`LORE ${f} OF ${list.length}  ·  PLACES ${fm} OF ${nm}`, tx, R.y + 34, f >= list.length && list.length ? PAL.holy1 : PAL.cloth0, small);
     const wb = WORLD_BOSSES.find((w0) => w0[1] === id); if (wb && open) { const left = worldBossWait(wb[2]); text(left > 0 ? `${MON[wb[2]].name.replace(/^THE /, '')}: BACK IN ${Math.ceil(left / 60)} MIN` : `${MON[wb[2]].name.replace(/^THE /, '')} WALKS`, tx, R.y + 46, left > 0 ? PAL.stone2 : PAL.blood1 || PAL.gold0, small); }
+    const dq = open && !here ? dailyIds().map((d) => QS()[d]).find((q0) => q0.g[4] === id && q0.st === 'active') : null; // round 177: today's region daily
     if (here) text('YOUR CHAPTER IS HERE', tx, R.y + 58, PAL.gold0, small);
+    else if (dq) text(`TODAY: ${dq.g[2]} ${Math.min(dq.g[1], dq.c[dq.g[0]] || 0)}/${dq.g[1]}`, tx, R.y + 58, PAL.gold0, small);
     else if (!open) text(`OPENS WITH CHAPTER ${TRAVEL_CH[id] + 1}`, tx, R.y + 46, PAL.stone2, small);
     const b = { x: tx, y: R.y + R.h - 24, w: 50, h: 18 }; if (open) { invButton(b, 'GO', 'gold'); if (hardOpen() && !here) invButton({ x: tx + 56, y: b.y, w: 56, h: 18 }, 'HARD', 'crimson'); } });
 }
@@ -6824,6 +6865,9 @@ const RSIDE = {
 const DAILY_POOL = [['kills', 200, 'KILL FOES', 'CULL THE RISEN'], ['elites', 10, 'KILL ELITES', 'BREAK THEIR CHAMPIONS'], ['chest', 3, 'OPEN CHESTS', 'SEARCH THE DEEP'], ['rites', 60, 'USE YOUR RITES', 'KEEP THE RITES'],
   ['warden', 2, 'KILL WARDENS', 'TWO WARDENS DOWN'], ['dash', 80, 'DASH', 'LIGHT FEET'], ['pen', 5, 'CAST YOUR RECKONING', 'FIVE RECKONINGS']];
 const DAILY_PAY = { gold: 400, embers: 3 };
+// Round 177: one of the three dailies sends the Saint out into a region whose gate is open.
+const REGION_SHORT = { moor: 'MOOR', fen: 'FEN', ash: 'ASHFIELDS', salt: 'SALTREACH' };
+const REGION_DAILY = (rg, r) => { const S = REGION_SHORT[rg], k = Math.floor(r * 3); return k === 0 ? [`rkill_${rg}`, 60, `KILL IN THE ${S}`, `CLEAR THE ${S}`, rg] : k === 1 ? [`rmark_${rg}`, 4, `${S} PLACES`, `WALK THE ${S}`, rg] : [`relite_${rg}`, 4, `${S} ELITES`, `HUNT THE ${S}`, rg]; };
 // Round 157: one weekly quest (from Monday), a bigger goal for Reliquary Tears and gold.
 const WEEKLY_POOL = [['warden', 6, 'KILL WARDENS'], ['elites', 60, 'KILL ELITES'], ['kills', 3000, 'KILL FOES'], ['chest', 15, 'OPEN CHESTS'], ['pen', 25, 'CAST YOUR RECKONING']];
 const WEEKLY_PAY = { gold: 2000, tears: 2 };
@@ -6838,8 +6882,9 @@ function ensureDailies() {
   for (const id in Q) if (id.startsWith('weekly_')) { if (id === `weekly_${wk}`) hadW = true; else delete Q[id]; }
   if (!hadW) { const g = WEEKLY_POOL[wk % WEEKLY_POOL.length]; Q[`weekly_${wk}`] = { st: 'active', step: 0, c: {}, g: g.slice() }; persist(); }
   if (had) return false;
-  let h = day % 2147483647; const r = () => (h = (h * 48271) % 2147483647) / 2147483647, pool = DAILY_POOL.slice();
-  for (let i = 0; i < 3; i++) { const g = pool.splice(Math.floor(r() * pool.length), 1)[0]; Q[`daily_${day}_${i}`] = { st: 'active', step: 0, c: {}, g: g.slice() }; }
+  let h = (Math.imul(day, 2654435761) >>> 0) % 2147483646 + 1; const r = () => (h = (h * 48271) % 2147483647) / 2147483647, pool = DAILY_POOL.slice();
+  const rgs = Object.keys(REGION_SHORT).filter((k) => gateOpen(k)); // round 177: a region's daily first, when a gate is open
+  for (let i = 0; i < 3; i++) { const g = i === 0 && rgs.length ? REGION_DAILY(rgs[Math.floor(r() * rgs.length)], r()) : pool.splice(Math.floor(r() * pool.length), 1)[0]; Q[`daily_${day}_${i}`] = { st: 'active', step: 0, c: {}, g: g.slice() }; }
   persist(); return true;
 }
 // Round 164: the Crier while he still has today's call to make (a bell on the town minimap).
@@ -8369,7 +8414,7 @@ function killEnemy(e, dirx, diry, executed = false) {
   if (G.powers.has('killNova') && ++player.novaN % 10 === 0) skillFx.push({ kind: 'nova', x: player.x, y: player.y, t: 0, max: 0.3, r: 64 * WS, dmg: 24, hits: new Set() });
   if (e.elite && !e.minion && sb('confessor', 6)) player.m2cd = 0;
   if (sb('font', 6) && pools.some((pl) => Math.hypot((e.x - pl.x) / pl.r, (e.y - pl.y) / (pl.r * 0.6)) <= 1)) player.m1cd = Math.max(0, player.m1cd - 0.5);
-  game.kills++; questBump('kills'); if (e.type === 'naveEel' && regionRun()) questBump('eel'); if (regionRun() && room.region === 'salt') questBump('saltdead'); if (e.tier !== 'common' && !e.minion && !e.boss) questBump('elites');
+  game.kills++; questBump('kills'); if (e.type === 'naveEel' && regionRun()) questBump('eel'); if (regionRun() && room.region === 'salt') questBump('saltdead'); if (regionRun() && !e.minion) { questBump(`rkill_${room.region}`); if (e.tier !== 'common' && !e.boss) questBump(`relite_${room.region}`); } if (e.tier !== 'common' && !e.minion && !e.boss) questBump('elites');
   if (!e.minion || rng() < 0.5) gainXp(xpOf(e));
   onWoundKill();
   addFervor(e.def.fervor + 1);
@@ -9078,6 +9123,7 @@ let drops = [];
 function dropLoot(x, y, { gold = 0, item = 0, itemBoost = 0, globe = 0, warden = false } = {}) {
   const df = curDiff(); item *= df.drop * (game.run && game.run.martyr ? 2 : 1); if (autoRun()) { game.run.autoGear = (game.run.autoGear || 0) + item * (1 - autoK()); item *= autoK(); } itemBoost += df.boost + (pas('sense') ? 0.5 : 0);
   if (df.vigil && !warden) item = 0; // in the Vigil only the Warden pays in gear
+  if (regionRun() && !warden) { item *= game.run.hard ? REGION_LOOT.hard : REGION_LOOT.k; gold = Math.round(gold * (game.run.hard ? REGION_LOOT.hard : REGION_LOOT.k)); } // round 177: regions pay more a kill (their foes are spread out)
   const pop = (o) => drops.push({ x, y, z: 6, vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(60, 120), t: 0, ...o });
   for (let k = 0; k < gold; k++) { const full = rand(3, 9) * df.gold * (game.buff && game.buff.kind === 'plenty' ? 2 : 1), amt = Math.max(1, Math.round(full * autoK())); if (autoRun()) game.run.autoGold = (game.run.autoGold || 0) + Math.max(0, full - amt); pop({ kind: 'gold', amount: amt }); }
   if (pas('gravesense')) globe *= 1.5; if (pet('orbtoad')) globe *= 1.3; if (pet('relicrat')) item *= 1.2;
@@ -11224,7 +11270,7 @@ function render() {
   drawAbilitiesAir();
   if (game.scene === 'wound') drawSkillsAir();
   drawPfx(false);
-  if (game.scene === 'wound') { if (room.region) drawRegionMist(cx, cy); drawBats(cx, cy); drawBossSay(); }
+  if (game.scene === 'wound') { if (room.region) { drawRegionMist(cx, cy); drawWeather(cx, cy); } drawBats(cx, cy); drawBossSay(); }
   drawRedHour();
   drawVparts();
   if (game.scene === 'wound') { drawShots(); drawDropLabels(); }
@@ -12489,7 +12535,7 @@ function renderHud() {
   // Banners, messages and tutorial hints wait while the game is paused.
   if (game.state !== 'pause') {
     renderBanner();
-    if (game.toast) { const T0 = game.toast; if (T0.w !== W) { T0.w = W; T0.lines = wrapW(String(T0.msg), W - 48).slice(0, 3); } T0.lines.forEach((l, i) => text(l, W / 2, Math.round(H * 0.3) + (game.banner ? 40 : 0) + i * 13, game.toastColor || PAL.cloth0, { align: 'center' })); } // round 167: long toasts wrap
+    if (game.toast) { const T0 = game.toast; if (T0.w !== W) { T0.w = W; T0.lines = wrapW(String(T0.msg), W - 48).slice(0, 3); } let ty = Math.round(H * 0.3) + (game.banner ? 40 : 0); { const R0 = game.trackR, tw = Math.max(...T0.lines.map((l) => textW(l))); if (R0 && W / 2 - tw / 2 < R0.x + R0.w && ty < R0.y + R0.h && ty + T0.lines.length * 13 > R0.y) ty = Math.max(ty, R0.y + R0.h + 6); } /* round 177: below the quest tracker, not over it */ T0.lines.forEach((l, i) => text(l, W / 2, ty + i * 13, game.toastColor || PAL.cloth0, { align: 'center' })); } // round 167: long toasts wrap
     if (game.toast && game.toast.t < 0.05) game.toastColor = null;
     renderTutorial();
   }
@@ -13055,10 +13101,14 @@ const monBust = (id) => (MON[id] && MON[id].sheet ? spriteBust(MON[id].sheet, MO
 // Round 157: a quiet wordless murmur as each townsperson's line opens (tools/build-voices.py): register and pitch.
 const VOICE_OF = { odile: ['hi', 1], plushseller: ['hi', 1.12], enchanter: ['hi', 0.9], vane: ['lo', 0.95], hollis: ['lo', 0.86], cinder: ['lo', 1.1], priest: ['lo', 1.1], guard: ['lo', 1], beggar: ['lo', 0.8], barkeep: ['mid', 0.9], crier: ['mid', 1.08], pell: ['mid', 1] };
 function renderDialog() {
-  const d = game.dialog, x = 70, w = W - 140, h = 64, y = H - h - 12;
-  { const w0 = d.who ? d.who[d.i] : d.id; if (w0 === 'narr') { layerBreak(); try { drawNarration((NARRATION[d.i] || [])[1], d.t); } catch (err) { logError('narration', err); } } } // round 171: the opening's pictures
+  const d = game.dialog, x = 70, w = W - 140, who = d.who ? d.who[d.i] : d.id, SP = SPEAKER[who];
+  if (who === 'narr') { layerBreak(); try { drawNarration((NARRATION[d.i] || [])[1], d.t); } catch (err) { logError('narration', err); } } // round 171: the opening's pictures
+  // Round 177: lines wrap by measured width, and the box grows to fit them (four lines ran off it on a small phone).
+  const raw = String(d.lines[d.i] ?? ''), full = /[.!?,]\s*$/.test(raw) || !raw ? caseOf(raw) : caseOf(raw + '.').slice(0, -1), shown = full.slice(0, Math.floor(d.t * 45)); // round 151: case the whole line first, so words do not change case as they type out
+  const hasB = !!(MON[who] && MON[who].sheet) || !!(room.npcs.find((n) => (n.talk || n.npc) === who) || (SP && SP.anim)), tx0 = hasB ? 64 : 10, named0 = who !== 'narr';
+  if (d.wrapK !== `${d.i}|${W}`) { d.wrapK = `${d.i}|${W}`; d.wrapL = wrapW(full, w - tx0 - 14).length; }
+  const top = named0 ? 20 : 9, h = Math.max(64, top + d.wrapL * 12 + 12), y = H - h - 12;
   panelFrame(x, y, w, h);
-  const who = d.who ? d.who[d.i] : d.id, SP = SPEAKER[who];
   if (d.voiced !== d.i) { d.voiced = d.i; const V = VOICE_OF[who]; if (V) sfx(`voice_${V[0]}`, { rate: V[1] * (0.96 + Math.random() * 0.08), gap: 0.2 }); } // round 150: scenes change speaker line by line, also in the Wound
   const npc = room.npcs.find((n) => (n.talk || n.npc) === who && Math.hypot(n.x - player.x, n.y - player.y) < 60) || room.npcs.find((n) => (n.talk || n.npc) === who) || (SP && SP.anim ? { sheet: SP.sheet, npc: SP.anim } : null);
   // Round 157: every portrait is the speaker's own sprite, cropped to the head and shoulders: townsfolk drawn 2x
@@ -13071,8 +13121,7 @@ function renderDialog() {
     spr(B.sheet, B.anim, mon ? Math.floor(game.real * 3) : 0, 0, 0, { ax: 0, ay: 0 }); ctx.restore();
   } catch (err) { ctx.restore(); logError('portrait', err); }
   text(d.who ? speakerName(who, d) : d.name, tx, y + 6, who === 'note' ? PAL.holy1 : MON[who] ? PAL.blood0 : PAL.gold1, { outline: null });
-  const raw = String(d.lines[d.i] ?? ''), full = /[.!?,]\s*$/.test(raw) || !raw ? caseOf(raw) : caseOf(raw + '.').slice(0, -1), shown = full.slice(0, Math.floor(d.t * 45)); // round 151: case the whole line first, so words do not change case as they type out
-  wrap(shown, Math.floor((w - (tx - x) - 10) / 7)).forEach((l, i) => text(l, tx, y + 20 + i * 12, PAL.cloth0, { outline: null }));
+  { const all = wrapW(full, w - (tx - x) - 14); let left = shown.length; all.forEach((l, i) => { if (left <= 0) return; text(l.slice(0, left), tx, y + top + i * 12, PAL.cloth0, { outline: null }); left -= l.length + 1; }); } // round 177: wrap the whole line once, so words never jump lines as they type out
   if (shown.length >= full.length && Math.floor(game.real * 2) % 2 === 0) text(d.i < d.lines.length - 1 ? 'TAP' : 'TAP TO CLOSE', x + w - 6, y + h - 10, PAL.stone1, { outline: null, align: 'right' });
 }
 
@@ -14559,7 +14608,7 @@ function propClash() {
   for (const sp of room.interact.filter((q) => !q.who)) for (const n of room.npcs) { if (n.path || n.circle) continue; const d = Math.hypot(sp.x - n.x, sp.y - n.y); if (d < sp.r + 8) out.push(`${n.npc}@${Math.round(n.x)},${Math.round(n.y)} on the ${sp.site ? sp.site.id : sp.label} spot (${Math.round(d)} px)`); }
   return out;
 }
-window.HS = { get G() { return G; }, tideFull, hardOpen, REGION_HARD, EPILOGUE_BARKS, saintTitle, openTravel, travelTap, travelLayout, ENDING, lanternLit, tideK, codexTap, STORY_MAIN, TK, STALL_Y, TOWN_SQ, TOWN_YARD, TOWN_ROLL, TOWN_ALTAR, TOWN_CELLS, skipOpening, narrSkipAll, NARRATION, WALK_GOALS, REGION_NPC, REGION_LORE, RSIDE, gateOpen, travelRegion, openAcre, REGIONS, regionRun, regionTick, dailyDone, named, chRecapLayout, saintLvRows, questTalk, storyTurnIn, stick, wrapW, caseOf, STORY_HINT, spawnPack, get interact() { return game.interact; }, crierEvents, crierNews, wardenSettle, SIDE, propClash, get falls() { return falls; }, WDIE, weeklyId, spriteBust, monBust, drawBoardDailies, questTargets, ensureDailies, dailyIds, DAILY_POOL, get bossIntro() { return game.bossIntro; }, get camOff() { return game.camOff; }, talk, questBump, qOf, ensureQuests, QSITE, get bossSay() { return game.bossSay; }, STORY, storyN, storyDone, beginStory, openStory, storyRead, playScene, storyLayout, get storyFind() { return game.storyFind; }, sanctIfWorn, equip, stationNeed, NEED_R, playerSanctity, mightParts, gearSanctity, MIGHT, lastRunLine, newsLayout, newsBuilds, autoFontPool, BUFF_SND, activeBuffs, BUFFS, setFoeK, LOW_SETS, thAnim, bustAnim, riteFx, riteRamp, RITE_FX_P, get pfx() { return pfx; }, get cam() { return cam; }, nm, vdAnim, VDAG, vdEvery, vdTime, legendMine, startDash, ALTAR_SOCKETS, PSKINS, pskin, pskinsOwned, openStore, storeTap, autoIcons, autoPlayTap, playerSanctity, stationSanctity, autoHudBtn, autoSellFor, autoSellPick, AUTO_SELL, woundsLayout, woundsTap, woundsHeld, get SAC_PAGE_N() { return SAC_PAGE_N; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get G() { return G; }, WEATHER, weatherK, worldCall, WORLD_CALL, REGION_DAILY, REGION_SHORT, tideFull, hardOpen, REGION_HARD, EPILOGUE_BARKS, saintTitle, openTravel, travelTap, travelLayout, ENDING, lanternLit, tideK, codexTap, STORY_MAIN, TK, STALL_Y, TOWN_SQ, TOWN_YARD, TOWN_ROLL, TOWN_ALTAR, TOWN_CELLS, skipOpening, narrSkipAll, NARRATION, WALK_GOALS, REGION_NPC, REGION_LORE, RSIDE, gateOpen, travelRegion, openAcre, REGIONS, regionRun, regionTick, dailyDone, named, chRecapLayout, saintLvRows, questTalk, storyTurnIn, stick, wrapW, caseOf, STORY_HINT, spawnPack, get interact() { return game.interact; }, crierEvents, crierNews, wardenSettle, SIDE, propClash, get falls() { return falls; }, WDIE, weeklyId, spriteBust, monBust, drawBoardDailies, questTargets, ensureDailies, dailyIds, DAILY_POOL, get bossIntro() { return game.bossIntro; }, get camOff() { return game.camOff; }, talk, questBump, qOf, ensureQuests, QSITE, get bossSay() { return game.bossSay; }, STORY, storyN, storyDone, beginStory, openStory, storyRead, playScene, storyLayout, get storyFind() { return game.storyFind; }, sanctIfWorn, equip, stationNeed, NEED_R, playerSanctity, mightParts, gearSanctity, MIGHT, lastRunLine, newsLayout, newsBuilds, autoFontPool, BUFF_SND, activeBuffs, BUFFS, setFoeK, LOW_SETS, thAnim, bustAnim, riteFx, riteRamp, RITE_FX_P, get pfx() { return pfx; }, get cam() { return cam; }, nm, vdAnim, VDAG, vdEvery, vdTime, legendMine, startDash, ALTAR_SOCKETS, PSKINS, pskin, pskinsOwned, openStore, storeTap, autoIcons, autoPlayTap, playerSanctity, stationSanctity, autoHudBtn, autoSellFor, autoSellPick, AUTO_SELL, woundsLayout, woundsTap, woundsHeld, get SAC_PAGE_N() { return SAC_PAGE_N; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>

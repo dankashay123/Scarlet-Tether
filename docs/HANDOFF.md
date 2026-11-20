@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-19, after round 176 (build 176, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-19, after round 177 (build 177, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -763,6 +763,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 177:** the owner: "All" (round 176's five). (A) Region balance: `autobench.cjs` takes `REGION=` (a HARD trip
+  at STATION; WARDEN= then summons a world boss). A full set at XII killed about 80 a minute in the Fen against 175-283
+  in a descent, so region foes drop more (`REGION_LOOT`: 1.6x, 2x on a HARD trip); a world boss died in 20 s, so it has
+  `WORLD_HP` (1.5x). (B) The opening at 667x375: the dialog box grows to fit its lines (`wrapW` by width, the whole line
+  wrapped once), toasts move below the quest tracker (`game.trackR`), the Vestry is five lines, walk goals are short;
+  the walk is about 2400 px (25-35 s). (C) Region dailies: the first of the three is `REGION_DAILY` (`rkill_`,
+  `relite_`, `rmark_` + region; `REGION_SHORT`), counted in `killEnemy` and `regionTick`, shown on the travel map (TODAY);
+  the day seed is hashed now (neighbouring days rolled alike). (D) `worldCall` at half health: region foes in a ring and
+  `WORLD_CALL` attacks; the Codex Warden card says where a world boss walks (tag WORLD BOSS, `SAVE.worldBoss`).
+  (E) `drawWeather` (`WEATHER`, `weatherK`, `room.weatherK` to force): rain, fog, ash, spray, coming and going over minutes.
+  Region people's names no longer draw twice. Test: `round177.cjs`.
 - **Round 176:** the owner: "All" (round 175's five). (A) The epilogue: with `SAVE.ending`, `EPILOGUE_BARKS` take most
   townsfolk barks, Odile and Vane have new lines, `saintTitle()` adds LANTERN-BEARING, and a slow `knell` rings in Vael
   every 38 s (`updateTown`). (B) HARD trips: from Station V cleared (`hardOpen`), the travel map's HARD button runs a
