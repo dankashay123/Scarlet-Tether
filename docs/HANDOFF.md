@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-19, after round 178 (build 178, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-21, after round 178 (build 178, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -111,6 +111,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   with its own roar, fall, earned halo and battle music. Monsters climb
   faster than gear (`MON_STEP` 1.5 against `POWER_STEP` 1.36), so progress
   needs farming (`tools/tests/balance.cjs`).
+- **The campaign and the open world (rounds 150-178):** a new character gets the opening (narrated pictures, the
+  Vestry, a walk through Vael with an arrow to each person, a night fight in the Quiet Acre), then six story chapters
+  (`STORY`; the first five, `STORY_MAIN`, gate the Stations). Chapters 2-6 start out in a region and end in its
+  station. Five regions, each an open map with a camp (Waystone, a person, a REST fire halfway), seven landmarks, six
+  lore pieces (Codex section 6), a world boss (calls its region's foes at half health, drops a Hallowed piece, back
+  after 20 minutes) and its own music, creatures and weather: the Hollow Moor (Pilgrims' Gate), the Sallow Fen (South
+  Gate), the Ashfields (East Gate), the Saltreach (West Gate) and, after the ending, the Abbey Isle (SAIL from the
+  Saltreach camp). Gates open the travel map (GO, HARD four Stations deeper once Station V is cleared; each card shows
+  lore and places found, the world boss, the weather and the day's region daily). One of the three dailies is a region
+  goal; each region has a cache a day at one landmark; one region a day has a storm that the Crier calls. The ending
+  plays at the first Warden of Station XXX; after it Vael changes (slow bells, new lines, a LANTERN-BEARING title).
+  Region foes drop 1.6x gear and gold (2x on HARD).
 - **The Training Yard (round 31):** a practice run (`run.yard`): a dummy
   that shows damage a second, a summon panel at the statue (any foe or
   Warden, any open Station, foes calm or attacking), no gains, no death.
@@ -381,12 +393,21 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **Round 174 leftovers:** all four regions and six chapters are in. Next by `docs/STORY.md`: the endings at the
-  bottom of the Stations. The moor has no small ground creatures of its own (it has crows and sheep). Some older models use palette names past step 4 (`moss5`, `wood6`, `iron5`...), which fall back to
-  index 0 (`ink0`); they show as dark accents, so fix them only with a look at each. AUTO_CUT is still off: remind
-  the owner. `designer.cjs` fails before this round too (it taps the LAYOUT tile at a fixed spot that moved); fix
-  the test when the designer is next touched. The soak and several `?town` tests had sat in the opening since round
-  171 (fixed: `?town` starts past it, the soak skips the story).
+- **After round 178:** all five regions and six chapters are in. Open items:
+  - **Auto play in regions:** the pilot only fights. It does not seek landmarks, lore or the daily cache, so an
+    auto trip cannot finish a `rmark_` daily. Round 178 stopped it using people, lore, doors and the ferry.
+  - **Weather:** it drew under the camera offset until round 178 and only now shows across the screen. Check rain,
+    ash and spray density at 667x375 and 932x430; the moor rain is still faint. Weather has no sounds yet.
+  - **The Abbey Isle** has no chapter of its own; Sister Hew's lines lead toward the flooded undercroft (a station
+    for a later chapter). Its world boss is the Ossuarch (68 s with a full set at XII).
+  - **Numbers (round 178, full set at XII):** a HARD trip killed 65-196 a minute against 175-283 in a descent;
+    world bosses take 49 s (Charnel King) and 68 s (Ossuarch). Re-run `autobench.cjs REGION=<id>` after any change
+    to region density, `REGION_LOOT` or `WORLD_HP`.
+  - **Older leftovers:** some older models use palette names past step 4 (`moss5`, `wood6`, `iron5`...), which fall
+    back to `ink0` (dark accents; fix only with a look at each). `designer.cjs` taps the LAYOUT tile at a spot that
+    moved; fix the test when the designer is next touched. AUTO_CUT is still off: remind the owner.
+  - **Offered after round 178, not picked yet:** weather density at three phone sizes, the pilot seeking landmarks
+    and caches, an isle chapter, the Codex with five regions, weather sounds.
 - **The owner on the Vesper (round 133):** "feels great" with 25% less damage
   taken and 15% more health. Leave it.
 - **Deploys:** since round 133 the workflow retries a failed deploy once;
