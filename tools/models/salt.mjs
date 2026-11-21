@@ -194,6 +194,27 @@ function crab(f) { const W = 18, H = 12, S = new View(), G = groundY(H, 2), cx =
 function saltpan(v) { const W = 48, H = 26, fr = blank(W, H); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const e = x < 2 || y < 2 || x >= W - 2 || y >= H - 2 || x === 24 || x === 25; fr.px[y * W + x] = IDX[e ? 'stone3' : noise3(x * 0.3 + v, y * 0.3, v) > 0.25 ? 'bone1' : 'bone0']; } return fr; }
 function marram(v) { const W = 18, H = 16, fr = blank(W, H); for (let k = 0; k < 9; k++) { const x = 3 + Math.floor(hash(k, 1, v) * 12), h = 6 + Math.floor(hash(k, 2, v) * 8), l = hash(k, 3, v) < 0.5 ? -1 : 1; for (let d = 0; d < h; d++) dot(fr, x + (d > h * 0.6 ? l : 0), H - 1 - d, d > h - 3 ? 'sand1h' : d > h * 0.4 ? 'sand2h' : 'moss2h'); } return fr; }
 
+// ========================================================== abbey ruin ===
+// Round 178: the Abbey Isle. v 0 the west front: a broken gable with a tall pointed window over the door, buttresses
+// and fallen stone; v 1 a roofless arcade of three pointed arches. About four times the Saint's height.
+function lancet(cx, base, hw, h, zc, d, mat) {
+  const spring = base - h + hw * 1.48;
+  return { mat, bb: [cx - hw - 1, base - h - 2, zc - d - 1, cx + hw + 1, base + 1, zc + d + 1], f: (x, y, z) => {
+    const ax = Math.abs(x - cx), rect = Math.max(ax - hw, y - base, spring - y), arch = Math.max(Math.hypot(ax + 0.6 * hw, y - spring) - 1.6 * hw, y - spring);
+    return Math.max(Math.min(rect, arch), Math.abs(z - zc) - d); } };
+}
+function abbey(v) {
+  const W = v ? 200 : 176, H = 232, S = new View(), G = groundY(H, 12), cx = Math.round(W / 2) - 4;
+  const top = (x) => (v ? G - 150 : G - 214 + Math.abs(x - cx) * 0.95) + 22 * Math.max(0, noise3(x * 0.06 + v, 3, 1) - 0.05) + (x > cx + 18 && x < cx + 52 ? 34 : 0);
+  S.add(bumpy(clip(box([cx, G - 110, 0], [v ? 92 : 66, 112, 10], 0.8, 'stone'), (x, y) => top(x) - y), 0.7, 0.32, v + 11), 0);
+  if (!v) { S.sub(lancet(cx, G - 96, 16, 84, 0, 14, 'hole'), 0); S.sub(lancet(cx, G - 1, 13, 48, 0, 14, 'hole'), 0);
+    for (const s0 of [-1, 1]) S.add(bumpy(clip(box([cx + s0 * 70, G - 70, 6], [8, 72, 12], 0.8, 'stoneD'), (x, y) => G - 150 + Math.abs(x - cx) * 0.4 - y), 0.6, 0.3, s0 + 3), 0.6); }
+  else for (let k = -1; k <= 1; k++) { S.sub(lancet(cx + k * 58, G - 1, 20, 112, 0, 14, 'hole'), 0); }
+  for (let k = 0; k < 6; k++) { const x = cx - 70 + ((k * 53 + v * 17) % 140), z = 10 + (k % 3) * 6; S.add(lump([x, G - 4, z], [6 + (k % 3) * 2, 4, 5], 'stoneD', k + v, 0.6), 0.8); }
+  S.paint({ mat: 'stoneG', f: (x, y, z) => (y > G - 30 && noise3(x * 0.12 + v, y * 0.2, z * 0.1) > 0.15 ? -1 : 1) });
+  return weeds(R(S, W, H), v + 12, 0.12);
+}
+
 export default {
   salt: {
     chapel: () => [chapel()],
@@ -208,5 +229,6 @@ export default {
     crab: () => [0, 1].map(crab),
     saltpan: () => [0, 1].map(saltpan),
     marram: () => [0, 1].map(marram),
+    abbey: () => [0, 1].map(abbey),
   },
 };

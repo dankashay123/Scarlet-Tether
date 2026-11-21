@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-19, after round 177 (build 177, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-19, after round 178 (build 178, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -763,6 +763,20 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 178:** the owner: "All" (round 177's five). (A) Benchmarks: a full set at XII on HARD trips killed 170 (moor,
+  48 s), 196 (fen), 81 (ash), 65 (salt, 24 s) against 175-283 in a descent; with `REGION_LOOT` 2x that is fair, so no
+  change. (B) Storms: `stormOf()` picks one open region a day (the Crier calls it); its weather runs stronger and at
+  `STORM.at` `stormTick` adds lightning on foes (moor), embers that burn foes (ash), a fog that closes the view (fen,
+  isle) and full tide pools (salt, `tideK`); `room.stormK` forces one. Found and fixed: the mist and weather were drawn
+  under the camera offset (only seen near the map's top-left); now in screen space. (C) Daily caches: `cacheKind(rg)`
+  picks a landmark a day, a chest there (`room.cacheAt`, `openCache`, `SAVE.cacheDay`) pays gold and `CACHE_PAY.daily`
+  of the region's daily; the landmark banner says when it is there. (D) Travel cards: `weatherGlyph` (2x pixels), STORM,
+  a ! where a daily waits. (E) The Abbey Isle (`REGIONS.isle`, after the ending): SAIL from the Saltreach camp's boat
+  (`sailIsle`, always HARD past Station V), coast ground (`salt` flag with `isle`), landmarks abbey, cloister, graves,
+  bells, cells, needles and the flooded door, the new `salt/abbey` model (west front, arcade), Sister Hew, six lore
+  pieces, the Ossuarch as world boss. World bosses at XII with a full set now take 49 s (Charnel King) and 68 s
+  (Ossuarch). Found and fixed: the pilot used every interact spot but RETURN, so out in a region it talked to people,
+  read lore and on the isle sailed home; it now skips people, lore, doors and the ferry. Test: `round178.cjs`.
 - **Round 177:** the owner: "All" (round 176's five). (A) Region balance: `autobench.cjs` takes `REGION=` (a HARD trip
   at STATION; WARDEN= then summons a world boss). A full set at XII killed about 80 a minute in the Fen against 175-283
   in a descent, so region foes drop more (`REGION_LOOT`: 1.6x, 2x on a HARD trip); a world boss died in 20 s, so it has
