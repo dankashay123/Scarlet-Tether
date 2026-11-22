@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '183';
+const BUILD = '184';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '184': ['ONCE THE DOOR BELOW IS SHUT, THE DOORKEEPER WALKS THE ABBEY ISLE AS A WORLD BOSS AT ITS FLOODED DOOR. AT HALF HEALTH IT CALLS THE DEAD TO IT.', 'NEW IN THE CODEX: WORDS. READ EACH CHAPTER\'S MESSAGE AND ITS WARDEN\'S LAST WORDS AGAIN.', 'THE TRAINING YARD CAN SUMMON A WARDEN ALREADY IN ITS SECOND OR THIRD PHASE.', 'THE BELLWRIGHT SHEDS RUST AND OUR LADY OF NAILS IRON FILINGS. SKELETONS SPILL DUST AND SPIRITS ECTOPLASM WHEN HIT.'],
   '183': ['AFTER THE DOOR BELOW IS SHUT, VAEL CHANGES AGAIN: NEW LINES FROM ODILE, VANE AND THE TOWNSFOLK, THE CRIER\'S NEWS, AND A NEW TITLE, DOOR-SHUTTING.', 'THE DOORKEEPER CAN NOW BE THE WARDEN OF THE OSSUARY SPIRE AT STATION XX AND DEEPER. KILL IT THERE TO EARN ITS HALO.', 'MOTHER CANDLEMASS BLEEDS WAX AND THE CARDINAL BLEEDS GOLD.', 'WHEN THE SAINT FALLS, LIGHT RISES FROM HIM AND HIS HALO LIFTS AWAY.'],
   '182': ['A NEW CHAPTER AFTER THE ENDING: THE DOOR BELOW. GO DOWN TO THE DOOR UNDER THE THIRTIETH STATION AND FACE THE DOORKEEPER, A NEW WARDEN.', 'WARDENS NOW BLEED AS THE FIGHT GOES ON, WITH A BURST OF BLOOD AT EACH PHASE.', 'THE TRAINING YARD HAS A DEATH PICKER: CHOOSE HOW SUMMONED FOES DIE.', 'RAIN ON THE MOOR IS QUIETER UNDER THE MUSIC. THE YARD\'S FOE LIST NO LONGER COVERS ITS NOTES.'],
   '181': ['A NEW CHAPTER AFTER THE ENDING: THE LIT STAIR. SISTER HEW KNOWS WHO FOLLOWED OSANNE DOWN THE STAIR UNDER THE ABBEY ISLE.', 'NEW SETTING: GORE (FULL, LESS OR OFF). WITH GORE OFF, FOES FALL TO DUST.', 'ELITES AND RARES NOW LEAVE BLOOD WHEN THEY CRUMBLE, AND WARDENS LEAVE A MESS THAT FITS THEM WHEN THEY FALL.', 'THE QUIET ACRE NOW LOADS EVERY TIME FOR NEW CHARACTERS, AND ITS COUNTER MATCHES THE FOES LEFT.'],
@@ -1424,12 +1425,12 @@ function regionTick() {
   for (const m of room.marks) if (!m.found && Math.hypot(m.x - player.x, m.y - player.y) < 120) {
     ((SAVE.marksSeen = SAVE.marksSeen || {})[room.region] = SAVE.marksSeen[room.region] || {})[m.kind] = 1; persist(); // round 176: landmarks found, kept for the travel map
     if (m.kind === 'wagons') questBump('wagons'); questBump(`rmark_${room.region}`); // round 177: a region daily
-    for (const [mk, rg, id] of WORLD_BOSSES) if (m.kind === mk && room.region === rg && !game.warden && !(game.run && game.run.story != null)) { const left = worldBossWait(id); if (left > 0) later(1.2, () => toast(named(`XNAMEAX IS GONE FOR NOW. IT RISES AGAIN IN ${Math.ceil(left / 60)} MIN.`, MON[id].name), 3)); else later(1.6, () => { if (regionRun() && !game.warden) spawnWarden(id, { world: true }); }); } // round 172-173: world bosses, back 20 minutes after a kill
+    for (const [mk, rg, id] of WORLD_BOSSES) if (m.kind === mk && room.region === rg && !game.warden && !(game.run && game.run.story != null) && (id !== 'doorkeeper' || doorShut())) { const left = worldBossWait(id); if (left > 0) later(1.2, () => toast(named(`XNAMEAX IS GONE FOR NOW. IT RISES AGAIN IN ${Math.ceil(left / 60)} MIN.`, MON[id].name), 3)); else later(1.6, () => { if (regionRun() && !game.warden) spawnWarden(id, { world: true }); }); } // round 172-173: world bosses, back 20 minutes after a kill
     if (m.kind === 'dam') questBump('dam');
     m.found = true; game.banner = { text: m.name, sub: m.kind === 'door' ? 'THE WAY DOWN' : m.kind === cacheKind(room.region) && !cacheDone(room.region) ? 'LANDMARK FOUND. TODAY\'S CACHE IS HERE' : 'LANDMARK FOUND', t: 0, color: PAL.gold0 }; sfx('chime', { vol: 0.45, rate: 0.9, gap: 0.5 });
   }
 }
-const WORLD_BOSSES = [['barrows', 'moor', 'charnelKing'], ['chapel', 'fen', 'organist'], ['field', 'ash', 'ashWidow'], ['wreck', 'salt', 'tideBishop'], ['abbey', 'isle', 'ossuarch']]; // round 178: the Ossuarch on the Abbey Isle
+const WORLD_BOSSES = [['barrows', 'moor', 'charnelKing'], ['chapel', 'fen', 'organist'], ['field', 'ash', 'ashWidow'], ['wreck', 'salt', 'tideBishop'], ['abbey', 'isle', 'ossuarch'], ['door', 'isle', 'doorkeeper']]; // round 178: the Ossuarch on the Abbey Isle; round 184: the Doorkeeper at its flooded door, once the door below is shut
 // Round 178: the day's cache in each region, at one landmark the day picks; it opens once a day.
 const cacheKind = (rg) => { const ks = Object.keys((REGIONS[rg] || {}).marks || {}).filter((k) => k !== 'door'); return ks.length ? ks[(Math.imul(dayKey() + rg.length * 7919, 2654435761) >>> 0) % ks.length] : null; };
 const cacheDone = (rg) => (SAVE.cacheDay || {})[rg] === dayKey();
@@ -2234,15 +2235,16 @@ function wardenPhase(e) {
 }
 // Round 177: at half health a world boss calls its region: a ring of the region's foes, a wave of light at its feet,
 // and one attack of the region's own kind (moor spikes, fen spiral, ash shockwave, salt spikes and spiral).
+const WORLD_CALL_BY = { doorkeeper: ['ring'] }; // the Doorkeeper calls the dead at its door and throws rings of shots // round 184: a world boss's own call (else its region's)
 const WORLD_CALL = { moor: ['spikes'], fen: ['spiral'], ash: ['shockwave'], salt: ['spikes', 'spiral'], isle: ['spiral', 'shockwave'] };
 function worldCall(e) {
-  e.called = true; const rg = room.region, RG = REGIONS[rg] || {}, pool = RG.pool || ['risen'];
+  e.called = true; const rg = room.region, RG = REGIONS[rg] || {}, pool = e.type === 'doorkeeper' ? ['risen', 'barrowDead'] : RG.pool || ['risen'];
   game.banner = { text: `${titleWords(e.name, true)} Calls`, sub: `THE ${REGION_SHORT[rg] || 'LAND'} ANSWERS. ITS FOES COME TO ITS SIDE.`, t: 0, color: PAL.blood0 };
   game.shake = 8; game.flash = 0.1; sfx(AUDIO.has(`roar_${e.type}`) ? `roar_${e.type}` : 'roar', { gap: 0 }); sfx('knell', { vol: 0.5, rate: 0.6, gap: 0 });
   rings.push({ x: e.x, y: e.y - 12, t: 0, max: 1, r: 150, color: '224,32,46' }); addPfx({ kind: 'quake', x: e.x, y: e.y, r: 170, max: 0.9, ramp: 'blood', ground: true });
   const n = 4 + Math.min(4, curDiff().aff || 0);
   for (let k = 0; k < n; k++) { const a = (k / n) * Math.PI * 2, m = spawnMonster(pick(pool), e.x + Math.cos(a) * 70, e.y + Math.sin(a) * 50, { room: e.room, minion: true }); m.state = 'move'; }
-  const more = (WORLD_CALL[rg] || []).map((t) => wardenSkills().find((a) => a.type === t)).filter(Boolean);
+  const more = (WORLD_CALL_BY[e.type] || WORLD_CALL[rg] || []).map((t) => wardenSkills().find((a) => a.type === t)).filter(Boolean);
   e.def = { ...e.def, attacks: [...e.def.attacks, ...more] }; e.cds.push(...more.map(() => 1.2)); e.speedK *= 1.1;
 }
 // What a Vigil pays beyond the Stations: Chrism twice as often and of better
@@ -4637,7 +4639,8 @@ function renderYardPanel() {
   if (Y.tab === YARD_REC) return renderYardRecords(G0);
   if (Y.tab === YARD_SETS) return renderYardSets(G0);
   text(Y.tab === 0 ? 'TAP A FOE TO SUMMON THREE.' : 'TAP A FOE TO SUMMON IT.', G0.x0 + 12, G0.note, PAL.stone2, small);
-  invButton(G0.death, `< DEATH: ${Y.death == null ? 'ANY' : GORE_NAME[GORE_KINDS[Y.death]]} >`, PAL.stone4); // round 182
+  if (Y.tab === 3) invButton(G0.death, `< PHASE: ${(Y.phase || 0) + 1} >`, PAL.stone4); // round 184: summon a Warden already in its second or third phase
+  else invButton(G0.death, `< DEATH: ${Y.death == null ? 'ANY' : GORE_NAME[GORE_KINDS[Y.death]]} >`, PAL.stone4); // round 182
   text(`DUMMY: ${yardDps().toLocaleString('en-US')} DAMAGE PER SECOND. TOTAL ${Math.round(Y.total).toLocaleString('en-US')}.`, G0.x0 + 12, G0.note + 11, PAL.cloth1, small);
   const B = SAVE.yardBest || {}, set = yardKey().split(':')[0];
   text(`BEST, ${set === 'mixed' ? 'NO SET' : SET_SHORT[set]} AND THESE RITES: ${(B[yardKey()] || 0).toLocaleString('en-US')}. BEST EVER: ${(B.all || 0).toLocaleString('en-US')}.`, G0.x0 + 12, G0.note + 22, PAL.gold1, small);
@@ -4720,13 +4723,14 @@ function yardTap(x, y) {
   yardList(Y.tab).forEach((id, i) => { if (inRect(G0.cell(i), x, y)) { yardSummon(id); game.state = 'play'; } });
   if (inRect(G0.btn(0), x, y)) { const open = DIFF.map((_, k) => k).filter((k) => k <= Math.max(0, (SAVE.cleared ?? -1) + 1)); game.run.diff = open[(open.indexOf(game.run.diff) + 1) % open.length]; sfx('tap', { vol: 0.5 }); }
   if (inRect(G0.btn(1), x, y)) { Y.attack = !Y.attack; sfx('tap', { vol: 0.5 }); }
+  if (inRect(G0.death, x, y) && Y.tab === 3) { Y.phase = ((Y.phase || 0) + 1) % 3; sfx('tap', { vol: 0.5 }); return; }
   if (inRect(G0.death, x, y)) { Y.death = Y.death == null ? 0 : Y.death + 1 >= GORE_KINDS.length ? null : Y.death + 1; sfx('tap', { vol: 0.5 }); } // round 182: watch one death at a time
   if (inRect(G0.btn(2), x, y)) { for (const e of enemies) if (!e.dead && e.type !== 'dummy') { e.dead = true; playFx('fx', 'smoke', e.x, e.y - 8, 14); } game.warden = null; sfx('tap'); }
   if (inRect(G0.btn(3), x, y)) { game.yard = null; enterTown(false); }
 }
 function yardSummon(id) {
   const m = MON[id], a = Math.atan2(player.y - (game.yard.dummy ? game.yard.dummy.y : player.y), 1);
-  if (m.warden) { if (game.warden && !game.warden.dead) { toast('ONE WARDEN AT A TIME.', 1.5); return; } spawnWarden(id); return; }
+  if (m.warden) { if (game.warden && !game.warden.dead) { toast('ONE WARDEN AT A TIME.', 1.5); return; } spawnWarden(id); const e = game.warden, ph = game.yard.phase || 0; if (e && ph) { e.hp = e.maxHp * (ph === 1 ? 0.6 : 0.3); wardenPhase(e); toast(`PHASE ${ph + 1}: ITS LATER ATTACKS ARE READY.`, 2); } return; } // round 184
   const n = m.tier === 'common' ? 3 : 1;
   for (let k = 0; k < n; k++) { const ang = a + rand(-1, 1) + Math.PI, d = rand(90, 130); spawnMonster(id, player.x + Math.cos(ang) * d, player.y + Math.sin(ang) * d * 0.7, { room: game.curRoom && game.curRoom.id, tier: m.tier === 'elite' ? 'elite' : undefined }); }
 }
@@ -5404,7 +5408,7 @@ function rollTap(x, y) { const b = rollTrophyBtn(); if (inRect(b, x, y)) return 
 // deepest Station and the fastest kill at each), sets and Hallowed pieces found, Wounds taken.
 // SAVE.codex = { m: {monster: kills}, h: {Hallowed id: found}, s: {set: pieces found}, w: {Wound: times taken} };
 // SAVE.trophies = { warden: { n: kills, st: { Station number: fastest seconds } } }.
-const CODEX_SECS = ['MONSTERS', 'WARDENS', 'SETS', 'HALLOWED', 'WOUNDS', 'RUBRICS', 'LORE'];
+const CODEX_SECS = ['MONSTERS', 'WARDENS', 'SETS', 'HALLOWED', 'WOUNDS', 'RUBRICS', 'LORE', 'WORDS']; // round 184: WORDS, each chapter's message and its Warden's last words
 // Round 97: RUBRICS lists every rite of the hero; SAVE.codex.r counts Rubrics found per rite, .rk the best tier per 'rite:kind'.
 // A save from before the Codex starts with what it can prove: the pieces worn and in the bag.
 function codexData() {
@@ -5464,6 +5468,8 @@ function codexList(sec) {
     hint: 'LOOK FOR A FAINT GLINT NEAR A LANDMARK OUT IN THE WORLD, AND TAP LOOK.',
     icon: L.pic ? (x, y, sz) => fitIcon(L.pic[0], L.pic[1], L.pic[2], x, y + sz * 0.3, sz - 6) : (x, y, sz) => { const h0 = Math.round(sz * 0.6), w0 = Math.round(sz * 0.46); ctx.fillStyle = PAL.outline; ctx.fillRect(Math.round(x - w0 / 2) - 1, Math.round(y - h0 / 2) - 1, w0 + 2, h0 + 2); ctx.fillStyle = PAL.bone1 || PAL.cloth1; ctx.fillRect(Math.round(x - w0 / 2), Math.round(y - h0 / 2), w0, h0); ctx.fillStyle = PAL.stone3; for (let k = 0; k < 4; k++) ctx.fillRect(Math.round(x - w0 / 2) + 2, Math.round(y - h0 / 2) + 3 + k * 4, w0 - 4, 1); },
     lines: loreFound()[L.id] ? L.lines : ['NOT FOUND YET. LOOK FOR A FAINT GLINT NEAR A LANDMARK.'] })));
+  if (sec === 7) return STORY.map((C, k) => ({ id: `ch${k}`, story: k, name: C.title, seen: k < storyN(), icon: monIcon(C.warden), tag: `CHAPTER ${k + 1}`, rgb: '255,209,85', hint: 'FINISH THIS CHAPTER TO KEEP ITS WORDS HERE.',
+    lines: [`THE MESSAGE: ${C.find}.`, `THE WARDEN: ${MON[C.warden].name}.`, 'TAP READ TO HEAR THE MESSAGE AND THE WARDEN\'S WORDS AGAIN.'] }));
   if (sec === 5) return RITE_SLOTS.flatMap(([sl]) => riteList(sl)).map((r) => { const n = (C.r || {})[r.id] || 0, got = RUB_IDS.filter((k) => (C.rk || {})[`${r.id}:${k}`]);
     const rgb = SET_RGB[r.set] || '255,209,85', fr = SPR.ui && SPR.ui.anims[r.icon] && frameOf('ui', r.icon, 0);
     return { id: r.id, name: r.name, seen: n > 0, rgb, tag: `${got.length} OF ${RUB_IDS.length} KINDS`,
@@ -5487,7 +5493,7 @@ function codexLayout() {
   let cs = 22; for (let c = 34; c > 22; c -= 2) { const [a, b] = fit(c); if (a * b >= need && (!lore || a >= 7)) { cs = c; break; } }
   const [cols0, rows] = fit(cs), cols = lore ? Math.min(cols0, 6) : cols0, per = cols * rows, pages = Math.max(1, Math.ceil(list.length / per)); K.page = Math.min(K.page, pages - 1);
   return { lore, pw, ph, x0, y0, ax, top, bot, cs, cols, rows, per, list, pages, gw, close: { x: x0 + pw - 14, y: y0 + 13, r: 10 },
-    tab: (i) => ({ x: rail.x, y: rail.y + i * 28, w: rail.w, h: 24 }),
+    tab: (i) => { const tp = Math.min(28, Math.floor((ph - 46) / CODEX_SECS.length)); return { x: rail.x, y: rail.y + i * tp, w: rail.w, h: tp - 4 }; }, // round 184: eight sections fit a small phone
     cell: (j) => ({ x: ax + (j % cols) * (cs + gap), y: top + Math.floor(j / cols) * (cs + gap), w: cs, h: cs }),
     card: { x: cardX, y: y0 + 34, w: cardW, h: bot - y0 - 34 },
     prev: { x: ax, y: bot - 18, w: 40, h: 18 }, next: { x: ax + 46, y: bot - 18, w: 40, h: 18 } };
@@ -5523,6 +5529,7 @@ function renderCodex() {
   let ty = C.y + 20;
   K.goBtn = null;
   if (!q.seen && K.sec === 6 && q.rg) { const open = gateOpen(q.rg) && game.scene === 'town', b = { x: C.x + 8, y: C.y + C.h - 26, w: C.w - 16, h: 18 }; K.goBtn = open ? { ...b, rg: q.rg } : null; invButton(b, open ? 'TAKE ME THERE' : game.scene === 'town' ? 'ITS GATE IS SHUT' : 'GO FROM VAEL', open ? 'gold' : 'iron', open); } // round 174
+  if (q.seen && K.sec === 7 && q.story != null) { const b = { x: C.x + 8, y: C.y + C.h - 26, w: C.w - 16, h: 18 }; K.goBtn = { ...b, read: q.story }; invButton(b, 'READ', 'gold'); } // round 184
   if (!q.seen) { text('NOT FOUND YET', C.x + 8, ty, PAL.stone1, { bold: true }); wrapW(q.hint || ['KILL ONE TO ADD IT TO THE CODEX.', 'KILL THIS WARDEN TO EARN ITS TROPHY.', 'FIND ANY PIECE OF THIS SET TO ADD IT.', 'FIND THIS PIECE TO ADD IT.', 'TAKE THIS WOUND ON A LEVEL-UP TO ADD IT.', 'FIND A RUBRIC FOR THIS RITE TO ADD IT. ELITES AND WARDENS RARELY DROP THEM.'][K.sec], C.w - 16, true).forEach((l, i) => text(l, C.x + 8, ty + 16 + i * 10, PAL.stone2, small)); return; }
   for (const l of wrapW(q.name, C.w - 16)) { text(l, C.x + 8, ty, `rgb(${q.rgb})`, { bold: true }); ty += 12; }
   pill(q.tag, C.x + 8 + Math.round((textW(q.tag, 1, true) + 8) / 2), ty + 1, PAL.stone1); ty += 16;
@@ -5535,6 +5542,7 @@ function codexTap(x, y) {
   if (Math.hypot(x - L.close.x, y - L.close.y) < L.close.r + 6 || !inRect({ x: L.x0, y: L.y0, w: L.pw, h: L.ph }, x, y)) { codexClearPage(); game.state = K.back; sfx('tap'); return; }
   for (let i = 0; i < CODEX_SECS.length; i++) if (inRect(L.tab(i), x, y)) { if (i !== K.sec) codexClearPage(); K.sec = i; K.sel = -1; K.page = 0; sfx('tap', { vol: 0.5 }); return; }
   if (L.pages > 1) { if (inRect(L.prev, x, y)) { codexClearPage(); K.page = Math.max(0, K.page - 1); sfx('tap', { vol: 0.5 }); return; } if (inRect(L.next, x, y)) { codexClearPage(); K.page = Math.min(L.pages - 1, K.page + 1); sfx('tap', { vol: 0.5 }); return; } }
+  if (K.goBtn && K.goBtn.read != null && inRect(K.goBtn, x, y)) { const C = STORY[K.goBtn.read]; sfx('tap'); playScene([...C.note.map((t) => ['note', t]), ...C.spawn.map((t) => [C.warden, t]), ...C.death.map((t) => [C.warden, t])], () => { game.state = 'codex'; }); if (game.dialog) game.dialog.noteName = C.find; return; } // round 184: WORDS
   if (K.goBtn && inRect(K.goBtn, x, y)) { const rg = K.goBtn.rg; codexClearPage(); game.state = 'play'; sfx('tap'); travelRegion(rg); return; } // round 174: TAKE ME THERE
   const n = Math.min(L.per, L.list.length - K.page * L.per);
   for (let j = 0; j < n; j++) if (inRect(L.cell(j), x, y)) { K.sel = K.page * L.per + j; sfx('tap', { vol: 0.5, rate: 1.2 }); return; }
@@ -8462,7 +8470,7 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   else if (nums.length < 60 || crit) { const n = { x: e.x + rand(-5, 5), y: e.y - e.hy * 2 - 4, v: dmg, t: 0, color: blocked ? PAL.iron1 : crit ? CRIT_COL(heat) : opts.color || PAL.cloth0, crit, heat, small, ref: e, born: game.real }; nums.push(n); e.lastNum = n; }
   const hy = e.y - e.hy;
   if (blocked) { sparks(e.x + e.face * 10, hy, PAL.gold0, 5); sfx('block'); playFx('fx', 'impact', e.x + e.face * 10, hy, 30); }
-  else if (dirx || diry) { bleed(e.x, hy, crit ? 5 : 2, dirx); if (!opts.status) { sfx('hit' + Math.floor(rng() * 3), { vol: crit ? 1.3 : 1 }); } if (!opts.status) playFx('fx', 'impact', e.x - dirx * 4, hy, 30, { small: !crit }); }
+  else if (dirx || diry) { bleed(e.x, hy, crit ? 5 : 2, dirx, e.boss ? WARDEN_MAT[e.type] || 'blood' : GORE_MAT[VOICE[e.type]] || 'blood'); if (!opts.status) { sfx('hit' + Math.floor(rng() * 3), { vol: crit ? 1.3 : 1 }); } if (!opts.status) playFx('fx', 'impact', e.x - dirx * 4, hy, 30, { small: !crit }); }
   // REMORSEFUL: each hit stores 0.4% of the Saint's health, paid back every
   // half second, at most 5% of health a second (it used to scale with damage
   // dealt, which one-shot a strong Saint).
@@ -8595,7 +8603,8 @@ function killEnemy(e, dirx, diry, executed = false) {
 }
 
 // ---------------------------------------------------------------- gore ---
-function bleed(x, y, n, dir) {
+function bleed(x, y, n, dir, mat = 'blood') { // round 184: a foe's hits spill its own stuff (dust, ectoplasm, rust...)
+  if (mat !== 'blood') { const C = GORE_COL[mat] || GORE_COL.blood, S0 = GORE_STAIN[mat]; if (mat === 'gold' && goreOpt() === 'off') return; for (let i = 0; i < n; i++) parts.push({ kind: 'blood', x, y, z: 8, vx: dir * rand(10, 80) + rand(-25, 25), vy: rand(-30, 30), vz: rand(10, 70), c: gcol(pick(C)), st: S0 && rng() < 0.5 ? gcol(pick(S0)) : null, s: 2, g: 1 }); return; }
   { const go = goreOpt(); if (go === 'off') return; if (go === 'less') n = Math.ceil(n * 0.35); }
   if (parts.length > (LOWFX ? 120 : 500)) n = Math.min(n, 1);
   for (let i = 0; i < n; i++) parts.push({ kind: 'blood', x, y, z: 8, vx: dir * rand(10, 80) + rand(-25, 25), vy: rand(-30, 30), vz: rand(10, 70), c: pick([PAL.blood0, PAL.blood1, PAL.blood1, PAL.blood2]), st: rng() < 0.5 ? pick([PAL.blood2h || PAL.blood2, PAL.blood3]) : null, s: 2, g: 1 }); // round 180: on the 2x2 grid; half stain
@@ -8638,12 +8647,12 @@ function crumbleMess(e, kind, dirx, diry) {
 }
 // Round 181: a Warden settling leaves a mess that fits it (WARDEN_MAT): a wide pool and spray, a field of dust and
 // bones, or scorch.
-const WARDEN_MAT = { doorkeeper: 'dust', candlemass: 'wax', cardinal: 'gold', ladyOfNails: 'blood', bellwright: 'blood', charnelKing: 'dust', tideBishop: 'blood', organist: 'blood', ossuarch: 'dust', ashWidow: 'ash' };
+const WARDEN_MAT = { bellwright: 'rust', ladyOfNails: 'iron', doorkeeper: 'dust', candlemass: 'wax', cardinal: 'gold', ladyOfNails: 'blood', bellwright: 'blood', charnelKing: 'dust', tideBishop: 'blood', organist: 'blood', ossuarch: 'dust', ashWidow: 'ash' };
 // Round 182: a Warden bleeds while it fights: a few drops on hits (at most every 0.3 s), a splat under it for each
 // tenth of its health lost, and a burst at each phase. Its stuff is WARDEN_MAT's (blood, dust, ash).
 function wardenBleed(e, phase) {
   if (!SPR.gore || !e) return; const M = WARDEN_MAT[e.type] || 'blood', hy = e.hy || 24;
-  const decal = (k, x, y, a) => goreDecal(M === 'blood' ? 's_blood' : M === 'dust' ? 's_dust' : M === 'wax' ? 's_wax' : M === 'gold' ? 's_gold' : 's_scorch', M === 'blood' ? k % 8 : k % 3, x, y, { a }); // round 183: wax and gold
+  const decal = (k, x, y, a) => goreDecal(M === 'blood' ? 's_blood' : M === 'dust' ? 's_dust' : M === 'wax' ? 's_wax' : M === 'gold' ? 's_gold' : M === 'rust' ? 's_rust' : M === 'iron' ? 's_iron' : 's_scorch', M === 'blood' ? k % 8 : k % 3, x, y, { a }); // round 183: wax and gold; round 184: rust and iron filings
   if (phase) { gush(e.x, e.y, hy, 30, M, { sp: 130, up: 90, w: 14 }); if (M === 'blood') goreDecal('s_radial', e.phase % 3, e.x, e.y + 2, { a: 0.85 }); else decal(e.phase, e.x, e.y + 2, 0.8); game.shake = Math.max(game.shake || 0, 4); return; }
   if (game.time > (e.bleedT || 0)) { e.bleedT = game.time + 0.3; gush(e.x, e.y, hy * 0.8, 3, M, { sp: 70, up: 60 }); }
   const lost = Math.floor((1 - e.hp / e.maxHp) * 10); if (lost > (e.bledN || 0)) { e.bledN = lost; decal(lost, e.x + rand(-16, 16), e.y + 2 + rand(-6, 6), 0.8); }
@@ -8652,7 +8661,7 @@ function wardenMess(e) {
   if (!SPR.gore) return; const mat = WARDEN_MAT[e.type] || 'blood', w = Math.max(24, (e.r || 14) * 1.6), v = Math.floor(rng() * 8), g = { e, dirx: 0, diry: 0, mat };
   if (mat === 'blood') { goreDecal('s_radial', v % 3, e.x, e.y + 2); for (let k = 0; k < 3; k++) goreDecal('s_blood', (v + k * 3) % 8, e.x + Math.cos(k * 2.1) * w, e.y + 2 + Math.sin(k * 2.1) * w * 0.5); gores.push({ kind: 'stain', e, mat, t: 0, x: e.x, y: e.y + 4, chunks: [], end: 2.4, pool: 5, v }); gush(e.x, e.y, 20, 60, mat, { sp: 160, up: 90, w: 20 }); goreGibs({ ...g, mat: 'blood' }, 'flesh', 5, { z: 20 }); }
   else if (mat === 'dust') { for (let k = 0; k < 4; k++) goreDecal('s_dust', k % 3, e.x + Math.cos(k * 1.6) * w * 0.8, e.y + 2 + Math.sin(k * 1.6) * w * 0.4, { a: 0.7 }); goreGibs({ ...g, mat: 'dust' }, 'bone', 8, { z: 24, skull: true }); sfx('clatter', { vol: 0.6, rate: 0.8, gap: 0.05 }); }
-  else if (mat === 'wax' || mat === 'gold') { const an = mat === 'wax' ? 's_wax' : 's_gold'; goreDecal(an, v % 3, e.x, e.y + 2); for (let k = 0; k < 3; k++) goreDecal(an, (v + k + 1) % 3, e.x + Math.cos(k * 2.1) * w, e.y + 2 + Math.sin(k * 2.1) * w * 0.5, { a: 0.85 }); gush(e.x, e.y, 20, 50, mat, { sp: 150, up: 90, w: 20 }); if (mat === 'gold' && !LOWFX) vemit(e.x, e.y - 20, { n: 16, ramp: 'gold', sp: 40, up: 50, life: 1, size: 2, glow: 5 }); } // round 183: Candlemass's wax, the Cardinal's gilt ichor
+  else if (mat === 'wax' || mat === 'gold' || mat === 'rust' || mat === 'iron') { const an = { wax: 's_wax', gold: 's_gold', rust: 's_rust', iron: 's_iron' }[mat]; goreDecal(an, v % 3, e.x, e.y + 2); for (let k = 0; k < 3; k++) goreDecal(an, (v + k + 1) % 3, e.x + Math.cos(k * 2.1) * w, e.y + 2 + Math.sin(k * 2.1) * w * 0.5, { a: 0.85 }); gush(e.x, e.y, 20, 50, mat, { sp: 150, up: 90, w: 20 }); if (mat === 'gold' && !LOWFX) vemit(e.x, e.y - 20, { n: 16, ramp: 'gold', sp: 40, up: 50, life: 1, size: 2, glow: 5 }); } // round 183: Candlemass's wax, the Cardinal's gilt ichor
   else { for (let k = 0; k < 3; k++) goreDecal('s_scorch', k % 3, e.x + Math.cos(k * 2.1) * w * 0.7, e.y + 2 + Math.sin(k * 2.1) * w * 0.35, { a: 0.9 }); if (!LOWFX) vemit(e.x, e.y - 10, { n: 20, ramp: 'fire', sp: 40, up: 60, life: 1, grav: -20, size: 2, glow: 4, spread: w }); }
 }
 function splat(x, y, big = false) { goreDecal(big ? 's_radial' : 's_blood', Math.floor(rng() * (big ? 3 : 8)), x, y, { a: 0.85 }); } // round 182: the gore sheet's splats (honours the GORE setting)
@@ -8672,8 +8681,8 @@ const GORE_W = {
   spirit: { ecto: 1 },
 };
 const GORE_MAT = { flesh: 'blood', cleric: 'blood', vermin: 'blood', bone: 'dust', spirit: 'ecto' };
-const GORE_COL = { wax: ['bone0', 'bone1', 'sand0', 'bone1h'], gold: ['gold0', 'gold1', 'gold1h', 'ember1'], blood: ['blood0', 'blood1', 'blood1', 'blood1h', 'blood2'], bile: ['moss0', 'moss1', 'moss1h', 'sand1'], ecto: ['violet0', 'violet1', 'violet1h'], dust: ['stone1', 'stone2', 'bone2'], ash: ['ink1', 'ink2', 'stone3'] };
-const GORE_STAIN = { wax: ['bone2', 'sand1h'], gold: ['gold2h', 'gold3'], blood: ['blood2h', 'blood3', 'blood3h'], bile: ['moss2h', 'moss3'], ecto: ['violet3'], dust: null, ash: null };
+const GORE_COL = { rust: ['brick2', 'brick3', 'ember3', 'wood2'], iron: ['iron0', 'iron1', 'iron2', 'stone1'], wax: ['bone0', 'bone1', 'sand0', 'bone1h'], gold: ['gold0', 'gold1', 'gold1h', 'ember1'], blood: ['blood0', 'blood1', 'blood1', 'blood1h', 'blood2'], bile: ['moss0', 'moss1', 'moss1h', 'sand1'], ecto: ['violet0', 'violet1', 'violet1h'], dust: ['stone1', 'stone2', 'bone2'], ash: ['ink1', 'ink2', 'stone3'] };
+const GORE_STAIN = { rust: ['brick3h', 'wood3'], iron: ['iron3', 'iron2h'], wax: ['bone2', 'sand1h'], gold: ['gold2h', 'gold3'], blood: ['blood2h', 'blood3', 'blood3h'], bile: ['moss2h', 'moss3'], ecto: ['violet3'], dust: null, ash: null };
 const GORE_END = { burst: 2.4, shred: 2.4, cleave: 2.8, pop: 2.8, crush: 2.2, corpse: 3.2, bones: 2.6, ash: 1.6, ecto: 1.1, bile: 2.4 };
 const GORE_CAP = 30, GORE_CHUNKS = 360; // live deaths and live body pieces; past them, pieces grow bigger (fewer)
 let gores = [], GORE_HIT = null, goreLast = [], GORE_FORCE = null;

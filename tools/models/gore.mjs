@@ -146,6 +146,7 @@ export default {
     s_blood: () => many(8, (v) => splatLo(v)), s_streak: () => many(4, (v) => streakLo(v)), s_streakv: () => many(4, (v) => rot(streakLo(v), 1)),
     s_radial: () => many(3, (v) => radialLo(v)), s_pool: () => many(6, poolLo),
     s_bile: () => many(4, (v) => splatLo(v + 20, 'moss', { core: 4, rim: 1 })), s_ecto: () => many(4, (v) => splatLo(v + 40, 'violet', { core: 3, rim: 1 })),
+    s_rust: () => many(3, (v) => splatLo(v + 100, 'brick', { core: 6, rim: 4 })), s_iron: () => many(3, (v) => splatLo(v + 120, 'iron', { core: 4, rim: 2, dry: true, glint: false })), // round 184: the Bellwright's rust, the Lady of Nails' filings
     s_wax: () => many(3, (v) => splatLo(v + 60, 'bone', { core: 3, rim: 1 })), s_gold: () => many(3, (v) => splatLo(v + 80, 'gold', { core: 4, rim: 1 })), // round 183: Candlemass's wax, the Cardinal's ichor
     s_scorch: () => many(3, scorchLo), s_dust: () => many(3, dustLo),
     b_blood: () => many(6, (i) => burstLo(i, 'blood', { seed: 1 })), b_bile: () => many(6, (i) => burstLo(i, 'moss', { seed: 7, n: 8, max: 5 })),

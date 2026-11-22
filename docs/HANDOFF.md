@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-22, after round 183 (build 183, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-22, after round 184 (build 184, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -801,6 +801,16 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 184:** the owner: "All" (round 183's five). (A) The Doorkeeper as a world boss on the Abbey Isle at its door
+  landmark (`WORLD_BOSSES` row `['door', 'isle', 'doorkeeper']`, only with `doorShut()`); its own call at half health
+  (`WORLD_CALL_BY`: rings of shots; it calls risen and barrow-dead). (B) `WARDEN_MAT` bellwright rust, ladyOfNails iron
+  (`GORE_COL`/`GORE_STAIN` rust and iron, splats `s_rust` on the brick ramp and `s_iron` dry filings). Hit spatter
+  (`bleed`) now takes a material: a Warden's `WARDEN_MAT`, a foe's family's `GORE_MAT` (skeletons dust, spirits
+  ectoplasm); the Saint still bleeds red. (C) The Codex's eighth section WORDS (`CODEX_SECS`, `codexList(7)`): one
+  entry per chapter done, READ plays its message and its Warden's spawn and death lines and returns to the Codex; the
+  rail's tab pitch shrinks to fit eight. (D) Benchmarks of Stratum III's Wardens at Station XX (see the numbers below).
+  (E) The yard's Warden tab shows a PHASE picker in place of DEATH (`game.yard.phase`): a Warden summoned at phase 2
+  or 3 starts at 60% or 30% health with its later attacks (`wardenPhase`). Test: `round184.cjs`.
 - **Round 183:** the owner: "All" (round 182's five). (A) After the door: `doorShut()`, `DOOR_BARKS` (most barks once
   shut), new first lines for Odile and Vane (`NPC_INFO.*.lines()`), the Crier's news (`crierEvents` field `d`), the
   title DOOR-SHUTTING in place of LANTERN-BEARING (`saintTitle`). (B) The Doorkeeper in `spawnWarden`'s list for Stratum
