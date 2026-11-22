@@ -91,3 +91,8 @@ multi-gigabyte archives.
 | [Ruined City Theme](https://opengameart.org/content/ruined-city-theme) | cleytonkauffman | the Ashfields' music (`music_ash`) |
 | [Beach Ocean Waves](https://opengameart.org/content/beach-ocean-waves) | qubodup (from jasinski's recording) | the Saltreach's surf (`amb_waves`) |
 
+
+## Weather sounds (round 179, made here)
+
+`tools/build-weather.py` synthesises these from noise, with no sample pack: the moor's rain (`amb_rain`), thunder in
+a moor storm (`thunder`) and the crackle of an ember storm in the Ashfields (`amb_embers`).

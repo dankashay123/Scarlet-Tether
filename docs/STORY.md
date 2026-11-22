@@ -191,6 +191,15 @@ Salt cliffs, sea caves, wrecks, a lighthouse chapel on the rocks.
 - **After it:** Odile, Vane and the town react; the cathedral's Stations become the road
   down to Osanne.
 
+### After the ending: the Abbey Isle (round 179)
+
+Chapter 7, THE FLOODED UNDERCROFT, opens once the ending has played. A letter from Sister Hew says the water in the
+abbey's undercroft has gone down and something is playing the old organ. On the isle: Sister Hew at the landing,
+Brother Ansel by the fallen bells (the sisters let the sea in themselves to stop the Choir's men following Osanne),
+and the sisters' rule on the cloister wall. Below, in the Drowned Nave, the Drowned Organist (he played for the
+sisters before the Choir gave him the fen) and the abbess's unsent letters. Behind her desk a stair runs down under
+the sea toward the Wound, and Osanne's lamp still burns at its foot: a hook for a later chapter.
+
 ## The people
 
 - **Sister Odile:** woke you all forty-four times. Rang the bells too. Breaks with the Choir

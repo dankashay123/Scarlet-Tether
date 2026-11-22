@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-21, after round 178 (build 178, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-22, after round 179 (build 179, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -393,21 +393,22 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
-- **After round 178:** all five regions and six chapters are in. Open items:
-  - **Auto play in regions:** the pilot only fights. It does not seek landmarks, lore or the daily cache, so an
-    auto trip cannot finish a `rmark_` daily. Round 178 stopped it using people, lore, doors and the ferry.
-  - **Weather:** it drew under the camera offset until round 178 and only now shows across the screen. Check rain,
-    ash and spray density at 667x375 and 932x430; the moor rain is still faint. Weather has no sounds yet.
-  - **The Abbey Isle** has no chapter of its own; Sister Hew's lines lead toward the flooded undercroft (a station
-    for a later chapter). Its world boss is the Ossuarch (68 s with a full set at XII).
+- **After round 179:** all five regions and seven chapters are in (chapter 7, THE FLOODED UNDERCROFT, opens after the
+  ending). Open items:
+  - **The stair under the sea:** chapter 7 ends on a stair from the isle's undercroft toward the Wound, with Osanne's
+    lamp lit at its foot. A later chapter (or the Abbey Isle's door after the story) could go down it.
+  - **Weather:** draws after the darkness since round 179 and scales with screen area. Fog has no sound of its own
+    (the fen's swamp loop and the isle's waves cover it); spray has none either.
+  - **Auto play in regions:** since round 179 the pilot walks to the day's cache, then the nearest unfound landmark,
+    when no foe is within 170 px. It still never reads lore or talks to people.
+  - **The Abbey Isle's** world boss is the Ossuarch (68 s with a full set at XII).
   - **Numbers (round 178, full set at XII):** a HARD trip killed 65-196 a minute against 175-283 in a descent;
     world bosses take 49 s (Charnel King) and 68 s (Ossuarch). Re-run `autobench.cjs REGION=<id>` after any change
     to region density, `REGION_LOOT` or `WORLD_HP`.
   - **Older leftovers:** some older models use palette names past step 4 (`moss5`, `wood6`, `iron5`...), which fall
     back to `ink0` (dark accents; fix only with a look at each). `designer.cjs` taps the LAYOUT tile at a spot that
     moved; fix the test when the designer is next touched. AUTO_CUT is still off: remind the owner.
-  - **Offered after round 178, not picked yet:** weather density at three phone sizes, the pilot seeking landmarks
-    and caches, an isle chapter, the Codex with five regions, weather sounds.
+  - **Offered after round 179, not picked yet:** see the end of round 179's reply.
 - **The owner on the Vesper (round 133):** "feels great" with 25% less damage
   taken and 15% more health. Leave it.
 - **Deploys:** since round 133 the workflow retries a failed deploy once;
@@ -784,6 +785,21 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 179:** the owner: "let's continue" (round 178's five). (A) Weather: it was drawn under the darkness layer, so
+  at night it barely showed; `drawWeather` now runs after the glow pass, in screen space, and its count scales with
+  the screen area (0.7x to 1.4x of 540x270). Ash is brighter (100 flakes, some two wide). (B) Weather sounds from
+  `tools/build-weather.py` (synthesised, no pack): `amb_rain` follows `weatherK()` on the moor, `thunder` plays with
+  each storm bolt (and far off when no foe is near), `amb_embers` during an Ashfields storm. `AUDIO.level` turns a
+  levelled loop back on after a scene change (`A.set` had turned it off for good). (C) The pilot: `autoRegionGoal()`
+  (the day's cache while full, then the nearest unfound landmark, never the door) when no foe is within 170 px.
+  (D) The Codex lore page: regions in travel order (`loreRegions`), one row of six each with its count, and the
+  summary lists LORE and PLACES per region (`SAVE.marksSeen`; regions not open read ???). (E) Chapter 7, THE FLOODED
+  UNDERCROFT (`STORY[6]`, `ending: true`, `storyOpenN(k)`): offered by Odile once `SAVE.ending` is set; out on the
+  isle talk to Sister Hew (`goal: 'hew'`), Brother Ansel (new, `REGION_NPC.ansel` at the fallen bells) and read the
+  cloister's rule (lore `i_cloister` bumps `rule`); the flooded door leads to a Drowned Nave station (seed 31007,
+  `FINALE[6]`), the Drowned Organist, the abbess's letters. The story page fits seven rows (row pitch from the
+  panel's height) and a chapter that waits for the ending says so. Speaker names keep their capitals mid-line
+  (`caseNames` adds `SPEAKER` names). Test: `round179.cjs`.
 - **Round 178:** the owner: "All" (round 177's five). (A) Benchmarks: a full set at XII on HARD trips killed 170 (moor,
   48 s), 196 (fen), 81 (ash), 65 (salt, 24 s) against 175-283 in a descent; with `REGION_LOOT` 2x that is fair, so no
   change. (B) Storms: `stormOf()` picks one open region a day (the Crier calls it); its weather runs stronger and at
