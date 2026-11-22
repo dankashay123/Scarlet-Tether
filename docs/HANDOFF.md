@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-22, after round 180 (build 180, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-22, after round 181 (build 181, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -393,6 +393,8 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **After round 181:** eight chapters; chapter 8 (THE LIT STAIR) ends on a door below Station XXX, "not locked from
+  our side", and a knocking: the hook for whatever comes next. The GORE setting is in (FULL, LESS, OFF).
 - **After round 180 (gore):** foes die eleven ways (`GORE_KINDS`). Open items: elites and rares still crumble
   (round 166) and only fall back to gore when ten crumbles are already moving; Wardens keep their own deaths. The
   pieces fade after about 2.5 s (only stains and settled gibs stay). `perf.cjs`: about +0.9 ms a frame in the dense
@@ -791,6 +793,20 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 181:** the owner: "All" (round 180's five). (A) The GORE setting (`opt('gore')`, `goreOpt()`, Graphics page):
+  LESS keeps the deaths and body pieces but a third of the drops, half-strength wet splats and no gibs (bone gibs
+  stay); OFF draws no blood, splats or gibs and every death becomes a dry `bones` collapse (spirits keep `ecto`,
+  burning foes `ash`); `bleed` and the old `dismember` follow it. (B) Crumbles bleed (`crumbleMess`, called from
+  `dismember`'s soft path): a melt spreads a pool (a `stain` gore entry), a burst throws blood and two splats, a heap or
+  shatter bleeds a little, a burn scorches, a fade leaves violet; bone foes leave dust. (C) Chapter 8, THE LIT STAIR
+  (`STORY[7]`, `ending: true`, stratum III open map, seed 31008, the Charnel King, `FINALE[7]`): Sister Hew has
+  chapter lines (`REGION_NPC.hew.ch[7]`, goal `hew2`; any region person can take `ch: { chapter: { goal, lines } }`,
+  read first in `regionTalk`, and its ! in `drawRegionMarks`), the newest grave (lore `i_graves` bumps `grave`), then
+  the isle's door. The story list puts the state on the right when rows are short (eight rows on a small phone).
+  (D) The Quiet Acre at 667x375 and 932x430: fine; its RISEN LEFT counter now skips illusions like its end check.
+  (E) Wardens leave a mess when they settle (`wardenMess` from `wardenSettle`, `WARDEN_MAT`): blood Wardens a radial
+  splat, splats, a spreading pool, spray and gibs; the Charnel King and the Ossuarch bones and dust; Candlemass and
+  the Ash Widow scorch. Story and world-boss falls both get it. Test: `round181.cjs`.
 - **Round 180:** the owner: "a revamp of the gore/blood... not just have every animation be the same with a skull
   flying out. Let's make like 10 different goresplosion animations and increase quality all throughout." Eleven
   deaths in `index.html` (`GORE_KINDS`, `goreStart`, `updateGore`, `drawGore`, `drawGoreGround`): burst (pieces of the
