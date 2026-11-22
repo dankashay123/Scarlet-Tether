@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-22, after round 182 (build 182, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-22, after round 183 (build 183, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -393,6 +393,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **After round 183:** Vael has a third state, after the door is shut (`doorShut()`: chapter 9 handed in): lines, barks,
+  the Crier's news, the DOOR-SHUTTING title. The Doorkeeper returns as a Stratum III Warden at Station XX and deeper
+  (`DOOR_FROM`) with its own halo (slate, the eleventh stand). `menus.cjs` now covers the story page, the Codex lore
+  page, the travel map and the yard.
 - **After round 182:** nine chapters. Chapter 9 (THE DOOR BELOW) closes the knocking: the Doorkeeper is a story-only
   Warden (`MON.doorkeeper.story`, never in a Station's list). Its voice is made from the game's own sounds
   (`tools/build-doorkeeper.sh`); give it a real recording if a fitting CC0 pack turns up. It has no halo (story runs
@@ -797,6 +801,17 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 183:** the owner: "All" (round 182's five). (A) After the door: `doorShut()`, `DOOR_BARKS` (most barks once
+  shut), new first lines for Odile and Vane (`NPC_INFO.*.lines()`), the Crier's news (`crierEvents` field `d`), the
+  title DOOR-SHUTTING in place of LANTERN-BEARING (`saintTitle`). (B) The Doorkeeper in `spawnWarden`'s list for Stratum
+  III at Station XX and deeper once the door is shut (`DOOR_FROM`), titled WARDEN OF STATION N there; its halo
+  (`HALOS` slate, THE DOORKEEPER'S HALO; `halostand` frame 11; the Vigil Roll's stands take a third row; Codex line).
+  (C) `WARDEN_MAT` candlemass wax, cardinal gold: `GORE_COL`/`GORE_STAIN` wax and gold, splats `s_wax`/`s_gold` in
+  `gore.mjs`, used by `wardenBleed` and `wardenMess` (gold is hidden by GORE OFF like blood). (D) The Saint's fall
+  (`die`): a gold pillar, a blue ring on the floor, gold and blue motes rising, the body washing gold and a halo of
+  pixels lifting away (`drawPlayer`), with `updateVparts` running in the dead state. No new screen. (E) `menus.cjs`
+  photographs the story page, Codex lore, travel map and the yard (in the yard); all clean at 667x375 with large
+  text. Test: `round183.cjs`.
 - **Round 182:** the owner: "All" (round 181's five). (A) Chapter 9, THE DOOR BELOW (`STORY[8]`, `ending: true`, stratum
   III rooms, seed 31009, `FINALE[8]`, `STORY_HINT[8]`): from the cathedral, down to the door below the thirtieth
   Station. A new Warden, the Doorkeeper (`doorkeeper` in `tools/models/ossuary.mjs`: a stooped giant in a nailed

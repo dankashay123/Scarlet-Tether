@@ -32,7 +32,7 @@ const TM = {
   cloth: { ramp: 'cloth', max: 6 }, canvasR: { ramp: 'crimson', spec: 0.04 }, canvasV: { ramp: 'violet', spec: 0.04 }, canvasG: { ramp: 'gold', spec: 0.04 }, canvasT: { ramp: 'teal', spec: 0.04 }, canvasM: { ramp: 'moss', spec: 0.04 }, canvasI: { ramp: 'ink', spec: 0.04, min: 2 }, canvasS: { ramp: 'sand', spec: 0.04, min: 1 }, drape: { ramp: 'violet', bias: -0.15, min: 2 }, leaf: { ramp: 'moss', spec: 0.1, min: 1 }, leafDark: { ramp: 'moss', bias: -0.18, min: 2 }, leafB: { ramp: 'moss', bias: -0.08, min: 1 }, petalR: { ramp: 'crimson', spec: 0.2 }, petalG: { ramp: 'gold', spec: 0.2 }, petalV: { ramp: 'violet', spec: 0.2 }, petalH: { ramp: 'holy', spec: 0.2 }, soil: { ramp: 'shroud', bias: -0.1, min: 2 },
   bannerR: { ramp: 'crimson', spec: 0.05, bias: -0.05 }, bone: { ramp: 'bone', spec: 0.2 }, shroud: { ramp: 'shroud' },
   water: { ramp: 'violet', spec: 0.9, bias: 0.05 }, rose: { ramp: 'rose', spec: 0.3 }, roseDeep: { ramp: 'rose', bias: -0.2, min: 2 },
-  ...Object.fromEntries(['bone', 'pot', 'cloth', 'blood', 'stone', 'teal', 'moss', 'sand', 'rot', 'shroud'].map((r) => [`halo_${r}`, { ramp: r, spec: 0.7, min: 0 }])),
+  ...Object.fromEntries(['bone', 'pot', 'cloth', 'blood', 'stone', 'teal', 'moss', 'sand', 'rot', 'shroud', 'slate'].map((r) => [`halo_${r}`, { ramp: r, spec: 0.7, min: 0 }])),
   glass_flame: { ramp: 'flame', spec: 0.9 }, glass_holy: { ramp: 'holy', spec: 0.9, min: 1 }, glass_crimson: { ramp: 'crimson', spec: 0.9 }, glass_violet: { ramp: 'violet', spec: 0.9 }, coal: { ramp: 'ink', bias: -0.1, min: 2 },
 };
 
@@ -998,7 +998,7 @@ function vigilRoll(i) {
 // A little stand for an earned halo: a stone post with a red cushion. Frame 0
 // stands empty; frames 1-10 hold each earned halo (its palette ramp): 9 the
 // Ossuarch's, 10 the Ash Widow's (Stratum III).
-const STAND_HALOS = ['bone', 'pot', 'cloth', 'blood', 'stone', 'teal', 'moss', 'sand', 'rot', 'shroud'];
+const STAND_HALOS = ['bone', 'pot', 'cloth', 'blood', 'stone', 'teal', 'moss', 'sand', 'rot', 'shroud', 'slate']; // round 183: the Doorkeeper's
 function haloStand(i) {
   const W = 24, H = 44, S = new View(), G = groundY(H, 4);
   S.add(slabBox(5, G - 4, 19, G, 4, 8, 'stoneB', 0.4), 0);
@@ -1409,7 +1409,7 @@ export default {
     board: () => [noticeBoard()],
     stall_board: () => [bountyStall()], stall_pool: () => [seerStall()], stall_ench: () => [enchStall()],
     vigilroll: () => [0, 1, 2].map(vigilRoll),
-    halostand: () => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(haloStand),
+    halostand: () => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(haloStand),
     stocks: () => [stocks()],
     pool: () => [0, 1, 2].map(pool),
     tall: () => [0, 1, 2, 3, 4, 5].map(tallHouse),

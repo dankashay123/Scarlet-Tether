@@ -16,11 +16,19 @@ const S = process.argv[2], [w, h] = (process.argv[3] || '844x390').split('x').ma
     for (let k = 0; k < 6; k++) HS.SAVE.bag.push(HS.rollItem(1, 5)); });
   const shots = [['inv', () => HS.openInventory()], ['altar', () => HS.openAltar()], ['altarpick', () => { HS.SAVE.altar = { known: ['stormHands', 'pallWard', 'chainHands', 'veilFont'], sockets: { vest: 'pallWard' } }; HS.applyGear(); HS.openAltar(); HS.openAltarPick('vest'); HS.game.altarPick.sel = 'stormHands'; }], ['altarpick2', () => { HS.openAltar(); HS.openAltarPick('relic'); }], ['descent', () => HS.startDescent()], ['vigil', () => HS.openVigil()], ['rites', () => HS.openRites('play')], ['censer', () => HS.openCenser('play')], ['shop', () => HS.openShop()], ['forge', () => HS.openForge()], ['canonry', () => HS.openCanonry()], ['board', () => HS.openBoard()], ['site', () => HS.openSite(HS.SITES.find((q) => q.id === 'martyr'))], ['settings', () => { HS.game.state = 'settings'; }], ['dev', () => HS.openDev()], ['plush', () => HS.openPlush()], ['pool', () => HS.openPool()], ['martyr', () => HS.openMartyr()], ['roll', () => HS.openRoll()]];
   shots.push(['forgevalues', () => { HS.openForge(); HS.game.forge.tab = 2; }], ['forgeaffix', () => { HS.openForge(); HS.game.forge.tab = 1; }], ['enchant', () => HS.openEnchant()], ['enchantpick', () => { HS.openEnchant(); HS.game.ench.pick = true; }], ['pause', () => { HS.game.state = 'pause'; }]);
+  // Round 183: the story page (nine chapters), the Codex lore rows and the travel map.
+  shots.push(['story', () => { HS.SAVE.story = 8; HS.SAVE.ending = 1; HS.openStory(8, 'play'); }], ['codexlore', () => HS.openCodex(6, 'play')], ['travel', () => HS.openTravel('moor')]);
   const problems = [];
   const only = process.env.ONLY ? process.env.ONLY.split(',') : null; // ONLY=inv,rites photographs some
   for (const [n, f] of shots) { if (only && !only.includes(n)) continue;
     await p.evaluate(() => { HS.game.state = 'play'; HS.game.inv = null; }); await p.evaluate(f); await p.waitForTimeout(250); await p.screenshot({ path: `${S}/shots/m-${n}-${w}.png` });
     const pr = await p.evaluate(() => HS.textProblems()); if (pr.length) problems.push(`${n}: ${pr.slice(0, 6).join('; ')}`);
+  }
+  if (!only || only.includes('yard')) { // round 183: the Training Yard's panel (inside the yard)
+    await p.evaluate(() => { HS.game.state = 'play'; HS.openYard(); }); for (let i = 0; i < 60 && !(await p.evaluate(() => HS.game.yard && HS.game.state === 'play' && HS.game.scene === 'wound')); i++) await p.waitForTimeout(100);
+    await p.waitForTimeout(500); await p.evaluate(() => { HS.game.state = 'yard'; HS.game.yard.tab = 0; HS.game.banner = null; HS.game.toast = null; }); await p.waitForTimeout(250); await p.screenshot({ path: `${S}/shots/m-yard-${w}.png` });
+    const pr = await p.evaluate(() => HS.textProblems()); if (pr.length) problems.push(`yard: ${pr.slice(0, 6).join('; ')}`);
+    await p.evaluate(() => { HS.game.yard.tab = 3; }); await p.waitForTimeout(250); const pr2 = await p.evaluate(() => HS.textProblems()); if (pr2.length) problems.push(`yard wardens: ${pr2.slice(0, 6).join('; ')}`);
   }
   await p.evaluate(() => { HS.game.state = 'play'; HS.game.stig = { cards: HS.WOUNDS.slice(0, 3), t: 1 }; HS.game.state = 'stig'; }); await p.waitForTimeout(300); await p.screenshot({ path: `${S}/shots/m-stig-${w}.png` });
   console.log(problems.length ? `text problems ${problems.length}\n${problems.join('\n')}` : 'text problems 0');
