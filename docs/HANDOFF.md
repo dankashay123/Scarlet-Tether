@@ -809,6 +809,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   scorch, dust, burst animations; drawn at half size and doubled so it sits on the grid). Gibs tumble (`gibFrame`),
   stain on each bounce, and bake into the floor at 75%. The old path's head gib is gone (`dismember`). Sounds from
   `tools/build-gore.py`: `splat`, `clatter`, `pop`. `GORE_FORCE` (HS) forces one death. Test: `round180.cjs`.
+  Found and fixed: the Quiet Acre (the opening's night fight, 76x58 tiles) failed to build about two times in three
+  since its region code: `layoutOpen`'s 30-40 tile steps did not fit, a one-clearing path read `nodes[1]` and threw,
+  and the game fell back to a descent map. Steps now scale with a small map (`sk`, 1 for descents and regions, so
+  their maps are unchanged; `maps.cjs 40` clean). Past `GORE_CAP` live deaths no body pieces are made, and past
+  twice that a death uses the old cheap burst.
 - **Round 179:** the owner: "let's continue" (round 178's five). (A) Weather: it was drawn under the darkness layer, so
   at night it barely showed; `drawWeather` now runs after the glow pass, in screen space, and its count scales with
   the screen area (0.7x to 1.4x of 540x270). Ash is brighter (100 flakes, some two wide). (B) Weather sounds from
