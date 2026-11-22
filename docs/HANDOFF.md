@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-22, after round 181 (build 181, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-22, after round 182 (build 182, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -393,6 +393,10 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **After round 182:** nine chapters. Chapter 9 (THE DOOR BELOW) closes the knocking: the Doorkeeper is a story-only
+  Warden (`MON.doorkeeper.story`, never in a Station's list). Its voice is made from the game's own sounds
+  (`tools/build-doorkeeper.sh`); give it a real recording if a fitting CC0 pack turns up. It has no halo (story runs
+  are Station I, under `EARN_FROM`).
 - **After round 181:** eight chapters; chapter 8 (THE LIT STAIR) ends on a door below Station XXX, "not locked from
   our side", and a knocking: the hook for whatever comes next. The GORE setting is in (FULL, LESS, OFF).
 - **After round 180 (gore):** foes die eleven ways (`GORE_KINDS`). Open items: elites and rares still crumble
@@ -793,6 +797,19 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 182:** the owner: "All" (round 181's five). (A) Chapter 9, THE DOOR BELOW (`STORY[8]`, `ending: true`, stratum
+  III rooms, seed 31009, `FINALE[8]`, `STORY_HINT[8]`): from the cathedral, down to the door below the thirtieth
+  Station. A new Warden, the Doorkeeper (`doorkeeper` in `tools/models/ossuary.mjs`: a stooped giant in a nailed
+  robe, a small arched door for a face with an iron knocker ring and one gold light, stone fists; walk, three attack
+  frames, `DEATH.doorkeeper` shatter): slam, crosses of blows at the Saint, a shockwave, risen called up; phases add a
+  ring and then a spiral and barrage. `story: true` keeps it out of `spawnWarden`'s list; its title reads BELOW THE
+  THIRTIETH STATION and its Codex card FOUND BELOW THE THIRTIETH STATION. `WDIE_FX` (gold light leaking), `WDIE_SETTLE`
+  gold, `WARDEN_MAT` dust. (B) The old cheap death path (`dismember`, `splat`) draws the gore sheet's gibs, bursts and
+  splats. (C) `wardenBleed`: a Warden drips on hits (at most every 0.3 s), leaves a splat for each tenth of its health
+  and bursts at each phase. (D) The yard's DEATH picker (`game.yard.death`, `GORE_NAME`, `yardGeo().death`); the
+  yard's foe grid sizes its rows to the longest tab (the sixth row of commons covered the notes). (E) Rain against
+  the music, measured with `ebur128`: music_moor about -24 LUFS in game, rain was -29 and is now about -34 (`LOOPS`
+  amb_rain 0.32), embers 0.42. A real phone check is still the owner's. Test: `round182.cjs`.
 - **Round 181:** the owner: "All" (round 180's five). (A) The GORE setting (`opt('gore')`, `goreOpt()`, Graphics page):
   LESS keeps the deaths and body pieces but a third of the drops, half-strength wet splats and no gibs (bone gibs
   stay); OFF draws no blood, splats or gibs and every death becomes a dry `bones` collapse (spirits keep `ecto`,

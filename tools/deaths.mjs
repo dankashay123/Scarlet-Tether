@@ -224,6 +224,7 @@ export const DEATH = {
   bellwright: (G) => shatter(G, { force: 0.45, pieces: 10, seed: 3, crackR: 'ember' }),
   organist: (G) => sink(G, { r: 'sea' }),
   cardinal: (G) => hollow(G, { keep: isOf(['gold']) }),
+  doorkeeper: (G) => shatter(G, { force: 0.8, pieces: 16, seed: 5, crackR: 'ember' }), // round 182: the stone breaks; light leaks from the cracks
 };
 // The death frames for one Warden from its standing frame.
 export const deathFrames = (id, ref) => DEATH[id](cells(ref));

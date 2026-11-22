@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '181';
+const BUILD = '182';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '182': ['A NEW CHAPTER AFTER THE ENDING: THE DOOR BELOW. GO DOWN TO THE DOOR UNDER THE THIRTIETH STATION AND FACE THE DOORKEEPER, A NEW WARDEN.', 'WARDENS NOW BLEED AS THE FIGHT GOES ON, WITH A BURST OF BLOOD AT EACH PHASE.', 'THE TRAINING YARD HAS A DEATH PICKER: CHOOSE HOW SUMMONED FOES DIE.', 'RAIN ON THE MOOR IS QUIETER UNDER THE MUSIC. THE YARD\'S FOE LIST NO LONGER COVERS ITS NOTES.'],
   '181': ['A NEW CHAPTER AFTER THE ENDING: THE LIT STAIR. SISTER HEW KNOWS WHO FOLLOWED OSANNE DOWN THE STAIR UNDER THE ABBEY ISLE.', 'NEW SETTING: GORE (FULL, LESS OR OFF). WITH GORE OFF, FOES FALL TO DUST.', 'ELITES AND RARES NOW LEAVE BLOOD WHEN THEY CRUMBLE, AND WARDENS LEAVE A MESS THAT FITS THEM WHEN THEY FALL.', 'THE QUIET ACRE NOW LOADS EVERY TIME FOR NEW CHARACTERS, AND ITS COUNTER MATCHES THE FOES LEFT.'],
   '180': ['FOES NOW DIE IN ELEVEN WAYS: BURST, BLASTED APART, CUT IN TWO, HEAD POPPED, CRUSHED FLAT, BLED OUT IN A POOL, A JET FROM THE NECK, A PILE OF RATTLING BONES, BURNT TO ASH, ECTOPLASM AND A BILE POP.', 'THE DEATH FITS THE FOE AND THE BLOW: SKELETONS FALL TO BONES, SPIRITS MELT AWAY, BURNING FOES TURN TO ASH, BLADES CUT AND BIG HITS FLATTEN.', 'NEW GORE ART: CHUNKS OF THE FOE ITSELF, TUMBLING GIBS, WET SPLATS, STREAKS ALONG THE BLOW AND SPREADING POOLS. SKULLS ONLY FLY FROM SKELETONS AND POPPED HEADS.', 'NEW SOUNDS FOR A WET BURST, FALLING BONES AND A BILE POP.'],
   '179': ['A NEW CHAPTER AFTER THE ENDING: THE FLOODED UNDERCROFT. SAIL TO THE ABBEY ISLE, MEET BROTHER ANSEL BY THE FALLEN BELLS AND GO DOWN UNDER THE ABBEY.', 'WEATHER NOW SHOWS AT NIGHT: RAIN, ASH AND SPRAY ARE BRIGHTER, AND THERE IS MORE OF IT ON BIGGER SCREENS.', 'RAIN ON THE MOOR CAN BE HEARD NOW, THUNDER ROLLS WITH STORM LIGHTNING, AND AN EMBER STORM CRACKLES.', 'AUTO PLAY OUT IN A REGION NOW WALKS TO THE DAY\'S CACHE AND TO LANDMARKS YOU HAVE NOT FOUND.', 'THE CODEX LORE PAGE HAS ONE ROW PER REGION, AND ITS SUMMARY SHOWS THE PLACES FOUND IN EACH.'],
@@ -697,8 +698,8 @@ if (document.fonts) Promise.all([document.fonts.load(fontOf(22, false)), documen
 // <audio> elements routed through the same context, so memory stays low.
 // iOS 17+: audioSession 'ambient' makes the game follow the silent switch.
 const AUDIO = (() => {
-  const SFX = ['voice_lo', 'voice_mid', 'voice_hi', 'slash', 'shing', 'stab', 'whirl', 'swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'buff', 'chirp', 'bleat', 'puff', 'sacrifice', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_ashWidow', 'fall_ashWidow', 'thunder', 'splat', 'clatter', 'pop'];
-  const VOL = { splat: 0.45, clatter: 0.4, pop: 0.4, thunder: 0.6, voice_lo: 0.1, voice_mid: 0.1, voice_hi: 0.09, slash: 0.45, shing: 0.35, stab: 0.5, whirl: 0.45, swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, buff: 0.06, chirp: 0.06, bleat: 0.08, puff: 0.1, sacrifice: 0.55, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
+  const SFX = ['voice_lo', 'voice_mid', 'voice_hi', 'slash', 'shing', 'stab', 'whirl', 'swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'buff', 'chirp', 'bleat', 'puff', 'sacrifice', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_doorkeeper', 'fall_doorkeeper', 'roar_ashWidow', 'fall_ashWidow', 'thunder', 'splat', 'clatter', 'pop'];
+  const VOL = { splat: 0.45, clatter: 0.4, pop: 0.4, thunder: 0.6, voice_lo: 0.1, voice_mid: 0.1, voice_hi: 0.09, slash: 0.45, shing: 0.35, stab: 0.5, whirl: 0.45, swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, buff: 0.06, chirp: 0.06, bleat: 0.08, puff: 0.1, sacrifice: 0.55, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, roar_doorkeeper: 0.9, fall_doorkeeper: 0.9, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
   const A = { ctx: null, buf: {}, last: {}, muted: false, master: null, sfxBus: null, voiceBus: null, musicBus: null, tracks: {}, want: [] };
   try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch { /* not supported */ }
   try { A.muted = !!JSON.parse(localStorage.getItem('hollow-saint') || '{}').muted; } catch { /* private mode */ }
@@ -740,7 +741,7 @@ const AUDIO = (() => {
     try { const src = A.ctx.createMediaElementSource(el); t.g = A.ctx.createGain(); t.g.gain.value = 0; src.connect(t.g); t.g.connect(A.musicBus); } catch { el.volume = 0; }
     return (A.tracks[name] = t);
   };
-  const LOOPS = { music_town: 0.8, music_dungeon: 0.75, music_warden: 0.85, music_warden_nave: 0.85, music_warden_ossuary: 0.85, music_undercroft: 0.8, music_nave: 0.8, music_ossuary: 0.8, amb_choir: 0.85, amb_town: 0.5, amb_crickets: 0.18, amb_fire: 0.7, music_moor: 0.7, music_fen: 0.75, music_ash: 0.75, music_salt: 0.7, amb_wind: 0.5, amb_swamp: 0.55, amb_waves: 0.6, amb_rain: 0.55, amb_embers: 0.5 }; // round 174: the regions' own
+  const LOOPS = { music_town: 0.8, music_dungeon: 0.75, music_warden: 0.85, music_warden_nave: 0.85, music_warden_ossuary: 0.85, music_undercroft: 0.8, music_nave: 0.8, music_ossuary: 0.8, amb_choir: 0.85, amb_town: 0.5, amb_crickets: 0.18, amb_fire: 0.7, music_moor: 0.7, music_fen: 0.75, music_ash: 0.75, music_salt: 0.7, amb_wind: 0.5, amb_swamp: 0.55, amb_waves: 0.6, amb_rain: 0.32, amb_embers: 0.42 }; // round 182: rain about 10 dB under the music (it was 5) // round 174: the regions' own
   // Loops whose level follows the Saint (A.level): their start level.
   const LEVELED = { music_town: 1, amb_choir: 0, amb_fire: 0, amb_rain: 0, amb_embers: 0 }; // round 179: rain and embers follow the weather
   // A loop whose level follows something (the fire near the altar and forge), 0-1.
@@ -2191,14 +2192,14 @@ const wardenSkills = () => WARDEN_SKILLS || (WARDEN_SKILLS = [
 function spawnWarden(force, o = {}) {
   // Round 150: in a story chapter the Warden is the chapter's own, and it waits until the message is read.
   if (!force && game.run && game.run.story != null && !o.world) { const F = game.storyFind; if (F && !F.read) { toast('THE TOLL IS FULL. READ THE MESSAGE IN THE FAR ROOM TO CALL THE WARDEN.', 3.5); return; } force = STORY[game.run.story].warden; }
-  const df = curDiff(), id = force || pick(Object.keys(MON).filter((k) => MON[k].warden && (MON[k].stratum || 1) === stratum())), d = MON[id];
+  const df = curDiff(), id = force || pick(Object.keys(MON).filter((k) => MON[k].warden && !MON[k].story && (MON[k].stratum || 1) === stratum())), d = MON[id];
   const r = game.run && game.run.story != null && !o.world && game.storyFind && game.storyFind.room ? game.storyFind.room : game.curRoom && roomOf(player.x, player.y) ? game.curRoom : room.rooms.reduce((b, q) => Math.hypot((q.cx + 0.5) * TILE - player.x, (q.cy + 0.5) * TILE - player.y) < Math.hypot((b.cx + 0.5) * TILE - player.x, (b.cy + 0.5) * TILE - player.y) ? q : b);
   const [x, y] = spawnPoint(r, 110);
   const affixes = AFFIX_POOL.filter((a) => !['mirrored', 'horde', 'vengeful'].includes(a)).sort(() => rng() - 0.5).slice(0, 1 + df.aff);
   // The tutorial's Warden is gentler; every other one is meant to punish.
   const soft = tut.on || (game.run && game.run.story != null && game.run.story < 2);
   const e = spawnMonster(id, x, y, { tier: 'elite', affixes, room: r.id, name: d.name, hpK: (soft ? 1.1 : WARDEN.hpK) * (o.world ? WORLD_HP : 1) });
-  e.boss = true; e.title = o.world ? 'A WORLD BOSS' : `WARDEN OF ${df.name}`; e.world = !!o.world; e.phase = 0; e.dmgK *= soft ? 1.1 : WARDEN.dmgK; e.bornT = game.time + (soft ? 50 : 0);
+  e.boss = true; e.title = o.world ? 'A WORLD BOSS' : d.story ? 'BELOW THE THIRTIETH STATION' : `WARDEN OF ${df.name}`; e.world = !!o.world; e.phase = 0; e.dmgK *= soft ? 1.1 : WARDEN.dmgK; e.bornT = game.time + (soft ? 50 : 0);
   e.cds = e.def.attacks.map(() => rand(1, 2.5));
   game.warden = e; if (game.run) game.run.reach = Math.max(game.run.reach || 0, 1);
   game.banner = { text: e.name, sub: e.title, t: 0, color: PAL.blood0 };
@@ -2217,7 +2218,7 @@ function wardenPhase(e) {
   if (e.world && !e.called && e.hp / e.maxHp <= 0.5) worldCall(e); // round 177: a world boss's second phase
   const want = e.hp / e.maxHp <= 0.33 ? 2 : e.hp / e.maxHp <= 0.66 ? 1 : 0;
   if (want <= e.phase) return;
-  e.phase = want; e.speedK *= 1.15; e.cdK *= 0.75;
+  e.phase = want; e.speedK *= 1.15; e.cdK *= 0.75; wardenBleed(e, true); // round 182: a burst of its blood at each phase
   if (game.run && game.run.story != null && !e.world) { game.bossSay = { e, text: STORY[game.run.story].phase[want - 1], t: game.real }; sfx(AUDIO.has(`roar_${e.type}`) ? `roar_${e.type}` : 'roar', { vol: 0.4, rate: 1.2, gap: 1 }); } // round 151; round 152: a short cry with it
   // Each phase teaches the Warden something worse.
   const more = (MON[e.type].phases || [])[want - 1] || [];
@@ -4613,8 +4614,10 @@ function openYardPanel() { game.state = 'yard'; sfx('tap'); }
 function yardGeo() {
   const L = featLayout(), tw = Math.floor((L.pw - 20 - 3 * (YARD_TABS.length - 1)) / YARD_TABS.length), cw = Math.floor((L.pw - 20 - 8) / 3);
   const by = L.y0 + L.ph - 30, bw = Math.floor((L.pw - 20 - 12) / 4);
-  return { ...L, tab: (i) => ({ x: L.x0 + 10 + i * (tw + 3), y: L.y0 + 32, w: tw, h: 18 }), cell: (i) => ({ x: L.x0 + 10 + (i % 3) * (cw + 4), y: L.y0 + 56 + Math.floor(i / 3) * 20, w: cw, h: 17 }),
-    btn: (i) => ({ x: L.x0 + 10 + i * (bw + 4), y: by, w: bw, h: 20 }), note: L.y0 + 56 + 5 * 20 + 4, rec: (i) => ({ x: L.x0 + 10, y: L.y0 + 56 + i * 20, w: L.pw - 20, h: 17 }) };
+  // Round 182: rows as many as the longest list needs (the Cinder Moth made six), pitch shrunk to fit above the notes.
+  const rows = Math.max(5, ...[0, 1, 2, 3].map((t) => Math.ceil(yardList(t).length / 3))), rp = Math.max(16, Math.min(20, Math.floor((by - 6 - 36 - (L.y0 + 56)) / rows))), nY = L.y0 + 56 + rows * rp;
+  return { ...L, tab: (i) => ({ x: L.x0 + 10 + i * (tw + 3), y: L.y0 + 32, w: tw, h: 18 }), cell: (i) => ({ x: L.x0 + 10 + (i % 3) * (cw + 4), y: L.y0 + 56 + Math.floor(i / 3) * rp, w: cw, h: rp - 3 }),
+    btn: (i) => ({ x: L.x0 + 10 + i * (bw + 4), y: by, w: bw, h: 20 }), death: { x: L.x0 + L.pw - 10 - 136, y: nY, w: 136, h: 16 }, note: nY + 4, rec: (i) => ({ x: L.x0 + 10, y: L.y0 + 56 + i * 20, w: L.pw - 20, h: 17 }) };
 }
 function renderYardPanel() {
   const G0 = yardGeo(), Y = game.yard, small = { small: true, outline: null };
@@ -4628,6 +4631,7 @@ function renderYardPanel() {
   if (Y.tab === YARD_REC) return renderYardRecords(G0);
   if (Y.tab === YARD_SETS) return renderYardSets(G0);
   text(Y.tab === 0 ? 'TAP A FOE TO SUMMON THREE.' : 'TAP A FOE TO SUMMON IT.', G0.x0 + 12, G0.note, PAL.stone2, small);
+  invButton(G0.death, `< DEATH: ${Y.death == null ? 'ANY' : GORE_NAME[GORE_KINDS[Y.death]]} >`, PAL.stone4); // round 182
   text(`DUMMY: ${yardDps().toLocaleString('en-US')} DAMAGE PER SECOND. TOTAL ${Math.round(Y.total).toLocaleString('en-US')}.`, G0.x0 + 12, G0.note + 11, PAL.cloth1, small);
   const B = SAVE.yardBest || {}, set = yardKey().split(':')[0];
   text(`BEST, ${set === 'mixed' ? 'NO SET' : SET_SHORT[set]} AND THESE RITES: ${(B[yardKey()] || 0).toLocaleString('en-US')}. BEST EVER: ${(B.all || 0).toLocaleString('en-US')}.`, G0.x0 + 12, G0.note + 22, PAL.gold1, small);
@@ -4710,6 +4714,7 @@ function yardTap(x, y) {
   yardList(Y.tab).forEach((id, i) => { if (inRect(G0.cell(i), x, y)) { yardSummon(id); game.state = 'play'; } });
   if (inRect(G0.btn(0), x, y)) { const open = DIFF.map((_, k) => k).filter((k) => k <= Math.max(0, (SAVE.cleared ?? -1) + 1)); game.run.diff = open[(open.indexOf(game.run.diff) + 1) % open.length]; sfx('tap', { vol: 0.5 }); }
   if (inRect(G0.btn(1), x, y)) { Y.attack = !Y.attack; sfx('tap', { vol: 0.5 }); }
+  if (inRect(G0.death, x, y)) { Y.death = Y.death == null ? 0 : Y.death + 1 >= GORE_KINDS.length ? null : Y.death + 1; sfx('tap', { vol: 0.5 }); } // round 182: watch one death at a time
   if (inRect(G0.btn(2), x, y)) { for (const e of enemies) if (!e.dead && e.type !== 'dummy') { e.dead = true; playFx('fx', 'smoke', e.x, e.y - 8, 14); } game.warden = null; sfx('tap'); }
   if (inRect(G0.btn(3), x, y)) { game.yard = null; enterTown(false); }
 }
@@ -5437,7 +5442,7 @@ function atkLines(d) {
 function codexList(sec) {
   const C = codexData(), hero = heroId(), strat = (d) => STRATA[d.stratum || 1].name;
   const monIcon = (id) => (x, y, sz) => { const d = MON[id], S0 = SPR[d.sheet], f = S0 && S0.anims[d.walk] && S0.anims[d.walk][0]; if (!f) return; const k = Math.min(1, (sz - 2) / Math.max(f.w, f.h)); ctx.save(); ctx.translate(x, y); ctx.scale(k, k); sprC(d.sheet, d.walk, 0, 0, 0); ctx.restore(); };
-  if (sec === 0) return Object.keys(MON).filter((id) => id !== 'dummy' && !MON[id].warden && MON[id].name).map((id) => { const d = MON[id], n = C.m[id] || 0; return { id, name: d.name, seen: n > 0, icon: monIcon(id), tag: TIER_NAME[d.tier] || 'ELITE', rgb: d.tier === 'elite' ? '255,209,85' : d.tier === 'rare' ? '138,224,255' : '194,182,170', lines: [`FOUND IN ${strat(d)}.`, n ? `YOU HAVE KILLED ${n.toLocaleString('en-US')}.` : 'YOU HAVE NOT KILLED ONE YET.', ...atkLines(d)] }; });
+  if (sec === 0) return Object.keys(MON).filter((id) => id !== 'dummy' && !MON[id].warden && MON[id].name).map((id) => { const d = MON[id], n = C.m[id] || 0; return { id, name: d.name, seen: n > 0, icon: monIcon(id), tag: TIER_NAME[d.tier] || 'ELITE', rgb: d.tier === 'elite' ? '255,209,85' : d.tier === 'rare' ? '138,224,255' : '194,182,170', lines: [(d.story ? 'FOUND BELOW THE THIRTIETH STATION.' : `FOUND IN ${strat(d)}.`), n ? `YOU HAVE KILLED ${n.toLocaleString('en-US')}.` : 'YOU HAVE NOT KILLED ONE YET.', ...atkLines(d)] }; });
   if (sec === 1) return Object.keys(MON).filter((id) => MON[id].warden).map((id) => { const d = MON[id], t = (SAVE.trophies || {})[id], sts = t ? Object.keys(t.st).map(Number).sort((a, b) => b - a) : [];
     // Round 99: its trophy halo, drawn at the foot of the card (art), and how to earn it.
     const H0 = HALOS.find((q) => q.earn === id), hk = H0 ? EARNED.indexOf(H0) : -1, own = H0 && looks().own.includes(`h:${H0.id}`);
@@ -5445,7 +5450,7 @@ function codexList(sec) {
     const art = H0 ? (x, y, k = 1) => { ctx.save(); ctx.translate(x, y); ctx.scale(k, k); spr('town2', 'halostand', own ? hk + 1 : 0, 0, 0); ctx.restore(); if (own && !LOWFX) twinkles(x, y - 34 * k, 6 * k, hk * 0.21, 4, k); } : null;
     const wb = WORLD_BOSSES.find((w0) => w0[2] === id), wn = (SAVE.worldBoss || {})[id] || 0; // round 177: where it walks in the open world
     const wl = wb ? `IT ALSO WALKS IN ${REGIONS[wb[1]].name}, AT ${REGIONS[wb[1]].marks[wb[0]]}. ${wn ? (wn === 1 ? 'YOU HAVE KILLED IT THERE ONCE.' : `YOU HAVE KILLED IT THERE ${wn} TIMES.`) : 'YOU HAVE NOT KILLED IT THERE YET.'}` : null;
-    return { id, name: d.name, seen: !!(t && t.n) || wn > 0, icon: monIcon(id), tag: wb ? 'WORLD BOSS' : 'WARDEN', rgb: '255,106,138', art, lines: !t ? [`FOUND IN ${strat(d)}.`, wl, halo].filter(Boolean) : [`FOUND IN ${strat(d)}.`, wl, halo, t.n === 1 ? 'YOU HAVE KILLED IT ONCE.' : `YOU HAVE KILLED IT ${t.n.toLocaleString('en-US')} TIMES.`, ...(sts.length ? [`DEEPEST KILL: STATION ${ROMAN[sts[0] - 1]}.`, 'YOUR FASTEST KILL AT EACH STATION:', sts.slice(0, 12).map((n) => `${ROMAN[n - 1]} ${mmss(t.st[n])}`).join(', ')] : ['SO FAR YOU HAVE ONLY KILLED IT IN VIGILS.'])] }; });
+    return { id, name: d.name, seen: !!(t && t.n) || wn > 0, icon: monIcon(id), tag: wb ? 'WORLD BOSS' : 'WARDEN', rgb: '255,106,138', art, lines: !t ? [(d.story ? 'FOUND BELOW THE THIRTIETH STATION.' : `FOUND IN ${strat(d)}.`), wl, halo].filter(Boolean) : [(d.story ? 'FOUND BELOW THE THIRTIETH STATION.' : `FOUND IN ${strat(d)}.`), wl, halo, t.n === 1 ? 'YOU HAVE KILLED IT ONCE.' : `YOU HAVE KILLED IT ${t.n.toLocaleString('en-US')} TIMES.`, ...(sts.length ? [`DEEPEST KILL: STATION ${ROMAN[sts[0] - 1]}.`, 'YOUR FASTEST KILL AT EACH STATION:', sts.slice(0, 12).map((n) => `${ROMAN[n - 1]} ${mmss(t.st[n])}`).join(', ')] : ['SO FAR YOU HAVE ONLY KILLED IT IN VIGILS.'])] }; });
   if (sec === 2) return [...mySets(), starterSet()].map((id) => { const n = C.s[id] || 0, i = SET_ICONS.indexOf(id); return { id, name: VSETS[id].name, seen: n > 0, icon: (x, y) => sprC('loot', 'setitem', i * 10, x, y), tag: 'SET', rgb: SET_RGB[id] || '255,209,85', lines: [n === 1 ? 'YOU HAVE FOUND ONE PIECE.' : `YOU HAVE FOUND ${n.toLocaleString('en-US')} PIECES.`, setCount(id) ? `YOU ARE WEARING ${setCount(id)} OF THEM.` : 'YOU ARE NOT WEARING ANY.'] }; });
   if (sec === 3) return LEGENDS.map((L, i) => [L, i]).filter(([L]) => !L.hero || L.hero === hero).map(([L, i]) => { const n = C.h[L.id] || 0; return { id: L.id, name: L.name, seen: n > 0, icon: (x, y) => sprC('loot', 'legend', i, x, y), tag: 'HALLOWED', rgb: '255,122,31', hint: `${heroText(L.text)} IT DROPS AS A HALLOWED ${heroText(SLOT_NAME[L.slot] || L.slot.toUpperCase())}. ELITES AND WARDENS DROP HALLOWED PIECES MOST OFTEN, AND PELL'S STALL SOMETIMES SELLS ONE.`, lines: [heroText(L.text), n === 1 ? 'FOUND ONCE.' : `FOUND ${n.toLocaleString('en-US')} TIMES.`] }; });
   // Round 171: the Unwritten Gospel: every piece of lore found out in the world, to read again.
@@ -6444,6 +6449,7 @@ const STORY_HINT = [
   'THE SALT HUTS ARE BY THE CAMP. THE WRECK LIES ON THE SHORE, AND THE LANTERNFOLK LIGHT THEIR LAMPS NEAR THE STACKS.', // round 174
   'SISTER HEW WAITS AT THE LANDING. BROTHER ANSEL SITS BY THE FALLEN BELLS, AND THE RULE IS CUT INTO THE CLOISTER WALL.', // round 179
   'SISTER HEW WAITS AT THE LANDING. THE SISTERS\' GRAVES ARE ON THE ISLE, AND THE NEWEST HAS NO NAME.', // round 181
+  'THE DOOR IS IN THE FAR ROOM. CAST YOUR RECKONING THREE TIMES ON THE WAY DOWN.', // round 182
 ];
 const STORY = [
   { title: 'THE WAKING', stratum: 1, map: 'rooms', seed: 31001, warden: 'candlemass', find: 'SCRATCHED INTO THE WALL', giver: 'vane', turn: 'odile',
@@ -6555,6 +6561,19 @@ const STORY = [
     death: ['SHE... LEFT THE LAMPS... FOR YOU... NOT ME...'],
     outro: [['odile', 'THE CHOIR\'S CAPTAIN, KING OF THE DEAD UNDER THE SEA. AND THE SISTERS KEPT HIS LAMPS LIT ANYWAY.'], ['odile', 'A DOOR BELOW THE THIRTIETH STATION. NOT LOCKED FROM THEIR SIDE. THAT IS WHERE THE KNOCKING COMES FROM.'],
       ['odile', 'WE ARE NOT READY FOR THAT DOOR, SAINT. NOT YET. BUT NOW WE KNOW IT IS THERE.']] },
+  // Round 182: the ninth chapter, after the ending: through the door below the thirtieth Station.
+  { title: 'THE DOOR BELOW', stratum: 3, map: 'rooms', seed: 31009, warden: 'doorkeeper', find: 'THE DOOR BELOW', giver: 'odile', turn: 'odile', ending: true,
+    sum: 'BELOW THE THIRTIETH STATION THERE IS A DOOR, AND SOMETHING KNOCKS ON IT. GO DOWN THROUGH THE CATHEDRAL, PAST EVERY STATION, AND OPEN IT.',
+    goals: [['read', 1, 'FIND THE DOOR'], ['kills', 400, 'KILL FOES'], ['elites', 6, 'KILL NAMED FOES'], ['pen', 3, 'CAST YOUR RECKONING'], ['warden', 1, 'KILL THE DOORKEEPER']],
+    reward: { gold: 6000, ri: 4 },
+    intro: [['odile', 'THE KNOCKING HAS STARTED IN THE CATHEDRAL. THREE KNOCKS AT MIDNIGHT, FROM UNDER THE FLOOR. THE CHOIR SINGS LOUDER TO COVER IT.'], ['vane', 'I HEARD IT THE NIGHT THE CHILD CAME UP, FORTY-FOUR YEARS AGO. I HAVE HEARD IT EVERY NIGHT SINCE.'],
+      ['vane', 'WHATEVER IS BEHIND THAT DOOR SENT YOU UP. NOW IT WANTS YOU BACK.'], ['odile', 'THEN WE FIND OUT WHAT IT IS. GO DOWN, SAINT. I WILL KEEP A LAMP LIT, AS THE SISTERS DID.']],
+    note: ['A DOOR OF PLANKS IN THE ROCK, NO WIDER THAN A MAN, BANDED WITH IRON. THE KNOCKER IS WORN SMOOTH.', "ON THE INSIDE OF THE FRAME, SCRATCHED IN A CHILD'S HAND: 'I WENT UP. SHE STAYED TO HOLD THE DOOR.'", 'THE KNOCKING STOPS. SOMETHING ON THE OTHER SIDE IS LISTENING.', 'THE DOOR IS NOT LOCKED. IT OPENS.'],
+    spawn: ['THREE KNOCKS. YOU HEARD THEM. YOU ALWAYS DO.', 'I KEEP THE DOOR. THE DEAD GO OUT THROUGH ME, AND THE LIVING DO NOT COME IN.', 'SHE CAME THROUGH WITH HER LAMP AND SHUT IT BEHIND HER. THE LIGHT IN MY FACE IS HERS.'],
+    phase: ['KNOCK. KNOCK. KNOCK.', 'THE DOOR OPENS ONE WAY, CHILD!'],
+    death: ['THE LAMP... GIVE IT BACK... TO HER...'],
+    outro: [['odile', 'THE KNOCKING HAS STOPPED. THE CATHEDRAL IS QUIET FOR THE FIRST TIME IN FORTY-FOUR YEARS.'], ['odile', 'IT HAD HER LAMP IN ITS FACE. OSANNE SHUT THAT DOOR WITH HER OWN LIGHT, AND SENT YOU UP TO FINISH WHAT SHE STARTED.'],
+      ['vane', 'THE DEAD WILL STILL RISE. THE WOUND IS STILL OPEN. BUT NOTHING IS CALLING THEM ANY MORE.'], ['odile', 'THE STATIONS ARE YOURS, SAINT. GO AS DEEP AS YOU LIKE. THIS TIME YOU WILL ALWAYS COME BACK UP.']] },
 ];
 // How many chapters this character has finished. Older characters that had cleared a Station count as done.
 // Story runs never clear a Station, so a cleared Station (an older character, or the dev menu) means the story is done.
@@ -6588,6 +6607,7 @@ const FINALE = [
   { c: 'gold', props: [['salt', 'bellframe'], ['props', 'candelabra'], ['props', 'urn'], ['salt', 'bellframe'], ['props', 'candelabra'], ['props', 'urn']] },
   { c: 'holy', props: [['props', 'organ'], ['props', 'candelabra'], ['props', 'sunkpew'], ['salt', 'bellframe'], ['props', 'sunkpew'], ['props', 'candelabra']] }, // round 179: the abbey's undercroft
   { c: 'gold', props: [['props', 'skullpillar'], ['props', 'candelabra'], ['props', 'bonepile'], ['props', 'skullpillar'], ['props', 'candelabra'], ['props', 'bonepile']] }, // round 181: the foot of the stair
+  { c: 'gold', props: [['props', 'column'], ['props', 'candelabra'], ['props', 'statue'], ['props', 'column'], ['props', 'candelabra'], ['props', 'statue']] }, // round 182: the door below
 ];
 function storyPlace() {
   const R0 = game.run, C = STORY[R0.story], st = room.start;
@@ -7689,6 +7709,14 @@ const MON = {
     A('pull', { len: 190, range: 190, windup: 0.6, cd: 6, dmg: 10 }),
     A('summon', { monster: 'cinderMoth', n: 4, range: 300, windup: 0.6, cd: 12 })],
     phases: [[A('ring', { n: 24, range: 220, windup: 0.6, cd: 4.5, dmg: 9, speed: 100, shot: 'ember' })], [A('spiral', { streams: 4, dur: 3, rate: 0.12, range: 240, windup: 0.8, cd: 8, dmg: 9, speed: 100, shot: 'ember' }), A('pattern', { shape: 'ring', at: 'self', n: 14, radius: 105, rad: 18, delay: 0.9, range: 260, windup: 0.7, cd: 7, dmg: 14, pool: 'ember' })]] },
+  // Round 182: the Doorkeeper, what knocks below the thirtieth Station (chapter 9 only: `story` keeps it out of the
+  // Stations' Warden list). Its knock is a slam; three knocks come as crosses of blows round the Saint.
+  doorkeeper: { name: 'THE DOORKEEPER', tier: 'elite', warden: true, story: true, stratum: 3, sheet: 'mon_warden', hp: 3000, speed: 14, r: 16, hy: 44, hr: 24, move: 'chase', fervor: 40, attacks: [
+    A('slam', { range: 56, rad: 42, windup: 0.9, cd: 2.6, dmg: 24 }),
+    A('pattern', { shape: 'cross', at: 'player', n: 9, step: 28, rad: 20, delay: 0.85, range: 240, windup: 0.7, cd: 6, dmg: 16 }),
+    A('shockwave', { range: 190, windup: 0.9, cd: 7, dmg: 15, speed: 120, max: 240 }),
+    A('summon', { monster: 'risen', n: 4, range: 300, windup: 0.6, cd: 12 })],
+    phases: [[A('pattern', { shape: 'ring', at: 'player', n: 10, radius: 70, rad: 20, delay: 0.85, range: 260, windup: 0.6, cd: 6, dmg: 16 })], [A('spiral', { streams: 3, dur: 2.4, rate: 0.13, range: 230, windup: 0.8, cd: 8, dmg: 8, speed: 100, shot: 'ember' }), A('barrage', { n: 8, range: 240, windup: 0.6, cd: 5, dmg: 14, rad: 20 })]] },
   // The Training Yard's dummy: stands still, never attacks, never dies.
   dummy: { name: 'TRAINING DUMMY', tier: 'common', hp: 1e9, speed: 0, r: 6, hy: 16, hr: 9, move: 'static', fervor: 0, attacks: [] },
   // The five Wardens (one comes when the Toll is full). Own sheet, own kits.
@@ -8409,6 +8437,7 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   if (tal('cull') && !e.boss && e.type !== 'dummy' && e.hp - dmg > 0 && e.hp - dmg < e.maxHp * 0.1) { dmg = e.hp; pfxHit(e.x, e.y - (e.hy || 10), true, 'blood'); } // the Cull, with a red burst (round 91)
   e.hp -= dmg; e.flash = 0.05;
   if (!opts.status && !blocked) e.hitT = HIT_T;
+  if (e.boss && !opts.status && e.hp > 0) wardenBleed(e, false); // round 182: a Warden bleeds as the fight goes on
   if (ench('bloodlet') && player.hp > 0) { // Bloodletting: 2% of damage dealt, at most 3% of health a second
     if (game.time - (player.blT || 0) > 1) { player.blT = game.time; player.blGot = 0; }
     const h = Math.min(dmg * E2('bloodlet', 0.02, 0.04), player.maxHp * E2('bloodlet', 0.03, 0.05) - (player.blGot || 0)); if (h > 0) { player.hp = Math.min(player.maxHp, player.hp + h); player.blGot = (player.blGot || 0) + h; if (rng() < 0.15) vemit(e.x, e.y - (e.hy || 10), { n: 2, ramp: 'blood', sp: 30, up: 30, life: 0.5, glow: 5 }); }
@@ -8578,13 +8607,13 @@ function dismember(e, dirx, diry, executed, soft) {
   const n = big ? 4 : e.elite ? 3 : 2 + Math.floor(rng() * 3);
   const kinds = soft ? [] : (armored ? [0, 1, 2, 3] : [1, 2, 3, 1]).sort(() => rng() - 0.5).slice(0, n) /* round 180: no head from every body */, wet = !soft || soft === 'melt' || soft === 'burst'; // round 166: a crumble is its own body; no gibs
   if (goreOpt() !== 'full') kinds.length = 0;
-  for (const k of kinds) gibs.push({ anim: armored ? 'wardenGib' : 'gib', i: k, x: e.x, y: e.y - 6, z: 10, vx: dirx * rand(30, 100) + rand(-45, 45), vy: diry * rand(30, 100) + rand(-45, 45), vz: rand(50, 120), settled: false });
+  for (const k of kinds) gibs.push({ sheet: 'gore', anim: armored ? 'g_iron' : 'g_flesh', i: armored ? k % 3 : [0, 1, 2, 4][k] ?? 5, r: Math.floor(rng() * 4), spin: (rng() < 0.5 ? -1 : 1) * 12, mat: 'blood', x: e.x, y: e.y - 6, z: 10, vx: dirx * rand(30, 100) + rand(-45, 45), vy: diry * rand(30, 100) + rand(-45, 45), vz: rand(50, 120), settled: false });
   if (soft) crumbleMess(e, soft, dirx, diry); else if (wet) bleed(e.x, e.y - e.hy, executed ? 34 : e.elite ? 24 : 12, dirx); // round 181: a crumble leaves its own mess
-  if (!soft) playFx('fx', 'burst', e.x, e.y - e.hy, 18, { big: e.elite || executed });
+  if (!soft) playFx('gore', 'b_blood', e.x, e.y - e.hy, 18, { scale: e.elite || executed ? 1.5 : 1 });
   // Round 63: a burst in the family's colour and a soul that rises; elites shake the floor and are taken by light.
   { const R = monRamp(e); if (!soft) pfxHit(e.x, e.y - e.hy, true, R, !e.elite); if (!LOWFX) vemit(e.x, e.y - e.hy, { n: e.elite ? 10 : 4, ramp: VOICE[e.type] === 'spirit' ? 'violet' : 'holy', sp: 12, up: 70, life: 0.9, grav: -30, size: 2, glow: 4 });
     if (e.elite) { addPfx({ kind: 'quake', x: e.x, y: e.y, r: big ? 90 : 60, max: 0.5, ramp: R, ground: true }); pfxCrack(e.x, e.y, 5, R); if (big && !soft) addPfx({ kind: 'beam', x: e.x, y: e.y, max: 0.5, ramp: 'gold' }); } } // round 166: a crumble shows itself, so no burst or beam over it
-  if (big) { if (!soft) { playFx('fx', 'burst', e.x - 10, e.y - e.hy * 1.4, 14, { big: true }); playFx('fx', 'burst', e.x + 10, e.y - e.hy * 0.6, 12, { big: true }); } rings.push({ x: e.x, y: e.y - 12, t: 0, max: 0.6, r: 70, color: '255,209,85' }); }
+  if (big) { if (!soft) { playFx('gore', 'b_blood', e.x - 10, e.y - e.hy * 1.4, 14, { scale: 1.4 }); playFx('gore', 'b_blood', e.x + 10, e.y - e.hy * 0.6, 12, { scale: 1.4 }); } rings.push({ x: e.x, y: e.y - 12, t: 0, max: 0.6, r: 70, color: '255,209,85' }); }
   if (wet && !soft && goreOpt() !== 'off') splat(e.x + dirx * 6, e.y, e.elite || executed);
 }
 // Round 181: an elite's or rare's crumble (round 166) leaves blood that fits it: a melt spreads a pool under the
@@ -8602,20 +8631,23 @@ function crumbleMess(e, kind, dirx, diry) {
 }
 // Round 181: a Warden settling leaves a mess that fits it (WARDEN_MAT): a wide pool and spray, a field of dust and
 // bones, or scorch.
-const WARDEN_MAT = { candlemass: 'ash', cardinal: 'blood', ladyOfNails: 'blood', bellwright: 'blood', charnelKing: 'dust', tideBishop: 'blood', organist: 'blood', ossuarch: 'dust', ashWidow: 'ash' };
+const WARDEN_MAT = { doorkeeper: 'dust', candlemass: 'ash', cardinal: 'blood', ladyOfNails: 'blood', bellwright: 'blood', charnelKing: 'dust', tideBishop: 'blood', organist: 'blood', ossuarch: 'dust', ashWidow: 'ash' };
+// Round 182: a Warden bleeds while it fights: a few drops on hits (at most every 0.3 s), a splat under it for each
+// tenth of its health lost, and a burst at each phase. Its stuff is WARDEN_MAT's (blood, dust, ash).
+function wardenBleed(e, phase) {
+  if (!SPR.gore || !e) return; const M = WARDEN_MAT[e.type] || 'blood', hy = e.hy || 24;
+  const decal = (k, x, y, a) => goreDecal(M === 'blood' ? 's_blood' : M === 'dust' ? 's_dust' : 's_scorch', M === 'blood' ? k % 8 : k % 3, x, y, { a });
+  if (phase) { gush(e.x, e.y, hy, 30, M, { sp: 130, up: 90, w: 14 }); if (M === 'blood') goreDecal('s_radial', e.phase % 3, e.x, e.y + 2, { a: 0.85 }); else decal(e.phase, e.x, e.y + 2, 0.8); game.shake = Math.max(game.shake || 0, 4); return; }
+  if (game.time > (e.bleedT || 0)) { e.bleedT = game.time + 0.3; gush(e.x, e.y, hy * 0.8, 3, M, { sp: 70, up: 60 }); }
+  const lost = Math.floor((1 - e.hp / e.maxHp) * 10); if (lost > (e.bledN || 0)) { e.bledN = lost; decal(lost, e.x + rand(-16, 16), e.y + 2 + rand(-6, 6), 0.8); }
+}
 function wardenMess(e) {
   if (!SPR.gore) return; const mat = WARDEN_MAT[e.type] || 'blood', w = Math.max(24, (e.r || 14) * 1.6), v = Math.floor(rng() * 8), g = { e, dirx: 0, diry: 0, mat };
   if (mat === 'blood') { goreDecal('s_radial', v % 3, e.x, e.y + 2); for (let k = 0; k < 3; k++) goreDecal('s_blood', (v + k * 3) % 8, e.x + Math.cos(k * 2.1) * w, e.y + 2 + Math.sin(k * 2.1) * w * 0.5); gores.push({ kind: 'stain', e, mat, t: 0, x: e.x, y: e.y + 4, chunks: [], end: 2.4, pool: 5, v }); gush(e.x, e.y, 20, 60, mat, { sp: 160, up: 90, w: 20 }); goreGibs({ ...g, mat: 'blood' }, 'flesh', 5, { z: 20 }); }
   else if (mat === 'dust') { for (let k = 0; k < 4; k++) goreDecal('s_dust', k % 3, e.x + Math.cos(k * 1.6) * w * 0.8, e.y + 2 + Math.sin(k * 1.6) * w * 0.4, { a: 0.7 }); goreGibs({ ...g, mat: 'dust' }, 'bone', 8, { z: 24, skull: true }); sfx('clatter', { vol: 0.6, rate: 0.8, gap: 0.05 }); }
   else { for (let k = 0; k < 3; k++) goreDecal('s_scorch', k % 3, e.x + Math.cos(k * 2.1) * w * 0.7, e.y + 2 + Math.sin(k * 2.1) * w * 0.35, { a: 0.9 }); if (!LOWFX) vemit(e.x, e.y - 10, { n: 20, ramp: 'fire', sp: 40, up: 60, life: 1, grav: -20, size: 2, glow: 4, spread: w }); }
 }
-function splat(x, y, big = false) {
-  const f = frameOf('fx', 'splat', Math.floor(rng() * 3));
-  const s = big ? 1.5 : 1;
-  sctxStain.globalAlpha = 0.85;
-  sctxStain.drawImage(IMG.fx, f.x, f.y, f.w, f.h, Math.round(x - f.w * s / 2), Math.round(y - f.h * s / 2), Math.round(f.w * s), Math.round(f.h * s));
-  sctxStain.globalAlpha = 1;
-}
+function splat(x, y, big = false) { goreDecal(big ? 's_radial' : 's_blood', Math.floor(rng() * (big ? 3 : 8)), x, y, { a: 0.85 }); } // round 182: the gore sheet's splats (honours the GORE setting)
 
 // ---------------------------------------------------------- deaths (round 180) ---
 // Eleven ways for a foe to die, so a crowd never dies the same way twice in a row (the owner asked for many, and
@@ -8636,7 +8668,8 @@ const GORE_COL = { blood: ['blood0', 'blood1', 'blood1', 'blood1h', 'blood2'], b
 const GORE_STAIN = { blood: ['blood2h', 'blood3', 'blood3h'], bile: ['moss2h', 'moss3'], ecto: ['violet3'], dust: null, ash: null };
 const GORE_END = { burst: 2.4, shred: 2.4, cleave: 2.8, pop: 2.8, crush: 2.2, corpse: 3.2, bones: 2.6, ash: 1.6, ecto: 1.1, bile: 2.4 };
 const GORE_CAP = 30, GORE_CHUNKS = 360; // live deaths and live body pieces; past them, pieces grow bigger (fewer)
-let gores = [], GORE_HIT = null, goreLast = [], GORE_FORCE = null; // GORE_FORCE: a test or the dev menu picks the death
+let gores = [], GORE_HIT = null, goreLast = [], GORE_FORCE = null;
+const GORE_NAME = { burst: 'BURST', shred: 'SHRED', cleave: 'CLEAVE', pop: 'HEAD POP', crush: 'CRUSH', pool: 'BLEED OUT', geyser: 'GEYSER', bones: 'BONES', ash: 'ASH', ecto: 'ECTOPLASM', bile: 'BILE' }; // round 182: the yard's DEATH picker // GORE_FORCE: a test or the dev menu picks the death
 const gcol = (n) => PAL[n] || PAL.blood1;
 const goreOpt = () => opt('gore'); // round 181: FULL, LESS (a third of the drops, faint splats, no gibs) or OFF (foes fall to dust)
 // One mirrored copy of a sheet (or a tinted sheet), kept for the run of the game.
@@ -8723,7 +8756,8 @@ function goreKind(e) {
 }
 function goreStart(e, dirx, diry, force) {
   if (!SPR.gore || !e.def.walk || gores.length >= GORE_CAP * 2) return false; // a whole room killed at once: the old cheap burst
-  let kind = force || GORE_FORCE || goreKind(e); if (goreOpt() === 'off' && !GORE_FORCE) kind = VOICE[e.type] === 'spirit' ? 'ecto' : kind === 'ash' ? 'ash' : 'bones'; goreLast = [kind, ...goreLast].slice(0, 2);
+  const yd = game.yard && game.yard.death != null ? GORE_KINDS[game.yard.death] : null; // round 182: the yard can pick one
+  let kind = force || GORE_FORCE || yd || goreKind(e); if (goreOpt() === 'off' && !GORE_FORCE) kind = VOICE[e.type] === 'spirit' ? 'ecto' : kind === 'ash' ? 'ash' : 'bones'; goreLast = [kind, ...goreLast].slice(0, 2);
   const fam = VOICE[e.type] || 'flesh', mat = kind === 'bile' ? 'bile' : kind === 'ash' ? 'ash' : kind === 'bones' ? 'dust' : GORE_MAT[fam] || 'blood';
   let L = Math.hypot(dirx, diry); if (L < 0.1) { dirx = e.x - player.x; diry = e.y - player.y; L = Math.hypot(dirx, diry) || 1; } dirx /= L; diry /= L;
   // A soul rises from every death (round 63), in the family's colour; elites shake the floor.
@@ -11953,12 +11987,13 @@ const WDIE_FX = {
   ladyOfNails: (f, i, e) => { if (i === 1) sfx('block', { vol: 0.9, rate: 0.6, gap: 0 }); if (i === 3) { sfx('glass', { vol: 0.9, rate: 0.5, gap: 0 }); pfxHit(e.x, e.y - 30, true, 'iron'); game.shake = Math.max(game.shake || 0, 4); } },
   bellwright: (f, i, e) => { if (i === 2) { sfx('knell', { vol: 1, rate: 0.55, gap: 0 }); rings.push({ x: e.x, y: e.y - 30, t: 0, max: 1.2, r: 120, color: '255,192,74' }); } if (i === 6) { sfx('break', { vol: 0.8, rate: 0.6 }); game.shake = Math.max(game.shake || 0, 6); } },
   organist: (f, i, e) => { if (i === 1) sfx('drip', { vol: 0.8, rate: 0.5 }); if (!LOWFX && i > 5 && i < 15) vemit(e.x + rand(-12, 12), e.y - 2, { n: 2, ramp: 'water', sp: 4, up: 26, life: 0.7, grav: -10, size: 2 }); },
+  doorkeeper: (f, i, e) => { if (i === 1) sfx('break', { vol: 0.9, rate: 0.6 }); if (i === 6) sfx('break', { vol: 0.7, rate: 0.9 }); if (!LOWFX && i > 2 && i < 12) vemit(e.x + rand(-12, 12), e.y - 50 + rand(-10, 10), { n: 3, ramp: 'gold', sp: 20, up: 30, life: 0.9, size: 2, glow: 4 }); if (i === 10 && !LOWFX) vemit(e.x, e.y - 40, { n: 14, ramp: 'gold', sp: 10, up: 70, life: 1.6, grav: -30, size: 2, glow: 6 }); }, // round 182: light leaks from the breaking stone, then rises
   ossuarch: (f, i, e) => { if (i === 2) sfx('break', { vol: 0.9, rate: 0.75 }); if (i === 7) sfx('break', { vol: 0.6, rate: 1.1 }); if (!LOWFX && i > 3 && i < 12) vemit(e.x + rand(-20, 20), e.y - 4, { n: 3, ramp: 'bone', sp: 16, up: 14, life: 0.8, size: 2 }); },
   ashWidow: (f, i, e) => { if (i === 0) sfx('ash', { vol: 0.8 }); if (!LOWFX && i < 14) vemit(e.x - 6 + rand(-8, 8), e.y - 50 + i * 3, { n: 4, ramp: 'bone', ang: -0.3, arc: 0.4, sp: 30, up: 12, life: 1.2, size: 2 }); },
   cardinal: (f, i, e) => { if (i === 2) sfx('shrine', { vol: 0.6, rate: 0.8 }); if (!LOWFX && i > 2 && i < 13) vemit(e.x, e.y - 40 + i * 2, { n: 4, ramp: 'holy', sp: 8, up: 50, life: 1.1, grav: -20, size: 2, glow: 3 }); },
 };
 // Round 165: the moment a Warden's remains come to rest: a small shake, a ring along the floor in its colour and a low puff of dust.
-const WDIE_SETTLE = { candlemass: 'fire', tideBishop: 'water', charnelKing: 'fire', ladyOfNails: 'iron', bellwright: 'gold', organist: 'water', ossuarch: 'bone', ashWidow: 'bone', cardinal: 'holy' };
+const WDIE_SETTLE = { doorkeeper: 'gold', candlemass: 'fire', tideBishop: 'water', charnelKing: 'fire', ladyOfNails: 'iron', bellwright: 'gold', organist: 'water', ossuarch: 'bone', ashWidow: 'bone', cardinal: 'holy' };
 function wardenSettle(e) {
   try { wardenMess(e); } catch (err) { logError('wardenMess', err); } // round 181
   const ramp = WDIE_SETTLE[e.type] || 'bone', w = Math.max(24, (e.r || 14) * 1.6);

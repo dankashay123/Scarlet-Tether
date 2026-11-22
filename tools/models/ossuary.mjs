@@ -30,6 +30,10 @@ const MM = {
   lace: { ramp: 'slate', bias: -0.25, min: 3, spec: 0.12 }, laceLit: { ramp: 'stone', bias: -0.12, min: 3 }, veil: { ramp: 'slate', bias: -0.5, min: 6, spec: 0.2 },
   censer: { ramp: 'iron', spec: 0.6, bias: -0.18, min: 2 }, brass: { ramp: 'gold', spec: 0.6, bias: -0.25, min: 2 },
   goldDark: { ramp: 'gold', bias: -0.22, spec: 0.6, min: 2 },
+  // Round 182, the Doorkeeper: a robe of grey sackcloth banded with nailed iron, stone fists, a face that is a door.
+  robe: { ramp: 'slate', spec: 0.05, bias: -0.04, min: 1 }, robeDark: { ramp: 'slate', bias: -0.2, min: 3 },
+  stoneFist: { ramp: 'stone', spec: 0.15, bias: 0.04 }, stoneFistDark: { ramp: 'stone', bias: -0.14, min: 2 },
+  door: { ramp: 'wood', spec: 0.1, bias: -0.04, min: 1 }, doorDark: { ramp: 'wood', bias: -0.22, min: 3 }, ironBand: { ramp: 'iron', spec: 0.55, bias: -0.12, min: 2 },
 };
 const A = (f, ax, ay) => Object.assign(f, { ax: mk(ax), ay: mk(ay) }); // round 171: anchors follow the model scale
 const D = (f, x, y, c) => dot(f, Math.floor(x), Math.floor(y), c);
@@ -352,6 +356,60 @@ function ashWidow(t = 0, atk = 0) {
   return o.f;
 }
 
+// Round 182: the Doorkeeper, what knocks below the thirtieth Station. A gaunt giant in a long nailed robe, so tall it
+// stoops; its face is a small arched door with an iron knocker ring through the jaw and one gold light behind the
+// planks. Its fists are stone. It raises both and knocks the floor three times.
+function doorkeeper(t = 0, atk = 0) {
+  const S = new Scene(), cx = 56, B = atk ? 0 : bobAt(t) / 1.25;
+  const L = atk === 1 ? -3 : atk === 2 ? -5 : atk === 3 ? 7 : 1;
+  // The robe: a long narrow bell, hem dragging, two iron bands studded with nails.
+  const top = 30 + B, hem = 110;
+  S.add(rotZ(folds(skirt(cx, top, hem, 9, 21, 0, 0.7, 'robe'), { cx, n: 11, amp: 0.9, y0: top, y1: hem }), [cx, top], L * 0.006), 1.4);
+  S.add(folds(skirt(cx - 4, top + 8, hem, 7, 16, -6, 0.5, 'robeDark'), { cx: cx - 4, cz: -6, n: 7, amp: 0.8, y0: top, y1: hem }), 1.4);
+  const nails = [];
+  for (const by of [62, 86]) { S.paint({ mat: 'ironBand', f: (x, y, z) => Math.max(Math.abs(y - (by + B * 0.5)) - 2, -z + 2) }); for (let k = -3; k <= 3; k++) nails.push([cx + k * 4.6 + L * 0.3, by + B * 0.5]); }
+  // A ragged dark hem.
+  for (let k = -5; k <= 5; k++) S.add(capsule([cx + k * 3.8, 104, 10 - Math.abs(k) * 0.6], [cx + k * 3.8 + (k % 2) * 1.4, 110, 11 - Math.abs(k) * 0.6], 1.6, 1.1, 'robeDark'), 0.8);
+  // Stooped shoulders and a long neck bowing forward.
+  S.add(ellipsoid([cx + L * 0.6, 30 + B, 0], [13, 8, 8], 'robe'), 2.2);
+  // A short shawl of lighter cloth over the stoop.
+  S.add(folds(skirt(cx + L * 0.6, 24 + B, 40 + B, 7, 15, 0, 0.8, 'robe'), { cx, n: 10, amp: 0.7, y0: 24, y1: 40 }), 1.4);
+  S.paint({ mat: 'ashCloth', f: (x, y, z) => Math.max(y - (38 + B) - 1.2 * Math.abs(sin(x * 0.8)), (33 + B) - y, -z + 2) });
+  const hx = cx + 10 + L * 1.4, hy = 16 + B + (atk === 3 ? 10 : atk ? -3 : 0);
+  S.add(capsule([cx + 2 + L * 0.6, 28 + B, 0], [hx - 3, hy + 7, 0], 3.6, 3, 'robeDark'), 1.4);
+  // Arms: long, thin, the robe's sleeves hanging; huge stone fists.
+  const g = stride(t / 4, 6, 4), gB = stride(t / 4 + 0.5, 6, 4);
+  const sh = [cx + 10 + L, 30 + B, 7], shB = [cx - 9 + L, 30 + B, -7];
+  const fist = atk === 1 ? [cx + 6, -2, 10] : atk === 2 ? [cx - 2, -8, 10] : atk === 3 ? [cx + 36, 102, 12] : [cx + 26 + g.x, 92 - g.up, 12];
+  const fistB = atk === 1 ? [cx - 10, 0, -6] : atk === 2 ? [cx - 16, -4, -6] : atk === 3 ? [cx + 26, 104, -4] : [cx - 6 + gB.x, 94 - gB.up, -10];
+  for (const [s0, f, near] of [[shB, fistB, false], [sh, fist, true]]) {
+    const up = atk === 1 || atk === 2;
+    const el = [(s0[0] + f[0]) / 2 + (up ? 10 : atk === 3 ? 2 : 6), (s0[1] + f[1]) / 2 + (up ? 2 : -3), (s0[2] + f[2]) / 2];
+    S.add(sphere(s0, 5.4, near ? 'robe' : 'robeDark'), 2);
+    S.add(capsule(s0, el, 5, 4.4, near ? 'robe' : 'robeDark'), 1.5);
+    // A wide sleeve hanging from the elbow, then a thick stone forearm.
+    const sl = [el[0] + (f[0] - el[0]) * 0.35, el[1] + (f[1] - el[1]) * 0.35, el[2]];
+    S.add(capsule(el, sl, 5.4, 6.6, near ? 'robe' : 'robeDark'), 1.2);
+    S.add(capsule(sl, f, 4, 4.8, near ? 'stoneFistDark' : 'stoneFistDark'), 1);
+    S.add(bumpy(sphere(f, 9.4, near ? 'stoneFist' : 'stoneFistDark'), 0.9, 0.5, near ? 1 : 2), 1.6);
+    for (let k = 0; k < 4; k++) S.add(sphere([f[0] + 6.6, f[1] - 5 + k * 3.4, f[2] + 5 - k * 0.7], 3, near ? 'stoneFist' : 'stoneFistDark'), 1);
+  }
+  // The face: a small arched door of planks in an iron frame, a ring knocker hanging through the jaw.
+  S.add(ellipsoid([hx, hy, 3], [8.6, 10.6, 6.4], 'doorDark'), 1.2);
+  S.paint({ mat: 'door', f: (x, y, z) => Math.max(Math.hypot((x - hx) / 6, Math.max(0, hy - 2 - y) / 7.4) - 1, y - (hy + 7.4), -z + 4) });
+  for (const dx of [-2.2, 2.2]) S.paint({ mat: 'doorDark', f: (x, y, z) => Math.max(Math.abs(x - (hx + dx)) - 0.45, Math.abs(y - (hy + 1)) - 7, -z + 6) });
+  S.paint({ mat: 'ironBand', f: (x, y, z) => Math.max(Math.abs(Math.hypot((x - hx) / 6.8, Math.max(0, hy - 2 - y) / 8.2) - 1) * 6 - 0.9, y - (hy + 8.2), -z + 3.5) });
+  S.add(torus([hx + 1, hy + 11 + (atk === 3 ? 1 : 0), 6.5], 3.6, 1.1, 0.15, 'ironBand'), 0.3);
+  // A hood falling back from the door.
+  S.add(clip(ellipsoid([hx - 3, hy - 1, 0], [9.6, 11, 8], 'robeDark'), (x, y, z) => z - 3.5), 1.6);
+  const o = wshoot(S, cx);
+  // One light behind the planks, the lantern Osanne carried down; nail heads on the bands.
+  o.dot(hx + 1, hy - 1, 'gold0'); o.dot(hx + 2, hy - 1, 'gold1'); o.dot(hx + 1, hy, 'gold1');
+  for (const [x, y] of nails) { o.dot(x, y - 0.6, 'iron0'); o.dot(x + 0.8, y - 0.6, 'iron1'); }
+  if (atk === 3) for (let k = 0; k < 11; k++) { const a = PI + k * PI / 10; o.free(fist[0] + cos(a) * (12 + (k % 2) * 5), 108 + sin(a) * 6 - (k % 3), k % 2 ? 'stone2' : 'stone1'); }
+  return o.f;
+}
+
 // ================================================================ export ===
 const mon_common = {}, mon_rare = {}, mon_warden = {};
 for (const [id, fn, flat] of [['gleaner', gleaner, false], ['cinderMoth', cinderMoth, true]]) {
@@ -366,7 +424,7 @@ for (const [id, fn, flat] of [['gleaner', gleaner, false], ['cinderMoth', cinder
   mon_rare.abbot_attack = () => [abbot({ pose: 'windup' }), abbot({ pose: 'windup', bob: -2 }), abbot({ pose: 'strike', bob: 0 })];
   mon_rare.abbot_hit = r.hit; mon_rare.abbot_die = r.die;
 }
-for (const [id, fn] of [['ossuarch', ossuarch], ['ashWidow', ashWidow]]) {
+for (const [id, fn] of [['ossuarch', ossuarch], ['ashWidow', ashWidow], ['doorkeeper', doorkeeper]]) {
   const r = reactions(() => fn(0, 0), 0.8);
   mon_warden[`${id}_walk`] = () => HALF.map((t) => fn(t, 0));
   mon_warden[`${id}_attack`] = () => [1, 2, 3].map((a) => fn(0, a));
