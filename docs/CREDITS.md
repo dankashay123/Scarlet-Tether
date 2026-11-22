@@ -96,3 +96,8 @@ multi-gigabyte archives.
 
 `tools/build-weather.py` synthesises these from noise, with no sample pack: the moor's rain (`amb_rain`), thunder in
 a moor storm (`thunder`) and the crackle of an ember storm in the Ashfields (`amb_embers`).
+
+## Gore sounds (round 180, made here)
+
+`tools/build-gore.py` synthesises the wet burst of a death (`splat`), bones hitting stone (`clatter`) and a bile sac
+bursting (`pop`), with no sample pack.

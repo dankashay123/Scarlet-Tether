@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-22, after round 179 (build 179, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-22, after round 180 (build 180, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -393,6 +393,12 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **After round 180 (gore):** foes die eleven ways (`GORE_KINDS`). Open items: elites and rares still crumble
+  (round 166) and only fall back to gore when ten crumbles are already moving; Wardens keep their own deaths. The
+  pieces fade after about 2.5 s (only stains and settled gibs stay). `perf.cjs`: about +0.9 ms a frame in the dense
+  crowd on the headless machine (gore update 0.2 ms, the rest in the actors pass); `GORE_CHUNKS` (360 live pieces)
+  makes later deaths use bigger pieces. No gore setting yet (a GORE: FULL / LESS / OFF option would be easy:
+  `goreStart` returning false falls back to the old burst).
 - **After round 179:** all five regions and seven chapters are in (chapter 7, THE FLOODED UNDERCROFT, opens after the
   ending). Open items:
   - **The stair under the sea:** chapter 7 ends on a stair from the isle's undercroft toward the Wound, with Osanne's
@@ -785,6 +791,24 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 180:** the owner: "a revamp of the gore/blood... not just have every animation be the same with a skull
+  flying out. Let's make like 10 different goresplosion animations and increase quality all throughout." Eleven
+  deaths in `index.html` (`GORE_KINDS`, `goreStart`, `updateGore`, `drawGore`, `drawGoreGround`): burst (pieces of the
+  body's own sprite fly out, `b_blood`), shred (small pieces and a cone of drops along the blow, a streak decal),
+  cleave (cut on a slant: the top slides off, the legs fold, a jet from the cut), pop (the head flies, a jet from the
+  neck), crush (squashed flat, radial splat), pool (falls, lies in a spreading pool, `s_pool` frames drawn live then
+  baked), geyser (a jet from the neck while it falls), bones (skeletons: pieces heap and rattle, bone gibs, a skull
+  half the time, dust), ash (burning kills: charred dark, then flakes rise and fall, scorch), ecto (spirits: the body
+  rises in wobbling strips, violet splat) and bile (vermin: swells, then pops in green). `goreKind` weighs them by
+  family (`GORE_W`, from `VOICE`) and the killing blow (`GORE_HIT`, set in `hurtEnemy`: crit, overkill, a blade, a
+  burn, a non-bolt blow), and takes the last two picks less often. Body pieces are drawn straight from the sheet
+  (`goreBody`, `goreChunks` on the grid of `crumbleCells`; mirrored and tinted copies are one canvas per sheet,
+  `flipOf`, `tintKey`). Drops are 2x2 on the grid (`gush`, `p.g`), stretched when fast, most land close, and stain
+  where they land (`p.st`; dust and ash leave none); hit spatter (`bleed`) is on the grid too. New sheet `gore`
+  (`tools/models/gore.mjs`: gibs by material in four turns, splats, streaks, radial splats, pools, bile, ectoplasm,
+  scorch, dust, burst animations; drawn at half size and doubled so it sits on the grid). Gibs tumble (`gibFrame`),
+  stain on each bounce, and bake into the floor at 75%. The old path's head gib is gone (`dismember`). Sounds from
+  `tools/build-gore.py`: `splat`, `clatter`, `pop`. `GORE_FORCE` (HS) forces one death. Test: `round180.cjs`.
 - **Round 179:** the owner: "let's continue" (round 178's five). (A) Weather: it was drawn under the darkness layer, so
   at night it barely showed; `drawWeather` now runs after the glow pass, in screen space, and its count scales with
   the screen area (0.7x to 1.4x of 540x270). Ash is brighter (100 flakes, some two wide). (B) Weather sounds from

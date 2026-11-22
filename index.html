@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '179';
+const BUILD = '180';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '180': ['FOES NOW DIE IN ELEVEN WAYS: BURST, BLASTED APART, CUT IN TWO, HEAD POPPED, CRUSHED FLAT, BLED OUT IN A POOL, A JET FROM THE NECK, A PILE OF RATTLING BONES, BURNT TO ASH, ECTOPLASM AND A BILE POP.', 'THE DEATH FITS THE FOE AND THE BLOW: SKELETONS FALL TO BONES, SPIRITS MELT AWAY, BURNING FOES TURN TO ASH, BLADES CUT AND BIG HITS FLATTEN.', 'NEW GORE ART: CHUNKS OF THE FOE ITSELF, TUMBLING GIBS, WET SPLATS, STREAKS ALONG THE BLOW AND SPREADING POOLS. SKULLS ONLY FLY FROM SKELETONS AND POPPED HEADS.', 'NEW SOUNDS FOR A WET BURST, FALLING BONES AND A BILE POP.'],
   '179': ['A NEW CHAPTER AFTER THE ENDING: THE FLOODED UNDERCROFT. SAIL TO THE ABBEY ISLE, MEET BROTHER ANSEL BY THE FALLEN BELLS AND GO DOWN UNDER THE ABBEY.', 'WEATHER NOW SHOWS AT NIGHT: RAIN, ASH AND SPRAY ARE BRIGHTER, AND THERE IS MORE OF IT ON BIGGER SCREENS.', 'RAIN ON THE MOOR CAN BE HEARD NOW, THUNDER ROLLS WITH STORM LIGHTNING, AND AN EMBER STORM CRACKLES.', 'AUTO PLAY OUT IN A REGION NOW WALKS TO THE DAY\'S CACHE AND TO LANDMARKS YOU HAVE NOT FOUND.', 'THE CODEX LORE PAGE HAS ONE ROW PER REGION, AND ITS SUMMARY SHOWS THE PLACES FOUND IN EACH.'],
   '178': ['AFTER THE ENDING, A BOAT AT THE SALTREACH CAMP SAILS TO THE ABBEY ISLE: A NEW REGION WITH SISTER HEW, SIX PIECES OF LORE AND THE OSSUARCH AS ITS WORLD BOSS.', 'EACH REGION HIDES A CACHE AT ONE LANDMARK A DAY. IT OPENS ONCE A DAY AND PAYS TOWARD THAT REGION\'S DAILY QUEST.', 'ONE REGION A DAY HAS A STORM, AND THE CRIER CALLS IT: LIGHTNING ON THE MOOR, THICK FOG ON THE FEN AND THE ISLE, EMBERS IN THE ASHFIELDS, A HIGH TIDE ON THE COAST.', 'THE TRAVEL MAP SHOWS EACH REGION\'S WEATHER, THE DAY\'S STORM AND A MARK WHERE A DAILY QUEST WAITS.', 'REGION WEATHER AND MIST NOW SHOW ACROSS THE WHOLE SCREEN.', 'AUTO PLAY NO LONGER TALKS TO PEOPLE OR SAILS HOME ON ITS OWN OUT IN THE REGIONS.'],
   '177': ['EACH DAY ONE DAILY QUEST SENDS YOU OUT INTO A REGION: KILLS, ELITES OR PLACES THERE. THE TRAVEL MAP SHOWS IT.', 'AT HALF HEALTH A WORLD BOSS CALLS ITS REGION: FOES COME TO ITS SIDE AND IT LEARNS A NEW ATTACK. WORLD BOSSES HAVE MORE HEALTH, AND THE CODEX SAYS WHERE EACH ONE WALKS.', 'WEATHER COMES AND GOES IN THE REGIONS: RAIN ON THE MOOR, FOG ON THE FEN, ASH IN THE ASHFIELDS, SPRAY ON THE SALTREACH.', 'FOES OUT IN THE REGIONS DROP MORE GEAR AND GOLD, MORE AGAIN ON A HARD TRIP.', 'THE OPENING IS SHORTER, AND THE STORY BOX GROWS TO FIT LONG LINES ON SMALL PHONES.'],
@@ -695,8 +696,8 @@ if (document.fonts) Promise.all([document.fonts.load(fontOf(22, false)), documen
 // <audio> elements routed through the same context, so memory stays low.
 // iOS 17+: audioSession 'ambient' makes the game follow the silent switch.
 const AUDIO = (() => {
-  const SFX = ['voice_lo', 'voice_mid', 'voice_hi', 'slash', 'shing', 'stab', 'whirl', 'swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'buff', 'chirp', 'bleat', 'puff', 'sacrifice', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_ashWidow', 'fall_ashWidow', 'thunder'];
-  const VOL = { thunder: 0.6, voice_lo: 0.1, voice_mid: 0.1, voice_hi: 0.09, slash: 0.45, shing: 0.35, stab: 0.5, whirl: 0.45, swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, buff: 0.06, chirp: 0.06, bleat: 0.08, puff: 0.1, sacrifice: 0.55, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
+  const SFX = ['voice_lo', 'voice_mid', 'voice_hi', 'slash', 'shing', 'stab', 'whirl', 'swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'buff', 'chirp', 'bleat', 'puff', 'sacrifice', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_ashWidow', 'fall_ashWidow', 'thunder', 'splat', 'clatter', 'pop'];
+  const VOL = { splat: 0.45, clatter: 0.4, pop: 0.4, thunder: 0.6, voice_lo: 0.1, voice_mid: 0.1, voice_hi: 0.09, slash: 0.45, shing: 0.35, stab: 0.5, whirl: 0.45, swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, buff: 0.06, chirp: 0.06, bleat: 0.08, puff: 0.1, sacrifice: 0.55, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
   const A = { ctx: null, buf: {}, last: {}, muted: false, master: null, sfxBus: null, voiceBus: null, musicBus: null, tracks: {}, want: [] };
   try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch { /* not supported */ }
   try { A.muted = !!JSON.parse(localStorage.getItem('hollow-saint') || '{}').muted; } catch { /* private mode */ }
@@ -2775,7 +2776,7 @@ function makePlayer(x, y) {
   };
 }
 function resetWorld() {
-  enemies = []; bolts = []; parts = []; vparts = []; gibs = []; falls = []; nums = []; ghosts = []; rings = []; fxs = []; pools = []; flasks = []; chains = []; lashes = [];
+  enemies = []; bolts = []; parts = []; vparts = []; gibs = []; gores = []; falls = []; nums = []; ghosts = []; rings = []; fxs = []; pools = []; flasks = []; chains = []; lashes = [];
   hazards = []; shots = []; drops = []; skillFx = []; pfx = [];
 }
 // Stratum II swaps the dungeon sheets for their drowned copies (see
@@ -8417,7 +8418,7 @@ function hurtEnemy(e, dmg, crit, dirx, diry, kb = 60, opts = {}) {
   if (e.type === 'imp' && !e.alarmed) { e.alarmed = true; toast('KILL IT BEFORE IT ESCAPES!', 1.6); }
   // Round 138: damage and kills by source for the balance tools (autobench prints them): the rite, else the hit's kind.
   if (game.run) { const R = game.run, src = rr || opts.kind || (HIT_BOLT ? (HIT_BOLT.melee ? 'blade' : HIT_BOLT.shard ? 'shard' : 'bolt') : opts.status ? 'status' : 'other'); (R.dmgBy ||= {})[src] = (R.dmgBy[src] || 0) + dmg; if (e.hp <= 0) (R.killBy ||= {})[src] = (R.killBy[src] || 0) + 1; }
-  if (e.hp <= 0) killEnemy(e, dirx, diry);
+  if (e.hp <= 0) { GORE_HIT = { crit, over: -e.hp / e.maxHp, blade: opts.kind === 'bolt' && HIT_BOLT && (HIT_BOLT.cut || HIT_BOLT.melee), burn: !!(opts.status && (opts.color === PAL.ember1 || e.burn > 0)) || (e.burn > 0 && rng() < 0.5), blow: !opts.status && opts.kind !== 'bolt' && dmg > e.maxHp * 0.6 }; killEnemy(e, dirx, diry); GORE_HIT = null; } // round 180: the blow picks the death
 }
 
 // The set arms' effects when a bolt strikes.
@@ -8537,7 +8538,7 @@ function killEnemy(e, dirx, diry, executed = false) {
 // ---------------------------------------------------------------- gore ---
 function bleed(x, y, n, dir) {
   if (parts.length > (LOWFX ? 120 : 500)) n = Math.min(n, 1);
-  for (let i = 0; i < n; i++) parts.push({ kind: 'blood', x, y, z: 8, vx: dir * rand(10, 80) + rand(-25, 25), vy: rand(-30, 30), vz: rand(10, 70), c: pick([PAL.blood0, PAL.blood1, PAL.blood1, PAL.blood2]), s: rng() < 0.35 ? 2 : 1 });
+  for (let i = 0; i < n; i++) parts.push({ kind: 'blood', x, y, z: 8, vx: dir * rand(10, 80) + rand(-25, 25), vy: rand(-30, 30), vz: rand(10, 70), c: pick([PAL.blood0, PAL.blood1, PAL.blood1, PAL.blood2]), st: rng() < 0.5 ? pick([PAL.blood2h || PAL.blood2, PAL.blood3]) : null, s: 2, g: 1 }); // round 180: on the 2x2 grid; half stain
 }
 function sparks(x, y, c, n) {
   for (let i = 0; i < n; i++) parts.push({ kind: 'spark', x, y, z: 0, vx: rand(-90, 90), vy: rand(-90, 90), vz: 0, c, life: rand(0.1, 0.3) });
@@ -8545,12 +8546,13 @@ function sparks(x, y, c, n) {
 // Round 166: how a body leaves: a Warden's own death, an elite's or rare's crumble, or the plain fall and burst.
 function bodyFalls(e, dirx, diry, executed) {
   if (!executed && !e.boss && (e.elite || e.tier === 'elite' || e.tier === 'rare') && !e.illusion && crumbleRoom()) { const cr = startCrumble(e); if (cr) { falls.push({ e, dirx, diry, t: 0, y: e.y, cr }); dismember(e, dirx, diry, false, cr.kind); return; } }
+  if (!executed && !e.boss && !e.illusion && e.type !== 'dummy' && goreStart(e, dirx, diry)) return; // round 180: eleven deaths
   if (!executed && e.def.die && SPR[e.def.sheet].anims[e.def.die]) falls.push({ e, dirx, diry, t: 0, y: e.y, wd: wardenDies(e) }); else dismember(e, dirx, diry, executed);
 }
 function dismember(e, dirx, diry, executed, soft) {
   const armored = e.def.shield || ['knight', 'jailer', 'inquisitor', 'titan', 'golem'].includes(e.type), big = e.tier === 'elite';
   const n = big ? 4 : e.elite ? 3 : 2 + Math.floor(rng() * 3);
-  const kinds = soft ? [] : [0, 1, 2, 3].sort(() => rng() - 0.5).slice(0, n), wet = !soft || soft === 'melt' || soft === 'burst'; // round 166: a crumble is its own body; no gibs
+  const kinds = soft ? [] : (armored ? [0, 1, 2, 3] : [1, 2, 3, 1]).sort(() => rng() - 0.5).slice(0, n) /* round 180: no head from every body */, wet = !soft || soft === 'melt' || soft === 'burst'; // round 166: a crumble is its own body; no gibs
   for (const k of kinds) gibs.push({ anim: armored ? 'wardenGib' : 'gib', i: k, x: e.x, y: e.y - 6, z: 10, vx: dirx * rand(30, 100) + rand(-45, 45), vy: diry * rand(30, 100) + rand(-45, 45), vz: rand(50, 120), settled: false });
   if (wet) bleed(e.x, e.y - e.hy, executed ? 34 : e.elite ? (soft ? 10 : 24) : 12, dirx);
   if (!soft) playFx('fx', 'burst', e.x, e.y - e.hy, 18, { big: e.elite || executed });
@@ -8566,6 +8568,228 @@ function splat(x, y, big = false) {
   sctxStain.globalAlpha = 0.85;
   sctxStain.drawImage(IMG.fx, f.x, f.y, f.w, f.h, Math.round(x - f.w * s / 2), Math.round(y - f.h * s / 2), Math.round(f.w * s), Math.round(f.h * s));
   sctxStain.globalAlpha = 1;
+}
+
+// ---------------------------------------------------------- deaths (round 180) ---
+// Eleven ways for a foe to die, so a crowd never dies the same way twice in a row (the owner asked for many, and
+// for no skull flying out of every one). goreKind picks by the foe's family (VOICE) and the killing blow (GORE_HIT:
+// a crit, the overkill, a blade, a burn, a rite's blow). Bodies break into pieces of their own sprite (drawn straight
+// from the sheet, no canvas per kill), blood and bile fly as 2x2 drops that stain where they land, gibs tumble
+// (four turns each, sheet 'gore') and the floor keeps the splats.
+const GORE_KINDS = ['burst', 'shred', 'cleave', 'pop', 'crush', 'pool', 'geyser', 'bones', 'ash', 'ecto', 'bile'];
+const GORE_W = {
+  flesh: { burst: 3, shred: 2, cleave: 2, pop: 2, crush: 1.2, pool: 1.5, geyser: 1.5 },
+  cleric: { burst: 2, shred: 1.5, cleave: 2, pop: 2, crush: 1.2, pool: 2, geyser: 2 },
+  vermin: { bile: 3, burst: 2, shred: 2, pop: 1, crush: 1.2 },
+  bone: { bones: 5, crush: 1.2, shred: 1.2 },
+  spirit: { ecto: 1 },
+};
+const GORE_MAT = { flesh: 'blood', cleric: 'blood', vermin: 'blood', bone: 'dust', spirit: 'ecto' };
+const GORE_COL = { blood: ['blood0', 'blood1', 'blood1', 'blood1h', 'blood2'], bile: ['moss0', 'moss1', 'moss1h', 'sand1'], ecto: ['violet0', 'violet1', 'violet1h'], dust: ['stone1', 'stone2', 'bone2'], ash: ['ink1', 'ink2', 'stone3'] };
+const GORE_STAIN = { blood: ['blood2h', 'blood3', 'blood3h'], bile: ['moss2h', 'moss3'], ecto: ['violet3'], dust: null, ash: null };
+const GORE_END = { burst: 2.4, shred: 2.4, cleave: 2.8, pop: 2.8, crush: 2.2, corpse: 3.2, bones: 2.6, ash: 1.6, ecto: 1.1, bile: 2.4 };
+const GORE_CAP = 30, GORE_CHUNKS = 360; // live deaths and live body pieces; past them, pieces grow bigger (fewer)
+let gores = [], GORE_HIT = null, goreLast = [], GORE_FORCE = null; // GORE_FORCE: a test or the dev menu picks the death
+const gcol = (n) => PAL[n] || PAL.blood1;
+// One mirrored copy of a sheet (or a tinted sheet), kept for the run of the game.
+const FLIPS = new Map();
+function flipOf(img) { let c = FLIPS.get(img); if (!c) { c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.translate(img.width, 0); x.scale(-1, 1); x.drawImage(img, 0, 0); FLIPS.set(img, c); } return c; }
+// Where a foe's standing frame sits in its sheet, mirrored if it faced left, with its anchor at the feet.
+function goreBody(e) {
+  const d = e.def, sh = d.sheet, f = frameOf(sh, d.walk, 0), S = SPR[sh], flip = e.face < 0, k = Math.round((e.scaleK || 1) * 20) / 20;
+  const ax = f.ax ?? S.anchorX ?? Math.floor(f.w / 2), ay = f.ay ?? S.anchorY ?? f.h - 1, im = IMG[sh];
+  const tint = (rgb) => { const t = tintKey(sh, rgb); return t ? (flip ? flipOf(TINT[t][sh]) : TINT[t][sh]) : null; };
+  return { sh, img: flip ? flipOf(im) : im, fx: flip ? im.width - f.x - f.w : f.x, fy: f.y, fw: f.w, fh: f.h, ax: flip ? f.w - ax : ax, ay, k, tint };
+}
+// The whole body, stretched (sx, sy) about its feet.
+function goreDrawBody(B, x, y, sx = 1, sy = 1, img = B.img) {
+  const w = B.fw * B.k * sx, h = B.fh * B.k * sy;
+  ctx.drawImage(img, B.fx, B.fy, B.fw, B.fh, Math.round((x - B.ax * B.k * sx) / 2) * 2, Math.round((y - B.ay * B.k * sy) / 2) * 2, Math.round(w), Math.round(h));
+}
+// Pieces of the body on a grid of G world pixels: only cells the sprite fills. init(c) gives each piece its motion.
+function goreChunks(g, G, init) {
+  const e = g.e, B = g.B; let C; try { C = crumbleCells(e); } catch { return; }
+  const live = gores.reduce((a, q) => a + q.chunks.length, 0); if (live > GORE_CHUNKS) G = Math.max(G, 12); if (LOWFX) G = Math.max(G, 12);
+  const seen = new Set();
+  for (const q of C.cells) {
+    const kx = Math.floor(q.x / G), ky = Math.floor(q.y / G), key = kx * 4096 + ky; if (seen.has(key)) continue; seen.add(key);
+    let lx0 = (kx * G) / B.k + B.ax, ly0 = (ky * G) / B.k + B.ay, lx1 = lx0 + G / B.k, ly1 = ly0 + G / B.k;
+    lx0 = Math.max(0, lx0); ly0 = Math.max(0, ly0); lx1 = Math.min(B.fw, lx1); ly1 = Math.min(B.fh, ly1); if (lx1 - lx0 < 0.5 || ly1 - ly0 < 0.5) continue;
+    const ox = (lx0 - B.ax) * B.k, oy = (ly0 - B.ay) * B.k, w = (lx1 - lx0) * B.k, h = (ly1 - ly0) * B.k;
+    const c = { sx: B.fx + lx0, sy: B.fy + ly0, sw: lx1 - lx0, sh: ly1 - ly0, w, h, ox, oy, cx: ox + w / 2, cy: oy + h / 2, ox2: 0, oz: 0, a: 1 };
+    c.b = { x: e.x + ox, y: e.y, z: -(oy + h), vx: 0, vy: 0, vz: 0, grav: 520, rest: false, hold: 0 };
+    if (init(c) === false) continue;
+    g.chunks.push(c);
+  }
+}
+// Drops of blood (or bile, ectoplasm, dust) as 2x2 pixels; they stain the floor where they land.
+function gush(x, y, z, n, mat, o = {}) {
+  if (parts.length > (LOWFX ? 160 : 700)) n = Math.min(n, 2); else if (LOWFX) n = Math.ceil(n / 3);
+  const C = GORE_COL[mat] || GORE_COL.blood, S = GORE_STAIN[mat];
+  for (let i = 0; i < n; i++) {
+    let vx, vy; const r0 = rng(), sp = (o.sp || 100) * (0.15 + r0 * r0 * 0.95); // most drops land close; a few fly far
+    if (o.dx != null) { const a = Math.atan2(o.dy, o.dx) + (rng() - 0.5) * (o.spread ?? 1) * Math.PI; vx = Math.cos(a) * sp; vy = Math.sin(a) * sp * 0.7; }
+    else { const a = rng() * Math.PI * 2; vx = Math.cos(a) * sp; vy = Math.sin(a) * sp * 0.62; }
+    parts.push({ kind: 'blood', x: x + (o.w ? (rng() - 0.5) * o.w : 0), y, z, vx, vy, vz: (o.up ?? 60) * (0.35 + rng() * 0.9), c: gcol(pick(C)), st: S ? gcol(pick(S)) : null, s: 2, g: 1 });
+  }
+}
+// A stain from the gore sheet, snapped to the 2x2 grid. Directional ones flip or turn to follow the blow.
+function goreDecal(anim, i, x, y, { fx = false, fy = false, a = 0.92 } = {}) {
+  if (!SPR.gore || !SPR.gore.anims[anim]) return;
+  const f = frameOf('gore', anim, i), w = f.w, h = f.h, X = Math.round((x - w / 2) / 2) * 2, Y = Math.round((y - h / 2) / 2) * 2;
+  sctxStain.save(); sctxStain.globalAlpha = a;
+  sctxStain.translate(X + (fx ? w : 0), Y + (fy ? h : 0)); sctxStain.scale(fx ? -1 : 1, fy ? -1 : 1);
+  sctxStain.drawImage(IMG.gore, f.x, f.y, w, h, 0, 0, w, h); sctxStain.restore();
+}
+function goreStreak(x, y, dx, dy, v) {
+  if (Math.abs(dx) >= Math.abs(dy) * 0.8) { const f = frameOf('gore', 's_streak', v); goreDecal('s_streak', v, x + Math.sign(dx || 1) * f.w * 0.42, y + 2, { fx: dx < 0 }); }
+  else { const f = frameOf('gore', 's_streakv', v); goreDecal('s_streakv', v, x, y + Math.sign(dy) * f.h * 0.42, { fy: dy < 0 }); }
+}
+function goreGibs(g, mat, n, o = {}) {
+  const N = { flesh: 6, bone: 6, bile: 3, iron: 3 }[mat], e = g.e;
+  for (let i = 0; i < n; i++) {
+    let piece = Math.floor(rng() * N); if (mat === 'bone' && piece === 0 && !o.skull) piece = 1 + Math.floor(rng() * 5); // a skull only where one belongs
+    if (mat === 'flesh' && o.small) piece = 5;
+    const sp = o.sp || 1;
+    gibs.push({ sheet: 'gore', anim: `g_${mat}`, i: piece, r: Math.floor(rng() * 4), spin: (rng() < 0.5 ? -1 : 1) * (8 + rng() * 10), x: e.x + (rng() - 0.5) * 8, y: e.y - 2, z: (o.z ?? e.hy) * (0.6 + rng() * 0.5),
+      vx: (g.dirx * rand(40, 110) + rand(-55, 55)) * sp, vy: (g.diry * rand(30, 80) + rand(-40, 40)) * sp, vz: rand(70, 150) * (o.up || 1), settled: false, mat: o.mat || g.mat });
+  }
+  if (mat === 'bone' && o.skull) { const s = gibs[gibs.length - 1]; s.i = 0; }
+}
+// The foe's family, the blow, and the last two picks (taken less often) choose the death.
+function goreKind(e) {
+  const fam = VOICE[e.type] || 'flesh', H = GORE_HIT || {};
+  if (H.burn && rng() < (fam === 'spirit' ? 0.3 : 0.75)) return 'ash';
+  const w = { ...(GORE_W[fam] || GORE_W.flesh) };
+  if (H.blade && w.cleave) w.cleave *= 4;
+  if ((H.crit || H.over > 1) && w.shred) w.shred *= 2.5;
+  if (H.blow && w.crush) w.crush *= 3;
+  if (H.over < 0.15 && !H.crit) { if (w.pool) w.pool *= 2; if (w.geyser) w.geyser *= 2; }
+  if (Object.keys(w).length > 1) for (const k of goreLast) if (w[k]) w[k] *= 0.3;
+  let s = 0; for (const v of Object.values(w)) s += v; let r = rng() * s;
+  for (const [k, v] of Object.entries(w)) { r -= v; if (r <= 0) return k; }
+  return Object.keys(w)[0];
+}
+function goreStart(e, dirx, diry, force) {
+  if (!SPR.gore || !e.def.walk) return false;
+  const kind = force || GORE_FORCE || goreKind(e); goreLast = [kind, ...goreLast].slice(0, 2);
+  const fam = VOICE[e.type] || 'flesh', mat = kind === 'bile' ? 'bile' : kind === 'ash' ? 'ash' : GORE_MAT[fam] || 'blood';
+  let L = Math.hypot(dirx, diry); if (L < 0.1) { dirx = e.x - player.x; diry = e.y - player.y; L = Math.hypot(dirx, diry) || 1; } dirx /= L; diry /= L;
+  // A soul rises from every death (round 63), in the family's colour; elites shake the floor.
+  if (!LOWFX) vemit(e.x, e.y - e.hy, { n: e.elite ? 10 : 4, ramp: fam === 'spirit' ? 'violet' : 'holy', sp: 12, up: 70, life: 0.9, grav: -30, size: 2, glow: 4 });
+  if (e.elite) { const R = monRamp(e); addPfx({ kind: 'quake', x: e.x, y: e.y, r: e.tier === 'elite' ? 90 : 60, max: 0.5, ramp: R, ground: true }); pfxCrack(e.x, e.y, 5, R); }
+  if ((kind === 'pool' || kind === 'geyser') && e.def.die && SPR[e.def.sheet].anims[e.def.die]) { falls.push({ e, dirx, diry, t: 0, y: e.y, gore: kind, mat }); gush(e.x, e.y, e.hy, 8, mat, { dx: dirx, dy: diry, spread: 0.6, sp: 90, up: 50 }); return true; }
+  const g = { kind: GORE_KINDS.includes(kind) ? kind : 'burst', e, mat, dirx, diry, t: 0, x: e.x, y: e.y, chunks: [], B: goreBody(e), end: GORE_END[kind] || 2.4, v: Math.floor(rng() * 8) };
+  const hy = e.hy || 12, big = e.elite || e.tier === 'elite', H = (() => { try { return crumbleCells(e).H || hy * 2; } catch { return hy * 2; } })();
+  g.H = H;
+  if (kind === 'burst') {
+    goreChunks(g, 8, (c) => { const dx = c.cx, dz = -c.cy - hy, l = Math.hypot(dx, dz) || 1, s = 70 + rng() * 100; c.b.vx = dx / l * s + dirx * 60 + rand(-30, 30); c.b.vy = rand(-50, 50) + diry * 50; c.b.vz = dz / l * s * 0.7 + 80 + rng() * 70; });
+    playFx('gore', 'b_blood', e.x, e.y - hy, 18, { scale: big ? 1.5 : 1 }); gush(e.x, e.y, hy, big ? 40 : 26, mat, { sp: 100, up: 90, w: 8 });
+    goreGibs(g, 'flesh', big ? 3 : 2); goreDecal('s_blood', g.v, e.x + dirx * 8, e.y + 2); sfx('splat', { vol: 0.5, gap: 0.06, vary: 0.12 });
+  } else if (kind === 'shred') {
+    goreChunks(g, 6, (c) => { const s = 150 + rng() * 170; c.b.vx = dirx * s + rand(-40, 40); c.b.vy = diry * s * 0.7 + rand(-35, 35); c.b.vz = 40 + rng() * 90; });
+    gush(e.x, e.y, hy, big ? 46 : 34, mat, { dx: dirx, dy: diry, spread: 0.3, sp: 200, up: 40, w: 10 });
+    if (mat === 'blood') { goreStreak(e.x, e.y + 2, dirx, diry, g.v % 4); goreGibs(g, 'flesh', 2, { sp: 1.6, small: true }); } else if (mat === 'dust') goreGibs(g, 'bone', 3, { sp: 1.6 });
+    sfx('splat', { vol: 0.55, rate: 1.2, gap: 0.06, vary: 0.12 });
+  } else if (kind === 'cleave') {
+    const s = rng() < 0.5 ? 1 : -1, cut = (x) => Math.round((-H * 0.48 + s * x * 0.4) / 2) * 2, cutH = H * 0.5;
+    const top = { x: e.x, y: e.y, z: 0, vx: dirx * 85 + rand(-15, 15), vy: diry * 30, vz: 75, grav: 520, rest: false, hold: 0, low: 0 };
+    goreChunks(g, 6, (c) => { if (c.cy < cut(c.cx)) { c.b = top; c.ox2 = c.ox; c.oz = -(c.oy + c.h); return; } c.b.hold = 0.45 + rng() * 0.15; c.b.vx = rand(-12, 12) + dirx * 10; c.b.vz = 0; });
+    top.low = Math.min(...g.chunks.filter((c) => c.b === top).map((c) => c.oz), 0); top.z = 0;
+    g.jet = { x: e.x, z: cutH, until: 0.7, mat }; g.top = top;
+    playFx('gore', 'b_blood', e.x, e.y - cutH, 22, { scale: 0.7 }); goreDecal('s_blood', g.v, e.x, e.y + 2); goreStreak(e.x, e.y + 2, dirx, diry, g.v % 4); sfx('slash', { vol: 0.35, rate: 0.8, gap: 0.08 }); sfx('splat', { vol: 0.4, gap: 0.06 });
+  } else if (kind === 'pop') {
+    const neck = -H * 0.72, head = { x: e.x, y: e.y, z: 0, vx: dirx * 50 + rand(-30, 30), vy: rand(-25, 25), vz: 170 + rng() * 60, grav: 520, rest: false, hold: 0, low: 0, head: true };
+    goreChunks(g, 6, (c) => { if (c.cy < neck) { c.b = head; c.ox2 = c.ox; c.oz = -(c.oy + c.h); return; } c.b.hold = 0.5 + rng() * 0.2; c.b.vx = rand(-10, 10); c.b.vz = 0; });
+    head.low = Math.min(...g.chunks.filter((c) => c.b === head).map((c) => c.oz), 0);
+    g.jet = { x: e.x, z: -neck, until: 0.55, mat, up: true }; gush(e.x, e.y, -neck, 10, mat, { sp: 60, up: 140 });
+    goreDecal('s_blood', g.v, e.x, e.y + 2); sfx('splat', { vol: 0.5, rate: 0.9, gap: 0.06 });
+  } else if (kind === 'crush') {
+    g.mode = 'squash'; addPfx({ kind: 'quake', x: e.x, y: e.y, r: 34, max: 0.3, ramp: mat === 'dust' ? 'dust' : 'blood', ground: true }); game.shake = Math.max(game.shake, 2.5);
+    gush(e.x, e.y, 4, big ? 40 : 28, mat, { sp: 130, up: 22 });
+    if (mat === 'blood') { goreDecal('s_radial', g.v % 3, e.x, e.y); goreGibs(g, 'flesh', 2, { up: 0.4, small: true }); } else if (mat === 'dust') { goreDecal('s_dust', g.v % 3, e.x, e.y); goreGibs(g, 'bone', 2, { up: 0.4 }); }
+    sfx('mslam', { vol: 0.25, rate: 1.5, gap: 0.08 }); sfx('splat', { vol: 0.5, rate: 0.75, gap: 0.06 });
+  } else if (kind === 'bones') {
+    goreChunks(g, 6, (c) => { c.b.hold = rng() * 0.12; c.b.vx = rand(-30, 30) + dirx * 25; c.b.vy = rand(-18, 18); c.b.vz = rng() * 40; c.b.bounce = 0.5; });
+    playFx('gore', 'b_dust', e.x, e.y - hy * 0.6, 14, { scale: big ? 1.4 : 1 }); goreGibs(g, 'bone', big ? 4 : 2 + Math.floor(rng() * 2), { skull: rng() < 0.5, mat: 'dust' });
+    goreDecal('s_dust', g.v % 3, e.x, e.y + 2, { a: 0.6 }); sfx('clatter', { vol: 0.5, gap: 0.05, vary: 0.15 });
+  } else if (kind === 'ash') {
+    g.mode = 'char'; g.dark = g.B.tint('22,16,20');
+    playFx('gore', 'b_ash', e.x, e.y - hy * 0.4, 9); goreDecal('s_scorch', g.v % 3, e.x, e.y + 2, { a: 0.8 });
+    if (!LOWFX) vemit(e.x, e.y - hy, { n: 10, ramp: 'fire', sp: 30, up: 50, life: 0.8, grav: -20, size: 2, glow: 4 }); sfx('burn', { vol: 0.45, rate: 1.3, gap: 0.1 });
+  } else if (kind === 'ecto') {
+    g.mode = 'rise'; g.glow = g.B.tint('176,122,255');
+    playFx('gore', 'b_ecto', e.x, e.y - hy, 14, { scale: big ? 1.4 : 1 }); goreDecal('s_ecto', g.v % 4, e.x, e.y + 2, { a: 0.75 }); gush(e.x, e.y, hy, 12, 'ecto', { sp: 80, up: 70 });
+    if (!LOWFX) vemit(e.x, e.y - hy, { n: 10, ramp: 'violet', sp: 20, up: 45, life: 1.1, grav: -25, size: 2, glow: 5 }); sfx('shrine', { vol: 0.2, rate: 1.7, gap: 0.1 });
+  } else if (kind === 'bile') {
+    g.mode = 'swell'; g.sick = g.B.tint('127,165,72'); g.popT = 0.2;
+  }
+  if (g.chunks.length || g.mode) gores.push(g);
+  return true;
+}
+// A foe that fell before it bled (pool, geyser): its body lies in a spreading pool, then fades.
+function goreAfterFall(f) {
+  const e = f.e, g = { kind: 'corpse', e, mat: f.mat, dirx: f.dirx, diry: f.diry, t: 0, x: e.x, y: e.y, chunks: [], end: GORE_END.corpse, mode: 'lie', pool: f.gore === 'pool' ? 5 : 3, v: Math.floor(rng() * 8) };
+  if (f.gore === 'geyser') { goreDecal('s_blood', g.v, e.x + f.dirx * 6, e.y + 2); goreGibs(g, 'flesh', 1, { small: true }); }
+  gores.push(g);
+}
+function goreBodies(g) { const s = new Set(); for (const c of g.chunks) s.add(c.b); if (g.top) s.add(g.top); return s; }
+function updateGore(dt) {
+  for (const g of gores) {
+    g.t += dt; const e = g.e;
+    if (g.jet && g.t < g.jet.until && rng() < (LOWFX ? 0.3 : 0.9)) { const J = g.jet; gush(J.x, e.y, J.z, 2, J.mat, J.up ? { sp: 30, up: 150 } : { dx: -g.dirx, dy: -g.diry, spread: 0.8, sp: 60, up: 110 }); }
+    if (g.mode === 'swell' && g.t >= g.popT && !g.popped) { // the bile pop
+      g.popped = true; g.mode = null; const hy = e.hy || 12;
+      goreChunks(g, 8, (c) => { if (rng() < 0.4) return false; const dx = c.cx, dz = -c.cy - hy, l = Math.hypot(dx, dz) || 1, s = 60 + rng() * 80; c.b.vx = dx / l * s + rand(-30, 30); c.b.vy = rand(-40, 40); c.b.vz = dz / l * s * 0.6 + 70; });
+      playFx('gore', 'b_bile', e.x, e.y - hy, 18); gush(e.x, e.y, hy, 28, 'bile', { sp: 100, up: 80, w: 8 }); goreGibs(g, 'bile', 3); goreDecal('s_bile', g.v % 4, e.x, e.y + 2);
+      if (!LOWFX) vemit(e.x, e.y - hy * 0.5, { n: 8, ramp: 'life', sp: 14, up: 12, life: 1.6, grav: -8, size: 2, glow: 0 }); sfx('pop', { vol: 0.5, gap: 0.06, vary: 0.15 });
+    }
+    if (g.mode === 'char' && g.t >= 0.3 && !g.crumbled) { // charred, the body falls to ash
+      g.crumbled = true; g.mode = 'charred';
+      goreChunks(g, 4, (c) => { c.dark = true; if (rng() < 0.55) { c.b.grav = -30 - rng() * 30; c.b.vx = rand(-15, 15); c.b.vz = 10 + rng() * 25; c.fade = 0.5 + rng() * 0.6; } else { c.b.hold = rng() * 0.1; c.b.vx = rand(-12, 12); c.b.vz = 0; } });
+    }
+    for (const b of goreBodies(g)) {
+      if (b.rest || g.t < b.hold) continue;
+      b.vz -= b.grav * dt; b.z += b.vz * dt;
+      const nx = b.x + b.vx * dt, ny = b.y + b.vy * dt;
+      if (room.isSolid(Math.floor(nx / TILE), Math.floor(ny / TILE))) { b.vx *= -0.3; b.vy *= -0.3; } else { b.x = nx; b.y = ny; }
+      if (b.grav < 0) continue;
+      if (b.z + (b.low || 0) <= 0) {
+        b.z = -(b.low || 0);
+        if (b.vz < -40) { b.vz = -b.vz * (b.bounce || 0.3); b.vx *= 0.55; b.vy *= 0.55; const st = GORE_STAIN[g.mat]; if (st) { sctxStain.fillStyle = gcol(st[0]); sctxStain.fillRect(Math.round(b.x / 2) * 2, Math.round(b.y / 2) * 2, b.head ? 4 : 2, 2); } if (b.head) sfx('splat', { vol: 0.25, rate: 1.4, gap: 0.1 }); }
+        else { b.vz = 0; b.vx *= Math.pow(0.02, dt); b.vy *= Math.pow(0.02, dt); if (Math.abs(b.vx) + Math.abs(b.vy) < 3) b.rest = true; }
+      }
+    }
+  }
+  gores = gores.filter((g) => g.t < g.end);
+}
+// The pool under a body lying in it (drawn live while it spreads, then left on the floor).
+function drawGoreGround() {
+  for (const g of gores) if (g.pool) {
+    const i = Math.min(g.pool, Math.floor(g.t / 0.28)), f = frameOf('gore', 's_pool', i);
+    ctx.drawImage(IMG.gore, f.x, f.y, f.w, f.h, Math.round((g.x - f.w / 2) / 2) * 2, Math.round((g.y + 1 - f.h / 2) / 2) * 2, f.w, f.h);
+    if (i >= g.pool && !g.baked) { g.baked = true; goreDecal('s_pool', g.pool, g.x, g.y + 1, { a: 1 }); }
+  }
+}
+function drawGore(g) {
+  const e = g.e, B = g.B, t = g.t, fade = Math.max(0, Math.min(1, (g.end - t) / 0.6));
+  if (fade <= 0) return;
+  ctx.globalAlpha = fade;
+  if (g.mode === 'lie') { const d = e.def, k = e.scaleK || 1; ctx.save(); ctx.translate(Math.round(e.x), Math.round(e.y)); if (k !== 1) ctx.scale(k, k); spr(d.sheet, d.die, 2, 0, 0, { flip: e.face < 0, alpha: fade }); ctx.restore(); }
+  else if (g.mode === 'squash') { const u = Math.min(1, t / 0.1); goreDrawBody(B, g.x, g.y, 1 + 0.35 * u, 1 - 0.78 * u); }
+  else if (g.mode === 'char') { goreDrawBody(B, g.x, g.y); if (g.dark) { ctx.globalAlpha = fade * Math.min(0.9, t / 0.25); goreDrawBody(B, g.x, g.y, 1, 1, g.dark); } }
+  else if (g.mode === 'rise') { const u = t / GORE_END.ecto, rows = Math.ceil(B.fh / 2); ctx.globalAlpha = Math.max(0, 1 - u * 1.1);
+    for (let r = 0; r < rows; r++) { const sy = r * 2, wob = Math.round(Math.sin(t * 14 + r * 0.7) * u * 5 / 2) * 2, X = Math.round((g.x - B.ax * B.k) / 2) * 2 + wob, Y = Math.round((g.y - B.ay * B.k - u * 30) / 2) * 2 + Math.round(sy * B.k);
+      ctx.drawImage(g.glow && u > 0.15 ? g.glow : B.img, B.fx, B.fy + sy, B.fw, 2, X, Y, Math.round(B.fw * B.k), Math.ceil(2 * B.k)); } }
+  else if (g.mode === 'swell') { const u = Math.min(1, t / g.popT), s = 1 + 0.28 * u * u; goreDrawBody(B, g.x + Math.round(Math.sin(t * 60) * u), g.y, s, s); if (g.sick) { ctx.globalAlpha = fade * u * 0.55; goreDrawBody(B, g.x, g.y, s, s, g.sick); } }
+  let last = null;
+  for (const c of g.chunks) {
+    const b = c.b; let a = fade; if (c.fade) { a = Math.max(0, 1 - t / c.fade) * fade; if (a <= 0) continue; }
+    const img = c.dark && g.dark ? g.dark : B.img; if (a !== last) { ctx.globalAlpha = a; last = a; }
+    const x = Math.round((b.x + (b === g.top || b.head ? c.ox2 : 0)) / 2) * 2, y = Math.round((b.y - b.z - (c.oz || 0) - c.h) / 2) * 2;
+    ctx.drawImage(img, c.sx, c.sy, c.sw, c.sh, x, y, Math.ceil(c.w), Math.ceil(c.h));
+  }
+  ctx.globalAlpha = 1;
 }
 
 // ------------------------------------------------------------ effects ---
@@ -8748,6 +8972,7 @@ function flameTongue(x, y, h, w, ph, a = 1, R = FXR.fire) {
   }
   ctx.globalAlpha = 1;
 }
+const gibFrame = (g) => g.sheet === 'gore' ? g.i * 4 + ((Math.floor(g.r || 0) % 4) + 4) % 4 : g.i;
 function updateParts(dt) {
   for (const p of parts) {
     if (p.kind === 'spark') { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.9; p.vy *= 0.9; p.life -= dt; continue; }
@@ -8755,6 +8980,10 @@ function updateParts(dt) {
     if (p.z <= 0) { // landed: stain the floor
       p.life = -1;
       if (p.clean) continue;
+      if (p.g) { // round 180: 2x2 drops on the grid; a fast one smears along its way
+        if (!p.st) continue; const X = Math.round(p.x / 2) * 2, Y = Math.round(p.y / 2) * 2, sp = Math.hypot(p.vx, p.vy); sctxStain.fillStyle = p.st; sctxStain.fillRect(X, Y, 2, 2);
+        if (sp > 90) { const ax = Math.abs(p.vx) > Math.abs(p.vy) * 1.3; sctxStain.fillRect(X - (ax ? Math.sign(p.vx) * 2 : 0), Y - (ax ? 0 : Math.sign(p.vy) * 2), 2, 2); if (sp > 170 && rng() < 0.5) sctxStain.fillRect(X + (ax ? Math.sign(p.vx) * 4 : 0), Y + (ax ? 0 : Math.sign(p.vy) * 4), 2, 2); }
+        continue; }
       sctxStain.fillStyle = p.c === PAL.blood0 ? PAL.blood1 : p.c; sctxStain.fillRect(Math.round(p.x), Math.round(p.y), p.s, p.s);
       if (p.s === 2 && rng() < 0.5) sctxStain.fillRect(Math.round(p.x + Math.sign(p.vx)), Math.round(p.y), 2, 1);
     }
@@ -8767,15 +8996,16 @@ function updateParts(dt) {
     if (bx === g.x && g.vx) g.vx *= -0.5;
     if (g.z <= 0) {
       g.z = 0;
-      if (Math.abs(g.vz) > 30) { g.vz = -g.vz * 0.4; g.vx *= 0.6; g.vy *= 0.6; sctxStain.fillStyle = PAL.blood2; sctxStain.fillRect(Math.round(g.x), Math.round(g.y), 2, 1); }
+      if (Math.abs(g.vz) > 30) { g.vz = -g.vz * 0.4; g.vx *= 0.6; g.vy *= 0.6; const st = g.mat ? GORE_STAIN[g.mat] : ['blood2']; if (st) { sctxStain.fillStyle = gcol(st[0]); sctxStain.fillRect(Math.round(g.x / 2) * 2, Math.round(g.y / 2) * 2, 2, 2); } g.spin *= 0.5; }
       else { g.vz = 0; g.vx *= 0.8; g.vy *= 0.8; }
       if (Math.abs(g.vx) + Math.abs(g.vy) < 4 && g.vz === 0) {
         g.settled = true; // bake into the floor stain
-        const f = frameOf('fx', g.anim, g.i);
-        sctxStain.drawImage(IMG.fx, f.x, f.y, f.w, f.h, Math.round(g.x - 5), Math.round(g.y - 5), f.w, f.h);
+        const sh = g.sheet || 'fx', f = frameOf(sh, g.anim, gibFrame(g)), ax = sh === 'gore' ? f.w / 2 : 5;
+        sctxStain.globalAlpha = sh === 'gore' ? 0.75 : 1; sctxStain.drawImage(IMG[sh], f.x, f.y, f.w, f.h, Math.round((g.x - ax) / 2) * 2, Math.round((g.y - ax) / 2) * 2, f.w, f.h); sctxStain.globalAlpha = 1; // round 180: settled gibs sit into the floor
       }
     }
-    if (rng() < dt * 20 && g.z > 1) parts.push({ kind: 'blood', x: g.x, y: g.y, z: g.z, vx: 0, vy: 0, vz: 0, c: PAL.blood1, s: 1 });
+    if (g.spin && g.z > 0) g.r = (g.r || 0) + g.spin * dt; // round 180: gibs tumble in quarter turns
+    if (rng() < dt * 20 && g.z > 1 && (!g.mat || GORE_STAIN[g.mat])) parts.push({ kind: 'blood', x: g.x, y: g.y, z: g.z, vx: 0, vy: 0, vz: 0, c: g.mat ? gcol(GORE_COL[g.mat][1]) : PAL.blood1, st: null, s: 2, g: 1 }); // a trail in the air only: on the floor it drew dotted lines
   }
   gibs = gibs.filter((g) => !g.settled);
   for (const f of fxs) f.t += dt;
@@ -11226,7 +11456,7 @@ function update(realDt) {
     const f = player.target && player.target.elite && player.target.tier !== 'imp' ? player.target : enemies.filter((e) => e.elite && !e.dead && !e.illusion && e.state !== 'spawn' && Math.hypot(e.x - player.x, e.y - player.y) < 200).sort((a, b) => (b.tier === 'elite') - (a.tier === 'elite'))[0];
     game.focus = f || null;
   }
-  safe('bolts', () => updateBolts(dt)); safe('parts', () => updateParts(dt)); safe('vparts', () => updateVparts(dt), () => { vparts = []; }); safe('falls', () => updateFalls(dt), () => { falls = []; });
+  safe('bolts', () => updateBolts(dt)); safe('parts', () => updateParts(dt)); safe('gore', () => updateGore(dt), () => { gores = []; }); safe('vparts', () => updateVparts(dt), () => { vparts = []; }); safe('falls', () => updateFalls(dt), () => { falls = []; });
   for (const g of ghosts) g.t += realDt;
   ghosts = ghosts.filter((g) => g.t < 0.2);
   for (const r of rings) r.t += realDt;
@@ -11316,6 +11546,7 @@ function render() {
   for (const e of enemies) if (e.state !== 'spawn' && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 60)) shadow(e.x, e.y, e.r * 1.3 * (e.def.fly ? 0.7 : 1));
   shadow(player.x, player.y, 8);
   for (const g of gibs) shadow(g.x, g.y, 3);
+  drawGoreGround();
   for (const f of falls) if (!(f.wd && f.soul) && !f.cr) shadow(f.e.x, f.e.y, f.e.r * 1.3);
   const SHADOW = { drywell: 18, gravestone: 7, fallencol: 20, pillar: 10, torch: 6, statue_saint: 12, statue_angel: 12, statue_knight: 12, crate: 13, gallows: 22, cart: 20, well: 15, tomb: 6, tree: 10, stocks: 14, board: 8, brazier: 6, sarcophagus: 18, candelabra: 6, column: 11, statue: 11, lamp: 5, barrel: 6, crate: 7, anvil: 8, waystone: 10, pew: 15, coffin: 7, cage: 7, maiden: 8, altar: 17, shrine: 10, chest: 10, urn: 5 };
   for (const p of room.props) if (SHADOW[p.kind] && onScreen(p.x, p.y, cx, cy, 40)) shadow(p.x, p.y - 2, SHADOW[p.kind]);
@@ -11326,7 +11557,7 @@ function render() {
   mark('shadows');
   // Y-sorted actors and props.
   const th = thuriblePos();
-  const actors = [player, ...(isAnch() && player.hp > 0 && player.shards ? player.shards.map((sh, i) => ({ shardA: sh, si: i, y: sh.y })) : []), ...(isMelee() && player.hp > 0 && player.vd ? player.vd.d.map((d, i) => ({ vdA: d, si: i, y: d.y })) : []), ...(player.xb && player.hp > 0 ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => (e.state !== 'spawn' || e.elite) && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 90)), ...falls.filter((f) => !(f.wd && f.soul) && (!f.cr || onScreen(f.e.x, f.e.y, cx, cy, 120))).map((f) => ({ fall: f, y: f.y })), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, p.big || 90))];
+  const actors = [player, ...(isAnch() && player.hp > 0 && player.shards ? player.shards.map((sh, i) => ({ shardA: sh, si: i, y: sh.y })) : []), ...(isMelee() && player.hp > 0 && player.vd ? player.vd.d.map((d, i) => ({ vdA: d, si: i, y: d.y })) : []), ...(player.xb && player.hp > 0 ? [{ bow: true, y: player.y + (Math.sin(player.xb.ang) > 0.35 ? 3 : -3) }] : []), ...(game.scene === 'wound' ? Array.from({ length: censers() }, (_, ci) => ({ th: true, ci, y: thuriblePos(ci).y + 12 })) : []), ...room.npcs, ...enemies.filter((e) => (e.state !== 'spawn' || e.elite) && !e.under && !(e.spawnDelay > 0) && onScreen(e.x, e.y, cx, cy, 90)), ...falls.filter((f) => !(f.wd && f.soul) && (!f.cr || onScreen(f.e.x, f.e.y, cx, cy, 120))).map((f) => ({ fall: f, y: f.y })), ...room.props.filter((p) => onScreen(p.x, p.y, cx, cy, p.big || 90)), ...gores.filter((g) => onScreen(g.x, g.y, cx, cy, 160)).map((g) => ({ gore: g, y: g.y }))];
   for (const w of room.walls || []) for (const [tx, ty] of w.tiles) actors.push({ wall: w, tx, ty, y: ty * TILE + 15 });
   if (PETF.on && petShown() && player.hp > 0) actors.push({ petA: true, y: PETF.y });
   actors.sort((a, b) => a.y - b.y);
@@ -11344,6 +11575,7 @@ function render() {
       else if (a.kind) drawProp(a);
       else if (a.npc) drawNpc(a);
       else if (a.fall) drawFall(a.fall);
+      else if (a.gore) drawGore(a.gore);
       else if (a.state === 'spawn') drawRising(a);
       else drawEnemy(a);
     } catch (err) { logError('draw', err); }
@@ -11374,8 +11606,8 @@ function render() {
   drawVparts();
   if (game.scene === 'wound') { drawShots(); drawDropLabels(); }
   if (game.scene === 'town') drawTownWorld();
-  for (const g of gibs) spr('fx', g.anim, g.i, g.x, g.y - g.z, { ax: 5, ay: 5 });
-  for (const p of parts) { ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x), Math.round(p.y - p.z), p.s || 1, p.s || 1); }
+  for (const g of gibs) { if (g.sheet === 'gore') { const f = frameOf('gore', g.anim, gibFrame(g)); spr('gore', g.anim, gibFrame(g), Math.round(g.x / 2) * 2, Math.round((g.y - g.z) / 2) * 2, { ax: f.w / 2, ay: f.h / 2 }); } else spr('fx', g.anim, g.i, g.x, g.y - g.z, { ax: 5, ay: 5 }); }
+  for (const p of parts) { ctx.fillStyle = p.c; if (p.g) { const X = Math.round(p.x / 2) * 2, Y = Math.round((p.y - p.z) / 2) * 2, up = Math.abs(p.vz) > 110, side = !up && Math.hypot(p.vx, p.vy) > 150; ctx.fillRect(X, Y, side ? 4 : 2, up ? 4 : 2); } else ctx.fillRect(Math.round(p.x), Math.round(p.y - p.z), p.s || 1, p.s || 1); } // round 180: gore drops on the 2x2 grid, stretched when fast
   const boltAnim = wskin() && SPR.fx.anims[`bolt_${wskin()}`] ? `bolt_${wskin()}` : 'bolt', psk = pskin();
   for (const b of bolts) {
     // Round 75: a fired shard is the same crystal that hovers over her head, turned to its heading (16 frames, no rotation so pixels stay square).
@@ -11797,7 +12029,8 @@ function updateFalls(dt) {
       if (f.t >= n * WDIE.step + WDIE.hold && !f.soul) { f.soul = true; if (!LOWFX) vemit(f.e.x, f.e.y - 10, { n: 8, ramp: 'holy', sp: 10, up: 60, life: 1.2, grav: -30, size: 2, glow: 4 }); }
       continue;
     }
-    if (f.t >= dieStep(f.e) * 4) { f.done = true; dismember(f.e, f.dirx, f.diry, false); }
+    if (f.gore === 'geyser' && f.t < dieStep(f.e) * 4 && rng() < 0.9) gush(f.e.x + f.dirx * 3, f.e.y, (f.e.hy || 12) * Math.max(0.4, 1.3 - f.t / (dieStep(f.e) * 3)), 2, f.mat, { sp: 40, up: 175 }); // round 180: a jet from the neck as it falls
+    if (f.t >= dieStep(f.e) * 4) { f.done = true; if (f.gore) goreAfterFall(f); else dismember(f.e, f.dirx, f.diry, false); }
   }
   falls = falls.filter((f) => !f.done);
 }
@@ -14717,7 +14950,7 @@ function propClash() {
   for (const sp of room.interact.filter((q) => !q.who)) for (const n of room.npcs) { if (n.path || n.circle) continue; const d = Math.hypot(sp.x - n.x, sp.y - n.y); if (d < sp.r + 8) out.push(`${n.npc}@${Math.round(n.x)},${Math.round(n.y)} on the ${sp.site ? sp.site.id : sp.label} spot (${Math.round(d)} px)`); }
   return out;
 }
-window.HS = { get G() { return G; }, storyOpenN, autoRegionGoal, loreRegions, readLore, regionTalk, get AP() { return AP; }, stormOf, stormNow, STORM, cacheKind, cacheDone, openCache, sailIsle, weatherGlyph, WEATHER, weatherK, worldCall, WORLD_CALL, REGION_DAILY, REGION_SHORT, tideFull, hardOpen, REGION_HARD, EPILOGUE_BARKS, saintTitle, openTravel, travelTap, travelLayout, ENDING, lanternLit, tideK, codexTap, STORY_MAIN, TK, STALL_Y, TOWN_SQ, TOWN_YARD, TOWN_ROLL, TOWN_ALTAR, TOWN_CELLS, skipOpening, narrSkipAll, NARRATION, WALK_GOALS, REGION_NPC, REGION_LORE, RSIDE, gateOpen, travelRegion, openAcre, REGIONS, regionRun, regionTick, dailyDone, named, chRecapLayout, saintLvRows, questTalk, storyTurnIn, stick, wrapW, caseOf, STORY_HINT, spawnPack, get interact() { return game.interact; }, crierEvents, crierNews, wardenSettle, SIDE, propClash, get falls() { return falls; }, WDIE, weeklyId, spriteBust, monBust, drawBoardDailies, questTargets, ensureDailies, dailyIds, DAILY_POOL, get bossIntro() { return game.bossIntro; }, get camOff() { return game.camOff; }, talk, questBump, qOf, ensureQuests, QSITE, get bossSay() { return game.bossSay; }, STORY, storyN, storyDone, beginStory, openStory, storyRead, playScene, storyLayout, get storyFind() { return game.storyFind; }, sanctIfWorn, equip, stationNeed, NEED_R, playerSanctity, mightParts, gearSanctity, MIGHT, lastRunLine, newsLayout, newsBuilds, autoFontPool, BUFF_SND, activeBuffs, BUFFS, setFoeK, LOW_SETS, thAnim, bustAnim, riteFx, riteRamp, RITE_FX_P, get pfx() { return pfx; }, get cam() { return cam; }, nm, vdAnim, VDAG, vdEvery, vdTime, legendMine, startDash, ALTAR_SOCKETS, PSKINS, pskin, pskinsOwned, openStore, storeTap, autoIcons, autoPlayTap, playerSanctity, stationSanctity, autoHudBtn, autoSellFor, autoSellPick, AUTO_SELL, woundsLayout, woundsTap, woundsHeld, get SAC_PAGE_N() { return SAC_PAGE_N; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
+window.HS = { get G() { return G; }, get gores() { return gores; }, set GORE_FORCE(v) { GORE_FORCE = v; }, GORE_KINDS, goreKind, storyOpenN, autoRegionGoal, loreRegions, readLore, regionTalk, get AP() { return AP; }, stormOf, stormNow, STORM, cacheKind, cacheDone, openCache, sailIsle, weatherGlyph, WEATHER, weatherK, worldCall, WORLD_CALL, REGION_DAILY, REGION_SHORT, tideFull, hardOpen, REGION_HARD, EPILOGUE_BARKS, saintTitle, openTravel, travelTap, travelLayout, ENDING, lanternLit, tideK, codexTap, STORY_MAIN, TK, STALL_Y, TOWN_SQ, TOWN_YARD, TOWN_ROLL, TOWN_ALTAR, TOWN_CELLS, skipOpening, narrSkipAll, NARRATION, WALK_GOALS, REGION_NPC, REGION_LORE, RSIDE, gateOpen, travelRegion, openAcre, REGIONS, regionRun, regionTick, dailyDone, named, chRecapLayout, saintLvRows, questTalk, storyTurnIn, stick, wrapW, caseOf, STORY_HINT, spawnPack, get interact() { return game.interact; }, crierEvents, crierNews, wardenSettle, SIDE, propClash, get falls() { return falls; }, WDIE, weeklyId, spriteBust, monBust, drawBoardDailies, questTargets, ensureDailies, dailyIds, DAILY_POOL, get bossIntro() { return game.bossIntro; }, get camOff() { return game.camOff; }, talk, questBump, qOf, ensureQuests, QSITE, get bossSay() { return game.bossSay; }, STORY, storyN, storyDone, beginStory, openStory, storyRead, playScene, storyLayout, get storyFind() { return game.storyFind; }, sanctIfWorn, equip, stationNeed, NEED_R, playerSanctity, mightParts, gearSanctity, MIGHT, lastRunLine, newsLayout, newsBuilds, autoFontPool, BUFF_SND, activeBuffs, BUFFS, setFoeK, LOW_SETS, thAnim, bustAnim, riteFx, riteRamp, RITE_FX_P, get pfx() { return pfx; }, get cam() { return cam; }, nm, vdAnim, VDAG, vdEvery, vdTime, legendMine, startDash, ALTAR_SOCKETS, PSKINS, pskin, pskinsOwned, openStore, storeTap, autoIcons, autoPlayTap, playerSanctity, stationSanctity, autoHudBtn, autoSellFor, autoSellPick, AUTO_SELL, woundsLayout, woundsTap, woundsHeld, get SAC_PAGE_N() { return SAC_PAGE_N; }, beginDescent, dropLoot, pauseTap, stigTap, autoW, autoWoundPick, autoWoundScore, woundKind, WOUND_KIND, AP, autoRun, AUTO_PAY, autoWinLayout, autoWinTap, autoPilot, yardSets, YARD_SETS, hubTabs, petBagGeo, bagPetsTap, petEquip, PETS, PET_BY, PETF, pet, petEq, petsOwned, petShown, myPets, indul, openStore, storeTap, storeTabs, storeList, storePackRow, updatePets, maybeIndul, INDUL_DROP, PET_PACKS, CALLING, TEST_MAX, myEnch, testPts, riteCd, censers, maybeTestament, testaments, talTrees, get SPR() { return SPR; }, fourOf, get lashes() { return lashes; }, noFoe, HOLD_TIPS, atkLines, EARNED, TIPS, tutRect, tutStep, tipAt, burnHook, enchPick, gearGeo, enchPickToggle, tutText, TUT, codexRubric, codexData, emberBuyRow, forgeBuyTap, rerollWounds, sacrificeWounds, askSacrifice, stigButtons, stigLayout, woundRanks, mythicPool, rerollCost, heldTiles, REROLL_UP, openCodex, codexList, codexLayout, codexSee, wardenTrophy, CODEX_SECS, rollTrophyBtn, pauseLayout, codexNew, codexNewIn, codexClearPage, SACRIFICE_N, WOUND_RARITY, riteSave, HERO_SETS, mySets, starterSet, ALL_SETS, migrateSets, SET_ICONS, CELLS, AFF_TIER, GRAVEN, BEATIFIED, affixGeo, affixTap, affixCost, tears, rollGraven, shardCount, get shards() { return player && player.shards; }, ARITES, heroSets, shotRamp, onTap, persist, charsLayout, createLayout, roster, mapShot: (k = 0.25) => { const c = document.createElement('canvas'); c.width = Math.round(roomCanvas.width * k); c.height = Math.round(roomCanvas.height * k); const g = c.getContext('2d'); g.drawImage(roomCanvas, 0, 0, c.width, c.height); g.fillStyle = '#ffd155'; for (const p of room.props) g.fillRect(p.x * k - 1, p.y * k - 2, 2, 2); return c.toDataURL(); }, townOverlaps, openDesigner, desCode, desLoad, desPlace, desPaint, desPick, desPicture, desMenuDo, desTop, desPalette, desSelBar, get DES() { return DES; }, DES_CATS, itemSanctity, enchT, ingrChance, enchPop, renderEnchPop, forgeBuyTap, emberBuyRow, EMBER_PRICE, autoOdds, autoKeys, reforgeKeys, bagItemRows, bagItemRect, openFromBag, invTabs, invTap, descentLayout, vigilJumps, openVigil, ask, askTap, askLayout, reforgeOnce, autoRow, autoStep, enchRemoveBtn, VIGIL_MAX, vigilDiff, textAudit, textProblems, QUALITY, qualRange, rollQuality, ENCHANTS, ENCH_BY, ingrs, embers, openEnchant, enchantTap, renderEnchant, enchRow, wardenMats, forgeTabs, ench, yardKey, openYard, yardGeo, yardTap, yardRecords, yardForget, YARD_TEST, YARD_TESTS, yardSummon, yardDps, get yard() { return game.yard; }, STRATA, strataOpen, hurtEnemy, get TEXT_K() { return TEXT_K; }, rarityOdds, SET_FROM, PASSIVES, pas, passGeo, passTap, riteFlare, RELIC, DROP, SETK, startReliquary: (p) => startReliquary(p), devSet, RITE_BY, riteRank, bumpRite, twist, TWIST, RANK_AT, deathRecap, noteHurt, renderReceipt, pointerDown, pointerMove, pointerUp, AIMABLE, get flasks() { return flasks; }, get skillFx() { return skillFx; }, openPool, poolTap, poolGeo, wagerOdds, settleWager, WAGER_MARKS, openMartyr, martyrTap, martyrGeo, openRoll, rollVigil, EARNED, earnLook, finishDescent, bankRun, renderSettings, setOptRows: OPT_ROWS, TRAILS, DASHES, earnHalo, boltFx, PLUSH_TABS, openPlush, plushTap, plushGeo, looks, lookSheet, DYES, HALOS, AUDIO, CHANGES, BUILD, get NEWS() { return NEWS; }, toLocal, get PORTRAIT() { return PORTRAIT; }, descentTap, descentLayout, openVigil, vigilTap, dropVkey, DIFF, curDiff, WARDEN, openAltar, altarTap, altarRow, altarSock, altarGeo, burnAtAltar, burnCost, burnChance, openAltarPick, altarPickGeo, altarPickTap, altarPickLegends, grindAtAltar, vigilPayout, VIGIL_PAY, makeSetPiece, CHRISM, chrisms, maybeChrism, xpNeed, MAX_LEVEL, LEGENDS, snapRun, resumeTap, resumeBtns, get askedResume() { return askedResume; }, set askedResume(v) { askedResume = v; }, openBoard, boardTap, bountyRow, bounties, bumpBounty, openRites, ritesTap, riteLayout, textW, rollStigmata, WOUNDS, pickStigma, openCenser, censerTap, censerLayout, CENSER_UP, censerUp, censerStats, lifeOf, RITES, riteOf, openCells, cellsTap, cellRow, get cell() { return game.cell; }, CELLS, setOpt, opt, settingsTap, setLayout, armsItem, ARMS, DEV, openDev, closeDev, devTap, devLayout, devCells, renderDev, TEXT_CACHE, hurtPlayerRaw, game, T, hud: HUD, VSETS, MAIN_SETS, openGift, giftTap, giftRow, setGuard, sb, saintSheet, get pools() { return pools; }, applyGear, gearStats, gainXp, pickStigma, openStigmata, stigLayout, get skillFx() { return skillFx; }, rollItem, makeItem, bagAdd, equip, openInventory, invLayout, get G() { return G; }, get W() { return W; }, get H() { return H; }, get player() { return player; }, get bolts() { return bolts; }, get enemies() { return enemies; }, get pools() { return pools; }, get chains() { return chains; }, input, newRun, spawnMonster, spawnPack, killEnemy, enterTown, MON, get drops() { return drops; }, get hazards() { return hazards; }, get shots() { return shots; }, tut, SAVE, get room() { return room; }, ERRS, logError, PROF, SITES, openSite, CATHEDRAL_X, TOWN_TOP, STALLS, DISTRICTS, districtAt, spawnWarden, beginVigil, startDescent, useShrine, openShop, openForge, openCanonry, shopTap, forgeTap, canonryTap, featLayout, shopRow, talLayout, talTabs, TALENT_TREES, TAL_BY, TAL_NEED, TAL_LEGENDS, TAL_NODES, talNamed, fireCdOf, shardDmgK, setLines, reliqNow, enchGeo, enchWorn, forgeGeo, STAT_TIP, rubBagGeo, bagRubricsTap, salvageRubrics, rubSpares, invTap, forgeCell, forgeItems, SLOT_BASE, STAT, AFF_CAP, GEAR_CAP, affCapped, RUB_KINDS, RUB_DROP, rubrics, rsock, rubSocket, rubV, rubK, rubBuild, pickRubric, maybeRubric, rubGeo, rubPickGeo, rubPickTap, riteCast, rubricCast, riteCdOf: (sl) => riteCd(sl), rubSocketsOf, TAL_MAX_PTS, TAL_RANKS, talPage, talPageNo, talName, talSummary, titleOf, levelLooks, saintTitle, PASSIVE_AT, talOpen, ts, stationPts, tal, talPts, talSpent, gainSaintXp, saintLv, lvNeed, MAX_SAINT, RITE_LV, riteOpen, nextRite, castM1, heroText, setPopLayout, get dustCols() { return dustCols; }, draftK, riteList, MRITES, PEN_BASE, WARDEN_BLOW, HEROES, heroId, isMelee, MELEE, get swingT() { return player && player.swingT; }, damagePlayer, get drips() { return drips; }, get ripples() { return ripples; }, passOrder, migrateDevotion, get descent() { return game.descent; }, get hazardsN() { return hazards.length; } };
 </script>
 </body>
 </html>
