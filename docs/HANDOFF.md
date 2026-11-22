@@ -808,7 +808,7 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
   (`bleed`) now takes a material: a Warden's `WARDEN_MAT`, a foe's family's `GORE_MAT` (skeletons dust, spirits
   ectoplasm); the Saint still bleeds red. (C) The Codex's eighth section WORDS (`CODEX_SECS`, `codexList(7)`): one
   entry per chapter done, READ plays its message and its Warden's spawn and death lines and returns to the Codex; the
-  rail's tab pitch shrinks to fit eight. (D) Benchmarks of Stratum III's Wardens at Station XX (see the numbers below).
+  rail's tab pitch shrinks to fit eight. (D) Stratum III's Wardens at Station XX against a full Burning Choir Saint at gear XX (`setbal.cjs` WARDEN=, 60 s, 2 seeds; est = seconds from the share of health removed; none died in 60 s): the Doorkeeper 397 s at 3000 health against the Ossuarch 273 s and the Ash Widow 280 s, so its health went to 2600 (2400 measured 238 s; runs move a lot). The auto pilot (`autobench.cjs` WARDEN=) fights the crowd first and is no use for this.
   (E) The yard's Warden tab shows a PHASE picker in place of DEATH (`game.yard.phase`): a Warden summoned at phase 2
   or 3 starts at 60% or 30% health with its later attacks (`wardenPhase`). Test: `round184.cjs`.
 - **Round 183:** the owner: "All" (round 182's five). (A) After the door: `doorShut()`, `DOOR_BARKS` (most barks once
