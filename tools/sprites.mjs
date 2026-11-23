@@ -2120,6 +2120,17 @@ for (const name of ['hall', 'floor', 'walldecor', 'props', 'loot', 'tiles']) {
   for (let i = 0; i < f.px.length; i++) { const v = src.frame.px[i]; f.px[i] = map.has(v) ? map.get(v) : v; }
   sheets.push({ name: `${name}_o`, frame: f, json: { ...src.json, image: `${name}_o.png` } });
 }
+// Round 185, Stratum IV, the Hollow Below: violet stone and ink-black timber under cold gold light. Loot keeps its own
+// colours, as in the Ossuary.
+const HOLLOW = { flag: ['violet', 4], stone: ['slate', 2], sand: ['slate', 1], pot: ['violet', 3], teal: ['violet', 2], slate: ['ink', 1], brick: ['ink', 2], wood: ['ink', 1], ember: ['gold', 0], moss: ['violet', 3], crimson: ['violet', 3], gold: ['gold', 0], bone: ['cloth', 2] };
+const HOL_SHEET = { floor: { flag: ['slate', 3] }, tiles: { crimson: ['violet', 4], gold: ['gold', 2] } };
+for (const name of ['hall', 'floor', 'walldecor', 'props', 'loot', 'tiles']) {
+  const src = sheets.find((q) => q.name === name); if (!src) continue;
+  const m = new Map(); for (const [from, [to, k]] of Object.entries({ ...HOLLOW, ...(HOL_SHEET[name] || {}) })) if (!(name === 'loot' && OSS_LOOT_KEEP.has(from))) FINE[from].forEach((n, i) => m.set(IDX[n], IDX[FINE[to][Math.max(0, Math.min(8, i + k))]]));
+  const f = new Frame(src.frame.w, src.frame.h);
+  for (let i = 0; i < f.px.length; i++) { const v = src.frame.px[i]; f.px[i] = m.has(v) ? m.get(v) : v; }
+  sheets.push({ name: `${name}_h`, frame: f, json: { ...src.json, image: `${name}_h.png` } });
+}
 mkdirSync(OUT, { recursive: true });
 const manifest = { palette: PALETTE };
 for (const s of sheets) {

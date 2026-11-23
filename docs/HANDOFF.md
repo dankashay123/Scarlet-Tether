@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-22, after round 184 (build 184, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-23, after round 185 (build 185, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -393,6 +393,20 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **After round 185:** ten chapters. Chapter 10 (THE HOLLOW BELOW, `STORY[9]`) goes through the door and ends on the
+  Hollow Saint (`MON.hollowSaint`: the Void look's sheet `saint_void` at scale 2 with its own anim names, no model of
+  its own; a sculpted model would read better). Finishing it opens Stratum IV, THE HOLLOW BELOW (`STRATA[4]`, sheets
+  `_h` from the `HOLLOW` remap in `tools/sprites.mjs`, pools `COMMON_POOL4`/`RARE_POOL4` mixed from the others, every
+  Warden in its list, music borrowed from the dungeon and the Ossuary). It has no Wardens or monsters of its own yet
+  and pays like the other strata. Station Wardens cry at each phase (`PHASE_ROAR`). The dev menu's stratum picker
+  still stops at III (its fourth entry is the moor).
+- **Owner report in round 185 (fixed):** in chapter 6 the owner found every Saltreach landmark but could not finish
+  FIND THE WRECK ON THE SHORE: that step counts only on LOOK at the wreck's lore spot, whose glint showed only while
+  the lore was unread (they had read it on an earlier trip). Now `LORE_STEP` lists the lore that counts a step, and
+  `loreStepSpots()` puts a quest ! over the spot and a minimap pin (`questTargets`, `lore: true`) while the step is
+  open. FIND OSANNE'S BOOK is in the station past the chapel door, which opens after the region's steps. Clipping:
+  tall things baked past the banks (sea stacks, stooks, burnt trees, gorse, boulders) went through `bake` with no
+  checks; `bakeOut` now skips any whose picture covers a floor tile or another such picture.
 - **After round 183:** Vael has a third state, after the door is shut (`doorShut()`: chapter 9 handed in): lines, barks,
   the Crier's news, the DOOR-SHUTTING title. The Doorkeeper returns as a Stratum III Warden at Station XX and deeper
   (`DOOR_FROM`) with its own halo (slate, the eleventh stand). `menus.cjs` now covers the story page, the Codex lore
@@ -801,6 +815,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 185:** the owner: "All" (round 184's five). (A) `autobench.cjs FOCUS=1`: clears the crowd when the Warden
+  spawns (and every tick after, its summons kept) and reports `wardenT` from the spawn. Full Burning Choir Saint at
+  XII, 2 trials of 150 s each: Bellwright 33/30 s, Candlemass 60/44, Cardinal 30/57, Charnel King 33/77, Our Lady of
+  Nails 87/56 (and the most health lost), Tide-Bishop 32/35, Organist 40/53, Ossuarch 44/44, Ash Widow 35/41,
+  Doorkeeper 29/29. (B) Chapter 10 and Stratum IV (see "After round 185"). (C) The Doorkeeper re-checked at XX:
+  setbal (WARDEN=, STRATUM=3, ONLY=choir, 60 s, 4 seeds, est): the Doorkeeper 221 s, the Ash Widow 217 s, the Ossuarch 309 s, so its 2600 health stays. (D) The Codex's world boss line adds LAST KILLED THERE (`agoText` from `SAVE.worldBossT`); the travel map lists every world boss of a
+  region and, on the Saltreach card, the Abbey Isle's two (`ISLE: ...`, a short form when it does not fit). (E)
+  `PHASE_ROAR`: every Warden says a short line at each phase outside the story (Stations, Vigils, world bosses, the
+  yard), with its roar. Test: `round185.cjs`.
 - **Round 184:** the owner: "All" (round 183's five). (A) The Doorkeeper as a world boss on the Abbey Isle at its door
   landmark (`WORLD_BOSSES` row `['door', 'isle', 'doorkeeper']`, only with `doorShut()`); its own call at half health
   (`WORLD_CALL_BY`: rings of shots; it calls risen and barrow-dead). (B) `WARDEN_MAT` bellwright rust, ladyOfNails iron
