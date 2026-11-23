@@ -101,3 +101,9 @@ a moor storm (`thunder`) and the crackle of an ember storm in the Ashfields (`am
 
 `tools/build-gore.py` synthesises the wet burst of a death (`splat`), bones hitting stone (`clatter`) and a bile sac
 bursting (`pop`), with no sample pack.
+
+## The Hollow Saint's voice (round 187, made here)
+
+`tools/build-hollow.sh` mixes the game's own sounds, with no new pack: the cathedral choir backwards and slowed under
+the Saint's cast and the Cardinal's roar (`roar_hollowSaint`); ash, the sacrifice tone and a shrine chime backwards
+(`fall_hollowSaint`).

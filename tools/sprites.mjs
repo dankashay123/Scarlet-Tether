@@ -2112,7 +2112,7 @@ const OSSUARY = { flag: ['bone', 1], sand: ['cloth', 2], pot: ['bone', 1], stone
 const OSS_LOOT_KEEP = new Set(['ember', 'moss', 'crimson', 'gold']);
 // Per sheet: chapels get a cool grey floor and a bone runner in place of
 // the warm flagstones and red carpet (ash grey with bone trim).
-const OSS_SHEET = { floor: { flag: ['cloth', 1] }, tiles: { crimson: ['shroud', 2], gold: ['bone', 2] } };
+const OSS_SHEET = { floor: { flag: ['stone', 3], stone: ['stone', 4] }, hall: { flag: ['stone', 3] }, tiles: { crimson: ['shroud', 2], gold: ['bone', 2] } };
 const ossIdx = (keep, over = {}) => { const m = new Map(); for (const [from, [to, k]] of Object.entries({ ...OSSUARY, ...over })) if (!keep.has(from)) FINE[from].forEach((n, i) => m.set(IDX[n], IDX[FINE[to][Math.max(0, Math.min(8, i + k))]])); return m; };
 for (const name of ['hall', 'floor', 'walldecor', 'props', 'loot', 'tiles']) {
   const src = sheets.find((q) => q.name === name); if (!src) continue;

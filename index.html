@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '186';
+const BUILD = '187';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '187': ['CALMER GROUND IN THE OPEN WORLD: THE SALTREACH, THE ABBEY ISLE, THE MOOR AND THE ASHFIELDS NO LONGER LOOK LIKE A PATCHWORK, SO PATHS AND PROPS STAND OUT.', 'THE OSSUARY SPIRE HAS A DARKER FLOOR, SO ITS BONE PROPS ARE EASY TO SEE.', 'DOORS, CHESTS AND OTHER SPOTS IN THE OPEN WORLD ARE ALWAYS REACHABLE.', 'THE HOLLOW SAINT HAS ITS OWN VOICE AND A LITTLE LESS HEALTH. THE HUSK FALLS TO ASH AND THE LOST SAINT BURNS AWAY.'],
   '186': ['THE HOLLOW SAINT HAS ITS OWN MODEL, AND IT IS NOW THE WARDEN OF THE HOLLOW BELOW. KILL IT AT STATION X OR DEEPER TO EARN ITS CRACKED VIOLET HALO.', 'TWO NEW FOES IN THE HOLLOW BELOW: THE HUSK AND THE LOST SAINT.', 'OUR LADY OF NAILS HAS LESS HEALTH AND FEWER NAILS IN HER LATE VOLLEYS AND RINGS.', 'A CHAPTER STEP THAT NEEDS A LOOK SAYS (LOOK) IN THE QUEST LIST.', 'PROPS IN THE OPEN WORLD NO LONGER OVERLAP: STONES, BOATS, NET RACKS, CHESTS AND THE PEOPLE BY THEM.'],
   '185': ['A TENTH CHAPTER, THE HOLLOW BELOW: GO THROUGH THE DOOR BELOW THE THIRTIETH STATION. IT OPENS AFTER CHAPTER 9.', 'FINISH IT TO OPEN STRATUM IV, THE HOLLOW BELOW, WHERE EVERY WARDEN CAN BE MET.', 'WARDENS NOW CRY OUT AT EACH PHASE IN EVERY DESCENT, NOT ONLY IN THE STORY.', 'THE CODEX SAYS WHEN YOU LAST KILLED EACH WORLD BOSS, AND THE TRAVEL MAP SHOWS BOTH OF THE ABBEY ISLE\'S.', 'A CHAPTER STEP THAT NEEDS A LOOK (THE WRECK, THE WAGONS AND OTHERS) NOW SHOWS A ! THERE AND A PIN ON THE MINIMAP, EVEN IF YOU READ IT BEFORE. LOOK AGAIN TO COUNT IT.', 'SEA STACKS, TREES AND STOOKS PAST THE SHORE NO LONGER OVERLAP EACH OTHER OR THE GROUND YOU WALK ON.'],
   '184': ['ONCE THE DOOR BELOW IS SHUT, THE DOORKEEPER WALKS THE ABBEY ISLE AS A WORLD BOSS AT ITS FLOODED DOOR. AT HALF HEALTH IT CALLS THE DEAD TO IT.', 'NEW IN THE CODEX: WORDS. READ EACH CHAPTER\'S MESSAGE AND ITS WARDEN\'S LAST WORDS AGAIN.', 'THE TRAINING YARD CAN SUMMON A WARDEN ALREADY IN ITS SECOND OR THIRD PHASE.', 'THE BELLWRIGHT SHEDS RUST AND OUR LADY OF NAILS IRON FILINGS. SKELETONS SPILL DUST AND SPIRITS ECTOPLASM WHEN HIT.'],
@@ -707,8 +708,8 @@ if (document.fonts) Promise.all([document.fonts.load(fontOf(22, false)), documen
 // <audio> elements routed through the same context, so memory stays low.
 // iOS 17+: audioSession 'ambient' makes the game follow the silent switch.
 const AUDIO = (() => {
-  const SFX = ['voice_lo', 'voice_mid', 'voice_hi', 'slash', 'shing', 'stab', 'whirl', 'swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'buff', 'chirp', 'bleat', 'puff', 'sacrifice', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_doorkeeper', 'fall_doorkeeper', 'roar_ashWidow', 'fall_ashWidow', 'thunder', 'splat', 'clatter', 'pop'];
-  const VOL = { splat: 0.45, clatter: 0.4, pop: 0.4, thunder: 0.6, voice_lo: 0.1, voice_mid: 0.1, voice_hi: 0.09, slash: 0.45, shing: 0.35, stab: 0.5, whirl: 0.45, swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, buff: 0.06, chirp: 0.06, bleat: 0.08, puff: 0.1, sacrifice: 0.55, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, roar_doorkeeper: 0.9, fall_doorkeeper: 0.9, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
+  const SFX = ['voice_lo', 'voice_mid', 'voice_hi', 'slash', 'shing', 'stab', 'whirl', 'swing', 'mace', 'mswing', 'mslam', 'mcast', 'cast', 'glass', 'chime', 'buff', 'chirp', 'bleat', 'puff', 'sacrifice', 'shoot', 'hit0', 'hit1', 'hit2', 'block', 'kill0', 'kill1', 'hurt', 'break', 'perfect', 'thurible', 'flask', 'chain', 'penance', 'gate_lock', 'gate_open', 'pickup', 'heal', 'gold', 'shrine', 'chest', 'elite', 'death', 'tap', 'dash', 'eshot', 'knell', 'drip', 'roar', 'levelup', 'legend', 'buy', 'burn', 'learn', 'ash', 'grind', 'sting_warden', 'die_bone0', 'die_bone1', 'die_flesh0', 'die_flesh1', 'die_spirit0', 'die_spirit1', 'die_vermin0', 'die_vermin1', 'die_cleric0', 'die_cleric1', 'roar_bellwright', 'fall_bellwright', 'roar_candlemass', 'fall_candlemass', 'roar_cardinal', 'fall_cardinal', 'roar_charnelKing', 'fall_charnelKing', 'roar_ladyOfNails', 'fall_ladyOfNails', 'roar_tideBishop', 'fall_tideBishop', 'roar_organist', 'fall_organist', 'roar_ossuarch', 'fall_ossuarch', 'roar_doorkeeper', 'roar_hollowSaint', 'fall_hollowSaint', 'fall_doorkeeper', 'roar_ashWidow', 'fall_ashWidow', 'thunder', 'splat', 'clatter', 'pop'];
+  const VOL = { splat: 0.45, clatter: 0.4, pop: 0.4, thunder: 0.6, voice_lo: 0.1, voice_mid: 0.1, voice_hi: 0.09, slash: 0.45, shing: 0.35, stab: 0.5, whirl: 0.45, swing: 0.4, mace: 0.5, mswing: 0.35, mslam: 0.5, mcast: 0.35, cast: 0.45, glass: 0.35, chime: 0.3, buff: 0.06, chirp: 0.06, bleat: 0.08, puff: 0.1, sacrifice: 0.55, shoot: 0.35, hit0: 0.45, hit1: 0.45, hit2: 0.45, block: 0.4, kill0: 0.55, kill1: 0.55, hurt: 0.7, break: 0.45, perfect: 0.7, thurible: 0.25, flask: 0.55, chain: 0.55, penance: 0.6, gate_lock: 0.7, gate_open: 0.55, pickup: 0.5, heal: 0.5, gold: 0.35, shrine: 0.7, chest: 0.7, elite: 0.8, death: 0.9, tap: 0.5, dash: 0.4, eshot: 0.3, knell: 0.35, drip: 0.5, roar: 0.8, levelup: 0.6, legend: 0.7, buy: 0.5, burn: 0.6, learn: 0.75, ash: 0.6, grind: 0.6, sting_warden: 0.8, die_bone0: 0.45, die_bone1: 0.45, die_flesh0: 0.45, die_flesh1: 0.45, die_spirit0: 0.45, die_spirit1: 0.45, die_vermin0: 0.45, die_vermin1: 0.45, die_cleric0: 0.45, die_cleric1: 0.45, roar_bellwright: 0.85, fall_bellwright: 0.9, roar_candlemass: 0.85, fall_candlemass: 0.9, roar_cardinal: 0.85, fall_cardinal: 0.9, roar_charnelKing: 0.85, fall_charnelKing: 0.9, roar_ladyOfNails: 0.85, fall_ladyOfNails: 0.9, roar_tideBishop: 0.85, fall_tideBishop: 0.9, roar_organist: 0.85, fall_organist: 0.9, roar_ossuarch: 0.85, roar_doorkeeper: 0.9, roar_hollowSaint: 0.9, fall_hollowSaint: 0.9, fall_doorkeeper: 0.9, fall_ossuarch: 0.9, roar_ashWidow: 0.85, fall_ashWidow: 0.9 };
   const A = { ctx: null, buf: {}, last: {}, muted: false, master: null, sfxBus: null, voiceBus: null, musicBus: null, tracks: {}, want: [] };
   try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch { /* not supported */ }
   try { A.muted = !!JSON.parse(localStorage.getItem('hollow-saint') || '{}').muted; } catch { /* private mode */ }
@@ -1190,11 +1191,15 @@ function makeRegion(id) {
       // The Saltreach: a sandy track, dune grass and shingle, white salt crust; beyond the banks the grey sea, with surf.
       if (!solid[ty][tx]) {
         const td = tileTrack[ti] < 48 ? trackAt(x, y) + (vn(x, y, 10, 4) - 0.5) * 8 : 99, crust = vn(x, y, 40, 7) + (vn(x, y, 12, 13) - 0.5) * 0.3;
-        if (td < 8) c = r < 0.04 ? C.stone3 : n > 0.6 ? C.sand3 : C.sand3h;
-        else if (td < 11) c = n > 0.5 ? C.sand4 : C.sand3h;
-        else if (crust > 0.7) c = crust > 0.76 ? C.bone2 : C.sand2h;
-        else if (crust < 0.24) c = n > 0.5 ? C.sand4 : C.stone3h;
-        else c = n > 0.66 ? C.sand2h : n < 0.3 ? C.moss4 : n < 0.46 ? C.sand3 : C.sand3h;
+        // Round 187 (the owner: the ground read as a camouflage pattern): one sand tone with a close second shade; grass
+        // only in small tufts, shingle only as sparse pebbles, salt crust in small pale patches; the track a step lighter.
+        const tuft = vn(x, y, 7, 19), peb = vn(x, y, 22, 23), crust2 = vn(x, y, 16, 7) * 0.7 + vn(x, y, 6, 13) * 0.3;
+        if (td < 8) c = n > 0.5 ? C.sand2 : C.sand2h;
+        else if (td < 10) c = C.sand2h;
+        else if (crust2 > 0.8) c = crust2 > 0.88 ? C.bone2 : C.sand2;
+        else if (tuft > 0.8 && n < 0.55) c = tuft > 0.86 ? C.moss3 : C.moss3h;
+        else if (peb < 0.2 && vn(x, y, 3, 29) > 0.72) c = C.stone3h;
+        else c = n > 0.68 ? C.sand2h : C.sand3;
         if ((ly < 5 && !floorAt(tx, ty - 1)) || (lx < 3 && !floorAt(tx - 1, ty))) c = c === C.sand3h || c === C.sand2h ? C.sand4 : c === C.bone1 ? C.bone2 : c;
       } else {
         const edge = (ly >= 12 && floorAt(tx, ty + 1)) || (lx >= 13 && floorAt(tx + 1, ty)) || (lx < 3 && floorAt(tx - 1, ty)) || (ly < 4 && floorAt(tx, ty - 1));
@@ -1207,7 +1212,7 @@ function makeRegion(id) {
         const td = tileTrack[ti] < 48 ? trackAt(x, y) + (vn(x, y, 10, 4) - 0.5) * 8 : 99, burnt = vn(x, y, 50, 7) + (vn(x, y, 14, 13) - 0.5) * 0.3;
         if (td < 8) c = r < 0.04 ? C.stone3 : n > 0.6 ? C.shroud3 : C.shroud3h;
         else if (td < 11) c = n > 0.5 ? C.rot4 : C.shroud3h;
-        else if (burnt > 0.6) c = vn(x, y, 6, 21) > 0.86 && burnt > 0.72 ? C.ember3 : r < 0.05 ? C.stone2h : burnt > 0.7 ? (n > 0.5 ? C.stone3 : C.stone3h) : C.ink2;
+        else if (burnt > 0.62) c = vn(x, y, 6, 21) > 0.9 && burnt > 0.74 ? C.ember3 : burnt > 0.74 ? C.stone3 : C.stone3h; // round 187: grey ash, not black, with rare embers
         else c = ((y >> 3) & 1) && r < 0.6 ? (n > 0.55 ? C.sand3h : C.rot3h) : r < 0.03 ? C.sand2h : n > 0.6 ? C.rot3 : n < 0.35 ? C.rot4 : C.rot3h;
         if ((ly < 6 && !floorAt(tx, ty - 1)) || (lx < 4 && !floorAt(tx - 1, ty))) c = c === C.sand3h ? C.rot3h : c === C.rot3h || c === C.rot3 ? C.rot4 : c === C.stone3h ? C.stone4 : c;
       } else {
@@ -1235,8 +1240,9 @@ function makeRegion(id) {
       const td = tileTrack[ti] < 48 ? trackAt(x, y) + (vn(x, y, 10, 4) - 0.5) * 9 : 99;
       if (td < 8) c = r < 0.04 ? C.stone3 : n > 0.6 ? C.shroud3 : C.shroud3h;
       else if (td < 12) c = n > 0.5 ? C.rot4 : C.shroud3h;
-      else if (vn(x, y, 34, 7) > 0.66) c = r < 0.03 ? C.violet3 : vn(x, y, 8, 12) > 0.55 ? C.violet3h : C.violet4; // heather in whole patches
-      else c = r < 0.012 ? C.sand3 : r < 0.024 ? C.moss2h : n > 0.62 ? C.moss3 : n < 0.3 ? C.rot4 : n < 0.46 ? C.moss4 : C.moss3h;
+      // Round 187 (calmer ground): heather in smaller, lighter patches; the grass in two close shades with a darker third only in hollows.
+      else if (vn(x, y, 30, 7) > 0.74) c = vn(x, y, 4, 12) > 0.6 ? C.violet3h : C.moss3h; // heather: violet flecks in the grass, not solid patches
+      else c = r < 0.012 ? C.sand3 : r < 0.024 ? C.moss2h : n > 0.64 ? C.moss3 : n < 0.24 ? C.moss4 : C.moss3h;
       // Ground under a bank to the north or west lies in its shade.
       if ((ly < 6 && !floorAt(tx, ty - 1)) || (lx < 4 && !floorAt(tx - 1, ty))) c = c === C.violet3 ? C.violet3h : c === C.moss3 ? C.moss3h : c === C.moss3h || c === C.rot4 ? C.moss4 : c === C.shroud3h ? C.shroud4 : c === C.shroud3 ? C.shroud3h : c;
     } else {
@@ -1350,11 +1356,14 @@ function makeRegion(id) {
     if (m.kind === 'bells') { put('salt', 'bellframe', cx - 4, cy, { tw: 3, frame: 0, force: true }); put('salt', 'bellframe', cx + 4, cy + 2, { tw: 3, frame: 1, force: true }); for (let k = 0; k < 3; k++) { const at = near(r, 7); if (at) put('moor', 'boulder', at[0], at[1], { frame: k % 2 }); } }
     if (m.kind === 'cells') { [[-7, -2], [0, -3], [7, -2]].forEach(([dx, dy], i) => put('salt', 'hut', cx + dx, cy + dy, { tw: 6, th: 2, frame: 1, force: true, flip: i === 2 })); }
     if (m.kind === 'needles') { put('salt', 'stack', cx - 5, cy - 1, { tw: 4, th: 2, force: true }); put('salt', 'stack', cx + 3, cy - 3, { tw: 4, th: 2, frame: 0, force: true }); put('salt', 'stack', cx + 8, cy + 2, { tw: 5, th: 2, frame: 1 }); }
-    if (m.kind === 'door' && isle) { const p = put('ash', 'cryptdoor', cx, cy - 3, { tw: 8, th: 2, force: true }); if (p) { m.x = p.x; m.y = p.y; interact.push({ x: p.x, y: p.y + 8, r: 36, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x, y: p.y - 40, r: 80, c: 'holy', a: 0.4 }); } }
-    else if (m.kind === 'door' && salt) { const p = put('salt', 'chapel', cx, cy - 3, { tw: 8, th: 2, force: true }); if (p) { lampAt = { x: p.x + 52 - 4, y: p.y - 152 }; m.x = p.x - 10; m.y = p.y; interact.push({ x: p.x - 10, y: p.y + 8, r: 36, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x + 52, y: p.y - 150, r: 120, c: 'gold', a: 0.8, flick: 2 }); } }
-    else if (m.kind === 'door' && ash) { const p = put('ash', 'cryptdoor', cx, cy - 3, { tw: 8, th: 2, force: true }); if (p) { m.x = p.x; m.y = p.y; interact.push({ x: p.x, y: p.y + 8, r: 36, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x, y: p.y - 40, r: 80, c: 'gold', a: 0.45 }); } }
-    else if (m.kind === 'door' && fen) { const p = put('fen', 'sluice', cx, cy - 3, { tw: 10, th: 2, force: true }); if (p) { m.x = p.x; m.y = p.y; interact.push({ x: p.x, y: p.y + 8, r: 36, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x, y: p.y - 40, r: 80, c: 'holy', a: 0.4 }); } }
-    else if (m.kind === 'door') { const p = put('moor', 'barrow', cx, cy - 4, { tw: 12, th: 3, frame: 1, force: true }); if (p) { const dx0 = 24; m.x = p.x + dx0; m.y = p.y; interact.push({ x: p.x + dx0, y: p.y + 6, r: 34, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x + dx0, y: p.y - 24, r: 70, c: 'violet', a: 0.5 }); } }
+    // Round 187: the door's row is chosen so open ground lies right in front of it (on small clearings near an edge the
+    // usual three tiles up left its ENTER spot walled in).
+    const dty = m.kind === 'door' ? (() => { for (const o of [0, -1, 1, -2, 2, -3, 3, -4, -5]) { const ty = cy - 3 + o; if ([-2, -1, 0, 1, 2].every((d) => !isSolid(cx + d, ty + 1) && !isSolid(cx + d, ty + 2))) return ty; } return cy - 3; })() : 0;
+    if (m.kind === 'door' && isle) { const p = put('ash', 'cryptdoor', cx, dty, { tw: 8, th: 2, force: true }); if (p) { m.x = p.x; m.y = p.y; interact.push({ x: p.x, y: p.y + 8, r: 36, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x, y: p.y - 40, r: 80, c: 'holy', a: 0.4 }); } }
+    else if (m.kind === 'door' && salt) { const p = put('salt', 'chapel', cx, dty, { tw: 8, th: 2, force: true }); if (p) { lampAt = { x: p.x + 52 - 4, y: p.y - 152 }; m.x = p.x - 10; m.y = p.y; interact.push({ x: p.x - 10, y: p.y + 8, r: 36, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x + 52, y: p.y - 150, r: 120, c: 'gold', a: 0.8, flick: 2 }); } }
+    else if (m.kind === 'door' && ash) { const p = put('ash', 'cryptdoor', cx, dty, { tw: 8, th: 2, force: true }); if (p) { m.x = p.x; m.y = p.y; interact.push({ x: p.x, y: p.y + 8, r: 36, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x, y: p.y - 40, r: 80, c: 'gold', a: 0.45 }); } }
+    else if (m.kind === 'door' && fen) { const p = put('fen', 'sluice', cx, dty, { tw: 10, th: 2, force: true }); if (p) { m.x = p.x; m.y = p.y; interact.push({ x: p.x, y: p.y + 8, r: 36, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x, y: p.y - 40, r: 80, c: 'holy', a: 0.4 }); } }
+    else if (m.kind === 'door') { const p = put('moor', 'barrow', cx, dty - 1, { tw: 12, th: 3, frame: 1, force: true }); if (p) { const dx0 = 24; m.x = p.x + dx0; m.y = p.y; interact.push({ x: p.x + dx0, y: p.y + 6, r: 34, label: 'ENTER', icon: 'descend', use: () => regionDoor(m) }); lights.push({ x: p.x + dx0, y: p.y - 24, r: 70, c: 'violet', a: 0.5 }); } }
   }
   // Round 173: a resting fire halfway along the main track: REST heals the Saint fully.
   if (!RG.acre) { const r = mains[Math.round(mains.length * 0.45)]; if (r) { let at = null; for (let t = 0; t < 30 && !at; t++) { const a0 = near(r, 6); if (a0 && !marks.some((m) => Math.hypot(m.x - (a0[0] + 0.5) * TILE, m.y - (a0[1] + 0.5) * TILE) < 90)) at = a0; }
@@ -1389,7 +1398,14 @@ function makeRegion(id) {
   chunkCanvas(roomCanvas);
   stain = roomCanvas; sctxStain = rc;
   for (const l of lights) l.r *= WS;
-  room = { cacheAt, kind: 'wound', region: id, name: RG.name, open: true, zone, rockD: null, seeps: [], w, h, solid, isSolid, props, lights, decals: [], npcs, interact, pw: PW, ph: PH, top: 4, ambient: RG.ambient, torch: null, rooms, start, critters, water: wet, tides, lamp: lampAt, walls: [], baseSolid, seen: new Uint8Array(w * h), marks };
+  let reachMap = null;
+  // Round 187: every use spot (OPEN, LOOK, GATHER, RING...) must be reachable: the Saint has to stand within its radius
+  // on ground joined to the camp. A spot that props walled in moves to the nearest such ground (checked by regionclip.cjs).
+  { const seen = new Uint8Array(w * h), q = []; const s0x = start.cx, s0y = start.cy;
+    for (let r0 = 0; r0 < 8 && !q.length; r0++) for (let dy = -r0; dy <= r0 && !q.length; dy++) for (let dx = -r0; dx <= r0; dx++) if (!isSolid(s0x + dx, s0y + dy)) { q.push([s0x + dx, s0y + dy]); break; }
+    for (let i = 0; i < q.length; i++) { const [x, y] = q[i]; if (x < 0 || y < 0 || x >= w || y >= h || seen[y * w + x] || isSolid(x, y)) continue; seen[y * w + x] = 1; q.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]); }
+    reachMap = seen; for (const it of interact) spotReach(it, seen, w, h); }
+  room = { reach: reachMap, cacheAt, kind: 'wound', region: id, name: RG.name, open: true, zone, rockD: null, seeps: [], w, h, solid, isSolid, props, lights, decals: [], npcs, interact, pw: PW, ph: PH, top: 4, ambient: RG.ambient, torch: null, rooms, start, critters, water: wet, tides, lamp: lampAt, walls: [], baseSolid, seen: new Uint8Array(w * h), marks };
   room.fog = document.createElement('canvas'); room.fog.width = w; room.fog.height = h; room.fogCtx = room.fog.getContext('2d');
   room.cx = start.cx; room.cy = start.cy;
 }
@@ -2391,6 +2407,12 @@ function updateFloor(dt) {
 // ------------------------------------------------- the Weeping Reliquary ---
 // A sealed reliquary that weeps blood. Wake it and the dead pour in: lay 30
 // of them to rest near it within 30 seconds and it opens.
+// Round 187: a use spot the Saint cannot stand within reach of (walled in by props) moves to the nearest reachable tile.
+function spotReach(it, seen = room.reach, w = room.w, h = room.h) {
+  if (!seen) return; const r = it.r || 26, tx0 = Math.floor(it.x / TILE), ty0 = Math.floor(it.y / TILE); let best = null, bd = 1e9;
+  for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) { const x = tx0 + dx, y = ty0 + dy; if (x < 0 || y < 0 || x >= w || y >= h || !seen[y * w + x]) continue; const d = Math.hypot((x + 0.5) * TILE - it.x, (y + 0.5) * TILE - it.y); if (d < bd) { bd = d; best = [x, y]; } }
+  if (best && bd >= r - 4) { it.x = (best[0] + 0.5) * TILE; it.y = (best[1] + 0.5) * TILE; }
+}
 function placeReliquary(r) {
   // Round 186: away from any other prop's picture (a region's sheep, punts and boats).
   let [x, y] = spawnPoint(r, 160); for (let k = 0; k < 12 && room.props.some((q) => Math.abs(q.x - x) < 40 && q.y - y > -30 && q.y - y < 110); k++) [x, y] = spawnPoint(r, 160);
@@ -2859,7 +2881,7 @@ function newRun() {
   // Shrines and chests are things to use.
   for (const r of room.rooms) {
     if (r.shrine) { const p = r.shrine; room.interact.push({ x: p.x, y: p.y + 4, r: 26, label: 'PRAY', icon: 'talk', use() { useShrine(p); this.done = true; } }); }
-    if (r.chest) { const p = r.chest; room.interact.push({ x: p.x, y: p.y + 4, r: 24, label: 'OPEN', icon: 'talk', use() { openChest(p); this.done = true; } }); }
+    if (r.chest) { const p = r.chest, it = { x: p.x, y: p.y + 4, r: 24, label: 'OPEN', icon: 'talk', use() { openChest(p); this.done = true; } }; spotReach(it); room.interact.push(it); }
   }
   game.warden = null; game.event = null; game.zaps = []; game.later = [];
   const R0 = game.run;
@@ -6074,7 +6096,7 @@ function devRows() {
       { info: `EMBERSTONES ${embers()}   TEARS ${tears()}   INGREDIENTS ${ingrs().filter((n) => n > 0).length}/${ENCHANTS.length * 3}   ENCHANTS WORN ${G && G.ench ? G.ench.size : 0}` },
     ];
     case 'WORLD': return [
-      R('DESCEND', B(`< STATION ${ROMAN[DEV.stn]} >`, (d) => { DEV.stn = cyc(DEV.stn, DIFF.length, d); }), B(`< ${['', 'UNDERCROFT', 'DROWNED NAVE', 'OSSUARY', 'HOLLOW MOOR'][DEV.strat]} >`, (d) => { DEV.strat = cyc(DEV.strat - 1, 4, d) + 1; }), B('DESCEND', () => { tut.on = false; game.nextMap = [null, 'open', 'rooms'][DEV.map || 0]; game.nextRegion = DEV.strat === 4 ? 'moor' : null; game.nextStratum = DEV.strat === 4 ? 1 : DEV.strat; game.nextDiff = DEV.stn; game.nextOmens = []; game.nextVigil = 0; game.state = 'loading'; game.loadT = 0; game.loadOdds = ODDS[0]; })),
+      R('DESCEND', B(`< STATION ${ROMAN[DEV.stn]} >`, (d) => { DEV.stn = cyc(DEV.stn, DIFF.length, d); }), B(`< ${['', 'UNDERCROFT', 'DROWNED NAVE', 'OSSUARY', 'HOLLOW BELOW', 'HOLLOW MOOR'][DEV.strat]} >`, (d) => { DEV.strat = cyc(DEV.strat - 1, 5, d) + 1; }), B('DESCEND', () => { tut.on = false; game.nextMap = [null, 'open', 'rooms'][DEV.map || 0]; game.nextRegion = DEV.strat === 5 ? 'moor' : null; game.nextStratum = DEV.strat === 5 ? 1 : DEV.strat; /* round 187: Stratum IV is 4, the moor 5 */ game.nextDiff = DEV.stn; game.nextOmens = []; game.nextVigil = 0; game.state = 'loading'; game.loadT = 0; game.loadOdds = ODDS[0]; })),
       R('MAP', B(`< ${['RANDOM', 'OPEN', 'ROOMS'][DEV.map || 0]} >`, (d) => { DEV.map = cyc(DEV.map || 0, 3, d); }), B('END DESCENT', run(() => finishDescent())), B('REVEAL MAP', run(() => devReveal()))),
       R('WARDEN', B(`< ${MON[devWardens()[DEV.warden]].name} >`, (d) => { DEV.warden = cyc(DEV.warden, devWardens().length, d); }, { w: 2 }), B('SUMMON', run(() => { if (game.warden) killEnemy(game.warden, 1, 0); spawnWarden(devWardens()[DEV.warden]); closeDev(); }))),
       R('MONSTER', B(`< ${MON[devMons()[DEV.mon]].name} >`, (d) => { DEV.mon = cyc(DEV.mon, devMons().length, d); }, { w: 2 }), B('SPAWN 1', () => devSpawn(devMons()[DEV.mon]))),
@@ -7801,7 +7823,7 @@ const MON = {
   // Round 185: the Hollow Saint, past the door: the Saint as the Wound kept him. Round 186: its own model (tools/models/hollow.mjs,
   // the Saint's body in ink and violet at model scale 2).
   // It fights as he does: aimed bolts, a spread, a rain from above, a dash; later a ring and a spiral.
-  hollowSaint: { name: 'THE HOLLOW SAINT', tier: 'elite', warden: true, story: true, storyTitle: 'PAST THE DOOR', stratum: 4, sheet: 'mon_warden', hp: 2700, speed: 18, r: 16, hy: 40, hr: 24, move: 'kite', keep: 120, fervor: 40, attacks: [
+  hollowSaint: { name: 'THE HOLLOW SAINT', tier: 'elite', warden: true, story: true, storyTitle: 'PAST THE DOOR', stratum: 4, sheet: 'mon_warden', hp: 2300, speed: 18, r: 16, hy: 40, hr: 24, move: 'kite', keep: 100, fervor: 40, attacks: [
     A('snipe', { n: 3, fan: 0.18, range: 280, windup: 0.4, delay: 0.6, cd: 3.5, dmg: 15, speed: 420, shot: 'violet' }),
     A('spread', { n: 7, arc: 0.8, range: 220, windup: 0.6, cd: 4, dmg: 10, speed: 130, shot: 'violet' }),
     A('barrage', { n: 8, range: 240, windup: 0.6, cd: 6, dmg: 14, rad: 20 }),
@@ -8756,6 +8778,8 @@ const GORE_W = {
   bone: { bones: 5, crush: 1.2, shred: 1.2 },
   spirit: { ecto: 1 },
 };
+// Round 187: a monster whose death is its own, not its family's: the Husk is an empty robe that falls to ash.
+const GORE_BY = { husk: { ash: 1 } };
 const GORE_MAT = { flesh: 'blood', cleric: 'blood', vermin: 'blood', bone: 'dust', spirit: 'ecto' };
 const GORE_COL = { rust: ['brick2', 'brick3', 'ember3', 'wood2'], iron: ['iron0', 'iron1', 'iron2', 'stone1'], wax: ['bone0', 'bone1', 'sand0', 'bone1h'], gold: ['gold0', 'gold1', 'gold1h', 'ember1'], blood: ['blood0', 'blood1', 'blood1', 'blood1h', 'blood2'], bile: ['moss0', 'moss1', 'moss1h', 'sand1'], ecto: ['violet0', 'violet1', 'violet1h'], dust: ['stone1', 'stone2', 'bone2'], ash: ['ink1', 'ink2', 'stone3'] };
 const GORE_STAIN = { rust: ['brick3h', 'wood3'], iron: ['iron3', 'iron2h'], wax: ['bone2', 'sand1h'], gold: ['gold2h', 'gold3'], blood: ['blood2h', 'blood3', 'blood3h'], bile: ['moss2h', 'moss3'], ecto: ['violet3'], dust: null, ash: null };
@@ -8837,7 +8861,7 @@ function goreGibs(g, mat, n, o = {}) {
 function goreKind(e) {
   const fam = VOICE[e.type] || 'flesh', H = GORE_HIT || {};
   if (H.burn && rng() < (fam === 'spirit' ? 0.3 : 0.75)) return 'ash';
-  const w = { ...(GORE_W[fam] || GORE_W.flesh) };
+  const w = { ...(GORE_BY[e.type] || GORE_W[fam] || GORE_W.flesh) };
   if (H.blade && w.cleave) w.cleave *= 4;
   if ((H.crit || H.over > 1) && w.shred) w.shred *= 2.5;
   if (H.blow && w.crush) w.crush *= 3;
@@ -12104,7 +12128,7 @@ function wardenSettle(e) {
 // cells move by the body's kind: bones collapse into a heap, flesh melts into a pool, spirits rise as motes,
 // vermin burst apart, clerics burn upward from the feet, armour shatters into blocks. The remains rest, then fade.
 const CRUMBLE_FAM = { bone: 'heap', flesh: 'melt', spirit: 'fade', vermin: 'burst', cleric: 'burn' };
-const CRUMBLE_BY = { knight: 'shatter', golem: 'shatter', titan: 'shatter', inquisitor: 'shatter', effigy: 'burn', motherwax: 'melt', lantern: 'burn' };
+const CRUMBLE_BY = { lostSaint: 'burn', knight: 'shatter', golem: 'shatter', titan: 'shatter', inquisitor: 'shatter', effigy: 'burn', motherwax: 'melt', lantern: 'burn' };
 const CRUMBLE_T = { heap: 1.5, melt: 1.5, fade: 1.8, burst: 1.5, shatter: 1.7, burn: 2.3 }, CRUMBLE_REST = 5, CRUMBLE_FADE = 1.5;
 const crumbleKind = (e) => CRUMBLE_BY[e.type] || CRUMBLE_FAM[VOICE[e.type]] || 'burst';
 let CR_C = null; const CR_CELLS = new Map(), CR_RGB = new Map();

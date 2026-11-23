@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-23, after round 186 (build 186, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-23, after round 187 (build 187, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -393,6 +393,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **After round 187 (the owner: the maps should look polished; things blended into the ground, and the Saltreach's
+  ground read as a weird pattern):** region grounds are calmer (one base tone with a close second, small tufts and
+  flecks instead of big contrasting patches): the Saltreach and Abbey Isle (`salt` painter), the moor's heather (violet
+  flecks in the grass) and the Ashfields' ash (grey, not black). The Ossuary's floor is a darker grey (`OSS_SHEET`
+  floor and hall). `tools/tests/mapsurvey.cjs` photographs every region landmark and every chapter dungeon (`what` =
+  regions or story; ONLY=salt,moor picks regions) for a look over the maps; use it after any ground or prop change.
+  Fen water and the dungeon strata I-II looked fine. Warden table at XII (FOCUS, Choir, 3 fights): Bellwright 31 s,
+  Doorkeeper 32, Ash Widow 45, Cardinal 48, Charnel King 48, Tide-Bishop 53, Ossuarch 53, Candlemass 58, Organist 61,
+  Our Lady of Nails 65 (most health lost of the old ones), the Hollow Saint 71 after its cut (4 fights).
 - **After round 186:** Stratum IV has its own foes and Warden, all on the Saint's body (`tools/models/hollow.mjs`;
   `HEROES.husk`, `HEROES.lostSaint`, `HEROES.hollowSaint` are bodies for `saintModel`, which now takes `noHalo` and
   `halo` from them). The Hollow Saint renders at model scale 2 (`MODEL_K.hollowSaint`); it is picked for about 40% of
@@ -820,6 +829,15 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 187:** the owner: "All" (round 186's five) and polish the maps (the Saltreach's ground). (A) The Hollow
+  Saint's voice (`tools/build-hollow.sh`: `roar_hollowSaint`, `fall_hollowSaint` from the game's own sounds). (B)
+  Deaths of their own: `GORE_BY` (a monster's own death weights; the Husk falls to ash) and `CRUMBLE_BY.lostSaint`
+  burn. (C) The whole Warden table re-run with FOCUS (see "After round 187"); the Hollow Saint was the outlier (one fight
+  not won in 150 s), so 2300 health (2700) and keep 100 (120). (D) The dev WORLD tab's stratum picker reaches the Hollow
+  Below (DEV.strat 4; the moor is 5). (E) `regionclip.cjs` builds HARD trips too (HARD=1) and checks every use spot is
+  reachable from the camp; doors now pick a row with open ground in front (`dty` in `makeRegion`), and `spotReach`
+  moves any walled-in spot (cache, wagons chest, bell, sheep) to the nearest reachable ground: 0 problems in 80 maps.
+  (F) Map polish: calmer region grounds, a darker Ossuary floor (see above), `mapsurvey.cjs`. Test: `round187.cjs`.
 - **Round 186:** the owner: "All" (round 185's five). (A) The Hollow Saint's own model (`hollow.mjs`, the Saint's
   body in ink with violet cracks, a violet halo, a dark shard in the back hand; `DEATH.hollowSaint` ash; `WDIE_FX`
   violet smoke). (B) Stratum IV's own foes: the Husk (common, an earlier Saint's grey robe, no halo, lunges; spirit
