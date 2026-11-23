@@ -25,14 +25,14 @@ const PROP_K = { 'moor/menhir': 1.6, 'moor/barrow': 1.7, 'moor/cairn': 1.4, 'moo
 for (const a of ['house', 'tavern', 'forge', 'fountain']) PROP_K[`town/${a}`] = 2;
 for (const a of ['tall', 'cathedral', 'gate', 'mausoleum', 'tree', 'oak']) PROP_K[`town2/${a}`] = 2;
 const upFrame = (f) => { if (!f || !f.lo) return f; const k = f.lo, w = f.w * k, h = f.h * k, px = new Int16Array(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) px[y * w + x] = f.px[Math.floor(y / k) * f.w + Math.floor(x / k)]; const o = { ...f, w, h, px, lo: 0 }; if (f.ax != null) o.ax = f.ax * k; if (f.ay != null) o.ay = f.ay * k; return o; };
-const MODEL_K = { risen: 1.5, crawler: 1.4, mourner: 1.1, acolyte: 1.2, gravewarden: 1.25, rat: 1.25, votary: 1.3, flagellant: 1.1, siltWretch: 1.4, naveEel: 1.3, gleaner: 1.4, dummy: 1.15 };
+const MODEL_K = { risen: 1.5, crawler: 1.4, mourner: 1.1, acolyte: 1.2, gravewarden: 1.25, rat: 1.25, votary: 1.3, flagellant: 1.1, siltWretch: 1.4, naveEel: 1.3, gleaner: 1.4, dummy: 1.15, hollowSaint: 2 };
 // Chunky pixels: every model renders on a 2x2 grid (see tools/chunky.mjs).
 // The HUD sheet stays fine so buttons and icons read crisply.
 const CHUNK = 2, FINE_SHEETS = new Set(['ui']);
 setRes(CHUNK);
 // v5: sculpted models (tools/sdf.mjs) replace hand-drawn animations by name.
 const OVR = {};
-for (const m of ['saint', 'mendicant', 'anchoress', 'common', 'rare', 'elite', 'ossuary', 'town', 'townfolk', 'dungeon', 'floor', 'vfx', 'props', 'weapon', 'street', 'pets', 'moor', 'fen', 'ash', 'salt', 'gore']) {
+for (const m of ['saint', 'mendicant', 'anchoress', 'common', 'rare', 'elite', 'ossuary', 'town', 'townfolk', 'dungeon', 'floor', 'vfx', 'props', 'weapon', 'street', 'pets', 'moor', 'fen', 'ash', 'salt', 'gore', 'hollow']) {
   let set;
   try { set = (await import(`./models/${m}.mjs`)).default; } catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') console.warn(`models/${m}.mjs failed to load: ${e.message}`); continue; }
   for (const [sh, anims] of Object.entries(set)) OVR[sh] = { ...OVR[sh], ...anims };

@@ -183,7 +183,7 @@ export function saintModel(pose = {}) {
   S.paint({ f: (x, y) => Math.abs(y - (50.8 + B * 0.4)) - 0.8, mat: K.trim });
   // The cracked halo, seen from just above.
   // Tipped up enough that its hole still shows on the chunky 2x2 grid.
-  if (!SKINS[skin]?.crown) S.add(torus(haloAt ? [cx + haloAt[0], 62 - 1.2 + haloAt[1], 2] : [hx - 1, hy - 12 + halo, 0], 4.8, 1.05, haloAt ? 1.25 : 0.55, 'halo'), 0);
+  if (!SKINS[skin]?.crown && !(HR && HR.noHalo)) S.add(torus(haloAt ? [cx + haloAt[0], 62 - 1.2 + haloAt[1], 2] : [hx - 1, hy - 12 + halo, 0], 4.8, 1.05, haloAt ? 1.25 : 0.55, (HR && HR.halo) || 'halo'), 0); // round 186: a body may bring its own halo, or none
   const J = { cx, B, X, hx, hy, hand, fc, swing, swing2, bh, hero, K };
   if (skin) SKINS[skin].add?.(S, J);
   if (HR) HR.add(S, J);

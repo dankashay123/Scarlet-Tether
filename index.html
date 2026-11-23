@@ -109,9 +109,10 @@ function blit() { if (!buf.width || !buf.height || !screen.width) return; sctx.d
 // BUILD names this version. Raise it whenever a round ships: assets load
 // with it in their URL (so phones never keep stale sheets), and a running
 // game that finds a newer BUILD on the server reloads itself in Vael.
-const BUILD = '185';
+const BUILD = '186';
 // What each build changed, shown once in Vael after the game updates.
 const CHANGES = {
+  '186': ['THE HOLLOW SAINT HAS ITS OWN MODEL, AND IT IS NOW THE WARDEN OF THE HOLLOW BELOW. KILL IT AT STATION X OR DEEPER TO EARN ITS CRACKED VIOLET HALO.', 'TWO NEW FOES IN THE HOLLOW BELOW: THE HUSK AND THE LOST SAINT.', 'OUR LADY OF NAILS HAS LESS HEALTH AND FEWER NAILS IN HER LATE VOLLEYS AND RINGS.', 'A CHAPTER STEP THAT NEEDS A LOOK SAYS (LOOK) IN THE QUEST LIST.', 'PROPS IN THE OPEN WORLD NO LONGER OVERLAP: STONES, BOATS, NET RACKS, CHESTS AND THE PEOPLE BY THEM.'],
   '185': ['A TENTH CHAPTER, THE HOLLOW BELOW: GO THROUGH THE DOOR BELOW THE THIRTIETH STATION. IT OPENS AFTER CHAPTER 9.', 'FINISH IT TO OPEN STRATUM IV, THE HOLLOW BELOW, WHERE EVERY WARDEN CAN BE MET.', 'WARDENS NOW CRY OUT AT EACH PHASE IN EVERY DESCENT, NOT ONLY IN THE STORY.', 'THE CODEX SAYS WHEN YOU LAST KILLED EACH WORLD BOSS, AND THE TRAVEL MAP SHOWS BOTH OF THE ABBEY ISLE\'S.', 'A CHAPTER STEP THAT NEEDS A LOOK (THE WRECK, THE WAGONS AND OTHERS) NOW SHOWS A ! THERE AND A PIN ON THE MINIMAP, EVEN IF YOU READ IT BEFORE. LOOK AGAIN TO COUNT IT.', 'SEA STACKS, TREES AND STOOKS PAST THE SHORE NO LONGER OVERLAP EACH OTHER OR THE GROUND YOU WALK ON.'],
   '184': ['ONCE THE DOOR BELOW IS SHUT, THE DOORKEEPER WALKS THE ABBEY ISLE AS A WORLD BOSS AT ITS FLOODED DOOR. AT HALF HEALTH IT CALLS THE DEAD TO IT.', 'NEW IN THE CODEX: WORDS. READ EACH CHAPTER\'S MESSAGE AND ITS WARDEN\'S LAST WORDS AGAIN.', 'THE TRAINING YARD CAN SUMMON A WARDEN ALREADY IN ITS SECOND OR THIRD PHASE.', 'THE BELLWRIGHT SHEDS RUST AND OUR LADY OF NAILS IRON FILINGS. SKELETONS SPILL DUST AND SPIRITS ECTOPLASM WHEN HIT.'],
   '183': ['AFTER THE DOOR BELOW IS SHUT, VAEL CHANGES AGAIN: NEW LINES FROM ODILE, VANE AND THE TOWNSFOLK, THE CRIER\'S NEWS, AND A NEW TITLE, DOOR-SHUTTING.', 'THE DOORKEEPER CAN NOW BE THE WARDEN OF THE OSSUARY SPIRE AT STATION XX AND DEEPER. KILL IT THERE TO EARN ITS HALO.', 'MOTHER CANDLEMASS BLEEDS WAX AND THE CARDINAL BLEEDS GOLD.', 'WHEN THE SAINT FALLS, LIGHT RISES FROM HIM AND HIS HALO LIFTS AWAY.'],
@@ -476,6 +477,8 @@ const HALOS = [
   { id: 'rot', name: "THE OSSUARCH'S HALO", short: 'OSSUARCH', earn: 'ossuarch' }, { id: 'shroud', name: "THE ASH WIDOW'S HALO", short: 'WIDOW', earn: 'ashWidow' },
   // Round 183: the Doorkeeper's (stand frame 11), from its return at Station XX and deeper.
   { id: 'slate', name: "THE DOORKEEPER'S HALO", short: 'DOOR', earn: 'doorkeeper' },
+  // Round 186: the Hollow Saint's (stand frame 12), as the Warden of Stratum IV at Station X or deeper.
+  { id: 'ink', ramp: 'violet', crack: true, name: "THE HOLLOW SAINT'S HALO", short: 'HOLLOW', earn: 'hollowSaint' }, // violet and cracked, apart from the whole Night Halo
 ];
 const haloRamp = (id) => { const H0 = HALOS.find((q) => q.id === id); return (H0 && H0.ramp) || id; };
 const EARN_FROM = 10; // Station X
@@ -1285,8 +1288,11 @@ function makeRegion(id) {
   const fits = (tx, ty, tw, th) => { for (let y = ty - th + 1; y <= ty; y++) for (let x = tx - (tw >> 1); x <= tx + ((tw - 1) >> 1); x++) if (isSolid(x, y) || used.has(y * w + x)) return false; return true; };
   const put = (sheet, anim, tx, ty, o = {}) => {
     const tw = o.tw || 1, th = o.th || 1; if (!o.force && (!fits(tx, ty, tw, th) || (!o.onTrack && tileTrack[ty * w + tx] < 28))) return null;
-    const f = frameOf(sheet, anim, o.frame || 0), px = (tx + 0.5) * TILE, py = (ty + 1) * TILE - 1, R0 = { x0: px - f.w / 2, y0: py - f.h, x1: px + f.w / 2, y1: py };
-    if (!o.force && rects.some((q) => R0.x0 < q.x1 - 4 && R0.x1 > q.x0 + 4 && R0.y0 < q.y1 - 4 && R0.y1 > q.y0 + 4)) return null;
+    const f = frameOf(sheet, anim, o.frame || 0), hit = (R1) => rects.some((q) => R1.x0 < q.x1 - 4 && R1.x1 > q.x0 + 4 && R1.y0 < q.y1 - 4 && R1.y1 > q.y0 + 4), fax = f.ax ?? Math.floor(f.w / 2), fay = f.ay ?? f.h - 1, lx = o.flip ? f.w - fax : fax, at = (x, y) => { const X = (x + 0.5) * TILE, Y = (y + 1) * TILE - 1; return { x0: X - lx, y0: Y - fay, x1: X - lx + f.w, y1: Y - fay + f.h }; }; // round 186: the picture's own anchor (art is trimmed off-centre), mirrored when flipped
+    // Round 186: a forced piece (a landmark's set, a chest) that would overlap one already placed steps a tile or two aside.
+    if (o.force && hit(at(tx, ty))) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [2, 0], [-2, 0], [0, -1], [1, 1], [-1, 1], [3, 0], [-3, 0], [0, 2]]) { const R1 = at(tx + dx, ty + dy); if (!hit(R1) && !isSolid(tx + dx, ty + dy)) { tx += dx; ty += dy; break; } }
+    const px = (tx + 0.5) * TILE, py = (ty + 1) * TILE - 1, R0 = at(tx, ty);
+    if (!o.force && hit(R0)) return null;
     rects.push(R0);
     for (let y = ty - th + 1; y <= ty; y++) for (let x = tx - (tw >> 1); x <= tx + ((tw - 1) >> 1); x++) { used.add(y * w + x); if (o.block !== false && y >= 0 && x >= 0 && y < h && x < w) solid[y][x] = true; }
     const p = { kind: anim, sheet, anim, x: px, y: py, frame: o.frame || 0, flip: !!o.flip, big: f.h > 60 ? f.h : undefined }; props.push(p); return p;
@@ -1313,7 +1319,7 @@ function makeRegion(id) {
       for (let k = 0; k < 2; k++) put('moor', 'sheep', cx - 6 + k * 3, cy + 6, { frame: k, flip: k > 0, block: false }); } }
   for (const m of marks) {
     const r = m.r, cx = r.cx, cy = r.cy;
-    if (m.kind === 'circle') { for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2, tx = Math.round(cx + Math.cos(a) * 8), ty = Math.round(cy + Math.sin(a) * 5); put('moor', 'menhir', tx, ty, { frame: k % 3 === 2 ? 2 : k % 2, force: !isSolid(tx, ty), flip: k > 4 }); } lights.push({ x: (cx + 0.5) * TILE, y: (cy + 0.5) * TILE, r: 70, c: 'violet', a: 0.35 }); }
+    if (m.kind === 'circle') { for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2, tx = Math.round(cx + Math.cos(a) * 11), ty = Math.round(cy + Math.sin(a) * 7.5); put('moor', 'menhir', tx, ty, { frame: k % 3 === 2 ? 2 : k % 2, force: !isSolid(tx, ty), flip: k > 4 }); } lights.push({ x: (cx + 0.5) * TILE, y: (cy + 0.5) * TILE, r: 70, c: 'violet', a: 0.35 }); }
     if (m.kind === 'barrows') { put('moor', 'barrow', cx - 5, cy - 3, { tw: 12, th: 3, frame: 0, force: true }); put('moor', 'barrow', cx + 9, cy + 4, { tw: 12, th: 3, frame: 1 }); for (let k = 0; k < 2; k++) { const at = near(r, 8); if (at) put('moor', 'cairn', at[0], at[1]); } }
     if (m.kind === 'gibbet') { put('moor', 'gibbet', cx, cy, { tw: 2, force: true }); put('moor', 'thorn', cx - 7, cy - 2, { tw: 2, frame: 1 }); for (let k = 0; k < 3; k++) { const at = near(r, 7); if (at) put('moor', 'boulder', at[0], at[1], { frame: 1 }); } }
     if (m.kind === 'wagons') { put('moor', 'wagon', cx - 3, cy, { tw: 6, force: true, flip: true }); put('moor', 'wagon', cx + 6, cy + 3, { tw: 6 }); r.chest = put('loot', 'chest', cx + 1, cy - 4, { force: true }); if (r.chest) { r.chest.kind = 'chest'; lights.push({ x: r.chest.x, y: r.chest.y - 10, r: 60, c: 'gold', a: 0.7 }); } }
@@ -1337,7 +1343,7 @@ function makeRegion(id) {
     if (m.kind === 'stacks') { put('salt', 'stack', cx - 4, cy - 1, { tw: 4, th: 2, force: true }); put('salt', 'stack', cx + 6, cy + 2, { tw: 5, th: 2, frame: 1 }); }
     if (m.kind === 'pans') { for (let j = 0; j < 3; j++) for (let k = 0; k < 2; k++) bake('salt', 'saltpan', (j + k) % 2, (cx - 5 + j * 4) * TILE, (cy - 1 + k * 3) * TILE); }
     if (m.kind === 'lanterns') { for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2, tx = Math.round(cx + Math.cos(a) * 6), ty = Math.round(cy + Math.sin(a) * 4); const pp = put('fen', 'post', tx, ty, { frame: k % 2, force: !isSolid(tx, ty) }); if (pp) lights.push({ x: pp.x, y: pp.y - 36, r: 46, c: 'gold', a: 0.75, flick: k + 1 }); } }
-    if (m.kind === 'nets') { for (let k = 0; k < 4; k++) { const at = near(r, 7); if (at) put('salt', 'netrack', at[0], at[1], { tw: 4 }); } put('salt', 'boat', cx, cy + 2, { tw: 6, force: true, flip: true }); }
+    if (m.kind === 'nets') { put('salt', 'boat', cx, cy + 2, { tw: 6, force: true, flip: true }); for (let k = 0; k < 4; k++) { const at = near(r, 7); if (at) put('salt', 'netrack', at[0], at[1], { tw: 4 }); } } // round 186: the boat first, the racks around it
     if (m.kind === 'abbey') { const p = put('salt', 'abbey', cx, cy - 4, { tw: 10, th: 2, force: true }); if (p) lights.push({ x: p.x, y: p.y - 120, r: 80, c: 'holy', a: 0.35 }); for (let k = 0; k < 3; k++) { const at = near(r, 8); if (at) put('props', 'fallencol', at[0], at[1], { tw: 3, flip: k % 2 === 1 }); } }
     if (m.kind === 'cloister') { put('salt', 'abbey', cx, cy - 5, { tw: 12, th: 2, frame: 1, force: true }); for (let k = -2; k <= 2; k++) if (k) put('props', 'column', cx + k * 4, cy + 3, { force: true }); put('props', 'statue', cx, cy + 1, { force: true }); }
     if (m.kind === 'graves') for (let j = 0; j < 3; j++) for (let k = 0; k < 4; k++) put('props', 'gravestone', cx - 6 + k * 4, cy - 3 + j * 3, { frame: (j + k) % 2, force: true });
@@ -1358,7 +1364,8 @@ function makeRegion(id) {
   let cacheAt = null; if (!RG.acre) { const m = marks.find((q) => q.kind === cacheKind(id)) || marks.find((q) => q.kind !== 'door'), at = m && near(m.r, 6); const p = at && put('loot', 'chest', at[0], at[1], { force: true });
     if (p) { const done = cacheDone(id); p.open = done; p.frame = done ? 1 : 0; cacheAt = p; lights.push({ x: p.x, y: p.y - 10, r: 60, c: 'gold', a: done ? 0.25 : 0.75 }); interact.push({ x: p.x, y: p.y + 4, r: 26, label: 'OPEN', icon: 'talk', use: () => openCache(p, id) }); } }
   for (const L of REGION_LORE[id] || []) { const m = marks.find((q) => q.kind === L.at); if (!m) continue; const [lx, ly] = nearFree(m.x + 10, m.y + 36); interact.push({ x: lx, y: ly, r: 26, label: 'LOOK', icon: 'talk', lore: L.id, use: () => readLore(L) }); }
-  for (const [pid, P] of Object.entries(REGION_NPC)) { if (P.region !== id || P.at === 'camp') continue; const m = marks.find((q) => q.kind === P.at); if (!m) continue; const [nx, ny] = nearFree(m.x - 30, m.y + 20); const n = { sheet: P.sheet || 'town2', npc: P.npc || 'guard_walk', talk: pid, x: nx, y: ny, face: 1, ph: 0, still: true }; npcs.push(n); interact.push({ x: n.x, y: n.y, r: 34, label: 'TALK', icon: 'talk', who: n, use: () => talk(pid) }); }
+  // Round 186: a person never stands on a place's use spot (a chest's OPEN, a door's ENTER).
+  for (const [pid, P] of Object.entries(REGION_NPC)) { if (P.region !== id || P.at === 'camp') continue; const m = marks.find((q) => q.kind === P.at); if (!m) continue; let [nx, ny] = nearFree(m.x - 30, m.y + 20); for (let k = 1; k < 8 && interact.some((q) => Math.hypot(q.x - nx, q.y - ny) < (q.r || 26) + 10); k++) [nx, ny] = nearFree(m.x - 30 - k * 20, m.y + 20 + (k % 2) * 16); const n = { sheet: P.sheet || 'town2', npc: P.npc || 'guard_walk', talk: pid, x: nx, y: ny, face: 1, ph: 0, still: true }; npcs.push(n); interact.push({ x: n.x, y: n.y, r: 34, label: 'TALK', icon: 'talk', who: n, use: () => talk(pid) }); }
   if (id === 'moor') side.slice(-3).forEach((r) => { const at = near(r, 6); if (!at) return; const p = put('moor', 'sheep', at[0], at[1], { frame: 0, block: false }); if (!p) return; const it = { x: p.x, y: p.y + 4, r: 26, label: 'GATHER', icon: 'talk', use: () => { const q = qOf('rside_flock'); if (!q || q.st !== 'active' || q.step !== 0) { toast('A LOST SHEEP. SOMEONE MUST BE MISSING IT.', 2); return; } it.done = true; p.gone = true; sfx('bleat', { vol: 0.5 }); questBump('sheep'); } }; interact.push(it); });
   // Scattered cover in every zone: gorse, boulders, a lone stone, a dead tree, runs of wall.
   for (const r of rooms) {
@@ -2106,8 +2113,8 @@ const COMMON_POOL3 = [['gleaner', 0], ['cinderMoth', 0], ['risen', 0], ['acolyte
 const RARE_POOL3 = ['abbot', 'abbot', 'abbot', 'knight', 'collector', 'gravedigger', 'lantern', 'bishop'];
 const stratum = () => (game.run && game.run.stratum) || 1;
 // Round 185: the Hollow Below draws from every stratum.
-const COMMON_POOL4 = [['risen', 0], ['gleaner', 0], ['siltWretch', 0], ['cinderMoth', 0], ['votary', 1], ['naveEel', 1], ['acolyte', 2], ['wisp', 2], ['gleaner', 2], ['mourner', 2]];
-const RARE_POOL4 = ['abbot', 'knight', 'collector', 'gravedigger', 'lantern', 'bishop', 'cantor', 'abbot'];
+const COMMON_POOL4 = [['husk', 0], ['husk', 0], ['gleaner', 0], ['siltWretch', 0], ['cinderMoth', 0], ['husk', 1], ['naveEel', 1], ['acolyte', 2], ['husk', 2], ['mourner', 2]]; // round 186: the Husk is the stratum's own
+const RARE_POOL4 = ['lostSaint', 'lostSaint', 'lostSaint', 'abbot', 'knight', 'cantor', 'lantern', 'bishop'];
 const poolC = () => [COMMON_POOL, COMMON_POOL, COMMON_POOL2, COMMON_POOL3, COMMON_POOL4][stratum()], poolR = () => [RARE_POOL, RARE_POOL, RARE_POOL2, RARE_POOL3, RARE_POOL4][stratum()];
 const ELITE_POOL = ['colossus', 'seraph', 'golem', 'thrice', 'abbess', 'titan', 'manymouthed', 'leviathan', 'inquisitor', 'effigy'];
 function spawnPoint(r, minD = 70) {
@@ -2208,7 +2215,7 @@ const wardenSkills = () => WARDEN_SKILLS || (WARDEN_SKILLS = [
 function spawnWarden(force, o = {}) {
   // Round 150: in a story chapter the Warden is the chapter's own, and it waits until the message is read.
   if (!force && game.run && game.run.story != null && !o.world) { const F = game.storyFind; if (F && !F.read) { toast('THE TOLL IS FULL. READ THE MESSAGE IN THE FAR ROOM TO CALL THE WARDEN.', 3.5); return; } force = STORY[game.run.story].warden; }
-  const df = curDiff(), id = force || pick(Object.keys(MON).filter((k) => MON[k].warden && (stratum() === 4 ? !MON[k].story || storyN() >= 10 : (!MON[k].story || (k === 'doorkeeper' && doorShut() && df.n >= DOOR_FROM && !(game.run && game.run.story != null))) && (MON[k].stratum || 1) === stratum()))), d = MON[id];
+  const df = curDiff(), id = force || (stratum() === 4 && storyN() >= 10 && rng() < 0.4 ? 'hollowSaint' : null) || pick(Object.keys(MON).filter((k) => MON[k].warden && (stratum() === 4 ? !MON[k].story || storyN() >= 10 : (!MON[k].story || (k === 'doorkeeper' && doorShut() && df.n >= DOOR_FROM && !(game.run && game.run.story != null))) && (MON[k].stratum || 1) === stratum()))), d = MON[id];
   const r = game.run && game.run.story != null && !o.world && game.storyFind && game.storyFind.room ? game.storyFind.room : game.curRoom && roomOf(player.x, player.y) ? game.curRoom : room.rooms.reduce((b, q) => Math.hypot((q.cx + 0.5) * TILE - player.x, (q.cy + 0.5) * TILE - player.y) < Math.hypot((b.cx + 0.5) * TILE - player.x, (b.cy + 0.5) * TILE - player.y) ? q : b);
   const [x, y] = spawnPoint(r, 110);
   const affixes = AFFIX_POOL.filter((a) => !['mirrored', 'horde', 'vengeful'].includes(a)).sort(() => rng() - 0.5).slice(0, 1 + df.aff);
@@ -2303,7 +2310,7 @@ function dropVkey(e) { if (!autoSkip() && curDiff().n >= VKEY_FROM && (curDiff()
 // Each monster's voice when it dies (a family of two takes). Common foes voice
 // about one death in four, spaced out, so a crowd never drones; others always do.
 const VOICE = {};
-for (const [fam, ids] of Object.entries({'bone': ['acolyte', 'knight', 'golem', 'thrice', 'gravewarden', 'risen', 'barrowDead'], 'flesh': ['crawler', 'votary', 'flagellant', 'matron', 'collector', 'choirboy', 'colossus', 'titan', 'manymouthed', 'leviathan', 'siltWretch', 'imp', 'motherwax', 'gravedigger'], 'spirit': ['mourner', 'wisp', 'lantern', 'seraph', 'effigy', 'cherub', 'cinderMoth'], 'vermin': ['rat', 'naveEel', 'gleaner', 'bogHound'], 'cleric': ['bishop', 'jailer', 'bellringer', 'inquisitor', 'abbess', 'cantor', 'abbot']})) for (const id of ids) VOICE[id] = fam;
+for (const [fam, ids] of Object.entries({'bone': ['acolyte', 'knight', 'golem', 'thrice', 'gravewarden', 'risen', 'barrowDead'], 'flesh': ['crawler', 'votary', 'flagellant', 'matron', 'collector', 'choirboy', 'colossus', 'titan', 'manymouthed', 'leviathan', 'siltWretch', 'imp', 'motherwax', 'gravedigger'], 'spirit': ['mourner', 'wisp', 'lantern', 'seraph', 'effigy', 'cherub', 'cinderMoth', 'husk'], 'vermin': ['rat', 'naveEel', 'gleaner', 'bogHound'], 'cleric': ['bishop', 'jailer', 'bellringer', 'inquisitor', 'abbess', 'cantor', 'abbot', 'lostSaint']})) for (const id of ids) VOICE[id] = fam;
 function deathVoice(e) {
   const fam = VOICE[e.type], cries = opt('cries'); if (!fam || e.boss || cries === 'off') return;
   const common = e.tier === 'common' || e.tier === 'imp' || !e.tier; if (common && (cries === 'fewer' || Math.random() > 0.25)) return;
@@ -2385,7 +2392,8 @@ function updateFloor(dt) {
 // A sealed reliquary that weeps blood. Wake it and the dead pour in: lay 30
 // of them to rest near it within 30 seconds and it opens.
 function placeReliquary(r) {
-  const [x, y] = spawnPoint(r, 160);
+  // Round 186: away from any other prop's picture (a region's sheep, punts and boats).
+  let [x, y] = spawnPoint(r, 160); for (let k = 0; k < 12 && room.props.some((q) => Math.abs(q.x - x) < 40 && q.y - y > -30 && q.y - y < 110); k++) [x, y] = spawnPoint(r, 160);
   const p = { kind: 'reliquary', sheet: 'loot', anim: 'chest', frame: 0, x, y, reliquary: true };
   room.props.push(p);
   room.lights.push({ x, y: y - 10, r: 60, c: 'blood', a: 0.8 });
@@ -5484,7 +5492,7 @@ function codexList(sec) {
     const art = H0 ? (x, y, k = 1) => { ctx.save(); ctx.translate(x, y); ctx.scale(k, k); spr('town2', 'halostand', own ? hk + 1 : 0, 0, 0); ctx.restore(); if (own && !LOWFX) twinkles(x, y - 34 * k, 6 * k, hk * 0.21, 4, k); } : null;
     const wb = WORLD_BOSSES.find((w0) => w0[2] === id), wn = (SAVE.worldBoss || {})[id] || 0; // round 177: where it walks in the open world
     const wl = wb ? `IT ALSO WALKS IN ${REGIONS[wb[1]].name}, AT ${REGIONS[wb[1]].marks[wb[0]]}. ${wn ? (wn === 1 ? 'YOU HAVE KILLED IT THERE ONCE.' : `YOU HAVE KILLED IT THERE ${wn} TIMES.`) : 'YOU HAVE NOT KILLED IT THERE YET.'}${wn && (SAVE.worldBossT || {})[id] ? ` LAST KILLED THERE ${agoText((SAVE.worldBossT || {})[id])}.` : ''}` : null; // round 185: and when
-    return { id, name: d.name, seen: !!(t && t.n) || wn > 0, icon: monIcon(id), tag: wb ? 'WORLD BOSS' : 'WARDEN', rgb: '255,106,138', art, lines: !t ? [(d.story ? 'FOUND BELOW THE THIRTIETH STATION.' : `FOUND IN ${strat(d)}.`), wl, halo].filter(Boolean) : [(d.story ? 'FOUND BELOW THE THIRTIETH STATION.' : `FOUND IN ${strat(d)}.`), wl, halo, t.n === 1 ? 'YOU HAVE KILLED IT ONCE.' : `YOU HAVE KILLED IT ${t.n.toLocaleString('en-US')} TIMES.`, ...(sts.length ? [`DEEPEST KILL: STATION ${ROMAN[sts[0] - 1]}.`, 'YOUR FASTEST KILL AT EACH STATION:', sts.slice(0, 12).map((n) => `${ROMAN[n - 1]} ${mmss(t.st[n])}`).join(', ')] : ['SO FAR YOU HAVE ONLY KILLED IT IN VIGILS.'])] }; });
+    return { id, name: d.name, seen: !!(t && t.n) || wn > 0, icon: monIcon(id), tag: wb ? 'WORLD BOSS' : 'WARDEN', rgb: '255,106,138', art, lines: !t ? [(d.story ? (d.stratum === 4 ? 'FOUND PAST THE DOOR BELOW THE THIRTIETH STATION, AND IN THE HOLLOW BELOW ONCE CHAPTER 10 IS DONE.' : 'FOUND BELOW THE THIRTIETH STATION.') : `FOUND IN ${strat(d)}.`), wl, halo].filter(Boolean) : [(d.story ? (d.stratum === 4 ? 'FOUND PAST THE DOOR BELOW THE THIRTIETH STATION, AND IN THE HOLLOW BELOW ONCE CHAPTER 10 IS DONE.' : 'FOUND BELOW THE THIRTIETH STATION.') : `FOUND IN ${strat(d)}.`), wl, halo, t.n === 1 ? 'YOU HAVE KILLED IT ONCE.' : `YOU HAVE KILLED IT ${t.n.toLocaleString('en-US')} TIMES.`, ...(sts.length ? [`DEEPEST KILL: STATION ${ROMAN[sts[0] - 1]}.`, 'YOUR FASTEST KILL AT EACH STATION:', sts.slice(0, 12).map((n) => `${ROMAN[n - 1]} ${mmss(t.st[n])}`).join(', ')] : ['SO FAR YOU HAVE ONLY KILLED IT IN VIGILS.'])] }; });
   if (sec === 2) return [...mySets(), starterSet()].map((id) => { const n = C.s[id] || 0, i = SET_ICONS.indexOf(id); return { id, name: VSETS[id].name, seen: n > 0, icon: (x, y) => sprC('loot', 'setitem', i * 10, x, y), tag: 'SET', rgb: SET_RGB[id] || '255,209,85', lines: [n === 1 ? 'YOU HAVE FOUND ONE PIECE.' : `YOU HAVE FOUND ${n.toLocaleString('en-US')} PIECES.`, setCount(id) ? `YOU ARE WEARING ${setCount(id)} OF THEM.` : 'YOU ARE NOT WEARING ANY.'] }; });
   if (sec === 3) return LEGENDS.map((L, i) => [L, i]).filter(([L]) => !L.hero || L.hero === hero).map(([L, i]) => { const n = C.h[L.id] || 0; return { id: L.id, name: L.name, seen: n > 0, icon: (x, y) => sprC('loot', 'legend', i, x, y), tag: 'HALLOWED', rgb: '255,122,31', hint: `${heroText(L.text)} IT DROPS AS A HALLOWED ${heroText(SLOT_NAME[L.slot] || L.slot.toUpperCase())}. ELITES AND WARDENS DROP HALLOWED PIECES MOST OFTEN, AND PELL'S STALL SOMETIMES SELLS ONE.`, lines: [heroText(L.text), n === 1 ? 'FOUND ONCE.' : `FOUND ${n.toLocaleString('en-US')} TIMES.`] }; });
   // Round 171: the Unwritten Gospel: every piece of lore found out in the world, to read again.
@@ -7293,7 +7301,8 @@ function drawQuestTracker(x, y) {
     else if (d.story != null && game.scene === 'town') { rows.push(['WALK INTO THE CATHEDRAL', false]); rows.push([`${d.goals.length} OBJECTIVES WAIT INSIDE.`, true]); } // round 155: the descent's rows show once inside
     else {
       const boss = game.scene === 'wound' && game.warden && !game.warden.dead; // round 152: while a Warden lives, only its row, to keep clear of its speech
-      for (const [k, n, t] of d.goals) { if (boss && k !== 'warden') continue; const c = Math.min(n, q.c[k] || 0); rows.push([n > 1 ? `${t} ${c}/${n}` : t, c >= n]); } }
+      const looks = new Set(Object.values(LORE_STEP)); // round 186: a step counted by LOOK says so
+      for (const [k, n, t] of d.goals) { if (boss && k !== 'warden') continue; const c = Math.min(n, q.c[k] || 0); rows.push([n > 1 ? `${t} ${c}/${n}` : looks.has(k) && c < n ? `${t} (LOOK)` : t, c >= n]); } }
     const h = 14 + rows.length * 11;
     { const g = ctx.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, 'rgba(8,10,18,0.62)'); g.addColorStop(1, 'rgba(8,10,18,0)'); ctx.fillStyle = g; ctx.fillRect(x - 2, yy - 2, w + 2, Math.min(h, lim - yy) + 2); }
     ctx.fillStyle = PAL.outline; ctx.beginPath(); ctx.moveTo(x + 5, yy); ctx.lineTo(x + 10, yy + 5); ctx.lineTo(x + 5, yy + 10); ctx.lineTo(x, yy + 5); ctx.fill();
@@ -7762,6 +7771,9 @@ const MON = {
     A('summon', { monster: 'cantor', n: 1, range: 300, windup: 0.7, cd: 14 })],
     phases: [[A('ring', { n: 30, range: 220, windup: 0.6, cd: 4, dmg: 9, speed: 100, shot: 'violet' })], [A('sweep', { beams: 4, dur: 3, rate: 0.18, spin: 1, len: 250, range: 280, windup: 0.8, cd: 8, dmg: 14 }), A('pattern', { shape: 'ring', at: 'self', n: 14, radius: 110, rad: 18, delay: 0.9, range: 260, windup: 0.7, cd: 7, dmg: 14, style: 'bell' })]] },
   // Stratum III, the Ossuary Spire.
+  // Round 186: Stratum IV's own. What is left of the Saints sent down before (the same body as the Saint's).
+  husk: { name: 'HUSK', tier: 'common', stratum: 4, hp: 34, speed: 24, r: 6, hy: 18, hr: 9, move: 'chase', fervor: 3, attacks: [A('lunge', { range: 40, windup: 0.5, cd: 1.8, dmg: 10, speed: 160, time: 0.2 })] },
+  lostSaint: { name: 'LOST SAINT', tier: 'rare', stratum: 4, hp: 170, speed: 20, r: 7, hy: 18, hr: 10, move: 'kite', keep: 120, fervor: 12, attacks: [A('snipe', { n: 3, fan: 0.16, range: 210, windup: 0.4, delay: 0.5, cd: 3.2, dmg: 9, speed: 300, shot: 'ember' }), A('ring', { n: 12, range: 120, windup: 0.6, cd: 6, dmg: 7, speed: 95, shot: 'ember' })] },
   gleaner: { name: 'BONE GLEANER', tier: 'common', stratum: 3, hp: 32, speed: 30, r: 6, hy: 11, hr: 9, move: 'chase', fervor: 3, attacks: [A('lunge', { range: 46, windup: 0.45, cd: 1.9, dmg: 9, speed: 175, time: 0.22 })] },
   cinderMoth: { name: 'CINDER MOTH', tier: 'common', stratum: 3, hp: 18, speed: 44, r: 4, hy: 16, hr: 7, move: 'chase', fly: true, fervor: 3, attacks: [A('lunge', { range: 70, windup: 0.5, cd: 2.4, dmg: 8, speed: 230, time: 0.24 })] },
   abbot: { name: 'MARROW ABBOT', tier: 'rare', stratum: 3, hp: 180, speed: 16, r: 8, hy: 26, hr: 12, move: 'kite', keep: 115, fervor: 12, attacks: [A('volley', { n: 3, arc: 0.5, shots: 3, rate: 0.3, range: 200, windup: 0.6, cd: 4, dmg: 7, speed: 125, shot: 'bone' }), A('spikes', { n: 4, range: 180, windup: 0.8, cd: 6, dmg: 12, rad: 18 })] },
@@ -7785,9 +7797,10 @@ const MON = {
     A('shockwave', { range: 190, windup: 0.9, cd: 7, dmg: 15, speed: 120, max: 240 }),
     A('summon', { monster: 'risen', n: 4, range: 300, windup: 0.6, cd: 12 })],
     phases: [[A('pattern', { shape: 'ring', at: 'player', n: 10, radius: 70, rad: 20, delay: 0.85, range: 260, windup: 0.6, cd: 6, dmg: 16 })], [A('spiral', { streams: 3, dur: 2.4, rate: 0.13, range: 230, windup: 0.8, cd: 8, dmg: 8, speed: 100, shot: 'ember' }), A('barrage', { n: 8, range: 240, windup: 0.6, cd: 5, dmg: 14, rad: 20 })]] },
-  // Round 185: the Hollow Saint, past the door: the Saint as the Wound kept him, drawn from the Void look at twice size.
+  // Round 185: the Hollow Saint, past the door: the Saint as the Wound kept him. Round 186: its own model (tools/models/hollow.mjs,
+  // the Saint's body in ink and violet at model scale 2).
   // It fights as he does: aimed bolts, a spread, a rain from above, a dash; later a ring and a spiral.
-  hollowSaint: { name: 'THE HOLLOW SAINT', tier: 'elite', warden: true, story: true, storyTitle: 'PAST THE DOOR', stratum: 4, sheet: 'saint_void', walk: 'run', attack: 'cast', hit: 'hit', die: 'die', scale: 2, hp: 2700, speed: 18, r: 16, hy: 50, hr: 24, move: 'kite', keep: 120, fervor: 40, attacks: [
+  hollowSaint: { name: 'THE HOLLOW SAINT', tier: 'elite', warden: true, story: true, storyTitle: 'PAST THE DOOR', stratum: 4, sheet: 'mon_warden', hp: 2700, speed: 18, r: 16, hy: 40, hr: 24, move: 'kite', keep: 120, fervor: 40, attacks: [
     A('snipe', { n: 3, fan: 0.18, range: 280, windup: 0.4, delay: 0.6, cd: 3.5, dmg: 15, speed: 420, shot: 'violet' }),
     A('spread', { n: 7, arc: 0.8, range: 220, windup: 0.6, cd: 4, dmg: 10, speed: 130, shot: 'violet' }),
     A('barrage', { n: 8, range: 240, windup: 0.6, cd: 6, dmg: 14, rad: 20 }),
@@ -7816,7 +7829,8 @@ const MON = {
     A('multidash', { n: 3, range: 210, windup: 0.8, cd: 6, dmg: 18, speed: 230, time: 0.35 }),
     A('summon', { monster: 'risen', n: 5, range: 300, windup: 0.7, cd: 10 }),
     A('shockwave', { range: 150, windup: 0.9, cd: 6, dmg: 16, speed: 120, max: 180 })] },
-  ladyOfNails: { name: 'OUR LADY OF NAILS', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2500, speed: 14, r: 15, hy: 38, hr: 20, move: 'chase', fervor: 40, phases: [[A('volley', { n: 7, arc: 0.9, shots: 6, rate: 0.25, range: 240, windup: 0.5, cd: 6, dmg: 8, speed: 150, shot: 'bone' })], [A('ring', { n: 36, range: 220, windup: 0.6, cd: 4, dmg: 9, speed: 110, shot: 'bone' }), A('pattern', { shape: 'ring', at: 'player', n: 12, radius: 64, rad: 14, delay: 0.7, range: 260, windup: 0.5, cd: 5, dmg: 16, style: 'thorn' })]], attacks: [
+  // Round 186: the slowest and most punishing Warden in the round 185 bench (56-87 s, most health lost): less health, thinner late volleys and rings.
+  ladyOfNails: { name: 'OUR LADY OF NAILS', tier: 'elite', warden: true, sheet: 'mon_warden', hp: 2200, speed: 14, r: 15, hy: 38, hr: 20, move: 'chase', fervor: 40, phases: [[A('volley', { n: 7, arc: 0.9, shots: 5, rate: 0.25, range: 240, windup: 0.5, cd: 6, dmg: 8, speed: 150, shot: 'bone' })], [A('ring', { n: 28, range: 220, windup: 0.6, cd: 5, dmg: 9, speed: 110, shot: 'bone' }), A('pattern', { shape: 'ring', at: 'player', n: 12, radius: 64, rad: 14, delay: 0.7, range: 260, windup: 0.5, cd: 5, dmg: 16, style: 'thorn' })]], attacks: [
     A('volley', { n: 5, arc: 0.7, shots: 4, rate: 0.35, range: 230, windup: 0.6, cd: 5, dmg: 7, speed: 140, shot: 'bone' }),
     A('pull', { len: 170, range: 170, windup: 0.6, cd: 6, dmg: 8 }),
     A('pattern', { shape: 'cross', at: 'player', n: 12, step: 22, rad: 14, delay: 0.8, range: 250, windup: 0.7, cd: 6, dmg: 15, style: 'thorn' }),
@@ -12064,6 +12078,7 @@ const dieStep = (e) => DIE_STEP * (e.tier === 'elite' ? 1.6 : 1);
 const WDIE = { step: 0.15, hold: 1.6 }; // round 161: the remains stay on the floor until the level is left
 const wardenDies = (e) => e.def.warden && SPR[e.def.sheet].anims[e.def.die] && SPR[e.def.sheet].anims[e.def.die].length > 3;
 const WDIE_FX = {
+  hollowSaint: (f, i, e) => { if (i === 0) sfx('ash', { vol: 0.8, rate: 0.7 }); if (i === 3) sfx('shrine', { vol: 0.5, rate: 0.6, gap: 0 }); if (!LOWFX && i < 14) vemit(e.x + rand(-10, 10), e.y - 70 + i * 4, { n: 4, ramp: 'violet', ang: -0.4, arc: 0.6, sp: 24, up: 30, life: 1, grav: -10 }); }, // round 186: the shadow lifts away as violet smoke
   candlemass: (f, i, e) => { if (i === 0) sfx('burn', { vol: 0.6, rate: 0.7 }); if (i === 11) { sfx('puff', { vol: 0.7, rate: 0.6, gap: 0 }); if (!LOWFX) vemit(e.x, e.y - 14, { n: 10, ramp: 'bone', sp: 10, up: 26, life: 1.6, grav: -12, size: 2 }); } },
   tideBishop: (f, i, e) => { if (i % 3 === 0) rings.push({ x: e.x + rand(-14, 14), y: e.y - 2, t: 0, max: 0.9, r: 26 + i * 2, color: '111,224,208' }); if (i === 2) sfx('drip', { vol: 0.8, rate: 0.6 }); },
   charnelKing: (f, i, e) => { if (i === 0) sfx('burn', { vol: 0.8, rate: 0.8 }); if (!LOWFX && i < 15) vemit(e.x, e.y - Math.max(4, 40 - i * 2.5), { n: 5, ramp: 'fire', sp: 18, up: 60, life: 0.9, grav: -30, size: 2, glow: 4 }); },
@@ -13645,7 +13660,7 @@ function renderLoading() {
   if (game.nextRegion && REGIONS[game.nextRegion]) { text(game.nextRegion === 'acre' ? 'NIGHT IN VAEL' : 'OUTSIDE THE WALLS', W / 2, y - 16, PAL.stone2, { align: 'center', small: true, outline: null }); text(REGIONS[game.nextRegion].name, W / 2, y, PAL.gold1, { align: 'center', sc: 2 }); return; } // round 171
   text(C ? `CHAPTER ${game.nextStory + 1}` : 'STRATUM I', W / 2, y - 16, PAL.stone2, { align: 'center', small: true, outline: null });
   text(C ? C.title : 'THE UNDERCROFT', W / 2, y, PAL.gold1, { align: 'center', sc: 2 });
-  text(C ? ['', 'THE UNDERCROFT', 'THE DROWNED NAVE', 'THE OSSUARY SPIRE'][C.stratum] : df.name, W / 2, y + 28, C ? PAL.stone1 : df.col, { align: 'center', outline: null });
+  text(C ? ['', 'THE UNDERCROFT', 'THE DROWNED NAVE', 'THE OSSUARY SPIRE', 'THE HOLLOW BELOW'][C.stratum] : df.name, W / 2, y + 28, C ? PAL.stone1 : df.col, { align: 'center', outline: null });
   // A thin progress line.
   const bw = 120, p = Math.min(1, game.loadT / 1.8);
   ctx.fillStyle = PAL.ink3; ctx.fillRect(Math.round(W / 2 - bw / 2), y + 48, bw, 2);
@@ -15112,7 +15127,7 @@ function propClash() {
     for (const [x, y] of p.tiles) { if (wallAt(x, y)) out.push(`${p.kind} on wall at ${x},${y}`); const k = `${x},${y}`; if (own.has(k)) out.push(`${p.kind} on ${own.get(k)} at ${k}`); else own.set(k, p.kind); }
     if (p.kind === 'shrine' || p.kind === 'chest') { const [x, y] = p.tiles[0]; for (let yy = y - 1; yy <= y + 1; yy++) for (let xx = x - 1; xx <= x + 1; xx++) if (wallAt(xx, yy)) { out.push(`${p.kind} against a wall at ${x},${y}`); yy = 99; break; } } }
   // Drawn sprites: two props side by side on one row whose pictures overlap, or two tall ones overlapping (as place() rules).
-  const rect = (p) => { const sh = p.sheet || 'props', an = p.anim || p.kind; if (!SPR[sh] || !SPR[sh].anims[an]) return null; const f = SPR[sh].anims[an][0], ax = f.ax ?? SPR[sh].anchorX ?? Math.floor(f.w / 2), ay = f.ay ?? SPR[sh].anchorY ?? f.h - 1; return { x: p.x - ax, y: p.y - ay, w: f.w, h: f.h, p }; };
+  const rect = (p) => { const sh = p.sheet || 'props', an = p.anim || p.kind; if (!SPR[sh] || !SPR[sh].anims[an]) return null; const f = SPR[sh].anims[an][p.frame || 0] || SPR[sh].anims[an][0], ax = f.ax ?? SPR[sh].anchorX ?? Math.floor(f.w / 2), ay = f.ay ?? SPR[sh].anchorY ?? f.h - 1; return { x: p.x - (p.flip ? f.w - ax : ax), y: p.y - ay, w: f.w, h: f.h, p }; }; // round 186: its own frame, mirrored when flipped
   const big = R.props.map(rect).filter((r) => r && r.h >= 26 && r.p.kind !== 'waystone');
   for (let i = 0; i < big.length; i++) for (let j = i + 1; j < big.length; j++) { const a = big[i], b = big[j], ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
     if (ox > 4 && oy > 4 && (Math.abs(a.p.y - b.p.y) < 10 || (a.h >= 40 && b.h >= 40 && ox * oy > 0.2 * Math.min(a.w * a.h, b.w * b.h)))) out.push(`${a.p.kind} drawn over ${b.p.kind} at ${Math.round(a.p.x / TILE)},${Math.round(a.p.y / TILE)}`); }

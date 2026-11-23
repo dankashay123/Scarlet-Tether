@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-11-23, after round 185 (build 185, on `master`; the branch and `master` are level). Read
+Last updated 2026-11-23, after round 186 (build 186, on `master`; the branch and `master` are level). Read
 this first, then `CLAUDE.md`. The history of every round is at the bottom;
 the sections above it describe the game as it is now.
 
@@ -393,6 +393,11 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## Next steps (ideas, building on what is there)
 
+- **After round 186:** Stratum IV has its own foes and Warden, all on the Saint's body (`tools/models/hollow.mjs`;
+  `HEROES.husk`, `HEROES.lostSaint`, `HEROES.hollowSaint` are bodies for `saintModel`, which now takes `noHalo` and
+  `halo` from them). The Hollow Saint renders at model scale 2 (`MODEL_K.hollowSaint`); it is picked for about 40% of
+  Stratum IV's Wardens. It has no voice of its own (the shared roar and fall). Regions now pass `regionclip.cjs` (0
+  in 40 maps); its rule is `propClash`, which now reads each prop's own frame and flip.
 - **After round 185:** ten chapters. Chapter 10 (THE HOLLOW BELOW, `STORY[9]`) goes through the door and ends on the
   Hollow Saint (`MON.hollowSaint`: the Void look's sheet `saint_void` at scale 2 with its own anim names, no model of
   its own; a sculpted model would read better). Finishing it opens Stratum IV, THE HOLLOW BELOW (`STRATA[4]`, sheets
@@ -815,6 +820,18 @@ Desktop works with keys. 55-60 fps in dense crowds on a phone.
 
 ## History by round
 
+- **Round 186:** the owner: "All" (round 185's five). (A) The Hollow Saint's own model (`hollow.mjs`, the Saint's
+  body in ink with violet cracks, a violet halo, a dark shard in the back hand; `DEATH.hollowSaint` ash; `WDIE_FX`
+  violet smoke). (B) Stratum IV's own foes: the Husk (common, an earlier Saint's grey robe, no halo, lunges; spirit
+  family) and the Lost Saint (rare, rust-brown robe, dull halo, ember snipes and a ring; cleric family), in
+  `COMMON_POOL4`/`RARE_POOL4`. The Hollow Saint is the stratum's Warden 40% of the time and earns THE HOLLOW SAINT'S
+  HALO (`HALOS` id `ink`, ramp violet, cracked; stand frame 12; the `halostand` frames now follow `STAND_HALOS`).
+  (C) Our Lady of Nails: 2200 health (was 2500), phase-2 volley 5 shots (6), ring 28 (36) every 5 s (4). FOCUS bench at
+  XII with the Choir: 58 s and 50 s, health lost 2.1 and 1.8 (was 87/56 s, 7.7/6.0). (D) The tracker adds (LOOK) to a
+  step counted by LOOK. (E) `regionclip.cjs`: forced pieces in `makeRegion`'s `put` step a tile or two aside when they
+  would overlap; `put`'s picture box uses the frame's anchor and flip; people stand off a place's use spot; the stone
+  circle is wider; the nets' boat goes down before its racks; the Weeping Reliquary keeps clear of props. Test:
+  `round186.cjs`.
 - **Round 185:** the owner: "All" (round 184's five). (A) `autobench.cjs FOCUS=1`: clears the crowd when the Warden
   spawns (and every tick after, its summons kept) and reports `wardenT` from the spawn. Full Burning Choir Saint at
   XII, 2 trials of 150 s each: Bellwright 33/30 s, Candlemass 60/44, Cardinal 30/57, Charnel King 33/77, Our Lady of
