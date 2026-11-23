@@ -7030,7 +7030,8 @@ function renderTravel() {
         text(s0, bx0, R.y + 46, left > 0 ? PAL.stone2 : PAL.blood1 || PAL.gold0, small); bx0 += textW(s0, 1, true) + 8; } }
     // The Abbey Isle is reached by boat from the Saltreach, so its two world bosses are listed on the Saltreach's card.
     if (id === 'salt' && open && SAVE.ending) { const iw = WORLD_BOSSES.filter((w0) => w0[1] === 'isle' && (w0[2] !== 'doorkeeper' || doorShut())).map((wb) => { const left = worldBossWait(wb[2]), nm0 = MON[wb[2]].name.replace(/^THE /, ''); return left > 0 ? `${nm0} ${Math.ceil(left / 60)}M` : nm0; });
-      const wk = iw.filter((q) => !/\dM$/.test(q)).length; if (iw.length) text(fitText(`ISLE: ${iw.join(', ')}`, R.x + R.w - 6 - tx, `ISLE: ${wk} OF ${iw.length} WALK`), tx, R.y + 70, PAL.stone1, small); }
+      const wk = iw.filter((q) => !/\dM$/.test(q)).length; const row58 = !(C && C.region === id && q && q.st === 'active') && !dailyIds().some((d) => QS()[d].g[4] === id && QS()[d].st === 'active'), yI = R.y + 70 + Math.ceil(9 * TEXT_K) < R.y + R.h - 26 ? R.y + 70 : row58 ? R.y + 58 : null; // round 186: above GO even with large text
+      if (iw.length && yI != null) text(fitText(`ISLE: ${iw.join(', ')}`, R.x + R.w - 6 - tx, `ISLE: ${wk} OF ${iw.length} WALK`), tx, yI, PAL.stone1, small); }
     const dq = open && !here ? dailyIds().map((d) => QS()[d]).find((q0) => q0.g[4] === id && q0.st === 'active') : null; // round 177: today's region daily
     if (here) text('YOUR CHAPTER IS HERE', tx, R.y + 58, PAL.gold0, small);
     else if (dq) text(`TODAY: ${dq.g[2]} ${Math.min(dq.g[1], dq.c[dq.g[0]] || 0)}/${dq.g[1]}`, tx, R.y + 58, PAL.gold0, small);
